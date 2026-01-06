@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://132.145.132.80:3310/tg_test?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:vlastelin228}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  flyway:
+    enabled: false
+
+app:
+  webapp:
+    # ВАЖНО: это должен быть HTTPS URL, доступный из Telegram (домен/туннель).
+    base-url: ${WEBAPP_BASE_URL:https://semicrystalline-unprevailing-delorse.ngrok-free.dev}
+  telegram:
+    bot-token: "1608682067:AAGO0LOCRqa1t1E1YXEZDMU7LVkf6f_dDSI"
+    bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
+    default-admin-chat-id: ${ADMIN_CHAT_ID:593289478}
+    admin-user-ids: ${ADMIN_USER_IDS:593289478,977067472} # пример: "123456789,987654321"
+  security:
+    # Для локальной разработки можно true, но в проде обязательно false.
+    allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}

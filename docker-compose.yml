@@ -1,0 +1,21 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: tgshop-db
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Kyiv
+      MYSQL_DATABASE: tgshop
+      MYSQL_USER: tgshop
+      MYSQL_PASSWORD: tgshoppass
+      MYSQL_ROOT_PASSWORD: root
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - tgshop_mysql:/var/lib/mysql
+
+volumes:
+  tgshop_mysql:
