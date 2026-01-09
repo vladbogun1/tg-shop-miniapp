@@ -55,21 +55,43 @@ function toast(text){
   document.body.appendChild(t);
   setTimeout(()=> t.remove(), 2200);
 }
+function apiHeaders(extra = {}) {
+  return {
+    "Accept": "application/json",
+    "ngrok-skip-browser-warning": "true",
+    ...extra,
+  };
+}
 
 async function apiGet(url){
-  const r = await fetch(url, { headers: { "Accept":"application/json" }});
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const r = await fetch(url, { headers: apiHeaders() });
+  const ct = r.headers.get("content-type") || "";
+  const text = await r.text();
+
+  if (!r.ok) throw new Error(text);
+
+  // если ngrok снова подсунул HTML — покажем понятную ошибку
+  if (!ct.includes("application/json")) {
+    throw new Error(`Expected JSON, got ${ct}. Head: ${text.slice(0,160)}`);
+  }
+  return JSON.parse(text);
 }
 
 async function apiPost(url, body){
   const r = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type":"application/json", "Accept":"application/json" },
+    headers: apiHeaders({ "Content-Type":"application/json" }),
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+
+  const ct = r.headers.get("content-type") || "";
+  const text = await r.text();
+
+  if (!r.ok) throw new Error(text);
+  if (!ct.includes("application/json")) {
+    throw new Error(`Expected JSON, got ${ct}. Head: ${text.slice(0,160)}`);
+  }
+  return JSON.parse(text);
 }
 
 function bindCartProducts(){
@@ -79,7 +101,6 @@ function bindCartProducts(){
     if (!item.product) state.cart.delete(id);
   }
   saveCart();
-  updateCartBadge();
 }
 
 function cartCount(){
@@ -97,25 +118,6 @@ function cartTotal(){
     cur = it.product.currency || cur;
   }
   return { sum, cur };
-}
-
-function updateCartBadge(){
-  qs("cartCount").textContent = String(cartCount());
-
-  if (tg) {
-    const cnt = cartCount();
-    if (cnt > 0) {
-      const { sum, cur } = cartTotal();
-      tg.MainButton.setText(`Оформить заказ • ${sum} ${cur}`);
-      tg.MainButton.show();
-      if (!state.mainBtnBound) {
-        tg.MainButton.onClick(openCheckout);
-        state.mainBtnBound = true;
-      }
-    } else {
-      tg.MainButton.hide();
-    }
-  }
 }
 
 /** Disable/enable add-to-cart on card based on stock (no re-render). */
@@ -208,27 +210,31 @@ function addToCart(productId, delta){
   }
 
   saveCart();
-  updateCartBadge();
   toast(delta > 0 ? "Добавлено в корзину" : "Обновлено");
 }
 
 function openProduct(p){
-  const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
+  const gallery = createGallery(p.imageUrls || [], p.title);
 
   const node = el("div", {}, [
     el("h2", {}, [document.createTextNode(p.title)]),
-    el("div", { class:"small" }, [document.createTextNode(money(p))]),
-    el("div", { class:"small" }, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
-    el("div", { class:"hr" }),
-    img ? el("img", { src: img, style:"width:100%;border-radius:16px;border:1px solid rgba(255,255,255,0.08)" }) : el("div", { class:"small" }, [document.createTextNode("Нет фото")]),
+    el("div", { class:"row-column" }, [
+        el("div", { class:"column" }, [
+            el("div", { class:"small" }, [document.createTextNode(money(p))]),
+            el("div", { class:"small" }, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
+        ]),
+        el("div", { class:"column" }, [
+            el("button", { class:"primary pill", onclick: ()=> addToCart(p.id, 1) }, [document.createTextNode("В корзину")]),
+        ]),
+    ]),
     el("div", { class:"hr" }),
     el("div", {}, [document.createTextNode(p.description || "Без описания")]),
     el("div", { class:"hr" }),
-    el("div", { class:"row" }, [
-      el("button", { class:"pill", onclick: ()=> openCheckout() }, [document.createTextNode("Оформить")]),
-      el("button", { class:"primary pill", onclick: ()=> addToCart(p.id, 1) }, [document.createTextNode("В корзину")]),
-    ]),
+    gallery,
+    el("div", { class:"hr" }),
+
   ]);
+
   openModal(node);
 }
 
@@ -258,7 +264,7 @@ function openCart(){
     el("div", { class:"hr" }),
     el("div", { class:"row summary" }, [
       el("div", { style:"font-weight:700" }, [document.createTextNode(`Итого: ${sum} ${cur}`)]),
-      el("button", { class:"danger pill", onclick: ()=> { state.cart.clear(); saveCart(); updateCartBadge(); openCart(); } }, [document.createTextNode("Очистить")]),
+      el("button", { class:"danger pill", onclick: ()=> { state.cart.clear(); saveCart(); openCart(); } }, [document.createTextNode("Очистить")]),
     ]),
     el("div", { class:"hr" }),
     el("div", { class:"row" }, [
@@ -323,7 +329,6 @@ function openCheckout(){
 
       state.cart.clear();
       saveCart();
-      updateCartBadge();
 
       // сразу подтянем свежие остатки/цены без перерендера и без прыжков
       await refreshProductsSoft();
@@ -476,7 +481,6 @@ async function refreshProductsSoft(){
   }
   if (changed) {
     saveCart();
-    updateCartBadge();
   }
 }
 
@@ -545,7 +549,6 @@ async function boot(){
   }
 
   await loadProducts();
-  updateCartBadge();
 
   qs("cartBtn").addEventListener("click", openCartBtn);
 }
@@ -576,4 +579,130 @@ function startThumbRotator() {
       imgEl.src = urls[next];
     }
   }, 5000);
+}
+
+
+function apiHeaders(extra = {}) {
+  return {
+    "Accept": "application/json",
+    "ngrok-skip-browser-warning": "true",
+    ...extra,
+  };
+}
+
+
+function createGallery(urls, altText = "") {
+  const clean = (urls || []).filter(Boolean);
+  if (clean.length === 0) {
+    return el("div", { class: "gallery gallery-fallback" }, [document.createTextNode("Нет фото")]);
+  }
+
+  let index = 0;
+
+  const track = el("div", { class: "gallery-track" });
+  for (const u of clean) {
+    track.append(
+      el("div", { class: "gallery-slide" }, [
+        el("img", { src: u, alt: altText })
+      ])
+    );
+  }
+
+  const viewport = el("div", { class: "gallery-viewport" }, [track]);
+  const root = el("div", { class: "gallery" }, [viewport]);
+
+  const leftBtn = el("button", { class: "gallery-arrow left", type: "button" }, [
+    el("i", {class: "fa-solid fa-angle-left"})
+  ]);
+  const rightBtn = el("button", { class: "gallery-arrow right", type: "button" }, [
+    el("i", {class: "fa-solid fa-angle-right"})
+  ]);
+
+  const dotsWrap = el("div", { class: "gallery-dots" });
+  const dots = clean.map((_, i) =>
+    el("button", { class: "gallery-dot", type: "button", "aria-label": `Фото ${i + 1}` })
+  );
+  dots.forEach(d => dotsWrap.append(d));
+
+  root.append(leftBtn, rightBtn, dotsWrap);
+
+  function apply() {
+    track.style.transform = `translateX(${-index * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle("active", i === index));
+    leftBtn.toggleAttribute("disabled", clean.length <= 1 || index === 0);
+    rightBtn.toggleAttribute("disabled", clean.length <= 1 || index === clean.length - 1);
+    // если фотка 1 — просто скроем UI
+    const hideUi = clean.length <= 1;
+    leftBtn.classList.toggle("hidden", hideUi);
+    rightBtn.classList.toggle("hidden", hideUi);
+    dotsWrap.classList.toggle("hidden", hideUi);
+  }
+
+  function setIndex(next) {
+    const max = clean.length - 1;
+    index = Math.max(0, Math.min(max, next));
+    apply();
+  }
+
+  leftBtn.addEventListener("click", () => setIndex(index - 1));
+  rightBtn.addEventListener("click", () => setIndex(index + 1));
+  dots.forEach((d, i) => d.addEventListener("click", () => setIndex(i)));
+
+  // ===== Swipe (pointer events) =====
+  let startX = 0;
+  let startY = 0;
+  let dragging = false;
+  let moved = false;
+
+  viewport.addEventListener("pointerdown", (e) => {
+    if (clean.length <= 1) return;
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    viewport.setPointerCapture?.(e.pointerId);
+  });
+
+  viewport.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    // если явно горизонтальный жест — блокируем “внутренний” скролл и тянем трек
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+      moved = true;
+      e.preventDefault?.();
+
+      const percent = (dx / viewport.clientWidth) * 100;
+      track.style.transition = "none";
+      track.style.transform = `translateX(${-(index * 100) + percent}%)`;
+    }
+  }, { passive: false });
+
+  function endSwipe(e) {
+    if (!dragging) return;
+    dragging = false;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    track.style.transition = ""; // вернуть transition
+
+    if (!moved || Math.abs(dy) > Math.abs(dx)) {
+      apply();
+      return;
+    }
+
+    const threshold = viewport.clientWidth * 0.18; // 18% ширины
+    if (dx <= -threshold) setIndex(index + 1);
+    else if (dx >= threshold) setIndex(index - 1);
+    else apply();
+  }
+
+  viewport.addEventListener("pointerup", endSwipe);
+  viewport.addEventListener("pointercancel", (e) => { dragging = false; apply(); });
+
+  apply();
+  return root;
 }

@@ -4,18 +4,57 @@ services:
     container_name: tgshop-db
     restart: unless-stopped
     environment:
-      TZ: Europe/Kyiv
-      MYSQL_DATABASE: tgshop
-      MYSQL_USER: tgshop
-      MYSQL_PASSWORD: tgshoppass
-      MYSQL_ROOT_PASSWORD: root
+      TZ: ${TZ:-Europe/Warsaw}
+      MYSQL_DATABASE: ${DB_NAME:-tg_test}
+      MYSQL_USER: ${DB_USER:-tgshop}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-tgshoppass}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
-    ports:
-      - "3306:3306"
+      --default-time-zone=+00:00
     volumes:
       - tgshop_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    # ВАЖНО: не публикуем MySQL наружу
+    ports: []
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tgshop-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Europe/Warsaw}
+
+      # --- DB: внутри docker-сети ---
+      DB_URL: "jdbc:mysql://db:3306/${DB_NAME:-tg_test}?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true"
+      DB_USER: ${DB_USER:-tgshop}
+      DB_PASSWORD: ${DB_PASSWORD:-tgshoppass}
+
+      # --- WebApp URL (должен быть HTTPS и доступен из Telegram!) ---
+      WEBAPP_BASE_URL: ${WEBAPP_BASE_URL}
+
+      # --- Telegram ---
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME:-@ChannelCheckerBot}
+      ADMIN_CHAT_ID: ${ADMIN_CHAT_ID:-593289478}
+      ADMIN_USER_IDS: ${ADMIN_USER_IDS:-593289478,977067472}
+
+      # --- Security ---
+      ALLOW_UNSIGNED_INIT_DATA: ${ALLOW_UNSIGNED_INIT_DATA:-false}
+
+    # наружу 8077 -> внутри контейнера 8080
+    ports:
+      - "8077:8080"
 
 volumes:
   tgshop_mysql:

@@ -8,9 +8,9 @@ spring:
     password: ${DB_PASSWORD:vlastelin228}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
   flyway:
-    enabled: false
+    enabled: true
 
 app:
   webapp:

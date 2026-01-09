@@ -11,27 +11,20 @@ import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
 import jakarta.validation.Valid;
 import java.util.List;
+
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
+@AllArgsConstructor
 public class ApiController {
 
   private final ProductRepository productRepository;
   private final TgInitDataValidator initDataValidator;
   private final AppProperties props;
   private final OrderService orderService;
-
-  public ApiController(ProductRepository productRepository,
-                       TgInitDataValidator initDataValidator,
-                       AppProperties props,
-                       OrderService orderService) {
-    this.productRepository = productRepository;
-    this.initDataValidator = initDataValidator;
-    this.props = props;
-    this.orderService = orderService;
-  }
 
   @GetMapping("/products")
   public List<ProductDto> products() {
