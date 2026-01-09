@@ -1,16 +1,16 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Shop Mini App</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="icons/css/fontawesome.css" rel="stylesheet" />
-    <link href="icons/css/brands.css" rel="stylesheet" />
-    <link href="icons/css/solid.css" rel="stylesheet" />
-    <link href="icons/css/sharp-thin.css" rel="stylesheet" />
-    <link href="icons/css/sharp-duotone-thin.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css" />
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Shop Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="icons/css/fontawesome.css" rel="stylesheet"/>
+    <link href="icons/css/brands.css" rel="stylesheet"/>
+    <link href="icons/css/solid.css" rel="stylesheet"/>
+    <link href="icons/css/sharp-thin.css" rel="stylesheet"/>
+    <link href="icons/css/sharp-duotone-thin.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="./styles.css"/>
 </head>
 <body>
 <header class="header">
@@ -28,47 +28,47 @@
 </header>
 
 <main id="app">
-  <div id="admin" class="hidden">
-    <h2 style="padding:0 12px">🛠️ Добавить товар</h2>
-    <form id="productForm" class="card" style="margin: 0 12px 12px 12px">
-      <label>Название
-        <input name="title" required />
-      </label>
+    <div id="admin" class="hidden">
+        <h2 style="padding:0 12px">🛠️ Добавить товар</h2>
+        <form id="productForm" class="card" style="margin: 0 12px 12px 12px">
+            <label>Название
+                <input name="title" required/>
+            </label>
 
-      <label>Описание
-        <textarea name="description" rows="3"></textarea>
-      </label>
+            <label>Описание
+                <textarea name="description" rows="3"></textarea>
+            </label>
 
-      <label>Цена (например 1500)
-        <input name="priceMinor" type="number" min="0" value="1500" required />
-      </label>
+            <label>Цена (например 1500)
+                <input name="priceMinor" type="number" min="0" value="1500" required/>
+            </label>
 
-      <label>Валюта
-        <input name="currency" value="UAH" required />
-      </label>
+            <label>Валюта
+                <input name="currency" value="UAH" required/>
+            </label>
 
-      <label>Остаток (stock)
-        <input name="stock" type="number" min="0" value="1" required />
-      </label>
+            <label>Остаток (stock)
+                <input name="stock" type="number" min="0" value="1" required/>
+            </label>
 
-      <label>URL картинок (через запятую)
-        <input name="imageUrls" placeholder="https://... , https://..." />
-      </label>
+            <label>URL картинок (через запятую)
+                <input name="imageUrls" placeholder="https://... , https://..."/>
+            </label>
 
-      <button type="submit" style="margin-top:12px;width:100%">➕ Добавить</button>
-      <div class="hint">Подсказка: загрузи фото на хостинг/телеграм и вставь прямые URL.</div>
-    </form>
-    <hr class="sep"/>
-  </div>
-
-  <section id="grid" class="grid"></section>
-
-  <div id="modal" class="modal hidden">
-    <div class="modal-card">
-      <button id="closeModal" class="icon">✖</button>
-      <div id="modalBody"></div>
+            <button type="submit" style="margin-top:12px;width:100%">➕ Добавить</button>
+            <div class="hint">Подсказка: загрузи фото на хостинг/телеграм и вставь прямые URL.</div>
+        </form>
+        <hr class="sep"/>
     </div>
-  </div>
+
+    <section id="grid" class="grid"></section>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-card">
+            <button id="closeModal" class="icon">✖</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
 </main>
 
 <script src="./app.js"></script>
