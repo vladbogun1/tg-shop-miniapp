@@ -1,12 +1,18 @@
 package com.example.tgshop.api;
 
+import com.example.tgshop.api.dto.AdminLoginRequest;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
+import com.example.tgshop.api.dto.OrderDto;
+import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
+import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
+import com.example.tgshop.api.dto.UpdateProductRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.order.OrderRepository;
 import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
 import com.example.tgshop.product.ProductRepository;
@@ -30,6 +36,7 @@ public class ApiController {
     private final TgInitDataValidator initDataValidator;
     private final AppProperties props;
     private final OrderService orderService;
+    private final OrderRepository orderRepository;
     private final TgPostImageResolver tgPostImageResolver;
 
 
@@ -39,12 +46,26 @@ public class ApiController {
     }
 
     @GetMapping("/admin/products")
-    public List<ProductDto> adminProducts(@RequestParam("initData") String initData) {
-        var v = initDataValidator.validate(initData);
-        if (!v.ok()) throw new Unauthorized("Bad initData");
-        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
-
+    public List<ProductDto> adminProducts(@RequestParam(value = "initData", required = false) String initData,
+                                          @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
         return productRepository.findAllWithImages().stream().map(ApiController::toDto).toList();
+    }
+
+    @GetMapping("/admin/products/archived")
+    public List<ProductDto> adminArchivedProducts(@RequestParam(value = "initData", required = false) String initData,
+                                                  @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        return productRepository.findArchivedWithImages().stream().map(ApiController::toDto).toList();
+    }
+
+    @GetMapping("/admin/orders")
+    public List<OrderDto> adminOrders(@RequestParam(value = "initData", required = false) String initData,
+                                      @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        return orderRepository.findAllWithItems().stream()
+            .map(ApiController::toOrderDto)
+            .toList();
     }
 
     @PostMapping("/orders")
@@ -86,11 +107,10 @@ public class ApiController {
 
     @PostMapping("/admin/products")
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductDto createProduct(@RequestParam("initData") String initData,
+    public ProductDto createProduct(@RequestParam(value = "initData", required = false) String initData,
+                                    @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                     @RequestBody @Valid CreateProductRequest req) {
-        var v = initDataValidator.validate(initData);
-        if (!v.ok()) throw new Unauthorized("Bad initData");
-        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+        assertAdmin(initData, adminPassword);
 
         Product p = new Product();
         p.setTitle(req.title());
@@ -99,6 +119,7 @@ public class ApiController {
         p.setCurrency(req.currency());
         p.setStock(req.stock());
         p.setActive(req.active());
+        p.setArchived(false);
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         int i = 0;
@@ -115,12 +136,11 @@ public class ApiController {
     }
 
     @PatchMapping("/admin/products/{productId}/active")
-    public ProductDto updateProductActive(@RequestParam("initData") String initData,
+    public ProductDto updateProductActive(@RequestParam(value = "initData", required = false) String initData,
+                                          @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                           @PathVariable("productId") String productId,
                                           @RequestBody @Valid UpdateProductActiveRequest req) {
-        var v = initDataValidator.validate(initData);
-        if (!v.ok()) throw new Unauthorized("Bad initData");
-        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+        assertAdmin(initData, adminPassword);
 
         byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
         Product product = productRepository.findByIdWithImages(idBytes)
@@ -128,6 +148,82 @@ public class ApiController {
         product.setActive(req.active());
         var saved = productRepository.save(product);
         return toDto(saved);
+    }
+
+    @PatchMapping("/admin/products/{productId}/archived")
+    public ProductDto updateProductArchived(@RequestParam(value = "initData", required = false) String initData,
+                                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                            @PathVariable("productId") String productId,
+                                            @RequestBody @Valid UpdateProductArchivedRequest req) {
+        assertAdmin(initData, adminPassword);
+
+        byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
+        Product product = productRepository.findByIdWithImages(idBytes)
+            .orElseThrow(() -> new NotFound("Product not found"));
+        product.setArchived(req.archived());
+        if (req.archived()) {
+            product.setActive(false);
+        }
+        var saved = productRepository.save(product);
+        return toDto(saved);
+    }
+
+    @PatchMapping("/admin/products/{productId}")
+    public ProductDto updateProduct(@RequestParam(value = "initData", required = false) String initData,
+                                    @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                    @PathVariable("productId") String productId,
+                                    @RequestBody @Valid UpdateProductRequest req) {
+        assertAdmin(initData, adminPassword);
+
+        byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
+        Product product = productRepository.findByIdWithImages(idBytes)
+            .orElseThrow(() -> new NotFound("Product not found"));
+
+        product.setTitle(req.title());
+        product.setDescription(req.description());
+        product.setPriceMinor(req.priceMinor());
+        product.setCurrency(req.currency());
+        product.setStock(req.stock());
+        product.setActive(req.active());
+
+        product.getImages().clear();
+        var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
+        int i = 0;
+        for (String url : resolvedUrls) {
+            var img = new ProductImage();
+            img.setProduct(product);
+            img.setUrl(url);
+            img.setSortOrder(i++);
+            product.getImages().add(img);
+        }
+
+        var saved = productRepository.save(product);
+        return toDto(saved);
+    }
+
+    @PostMapping("/admin/login")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void adminLogin(@RequestBody @Valid AdminLoginRequest req) {
+        if (!isPasswordValid(req.password())) {
+            throw new Unauthorized("Bad password");
+        }
+    }
+
+    private void assertAdmin(String initData, String adminPassword) {
+        if (isPasswordValid(adminPassword)) return;
+        if (initData == null || initData.isBlank()) throw new Forbidden("Not admin");
+        var v = initDataValidator.validate(initData);
+        if (!v.ok()) throw new Unauthorized("Bad initData");
+        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+    }
+
+    private boolean isPasswordValid(String adminPassword) {
+        String expected = props.getSecurity().getAdminPassword();
+        return adminPassword != null
+            && !adminPassword.isBlank()
+            && expected != null
+            && !expected.isBlank()
+            && expected.equals(adminPassword);
     }
 
     private static ProductDto toDto(Product p) {
@@ -139,7 +235,32 @@ public class ApiController {
                 p.getCurrency(),
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
-                p.isActive()
+                p.isActive(),
+                p.isArchived()
+        );
+    }
+
+    private static OrderDto toOrderDto(com.example.tgshop.order.OrderEntity o) {
+        return new OrderDto(
+            o.uuid(),
+            o.getTotalMinor(),
+            o.getCurrency(),
+            o.getCustomerName(),
+            o.getPhone(),
+            o.getAddress(),
+            o.getComment(),
+            o.getTgUserId(),
+            o.getTgUsername(),
+            o.getStatus(),
+            o.getCreatedAt(),
+            o.getItems().stream()
+                .map(i -> new OrderItemDto(
+                    UuidUtil.fromBytes(i.getProductId()),
+                    i.getTitleSnapshot(),
+                    i.getPriceMinorSnapshot(),
+                    i.getQuantity()
+                ))
+                .toList()
         );
     }
 

@@ -99,31 +99,8 @@ async function apiPost(url, body) {
     return JSON.parse(text);
 }
 
-async function apiPatch(url, body) {
-    const r = await fetch(url, {
-        method: "PATCH",
-        headers: apiHeaders({"Content-Type": "application/json"}),
-        body: JSON.stringify(body),
-    });
-
-    const ct = r.headers.get("content-type") || "";
-    const text = await r.text();
-
-    if (!r.ok) throw new Error(text);
-    if (!ct.includes("application/json")) {
-        throw new Error(`Expected JSON, got ${ct}. Head: ${text.slice(0, 160)}`);
-    }
-    return JSON.parse(text);
-}
-
-function isAdminUser() {
-    return Boolean(state?.me?.admin);
-}
 
 function productsEndpoint() {
-    if (isAdminUser()) {
-        return `/api/admin/products?initData=${encodeURIComponent(state.initData)}`;
-    }
     return "/api/products";
 }
 
@@ -282,11 +259,6 @@ function updateCartBadge() {
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
-    const isAdmin = isAdminUser();
-    const statusLine = el("div", {
-        class: `small status-line${p.active ? " hidden" : ""}`,
-        "data-field": "modal-status"
-    }, [document.createTextNode("Скрыт из продажи")]);
 
     const addBtn = el("button", {
         class: "primary pill",
@@ -294,46 +266,14 @@ function openProduct(p) {
     }, [document.createTextNode("В корзину")]);
     addBtn.disabled = !p.active || !(p.stock > 0);
 
-    const adminBtn = isAdmin
-        ? el("button", {
-            class: "primary pill",
-            onclick: async () => {
-                if (!state.initData) return toast("initData отсутствует (открой через Telegram)");
-                adminBtn.disabled = true;
-                try {
-                    const updated = await apiPatch(
-                        `/api/admin/products/${p.id}/active?initData=${encodeURIComponent(state.initData)}`,
-                        {active: !p.active}
-                    );
-                    p.active = updated.active;
-                    updateProductInState(updated);
-                    updateProductCard(updated);
-
-                    statusLine.classList.toggle("hidden", updated.active);
-                    statusLine.textContent = updated.active ? "" : "Скрыт из продажи";
-                    adminBtn.textContent = updated.active ? "Спрятать" : "Показать";
-                    addBtn.disabled = !updated.active || !(updated.stock > 0);
-                    toast(updated.active ? "Товар показан" : "Товар скрыт");
-                } catch (err) {
-                    console.error(err);
-                    toast("Ошибка обновления товара");
-                } finally {
-                    adminBtn.disabled = false;
-                }
-            }
-        }, [document.createTextNode(p.active ? "Спрятать" : "Показать")])
-        : null;
-
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
         el("div", {class: "row-column"}, [
             el("div", {class: "column"}, [
                 el("div", {class: "small"}, [document.createTextNode(money(p))]),
                 el("div", {class: "small"}, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
-                isAdmin ? statusLine : el(),
             ]),
             el("div", {class: "column"}, [
-                adminBtn || el(),
                 addBtn,
             ]),
         ]),
@@ -498,47 +438,6 @@ function openCartBtn() {
     openCart();
 }
 
-async function initAdmin() {
-    const form = qs("productForm");
-    if (!form) return;
-
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const fd = new FormData(form);
-        const title = String(fd.get("title") || "").trim();
-        const description = String(fd.get("description") || "").trim();
-        const priceMinor = Number(fd.get("priceMinor") || 0);
-        const currency = String(fd.get("currency") || "UAH").trim();
-        const stock = Number(fd.get("stock") || 0);
-
-        const rawUrls = String(fd.get("imageUrls") || "").trim();
-        const imageUrls = rawUrls
-            ? rawUrls.split(",").map(s => s.trim()).filter(Boolean)
-            : [];
-
-        if (!title) return toast("Название обязательно");
-
-        try {
-            await apiPost(`/api/admin/products?initData=${encodeURIComponent(state.initData)}`, {
-                title,
-                description: description || null,
-                priceMinor,
-                currency,
-                stock,
-                imageUrls,
-                active: false,
-            });
-            form.reset();
-            toast("Товар добавлен");
-            await loadProducts();
-        } catch (err) {
-            console.error(err);
-            toast("Ошибка добавления (проверь доступ/initData)");
-        }
-    });
-}
-
 /**
  * Soft refresh:
  * - fetch /api/products
@@ -680,26 +579,6 @@ async function boot() {
         const name = state.me.firstName || state.me.username || `id:${state.me.userId}`;
         qs("subtitle").textContent = `Привет, ${name}`;
 
-        const settingsBtn = qs("settingsBtn");
-        const headerTitle = qs("headerTitle");
-
-        const isAdmin = Boolean(state.me.admin);
-
-        if (isAdmin) {
-            settingsBtn.classList.remove("hidden");
-            settingsBtn.addEventListener("click", () => {
-                const adminBlock = qs("admin");
-                const nowHidden = adminBlock.classList.contains("hidden");
-                adminBlock.classList.toggle("hidden", !nowHidden);
-
-                headerTitle.textContent = nowHidden ? "🛠️ Админка" : "🛍️ Магазин";
-                if (nowHidden) adminBlock.scrollIntoView({behavior: "smooth", block: "start"});
-            });
-            qs("admin").classList.add("hidden");
-        } else {
-            qs("admin").classList.add("hidden");
-        }
-        await initAdmin();
     } catch (err) {
         console.error(err);
         qs("subtitle").textContent = "Открой через Telegram (невалидный initData)";
@@ -737,18 +616,6 @@ function startThumbRotator() {
             imgEl.src = urls[next];
         }
     }, 5000);
-}
-
-function updateProductInState(updated) {
-    state.products = state.products.map((p) => String(p.id) === String(updated.id) ? updated : p);
-}
-
-function updateProductCard(product) {
-    const pid = String(product.id);
-    const card = document.querySelector(`.card.product[data-product-id="${pid}"]`);
-    if (!card) return;
-    updateCardAvailability(card, product);
-    updateCardActiveState(card, product);
 }
 
 function createGallery(urls, altText = "") {
