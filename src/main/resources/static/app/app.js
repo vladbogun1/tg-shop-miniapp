@@ -370,6 +370,22 @@ function addToCart(productId, delta) {
 
 function updateCartBadge() {
     qs("cartCount").textContent = String(cartCount());
+
+    if (tg) {
+        const cnt = cartCount();
+        if (cnt > 0) {
+            const { sum, cur } = cartTotal();
+            tg.MainButton.setText(`Оформить заказ • ${sum} ${cur}`);
+            tg.MainButton.show();
+            if (!state.mainBtnBound) {
+                tg.MainButton.onClick(openCheckout);
+                state.mainBtnBound = true;
+            }
+        } else {
+            tg.MainButton.hide();
+        }
+    }
+
 }
 
 function openProduct(p) {
