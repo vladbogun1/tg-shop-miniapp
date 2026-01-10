@@ -24,9 +24,7 @@ services:
     ports: []
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME}/tg-shop-miniapp:${APP_TAG:-latest}
     container_name: tgshop-app
     restart: unless-stopped
     depends_on:
