@@ -394,12 +394,56 @@ function updateCartBadge() {
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
+    const actionWrap = el("div");
+    const renderAction = () => {
+        const pid = String(p.id);
+        const cartItem = state.cart.get(pid);
+        const qty = cartItem ? cartItem.qty : 0;
 
-    const addBtn = el("button", {
-        class: "primary pill",
-        onclick: () => addToCart(p.id, 1)
-    }, [document.createTextNode("В корзину")]);
-    addBtn.disabled = !p.active || !(p.stock > 0);
+        actionWrap.replaceChildren();
+
+        if (qty > 0) {
+            const minusBtn = el("button", {
+                onclick: () => {
+                    addToCart(pid, -1);
+                    renderAction();
+                }
+            }, [document.createTextNode("−")]);
+
+            const plusBtn = el("button", {
+                onclick: () => {
+                    addToCart(pid, +1);
+                    renderAction();
+                }
+            }, [document.createTextNode("+")]);
+            plusBtn.disabled = p.stock <= 0 || qty >= p.stock;
+
+            actionWrap.append(el("div", {class: "qty"}, [
+                minusBtn,
+                el("div", {}, [document.createTextNode(String(qty))]),
+                plusBtn,
+            ]));
+        } else {
+            if (!p.active || p.stock <= 0) {
+                const unavailableBtn = el("button", {
+                    class: "danger pill",
+                    disabled: "true",
+                }, [document.createTextNode("Нет в наличии")]);
+                actionWrap.append(unavailableBtn);
+                return;
+            }
+            const addBtn = el("button", {
+                class: "primary pill",
+                onclick: () => {
+                    addToCart(pid, 1);
+                    renderAction();
+                }
+            }, [document.createTextNode("В корзину")]);
+            addBtn.disabled = !p.active || !(p.stock > 0);
+            actionWrap.append(addBtn);
+        }
+    };
+    renderAction();
 
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
@@ -409,7 +453,7 @@ function openProduct(p) {
                 el("div", {class: "small"}, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
             ]),
             el("div", {class: "column"}, [
-                addBtn,
+                actionWrap,
             ]),
         ]),
         el("div", {class: "hr"}),
@@ -424,10 +468,8 @@ function openProduct(p) {
 }
 
 function openCart() {
-    if (state.checkoutOpen) {
-        state.checkoutOpen = false;
-        updateCartBadge();
-    }
+    state.checkoutOpen = true;
+    updateCartBadge();
     const lines = [];
     for (const [id, it] of state.cart.entries()) {
         if (!it.product) continue;
@@ -507,7 +549,7 @@ function openCheckout() {
             required: "true",
             autocomplete: "tel"
         })]),
-        el("label", {}, [document.createTextNode("Адрес доставки"), el("textarea", {
+        el("label", {}, [document.createTextNode("Адрес доставки (Город и номер Новой Почты)"), el("textarea", {
             name: "address",
             required: "true",
             rows: "3",
@@ -518,7 +560,7 @@ function openCheckout() {
             rows: "2"
         })]),
         el("div", {class: "hr"}),
-        el("div", {class: "row"}, [
+        el("div", {class: "row-gapped"}, [
             el("button", {class: "pill", type: "button", onclick: openCart}, [document.createTextNode("← Корзина")]),
             el("button", {class: "primary pill", type: "submit"}, [document.createTextNode("✅ Отправить заказ")]),
         ])
@@ -737,24 +779,52 @@ function startThumbRotator() {
                 const cur = state.thumbIndex.get(pid) || 0;
                 const next = (cur + 1) % urls.length;
                 state.thumbIndex.set(pid, next);
+                if (imgEl._fadeTimer) window.clearTimeout(imgEl._fadeTimer);
                 imgEl.classList.add("thumb-fade");
-                imgEl.addEventListener("transitionend", function onFade() {
-                    imgEl.removeEventListener("transitionend", onFade);
+                imgEl._fadeTimer = window.setTimeout(() => {
                     imgEl.src = urls[next];
                     requestAnimationFrame(() => imgEl.classList.remove("thumb-fade"));
-                }, {once: true});
+                }, 240);
             }, delay);
         });
     }, intervalMs);
 }
 
-function createGallery(urls, altText = "") {
+function openGalleryFullscreen(urls, altText, startIndex) {
+    const gallery = createGallery(urls, altText, {initialIndex: startIndex, showFullscreenButton: false, fullscreen: true});
+    const overlay = el("div", {class: "gallery-fullscreen"});
+    const content = el("div", {class: "gallery-fullscreen-content"}, [gallery]);
+
+    const prevOverflow = document.body.style.overflow;
+    const close = () => {
+        document.body.style.overflow = prevOverflow;
+        overlay.remove();
+    };
+
+    const closeBtn = el("button", {
+        class: "icon",
+        type: "button",
+        onclick: () => close(),
+    }, [el("i", {class: "fa-solid fa-xmark"})]);
+    content.append(closeBtn);
+    overlay.append(content);
+
+    document.body.style.overflow = "hidden";
+    document.body.append(overlay);
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close();
+    });
+}
+
+function createGallery(urls, altText = "", opts = {}) {
     const clean = (urls || []).filter(Boolean);
     if (clean.length === 0) {
         return el("div", {class: "gallery gallery-fallback"}, [document.createTextNode("Нет фото")]);
     }
 
-    let index = 0;
+    const {initialIndex = 0, showFullscreenButton = true, fullscreen = false} = opts;
+    let index = Math.max(0, Math.min(clean.length - 1, initialIndex));
 
     const track = el("div", {class: "gallery-track"});
     for (const u of clean) {
@@ -767,12 +837,16 @@ function createGallery(urls, altText = "") {
 
     const viewport = el("div", {class: "gallery-viewport"}, [track]);
     const root = el("div", {class: "gallery"}, [viewport]);
+    if (fullscreen) root.classList.add("fullscreen");
 
     const leftBtn = el("button", {class: "gallery-arrow left", type: "button"}, [
         el("i", {class: "fa-solid fa-angle-left"})
     ]);
     const rightBtn = el("button", {class: "gallery-arrow right", type: "button"}, [
         el("i", {class: "fa-solid fa-angle-right"})
+    ]);
+    const expandBtn = el("button", {class: "gallery-expand", type: "button", "aria-label": "Открыть на весь экран"}, [
+        el("i", {class: "fa-solid fa-up-right-and-down-left-from-center"})
     ]);
 
     const dotsWrap = el("div", {class: "gallery-dots"});
@@ -782,6 +856,7 @@ function createGallery(urls, altText = "") {
     dots.forEach(d => dotsWrap.append(d));
 
     root.append(leftBtn, rightBtn, dotsWrap);
+    if (showFullscreenButton) root.append(expandBtn);
 
     function apply() {
         track.style.transform = `translateX(${-index * 100}%)`;
@@ -804,6 +879,7 @@ function createGallery(urls, altText = "") {
     leftBtn.addEventListener("click", () => setIndex(index - 1));
     rightBtn.addEventListener("click", () => setIndex(index + 1));
     dots.forEach((d, i) => d.addEventListener("click", () => setIndex(i)));
+    expandBtn.addEventListener("click", () => openGalleryFullscreen(clean, altText, index));
 
     // ===== Swipe (pointer events) =====
     let startX = 0;

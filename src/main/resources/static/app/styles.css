@@ -535,6 +535,27 @@ textarea {
     right: 10px;
 }
 
+.gallery-expand {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(18, 25, 37, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(10px);
+    z-index: 3;
+}
+
+.gallery-expand:active {
+    transform: scale(0.98);
+}
+
 .gallery-arrow[disabled] {
     opacity: 0.35;
     pointer-events: none;
@@ -579,6 +600,35 @@ textarea {
     font-size: 13px;
 }
 
+.gallery-fullscreen {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 9, 14, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 20;
+}
+
+.gallery-fullscreen-content {
+    position: relative;
+    width: min(920px, 100%);
+}
+
+.gallery.fullscreen {
+    margin: 0;
+}
+
+.gallery.fullscreen .gallery-viewport {
+    aspect-ratio: auto;
+    height: min(92vh, 92vw);
+}
+
+.gallery.fullscreen .gallery-slide img {
+    object-fit: contain;
+}
+
 
 .row-column {
     display: inline-flex;
@@ -588,4 +638,9 @@ textarea {
     flex-wrap: wrap;
     align-items: center;
 
+}
+
+.row-gapped {
+    gap: 5px;
+    display: inline-flex;
 }
