@@ -45,7 +45,7 @@ public class InviteBot extends TelegramLongPollingBot {
     private void sendLanding(long chatId) {
         var keyboard = InlineKeyboardMarkup.builder()
             .keyboardRow(List.of(urlButton("🛍️ Магазин", "https://t.me/ChiSetup")))
-            .keyboardRow(List.of(urlButton("⭐ Отзывы", "https://t.me/cinaotziv")))
+            .keyboardRow(List.of(urlButton("⭐ Отзывы", "https://t.me/ChiSetup_Comments")))
             .keyboardRow(List.of(urlButton("📣 Основной канал", "https://t.me/maxsolch")))
             .build();
 
