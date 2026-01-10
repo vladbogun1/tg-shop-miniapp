@@ -106,6 +106,10 @@ button.ghost {
     padding: 24px 32px 32px;
 }
 
+.layout.single-column {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .panel {
     background: var(--panel);
     border: 1px solid var(--border);

@@ -315,6 +315,7 @@ function boot() {
     qs("customerToggle").addEventListener("change", (e) => {
         state.viewAsCustomer = e.target.checked;
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
+        document.querySelector(".layout")?.classList.toggle("single-column", state.viewAsCustomer);
         loadProducts();
     });
     qs("closeModal").addEventListener("click", closeModal);
