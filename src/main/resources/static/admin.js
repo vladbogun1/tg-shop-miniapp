@@ -1,6 +1,8 @@
 const state = {
     products: [],
+    orders: [],
     viewAsCustomer: false,
+    activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
 };
 
@@ -67,6 +69,16 @@ function money(p) {
     return `${p.priceMinor} ${p.currency || "UAH"}`;
 }
 
+function formatMoney(value, currency) {
+    return `${value} ${currency || "UAH"}`;
+}
+
+function formatDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleString("ru-RU", {dateStyle: "medium", timeStyle: "short"});
+}
+
 function showLogin(show) {
     qs("loginOverlay").classList.toggle("hidden", !show);
     if (show) {
@@ -87,7 +99,7 @@ async function handleLogin(e) {
         state.password = password;
         sessionStorage.setItem("tgshop_admin_password", password);
         showLogin(false);
-        await loadProducts();
+        setActiveTab(state.activeTab);
     } catch (err) {
         console.error(err);
         qs("loginError").classList.remove("hidden");
@@ -99,6 +111,9 @@ function logout() {
     sessionStorage.removeItem("tgshop_admin_password");
     showLogin(true);
     qs("productGrid").innerHTML = "";
+    qs("ordersBody").innerHTML = "";
+    qs("ordersCount").textContent = "0";
+    qs("ordersRevenue").textContent = "0";
     qs("catalogMeta").textContent = "Нужен вход";
 }
 
@@ -113,6 +128,16 @@ async function loadProducts() {
         console.error(err);
         qs("catalogMeta").textContent = "Ошибка загрузки";
         if (!state.viewAsCustomer) showLogin(true);
+    }
+}
+
+async function loadOrders() {
+    try {
+        state.orders = await apiGet("/api/admin/orders");
+        renderOrders();
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
     }
 }
 
@@ -166,6 +191,63 @@ function renderProducts() {
         }
 
         grid.append(card);
+    }
+}
+
+function renderOrders() {
+    const tbody = qs("ordersBody");
+    tbody.innerHTML = "";
+
+    const totalOrders = state.orders.length;
+    let revenue = 0;
+    let currency = "UAH";
+
+    for (const order of state.orders) {
+        revenue += order.totalMinor || 0;
+        currency = order.currency || currency;
+        const itemsWrap = el("div", {class: "order-items"});
+
+        (order.items || []).forEach((item) => {
+            itemsWrap.append(
+                el("div", {class: "order-item"}, [
+                    document.createTextNode(`${item.titleSnapshot} × ${item.quantity}`),
+                    el("span", {}, [document.createTextNode(formatMoney(item.priceMinorSnapshot, order.currency))]),
+                ])
+            );
+        });
+
+        const row = el("tr", {}, [
+            el("td", {}, [document.createTextNode(formatDate(order.createdAt))]),
+            el("td", {}, [document.createTextNode(order.id)]),
+            el("td", {}, [
+                document.createTextNode(order.customerName || ""),
+                order.tgUsername ? el("div", {class: "hint"}, [document.createTextNode(`@${order.tgUsername}`)]) : el("div", {}),
+            ]),
+            el("td", {}, [document.createTextNode(order.phone || "")]),
+            el("td", {}, [document.createTextNode(order.address || "")]),
+            el("td", {}, [itemsWrap]),
+            el("td", {}, [document.createTextNode(formatMoney(order.totalMinor, order.currency))]),
+            el("td", {}, [document.createTextNode(order.status || "")]),
+        ]);
+        tbody.append(row);
+    }
+
+    qs("ordersCount").textContent = String(totalOrders);
+    qs("ordersRevenue").textContent = formatMoney(revenue, currency);
+    qs("ordersEmpty").classList.toggle("hidden", totalOrders > 0);
+}
+
+function setActiveTab(tab) {
+    state.activeTab = tab;
+    qs("tabCatalog").classList.toggle("active", tab === "catalog");
+    qs("tabOrders").classList.toggle("active", tab === "orders");
+    qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
+    qs("ordersSection").classList.toggle("hidden", tab !== "orders");
+    if (tab === "orders") {
+        qs("catalogMeta").textContent = "История покупок";
+        loadOrders();
+    } else {
+        loadProducts();
     }
 }
 
@@ -311,13 +393,20 @@ function bindForm() {
 function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
-    qs("refreshBtn").addEventListener("click", loadProducts);
+    qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
     qs("customerToggle").addEventListener("change", (e) => {
         state.viewAsCustomer = e.target.checked;
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
         document.querySelector(".layout")?.classList.toggle("single-column", state.viewAsCustomer);
-        loadProducts();
+        qs("tabOrders").classList.toggle("hidden", state.viewAsCustomer);
+        if (state.viewAsCustomer && state.activeTab === "orders") {
+            setActiveTab("catalog");
+        } else {
+            setActiveTab(state.activeTab);
+        }
     });
+    qs("tabCatalog").addEventListener("click", () => setActiveTab("catalog"));
+    qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("closeModal").addEventListener("click", closeModal);
     qs("modal").addEventListener("click", (e) => {
         if (e.target === qs("modal")) closeModal();
@@ -326,7 +415,7 @@ function boot() {
 
     if (state.password) {
         showLogin(false);
-        loadProducts();
+        setActiveTab("catalog");
     } else {
         showLogin(true);
     }

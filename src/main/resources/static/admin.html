@@ -72,10 +72,48 @@
 
     <section class="content">
         <div class="toolbar">
-            <div class="toolbar-title">Каталог</div>
+            <div class="toolbar-title">Панель управления</div>
             <div id="catalogMeta" class="toolbar-meta">Загрузка...</div>
         </div>
-        <div id="productGrid" class="grid"></div>
+        <div class="tabs">
+            <button id="tabCatalog" class="tab active"><i class="fa-solid fa-store"></i> Каталог</button>
+            <button id="tabOrders" class="tab"><i class="fa-solid fa-receipt"></i> История покупок</button>
+        </div>
+
+        <section id="catalogSection" class="tab-section">
+            <div id="productGrid" class="grid"></div>
+        </section>
+
+        <section id="ordersSection" class="tab-section hidden">
+            <div class="orders-summary">
+                <div class="summary-card">
+                    <div class="summary-title">Заказы</div>
+                    <div id="ordersCount" class="summary-value">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">Выручка</div>
+                    <div id="ordersRevenue" class="summary-value">0</div>
+                </div>
+            </div>
+            <div class="orders-table-wrap">
+                <table class="orders-table">
+                    <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Заказ</th>
+                        <th>Клиент</th>
+                        <th>Контакты</th>
+                        <th>Адрес</th>
+                        <th>Товары</th>
+                        <th>Сумма</th>
+                        <th>Статус</th>
+                    </tr>
+                    </thead>
+                    <tbody id="ordersBody"></tbody>
+                </table>
+                <div id="ordersEmpty" class="orders-empty hidden">История покупок пока пуста.</div>
+            </div>
+        </section>
     </section>
 </main>
 

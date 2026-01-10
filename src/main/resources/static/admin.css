@@ -175,6 +175,33 @@ button.ghost {
     font-size: 13px;
 }
 
+.tabs {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.tab.active {
+    background: var(--accent-soft);
+    border-color: rgba(51, 177, 255, 0.35);
+    color: var(--text);
+}
+
+.tab-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -381,6 +408,88 @@ button.ghost {
     object-fit: cover;
     border-radius: 12px;
     border: 1px solid var(--border);
+}
+
+.orders-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+}
+
+.summary-title {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.orders-table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    overflow: auto;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.orders-table th,
+.orders-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    vertical-align: top;
+    text-align: left;
+}
+
+.orders-table th {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.orders-table tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.orders-empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 16px 0 4px;
+}
+
+.order-items {
+    display: grid;
+    gap: 6px;
+}
+
+.order-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.order-item span {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 960px) {
