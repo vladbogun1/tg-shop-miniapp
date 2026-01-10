@@ -7,8 +7,7 @@ RUN mvn -q -DskipTests dependency:go-offline
 
 COPY src ./src
 RUN mvn -q -DskipTests package \
-    && JAR_PATH=$(ls target/*.jar | grep -v '\.original$' | head -n 1) \
-    && cp "$JAR_PATH" /app/app.jar
+    && cp target/app.jar /app/app.jar
 
 # ---------- runtime stage ----------
 FROM eclipse-temurin:21-jre
