@@ -282,6 +282,16 @@ button.ghost {
     justify-content: center;
 }
 
+.icon-action {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
 .pill {
     border-radius: 999px;
 }

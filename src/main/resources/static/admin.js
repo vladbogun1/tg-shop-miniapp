@@ -183,26 +183,32 @@ function renderProducts() {
         if (!state.viewAsCustomer) {
             const actions = el("div", {class: "actions"}, [
                 el("button", {
-                    class: "pill",
+                    class: "pill icon-action",
+                    title: "Редактировать",
+                    "aria-label": "Редактировать",
                     onclick: (e) => {
                         e.stopPropagation();
                         openEditModal(p);
                     }
-                }, [document.createTextNode("Редактировать")]),
+                }, [el("i", {class: "fa-solid fa-pen-to-square"})]),
                 el("button", {
-                    class: `pill ${p.active ? "ghost" : "danger"}`,
+                    class: `pill icon-action ${p.active ? "ghost" : "danger"}`,
+                    title: p.active ? "Спрятать" : "Показать",
+                    "aria-label": p.active ? "Спрятать" : "Показать",
                     onclick: async (e) => {
                         e.stopPropagation();
                         await toggleActive(p);
                     }
-                }, [document.createTextNode(p.active ? "Спрятать" : "Показать")]),
+                }, [el("i", {class: p.active ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"})]),
                 el("button", {
-                    class: "pill danger",
+                    class: "pill danger icon-action",
+                    title: "Удалить",
+                    "aria-label": "Удалить",
                     onclick: async (e) => {
                         e.stopPropagation();
                         await archiveProduct(p, true);
                     }
-                }, [document.createTextNode("Удалить")]),
+                }, [el("i", {class: "fa-solid fa-trash"})]),
             ]);
             card.append(actions);
             card.addEventListener("click", () => openEditModal(p));
@@ -279,12 +285,14 @@ function renderArchived() {
         ]);
         const actions = el("div", {class: "actions"}, [
             el("button", {
-                class: "pill",
+                class: "pill icon-action",
+                title: "Вернуть",
+                "aria-label": "Вернуть",
                 onclick: async (e) => {
                     e.stopPropagation();
                     await archiveProduct(p, false);
                 }
-            }, [document.createTextNode("Вернуть")]),
+            }, [el("i", {class: "fa-solid fa-rotate-left"})]),
         ]);
 
         card.append(imgEl, title, meta, actions);
