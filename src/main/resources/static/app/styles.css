@@ -361,8 +361,20 @@ textarea {
     max-height: 88vh;
     overflow: auto;
     position: relative;
+    scrollbar-width: none;
 }
 
+.modal-card::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.checkout-form {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+}
 .icon {
     position: absolute;
     top: 10px;

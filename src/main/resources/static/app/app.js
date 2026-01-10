@@ -25,6 +25,7 @@ const state = {
     cart: new Map(), // id -> {product, qty}
     mainBtnBound: false,
     sort: "default",
+    checkoutOpen: false,
 
     thumbTimer: null,
     thumbIndex: new Map(), // productId -> index
@@ -300,6 +301,10 @@ function openModal(node) {
 
 function closeModal() {
     qs("modal").classList.add("hidden");
+    if (state.checkoutOpen) {
+        state.checkoutOpen = false;
+        updateCartBadge();
+    }
 }
 
 function openSortModal() {
@@ -373,8 +378,8 @@ function updateCartBadge() {
 
     if (tg) {
         const cnt = cartCount();
-        if (cnt > 0) {
-            const { sum, cur } = cartTotal();
+        if (cnt > 0 && !state.checkoutOpen) {
+            const {sum, cur} = cartTotal();
             tg.MainButton.setText(`Оформить заказ • ${sum} ${cur}`);
             tg.MainButton.show();
             if (!state.mainBtnBound) {
@@ -385,7 +390,6 @@ function updateCartBadge() {
             tg.MainButton.hide();
         }
     }
-
 }
 
 function openProduct(p) {
@@ -420,6 +424,10 @@ function openProduct(p) {
 }
 
 function openCart() {
+    if (state.checkoutOpen) {
+        state.checkoutOpen = false;
+        updateCartBadge();
+    }
     const lines = [];
     for (const [id, it] of state.cart.entries()) {
         if (!it.product) continue;
@@ -481,7 +489,10 @@ function openCheckout() {
 
     const {sum, cur} = cartTotal();
 
-    const form = el("form", {class: "card"});
+    state.checkoutOpen = true;
+    updateCartBadge();
+
+    const form = el("form", {class: "checkout-form"});
     form.append(
         el("h2", {}, [document.createTextNode("🧾 Оформление заказа")]),
         el("div", {class: "small"}, [document.createTextNode(`К оплате/итого: ${sum} ${cur}`)]),
