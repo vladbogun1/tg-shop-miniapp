@@ -416,7 +416,7 @@ function openProduct(p) {
                     renderAction();
                 }
             }, [document.createTextNode("+")]);
-            plusBtn.disabled = qty >= p.stock;
+            plusBtn.disabled = p.stock <= 0 || qty >= p.stock;
 
             actionWrap.append(el("div", {class: "qty"}, [
                 minusBtn,
@@ -424,6 +424,14 @@ function openProduct(p) {
                 plusBtn,
             ]));
         } else {
+            if (!p.active || p.stock <= 0) {
+                const unavailableBtn = el("button", {
+                    class: "danger pill",
+                    disabled: "true",
+                }, [document.createTextNode("Нет в наличии")]);
+                actionWrap.append(unavailableBtn);
+                return;
+            }
             const addBtn = el("button", {
                 class: "primary pill",
                 onclick: () => {
