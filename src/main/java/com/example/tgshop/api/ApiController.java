@@ -12,6 +12,7 @@ import com.example.tgshop.api.dto.UpdateProductRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.order.OrderItemRepository;
 import com.example.tgshop.order.OrderRepository;
 import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
@@ -37,26 +38,36 @@ public class ApiController {
     private final AppProperties props;
     private final OrderService orderService;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final TgPostImageResolver tgPostImageResolver;
 
 
     @GetMapping("/products")
     public List<ProductDto> products() {
-        return productRepository.findActiveWithImages().stream().map(ApiController::toDto).toList();
+        var soldCounts = loadSoldCounts();
+        return productRepository.findActiveWithImages().stream()
+            .map(p -> toDto(p, soldCounts))
+            .toList();
     }
 
     @GetMapping("/admin/products")
     public List<ProductDto> adminProducts(@RequestParam(value = "initData", required = false) String initData,
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
-        return productRepository.findAllWithImages().stream().map(ApiController::toDto).toList();
+        var soldCounts = loadSoldCounts();
+        return productRepository.findAllWithImages().stream()
+            .map(p -> toDto(p, soldCounts))
+            .toList();
     }
 
     @GetMapping("/admin/products/archived")
     public List<ProductDto> adminArchivedProducts(@RequestParam(value = "initData", required = false) String initData,
                                                   @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
-        return productRepository.findArchivedWithImages().stream().map(ApiController::toDto).toList();
+        var soldCounts = loadSoldCounts();
+        return productRepository.findArchivedWithImages().stream()
+            .map(p -> toDto(p, soldCounts))
+            .toList();
     }
 
     @GetMapping("/admin/orders")
@@ -132,7 +143,7 @@ public class ApiController {
         }
 
         var saved = productRepository.save(p);
-        return toDto(saved);
+        return toDto(saved, 0L);
     }
 
     @PatchMapping("/admin/products/{productId}/active")
@@ -147,7 +158,7 @@ public class ApiController {
                 .orElseThrow(() -> new NotFound("Product not found"));
         product.setActive(req.active());
         var saved = productRepository.save(product);
-        return toDto(saved);
+        return toDto(saved, soldCountFor(saved));
     }
 
     @PatchMapping("/admin/products/{productId}/archived")
@@ -165,7 +176,7 @@ public class ApiController {
             product.setActive(false);
         }
         var saved = productRepository.save(product);
-        return toDto(saved);
+        return toDto(saved, soldCountFor(saved));
     }
 
     @PatchMapping("/admin/products/{productId}")
@@ -198,7 +209,7 @@ public class ApiController {
         }
 
         var saved = productRepository.save(product);
-        return toDto(saved);
+        return toDto(saved, soldCountFor(saved));
     }
 
     @PostMapping("/admin/login")
@@ -226,7 +237,24 @@ public class ApiController {
             && expected.equals(adminPassword);
     }
 
-    private static ProductDto toDto(Product p) {
+    private long soldCountFor(Product p) {
+        return orderItemRepository.sumSoldByProductId(p.getId());
+    }
+
+    private java.util.Map<UUID, Long> loadSoldCounts() {
+        return orderItemRepository.findSoldCounts().stream()
+            .collect(java.util.stream.Collectors.toMap(
+                row -> UuidUtil.fromBytes(row.getProductId()),
+                row -> row.getSold() == null ? 0L : row.getSold()
+            ));
+    }
+
+    private static ProductDto toDto(Product p, java.util.Map<UUID, Long> soldCounts) {
+        long soldCount = soldCounts.getOrDefault(p.uuid(), 0L);
+        return toDto(p, soldCount);
+    }
+
+    private static ProductDto toDto(Product p, long soldCount) {
         return new ProductDto(
                 p.uuid(),
                 p.getTitle(),
@@ -236,7 +264,8 @@ public class ApiController {
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
                 p.isActive(),
-                p.isArchived()
+                p.isArchived(),
+                soldCount
         );
     }
 
