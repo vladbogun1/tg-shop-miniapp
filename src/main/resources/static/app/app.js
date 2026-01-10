@@ -693,21 +693,32 @@ function startThumbRotator() {
         if (!state.thumbIndex.has(pid)) state.thumbIndex.set(pid, 0);
     }
 
+    const intervalMs = 5200;
+    const staggerMs = 280;
     state.thumbTimer = setInterval(() => {
-        for (const p of state.products) {
+        const items = [...state.products];
+        items.forEach((p, index) => {
             const urls = (p.imageUrls || []).filter(Boolean);
-            if (urls.length <= 1) continue;
+            if (urls.length <= 1) return;
 
             const pid = String(p.id);
             const imgEl = document.querySelector(`img[data-thumb-id="${pid}"]`);
-            if (!imgEl) continue;
+            if (!imgEl) return;
 
-            const cur = state.thumbIndex.get(pid) || 0;
-            const next = (cur + 1) % urls.length;
-            state.thumbIndex.set(pid, next);
-            imgEl.src = urls[next];
-        }
-    }, 5000);
+            const delay = (index % 10) * staggerMs + Math.floor(Math.random() * 120);
+            window.setTimeout(() => {
+                const cur = state.thumbIndex.get(pid) || 0;
+                const next = (cur + 1) % urls.length;
+                state.thumbIndex.set(pid, next);
+                imgEl.classList.add("thumb-fade");
+                imgEl.addEventListener("transitionend", function onFade() {
+                    imgEl.removeEventListener("transitionend", onFade);
+                    imgEl.src = urls[next];
+                    requestAnimationFrame(() => imgEl.classList.remove("thumb-fade"));
+                }, {once: true});
+            }, delay);
+        });
+    }, intervalMs);
 }
 
 function createGallery(urls, altText = "") {
