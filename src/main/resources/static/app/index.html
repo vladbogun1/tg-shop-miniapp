@@ -19,27 +19,36 @@
         </div>
 
         <div class="header-right">
+            <button id="sortBtn" class="pill icon-btn" aria-label="Сортировка">
+                <i class="fa-solid fa-icons"></i>
+            </button>
             <button id="cartBtn" class="pill">🧺 Корзина <span id="cartCount" class="badge">0</span></button>
         </div>
     </div>
 </header>
 
 <main id="app">
-    <section class="filters">
-        <label class="filter-label" for="sortSelect">Сортировка</label>
-        <select id="sortSelect" class="filter-select">
-            <option value="default" selected>По умолчанию</option>
-            <option value="name">По имени</option>
-            <option value="price">По цене</option>
-            <option value="sold">Самые продаваемые</option>
-        </select>
-    </section>
     <section id="grid" class="grid"></section>
 
     <div id="modal" class="modal hidden">
         <div class="modal-card">
             <button id="closeModal" class="icon">✖</button>
             <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="sortModal" class="sort-modal hidden" role="dialog" aria-modal="true">
+        <div class="sort-modal-card">
+            <div class="sort-modal-header">
+                <div class="sort-modal-title">Сортировка</div>
+                <button id="sortModalClose" class="icon">✖</button>
+            </div>
+            <div class="sort-options">
+                <button class="sort-option" data-sort="default">По умолчанию</button>
+                <button class="sort-option" data-sort="price-asc">Цена ↑</button>
+                <button class="sort-option" data-sort="price-desc">Цена ↓</button>
+                <button class="sort-option" data-sort="sold">Популярные</button>
+            </div>
         </div>
     </div>
 </main>

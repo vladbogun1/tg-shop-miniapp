@@ -250,11 +250,11 @@ function updateCardData(card, p, old) {
 }
 
 function sortedProducts(list) {
-    if (state.sort === "name") {
-        return [...list].sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "ru", {sensitivity: "base"}));
-    }
-    if (state.sort === "price") {
+    if (state.sort === "price-asc") {
         return [...list].sort((a, b) => (a.priceMinor || 0) - (b.priceMinor || 0));
+    }
+    if (state.sort === "price-desc") {
+        return [...list].sort((a, b) => (b.priceMinor || 0) - (a.priceMinor || 0));
     }
     if (state.sort === "sold") {
         return [...list].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
@@ -302,9 +302,47 @@ function closeModal() {
     qs("modal").classList.add("hidden");
 }
 
+function openSortModal() {
+    const modal = qs("sortModal");
+    modal.classList.remove("hidden");
+    setSortOptionState();
+}
+
+function closeSortModal() {
+    qs("sortModal").classList.add("hidden");
+}
+
+function setSortOptionState() {
+    const options = document.querySelectorAll(".sort-option");
+    for (const opt of options) {
+        const isActive = opt.getAttribute("data-sort") === state.sort;
+        opt.classList.toggle("active", isActive);
+    }
+}
+
+function applySort(nextSort) {
+    state.sort = nextSort;
+    state.products = sortedProducts(state.products);
+    syncProductCards();
+    setSortOptionState();
+}
+
 qs("closeModal").addEventListener("click", closeModal);
 qs("modal").addEventListener("click", (e) => {
     if (e.target === qs("modal")) closeModal();
+});
+
+qs("sortBtn").addEventListener("click", openSortModal);
+qs("sortModalClose").addEventListener("click", closeSortModal);
+qs("sortModal").addEventListener("click", (e) => {
+    if (e.target === qs("sortModal")) closeSortModal();
+});
+document.querySelectorAll(".sort-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+        const nextSort = btn.getAttribute("data-sort") || "default";
+        applySort(nextSort);
+        closeSortModal();
+    });
 });
 
 function addToCart(productId, delta) {
@@ -641,14 +679,7 @@ async function boot() {
     updateCartBadge();
 
     qs("cartBtn").addEventListener("click", openCartBtn);
-    const sortSelect = qs("sortSelect");
-    if (sortSelect) {
-        sortSelect.addEventListener("change", () => {
-            state.sort = sortSelect.value;
-            state.products = sortedProducts(state.products);
-            syncProductCards();
-        });
-    }
+    setSortOptionState();
 }
 
 boot();
