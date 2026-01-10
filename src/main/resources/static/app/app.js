@@ -781,12 +781,12 @@ function startThumbRotator() {
                 const cur = state.thumbIndex.get(pid) || 0;
                 const next = (cur + 1) % urls.length;
                 state.thumbIndex.set(pid, next);
+                if (imgEl._fadeTimer) window.clearTimeout(imgEl._fadeTimer);
                 imgEl.classList.add("thumb-fade");
-                imgEl.addEventListener("transitionend", function onFade() {
-                    imgEl.removeEventListener("transitionend", onFade);
+                imgEl._fadeTimer = window.setTimeout(() => {
                     imgEl.src = urls[next];
                     requestAnimationFrame(() => imgEl.classList.remove("thumb-fade"));
-                }, {once: true});
+                }, 240);
             }, delay);
         });
     }, intervalMs);
