@@ -6,6 +6,7 @@ import com.example.tgshop.api.dto.CreateProductRequest;
 import com.example.tgshop.api.dto.OrderDto;
 import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
+import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
 import com.example.tgshop.config.AppProperties;
@@ -49,6 +50,13 @@ public class ApiController {
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
         return productRepository.findAllWithImages().stream().map(ApiController::toDto).toList();
+    }
+
+    @GetMapping("/admin/products/archived")
+    public List<ProductDto> adminArchivedProducts(@RequestParam(value = "initData", required = false) String initData,
+                                                  @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        return productRepository.findArchivedWithImages().stream().map(ApiController::toDto).toList();
     }
 
     @GetMapping("/admin/orders")
@@ -111,6 +119,7 @@ public class ApiController {
         p.setCurrency(req.currency());
         p.setStock(req.stock());
         p.setActive(req.active());
+        p.setArchived(false);
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         int i = 0;
@@ -137,6 +146,24 @@ public class ApiController {
         Product product = productRepository.findByIdWithImages(idBytes)
                 .orElseThrow(() -> new NotFound("Product not found"));
         product.setActive(req.active());
+        var saved = productRepository.save(product);
+        return toDto(saved);
+    }
+
+    @PatchMapping("/admin/products/{productId}/archived")
+    public ProductDto updateProductArchived(@RequestParam(value = "initData", required = false) String initData,
+                                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                            @PathVariable("productId") String productId,
+                                            @RequestBody @Valid UpdateProductArchivedRequest req) {
+        assertAdmin(initData, adminPassword);
+
+        byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
+        Product product = productRepository.findByIdWithImages(idBytes)
+            .orElseThrow(() -> new NotFound("Product not found"));
+        product.setArchived(req.archived());
+        if (req.archived()) {
+            product.setActive(false);
+        }
         var saved = productRepository.save(product);
         return toDto(saved);
     }
@@ -208,7 +235,8 @@ public class ApiController {
                 p.getCurrency(),
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
-                p.isActive()
+                p.isActive(),
+                p.isArchived()
         );
     }
 

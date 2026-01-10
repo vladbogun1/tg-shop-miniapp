@@ -40,6 +40,9 @@ public class Product {
   @Column(nullable = false)
   private boolean active = true;
 
+  @Column(nullable = false)
+  private boolean archived = false;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 

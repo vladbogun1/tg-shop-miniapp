@@ -1,6 +1,7 @@
 const state = {
     products: [],
     orders: [],
+    archivedProducts: [],
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
@@ -114,6 +115,8 @@ function logout() {
     qs("ordersBody").innerHTML = "";
     qs("ordersCount").textContent = "0";
     qs("ordersRevenue").textContent = "0";
+    qs("archiveGrid").innerHTML = "";
+    qs("archiveMeta").textContent = "Удаленные товары";
     qs("catalogMeta").textContent = "Нужен вход";
 }
 
@@ -135,6 +138,16 @@ async function loadOrders() {
     try {
         state.orders = await apiGet("/api/admin/orders");
         renderOrders();
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
+    }
+}
+
+async function loadArchived() {
+    try {
+        state.archivedProducts = await apiGet("/api/admin/products/archived");
+        renderArchived();
     } catch (err) {
         console.error(err);
         showLogin(true);
@@ -183,6 +196,13 @@ function renderProducts() {
                         await toggleActive(p);
                     }
                 }, [document.createTextNode(p.active ? "Спрятать" : "Показать")]),
+                el("button", {
+                    class: "pill danger",
+                    onclick: async (e) => {
+                        e.stopPropagation();
+                        await archiveProduct(p, true);
+                    }
+                }, [document.createTextNode("Удалить")]),
             ]);
             card.append(actions);
             card.addEventListener("click", () => openEditModal(p));
@@ -237,15 +257,57 @@ function renderOrders() {
     qs("ordersEmpty").classList.toggle("hidden", totalOrders > 0);
 }
 
+function renderArchived() {
+    const grid = qs("archiveGrid");
+    grid.innerHTML = "";
+    const total = state.archivedProducts.length;
+    qs("archiveMeta").textContent = `Архив: ${total}`;
+
+    for (const p of state.archivedProducts) {
+        const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
+        const card = el("div", {class: "card", "data-product-id": String(p.id)});
+        const imgEl = img
+            ? el("img", {src: img, alt: p.title})
+            : el("div", {class: "img-fallback"}, [document.createTextNode("Нет фото")]);
+        const title = el("div", {class: "card-title"}, [
+            document.createTextNode(p.title),
+            el("span", {class: "status-tag"}, [document.createTextNode("Архив")]),
+        ]);
+        const meta = el("div", {class: "meta"}, [
+            el("div", {}, [document.createTextNode(`Цена: ${money(p)}`)]),
+            el("div", {}, [document.createTextNode(p.stock > 0 ? `Остаток: ${p.stock}` : "Нет в наличии")]),
+        ]);
+        const actions = el("div", {class: "actions"}, [
+            el("button", {
+                class: "pill",
+                onclick: async (e) => {
+                    e.stopPropagation();
+                    await archiveProduct(p, false);
+                }
+            }, [document.createTextNode("Вернуть")]),
+        ]);
+
+        card.append(imgEl, title, meta, actions);
+        grid.append(card);
+    }
+
+    qs("archiveEmpty").classList.toggle("hidden", total > 0);
+}
+
 function setActiveTab(tab) {
     state.activeTab = tab;
     qs("tabCatalog").classList.toggle("active", tab === "catalog");
     qs("tabOrders").classList.toggle("active", tab === "orders");
+    qs("tabArchive").classList.toggle("active", tab === "archive");
     qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
     qs("ordersSection").classList.toggle("hidden", tab !== "orders");
+    qs("archiveSection").classList.toggle("hidden", tab !== "archive");
     if (tab === "orders") {
         qs("catalogMeta").textContent = "История покупок";
         loadOrders();
+    } else if (tab === "archive") {
+        qs("catalogMeta").textContent = "Архив товаров";
+        loadArchived();
     } else {
         loadProducts();
     }
@@ -256,6 +318,27 @@ async function toggleActive(p) {
         const updated = await apiPatch(`/api/admin/products/${p.id}/active`, {active: !p.active});
         state.products = state.products.map((item) => String(item.id) === String(updated.id) ? updated : item);
         renderProducts();
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
+    }
+}
+
+async function archiveProduct(p, archived) {
+    try {
+        const updated = await apiPatch(`/api/admin/products/${p.id}/archived`, {archived});
+        if (archived) {
+            state.products = state.products.filter((item) => String(item.id) !== String(updated.id));
+            state.archivedProducts = [updated, ...state.archivedProducts];
+        } else {
+            state.archivedProducts = state.archivedProducts.filter((item) => String(item.id) !== String(updated.id));
+            state.products = [updated, ...state.products];
+        }
+        if (state.activeTab === "archive") {
+            renderArchived();
+        } else {
+            renderProducts();
+        }
     } catch (err) {
         console.error(err);
         showLogin(true);
@@ -399,7 +482,10 @@ function boot() {
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
         document.querySelector(".layout")?.classList.toggle("single-column", state.viewAsCustomer);
         qs("tabOrders").classList.toggle("hidden", state.viewAsCustomer);
+        qs("tabArchive").classList.toggle("hidden", state.viewAsCustomer);
         if (state.viewAsCustomer && state.activeTab === "orders") {
+            setActiveTab("catalog");
+        } else if (state.viewAsCustomer && state.activeTab === "archive") {
             setActiveTab("catalog");
         } else {
             setActiveTab(state.activeTab);
@@ -407,6 +493,7 @@ function boot() {
     });
     qs("tabCatalog").addEventListener("click", () => setActiveTab("catalog"));
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
+    qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("closeModal").addEventListener("click", closeModal);
     qs("modal").addEventListener("click", (e) => {
         if (e.target === qs("modal")) closeModal();

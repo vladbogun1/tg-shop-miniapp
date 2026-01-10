@@ -11,5 +11,6 @@ public record ProductDto(
     String currency,
     int stock,
     List<String> imageUrls,
-    boolean active
+    boolean active,
+    boolean archived
 ) {}

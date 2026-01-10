@@ -78,6 +78,7 @@
         <div class="tabs">
             <button id="tabCatalog" class="tab active"><i class="fa-solid fa-store"></i> Каталог</button>
             <button id="tabOrders" class="tab"><i class="fa-solid fa-receipt"></i> История покупок</button>
+            <button id="tabArchive" class="tab"><i class="fa-solid fa-box-archive"></i> Архив</button>
         </div>
 
         <section id="catalogSection" class="tab-section">
@@ -113,6 +114,15 @@
                 </table>
                 <div id="ordersEmpty" class="orders-empty hidden">История покупок пока пуста.</div>
             </div>
+        </section>
+
+        <section id="archiveSection" class="tab-section hidden">
+            <div class="archive-header">
+                <div class="toolbar-title">Архив товаров</div>
+                <div id="archiveMeta" class="toolbar-meta">Удаленные товары</div>
+            </div>
+            <div id="archiveGrid" class="grid"></div>
+            <div id="archiveEmpty" class="orders-empty hidden">Архив пока пуст.</div>
         </section>
     </section>
 </main>
