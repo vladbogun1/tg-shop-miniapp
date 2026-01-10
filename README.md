@@ -40,12 +40,13 @@ mvn -q -DskipTests spring-boot:run
 
 ## 3) Деплой через Docker Compose (HTTPS на другом порту, авто-сертификат)
 1. Проверь DNS A-запись для домена (например `maxsolkh.shop`) на IP сервера и дождись обновления.
-2. В `.env` задай домен, HTTPS-порт и email для ACME:
+2. Убедись, что рядом с `docker-compose.yml` лежит папка `./caddy` с файлом `Caddyfile`.
+3. В `.env` задай домен, HTTPS-порт и email для ACME:
    - `DOMAIN=maxsolkh.shop`
    - `HTTPS_PORT=8443`
    - `ACME_EMAIL=admin@maxsolkh.shop`
    - `WEBAPP_BASE_URL=https://maxsolkh.shop:8443`
-3. Запусти:
+4. Запусти:
 
 ```bash
 docker compose up -d
