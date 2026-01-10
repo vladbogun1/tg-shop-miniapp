@@ -24,9 +24,7 @@ services:
     ports: []
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME}/tg-shop-miniapp:${APP_TAG:-latest}
     container_name: tgshop-app
     restart: unless-stopped
     depends_on:
@@ -52,9 +50,24 @@ services:
       # --- Security ---
       ALLOW_UNSIGNED_INIT_DATA: ${ALLOW_UNSIGNED_INIT_DATA:-false}
 
-    # наружу 8077 -> внутри контейнера 8080
+  proxy:
+    image: caddy:2.8
+    container_name: tgshop-proxy
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-/etc/caddy/letsencrypt/live/${DOMAIN}/fullchain.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-/etc/caddy/letsencrypt/live/${DOMAIN}/privkey.pem}
     ports:
-      - "8077:8080"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - tgshop_caddy_data:/data
+      - tgshop_caddy_config:/config
 
 volumes:
   tgshop_mysql:
+  tgshop_caddy_data:
+  tgshop_caddy_config:
