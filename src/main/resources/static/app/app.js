@@ -394,12 +394,48 @@ function updateCartBadge() {
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
+    const actionWrap = el("div");
+    const renderAction = () => {
+        const pid = String(p.id);
+        const cartItem = state.cart.get(pid);
+        const qty = cartItem ? cartItem.qty : 0;
 
-    const addBtn = el("button", {
-        class: "primary pill",
-        onclick: () => addToCart(p.id, 1)
-    }, [document.createTextNode("В корзину")]);
-    addBtn.disabled = !p.active || !(p.stock > 0);
+        actionWrap.replaceChildren();
+
+        if (qty > 0) {
+            const minusBtn = el("button", {
+                onclick: () => {
+                    addToCart(pid, -1);
+                    renderAction();
+                }
+            }, [document.createTextNode("−")]);
+
+            const plusBtn = el("button", {
+                onclick: () => {
+                    addToCart(pid, +1);
+                    renderAction();
+                }
+            }, [document.createTextNode("+")]);
+            plusBtn.disabled = qty >= p.stock;
+
+            actionWrap.append(el("div", {class: "qty"}, [
+                minusBtn,
+                el("div", {}, [document.createTextNode(String(qty))]),
+                plusBtn,
+            ]));
+        } else {
+            const addBtn = el("button", {
+                class: "primary pill",
+                onclick: () => {
+                    addToCart(pid, 1);
+                    renderAction();
+                }
+            }, [document.createTextNode("В корзину")]);
+            addBtn.disabled = !p.active || !(p.stock > 0);
+            actionWrap.append(addBtn);
+        }
+    };
+    renderAction();
 
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
@@ -409,7 +445,7 @@ function openProduct(p) {
                 el("div", {class: "small"}, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
             ]),
             el("div", {class: "column"}, [
-                addBtn,
+                actionWrap,
             ]),
         ]),
         el("div", {class: "hr"}),
