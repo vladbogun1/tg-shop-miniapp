@@ -17,7 +17,7 @@ app:
     # ВАЖНО: это должен быть HTTPS URL, доступный из Telegram (домен/туннель).
     base-url: ${WEBAPP_BASE_URL:https://semicrystalline-unprevailing-delorse.ngrok-free.dev}
   telegram:
-    bot-token: "1608682067:AAGO0LOCRqa1t1E1YXEZDMU7LVkf6f_dDSI"
+    bot-token: ${BOT_TOKEN}
     bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
     default-admin-chat-id: ${ADMIN_CHAT_ID:593289478}
     admin-user-ids: ${ADMIN_USER_IDS:593289478,977067472} # пример: "123456789,987654321"
