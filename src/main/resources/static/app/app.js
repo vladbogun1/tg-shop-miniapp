@@ -468,10 +468,8 @@ function openProduct(p) {
 }
 
 function openCart() {
-    if (state.checkoutOpen) {
-        state.checkoutOpen = false;
-        updateCartBadge();
-    }
+    state.checkoutOpen = true;
+    updateCartBadge();
     const lines = [];
     for (const [id, it] of state.cart.entries()) {
         if (!it.product) continue;
@@ -551,7 +549,7 @@ function openCheckout() {
             required: "true",
             autocomplete: "tel"
         })]),
-        el("label", {}, [document.createTextNode("Адрес доставки"), el("textarea", {
+        el("label", {}, [document.createTextNode("Адрес доставки (Город и номер Новой Почты)"), el("textarea", {
             name: "address",
             required: "true",
             rows: "3",
@@ -562,7 +560,7 @@ function openCheckout() {
             rows: "2"
         })]),
         el("div", {class: "hr"}),
-        el("div", {class: "row"}, [
+        el("div", {class: "row-gapped"}, [
             el("button", {class: "pill", type: "button", onclick: openCart}, [document.createTextNode("← Корзина")]),
             el("button", {class: "primary pill", type: "submit"}, [document.createTextNode("✅ Отправить заказ")]),
         ])
