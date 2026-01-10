@@ -58,8 +58,8 @@ services:
       - app
     environment:
       DOMAIN: ${DOMAIN}
-      ACME_AGREE: "true"
-      ACME_EMAIL: ${ACME_EMAIL:-}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-/etc/caddy/letsencrypt/live/${DOMAIN}/fullchain.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-/etc/caddy/letsencrypt/live/${DOMAIN}/privkey.pem}
     ports:
       - "${HTTPS_PORT:-8443}:443"
     volumes:
