@@ -639,3 +639,8 @@ textarea {
     align-items: center;
 
 }
+
+.row-gapped {
+    gap: 5px;
+    display: inline-flex;
+}
