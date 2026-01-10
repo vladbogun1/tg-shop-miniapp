@@ -24,3 +24,4 @@ app:
   security:
     # Для локальной разработки можно true, но в проде обязательно false.
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
+    admin-password: ${ADMIN_PASSWORD:admin123}

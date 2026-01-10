@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Админка магазина</title>
+    <link href="app/icons/css/fontawesome.css" rel="stylesheet"/>
+    <link href="app/icons/css/brands.css" rel="stylesheet"/>
+    <link href="app/icons/css/solid.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="./admin.css"/>
+</head>
+<body>
+<div id="loginOverlay" class="login-overlay">
+    <form id="loginForm" class="login-card">
+        <div class="login-title"><i class="fa-solid fa-lock"></i> Вход в админку</div>
+        <label>Пароль
+            <input type="password" name="password" required autofocus/>
+        </label>
+        <button type="submit" class="primary">Войти</button>
+        <div id="loginError" class="login-error hidden">Неверный пароль</div>
+    </form>
+</div>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-title">🧩 Админка магазина</div>
+        <div class="brand-subtitle">Управление товарами и каталогом</div>
+    </div>
+    <div class="top-actions">
+        <label class="switch">
+            <input id="customerToggle" type="checkbox"/>
+            <span class="slider"></span>
+            <span class="switch-label">Вид от лица покупателя</span>
+        </label>
+        <button id="refreshBtn" class="ghost"><i class="fa-solid fa-rotate"></i> Обновить</button>
+        <button id="logoutBtn" class="ghost"><i class="fa-solid fa-arrow-right-from-bracket"></i> Выход</button>
+    </div>
+</header>
+
+<main class="layout">
+    <aside id="adminPanel" class="panel">
+        <h2><i class="fa-solid fa-circle-plus"></i> Добавить товар</h2>
+        <form id="productForm" class="stack">
+            <label>Название
+                <input name="title" required/>
+            </label>
+            <label>Описание
+                <textarea name="description" rows="4"></textarea>
+            </label>
+            <div class="row">
+                <label>Цена
+                    <input name="priceMinor" type="number" min="0" value="1500" required/>
+                </label>
+                <label>Валюта
+                    <input name="currency" value="UAH" required/>
+                </label>
+            </div>
+            <label>Остаток
+                <input name="stock" type="number" min="0" value="1" required/>
+            </label>
+            <label>URL картинок (через запятую или новую строку)
+                <textarea name="imageUrls" rows="3" placeholder="https://..."></textarea>
+            </label>
+            <label class="checkbox">
+                <input type="checkbox" name="active"/>
+                <span>Показывать в каталоге</span>
+            </label>
+            <button type="submit" class="primary"><i class="fa-solid fa-plus"></i> Добавить товар</button>
+            <div class="hint">Совет: вставь прямые ссылки на изображения. Старые URL можно заменить при редактировании.</div>
+        </form>
+    </aside>
+
+    <section class="content">
+        <div class="toolbar">
+            <div class="toolbar-title">Каталог</div>
+            <div id="catalogMeta" class="toolbar-meta">Загрузка...</div>
+        </div>
+        <div id="productGrid" class="grid"></div>
+    </section>
+</main>
+
+<div id="modal" class="modal hidden">
+    <div class="modal-card">
+        <button id="closeModal" class="icon"><i class="fa-solid fa-xmark"></i></button>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script src="./admin.js"></script>
+</body>
+</html>
