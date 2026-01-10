@@ -38,21 +38,21 @@ mvn -q -DskipTests spring-boot:run
 ⚠️ В Telegram Mini App нужен HTTPS. Для локалки используй туннель (ngrok / cloudflare tunnel)
 и укажи `WEBAPP_BASE_URL=https://....`.
 
-## 3) Деплой через Docker Compose (HTTPS на другом порту)
-1. Подготовь сертификаты (например, выпуск через DNS-01) и положи файлы:
-   - `./certs/fullchain.pem`
-   - `./certs/privkey.pem`
-2. В `.env` задай домен и HTTPS-порт:
-   - `DOMAIN=shop.example.com`
+## 3) Деплой через Docker Compose (HTTPS на другом порту, авто-сертификат)
+1. Проверь DNS A-запись для домена (например `maxsolkh.shop`) на IP сервера и дождись обновления.
+2. В `.env` задай домен, HTTPS-порт и email для ACME:
+   - `DOMAIN=maxsolkh.shop`
    - `HTTPS_PORT=8443`
-   - `WEBAPP_BASE_URL=https://shop.example.com:8443`
+   - `ACME_EMAIL=admin@maxsolkh.shop`
+   - `WEBAPP_BASE_URL=https://maxsolkh.shop:8443`
 3. Запусти:
 
 ```bash
 docker compose up -d
 ```
 
-Контейнер `proxy` поднимает HTTPS на указанном порту и проксирует на `app:8080`.
+Контейнер `proxy` автоматически запрашивает сертификат и поднимает HTTPS на указанном порту,
+проксируя на `app:8080`.
 
 ## 4) ENV переменные
 - `DB_URL`, `DB_USER`, `DB_PASSWORD`
@@ -62,7 +62,7 @@ docker compose up -d
 - `WEBAPP_BASE_URL` (HTTPS)
 - `ALLOW_UNSIGNED_INIT_DATA=false` (по умолчанию)
 - `DOMAIN`, `HTTPS_PORT` (для HTTPS-прокси)
-- `TLS_CERT_FILE`, `TLS_KEY_FILE` (пути до сертификатов внутри контейнера, опционально)
+- `ACME_EMAIL` (email для ACME-сертификата, опционально)
 
 ## 5) Примечания
 - `price_minor` тут — просто **целое число** (например 1500). Если хочешь копейки — поменяй отображение/формат.
