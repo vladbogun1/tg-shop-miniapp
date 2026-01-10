@@ -25,12 +25,14 @@ import java.util.List;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
 @AllArgsConstructor
+@Slf4j
 public class ApiController {
 
     private final ProductRepository productRepository;
@@ -44,46 +46,61 @@ public class ApiController {
 
     @GetMapping("/products")
     public List<ProductDto> products() {
+        log.info("🛒 API Requesting active products");
         var soldCounts = loadSoldCounts();
-        return productRepository.findActiveWithImages().stream()
+        var result = productRepository.findActiveWithImages().stream()
             .map(p -> toDto(p, soldCounts))
             .toList();
+        log.debug("🛒 API Returning {} active products", result.size());
+        return result;
     }
 
     @GetMapping("/admin/products")
     public List<ProductDto> adminProducts(@RequestParam(value = "initData", required = false) String initData,
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
+        log.info("🛒 API Requesting admin product list");
         var soldCounts = loadSoldCounts();
-        return productRepository.findAllWithImages().stream()
+        var result = productRepository.findAllWithImages().stream()
             .map(p -> toDto(p, soldCounts))
             .toList();
+        log.debug("🛒 API Returning {} products for admin", result.size());
+        return result;
     }
 
     @GetMapping("/admin/products/archived")
     public List<ProductDto> adminArchivedProducts(@RequestParam(value = "initData", required = false) String initData,
                                                   @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
+        log.info("🛒 API Requesting archived products for admin");
         var soldCounts = loadSoldCounts();
-        return productRepository.findArchivedWithImages().stream()
+        var result = productRepository.findArchivedWithImages().stream()
             .map(p -> toDto(p, soldCounts))
             .toList();
+        log.debug("🛒 API Returning {} archived products for admin", result.size());
+        return result;
     }
 
     @GetMapping("/admin/orders")
     public List<OrderDto> adminOrders(@RequestParam(value = "initData", required = false) String initData,
                                       @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
-        return orderRepository.findAllWithItems().stream()
+        log.info("🛒 API Requesting admin order list");
+        var result = orderRepository.findAllWithItems().stream()
             .map(ApiController::toOrderDto)
             .toList();
+        log.debug("🛒 API Returning {} orders for admin", result.size());
+        return result;
     }
 
     @PostMapping("/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public Object createOrder(@RequestBody @Valid CreateOrderRequest req) {
         var v = initDataValidator.validate(req.initData());
-        if (!v.ok()) throw new Unauthorized("Bad initData");
+        if (!v.ok()) {
+            log.warn("🛒 API Order creation rejected due to invalid initData");
+            throw new Unauthorized("Bad initData");
+        }
 
         var cmd = new OrderService.CreateOrderCommand(
                 v.userId(),
@@ -95,7 +112,9 @@ public class ApiController {
                 req.items().stream().map(i -> new OrderService.Item(i.productId(), i.quantity())).toList()
         );
 
+        log.info("🛒 API Creating order for tgUserId={} items={}", v.userId(), cmd.items().size());
         var saved = orderService.createOrder(cmd);
+        log.info("🛒 API Order created uuid={} totalMinor={}", saved.uuid(), saved.getTotalMinor());
         return new Object() {
             public final String orderId = saved.uuid().toString();
         };
@@ -104,9 +123,13 @@ public class ApiController {
     @GetMapping("/me")
     public Object me(@RequestParam("initData") String initData) {
         var v = initDataValidator.validate(initData);
-        if (!v.ok()) throw new Unauthorized("Bad initData");
+        if (!v.ok()) {
+            log.warn("🛒 API Profile request rejected due to invalid initData");
+            throw new Unauthorized("Bad initData");
+        }
         boolean isAdmin = props.getTelegram().adminUserIdSet().contains(v.userId());
 
+        log.info("🛒 API Returning profile for tgUserId={} admin={}", v.userId(), isAdmin);
         return new Object() {
             public final long userId = v.userId();
             public final String username = v.username();
@@ -122,6 +145,7 @@ public class ApiController {
                                     @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                     @RequestBody @Valid CreateProductRequest req) {
         assertAdmin(initData, adminPassword);
+        log.info("🛒 API Creating product title={} priceMinor={} stock={}", req.title(), req.priceMinor(), req.stock());
 
         Product p = new Product();
         p.setTitle(req.title());
@@ -133,6 +157,7 @@ public class ApiController {
         p.setArchived(false);
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
+        log.debug("🛒 API Resolved {} image urls for new product", resolvedUrls.size());
         int i = 0;
         for (String url : resolvedUrls) {
             var img = new ProductImage();
@@ -143,6 +168,7 @@ public class ApiController {
         }
 
         var saved = productRepository.save(p);
+        log.info("🛒 API Product created uuid={} images={}", saved.uuid(), saved.getImages().size());
         return toDto(saved, 0L);
     }
 
@@ -158,6 +184,7 @@ public class ApiController {
                 .orElseThrow(() -> new NotFound("Product not found"));
         product.setActive(req.active());
         var saved = productRepository.save(product);
+        log.info("🛒 API Updated product active uuid={} active={}", saved.uuid(), saved.isActive());
         return toDto(saved, soldCountFor(saved));
     }
 
@@ -176,6 +203,7 @@ public class ApiController {
             product.setActive(false);
         }
         var saved = productRepository.save(product);
+        log.info("🛒 API Updated product archived uuid={} archived={}", saved.uuid(), saved.isArchived());
         return toDto(saved, soldCountFor(saved));
     }
 
@@ -199,6 +227,7 @@ public class ApiController {
 
         product.getImages().clear();
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
+        log.debug("🛒 API Resolved {} image urls for product update uuid={}", resolvedUrls.size(), product.uuid());
         int i = 0;
         for (String url : resolvedUrls) {
             var img = new ProductImage();
@@ -209,6 +238,7 @@ public class ApiController {
         }
 
         var saved = productRepository.save(product);
+        log.info("🛒 API Updated product uuid={} images={}", saved.uuid(), saved.getImages().size());
         return toDto(saved, soldCountFor(saved));
     }
 
@@ -216,16 +246,31 @@ public class ApiController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void adminLogin(@RequestBody @Valid AdminLoginRequest req) {
         if (!isPasswordValid(req.password())) {
+            log.warn("🛒 API Admin login failed due to invalid password");
             throw new Unauthorized("Bad password");
         }
+        log.info("🛒 API Admin login succeeded");
     }
 
     private void assertAdmin(String initData, String adminPassword) {
-        if (isPasswordValid(adminPassword)) return;
-        if (initData == null || initData.isBlank()) throw new Forbidden("Not admin");
+        if (isPasswordValid(adminPassword)) {
+            log.debug("🛒 API Admin access granted via password");
+            return;
+        }
+        if (initData == null || initData.isBlank()) {
+            log.warn("🛒 API Admin access denied: missing initData");
+            throw new Forbidden("Not admin");
+        }
         var v = initDataValidator.validate(initData);
-        if (!v.ok()) throw new Unauthorized("Bad initData");
-        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+        if (!v.ok()) {
+            log.warn("🛒 API Admin access denied: invalid initData");
+            throw new Unauthorized("Bad initData");
+        }
+        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) {
+            log.warn("🛒 API Admin access denied for tgUserId={}", v.userId());
+            throw new Forbidden("Not admin");
+        }
+        log.debug("🛒 API Admin access granted via initData for tgUserId={}", v.userId());
     }
 
     private boolean isPasswordValid(String adminPassword) {
@@ -238,15 +283,19 @@ public class ApiController {
     }
 
     private long soldCountFor(Product p) {
-        return orderItemRepository.sumSoldByProductId(p.getId());
+        var sold = orderItemRepository.sumSoldByProductId(p.getId());
+        log.debug("🛒 API Loaded sold count for product uuid={} sold={}", p.uuid(), sold);
+        return sold;
     }
 
     private java.util.Map<UUID, Long> loadSoldCounts() {
-        return orderItemRepository.findSoldCounts().stream()
+        var result = orderItemRepository.findSoldCounts().stream()
             .collect(java.util.stream.Collectors.toMap(
                 row -> UuidUtil.fromBytes(row.getProductId()),
                 row -> row.getSold() == null ? 0L : row.getSold()
             ));
+        log.debug("🛒 API Loaded sold counts for {} products", result.size());
+        return result;
     }
 
     private static ProductDto toDto(Product p, java.util.Map<UUID, Long> soldCounts) {

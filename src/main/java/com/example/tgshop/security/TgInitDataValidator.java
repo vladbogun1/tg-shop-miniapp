@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  * 4) calcHash  = HMAC_SHA256(message=data_check_string, key=secretKey)
  */
 @Component
+@Slf4j
 public class TgInitDataValidator {
 
   public record Result(
@@ -38,11 +40,17 @@ public class TgInitDataValidator {
   }
 
   public Result validate(String initData) {
-    if (initData == null || initData.isBlank()) return new Result(false, 0, null, null, null, 0);
+    if (initData == null || initData.isBlank()) {
+      log.warn("🔐 AUTH InitData validation failed: empty payload");
+      return new Result(false, 0, null, null, null, 0);
+    }
 
     Map<String, String> data = parseQueryString(initData);
     String receivedHash = data.remove("hash");
-    if (receivedHash == null || receivedHash.isBlank()) return new Result(false, 0, null, null, null, 0);
+    if (receivedHash == null || receivedHash.isBlank()) {
+      log.warn("🔐 AUTH InitData validation failed: missing hash");
+      return new Result(false, 0, null, null, null, 0);
+    }
 
     long authDate = parseLongSafe(data.get("auth_date"));
 
@@ -57,17 +65,23 @@ public class TgInitDataValidator {
       try {
         computed = computeHashHex(props.getTelegram().getBotToken(), dataCheckString);
       } catch (GeneralSecurityException e) {
+        log.error("🔐 AUTH InitData validation failed: hash computation error", e);
         return new Result(false, 0, null, null, null, 0);
       }
       if (!computed.equalsIgnoreCase(receivedHash)) {
+        log.warn("🔐 AUTH InitData validation failed: hash mismatch");
         return new Result(false, 0, null, null, null, 0);
       }
     }
 
     String userJson = data.get("user");
     var user = TgUserJson.parse(userJson);
-    if (user == null) return new Result(false, 0, null, null, null, 0);
+    if (user == null) {
+      log.warn("🔐 AUTH InitData validation failed: user payload invalid");
+      return new Result(false, 0, null, null, null, 0);
+    }
 
+    log.debug("🔐 AUTH InitData validated for userId={}", user.id());
     return new Result(true, user.id(), user.username(), user.firstName(), user.lastName(), authDate);
   }
 

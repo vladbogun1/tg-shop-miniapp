@@ -4,6 +4,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -14,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
+@Slf4j
 public class TgPostImageResolver {
 
     private static final Pattern CSS_URL = Pattern.compile("url\\((['\"]?)(.*?)\\1\\)");
@@ -28,6 +30,7 @@ public class TgPostImageResolver {
     public List<String> resolvePostImages(List<String> urls) {
         if (urls == null || urls.isEmpty()) return List.of();
 
+        log.info("🖼️ TG Resolving image urls count={}", urls.size());
         LinkedHashSet<String> out = new LinkedHashSet<>();
 
         for (String raw : urls) {
@@ -43,11 +46,13 @@ public class TgPostImageResolver {
             Optional<PostRef> ref = parsePostRef(u);
             if (ref.isPresent()) {
                 PostRef pr = ref.get();
+                log.debug("🖼️ TG Resolving telegram post images channel={} postId={}", pr.channel(), pr.postId());
                 List<String> imgs = resolvePostImages(pr.channel(), pr.postId());
                 out.addAll(imgs);
             }
         }
 
+        log.debug("🖼️ TG Resolved {} unique image urls", out.size());
         return new ArrayList<>(out);
     }
 
@@ -55,6 +60,7 @@ public class TgPostImageResolver {
         String dataPost = channel + "/" + postId;
         String url = "https://t.me/s/" + channel + "/" + postId + "?single";
 
+        log.debug("🖼️ TG Fetching telegram post images url={}", url);
         Document doc = fetch(url);
 
         Element post = doc.selectFirst("div.tgme_widget_message[data-post=\"" + dataPost + "\"]");
@@ -82,6 +88,7 @@ public class TgPostImageResolver {
             }
         }
 
+        log.debug("🖼️ TG Resolved {} images for channel={} postId={}", result.size(), channel, postId);
         return new ArrayList<>(result);
     }
 
@@ -95,6 +102,7 @@ public class TgPostImageResolver {
                     .timeout(20_000)
                     .get();
         } catch (Exception e) {
+            log.error("🖼️ TG Failed to fetch telegram post url={}", url, e);
             throw new RuntimeException("Failed to fetch: " + url, e);
         }
     }
