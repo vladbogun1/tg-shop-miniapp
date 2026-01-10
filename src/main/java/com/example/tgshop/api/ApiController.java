@@ -3,12 +3,15 @@ package com.example.tgshop.api;
 import com.example.tgshop.api.dto.AdminLoginRequest;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
+import com.example.tgshop.api.dto.OrderDto;
+import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.order.OrderRepository;
 import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
 import com.example.tgshop.product.ProductRepository;
@@ -32,6 +35,7 @@ public class ApiController {
     private final TgInitDataValidator initDataValidator;
     private final AppProperties props;
     private final OrderService orderService;
+    private final OrderRepository orderRepository;
     private final TgPostImageResolver tgPostImageResolver;
 
 
@@ -45,6 +49,15 @@ public class ApiController {
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
         return productRepository.findAllWithImages().stream().map(ApiController::toDto).toList();
+    }
+
+    @GetMapping("/admin/orders")
+    public List<OrderDto> adminOrders(@RequestParam(value = "initData", required = false) String initData,
+                                      @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        return orderRepository.findAllWithItems().stream()
+            .map(ApiController::toOrderDto)
+            .toList();
     }
 
     @PostMapping("/orders")
@@ -196,6 +209,30 @@ public class ApiController {
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
                 p.isActive()
+        );
+    }
+
+    private static OrderDto toOrderDto(com.example.tgshop.order.OrderEntity o) {
+        return new OrderDto(
+            o.uuid(),
+            o.getTotalMinor(),
+            o.getCurrency(),
+            o.getCustomerName(),
+            o.getPhone(),
+            o.getAddress(),
+            o.getComment(),
+            o.getTgUserId(),
+            o.getTgUsername(),
+            o.getStatus(),
+            o.getCreatedAt(),
+            o.getItems().stream()
+                .map(i -> new OrderItemDto(
+                    UuidUtil.fromBytes(i.getProductId()),
+                    i.getTitleSnapshot(),
+                    i.getPriceMinorSnapshot(),
+                    i.getQuantity()
+                ))
+                .toList()
         );
     }
 
