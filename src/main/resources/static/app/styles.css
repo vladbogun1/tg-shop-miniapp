@@ -135,6 +135,30 @@ a {
     white-space: nowrap;
 }
 
+.product.inactive {
+    opacity: 0.6;
+}
+
+.name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-tag {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    flex-shrink: 0;
+}
+
+.status-line {
+    color: var(--muted);
+}
+
 .product .meta {
     display: flex;
     justify-content: space-between;
