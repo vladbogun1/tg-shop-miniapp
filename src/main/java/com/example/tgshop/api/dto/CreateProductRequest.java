@@ -10,5 +10,6 @@ public record CreateProductRequest(
     @Min(0) long priceMinor,
     @NotBlank String currency,
     @Min(0) int stock,
-    List<@NotBlank String> imageUrls
+    List<@NotBlank String> imageUrls,
+    boolean active
 ) {}

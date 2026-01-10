@@ -10,5 +10,6 @@ public record ProductDto(
     long priceMinor,
     String currency,
     int stock,
-    List<String> imageUrls
+    List<String> imageUrls,
+    boolean active
 ) {}

@@ -106,6 +106,7 @@ function bindCartProducts() {
         if (!item.product) state.cart.delete(id);
     }
     saveCart();
+    updateCartBadge();
 }
 
 function cartCount() {
@@ -178,12 +179,12 @@ function renderProducts() {
                     openProduct(p);
                 }
             }, [document.createTextNode("Подробнее")]),
-            el("button", {
-                class: "primary pill js-add", onclick: (e) => {
-                    e.stopPropagation();
-                    addToCart(p.id, 1);
-                }
-            }, [document.createTextNode("В корзину")]),
+            // el("button", {
+            //     class: "primary pill js-add", onclick: (e) => {
+            //         e.stopPropagation();
+            //         addToCart(p.id, 1);
+            //     }
+            // }, [document.createTextNode("В корзину")]),
         ]);
 
         card.append(thumb, name, meta, btnRow);
@@ -227,11 +228,18 @@ function addToCart(productId, delta) {
     }
 
     saveCart();
+    updateCartBadge();
     toast(delta > 0 ? "Добавлено в корзину" : "Обновлено");
+}
+
+function updateCartBadge() {
+    qs("cartCount").textContent = String(cartCount());
 }
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
+    const isAdmin = Boolean(state?.me?.admin) ?? false;
+
 
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
@@ -241,6 +249,12 @@ function openProduct(p) {
                 el("div", {class: "small"}, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
             ]),
             el("div", {class: "column"}, [
+                isAdmin
+                    ? el("button", {
+                        class: "primary pill",
+                        onclick: () => addToCart(p.id, 1)
+                    }, [document.createTextNode(p.active ? "Спрятать" : "Показать")])
+                    : el(),
                 el("button", {
                     class: "primary pill",
                     onclick: () => addToCart(p.id, 1)
@@ -298,6 +312,7 @@ function openCart() {
                 class: "danger pill", onclick: () => {
                     state.cart.clear();
                     saveCart();
+                    updateCartBadge();
                     openCart();
                 }
             }, [document.createTextNode("Очистить")]),
@@ -436,6 +451,7 @@ async function initAdmin() {
                 currency,
                 stock,
                 imageUrls,
+                active: false,
             });
             form.reset();
             toast("Товар добавлен");
@@ -533,6 +549,7 @@ async function refreshProductsSoft() {
     }
     if (changed) {
         saveCart();
+        updateCartBadge();
     }
 }
 
@@ -601,6 +618,7 @@ async function boot() {
     }
 
     await loadProducts();
+    updateCartBadge();
 
     qs("cartBtn").addEventListener("click", openCartBtn);
 }
