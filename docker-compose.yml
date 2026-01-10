@@ -63,7 +63,7 @@ services:
     ports:
       - "${HTTPS_PORT:-8443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - tgshop_caddy_data:/data
       - tgshop_caddy_config:/config
 
