@@ -25,6 +25,15 @@
 </header>
 
 <main id="app">
+    <section class="filters">
+        <label class="filter-label" for="sortSelect">Сортировка</label>
+        <select id="sortSelect" class="filter-select">
+            <option value="default" selected>По умолчанию</option>
+            <option value="name">По имени</option>
+            <option value="price">По цене</option>
+            <option value="sold">Самые продаваемые</option>
+        </select>
+    </section>
     <section id="grid" class="grid"></section>
 
     <div id="modal" class="modal hidden">
