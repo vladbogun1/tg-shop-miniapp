@@ -8,7 +8,7 @@ spring:
     password: ${DB_PASSWORD:vlastelin228}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
   flyway:
     enabled: true
 
