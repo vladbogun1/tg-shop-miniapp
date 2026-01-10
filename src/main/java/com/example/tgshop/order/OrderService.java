@@ -83,8 +83,7 @@ public class OrderService {
         OrderEntity o = orderRepository.findById(UuidUtil.toBytes(uuid))
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + uuid));
 
-        // если добавишь статус в OrderEntity — тут ставь APPROVED и проверяй повтор
-        // o.setStatus(OrderStatus.APPROVED);
+        o.setStatus("APPROVED");
 
         var saved = orderRepository.save(o);
 
@@ -97,8 +96,7 @@ public class OrderService {
         OrderEntity o = orderRepository.findById(UuidUtil.toBytes(uuid))
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + uuid));
 
-        // если добавишь статус в OrderEntity — тут ставь REJECTED и проверяй повтор
-        // o.setStatus(OrderStatus.REJECTED);
+        o.setStatus("REJECTED");
 
         // вернуть сток обратно
         o.getItems().forEach(i -> {
