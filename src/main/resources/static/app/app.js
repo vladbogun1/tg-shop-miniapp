@@ -99,6 +99,34 @@ async function apiPost(url, body) {
     return JSON.parse(text);
 }
 
+async function apiPatch(url, body) {
+    const r = await fetch(url, {
+        method: "PATCH",
+        headers: apiHeaders({"Content-Type": "application/json"}),
+        body: JSON.stringify(body),
+    });
+
+    const ct = r.headers.get("content-type") || "";
+    const text = await r.text();
+
+    if (!r.ok) throw new Error(text);
+    if (!ct.includes("application/json")) {
+        throw new Error(`Expected JSON, got ${ct}. Head: ${text.slice(0, 160)}`);
+    }
+    return JSON.parse(text);
+}
+
+function isAdminUser() {
+    return Boolean(state?.me?.admin);
+}
+
+function productsEndpoint() {
+    if (isAdminUser()) {
+        return `/api/admin/products?initData=${encodeURIComponent(state.initData)}`;
+    }
+    return "/api/products";
+}
+
 function bindCartProducts() {
     const byId = new Map(state.products.map(p => [String(p.id), p]));
     for (const [id, item] of state.cart.entries()) {
@@ -130,10 +158,19 @@ function cartTotal() {
 function updateCardAvailability(card, p) {
     const addBtn = card.querySelector(".js-add");
     if (!addBtn) return;
-    const out = !(p.stock > 0);
+    const out = !(p.stock > 0) || !p.active;
     addBtn.disabled = out;
     addBtn.style.opacity = out ? "0.6" : "";
     addBtn.style.pointerEvents = out ? "none" : "";
+}
+
+function updateCardActiveState(card, p) {
+    card.classList.toggle("inactive", !p.active);
+    const statusEl = card.querySelector('[data-field="status"]');
+    if (statusEl) {
+        statusEl.textContent = p.active ? "" : "Скрыт";
+        statusEl.classList.toggle("hidden", p.active);
+    }
 }
 
 /** FULL render (first load or hard rebuild). */
@@ -155,6 +192,11 @@ function renderProducts() {
         );
 
         const name = el("div", {class: "name", "data-field": "title"}, [p.title]);
+        const statusBadge = el("span", {
+            class: `status-tag${p.active ? " hidden" : ""}`,
+            "data-field": "status"
+        }, [p.active ? "" : "Скрыт"]);
+        const nameRow = el("div", {class: "name-row"}, [name, statusBadge]);
 
         const priceEl = el("b", {class: "js-price"}, [String(p.priceMinor)]);
         const stockEl = el("b", {class: "js-stock"}, [p.stock ? String(p.stock) : "Нет в наличии"]);
@@ -187,11 +229,12 @@ function renderProducts() {
             // }, [document.createTextNode("В корзину")]),
         ]);
 
-        card.append(thumb, name, meta, btnRow);
+        card.append(thumb, nameRow, meta, btnRow);
         card.addEventListener("click", () => openProduct(p));
         grid.append(card);
 
         updateCardAvailability(card, p);
+        updateCardActiveState(card, p);
     }
 }
 
@@ -214,6 +257,7 @@ function addToCart(productId, delta) {
     const pid = String(productId);
     const p = state.products.find(x => String(x.id) === pid);
     if (!p) return;
+    if (!p.active) return toast("Товар скрыт");
     if (p.stock <= 0) return toast("Нет в наличии");
 
     const cur = state.cart.get(pid) || {product: p, qty: 0};
@@ -238,8 +282,47 @@ function updateCartBadge() {
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
-    const isAdmin = Boolean(state?.me?.admin) ?? false;
+    const isAdmin = isAdminUser();
+    const statusLine = el("div", {
+        class: `small status-line${p.active ? " hidden" : ""}`,
+        "data-field": "modal-status"
+    }, [document.createTextNode("Скрыт из продажи")]);
 
+    const addBtn = el("button", {
+        class: "primary pill",
+        onclick: () => addToCart(p.id, 1)
+    }, [document.createTextNode("В корзину")]);
+    addBtn.disabled = !p.active || !(p.stock > 0);
+
+    const adminBtn = isAdmin
+        ? el("button", {
+            class: "primary pill",
+            onclick: async () => {
+                if (!state.initData) return toast("initData отсутствует (открой через Telegram)");
+                adminBtn.disabled = true;
+                try {
+                    const updated = await apiPatch(
+                        `/api/admin/products/${p.id}/active?initData=${encodeURIComponent(state.initData)}`,
+                        {active: !p.active}
+                    );
+                    p.active = updated.active;
+                    updateProductInState(updated);
+                    updateProductCard(updated);
+
+                    statusLine.classList.toggle("hidden", updated.active);
+                    statusLine.textContent = updated.active ? "" : "Скрыт из продажи";
+                    adminBtn.textContent = updated.active ? "Спрятать" : "Показать";
+                    addBtn.disabled = !updated.active || !(updated.stock > 0);
+                    toast(updated.active ? "Товар показан" : "Товар скрыт");
+                } catch (err) {
+                    console.error(err);
+                    toast("Ошибка обновления товара");
+                } finally {
+                    adminBtn.disabled = false;
+                }
+            }
+        }, [document.createTextNode(p.active ? "Спрятать" : "Показать")])
+        : null;
 
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
@@ -247,18 +330,11 @@ function openProduct(p) {
             el("div", {class: "column"}, [
                 el("div", {class: "small"}, [document.createTextNode(money(p))]),
                 el("div", {class: "small"}, [document.createTextNode(p.stock > 0 ? `В наличии: ${p.stock}` : "Нет в наличии")]),
+                isAdmin ? statusLine : el(),
             ]),
             el("div", {class: "column"}, [
-                isAdmin
-                    ? el("button", {
-                        class: "primary pill",
-                        onclick: () => addToCart(p.id, 1)
-                    }, [document.createTextNode(p.active ? "Спрятать" : "Показать")])
-                    : el(),
-                el("button", {
-                    class: "primary pill",
-                    onclick: () => addToCart(p.id, 1)
-                }, [document.createTextNode("В корзину")]),
+                adminBtn || el(),
+                addBtn,
             ]),
         ]),
         el("div", {class: "hr"}),
@@ -473,7 +549,7 @@ async function initAdmin() {
 async function refreshProductsSoft() {
     let fresh;
     try {
-        fresh = await apiGet("/api/products");
+        fresh = await apiGet(productsEndpoint());
     } catch (e) {
         console.warn("refresh failed", e);
         return;
@@ -518,6 +594,11 @@ async function refreshProductsSoft() {
             if (pr) pr.textContent = String(fp.priceMinor);
         }
 
+        // active flag (hidden)
+        if (!old || old.active !== fp.active) {
+            updateCardActiveState(card, fp);
+        }
+
         // stock
         if (!old || old.stock !== fp.stock) {
             const st = card.querySelector(".js-stock");
@@ -539,6 +620,13 @@ async function refreshProductsSoft() {
     for (const [id, it] of state.cart.entries()) {
         const p = freshById.get(String(id));
         if (!p) continue;
+
+        if (!p.active) {
+            state.cart.delete(String(id));
+            changed = true;
+            toast(`Товар скрыт: "${p.title}" удален из корзины`);
+            continue;
+        }
 
         if (it.qty > p.stock) {
             it.qty = Math.max(0, p.stock);
@@ -568,7 +656,7 @@ function startProductsAutoRefresh() {
 }
 
 async function loadProducts() {
-    state.products = await apiGet("/api/products");
+    state.products = await apiGet(productsEndpoint());
     bindCartProducts();
     renderProducts();
     startThumbRotator();
@@ -651,6 +739,17 @@ function startThumbRotator() {
     }, 5000);
 }
 
+function updateProductInState(updated) {
+    state.products = state.products.map((p) => String(p.id) === String(updated.id) ? updated : p);
+}
+
+function updateProductCard(product) {
+    const pid = String(product.id);
+    const card = document.querySelector(`.card.product[data-product-id="${pid}"]`);
+    if (!card) return;
+    updateCardAvailability(card, product);
+    updateCardActiveState(card, product);
+}
 
 function createGallery(urls, altText = "") {
     const clean = (urls || []).filter(Boolean);
