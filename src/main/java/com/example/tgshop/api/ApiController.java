@@ -3,7 +3,9 @@ package com.example.tgshop.api;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
 import com.example.tgshop.api.dto.ProductDto;
+import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.config.AppProperties;
+import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
 import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
@@ -13,6 +15,7 @@ import com.example.tgshop.tg.TgPostImageResolver;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -33,6 +36,15 @@ public class ApiController {
     @GetMapping("/products")
     public List<ProductDto> products() {
         return productRepository.findActiveWithImages().stream().map(ApiController::toDto).toList();
+    }
+
+    @GetMapping("/admin/products")
+    public List<ProductDto> adminProducts(@RequestParam("initData") String initData) {
+        var v = initDataValidator.validate(initData);
+        if (!v.ok()) throw new Unauthorized("Bad initData");
+        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+
+        return productRepository.findAllWithImages().stream().map(ApiController::toDto).toList();
     }
 
     @PostMapping("/orders")
@@ -102,6 +114,22 @@ public class ApiController {
         return toDto(saved);
     }
 
+    @PatchMapping("/admin/products/{productId}/active")
+    public ProductDto updateProductActive(@RequestParam("initData") String initData,
+                                          @PathVariable("productId") String productId,
+                                          @RequestBody @Valid UpdateProductActiveRequest req) {
+        var v = initDataValidator.validate(initData);
+        if (!v.ok()) throw new Unauthorized("Bad initData");
+        if (!props.getTelegram().adminUserIdSet().contains(v.userId())) throw new Forbidden("Not admin");
+
+        byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
+        Product product = productRepository.findByIdWithImages(idBytes)
+                .orElseThrow(() -> new NotFound("Product not found"));
+        product.setActive(req.active());
+        var saved = productRepository.save(product);
+        return toDto(saved);
+    }
+
     private static ProductDto toDto(Product p) {
         return new ProductDto(
                 p.uuid(),
@@ -125,6 +153,13 @@ public class ApiController {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     private static class Forbidden extends RuntimeException {
         Forbidden(String m) {
+            super(m);
+        }
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    private static class NotFound extends RuntimeException {
+        NotFound(String m) {
             super(m);
         }
     }
