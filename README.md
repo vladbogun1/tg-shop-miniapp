@@ -1,4 +1,4 @@
-# tg-invite
+# tg-shop-miniapp (Invite Telegram Bot)
 
 Лёгкий Telegram-бот для инвайтов:
 - Отвечает на `/start` красивой картинкой.
