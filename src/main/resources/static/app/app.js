@@ -792,13 +792,41 @@ function startThumbRotator() {
     }, intervalMs);
 }
 
-function createGallery(urls, altText = "") {
+function openGalleryFullscreen(urls, altText, startIndex) {
+    const gallery = createGallery(urls, altText, {initialIndex: startIndex, showFullscreenButton: false, fullscreen: true});
+    const overlay = el("div", {class: "gallery-fullscreen"});
+    const content = el("div", {class: "gallery-fullscreen-content"}, [gallery]);
+
+    const prevOverflow = document.body.style.overflow;
+    const close = () => {
+        document.body.style.overflow = prevOverflow;
+        overlay.remove();
+    };
+
+    const closeBtn = el("button", {
+        class: "icon",
+        type: "button",
+        onclick: () => close(),
+    }, [el("i", {class: "fa-solid fa-xmark"})]);
+    content.append(closeBtn);
+    overlay.append(content);
+
+    document.body.style.overflow = "hidden";
+    document.body.append(overlay);
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close();
+    });
+}
+
+function createGallery(urls, altText = "", opts = {}) {
     const clean = (urls || []).filter(Boolean);
     if (clean.length === 0) {
         return el("div", {class: "gallery gallery-fallback"}, [document.createTextNode("Нет фото")]);
     }
 
-    let index = 0;
+    const {initialIndex = 0, showFullscreenButton = true, fullscreen = false} = opts;
+    let index = Math.max(0, Math.min(clean.length - 1, initialIndex));
 
     const track = el("div", {class: "gallery-track"});
     for (const u of clean) {
@@ -811,12 +839,16 @@ function createGallery(urls, altText = "") {
 
     const viewport = el("div", {class: "gallery-viewport"}, [track]);
     const root = el("div", {class: "gallery"}, [viewport]);
+    if (fullscreen) root.classList.add("fullscreen");
 
     const leftBtn = el("button", {class: "gallery-arrow left", type: "button"}, [
         el("i", {class: "fa-solid fa-angle-left"})
     ]);
     const rightBtn = el("button", {class: "gallery-arrow right", type: "button"}, [
         el("i", {class: "fa-solid fa-angle-right"})
+    ]);
+    const expandBtn = el("button", {class: "gallery-expand", type: "button", "aria-label": "Открыть на весь экран"}, [
+        el("i", {class: "fa-solid fa-up-right-and-down-left-from-center"})
     ]);
 
     const dotsWrap = el("div", {class: "gallery-dots"});
@@ -826,6 +858,7 @@ function createGallery(urls, altText = "") {
     dots.forEach(d => dotsWrap.append(d));
 
     root.append(leftBtn, rightBtn, dotsWrap);
+    if (showFullscreenButton) root.append(expandBtn);
 
     function apply() {
         track.style.transform = `translateX(${-index * 100}%)`;
@@ -848,6 +881,7 @@ function createGallery(urls, altText = "") {
     leftBtn.addEventListener("click", () => setIndex(index - 1));
     rightBtn.addEventListener("click", () => setIndex(index + 1));
     dots.forEach((d, i) => d.addEventListener("click", () => setIndex(i)));
+    expandBtn.addEventListener("click", () => openGalleryFullscreen(clean, altText, index));
 
     // ===== Swipe (pointer events) =====
     let startX = 0;
