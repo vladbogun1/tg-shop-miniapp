@@ -24,6 +24,7 @@ const state = {
     products: [],
     cart: new Map(), // id -> {product, qty}
     mainBtnBound: false,
+    sort: "default",
 
     thumbTimer: null,
     thumbIndex: new Map(), // productId -> index
@@ -104,6 +105,11 @@ function productsEndpoint() {
     return "/api/products";
 }
 
+function ensureThumbIndex(p) {
+    const pid = String(p.id);
+    if (!state.thumbIndex.has(pid)) state.thumbIndex.set(pid, 0);
+}
+
 function bindCartProducts() {
     const byId = new Map(state.products.map(p => [String(p.id), p]));
     for (const [id, item] of state.cart.entries()) {
@@ -150,68 +156,139 @@ function updateCardActiveState(card, p) {
     }
 }
 
+function getProductById(productId) {
+    return state.products.find(x => String(x.id) === String(productId)) || null;
+}
+
+function createProductCard(p) {
+    const pid = String(p.id);
+    const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
+
+    const card = el("div", {class: "card product", "data-product-id": pid});
+
+    const thumbImg = img
+        ? el("img", {src: img, alt: p.title, "data-thumb-id": pid})
+        : null;
+
+    const thumb = el("div", {class: "thumb"},
+        thumbImg ? [thumbImg] : [el("div", {class: "small", html: "Нет фото"})]
+    );
+
+    const name = el("div", {class: "name", "data-field": "title"}, [p.title]);
+    const statusBadge = el("span", {
+        class: `status-tag${p.active ? " hidden" : ""}`,
+        "data-field": "status"
+    }, [p.active ? "" : "Скрыт"]);
+    const nameRow = el("div", {class: "name-row"}, [name, statusBadge]);
+
+    const priceEl = el("b", {class: "js-price"}, [String(p.priceMinor)]);
+    const stockEl = el("b", {class: "js-stock"}, [p.stock ? String(p.stock) : "Нет в наличии"]);
+
+    const meta = el("div", {class: "meta"}, [
+        el("div", {class: "block"}, [
+            el("i", {class: "fa-regular fa-hryvnia-sign"}, []),
+            priceEl
+        ]),
+        el("div", {class: "block js-stock-wrap"}, [
+            p.stock
+                ? el("i", {class: "fa-regular fa-cubes"}, [])
+                : el("span", {}, []),
+            stockEl
+        ])
+    ]);
+
+    const btnRow = el("div", {class: "actions"}, [
+        el("button", {
+            class: "pill", onclick: (e) => {
+                e.stopPropagation();
+                const current = getProductById(pid);
+                if (current) openProduct(current);
+            }
+        }, [document.createTextNode("Подробнее")]),
+    ]);
+
+    card.append(thumb, nameRow, meta, btnRow);
+    card.addEventListener("click", () => {
+        const current = getProductById(pid);
+        if (current) openProduct(current);
+    });
+
+    updateCardAvailability(card, p);
+    updateCardActiveState(card, p);
+    ensureThumbIndex(p);
+
+    return card;
+}
+
+function updateCardData(card, p, old) {
+    if (!old || old.title !== p.title) {
+        const t = card.querySelector('[data-field="title"]');
+        if (t) t.textContent = p.title;
+    }
+
+    if (!old || old.priceMinor !== p.priceMinor) {
+        const pr = card.querySelector(".js-price");
+        if (pr) pr.textContent = String(p.priceMinor);
+    }
+
+    if (!old || old.active !== p.active) {
+        updateCardActiveState(card, p);
+    }
+
+    if (!old || old.stock !== p.stock) {
+        const st = card.querySelector(".js-stock");
+        if (st) st.textContent = p.stock ? String(p.stock) : "Нет в наличии";
+        updateCardAvailability(card, p);
+    }
+
+    const oldImg = (old?.imageUrls && old.imageUrls[0]) ? old.imageUrls[0] : null;
+    const newImg = (p.imageUrls && p.imageUrls[0]) ? p.imageUrls[0] : null;
+    if (oldImg !== newImg) {
+        const imgEl = card.querySelector(`img[data-thumb-id="${String(p.id)}"]`);
+        if (imgEl && newImg) imgEl.src = newImg;
+    }
+}
+
+function sortedProducts(list) {
+    if (state.sort === "price-asc") {
+        return [...list].sort((a, b) => (a.priceMinor || 0) - (b.priceMinor || 0));
+    }
+    if (state.sort === "price-desc") {
+        return [...list].sort((a, b) => (b.priceMinor || 0) - (a.priceMinor || 0));
+    }
+    if (state.sort === "sold") {
+        return [...list].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
+    }
+    return list;
+}
+
+function syncProductCards() {
+    const grid = qs("grid");
+    const existing = grid.querySelectorAll(".card.product");
+    const keepIds = new Set(state.products.map(p => String(p.id)));
+    for (const card of existing) {
+        const pid = card.getAttribute("data-product-id");
+        if (!keepIds.has(String(pid))) card.remove();
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const p of state.products) {
+        let card = grid.querySelector(`.card.product[data-product-id="${String(p.id)}"]`);
+        if (!card) {
+            card = createProductCard(p);
+        }
+        fragment.append(card);
+    }
+    grid.append(fragment);
+}
+
 /** FULL render (first load or hard rebuild). */
 function renderProducts() {
     const grid = qs("grid");
     grid.innerHTML = "";
 
     for (const p of state.products) {
-        const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
-
-        const card = el("div", {class: "card product", "data-product-id": String(p.id)});
-
-        const thumbImg = img
-            ? el("img", {src: img, alt: p.title, "data-thumb-id": String(p.id)})
-            : null;
-
-        const thumb = el("div", {class: "thumb"},
-            thumbImg ? [thumbImg] : [el("div", {class: "small", html: "Нет фото"})]
-        );
-
-        const name = el("div", {class: "name", "data-field": "title"}, [p.title]);
-        const statusBadge = el("span", {
-            class: `status-tag${p.active ? " hidden" : ""}`,
-            "data-field": "status"
-        }, [p.active ? "" : "Скрыт"]);
-        const nameRow = el("div", {class: "name-row"}, [name, statusBadge]);
-
-        const priceEl = el("b", {class: "js-price"}, [String(p.priceMinor)]);
-        const stockEl = el("b", {class: "js-stock"}, [p.stock ? String(p.stock) : "Нет в наличии"]);
-
-        const meta = el("div", {class: "meta"}, [
-            el("div", {class: "block"}, [
-                el("i", {class: "fa-regular fa-hryvnia-sign"}, []),
-                priceEl
-            ]),
-            el("div", {class: "block js-stock-wrap"}, [
-                p.stock
-                    ? el("i", {class: "fa-regular fa-cubes"}, [])
-                    : el("span", {}, []),
-                stockEl
-            ])
-        ]);
-
-        const btnRow = el("div", {class: "actions"}, [
-            el("button", {
-                class: "pill", onclick: (e) => {
-                    e.stopPropagation();
-                    openProduct(p);
-                }
-            }, [document.createTextNode("Подробнее")]),
-            // el("button", {
-            //     class: "primary pill js-add", onclick: (e) => {
-            //         e.stopPropagation();
-            //         addToCart(p.id, 1);
-            //     }
-            // }, [document.createTextNode("В корзину")]),
-        ]);
-
-        card.append(thumb, nameRow, meta, btnRow);
-        card.addEventListener("click", () => openProduct(p));
-        grid.append(card);
-
-        updateCardAvailability(card, p);
-        updateCardActiveState(card, p);
+        grid.append(createProductCard(p));
     }
 }
 
@@ -225,9 +302,47 @@ function closeModal() {
     qs("modal").classList.add("hidden");
 }
 
+function openSortModal() {
+    const modal = qs("sortModal");
+    modal.classList.remove("hidden");
+    setSortOptionState();
+}
+
+function closeSortModal() {
+    qs("sortModal").classList.add("hidden");
+}
+
+function setSortOptionState() {
+    const options = document.querySelectorAll(".sort-option");
+    for (const opt of options) {
+        const isActive = opt.getAttribute("data-sort") === state.sort;
+        opt.classList.toggle("active", isActive);
+    }
+}
+
+function applySort(nextSort) {
+    state.sort = nextSort;
+    state.products = sortedProducts(state.products);
+    syncProductCards();
+    setSortOptionState();
+}
+
 qs("closeModal").addEventListener("click", closeModal);
 qs("modal").addEventListener("click", (e) => {
     if (e.target === qs("modal")) closeModal();
+});
+
+qs("sortBtn").addEventListener("click", openSortModal);
+qs("sortModalClose").addEventListener("click", closeSortModal);
+qs("sortModal").addEventListener("click", (e) => {
+    if (e.target === qs("sortModal")) closeSortModal();
+});
+document.querySelectorAll(".sort-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+        const nextSort = btn.getAttribute("data-sort") || "default";
+        applySort(nextSort);
+        closeSortModal();
+    });
 });
 
 function addToCart(productId, delta) {
@@ -255,6 +370,22 @@ function addToCart(productId, delta) {
 
 function updateCartBadge() {
     qs("cartCount").textContent = String(cartCount());
+
+    if (tg) {
+        const cnt = cartCount();
+        if (cnt > 0) {
+            const { sum, cur } = cartTotal();
+            tg.MainButton.setText(`Оформить заказ • ${sum} ${cur}`);
+            tg.MainButton.show();
+            if (!state.mainBtnBound) {
+                tg.MainButton.onClick(openCheckout);
+                state.mainBtnBound = true;
+            }
+        } else {
+            tg.MainButton.hide();
+        }
+    }
+
 }
 
 function openProduct(p) {
@@ -457,62 +588,37 @@ async function refreshProductsSoft() {
     const freshById = new Map(fresh.map(p => [String(p.id), p]));
     const oldById = new Map(state.products.map(p => [String(p.id), p]));
 
-    // 1) rebuild state.products keeping old order (append new to the end)
-    const nextProducts = [];
-    for (const old of state.products) {
-        const pid = String(old.id);
-        const fp = freshById.get(pid);
-        if (fp) nextProducts.push(fp);
-    }
-    for (const fp of fresh) {
-        const pid = String(fp.id);
-        if (!oldById.has(pid)) nextProducts.push(fp);
+    let nextProducts = [];
+    if (state.sort === "default") {
+        for (const old of state.products) {
+            const pid = String(old.id);
+            const fp = freshById.get(pid);
+            if (fp) nextProducts.push(fp);
+        }
+        for (const fp of fresh) {
+            const pid = String(fp.id);
+            if (!oldById.has(pid)) nextProducts.push(fp);
+        }
+    } else {
+        nextProducts = sortedProducts(fresh);
     }
     state.products = nextProducts;
 
     // 2) rebind cart products to new objects (cart.product references)
     bindCartProducts();
 
-    // 3) patch existing DOM cards
+    // 3) patch existing DOM cards + create missing
     for (const fp of fresh) {
         const pid = String(fp.id);
-        const card = document.querySelector(`.card.product[data-product-id="${pid}"]`);
-        if (!card) continue;
-
+        let card = document.querySelector(`.card.product[data-product-id="${pid}"]`);
         const old = oldById.get(pid);
-
-        // title
-        if (!old || old.title !== fp.title) {
-            const t = card.querySelector('[data-field="title"]');
-            if (t) t.textContent = fp.title;
-        }
-
-        // price
-        if (!old || old.priceMinor !== fp.priceMinor) {
-            const pr = card.querySelector(".js-price");
-            if (pr) pr.textContent = String(fp.priceMinor);
-        }
-
-        // active flag (hidden)
-        if (!old || old.active !== fp.active) {
-            updateCardActiveState(card, fp);
-        }
-
-        // stock
-        if (!old || old.stock !== fp.stock) {
-            const st = card.querySelector(".js-stock");
-            if (st) st.textContent = fp.stock ? String(fp.stock) : "Нет в наличии";
-            updateCardAvailability(card, fp);
-        }
-
-        // main thumb image (only src swap, no layout changes)
-        const oldImg = (old?.imageUrls && old.imageUrls[0]) ? old.imageUrls[0] : null;
-        const newImg = (fp.imageUrls && fp.imageUrls[0]) ? fp.imageUrls[0] : null;
-        if (oldImg !== newImg) {
-            const imgEl = card.querySelector(`img[data-thumb-id="${pid}"]`);
-            if (imgEl && newImg) imgEl.src = newImg;
+        if (!card) {
+            card = createProductCard(fp);
+        } else {
+            updateCardData(card, fp, old);
         }
     }
+    syncProductCards();
 
     // 4) clamp cart quantities if stock decreased
     let changed = false;
@@ -555,7 +661,8 @@ function startProductsAutoRefresh() {
 }
 
 async function loadProducts() {
-    state.products = await apiGet(productsEndpoint());
+    const fresh = await apiGet(productsEndpoint());
+    state.products = sortedProducts(fresh);
     bindCartProducts();
     renderProducts();
     startThumbRotator();
@@ -588,6 +695,7 @@ async function boot() {
     updateCartBadge();
 
     qs("cartBtn").addEventListener("click", openCartBtn);
+    setSortOptionState();
 }
 
 boot();
@@ -601,21 +709,32 @@ function startThumbRotator() {
         if (!state.thumbIndex.has(pid)) state.thumbIndex.set(pid, 0);
     }
 
+    const intervalMs = 5200;
+    const staggerMs = 280;
     state.thumbTimer = setInterval(() => {
-        for (const p of state.products) {
+        const items = [...state.products];
+        items.forEach((p, index) => {
             const urls = (p.imageUrls || []).filter(Boolean);
-            if (urls.length <= 1) continue;
+            if (urls.length <= 1) return;
 
             const pid = String(p.id);
             const imgEl = document.querySelector(`img[data-thumb-id="${pid}"]`);
-            if (!imgEl) continue;
+            if (!imgEl) return;
 
-            const cur = state.thumbIndex.get(pid) || 0;
-            const next = (cur + 1) % urls.length;
-            state.thumbIndex.set(pid, next);
-            imgEl.src = urls[next];
-        }
-    }, 5000);
+            const delay = (index % 10) * staggerMs + Math.floor(Math.random() * 120);
+            window.setTimeout(() => {
+                const cur = state.thumbIndex.get(pid) || 0;
+                const next = (cur + 1) % urls.length;
+                state.thumbIndex.set(pid, next);
+                imgEl.classList.add("thumb-fade");
+                imgEl.addEventListener("transitionend", function onFade() {
+                    imgEl.removeEventListener("transitionend", onFade);
+                    imgEl.src = urls[next];
+                    requestAnimationFrame(() => imgEl.classList.remove("thumb-fade"));
+                }, {once: true});
+            }, delay);
+        });
+    }, intervalMs);
 }
 
 function createGallery(urls, altText = "") {
