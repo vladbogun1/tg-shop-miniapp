@@ -6,6 +6,7 @@ import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -13,6 +14,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 @Service
+@Slf4j
 public class TelegramNotifyService {
 
     public static final String CB_APPROVE_PREFIX = "order:approve:";
@@ -35,7 +37,10 @@ public class TelegramNotifyService {
     /** Админу: новый заказ + кнопки approve/reject */
     public void notifyNewOrder(OrderEntity order) {
         String chatId = getAdminChatId();
-        if (chatId == null || chatId.isBlank()) return;
+        if (chatId == null || chatId.isBlank()) {
+            log.warn("🤖 TG Skipping admin notification: admin chat id not configured");
+            return;
+        }
 
         String text = buildAdminOrderText(order);
 
@@ -60,12 +65,16 @@ public class TelegramNotifyService {
                 .replyMarkup(kb)
                 .build();
 
+        log.info("🤖 TG Sending admin notification for order uuid={} chatId={}", order.uuid(), chatId);
         sender.safeExecute(msg);
     }
 
     /** Пользователю: сразу после оформления */
     public void notifyUserOrderPlaced(OrderEntity order) {
-        if (order.getTgUserId() <= 0) return;
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user notification: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("✅ <b>Заказ принят</b>\n");
@@ -81,12 +90,16 @@ public class TelegramNotifyService {
                 .text(sb.toString())
                 .build();
 
+        log.info("🤖 TG Sending user order placed notification uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
         sender.safeExecute(msg);
     }
 
     /** Пользователю: когда админ одобрил/отклонил */
     public void notifyUserOrderStatus(OrderEntity order, OrderDecision decision) {
-        if (order.getTgUserId() <= 0) return;
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user status notification: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
 
         String text = switch (decision) {
             case APPROVED -> "✅ <b>Ваш заказ одобрен</b>\n" +
@@ -103,6 +116,8 @@ public class TelegramNotifyService {
                 .text(text)
                 .build();
 
+        log.info("🤖 TG Sending user order status notification uuid={} decision={} tgUserId={}",
+                order.uuid(), decision, order.getTgUserId());
         sender.safeExecute(msg);
     }
 
@@ -148,7 +163,9 @@ public class TelegramNotifyService {
 
     private String getAdminChatId() {
         Optional<Setting> s = settingRepository.findById("ADMIN_CHAT_ID");
-        if (s.isPresent()) return s.get().getValue();
+        if (s.isPresent()) {
+            return s.get().getValue();
+        }
         return props.getTelegram().getDefaultAdminChatId();
     }
 
