@@ -43,5 +43,6 @@ public class AppProperties {
   @Getter @Setter
   public static class Security {
     private boolean allowUnsignedInitData;
+    private String adminPassword;
   }
 }

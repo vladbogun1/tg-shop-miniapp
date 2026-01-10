@@ -19,46 +19,12 @@
         </div>
 
         <div class="header-right">
-            <button id="settingsBtn" class="pill icon-btn hidden" title="Настройки">⚙️</button>
             <button id="cartBtn" class="pill">🧺 Корзина <span id="cartCount" class="badge">0</span></button>
         </div>
     </div>
 </header>
 
 <main id="app">
-    <div id="admin" class="hidden">
-        <h2 style="padding:0 12px">🛠️ Добавить товар</h2>
-        <form id="productForm" class="card" style="margin: 0 12px 12px 12px">
-            <label>Название
-                <input name="title" required/>
-            </label>
-
-            <label>Описание
-                <textarea name="description" rows="3"></textarea>
-            </label>
-
-            <label>Цена (например 1500)
-                <input name="priceMinor" type="number" min="0" value="1500" required/>
-            </label>
-
-            <label>Валюта
-                <input name="currency" value="UAH" required/>
-            </label>
-
-            <label>Остаток (stock)
-                <input name="stock" type="number" min="0" value="1" required/>
-            </label>
-
-            <label>URL картинок (через запятую)
-                <input name="imageUrls" placeholder="https://... , https://..."/>
-            </label>
-
-            <button type="submit" style="margin-top:12px;width:100%">➕ Добавить</button>
-            <div class="hint">Подсказка: загрузи фото на хостинг/телеграм и вставь прямые URL.</div>
-        </form>
-        <hr class="sep"/>
-    </div>
-
     <section id="grid" class="grid"></section>
 
     <div id="modal" class="modal hidden">
