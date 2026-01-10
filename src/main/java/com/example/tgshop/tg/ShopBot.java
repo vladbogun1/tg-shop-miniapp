@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -23,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 @Component
+@Slf4j
 public class ShopBot extends TelegramLongPollingBot {
 
     private final AppProperties props;
@@ -52,6 +54,7 @@ public class ShopBot extends TelegramLongPollingBot {
 
         // 1) inline callbacks (approve/reject)
         if (update.hasCallbackQuery()) {
+            log.info("🤖 TG Received callback query update");
             handleCallback(update);
             return;
         }
@@ -65,14 +68,17 @@ public class ShopBot extends TelegramLongPollingBot {
         var from = update.getMessage().getFrom();
         long userId = from != null ? from.getId() : 0;
 
+        log.info("🤖 TG Received message command={} chatId={} userId={}", text, chatId, userId);
         switch (text) {
             case "/start", "/shop" -> sendShopButton(chatId);
             case "/set_admin_chat" -> {
                 if (!isAdmin(userId)) {
+                    log.warn("🤖 TG Admin chat setup rejected for non-admin userId={}", userId);
                     safeExecute(SendMessage.builder().chatId(chatId).text("⛔ Нет доступа").build());
                     return;
                 }
                 settings.save(new Setting("ADMIN_CHAT_ID", String.valueOf(chatId)));
+                log.info("🤖 TG Admin chat configured chatId={} userId={}", chatId, userId);
                 safeExecute(SendMessage.builder().chatId(chatId).text("✅ Этот чат теперь будет получать уведомления о заказах.").build());
             }
             case "/help" -> safeExecute(SendMessage.builder().chatId(chatId).text(
@@ -91,6 +97,7 @@ public class ShopBot extends TelegramLongPollingBot {
 
         // кто нажал — не админ
         if (!isAdmin(fromUserId)) {
+            log.warn("🤖 TG Callback rejected for non-admin userId={}", fromUserId);
             safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
                 .text("⛔ Нет доступа")
@@ -110,6 +117,7 @@ public class ShopBot extends TelegramLongPollingBot {
             decision = TelegramNotifyService.OrderDecision.REJECTED;
             uuidStr = data.substring(TelegramNotifyService.CB_REJECT_PREFIX.length());
         } else {
+            log.warn("🤖 TG Callback rejected: unknown data {}", data);
             safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
                 .text("Неизвестная команда")
@@ -121,6 +129,7 @@ public class ShopBot extends TelegramLongPollingBot {
         try {
             uuid = UUID.fromString(uuidStr);
         } catch (Exception e) {
+            log.warn("🤖 TG Callback rejected: invalid uuid {}", uuidStr);
             safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
                 .text("Некорректный ID заказа")
@@ -133,6 +142,8 @@ public class ShopBot extends TelegramLongPollingBot {
             OrderEntity updated = (decision == TelegramNotifyService.OrderDecision.APPROVED)
                 ? orderService.approve(uuid)
                 : orderService.reject(uuid);
+
+            log.info("🤖 TG Order decision applied uuid={} decision={}", updated.uuid(), decision);
 
             // обновим сообщение в админ-чате (подпишем статус + уберем кнопки)
             String newText = buildAdminDecisionText(updated, decision);
@@ -156,6 +167,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .build());
 
         } catch (Exception e) {
+            log.error("🤖 TG Failed to handle callback decision uuid={} decision={}", uuidStr, decision, e);
             safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
                 .text("Ошибка при обновлении заказа")
@@ -206,6 +218,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .keyboardRow(List.of(btn))
                 .build();
 
+        log.info("🤖 TG Sending shop button to chatId={}", chatId);
         safeExecute(SendMessage.builder()
                 .chatId(chatId)
                 .text("Открывай мини-приложение магазина 👇")
@@ -221,25 +234,33 @@ public class ShopBot extends TelegramLongPollingBot {
     public void safeExecute(SendMessage msg) {
         try {
             execute(msg);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send message", e);
+        }
     }
 
     public void safeExecute(AnswerCallbackQuery msg) {
         try {
             execute(msg);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to answer callback query", e);
+        }
     }
 
     public void safeExecute(EditMessageText msg) {
         try {
             execute(msg);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to edit message text", e);
+        }
     }
 
     public void safeExecute(EditMessageReplyMarkup msg) {
         try {
             execute(msg);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to edit message reply markup", e);
+        }
     }
 
     private static String escapeHtml(String s) {
