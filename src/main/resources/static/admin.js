@@ -192,6 +192,15 @@ function closeAllTagDropdowns() {
     document.querySelectorAll(".tag-dropdown").forEach((node) => node.classList.add("hidden"));
 }
 
+function positionDropdown(dropdown, anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const width = Math.min(320, rect.width);
+    const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+    dropdown.style.width = `${width}px`;
+    dropdown.style.left = `${left}px`;
+    dropdown.style.top = `${rect.bottom + 8}px`;
+}
+
 function renderTagPicker(container, selectedIds) {
     if (!container) return;
     container.innerHTML = "";
@@ -245,6 +254,9 @@ function renderTagPicker(container, selectedIds) {
                 e.stopPropagation();
                 const shouldOpen = dropdown.classList.contains("hidden");
                 closeAllTagDropdowns();
+                if (shouldOpen) {
+                    positionDropdown(dropdown, container);
+                }
                 dropdown.classList.toggle("hidden", !shouldOpen);
             },
         }, [el("i", {class: "fa-solid fa-plus"})]),
