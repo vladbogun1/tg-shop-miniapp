@@ -15,6 +15,7 @@ public record OrderDto(
     long tgUserId,
     String tgUsername,
     String status,
+    String trackingNumber,
     Instant createdAt,
     List<OrderItemDto> items
 ) {}
