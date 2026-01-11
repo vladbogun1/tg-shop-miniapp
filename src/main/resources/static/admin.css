@@ -264,6 +264,85 @@ button.ghost {
     color: var(--text);
 }
 
+.tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 2px;
+}
+
+.tag-pill {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(51, 177, 255, 0.15);
+    border: 1px solid rgba(51, 177, 255, 0.35);
+    color: #ccecff;
+}
+
+.tag-select {
+    display: grid;
+    gap: 8px;
+}
+
+.tag-select-title {
+    font-weight: 600;
+}
+
+.tag-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tag-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 12px;
+}
+
+.tags-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.tags-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tags-form {
+    gap: 12px;
+    align-items: center;
+}
+
+.tags-form input {
+    flex: 1 1 auto;
+}
+
+.tags-list {
+    display: grid;
+    gap: 10px;
+}
+
+.tag-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .meta {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -11,6 +11,7 @@ public record ProductDto(
     String currency,
     int stock,
     List<String> imageUrls,
+    List<TagDto> tags,
     boolean active,
     boolean archived,
     long soldCount

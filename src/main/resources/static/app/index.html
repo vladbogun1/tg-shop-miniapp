@@ -19,12 +19,18 @@
         </div>
 
         <div class="header-right">
+            <button id="searchBtn" class="pill icon-btn" aria-label="Поиск">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
             <button id="sortBtn" class="pill icon-btn" aria-label="Сортировка">
                 <i class="fa-solid fa-arrow-down-short-wide"></i>
             </button>
-            <button id="cartBtn" class="pill">🧺 Корзина <span id="cartCount" class="badge">0</span></button>
+            <button id="cartBtn" class="pill icon-btn" aria-label="Корзина">
+                🧺 <span id="cartCount" class="badge">0</span>
+            </button>
         </div>
     </div>
+    <div id="tagFilters" class="tag-filters"></div>
 </header>
 
 <main id="app">
@@ -48,6 +54,19 @@
                 <button class="sort-option" data-sort="price-asc">Цена ↑</button>
                 <button class="sort-option" data-sort="price-desc">Цена ↓</button>
                 <button class="sort-option" data-sort="sold">Популярные</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="searchModal" class="sort-modal hidden" role="dialog" aria-modal="true">
+        <div class="sort-modal-card">
+            <div class="sort-modal-header">
+                <div class="sort-modal-title">Поиск по товарам</div>
+                <button id="searchModalClose" class="icon">✖</button>
+            </div>
+            <div class="search-panel">
+                <input id="searchInput" type="search" placeholder="Введите название товара"/>
+                <button id="searchClear" class="pill ghost">Сбросить</button>
             </div>
         </div>
     </div>
