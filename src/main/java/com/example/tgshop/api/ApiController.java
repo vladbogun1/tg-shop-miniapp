@@ -330,6 +330,7 @@ public class ApiController {
             o.getTgUserId(),
             o.getTgUsername(),
             o.getStatus(),
+            o.getTrackingNumber(),
             o.getCreatedAt(),
             o.getItems().stream()
                 .map(i -> new OrderItemDto(
