@@ -3,12 +3,15 @@ package com.example.tgshop.api;
 import com.example.tgshop.api.dto.AdminLoginRequest;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
+import com.example.tgshop.api.dto.CreateTagRequest;
 import com.example.tgshop.api.dto.OrderDto;
 import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
+import com.example.tgshop.api.dto.TagDto;
 import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
+import com.example.tgshop.api.dto.UpdateTagRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
@@ -18,6 +21,8 @@ import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
 import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
+import com.example.tgshop.tag.Tag;
+import com.example.tgshop.tag.TagRepository;
 import com.example.tgshop.tg.TgPostImageResolver;
 import jakarta.validation.Valid;
 
@@ -42,6 +47,7 @@ public class ApiController {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final TgPostImageResolver tgPostImageResolver;
+    private final TagRepository tagRepository;
 
 
     @GetMapping("/products")
@@ -55,6 +61,15 @@ public class ApiController {
         return result;
     }
 
+    @GetMapping("/tags")
+    public List<TagDto> tags() {
+        log.info("🛒 API Requesting tags");
+        return tagRepository.findAll().stream()
+            .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+            .map(ApiController::toTagDto)
+            .toList();
+    }
+
     @GetMapping("/admin/products")
     public List<ProductDto> adminProducts(@RequestParam(value = "initData", required = false) String initData,
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
@@ -66,6 +81,69 @@ public class ApiController {
             .toList();
         log.debug("🛒 API Returning {} products for admin", result.size());
         return result;
+    }
+
+    @GetMapping("/admin/tags")
+    public List<TagDto> adminTags(@RequestParam(value = "initData", required = false) String initData,
+                                  @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        log.info("🛒 API Requesting admin tag list");
+        return tagRepository.findAll().stream()
+            .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
+            .map(ApiController::toTagDto)
+            .toList();
+    }
+
+    @PostMapping("/admin/tags")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TagDto createTag(@RequestParam(value = "initData", required = false) String initData,
+                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                            @RequestBody @Valid CreateTagRequest req) {
+        assertAdmin(initData, adminPassword);
+        String name = req.name().trim();
+        log.info("🛒 API Creating tag name={}", name);
+        var existing = tagRepository.findByNameIgnoreCase(name);
+        if (existing.isPresent()) {
+            log.info("🛒 API Tag already exists name={}", name);
+            return toTagDto(existing.get());
+        }
+        Tag tag = new Tag();
+        tag.setName(name);
+        var saved = tagRepository.save(tag);
+        log.info("🛒 API Tag created uuid={}", saved.uuid());
+        return toTagDto(saved);
+    }
+
+    @PatchMapping("/admin/tags/{id}")
+    public TagDto updateTag(@PathVariable("id") UUID id,
+                            @RequestParam(value = "initData", required = false) String initData,
+                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                            @RequestBody @Valid UpdateTagRequest req) {
+        assertAdmin(initData, adminPassword);
+        String name = req.name().trim();
+        log.info("🛒 API Updating tag uuid={} name={}", id, name);
+        Tag tag = tagRepository.findById(UuidUtil.toBytes(id))
+            .orElseThrow(() -> new NotFound("Tag not found: " + id));
+        var existing = tagRepository.findByNameIgnoreCase(name);
+        if (existing.isPresent() && !existing.get().uuid().equals(tag.uuid())) {
+            throw new BadRequest("Tag name already exists");
+        }
+        tag.setName(name);
+        var saved = tagRepository.save(tag);
+        return toTagDto(saved);
+    }
+
+    @DeleteMapping("/admin/tags/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTag(@PathVariable("id") UUID id,
+                          @RequestParam(value = "initData", required = false) String initData,
+                          @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        log.info("🛒 API Deleting tag uuid={}", id);
+        Tag tag = tagRepository.findById(UuidUtil.toBytes(id))
+            .orElseThrow(() -> new NotFound("Tag not found: " + id));
+        tagRepository.delete(tag);
+        log.info("🛒 API Tag deleted uuid={}", id);
     }
 
     @GetMapping("/admin/products/archived")
@@ -171,6 +249,7 @@ public class ApiController {
         p.setStock(req.stock());
         p.setActive(req.active());
         p.setArchived(false);
+        p.getTags().addAll(resolveTags(req.tagIds()));
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         log.debug("🛒 API Resolved {} image urls for new product", resolvedUrls.size());
@@ -252,6 +331,8 @@ public class ApiController {
             img.setSortOrder(i++);
             product.getImages().add(img);
         }
+        product.getTags().clear();
+        product.getTags().addAll(resolveTags(req.tagIds()));
 
         var saved = productRepository.save(product);
         log.info("🛒 API Updated product uuid={} images={}", saved.uuid(), saved.getImages().size());
@@ -328,10 +409,24 @@ public class ApiController {
                 p.getCurrency(),
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
+                p.getTags().stream().map(ApiController::toTagDto).toList(),
                 p.isActive(),
                 p.isArchived(),
                 soldCount
         );
+    }
+
+    private static TagDto toTagDto(Tag tag) {
+        return new TagDto(tag.uuid(), tag.getName());
+    }
+
+    private List<Tag> resolveTags(List<UUID> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) return List.of();
+        var ids = tagIds.stream()
+            .filter(id -> id != null)
+            .map(UuidUtil::toBytes)
+            .toList();
+        return tagRepository.findAllById(ids);
     }
 
     private static OrderDto toOrderDto(com.example.tgshop.order.OrderEntity o) {
@@ -376,6 +471,13 @@ public class ApiController {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     private static class NotFound extends RuntimeException {
         NotFound(String m) {
+            super(m);
+        }
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    private static class BadRequest extends RuntimeException {
+        BadRequest(String m) {
             super(m);
         }
     }
