@@ -337,9 +337,7 @@ button.ghost {
 }
 
 .tag-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
+    position: fixed;
     width: min(320px, 100%);
     background: #141b24;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -347,8 +345,10 @@ button.ghost {
     padding: 8px;
     display: grid;
     gap: 6px;
-    z-index: 5;
+    z-index: 20;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    max-height: 220px;
+    overflow-y: auto;
 }
 
 .tag-dropdown.hidden {
