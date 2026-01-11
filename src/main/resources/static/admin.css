@@ -347,7 +347,7 @@ button.ghost {
     gap: 6px;
     z-index: 20;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-    max-height: 220px;
+    max-height: 90px;
     overflow-y: auto;
 }
 
