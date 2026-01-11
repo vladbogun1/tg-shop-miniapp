@@ -384,6 +384,11 @@ public class ShopBot extends TelegramLongPollingBot {
         try {
             execute(msg);
         } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("message is not modified")) {
+                log.debug("🤖 TG Skipping reply markup update: message not modified");
+                return;
+            }
             log.error("🤖 TG Failed to edit message reply markup", e);
         }
     }
