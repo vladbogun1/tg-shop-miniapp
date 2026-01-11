@@ -457,7 +457,7 @@ function openProduct(p) {
             ]),
         ]),
         el("div", {class: "hr"}),
-        el("div", {}, [document.createTextNode(p.description || "Без описания")]),
+        el("div", {class: "product-description"}, [document.createTextNode(p.description || "Без описания")]),
         el("div", {class: "hr"}),
         gallery,
         el("div", {class: "hr"}),
