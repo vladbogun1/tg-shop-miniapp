@@ -339,7 +339,14 @@ function sortedProducts(list) {
     if (state.sort === "sold") {
         return [...list].sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0));
     }
-    return list;
+    const withIndex = list.map((item, index) => ({
+        item,
+        index,
+        out: !(item.stock > 0),
+    }));
+    return withIndex
+        .sort((a, b) => (a.out === b.out ? a.index - b.index : a.out - b.out))
+        .map(({item}) => item);
 }
 
 function syncProductCards() {
