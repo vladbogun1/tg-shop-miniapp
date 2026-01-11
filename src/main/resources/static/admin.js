@@ -2,6 +2,7 @@ const state = {
     products: [],
     orders: [],
     archivedProducts: [],
+    tags: [],
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
@@ -50,7 +51,9 @@ async function apiPost(url, body) {
     });
     const text = await r.text();
     if (!r.ok) throw new Error(text);
-    return text;
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return text;
+    return JSON.parse(text);
 }
 
 async function apiPatch(url, body) {
@@ -164,6 +167,50 @@ async function loadArchived() {
     }
 }
 
+async function loadTags() {
+    try {
+        state.tags = await apiGet("/api/admin/tags");
+        renderTags();
+        renderTagOptions(qs("productTagOptions"), new Set());
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
+    }
+}
+
+function renderTagOptions(container, selectedIds) {
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (!state.tags.length) {
+        container.append(el("div", {class: "hint"}, [document.createTextNode("Сначала добавь теги во вкладке «Теги».")]));
+        return;
+    }
+
+    state.tags.forEach((tag) => {
+        const id = String(tag.id);
+        const label = el("label", {class: "tag-option"}, [
+            el("input", {
+                type: "checkbox",
+                name: "tagIds",
+                value: id,
+                ...(selectedIds.has(id) ? {checked: "true"} : {}),
+            }),
+            el("span", {}, [document.createTextNode(tag.name)]),
+        ]);
+        container.append(label);
+    });
+}
+
+function renderTagPills(tags) {
+    if (!tags || !tags.length) return el("div", {class: "tag-row hidden"}, []);
+    const row = el("div", {class: "tag-row"});
+    tags.forEach((tag) => {
+        row.append(el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]));
+    });
+    return row;
+}
+
 function renderProducts() {
     const grid = qs("productGrid");
     grid.innerHTML = "";
@@ -184,11 +231,12 @@ function renderProducts() {
                 ? el("span", {class: "status-tag"}, [document.createTextNode("Скрыт")])
                 : el("span", {class: "status-tag hidden"}, [])
         ]);
+        const tags = renderTagPills(p.tags);
         const meta = el("div", {class: "meta"}, [
             el("div", {}, [document.createTextNode(`Цена: ${money(p)}`)]),
             el("div", {}, [document.createTextNode(p.stock > 0 ? `Остаток: ${p.stock}` : "Нет в наличии")]),
         ]);
-        card.append(imgEl, title, meta);
+        card.append(imgEl, title, tags, meta);
 
         if (!state.viewAsCustomer) {
             const actions = el("div", {class: "actions"}, [
@@ -311,6 +359,7 @@ function renderArchived() {
             document.createTextNode(p.title),
             el("span", {class: "status-tag"}, [document.createTextNode("Архив")]),
         ]);
+        const tags = renderTagPills(p.tags);
         const meta = el("div", {class: "meta"}, [
             el("div", {}, [document.createTextNode(`Цена: ${money(p)}`)]),
             el("div", {}, [document.createTextNode(p.stock > 0 ? `Остаток: ${p.stock}` : "Нет в наличии")]),
@@ -327,7 +376,7 @@ function renderArchived() {
             }, [el("i", {class: "fa-solid fa-rotate-left"})]),
         ]);
 
-        card.append(imgEl, title, meta, actions);
+        card.append(imgEl, title, tags, meta, actions);
         grid.append(card);
     }
 
@@ -339,15 +388,20 @@ function setActiveTab(tab) {
     qs("tabCatalog").classList.toggle("active", tab === "catalog");
     qs("tabOrders").classList.toggle("active", tab === "orders");
     qs("tabArchive").classList.toggle("active", tab === "archive");
+    qs("tabTags").classList.toggle("active", tab === "tags");
     qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
     qs("ordersSection").classList.toggle("hidden", tab !== "orders");
     qs("archiveSection").classList.toggle("hidden", tab !== "archive");
+    qs("tagsSection").classList.toggle("hidden", tab !== "tags");
     if (tab === "orders") {
         qs("catalogMeta").textContent = "История покупок";
         loadOrders();
     } else if (tab === "archive") {
         qs("catalogMeta").textContent = "Архив товаров";
         loadArchived();
+    } else if (tab === "tags") {
+        qs("catalogMeta").textContent = "Теги товаров";
+        loadTags();
     } else {
         loadProducts();
     }
@@ -394,6 +448,9 @@ function parseImageUrls(raw) {
 
 function openEditModal(p) {
     const form = el("form", {class: "stack"});
+    const selectedTags = new Set((p.tags || []).map((tag) => String(tag.id)));
+    const tagOptions = el("div", {class: "tag-options"});
+    renderTagOptions(tagOptions, selectedTags);
     form.append(
         el("h2", {}, [document.createTextNode("Редактирование товара")]),
         el("label", {}, [
@@ -422,6 +479,10 @@ function openEditModal(p) {
             document.createTextNode("URL картинок (перезапишет старые)"),
             el("textarea", {name: "imageUrls", rows: "3"}, [(p.imageUrls || []).join("\n")]),
         ]),
+        el("div", {class: "tag-select"}, [
+            el("div", {class: "tag-select-title"}, [document.createTextNode("Теги")]),
+            tagOptions,
+        ]),
         el("label", {class: "checkbox"}, [
             el("input", {type: "checkbox", name: "active", ...(p.active ? {checked: "true"} : {})}),
             el("span", {}, [document.createTextNode("Показывать в каталоге")]),
@@ -442,6 +503,7 @@ function openEditModal(p) {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            tagIds: (fd.getAll("tagIds") || []).map((id) => String(id)),
             active: Boolean(fd.get("active")),
         };
 
@@ -499,6 +561,7 @@ function bindForm() {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            tagIds: (fd.getAll("tagIds") || []).map((id) => String(id)),
             active: Boolean(fd.get("active")),
         };
         if (!payload.title) return;
@@ -513,6 +576,36 @@ function bindForm() {
     });
 }
 
+function renderTags() {
+    const list = qs("tagsList");
+    list.innerHTML = "";
+    state.tags.forEach((tag) => {
+        const row = el("div", {class: "tag-item"}, [
+            el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]),
+            el("button", {
+                class: "pill danger icon-action",
+                title: "Удалить",
+                "aria-label": "Удалить",
+                onclick: async () => {
+                    if (!confirm(`Удалить тег "${tag.name}"?`)) return;
+                    try {
+                        await apiDelete(`/api/admin/tags/${tag.id}`);
+                        state.tags = state.tags.filter((t) => String(t.id) !== String(tag.id));
+                        renderTags();
+                        renderTagOptions(qs("productTagOptions"), new Set());
+                    } catch (err) {
+                        console.error(err);
+                        showLogin(true);
+                    }
+                }
+            }, [el("i", {class: "fa-solid fa-trash"})]),
+        ]);
+        list.append(row);
+    });
+    qs("tagsEmpty").classList.toggle("hidden", state.tags.length > 0);
+    qs("tagsMeta").textContent = `Всего тегов: ${state.tags.length}`;
+}
+
 function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
@@ -523,9 +616,12 @@ function boot() {
         document.querySelector(".layout")?.classList.toggle("single-column", state.viewAsCustomer);
         qs("tabOrders").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabArchive").classList.toggle("hidden", state.viewAsCustomer);
+        qs("tabTags").classList.toggle("hidden", state.viewAsCustomer);
         if (state.viewAsCustomer && state.activeTab === "orders") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "archive") {
+            setActiveTab("catalog");
+        } else if (state.viewAsCustomer && state.activeTab === "tags") {
             setActiveTab("catalog");
         } else {
             setActiveTab(state.activeTab);
@@ -534,11 +630,31 @@ function boot() {
     qs("tabCatalog").addEventListener("click", () => setActiveTab("catalog"));
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
+    qs("tabTags").addEventListener("click", () => setActiveTab("tags"));
     qs("closeModal").addEventListener("click", closeModal);
     bindForm();
+    qs("tagForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(qs("tagForm"));
+        const name = String(fd.get("name") || "").trim();
+        if (!name) return;
+        try {
+            const tag = await apiPost("/api/admin/tags", {name});
+            if (!state.tags.some((t) => String(t.id) === String(tag.id))) {
+                state.tags = [...state.tags, tag].sort((a, b) => a.name.localeCompare(b.name));
+            }
+            qs("tagForm").reset();
+            renderTags();
+            renderTagOptions(qs("productTagOptions"), new Set());
+        } catch (err) {
+            console.error(err);
+            showLogin(true);
+        }
+    });
 
     if (state.password) {
         showLogin(false);
+        loadTags();
         setActiveTab("catalog");
     } else {
         showLogin(true);

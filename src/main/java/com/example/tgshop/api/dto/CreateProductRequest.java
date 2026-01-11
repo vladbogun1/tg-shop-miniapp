@@ -3,6 +3,7 @@ package com.example.tgshop.api.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
+import java.util.UUID;
 
 public record CreateProductRequest(
     @NotBlank String title,
@@ -11,5 +12,6 @@ public record CreateProductRequest(
     @NotBlank String currency,
     @Min(0) int stock,
     List<@NotBlank String> imageUrls,
+    List<UUID> tagIds,
     boolean active
 ) {}

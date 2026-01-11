@@ -61,6 +61,11 @@
             <label>URL картинок (через запятую или новую строку)
                 <textarea name="imageUrls" rows="3" placeholder="https://..."></textarea>
             </label>
+            <div class="tag-select">
+                <div class="tag-select-title">Теги</div>
+                <div id="productTagOptions" class="tag-options"></div>
+                <div class="hint">Выбери теги для товара (например: клавиатура, мышка).</div>
+            </div>
             <label class="checkbox">
                 <input type="checkbox" name="active"/>
                 <span>Показывать в каталоге</span>
@@ -79,6 +84,7 @@
             <button id="tabCatalog" class="tab active"><i class="fa-solid fa-store"></i> Каталог</button>
             <button id="tabOrders" class="tab"><i class="fa-solid fa-receipt"></i> История покупок</button>
             <button id="tabArchive" class="tab"><i class="fa-solid fa-box-archive"></i> Архив</button>
+            <button id="tabTags" class="tab"><i class="fa-solid fa-tags"></i> Теги</button>
         </div>
 
         <section id="catalogSection" class="tab-section">
@@ -124,6 +130,21 @@
             </div>
             <div id="archiveGrid" class="grid"></div>
             <div id="archiveEmpty" class="orders-empty hidden">Архив пока пуст.</div>
+        </section>
+
+        <section id="tagsSection" class="tab-section hidden">
+            <div class="tags-panel">
+                <div class="tags-header">
+                    <div class="toolbar-title">Теги товаров</div>
+                    <div id="tagsMeta" class="toolbar-meta">Управление тегами</div>
+                </div>
+                <form id="tagForm" class="row tags-form">
+                    <input id="tagName" name="name" placeholder="Название тега" required/>
+                    <button type="submit" class="primary"><i class="fa-solid fa-plus"></i> Добавить</button>
+                </form>
+                <div id="tagsList" class="tags-list"></div>
+                <div id="tagsEmpty" class="orders-empty hidden">Теги пока не созданы.</div>
+            </div>
         </section>
     </section>
 </main>

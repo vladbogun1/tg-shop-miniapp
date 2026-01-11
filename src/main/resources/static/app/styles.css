@@ -63,6 +63,34 @@ a {
     padding: 10px 12px;
 }
 
+.tag-filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 12px 2px 0;
+    scrollbar-width: none;
+}
+
+.tag-filters::-webkit-scrollbar {
+    display: none;
+}
+
+.tag-filter {
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.tag-filter.active {
+    border-color: rgba(51, 177, 255, 0.6);
+    background: rgba(51, 177, 255, 0.2);
+    color: #d6f0ff;
+}
+
 .grid, .card, .product {
     min-width: 0;
 }
@@ -135,6 +163,21 @@ a {
 .sort-option.active {
     border-color: rgba(51, 177, 255, 0.5);
     background: rgba(51, 177, 255, 0.18);
+}
+
+.search-panel {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.search-panel input {
+    flex: 1 1 auto;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
 }
 
 @media (min-width: 900px) {
@@ -212,6 +255,21 @@ a {
     flex-shrink: 0;
 }
 
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tag-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(51, 177, 255, 0.15);
+    border: 1px solid rgba(51, 177, 255, 0.35);
+    color: #ccecff;
+}
+
 .status-line {
     color: var(--muted);
 }
@@ -279,6 +337,12 @@ button.danger {
     background: rgba(255, 90, 103, 0.18);
     border-color: rgba(255, 90, 103, 0.35);
     color: #ffd6d9;
+}
+
+button.ghost {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text);
 }
 
 .pill {

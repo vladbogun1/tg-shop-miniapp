@@ -22,6 +22,10 @@ const state = {
     initData: "",
     me: null,
     products: [],
+    filteredProducts: [],
+    tags: [],
+    activeTagId: "all",
+    searchQuery: "",
     cart: new Map(), // id -> {product, qty}
     mainBtnBound: false,
     sort: "default",
@@ -101,9 +105,84 @@ async function apiPost(url, body) {
     return JSON.parse(text);
 }
 
+function normalizeText(text) {
+    return String(text || "").toLowerCase().trim();
+}
 
 function productsEndpoint() {
     return "/api/products";
+}
+
+function buildTags(products) {
+    const tagMap = new Map();
+    products.forEach((p) => {
+        (p.tags || []).forEach((tag) => {
+            if (!tag || !tag.id) return;
+            tagMap.set(String(tag.id), tag.name);
+        });
+    });
+    return [...tagMap.entries()]
+        .map(([id, name]) => ({id, name}))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderTagFilters() {
+    const container = qs("tagFilters");
+    if (!container) return;
+    container.innerHTML = "";
+
+    if (state.activeTagId !== "all" && !state.tags.some((tag) => String(tag.id) === String(state.activeTagId))) {
+        state.activeTagId = "all";
+    }
+
+    const allBtn = el("button", {
+        class: `tag-filter${state.activeTagId === "all" ? " active" : ""}`,
+        onclick: () => setActiveTag("all"),
+    }, [document.createTextNode("Все")]);
+    container.append(allBtn);
+
+    state.tags.forEach((tag) => {
+        container.append(el("button", {
+            class: `tag-filter${state.activeTagId === String(tag.id) ? " active" : ""}`,
+            onclick: () => setActiveTag(String(tag.id)),
+        }, [document.createTextNode(tag.name)]));
+    });
+}
+
+function setActiveTag(tagId) {
+    state.activeTagId = tagId;
+    applyFilters();
+    renderTagFilters();
+}
+
+function applyFilters() {
+    updateFilteredProducts();
+    renderProducts();
+}
+
+function updateFilteredProducts() {
+    const query = normalizeText(state.searchQuery);
+    let filtered = [...state.products];
+
+    if (state.activeTagId !== "all") {
+        filtered = filtered.filter((p) =>
+            (p.tags || []).some((tag) => String(tag.id) === String(state.activeTagId))
+        );
+    }
+
+    if (query) {
+        filtered = filtered.filter((p) => normalizeText(p.title).includes(query));
+    }
+
+    state.filteredProducts = sortedProducts(filtered);
+}
+
+function createTagList(tags) {
+    const list = el("div", {class: "tag-list"});
+    (tags || []).forEach((tag) => {
+        list.append(el("span", {class: "tag-badge"}, [document.createTextNode(tag.name)]));
+    });
+    return list;
 }
 
 function ensureThumbIndex(p) {
@@ -181,6 +260,7 @@ function createProductCard(p) {
         "data-field": "status"
     }, [p.active ? "" : "Скрыт"]);
     const nameRow = el("div", {class: "name-row"}, [name, statusBadge]);
+    const tags = p.tags && p.tags.length ? createTagList(p.tags) : el("div", {class: "tag-list hidden"}, []);
 
     const priceEl = el("b", {class: "js-price"}, [String(p.priceMinor)]);
     const stockEl = el("b", {class: "js-stock"}, [p.stock ? String(p.stock) : "Нет в наличии"]);
@@ -208,7 +288,7 @@ function createProductCard(p) {
         }, [document.createTextNode("Подробнее")]),
     ]);
 
-    card.append(thumb, nameRow, meta, btnRow);
+    card.append(thumb, nameRow, tags, meta, btnRow);
     card.addEventListener("click", () => {
         const current = getProductById(pid);
         if (current) openProduct(current);
@@ -242,6 +322,17 @@ function updateCardData(card, p, old) {
         updateCardAvailability(card, p);
     }
 
+    if (!old || JSON.stringify(old.tags || []) !== JSON.stringify(p.tags || [])) {
+        const tagWrap = card.querySelector(".tag-list");
+        if (tagWrap) {
+            tagWrap.innerHTML = "";
+            (p.tags || []).forEach((tag) => {
+                tagWrap.append(el("span", {class: "tag-badge"}, [document.createTextNode(tag.name)]));
+            });
+            tagWrap.classList.toggle("hidden", !(p.tags && p.tags.length));
+        }
+    }
+
     const oldImg = (old?.imageUrls && old.imageUrls[0]) ? old.imageUrls[0] : null;
     const newImg = (p.imageUrls && p.imageUrls[0]) ? p.imageUrls[0] : null;
     if (oldImg !== newImg) {
@@ -266,14 +357,14 @@ function sortedProducts(list) {
 function syncProductCards() {
     const grid = qs("grid");
     const existing = grid.querySelectorAll(".card.product");
-    const keepIds = new Set(state.products.map(p => String(p.id)));
+    const keepIds = new Set(state.filteredProducts.map(p => String(p.id)));
     for (const card of existing) {
         const pid = card.getAttribute("data-product-id");
         if (!keepIds.has(String(pid))) card.remove();
     }
 
     const fragment = document.createDocumentFragment();
-    for (const p of state.products) {
+    for (const p of state.filteredProducts) {
         let card = grid.querySelector(`.card.product[data-product-id="${String(p.id)}"]`);
         if (!card) {
             card = createProductCard(p);
@@ -288,7 +379,7 @@ function renderProducts() {
     const grid = qs("grid");
     grid.innerHTML = "";
 
-    for (const p of state.products) {
+    for (const p of state.filteredProducts) {
         grid.append(createProductCard(p));
     }
 }
@@ -317,6 +408,20 @@ function closeSortModal() {
     qs("sortModal").classList.add("hidden");
 }
 
+function openSearchModal() {
+    const modal = qs("searchModal");
+    modal.classList.remove("hidden");
+    const input = qs("searchInput");
+    if (input) {
+        input.value = state.searchQuery || "";
+        input.focus();
+    }
+}
+
+function closeSearchModal() {
+    qs("searchModal").classList.add("hidden");
+}
+
 function setSortOptionState() {
     const options = document.querySelectorAll(".sort-option");
     for (const opt of options) {
@@ -327,8 +432,7 @@ function setSortOptionState() {
 
 function applySort(nextSort) {
     state.sort = nextSort;
-    state.products = sortedProducts(state.products);
-    syncProductCards();
+    applyFilters();
     setSortOptionState();
 }
 
@@ -348,6 +452,21 @@ document.querySelectorAll(".sort-option").forEach((btn) => {
         applySort(nextSort);
         closeSortModal();
     });
+});
+
+qs("searchBtn").addEventListener("click", openSearchModal);
+qs("searchModalClose").addEventListener("click", closeSearchModal);
+qs("searchModal").addEventListener("click", (e) => {
+    if (e.target === qs("searchModal")) closeSearchModal();
+});
+qs("searchInput").addEventListener("input", (e) => {
+    state.searchQuery = String(e.target.value || "");
+    applyFilters();
+});
+qs("searchClear").addEventListener("click", () => {
+    state.searchQuery = "";
+    qs("searchInput").value = "";
+    applyFilters();
 });
 
 function addToCart(productId, delta) {
@@ -447,6 +566,7 @@ function openProduct(p) {
 
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
+        p.tags && p.tags.length ? createTagList(p.tags) : el("div"),
         el("div", {class: "row-column"}, [
             el("div", {class: "column"}, [
                 el("div", {class: "small"}, [document.createTextNode(money(p))]),
@@ -656,6 +776,9 @@ async function refreshProductsSoft() {
         nextProducts = sortedProducts(fresh);
     }
     state.products = nextProducts;
+    const nextTags = buildTags(state.products);
+    const tagsChanged = JSON.stringify(nextTags) !== JSON.stringify(state.tags);
+    state.tags = nextTags;
 
     // 2) rebind cart products to new objects (cart.product references)
     bindCartProducts();
@@ -671,6 +794,8 @@ async function refreshProductsSoft() {
             updateCardData(card, fp, old);
         }
     }
+    updateFilteredProducts();
+    if (tagsChanged) renderTagFilters();
     syncProductCards();
 
     // 4) clamp cart quantities if stock decreased
@@ -715,9 +840,11 @@ function startProductsAutoRefresh() {
 
 async function loadProducts() {
     const fresh = await apiGet(productsEndpoint());
-    state.products = sortedProducts(fresh);
+    state.products = fresh;
+    state.tags = buildTags(state.products);
+    renderTagFilters();
     bindCartProducts();
-    renderProducts();
+    applyFilters();
     startThumbRotator();
     startProductsAutoRefresh();
 }
