@@ -9,8 +9,8 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,7 +36,7 @@ public class Tag {
 
   @ToString.Exclude
   @ManyToMany(mappedBy = "tags")
-  private List<Product> products = new ArrayList<>();
+  private Set<Product> products = new LinkedHashSet<>();
 
   @PrePersist
   void prePersist() {
