@@ -503,9 +503,6 @@ function boot() {
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("closeModal").addEventListener("click", closeModal);
-    qs("modal").addEventListener("click", (e) => {
-        if (e.target === qs("modal")) closeModal();
-    });
     bindForm();
 
     if (state.password) {
