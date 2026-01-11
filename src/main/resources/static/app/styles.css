@@ -69,6 +69,7 @@ a {
     overflow-x: auto;
     padding: 12px 2px 0;
     scrollbar-width: none;
+    flex-wrap: wrap;
 }
 
 .tag-filters::-webkit-scrollbar {

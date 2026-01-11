@@ -260,7 +260,6 @@ function createProductCard(p) {
         "data-field": "status"
     }, [p.active ? "" : "Скрыт"]);
     const nameRow = el("div", {class: "name-row"}, [name, statusBadge]);
-    const tags = p.tags && p.tags.length ? createTagList(p.tags) : el("div", {class: "tag-list hidden"}, []);
 
     const priceEl = el("b", {class: "js-price"}, [String(p.priceMinor)]);
     const stockEl = el("b", {class: "js-stock"}, [p.stock ? String(p.stock) : "Нет в наличии"]);
@@ -288,7 +287,7 @@ function createProductCard(p) {
         }, [document.createTextNode("Подробнее")]),
     ]);
 
-    card.append(thumb, nameRow, tags, meta, btnRow);
+    card.append(thumb, nameRow, meta, btnRow);
     card.addEventListener("click", () => {
         const current = getProductById(pid);
         if (current) openProduct(current);
@@ -320,17 +319,6 @@ function updateCardData(card, p, old) {
         const st = card.querySelector(".js-stock");
         if (st) st.textContent = p.stock ? String(p.stock) : "Нет в наличии";
         updateCardAvailability(card, p);
-    }
-
-    if (!old || JSON.stringify(old.tags || []) !== JSON.stringify(p.tags || [])) {
-        const tagWrap = card.querySelector(".tag-list");
-        if (tagWrap) {
-            tagWrap.innerHTML = "";
-            (p.tags || []).forEach((tag) => {
-                tagWrap.append(el("span", {class: "tag-badge"}, [document.createTextNode(tag.name)]));
-            });
-            tagWrap.classList.toggle("hidden", !(p.tags && p.tags.length));
-        }
     }
 
     const oldImg = (old?.imageUrls && old.imageUrls[0]) ? old.imageUrls[0] : null;
