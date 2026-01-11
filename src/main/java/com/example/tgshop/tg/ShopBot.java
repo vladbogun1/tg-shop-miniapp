@@ -323,6 +323,10 @@ public class ShopBot extends TelegramLongPollingBot {
                 .chatId(String.valueOf(message.getChatId()))
                 .messageId(message.getMessageId())
                 .build());
+            safeExecute(DeleteMessage.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .messageId(message.getReplyToMessage().getMessageId())
+                .build());
         }
 
         return true;
