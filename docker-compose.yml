@@ -20,8 +20,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-    # ВАЖНО: не публикуем MySQL наружу
-    ports: []
+    ports:
+      - "3330:3306"
 
   app:
     image: ${DOCKERHUB_USERNAME}/tg-shop-miniapp:${APP_TAG:-latest}

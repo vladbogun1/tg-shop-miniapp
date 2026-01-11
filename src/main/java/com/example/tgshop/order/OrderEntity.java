@@ -49,6 +49,9 @@ public class OrderEntity {
   @Column(nullable = false)
   private String status = "NEW";
 
+  @Column(name = "tracking_number", length = 128)
+  private String trackingNumber;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 

@@ -19,6 +19,7 @@ public class TelegramNotifyService {
 
     public static final String CB_APPROVE_PREFIX = "order:approve:";
     public static final String CB_REJECT_PREFIX  = "order:reject:";
+    public static final String CB_SHIP_PREFIX = "order:ship:";
 
     private final TelegramSender sender;
     private final AppProperties props;
@@ -118,6 +119,32 @@ public class TelegramNotifyService {
 
         log.info("🤖 TG Sending user order status notification uuid={} decision={} tgUserId={}",
                 order.uuid(), decision, order.getTgUserId());
+        sender.safeExecute(msg);
+    }
+
+    /** Пользователю: когда заказ отправлен */
+    public void notifyUserOrderShipped(OrderEntity order) {
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user shipped notification: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("📦 <b>Ваш заказ отправлен</b>\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
+            sb.append("ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
+        }
+        sb.append("\nСпасибо за заказ!");
+
+        SendMessage msg = SendMessage.builder()
+                .chatId(String.valueOf(order.getTgUserId()))
+                .parseMode(ParseMode.HTML)
+                .text(sb.toString())
+                .build();
+
+        log.info("🤖 TG Sending user order shipped notification uuid={} tgUserId={}",
+                order.uuid(), order.getTgUserId());
         sender.safeExecute(msg);
     }
 
