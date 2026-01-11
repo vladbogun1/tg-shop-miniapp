@@ -188,6 +188,10 @@ function getSelectedTagIds(container) {
     }
 }
 
+function closeAllTagDropdowns() {
+    document.querySelectorAll(".tag-dropdown").forEach((node) => node.classList.add("hidden"));
+}
+
 function renderTagPicker(container, selectedIds) {
     if (!container) return;
     container.innerHTML = "";
@@ -217,21 +221,18 @@ function renderTagPicker(container, selectedIds) {
         container.append(chip);
     });
 
-    const select = el("select", {class: "tag-add-select"}, [
-        el("option", {value: ""}, [document.createTextNode("Добавить тег")]),
-    ]);
-
+    const dropdown = el("div", {class: "tag-dropdown hidden"});
     state.tags.forEach((tag) => {
         const id = String(tag.id);
         if (selected.has(id)) return;
-        select.append(el("option", {value: id}, [document.createTextNode(tag.name)]));
-    });
-
-    select.addEventListener("change", () => {
-        const id = select.value;
-        if (!id) return;
-        selected.add(id);
-        renderTagPicker(container, selected);
+        dropdown.append(el("button", {
+            type: "button",
+            class: "tag-option",
+            onclick: () => {
+                selected.add(id);
+                renderTagPicker(container, selected);
+            },
+        }, [document.createTextNode(tag.name)]));
     });
 
     container.append(
@@ -240,9 +241,14 @@ function renderTagPicker(container, selectedIds) {
             class: "tag-add",
             title: "Добавить тег",
             "aria-label": "Добавить тег",
-            onclick: () => select.focus(),
+            onclick: (e) => {
+                e.stopPropagation();
+                const shouldOpen = dropdown.classList.contains("hidden");
+                closeAllTagDropdowns();
+                dropdown.classList.toggle("hidden", !shouldOpen);
+            },
         }, [el("i", {class: "fa-solid fa-plus"})]),
-        select
+        dropdown
     );
 }
 
@@ -672,6 +678,11 @@ function renderTags() {
 }
 
 function boot() {
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".tag-picker")) {
+            closeAllTagDropdowns();
+        }
+    });
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
     qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
