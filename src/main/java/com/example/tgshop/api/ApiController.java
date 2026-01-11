@@ -93,6 +93,22 @@ public class ApiController {
         return result;
     }
 
+    @DeleteMapping("/admin/orders/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteOrder(@PathVariable("id") UUID id,
+                            @RequestParam(value = "initData", required = false) String initData,
+                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        log.info("🛒 API Deleting order uuid={}", id);
+        var order = orderRepository.findById(UuidUtil.toBytes(id))
+            .orElseThrow(() -> {
+                log.warn("🛒 API Order delete failed: not found uuid={}", id);
+                return new NotFound("Order not found: " + id);
+            });
+        orderRepository.delete(order);
+        log.info("🛒 API Order deleted uuid={}", id);
+    }
+
     @PostMapping("/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public Object createOrder(@RequestBody @Valid CreateOrderRequest req) {
