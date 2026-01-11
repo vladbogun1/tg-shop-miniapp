@@ -171,35 +171,79 @@ async function loadTags() {
     try {
         state.tags = await apiGet("/api/admin/tags");
         renderTags();
-        renderTagOptions(qs("productTagOptions"), new Set());
+        renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
     } catch (err) {
         console.error(err);
         showLogin(true);
     }
 }
 
-function renderTagOptions(container, selectedIds) {
+function getSelectedTagIds(container) {
+    if (!container) return [];
+    try {
+        const raw = container.dataset.selected || "[]";
+        return JSON.parse(raw);
+    } catch {
+        return [];
+    }
+}
+
+function renderTagPicker(container, selectedIds) {
     if (!container) return;
     container.innerHTML = "";
+    const selected = new Set(selectedIds || []);
+    container.dataset.selected = JSON.stringify([...selected]);
 
     if (!state.tags.length) {
         container.append(el("div", {class: "hint"}, [document.createTextNode("Сначала добавь теги во вкладке «Теги».")]));
         return;
     }
 
+    [...selected].forEach((id) => {
+        const tag = state.tags.find((item) => String(item.id) === String(id));
+        if (!tag) return;
+        const chip = el("span", {class: "tag-chip"}, [
+            document.createTextNode(tag.name),
+            el("button", {
+                type: "button",
+                title: "Удалить тег",
+                "aria-label": "Удалить тег",
+                onclick: () => {
+                    selected.delete(id);
+                    renderTagPicker(container, selected);
+                }
+            }, [el("i", {class: "fa-solid fa-xmark"})]),
+        ]);
+        container.append(chip);
+    });
+
+    const select = el("select", {class: "tag-add-select"}, [
+        el("option", {value: ""}, [document.createTextNode("Добавить тег")]),
+    ]);
+
     state.tags.forEach((tag) => {
         const id = String(tag.id);
-        const label = el("label", {class: "tag-option"}, [
-            el("input", {
-                type: "checkbox",
-                name: "tagIds",
-                value: id,
-                ...(selectedIds.has(id) ? {checked: "true"} : {}),
-            }),
-            el("span", {}, [document.createTextNode(tag.name)]),
-        ]);
-        container.append(label);
+        if (selected.has(id)) return;
+        select.append(el("option", {value: id}, [document.createTextNode(tag.name)]));
     });
+
+    select.addEventListener("change", () => {
+        const id = select.value;
+        if (!id) return;
+        selected.add(id);
+        renderTagPicker(container, selected);
+    });
+
+    container.append(
+        el("button", {
+            type: "button",
+            class: "tag-add",
+            title: "Добавить тег",
+            "aria-label": "Добавить тег",
+            onclick: () => select.focus(),
+        }, [el("i", {class: "fa-solid fa-plus"})]),
+        select
+    );
 }
 
 function renderTagPills(tags) {
@@ -449,8 +493,8 @@ function parseImageUrls(raw) {
 function openEditModal(p) {
     const form = el("form", {class: "stack"});
     const selectedTags = new Set((p.tags || []).map((tag) => String(tag.id)));
-    const tagOptions = el("div", {class: "tag-options"});
-    renderTagOptions(tagOptions, selectedTags);
+    const tagPicker = el("div", {class: "tag-picker"});
+    renderTagPicker(tagPicker, selectedTags);
     form.append(
         el("h2", {}, [document.createTextNode("Редактирование товара")]),
         el("label", {}, [
@@ -481,7 +525,7 @@ function openEditModal(p) {
         ]),
         el("div", {class: "tag-select"}, [
             el("div", {class: "tag-select-title"}, [document.createTextNode("Теги")]),
-            tagOptions,
+            tagPicker,
         ]),
         el("label", {class: "checkbox"}, [
             el("input", {type: "checkbox", name: "active", ...(p.active ? {checked: "true"} : {})}),
@@ -503,7 +547,7 @@ function openEditModal(p) {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
-            tagIds: (fd.getAll("tagIds") || []).map((id) => String(id)),
+            tagIds: getSelectedTagIds(tagPicker),
             active: Boolean(fd.get("active")),
         };
 
@@ -561,7 +605,7 @@ function bindForm() {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
-            tagIds: (fd.getAll("tagIds") || []).map((id) => String(id)),
+            tagIds: getSelectedTagIds(qs("productTagPicker")),
             active: Boolean(fd.get("active")),
         };
         if (!payload.title) return;
@@ -582,23 +626,44 @@ function renderTags() {
     state.tags.forEach((tag) => {
         const row = el("div", {class: "tag-item"}, [
             el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]),
-            el("button", {
-                class: "pill danger icon-action",
-                title: "Удалить",
-                "aria-label": "Удалить",
-                onclick: async () => {
-                    if (!confirm(`Удалить тег "${tag.name}"?`)) return;
-                    try {
-                        await apiDelete(`/api/admin/tags/${tag.id}`);
-                        state.tags = state.tags.filter((t) => String(t.id) !== String(tag.id));
-                        renderTags();
-                        renderTagOptions(qs("productTagOptions"), new Set());
-                    } catch (err) {
-                        console.error(err);
-                        showLogin(true);
+            el("div", {class: "row"}, [
+                el("button", {
+                    class: "pill icon-action",
+                    title: "Переименовать",
+                    "aria-label": "Переименовать",
+                    onclick: async () => {
+                        const nextName = prompt("Новое название тега", tag.name);
+                        if (!nextName || !nextName.trim()) return;
+                        try {
+                            const updated = await apiPatch(`/api/admin/tags/${tag.id}`, {name: nextName.trim()});
+                            state.tags = state.tags.map((t) => String(t.id) === String(tag.id) ? updated : t)
+                                .sort((a, b) => a.name.localeCompare(b.name));
+                            renderTags();
+                            renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+                        } catch (err) {
+                            console.error(err);
+                            showLogin(true);
+                        }
                     }
-                }
-            }, [el("i", {class: "fa-solid fa-trash"})]),
+                }, [el("i", {class: "fa-solid fa-pen"})]),
+                el("button", {
+                    class: "pill danger icon-action",
+                    title: "Удалить",
+                    "aria-label": "Удалить",
+                    onclick: async () => {
+                        if (!confirm(`Удалить тег "${tag.name}"?`)) return;
+                        try {
+                            await apiDelete(`/api/admin/tags/${tag.id}`);
+                            state.tags = state.tags.filter((t) => String(t.id) !== String(tag.id));
+                            renderTags();
+                            renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+                        } catch (err) {
+                            console.error(err);
+                            showLogin(true);
+                        }
+                    }
+                }, [el("i", {class: "fa-solid fa-trash"})]),
+            ]),
         ]);
         list.append(row);
     });
@@ -645,7 +710,7 @@ function boot() {
             }
             qs("tagForm").reset();
             renderTags();
-            renderTagOptions(qs("productTagOptions"), new Set());
+            renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
         } catch (err) {
             console.error(err);
             showLogin(true);

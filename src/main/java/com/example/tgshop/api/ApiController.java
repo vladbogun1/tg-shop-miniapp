@@ -11,6 +11,7 @@ import com.example.tgshop.api.dto.TagDto;
 import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
+import com.example.tgshop.api.dto.UpdateTagRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
@@ -110,6 +111,25 @@ public class ApiController {
         tag.setName(name);
         var saved = tagRepository.save(tag);
         log.info("🛒 API Tag created uuid={}", saved.uuid());
+        return toTagDto(saved);
+    }
+
+    @PatchMapping("/admin/tags/{id}")
+    public TagDto updateTag(@PathVariable("id") UUID id,
+                            @RequestParam(value = "initData", required = false) String initData,
+                            @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                            @RequestBody @Valid UpdateTagRequest req) {
+        assertAdmin(initData, adminPassword);
+        String name = req.name().trim();
+        log.info("🛒 API Updating tag uuid={} name={}", id, name);
+        Tag tag = tagRepository.findById(UuidUtil.toBytes(id))
+            .orElseThrow(() -> new NotFound("Tag not found: " + id));
+        var existing = tagRepository.findByNameIgnoreCase(name);
+        if (existing.isPresent() && !existing.get().uuid().equals(tag.uuid())) {
+            throw new BadRequest("Tag name already exists");
+        }
+        tag.setName(name);
+        var saved = tagRepository.save(tag);
         return toTagDto(saved);
     }
 
@@ -451,6 +471,13 @@ public class ApiController {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     private static class NotFound extends RuntimeException {
         NotFound(String m) {
+            super(m);
+        }
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    private static class BadRequest extends RuntimeException {
+        BadRequest(String m) {
             super(m);
         }
     }
