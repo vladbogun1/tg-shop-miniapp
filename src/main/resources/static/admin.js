@@ -66,6 +66,16 @@ async function apiPatch(url, body) {
     return JSON.parse(text);
 }
 
+async function apiDelete(url) {
+    const r = await fetch(url, {
+        method: "DELETE",
+        headers: apiHeaders(),
+    });
+    const text = await r.text();
+    if (!r.ok) throw new Error(text);
+    return text;
+}
+
 function money(p) {
     return `${p.priceMinor} ${p.currency || "UAH"}`;
 }
@@ -227,9 +237,12 @@ function renderOrders() {
     const totalOrders = state.orders.length;
     let revenue = 0;
     let currency = "UAH";
+    const successStatuses = new Set(["APPROVED", "SHIPPED"]);
 
     for (const order of state.orders) {
-        revenue += order.totalMinor || 0;
+        if (successStatuses.has(order.status)) {
+            revenue += order.totalMinor || 0;
+        }
         currency = order.currency || currency;
         const itemsWrap = el("div", {class: "order-items"});
 
@@ -254,6 +267,25 @@ function renderOrders() {
             el("td", {}, [itemsWrap]),
             el("td", {}, [document.createTextNode(formatMoney(order.totalMinor, order.currency))]),
             el("td", {}, [document.createTextNode(order.status || "")]),
+            el("td", {}, [
+                el("button", {
+                    class: "pill danger icon-action",
+                    title: "Удалить",
+                    "aria-label": "Удалить",
+                    onclick: async (e) => {
+                        e.stopPropagation();
+                        if (!confirm("Удалить заказ навсегда?")) return;
+                        try {
+                            await apiDelete(`/api/admin/orders/${order.id}`);
+                            state.orders = state.orders.filter((item) => item.id !== order.id);
+                            renderOrders();
+                        } catch (err) {
+                            console.error(err);
+                            showLogin(true);
+                        }
+                    }
+                }, [el("i", {class: "fa-solid fa-trash"})]),
+            ]),
         ]);
         tbody.append(row);
     }
@@ -503,9 +535,6 @@ function boot() {
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("closeModal").addEventListener("click", closeModal);
-    qs("modal").addEventListener("click", (e) => {
-        if (e.target === qs("modal")) closeModal();
-    });
     bindForm();
 
     if (state.password) {

@@ -138,6 +138,25 @@ public class OrderService {
         return saved;
     }
 
+    @Transactional
+    public OrderEntity ship(UUID uuid, String trackingNumber) {
+        log.info("🧾 ORDER Shipping order uuid={} trackingNumber={}", uuid, trackingNumber);
+        OrderEntity o = orderRepository.findById(UuidUtil.toBytes(uuid))
+                .orElseThrow(() -> {
+                    log.warn("🧾 ORDER Ship failed: order not found uuid={}", uuid);
+                    return new IllegalArgumentException("Order not found: " + uuid);
+                });
+
+        o.setStatus("SHIPPED");
+        o.setTrackingNumber(trackingNumber);
+
+        var saved = orderRepository.save(o);
+
+        notifyService.notifyUserOrderShipped(saved);
+        log.info("🧾 ORDER Order shipped uuid={}", saved.uuid());
+        return saved;
+    }
+
     public record CreateOrderCommand(
             long tgUserId,
             String tgUsername,
