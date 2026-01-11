@@ -5,7 +5,9 @@ import com.example.tgshop.tag.Tag;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,7 +62,7 @@ public class Product {
       inverseJoinColumns = @JoinColumn(name = "tag_id")
   )
   @OrderBy("name ASC")
-  private List<Tag> tags = new ArrayList<>();
+  private Set<Tag> tags = new LinkedHashSet<>();
 
   @PrePersist
   void prePersist() {
