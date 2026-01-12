@@ -127,6 +127,30 @@ public class TelegramNotifyService {
         sender.safeExecute(msg);
     }
 
+    /** Пользователю: когда админ отклонил с причиной */
+    public void notifyUserOrderRejected(OrderEntity order, String reason) {
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user rejected notification: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("❌ <b>Ваш заказ отклонён</b>\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        if (reason != null && !reason.isBlank()) {
+            sb.append("Причина: ").append(escapeHtml(reason)).append("\n");
+        }
+        sb.append("Если хотите — оформите заказ повторно или уточните детали у администратора.");
+
+        SendMessage msg = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(sb.toString())
+            .build();
+
+        log.info("🤖 TG Sending user rejected notification uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
+        sender.safeExecute(msg);
+    }
     /** Пользователю: когда заказ отправлен */
     public void notifyUserOrderShipped(OrderEntity order) {
         if (order.getTgUserId() <= 0) {
