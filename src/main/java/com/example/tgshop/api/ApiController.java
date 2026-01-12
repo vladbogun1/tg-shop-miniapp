@@ -23,10 +23,12 @@ import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
 import com.example.tgshop.tag.Tag;
 import com.example.tgshop.tag.TagRepository;
+import com.example.tgshop.media.ImageStorageService;
 import com.example.tgshop.tg.TgPostImageResolver;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -48,6 +50,7 @@ public class ApiController {
     private final OrderItemRepository orderItemRepository;
     private final TgPostImageResolver tgPostImageResolver;
     private final TagRepository tagRepository;
+    private final ImageStorageService imageStorageService;
 
 
     @GetMapping("/products")
@@ -242,6 +245,9 @@ public class ApiController {
         log.info("🛒 API Creating product title={} priceMinor={} stock={}", req.title(), req.priceMinor(), req.stock());
 
         Product p = new Product();
+        UUID productId = UUID.randomUUID();
+        p.setId(UuidUtil.toBytes(productId));
+        p.setCreatedAt(Instant.now());
         p.setTitle(req.title());
         p.setDescription(req.description());
         p.setPriceMinor(req.priceMinor());
@@ -253,8 +259,9 @@ public class ApiController {
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         log.debug("🛒 API Resolved {} image urls for new product", resolvedUrls.size());
+        var storedUrls = imageStorageService.downloadImages(productId, resolvedUrls);
         int i = 0;
-        for (String url : resolvedUrls) {
+        for (String url : storedUrls) {
             var img = new ProductImage();
             img.setProduct(p);
             img.setUrl(url);
@@ -323,8 +330,9 @@ public class ApiController {
         product.getImages().clear();
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         log.debug("🛒 API Resolved {} image urls for product update uuid={}", resolvedUrls.size(), product.uuid());
+        var storedUrls = imageStorageService.downloadImages(product.uuid(), resolvedUrls, true);
         int i = 0;
-        for (String url : resolvedUrls) {
+        for (String url : storedUrls) {
             var img = new ProductImage();
             img.setProduct(product);
             img.setUrl(url);

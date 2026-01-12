@@ -102,14 +102,19 @@ public class TelegramNotifyService {
             return;
         }
 
-        String text = switch (decision) {
-            case APPROVED -> "✅ <b>Ваш заказ одобрен</b>\n" +
-                    "ID: <code>" + escapeHtml(order.uuid().toString()) + "</code>\n" +
-                    "Спасибо! Мы скоро свяжемся с вами.";
-            case REJECTED -> "❌ <b>Ваш заказ отклонён</b>\n" +
-                    "ID: <code>" + escapeHtml(order.uuid().toString()) + "</code>\n" +
-                    "Если хотите — оформите заказ повторно или уточните детали у администратора.";
-        };
+        String text;
+        if (decision == OrderDecision.APPROVED) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("✅ <b>Ваш заказ одобрен</b>\n");
+            sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+            sb.append(buildItemsBlock(order));
+            sb.append("\nСпасибо! Мы скоро свяжемся с вами.");
+            text = sb.toString();
+        } else {
+            text = "❌ <b>Ваш заказ отклонён</b>\n" +
+                "ID: <code>" + escapeHtml(order.uuid().toString()) + "</code>\n" +
+                "Если хотите — оформите заказ повторно или уточните детали у администратора.";
+        }
 
         SendMessage msg = SendMessage.builder()
                 .chatId(String.valueOf(order.getTgUserId()))
@@ -122,6 +127,30 @@ public class TelegramNotifyService {
         sender.safeExecute(msg);
     }
 
+    /** Пользователю: когда админ отклонил с причиной */
+    public void notifyUserOrderRejected(OrderEntity order, String reason) {
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user rejected notification: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("❌ <b>Ваш заказ отклонён</b>\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        if (reason != null && !reason.isBlank()) {
+            sb.append("Причина: ").append(escapeHtml(reason)).append("\n");
+        }
+        sb.append("Если хотите — оформите заказ повторно или уточните детали у администратора.");
+
+        SendMessage msg = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(sb.toString())
+            .build();
+
+        log.info("🤖 TG Sending user rejected notification uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
+        sender.safeExecute(msg);
+    }
     /** Пользователю: когда заказ отправлен */
     public void notifyUserOrderShipped(OrderEntity order) {
         if (order.getTgUserId() <= 0) {
@@ -135,6 +164,7 @@ public class TelegramNotifyService {
         if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
             sb.append("ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
         }
+        sb.append(buildItemsBlock(order));
         sb.append("\nСпасибо за заказ!");
 
         SendMessage msg = SendMessage.builder()
@@ -185,6 +215,29 @@ public class TelegramNotifyService {
         }
         sb.append("\n");
 
+        return sb.toString();
+    }
+
+    private String buildItemsBlock(OrderEntity order) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n<b>🧾 Состав:</b>\n");
+        order.getItems().forEach(i -> {
+            long lineTotal = i.getPriceMinorSnapshot() * (long) i.getQuantity();
+            sb.append("• ")
+                .append(escapeHtml(i.getTitleSnapshot()))
+                .append(" × ")
+                .append(i.getQuantity())
+                .append(" — ")
+                .append(lineTotal)
+                .append(" ")
+                .append(escapeHtml(order.getCurrency()))
+                .append("\n");
+        });
+        sb.append("\n<b>💰 Итого:</b> ")
+            .append(order.getTotalMinor())
+            .append(" ")
+            .append(escapeHtml(order.getCurrency()))
+            .append("\n");
         return sb.toString();
     }
 
