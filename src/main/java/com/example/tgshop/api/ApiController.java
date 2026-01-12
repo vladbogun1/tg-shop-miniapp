@@ -330,8 +330,7 @@ public class ApiController {
         product.getImages().clear();
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         log.debug("🛒 API Resolved {} image urls for product update uuid={}", resolvedUrls.size(), product.uuid());
-        imageStorageService.deleteImages(product.uuid());
-        var storedUrls = imageStorageService.downloadImages(product.uuid(), resolvedUrls);
+        var storedUrls = imageStorageService.downloadImages(product.uuid(), resolvedUrls, true);
         int i = 0;
         for (String url : storedUrls) {
             var img = new ProductImage();
