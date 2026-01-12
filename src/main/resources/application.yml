@@ -26,6 +26,5 @@ app:
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
     admin-password: ${ADMIN_PASSWORD:admin123}
   media:
-    storage-path: ${MEDIA_STORAGE_PATH:media}
     base-url: ${MEDIA_BASE_URL:${WEBAPP_BASE_URL:https://semicrystalline-unprevailing-delorse.ngrok-free.dev}}
     url-prefix: ${MEDIA_URL_PREFIX:/media}
