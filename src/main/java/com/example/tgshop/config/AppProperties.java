@@ -49,7 +49,6 @@ public class AppProperties {
 
   @Getter @Setter
   public static class Media {
-    private String storagePath;
     private String baseUrl;
     private String urlPrefix = "/media";
   }

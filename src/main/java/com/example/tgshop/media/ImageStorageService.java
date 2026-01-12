@@ -1,14 +1,12 @@
 package com.example.tgshop.media;
 
+import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.config.AppProperties;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +26,7 @@ public class ImageStorageService {
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
   private final AppProperties props;
+  private final MediaImageRepository mediaImageRepository;
   private final HttpClient httpClient = HttpClient.newBuilder()
       .followRedirects(HttpClient.Redirect.NORMAL)
       .build();
@@ -38,7 +37,6 @@ public class ImageStorageService {
 
   public List<String> downloadImages(UUID productId, List<String> urls, boolean replaceExisting) {
     if (urls == null || urls.isEmpty()) return List.of();
-    Path storageDir = prepareStorageDir();
     String prefix = normalizePrefix(props.getMedia().getUrlPrefix());
     String baseUrl = props.getMedia().getBaseUrl();
     boolean hasRemote = urls.stream().anyMatch(url -> url != null && !isLocalUrl(url, baseUrl, prefix));
@@ -63,10 +61,15 @@ public class ImageStorageService {
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
           throw new IllegalStateException("Bad response: " + response.statusCode());
         }
-        String ext = resolveExtension(sourceUrl, response.headers().firstValue("Content-Type").orElse(null));
+        String contentType = response.headers().firstValue("Content-Type").orElse(null);
+        String ext = resolveExtension(sourceUrl, contentType);
         String filename = productId + "_" + (i + 1) + ext;
-        Path target = storageDir.resolve(filename);
-        Files.write(target, response.body());
+        MediaImage image = new MediaImage();
+        image.setProductId(UuidUtil.toBytes(productId));
+        image.setFilename(filename);
+        image.setContentType(resolveContentType(contentType, ext));
+        image.setData(response.body());
+        mediaImageRepository.save(image);
         result.add(buildPublicUrl(baseUrl, prefix, filename));
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -81,29 +84,7 @@ public class ImageStorageService {
   }
 
   public void deleteImages(UUID productId) {
-    Path storageDir = prepareStorageDir();
-    String prefix = productId + "_";
-    try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir, prefix + "*")) {
-      for (Path path : stream) {
-        Files.deleteIfExists(path);
-      }
-    } catch (IOException e) {
-      log.warn("🖼️ Failed to delete images for productId={}", productId, e);
-    }
-  }
-
-  private Path prepareStorageDir() {
-    String storagePath = props.getMedia().getStoragePath();
-    if (storagePath == null || storagePath.isBlank()) {
-      throw new IllegalStateException("Media storage path is not configured");
-    }
-    Path dir = Path.of(storagePath).toAbsolutePath().normalize();
-    try {
-      Files.createDirectories(dir);
-    } catch (IOException e) {
-      throw new IllegalStateException("Failed to create media directory: " + dir, e);
-    }
-    return dir;
+    mediaImageRepository.deleteByProductId(UuidUtil.toBytes(productId));
   }
 
   private String buildPublicUrl(String baseUrl, String prefix, String filename) {
@@ -130,6 +111,17 @@ public class ImageStorageService {
       if (ct.contains("jpeg") || ct.contains("jpg")) return ".jpg";
     }
     return ".jpg";
+  }
+
+  private String resolveContentType(String headerContentType, String ext) {
+    if (headerContentType != null && !headerContentType.isBlank()) {
+      return headerContentType.split(";")[0].trim();
+    }
+    return switch (ext) {
+      case ".png" -> "image/png";
+      case ".webp" -> "image/webp";
+      default -> "image/jpeg";
+    };
   }
 
   private String normalizePrefix(String prefix) {
