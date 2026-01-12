@@ -17,6 +17,7 @@ public class AppProperties {
   private Webapp webapp = new Webapp();
   private Telegram telegram = new Telegram();
   private Security security = new Security();
+  private Media media = new Media();
 
   @Getter @Setter
   public static class Webapp {
@@ -44,5 +45,12 @@ public class AppProperties {
   public static class Security {
     private boolean allowUnsignedInitData;
     private String adminPassword;
+  }
+
+  @Getter @Setter
+  public static class Media {
+    private String storagePath;
+    private String baseUrl;
+    private String urlPrefix = "/media";
   }
 }
