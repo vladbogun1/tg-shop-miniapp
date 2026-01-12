@@ -113,6 +113,11 @@ public class OrderService {
 
     @Transactional
     public OrderEntity reject(UUID uuid) {
+        return reject(uuid, null);
+    }
+
+    @Transactional
+    public OrderEntity reject(UUID uuid, String reason) {
         log.info("🧾 ORDER Rejecting order uuid={}", uuid);
         OrderEntity o = orderRepository.findById(UuidUtil.toBytes(uuid))
                 .orElseThrow(() -> {
@@ -133,7 +138,7 @@ public class OrderService {
 
         var saved = orderRepository.save(o);
 
-        notifyService.notifyUserOrderStatus(saved, TelegramNotifyService.OrderDecision.REJECTED);
+        notifyService.notifyUserOrderRejected(saved, reason);
         log.info("🧾 ORDER Order rejected uuid={}", saved.uuid());
         return saved;
     }
