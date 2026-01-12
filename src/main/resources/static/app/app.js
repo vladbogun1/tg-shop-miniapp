@@ -654,7 +654,7 @@ function openCheckout() {
         el("h2", {}, [document.createTextNode("🧾 Оформление заказа")]),
         el("div", {class: "small"}, [document.createTextNode(`К оплате/итого: ${sum} ${cur}`)]),
 
-        el("label", {}, [document.createTextNode("Имя"), el("input", {
+        el("label", {}, [document.createTextNode("ФИО"), el("input", {
             name: "customerName",
             required: "true",
             autocomplete: "name"
@@ -691,7 +691,7 @@ function openCheckout() {
         const comment = String(fd.get("comment") || "").trim();
 
         if (!state.initData) return toast("initData отсутствует (открой через Telegram)");
-        if (!customerName || !phone || !address) return toast("Заполни имя/телефон/адрес");
+        if (!customerName || !phone || !address) return toast("Заполни ФИО/телефон/адрес");
 
         const items = [];
         for (const [id, it] of state.cart.entries()) {
