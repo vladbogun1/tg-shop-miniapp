@@ -229,6 +229,19 @@ public class ShopBot extends TelegramLongPollingBot {
         if (order.getComment() != null && !order.getComment().isBlank()) {
           sb.append("💬 ").append(escapeHtml(order.getComment())).append("\n");
         }
+        sb.append("\n<b>🧾 Состав:</b>\n");
+        order.getItems().forEach(i -> {
+          long lineTotal = i.getPriceMinorSnapshot() * (long) i.getQuantity();
+          sb.append("• ")
+              .append(escapeHtml(i.getTitleSnapshot()))
+              .append(" × ")
+              .append(i.getQuantity())
+              .append(" — ")
+              .append(lineTotal)
+              .append(" ")
+              .append(escapeHtml(order.getCurrency()))
+              .append("\n");
+        });
         sb.append("\n<b>💰 Итого:</b> ")
             .append(order.getTotalMinor())
             .append(" ")
