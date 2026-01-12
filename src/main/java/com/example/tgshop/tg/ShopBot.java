@@ -36,6 +36,7 @@ public class ShopBot extends TelegramLongPollingBot {
     private final SettingRepository settings;
     private final OrderService orderService;
     private final Map<Integer, PendingShipment> pendingShipments = new ConcurrentHashMap<>();
+    private final Map<Integer, PendingRejection> pendingRejections = new ConcurrentHashMap<>();
 
     public ShopBot(
         AppProperties props,
@@ -75,6 +76,9 @@ public class ShopBot extends TelegramLongPollingBot {
         long userId = from != null ? from.getId() : 0;
 
         log.info("🤖 TG Received message command={} chatId={} userId={}", text, chatId, userId);
+        if (handleRejectReply(update, userId)) {
+            return;
+        }
         if (handleTrackingReply(update, userId)) {
             return;
         }
@@ -154,15 +158,17 @@ public class ShopBot extends TelegramLongPollingBot {
                 sendTrackingNumberRequest(cb, uuid);
                 return;
             }
+            if (decision == TelegramNotifyService.OrderDecision.REJECTED) {
+                sendRejectReasonRequest(cb, uuid);
+                return;
+            }
             // обновляем статус в БД
-            OrderEntity updated = (decision == TelegramNotifyService.OrderDecision.APPROVED)
-                ? orderService.approve(uuid)
-                : orderService.reject(uuid);
+            OrderEntity updated = orderService.approve(uuid);
 
             log.info("🤖 TG Order decision applied uuid={} decision={}", updated.uuid(), decision);
 
             // обновим сообщение в админ-чате (подпишем статус + уберем кнопки)
-            String newText = buildAdminDecisionText(updated, decision, null);
+            String newText = buildAdminDecisionText(updated, decision, null, null);
             safeExecute(EditMessageText.builder()
                 .chatId(String.valueOf(cb.getMessage().getChatId()))
                 .messageId(cb.getMessage().getMessageId())
@@ -170,31 +176,23 @@ public class ShopBot extends TelegramLongPollingBot {
                 .text(newText)
                 .build());
 
-            if (decision == TelegramNotifyService.OrderDecision.APPROVED) {
-                var shipButton = InlineKeyboardButton.builder()
-                    .text("📦 Выслал заказ")
-                    .callbackData(TelegramNotifyService.CB_SHIP_PREFIX + updated.uuid().toString())
-                    .build();
-                var kb = InlineKeyboardMarkup.builder()
-                    .keyboard(List.of(List.of(shipButton)))
-                    .build();
-                safeExecute(EditMessageReplyMarkup.builder()
-                    .chatId(String.valueOf(cb.getMessage().getChatId()))
-                    .messageId(cb.getMessage().getMessageId())
-                    .replyMarkup(kb)
-                    .build());
-            } else {
-                // убрать кнопки полностью (replyMarkup = null)
-                safeExecute(EditMessageReplyMarkup.builder()
-                    .chatId(String.valueOf(cb.getMessage().getChatId()))
-                    .messageId(cb.getMessage().getMessageId())
-                    .replyMarkup((InlineKeyboardMarkup) null)
-                    .build());
-            }
+            var shipButton = InlineKeyboardButton.builder()
+                .text("📦 Выслал заказ")
+                .callbackData(TelegramNotifyService.CB_SHIP_PREFIX + updated.uuid().toString())
+                .build();
+            var rejectButton = buildRejectButton(updated.uuid());
+            var kb = InlineKeyboardMarkup.builder()
+                .keyboard(List.of(List.of(shipButton, rejectButton)))
+                .build();
+            safeExecute(EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(cb.getMessage().getChatId()))
+                .messageId(cb.getMessage().getMessageId())
+                .replyMarkup(kb)
+                .build());
 
             safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
-                .text(decision == TelegramNotifyService.OrderDecision.APPROVED ? "✅ Одобрено" : "❌ Отклонено")
+                .text("✅ Одобрено")
                 .build());
 
         } catch (Exception e) {
@@ -211,10 +209,13 @@ public class ShopBot extends TelegramLongPollingBot {
         String status = decision == TelegramNotifyService.OrderDecision.APPROVED
             ? "✅ <b>ОДОБРЕНО</b>"
             : "❌ <b>ОТКЛОНЕНО</b>";
-        return buildAdminDecisionText(order, decision, status);
+        return buildAdminDecisionText(order, decision, status, null);
     }
 
-    private String buildAdminDecisionText(OrderEntity order, TelegramNotifyService.OrderDecision decision, String statusOverride) {
+    private String buildAdminDecisionText(OrderEntity order,
+                                          TelegramNotifyService.OrderDecision decision,
+                                          String statusOverride,
+                                          String rejectReason) {
         String status = statusOverride != null ? statusOverride : decision == TelegramNotifyService.OrderDecision.APPROVED
             ? "✅ <b>ОДОБРЕНО</b>"
             : "❌ <b>ОТКЛОНЕНО</b>";
@@ -249,6 +250,9 @@ public class ShopBot extends TelegramLongPollingBot {
             .append("\n");
         if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
           sb.append("\n📦 ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
+        }
+        if (rejectReason != null && !rejectReason.isBlank()) {
+          sb.append("\n❌ Причина: ").append(escapeHtml(rejectReason)).append("\n");
         }
 
         sb.append("\n👤 TG: ").append(escapeHtml(String.valueOf(order.getTgUserId())));
@@ -288,6 +292,34 @@ public class ShopBot extends TelegramLongPollingBot {
             .build());
     }
 
+    private void sendRejectReasonRequest(org.telegram.telegrambots.meta.api.objects.CallbackQuery cb, UUID uuid) {
+        ForceReplyKeyboard forceReply = ForceReplyKeyboard.builder()
+            .forceReply(true)
+            .selective(true)
+            .build();
+
+        SendMessage prompt = SendMessage.builder()
+            .chatId(String.valueOf(cb.getMessage().getChatId()))
+            .parseMode(ParseMode.HTML)
+            .text("Напишите причину отклонения для заказа <code>" + escapeHtml(uuid.toString()) + "</code>")
+            .replyMarkup(forceReply)
+            .build();
+
+        Message promptMessage = safeExecuteMessage(prompt);
+        if (promptMessage != null) {
+            pendingRejections.put(promptMessage.getMessageId(), new PendingRejection(
+                uuid,
+                cb.getMessage().getChatId(),
+                cb.getMessage().getMessageId()
+            ));
+        }
+
+        safeExecute(AnswerCallbackQuery.builder()
+            .callbackQueryId(cb.getId())
+            .text("Укажите причину")
+            .build());
+    }
+
     private boolean handleTrackingReply(Update update, long userId) {
         var message = update.getMessage();
         if (message == null || !message.hasText() || message.getReplyToMessage() == null) {
@@ -313,17 +345,21 @@ public class ShopBot extends TelegramLongPollingBot {
 
         try {
             OrderEntity shipped = orderService.ship(pending.orderId(), trackingNumber);
-            String newText = buildAdminDecisionText(shipped, TelegramNotifyService.OrderDecision.APPROVED, "📦 <b>ВЫСЛАНО</b>");
+            String newText = buildAdminDecisionText(shipped, TelegramNotifyService.OrderDecision.APPROVED, "📦 <b>ВЫСЛАНО</b>", null);
             safeExecute(EditMessageText.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
                 .parseMode(ParseMode.HTML)
                 .text(newText)
                 .build());
+            var rejectButton = buildRejectButton(shipped.uuid());
+            var kb = InlineKeyboardMarkup.builder()
+                .keyboard(List.of(List.of(rejectButton)))
+                .build();
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
-                .replyMarkup((InlineKeyboardMarkup) null)
+                .replyMarkup(kb)
                 .build());
         } catch (Exception e) {
             log.error("🤖 TG Failed to ship order from reply tracking number", e);
@@ -343,6 +379,70 @@ public class ShopBot extends TelegramLongPollingBot {
         }
 
         return true;
+    }
+
+    private boolean handleRejectReply(Update update, long userId) {
+        var message = update.getMessage();
+        if (message == null || !message.hasText() || message.getReplyToMessage() == null) {
+            return false;
+        }
+        if (!isAdmin(userId)) {
+            return false;
+        }
+
+        PendingRejection pending = pendingRejections.remove(message.getReplyToMessage().getMessageId());
+        if (pending == null) {
+            return false;
+        }
+
+        String reason = message.getText().trim();
+        if (reason.isBlank()) {
+            safeExecute(DeleteMessage.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .messageId(message.getMessageId())
+                .build());
+            return true;
+        }
+
+        try {
+            OrderEntity rejected = orderService.reject(pending.orderId(), reason);
+            String newText = buildAdminDecisionText(rejected, TelegramNotifyService.OrderDecision.REJECTED, null, reason);
+            safeExecute(EditMessageText.builder()
+                .chatId(String.valueOf(pending.chatId()))
+                .messageId(pending.orderMessageId())
+                .parseMode(ParseMode.HTML)
+                .text(newText)
+                .build());
+            safeExecute(EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(pending.chatId()))
+                .messageId(pending.orderMessageId())
+                .replyMarkup((InlineKeyboardMarkup) null)
+                .build());
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to reject order from reply reason", e);
+            safeExecute(SendMessage.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .text("Ошибка при отклонении заказа. Попробуйте снова.")
+                .build());
+        } finally {
+            safeExecute(DeleteMessage.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .messageId(message.getMessageId())
+                .build());
+            safeExecute(DeleteMessage.builder()
+                .chatId(String.valueOf(message.getChatId()))
+                .messageId(message.getReplyToMessage().getMessageId())
+                .build());
+        }
+
+        return true;
+    }
+
+    private InlineKeyboardButton buildRejectButton(UUID uuid) {
+        return InlineKeyboardButton.builder()
+            .text("❌ Отклонить")
+            .callbackData(TelegramNotifyService.CB_REJECT_PREFIX + uuid.toString())
+            .build();
     }
 
     private void sendShopButton(long chatId) {
@@ -429,4 +529,5 @@ public class ShopBot extends TelegramLongPollingBot {
     }
 
     private record PendingShipment(UUID orderId, long chatId, int orderMessageId) {}
+    private record PendingRejection(UUID orderId, long chatId, int orderMessageId) {}
 }
