@@ -33,13 +33,26 @@ public class ImageStorageService {
       .build();
 
   public List<String> downloadImages(UUID productId, List<String> urls) {
+    return downloadImages(productId, urls, false);
+  }
+
+  public List<String> downloadImages(UUID productId, List<String> urls, boolean replaceExisting) {
     if (urls == null || urls.isEmpty()) return List.of();
     Path storageDir = prepareStorageDir();
     String prefix = normalizePrefix(props.getMedia().getUrlPrefix());
     String baseUrl = props.getMedia().getBaseUrl();
+    boolean hasRemote = urls.stream().anyMatch(url -> url != null && !isLocalUrl(url, baseUrl, prefix));
+    if (replaceExisting && hasRemote) {
+      deleteImages(productId);
+    }
     List<String> result = new ArrayList<>();
     for (int i = 0; i < urls.size(); i++) {
       String sourceUrl = urls.get(i);
+      if (sourceUrl == null || sourceUrl.isBlank()) continue;
+      if (isLocalUrl(sourceUrl, baseUrl, prefix)) {
+        result.add(sourceUrl.trim());
+        continue;
+      }
       try {
         HttpRequest request = HttpRequest.newBuilder(URI.create(sourceUrl))
             .timeout(TIMEOUT)
@@ -123,5 +136,14 @@ public class ImageStorageService {
     if (prefix == null || prefix.isBlank()) return "/media";
     String normalized = prefix.startsWith("/") ? prefix : "/" + prefix;
     return normalized.endsWith("/") ? normalized.substring(0, normalized.length() - 1) : normalized;
+  }
+
+  private boolean isLocalUrl(String url, String baseUrl, String prefix) {
+    String normalizedPrefix = normalizePrefix(prefix);
+    String trimmed = url.trim();
+    if (trimmed.startsWith(normalizedPrefix + "/")) return true;
+    if (baseUrl == null || baseUrl.isBlank()) return false;
+    String trimmedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+    return trimmed.startsWith(trimmedBase + normalizedPrefix + "/");
   }
 }
