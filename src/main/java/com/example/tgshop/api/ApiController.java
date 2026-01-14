@@ -73,6 +73,14 @@ public class ApiController {
             .toList();
     }
 
+    @GetMapping("/app-info")
+    public Object appInfo() {
+        return new Object() {
+            public final String botUsername = props.getTelegram().getBotUsername();
+            public final String webappBaseUrl = props.getWebapp().getBaseUrl();
+        };
+    }
+
     @GetMapping("/admin/products")
     public List<ProductDto> adminProducts(@RequestParam(value = "initData", required = false) String initData,
                                           @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
