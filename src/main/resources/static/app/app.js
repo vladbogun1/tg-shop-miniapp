@@ -27,6 +27,8 @@ const state = {
     activeTagId: "all",
     searchQuery: "",
     cart: new Map(), // id -> {product, qty}
+    appInfo: null,
+    pendingProductId: null,
     mainBtnBound: false,
     sort: "default",
     checkoutOpen: false,
@@ -36,6 +38,9 @@ const state = {
 
     refreshTimer: null, // auto refresh timer
 };
+
+const viewportContentLocked = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
+const viewportContentZoom = "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover";
 
 function loadCart() {
     try {
@@ -105,8 +110,36 @@ async function apiPost(url, body) {
     return JSON.parse(text);
 }
 
+async function loadAppInfo() {
+    try {
+        state.appInfo = await apiGet("/api/app-info");
+    } catch (e) {
+        console.warn("app info load failed", e);
+        state.appInfo = null;
+    }
+}
+
 function normalizeText(text) {
     return String(text || "").toLowerCase().trim();
+}
+
+function normalizeBotUsername(value) {
+    if (!value) return "";
+    const clean = String(value).trim();
+    return clean.startsWith("@") ? clean.slice(1) : clean;
+}
+
+function parseProductIdFromStartParam(value) {
+    if (!value) return null;
+    const clean = String(value).trim();
+    if (!clean) return null;
+    const match = clean.match(/^product[_-](.+)$/);
+    if (match) return match[1];
+    return clean;
+}
+
+function buildProductStartParam(productId) {
+    return `product_${productId}`;
 }
 
 function productsEndpoint() {
@@ -238,6 +271,67 @@ function updateCardActiveState(card, p) {
 
 function getProductById(productId) {
     return state.products.find(x => String(x.id) === String(productId)) || null;
+}
+
+function buildProductShareLink(productId) {
+    const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
+    if (botUsername) {
+        const startParam = buildProductStartParam(productId);
+        return `https://t.me/${botUsername}?startapp=${encodeURIComponent(startParam)}`;
+    }
+    const baseUrl = state.appInfo?.webappBaseUrl || window.location.origin;
+    const url = new URL(baseUrl);
+    url.searchParams.set("productId", productId);
+    return url.toString();
+}
+
+function shareProduct(product) {
+    const link = buildProductShareLink(product.id);
+    const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
+    const botLabel = botUsername ? `@${botUsername}` : "нашем боте";
+    const text = `🟣 ${product.title}\nЛучшие товары в боте ${botLabel} от Максольчика\n🛒 Открыть товар: ${link}`;
+
+    if (tg) {
+        const shareUrl = `https://t.me/share/url?text=${encodeURIComponent(text)}`;
+        tg.openTelegramLink(shareUrl);
+        return;
+    }
+
+    if (navigator.share) {
+        navigator.share({title: product.title, text})
+            .catch(() => {
+            });
+        return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(link)
+            .then(() => toast("Ссылка скопирована"))
+            .catch(() => toast("Не удалось скопировать ссылку"));
+    } else {
+        toast("Скопируй ссылку: " + link);
+    }
+}
+
+function setViewportZoomEnabled(enabled) {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+    meta.setAttribute("content", enabled ? viewportContentZoom : viewportContentLocked);
+}
+
+function setShareButton(product) {
+    const shareBtn = qs("shareProductBtn");
+    if (!shareBtn) return;
+    if (!product) {
+        shareBtn.classList.add("hidden");
+        shareBtn.onclick = null;
+        return;
+    }
+    shareBtn.classList.remove("hidden");
+    shareBtn.onclick = (e) => {
+        e.stopPropagation();
+        shareProduct(product);
+    };
 }
 
 function createProductCard(p) {
@@ -387,6 +481,7 @@ function openModal(node) {
 
 function closeModal() {
     qs("modal").classList.add("hidden");
+    setShareButton(null);
     if (state.checkoutOpen) {
         state.checkoutOpen = false;
         updateCartBadge();
@@ -508,7 +603,7 @@ function updateCartBadge() {
 
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
-    const actionWrap = el("div");
+    const actionWrap = el("div", {class: "action-wrap"});
     const renderAction = () => {
         const pid = String(p.id);
         const cartItem = state.cart.get(pid);
@@ -579,10 +674,12 @@ function openProduct(p) {
 
     ]);
 
+    setShareButton(p);
     openModal(node);
 }
 
 function openCart() {
+    setShareButton(null);
     state.checkoutOpen = true;
     updateCartBadge();
     const lines = [];
@@ -643,6 +740,8 @@ function openCheckout() {
         toast("Корзина пустая");
         return;
     }
+
+    setShareButton(null);
 
     const {sum, cur} = cartTotal();
 
@@ -844,16 +943,41 @@ async function loadProducts() {
     startProductsAutoRefresh();
 }
 
+function openProductFromStartParam() {
+    if (!state.pendingProductId) return;
+    const target = getProductById(state.pendingProductId);
+    if (target) {
+        openProduct(target);
+    } else {
+        toast("Товар не найден");
+    }
+    state.pendingProductId = null;
+}
+
 async function boot() {
     loadCart();
+
+    const currentUrl = new URL(window.location.href);
 
     if (tg) {
         tg.ready();
         tg.expand();
         state.initData = tg.initData || "";
     } else {
-        const u = new URL(window.location.href);
-        state.initData = u.searchParams.get("initData") || "";
+        state.initData = currentUrl.searchParams.get("initData") || "";
+    }
+
+    const startParam = tg?.initDataUnsafe?.start_param
+        || currentUrl.searchParams.get("startapp")
+        || currentUrl.searchParams.get("start_param")
+        || currentUrl.searchParams.get("productId");
+    state.pendingProductId = parseProductIdFromStartParam(startParam);
+
+    await loadAppInfo();
+
+    if (!tg || !tg.initDataUnsafe?.user) {
+        showBrowserGate();
+        return;
     }
 
     try {
@@ -867,6 +991,7 @@ async function boot() {
     }
 
     await loadProducts();
+    openProductFromStartParam();
     updateCartBadge();
 
     qs("cartBtn").addEventListener("click", openCartBtn);
@@ -921,6 +1046,7 @@ function openGalleryFullscreen(urls, altText, startIndex) {
     const close = () => {
         document.body.style.overflow = prevOverflow;
         overlay.remove();
+        setViewportZoomEnabled(false);
     };
 
     const closeBtn = el("button", {
@@ -932,11 +1058,28 @@ function openGalleryFullscreen(urls, altText, startIndex) {
     overlay.append(content);
 
     document.body.style.overflow = "hidden";
+    setViewportZoomEnabled(true);
     document.body.append(overlay);
 
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) close();
     });
+}
+
+function showBrowserGate() {
+    const gate = qs("browserGate");
+    if (!gate) return;
+    const link = qs("browserGateLink");
+    const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
+    if (botUsername) {
+        const href = `https://t.me/${botUsername}`;
+        link.href = href;
+        link.textContent = `Открыть @${botUsername}`;
+    } else {
+        link.textContent = "Открыть бота";
+        link.href = "#";
+    }
+    gate.classList.remove("hidden");
 }
 
 function createGallery(urls, altText = "", opts = {}) {

@@ -429,6 +429,32 @@ textarea {
     scrollbar-width: none;
 }
 
+.browser-gate {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 9, 14, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 30;
+    text-align: center;
+}
+
+.browser-gate-card {
+    width: min(420px, 100%);
+    background: var(--card);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.browser-gate-card h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
 .modal-card::-webkit-scrollbar {
     width: 0;
     height: 0;
@@ -448,8 +474,12 @@ textarea {
     padding: 8px 10px;
 }
 
+.icon-share {
+    right: 52px;
+}
+
 .modal h2 {
-    margin: 6px 40px 8px 0;
+    margin: 6px 96px 8px 0;
 }
 
 .small {
