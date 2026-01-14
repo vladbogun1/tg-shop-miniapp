@@ -973,7 +973,7 @@ async function boot() {
 
     await loadAppInfo();
 
-    if (!tg) {
+    if (!tg || !tg.initDataUnsafe?.user) {
         showBrowserGate();
         return;
     }
