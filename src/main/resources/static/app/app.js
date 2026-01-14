@@ -289,16 +289,16 @@ function shareProduct(product) {
     const link = buildProductShareLink(product.id);
     const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
     const botLabel = botUsername ? `@${botUsername}` : "нашем боте";
-    const text = `🟣 ${product.title}\nЛучшие товары в боте ${botLabel} от Максольчика\n🛒 Открыть товар`;
+    const text = `🟣 ${product.title}\nЛучшие товары в боте ${botLabel} от Максольчика\n🛒 Открыть товар: ${link}`;
 
     if (tg) {
-        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+        const shareUrl = `https://t.me/share/url?text=${encodeURIComponent(text)}`;
         tg.openTelegramLink(shareUrl);
         return;
     }
 
     if (navigator.share) {
-        navigator.share({title: product.title, text, url: link})
+        navigator.share({title: product.title, text})
             .catch(() => {
             });
         return;
