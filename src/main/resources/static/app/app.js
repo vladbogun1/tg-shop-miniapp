@@ -287,7 +287,9 @@ function buildProductShareLink(productId) {
 
 function shareProduct(product) {
     const link = buildProductShareLink(product.id);
-    const text = `Посмотри товар: ${product.title}`;
+    const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
+    const botLabel = botUsername ? `@${botUsername}` : "нашем боте";
+    const text = `🟣 ${product.title}\nЛучшие товары в боте ${botLabel} от Максольчика\n🛒 Открыть товар`;
 
     if (tg) {
         const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
