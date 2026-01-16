@@ -326,7 +326,6 @@ public class ApiController {
         byte[] idBytes = UuidUtil.toBytes(UUID.fromString(productId));
         Product product = productRepository.findByIdWithImages(idBytes)
             .orElseThrow(() -> new NotFound("Product not found"));
-        assertUniqueProductTitle(req.title(), product.getId());
         product.setArchived(req.archived());
         if (req.archived()) {
             product.setActive(false);
