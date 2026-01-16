@@ -31,6 +31,12 @@ public class OrderItem {
   @Column(name = "price_minor_snapshot", nullable = false)
   private long priceMinorSnapshot;
 
+  @Column(name = "variant_id", columnDefinition = "BINARY(16)")
+  private byte[] variantId;
+
+  @Column(name = "variant_name_snapshot", length = 128)
+  private String variantNameSnapshot;
+
   @Column(nullable = false)
   private int quantity;
 }

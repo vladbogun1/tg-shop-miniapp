@@ -264,6 +264,12 @@ button.ghost {
     color: var(--text);
 }
 
+.status-tag.danger {
+    background: rgba(255, 90, 103, 0.18);
+    border-color: rgba(255, 90, 103, 0.35);
+    color: #ffb7be;
+}
+
 .tag-row {
     display: flex;
     flex-wrap: wrap;
@@ -405,6 +411,48 @@ button.ghost {
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.promo-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    align-items: center;
+}
+
+.promo-form .promo-active {
+    align-self: center;
+}
+
+.promo-list {
+    display: grid;
+    gap: 12px;
+}
+
+.promo-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.promo-main {
+    display: grid;
+    gap: 6px;
+}
+
+.promo-code {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.promo-meta {
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .meta {

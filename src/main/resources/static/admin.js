@@ -3,6 +3,7 @@ const state = {
     orders: [],
     archivedProducts: [],
     tags: [],
+    promoCodes: [],
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
@@ -93,6 +94,15 @@ function formatDate(iso) {
     return d.toLocaleString("ru-RU", {dateStyle: "medium", timeStyle: "short"});
 }
 
+function handleAdminError(err, fallback = "Ошибка") {
+    const msg = String(err?.message || "").trim();
+    if (msg.includes("Not admin") || msg.includes("Bad initData") || msg.includes("Bad password")) {
+        showLogin(true);
+        return;
+    }
+    alert(msg || fallback);
+}
+
 function showLogin(show) {
     qs("loginOverlay").classList.toggle("hidden", !show);
     if (show) {
@@ -131,6 +141,8 @@ function logout() {
     qs("archiveGrid").innerHTML = "";
     qs("archiveMeta").textContent = "Удаленные товары";
     qs("catalogMeta").textContent = "Нужен вход";
+    qs("promoList").innerHTML = "";
+    qs("promoMeta").textContent = "Промокоды магазина";
 }
 
 async function loadProducts() {
@@ -172,6 +184,16 @@ async function loadTags() {
         state.tags = await apiGet("/api/admin/tags");
         renderTags();
         renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
+    }
+}
+
+async function loadPromoCodes() {
+    try {
+        state.promoCodes = await apiGet("/api/admin/promocodes");
+        renderPromoCodes();
     } catch (err) {
         console.error(err);
         showLogin(true);
@@ -357,13 +379,22 @@ function renderOrders() {
         const itemsWrap = el("div", {class: "order-items"});
 
         (order.items || []).forEach((item) => {
+            const variantLabel = item.variantNameSnapshot ? ` (${item.variantNameSnapshot})` : "";
             itemsWrap.append(
                 el("div", {class: "order-item"}, [
-                    document.createTextNode(`${item.titleSnapshot} × ${item.quantity}`),
+                    document.createTextNode(`${item.titleSnapshot}${variantLabel} × ${item.quantity}`),
                     el("span", {}, [document.createTextNode(formatMoney(item.priceMinorSnapshot, order.currency))]),
                 ])
             );
         });
+        if (order.discountMinor > 0) {
+            itemsWrap.append(
+                el("div", {class: "order-item"}, [
+                    document.createTextNode(order.promoCode ? `Промокод: ${order.promoCode}` : "Скидка"),
+                    el("span", {}, [document.createTextNode(`-${order.discountMinor} ${order.currency}`)]),
+                ])
+            );
+        }
 
         const row = el("tr", {}, [
             el("td", {}, [document.createTextNode(formatDate(order.createdAt))]),
@@ -451,10 +482,12 @@ function setActiveTab(tab) {
     qs("tabOrders").classList.toggle("active", tab === "orders");
     qs("tabArchive").classList.toggle("active", tab === "archive");
     qs("tabTags").classList.toggle("active", tab === "tags");
+    qs("tabPromos").classList.toggle("active", tab === "promos");
     qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
     qs("ordersSection").classList.toggle("hidden", tab !== "orders");
     qs("archiveSection").classList.toggle("hidden", tab !== "archive");
     qs("tagsSection").classList.toggle("hidden", tab !== "tags");
+    qs("promosSection").classList.toggle("hidden", tab !== "promos");
     if (tab === "orders") {
         qs("catalogMeta").textContent = "История покупок";
         loadOrders();
@@ -464,6 +497,9 @@ function setActiveTab(tab) {
     } else if (tab === "tags") {
         qs("catalogMeta").textContent = "Теги товаров";
         loadTags();
+    } else if (tab === "promos") {
+        qs("catalogMeta").textContent = "Промокоды магазина";
+        loadPromoCodes();
     } else {
         loadProducts();
     }
@@ -508,6 +544,13 @@ function parseImageUrls(raw) {
         .filter(Boolean);
 }
 
+function parseVariants(raw) {
+    return raw
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
 function openEditModal(p) {
     const form = el("form", {class: "stack"});
     const selectedTags = new Set((p.tags || []).map((tag) => String(tag.id)));
@@ -541,6 +584,10 @@ function openEditModal(p) {
             document.createTextNode("URL картинок (перезапишет старые)"),
             el("textarea", {name: "imageUrls", rows: "3"}, [(p.imageUrls || []).join("\n")]),
         ]),
+        el("label", {}, [
+            document.createTextNode("Варианты (каждый с новой строки)"),
+            el("textarea", {name: "variants", rows: "3"}, [(p.variants || []).map((v) => v.name).join("\n")]),
+        ]),
         el("div", {class: "tag-select"}, [
             el("div", {class: "tag-select-title"}, [document.createTextNode("Теги")]),
             tagPicker,
@@ -565,6 +612,7 @@ function openEditModal(p) {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            variants: parseVariants(String(fd.get("variants") || "")),
             tagIds: getSelectedTagIds(tagPicker),
             active: Boolean(fd.get("active")),
         };
@@ -577,7 +625,7 @@ function openEditModal(p) {
             closeModal();
         } catch (err) {
             console.error(err);
-            showLogin(true);
+            handleAdminError(err, "Не удалось сохранить товар");
         }
     });
 
@@ -623,6 +671,7 @@ function bindForm() {
             currency: String(fd.get("currency") || "UAH").trim(),
             stock: Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            variants: parseVariants(String(fd.get("variants") || "")),
             tagIds: getSelectedTagIds(qs("productTagPicker")),
             active: Boolean(fd.get("active")),
         };
@@ -633,7 +682,7 @@ function bindForm() {
             await loadProducts();
         } catch (err) {
             console.error(err);
-            showLogin(true);
+            handleAdminError(err, "Не удалось добавить товар");
         }
     });
 }
@@ -644,7 +693,7 @@ function renderTags() {
     state.tags.forEach((tag) => {
         const row = el("div", {class: "tag-item"}, [
             el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]),
-            el("div", {class: "row"}, [
+            el("div", {class: "actions"}, [
                 el("button", {
                     class: "pill icon-action",
                     title: "Переименовать",
@@ -689,6 +738,103 @@ function renderTags() {
     qs("tagsMeta").textContent = `Всего тегов: ${state.tags.length}`;
 }
 
+function openPromoEdit(promo) {
+    const form = el("form", {class: "stack"});
+    form.append(
+        el("h2", {}, [document.createTextNode("Редактирование промокода")]),
+        el("label", {}, [
+            document.createTextNode("Код"),
+            el("input", {name: "code", value: promo.code, required: "true"}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Скидка (%)"),
+            el("input", {name: "discountPercent", type: "number", min: "0", max: "100", value: String(promo.discountPercent)}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Лимит использований (пусто = бесконечно)"),
+            el("input", {name: "maxUses", type: "number", min: "1", value: promo.maxUses ? String(promo.maxUses) : ""}),
+        ]),
+        el("label", {class: "checkbox"}, [
+            el("input", {type: "checkbox", name: "active", ...(promo.active ? {checked: "true"} : {})}),
+            el("span", {}, [document.createTextNode("Активен")]),
+        ]),
+        el("div", {class: "row"}, [
+            el("button", {type: "button", class: "ghost", onclick: closeModal}, [document.createTextNode("Отмена")]),
+            el("button", {type: "submit", class: "primary"}, [document.createTextNode("Сохранить")]),
+        ]),
+    );
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = {
+            code: String(fd.get("code") || "").trim(),
+            discountPercent: Number(fd.get("discountPercent") || 0),
+            maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
+            active: Boolean(fd.get("active")),
+        };
+        if (!payload.code) return;
+        try {
+            const updated = await apiPatch(`/api/admin/promocodes/${promo.id}`, payload);
+            state.promoCodes = state.promoCodes.map((item) => String(item.id) === String(updated.id) ? updated : item);
+            renderPromoCodes();
+            closeModal();
+        } catch (err) {
+            console.error(err);
+            handleAdminError(err, "Не удалось обновить промокод");
+        }
+    });
+
+    openModal(form);
+}
+
+function renderPromoCodes() {
+    const list = qs("promoList");
+    list.innerHTML = "";
+    state.promoCodes.forEach((promo) => {
+        const usesLabel = promo.maxUses ? `${promo.usesCount} / ${promo.maxUses}` : `${promo.usesCount} / ∞`;
+        const row = el("div", {class: "promo-card"}, [
+            el("div", {class: "promo-main"}, [
+                el("div", {class: "promo-code"}, [document.createTextNode(promo.code)]),
+                el("div", {class: "promo-meta"}, [
+                    document.createTextNode(`Скидка: ${promo.discountPercent}% • Использования: ${usesLabel}`)
+                ]),
+                promo.active
+                    ? el("span", {class: "status-tag"}, [document.createTextNode("Активен")])
+                    : el("span", {class: "status-tag danger"}, [document.createTextNode("Выключен")]),
+            ]),
+            el("div", {class: "actions"}, [
+                el("button", {
+                    class: "pill icon-action",
+                    title: "Редактировать",
+                    "aria-label": "Редактировать",
+                    onclick: () => openPromoEdit(promo),
+                }, [el("i", {class: "fa-solid fa-pen"})]),
+                el("button", {
+                    class: "pill danger icon-action",
+                    title: "Удалить",
+                    "aria-label": "Удалить",
+                    onclick: async () => {
+                        if (!confirm(`Удалить промокод "${promo.code}"?`)) return;
+                        try {
+                            await apiDelete(`/api/admin/promocodes/${promo.id}`);
+                            state.promoCodes = state.promoCodes.filter((item) => String(item.id) !== String(promo.id));
+                            renderPromoCodes();
+                        } catch (err) {
+                            console.error(err);
+                            handleAdminError(err, "Не удалось удалить промокод");
+                        }
+                    }
+                }, [el("i", {class: "fa-solid fa-trash"})]),
+            ]),
+        ]);
+        list.append(row);
+    });
+
+    qs("promoEmpty").classList.toggle("hidden", state.promoCodes.length > 0);
+    qs("promoMeta").textContent = `Всего промокодов: ${state.promoCodes.length}`;
+}
+
 function boot() {
     document.addEventListener("click", (e) => {
         if (!e.target.closest(".tag-picker")) {
@@ -705,11 +851,14 @@ function boot() {
         qs("tabOrders").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabArchive").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabTags").classList.toggle("hidden", state.viewAsCustomer);
+        qs("tabPromos").classList.toggle("hidden", state.viewAsCustomer);
         if (state.viewAsCustomer && state.activeTab === "orders") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "archive") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "tags") {
+            setActiveTab("catalog");
+        } else if (state.viewAsCustomer && state.activeTab === "promos") {
             setActiveTab("catalog");
         } else {
             setActiveTab(state.activeTab);
@@ -719,6 +868,7 @@ function boot() {
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("tabTags").addEventListener("click", () => setActiveTab("tags"));
+    qs("tabPromos").addEventListener("click", () => setActiveTab("promos"));
     qs("closeModal").addEventListener("click", closeModal);
     bindForm();
     qs("tagForm").addEventListener("submit", async (e) => {
@@ -737,6 +887,27 @@ function boot() {
         } catch (err) {
             console.error(err);
             showLogin(true);
+        }
+    });
+
+    qs("promoForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(qs("promoForm"));
+        const payload = {
+            code: String(fd.get("code") || "").trim(),
+            discountPercent: Number(fd.get("discountPercent") || 0),
+            maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
+            active: Boolean(fd.get("active")),
+        };
+        if (!payload.code) return;
+        try {
+            const promo = await apiPost("/api/admin/promocodes", payload);
+            state.promoCodes = [promo, ...state.promoCodes];
+            qs("promoForm").reset();
+            renderPromoCodes();
+        } catch (err) {
+            console.error(err);
+            handleAdminError(err, "Не удалось добавить промокод");
         }
     });
 

@@ -25,6 +25,15 @@ public class OrderEntity {
   @Column(name = "total_minor", nullable = false)
   private long totalMinor;
 
+  @Column(name = "subtotal_minor", nullable = false)
+  private long subtotalMinor;
+
+  @Column(name = "discount_minor", nullable = false)
+  private long discountMinor;
+
+  @Column(name = "promo_code", length = 64)
+  private String promoCode;
+
   @Column(nullable = false)
   private String currency = "UAH";
 

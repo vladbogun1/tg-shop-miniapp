@@ -55,6 +55,11 @@ public class Product {
   private List<ProductImage> images = new ArrayList<>();
 
   @ToString.Exclude
+  @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OrderBy("sortOrder ASC")
+  private List<ProductVariant> variants = new ArrayList<>();
+
+  @ToString.Exclude
   @ManyToMany
   @JoinTable(
       name = "product_tags",
