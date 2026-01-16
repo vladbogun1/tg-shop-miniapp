@@ -1,7 +1,10 @@
 package com.example.tgshop.order;
 
 import com.example.tgshop.common.UuidUtil;
+import com.example.tgshop.promo.PromoCode;
+import com.example.tgshop.promo.PromoCodeRepository;
 import com.example.tgshop.product.Product;
+import com.example.tgshop.product.ProductVariant;
 import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.tg.TelegramNotifyService;
 import jakarta.transaction.Transactional;
@@ -18,15 +21,18 @@ public class OrderService {
 
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final PromoCodeRepository promoCodeRepository;
     private final TelegramNotifyService notifyService;
 
     public OrderService(
             ProductRepository productRepository,
             OrderRepository orderRepository,
+            PromoCodeRepository promoCodeRepository,
             TelegramNotifyService notifyService
     ) {
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
+        this.promoCodeRepository = promoCodeRepository;
         this.notifyService = notifyService;
     }
 
@@ -34,6 +40,7 @@ public class OrderService {
     public OrderEntity createOrder(CreateOrderCommand cmd) {
         log.info("🧾 ORDER Creating order for tgUserId={} items={}", cmd.tgUserId(), cmd.items().size());
         Map<UUID, Product> products = new HashMap<>();
+        Map<UUID, Integer> productTotals = new HashMap<>();
 
         for (var item : cmd.items()) {
             var pid = item.productId();
@@ -46,13 +53,17 @@ public class OrderService {
                 log.warn("🧾 ORDER Order rejected: product inactive {}", pid);
                 throw new IllegalArgumentException("Product inactive: " + pid);
             }
-            if (p.getStock() < item.quantity()) {
-                log.warn("🧾 ORDER Order rejected: not enough stock product={} requested={} available={}",
-                        p.getTitle(), item.quantity(), p.getStock());
+            int nextTotal = productTotals.merge(pid, item.quantity(), Integer::sum);
+            if (p.getStock() < nextTotal) {
+                log.warn("🧾 ORDER Order rejected: not enough stock product={} requestedTotal={} available={}",
+                        p.getTitle(), nextTotal, p.getStock());
                 throw new IllegalArgumentException("Not enough stock: " + p.getTitle());
             }
+            resolveVariant(p, item.variantId());
             products.put(pid, p);
         }
+
+        PromoCode promo = resolvePromo(cmd.promoCode());
 
         OrderEntity order = new OrderEntity();
         order.setCustomerName(cmd.customerName());
@@ -62,23 +73,42 @@ public class OrderService {
         order.setTgUserId(cmd.tgUserId());
         order.setTgUsername(cmd.tgUsername());
         order.setCurrency("UAH");
+        if (promo != null) {
+            order.setPromoCode(promo.getCode());
+        }
 
         long total = 0;
         for (var item : cmd.items()) {
             var p = products.get(item.productId());
+            var variant = resolveVariant(p, item.variantId());
 
             var oi = new OrderItem();
             oi.setOrder(order);
             oi.setProductId(UuidUtil.toBytes(item.productId()));
             oi.setTitleSnapshot(p.getTitle());
             oi.setPriceMinorSnapshot(p.getPriceMinor());
+            if (variant != null) {
+                oi.setVariantId(variant.getId());
+                oi.setVariantNameSnapshot(variant.getName());
+            }
             oi.setQuantity(item.quantity());
             order.getItems().add(oi);
 
             total += p.getPriceMinor() * (long) item.quantity();
             p.setStock(p.getStock() - item.quantity());
         }
-        order.setTotalMinor(total);
+        order.setSubtotalMinor(total);
+
+        long discount = 0;
+        if (promo != null) {
+            if (promo.getDiscountPercent() > 0) {
+                discount = Math.max(0, (total * promo.getDiscountPercent()) / 100);
+            }
+            promo.setUsesCount(promo.getUsesCount() + 1);
+            promoCodeRepository.save(promo);
+        }
+        order.setDiscountMinor(discount);
+        order.setTotalMinor(Math.max(0, total - discount));
 
         var saved = orderRepository.save(order);
         log.info("🧾 ORDER Order persisted uuid={} totalMinor={}", saved.uuid(), saved.getTotalMinor());
@@ -169,8 +199,42 @@ public class OrderService {
             String phone,
             String address,
             String comment,
+            String promoCode,
             List<Item> items
     ) {}
 
-    public record Item(UUID productId, int quantity) {}
+    public record Item(UUID productId, UUID variantId, int quantity) {}
+
+    private ProductVariant resolveVariant(Product product, UUID variantId) {
+        var variants = product.getVariants();
+        if (variants == null || variants.isEmpty()) {
+            if (variantId != null) {
+                throw new IllegalArgumentException("Variant not found for product: " + product.getTitle());
+            }
+            return null;
+        }
+        if (variantId == null) {
+            log.warn("🧾 ORDER Missing variant for product={}", product.getTitle());
+            throw new IllegalArgumentException("Variant required for product: " + product.getTitle());
+        }
+        return variants.stream()
+            .filter(v -> variantId.equals(v.uuid()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Variant not found for product: " + product.getTitle()));
+    }
+
+    private PromoCode resolvePromo(String promoCode) {
+        if (promoCode == null || promoCode.isBlank()) return null;
+        String normalized = promoCode.trim();
+        var promo = promoCodeRepository.findByCodeIgnoreCase(normalized)
+            .orElseThrow(() -> new IllegalArgumentException("Promo code not found"));
+        if (!promo.isActive()) {
+            throw new IllegalArgumentException("Promo code inactive");
+        }
+        Integer maxUses = promo.getMaxUses();
+        if (maxUses != null && promo.getUsesCount() >= maxUses) {
+            throw new IllegalArgumentException("Promo code limit reached");
+        }
+        return promo;
+    }
 }

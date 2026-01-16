@@ -12,6 +12,7 @@ public record ProductDto(
     int stock,
     List<String> imageUrls,
     List<TagDto> tags,
+    List<ProductVariantDto> variants,
     boolean active,
     boolean archived,
     long soldCount
