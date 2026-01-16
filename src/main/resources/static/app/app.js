@@ -327,6 +327,13 @@ function cartQtyForProduct(productId) {
     return total;
 }
 
+function cartQtyForVariant(productId, variantId) {
+    if (!variantId) return 0;
+    const key = cartKey(productId, variantId);
+    const item = state.cart.get(key);
+    return item ? item.qty : 0;
+}
+
 function buildProductShareLink(productId) {
     const botUsername = normalizeBotUsername(state.appInfo?.botUsername);
     if (botUsername) {
@@ -630,9 +637,10 @@ function addToCart(productId, variantId, delta) {
 
     const key = cartKey(pid, resolvedVariantId);
     const cur = state.cart.get(key) || {product: p, variantId: resolvedVariantId, variant: null, qty: 0};
-    const totalQty = cartQtyForProduct(pid);
     const next = cur.qty + delta;
-    const availableForVariant = p.stock - (totalQty - cur.qty);
+    const variant = resolvedVariantId ? variants.find(v => String(v.id) === resolvedVariantId) || null : null;
+    const variantStock = variant ? Number(variant.stock || 0) : p.stock;
+    const availableForVariant = variantStock - cur.qty;
 
     if (delta > 0 && availableForVariant <= 0) return toast("Нет в наличии");
 
@@ -642,7 +650,7 @@ function addToCart(productId, variantId, delta) {
         cur.qty = Math.min(next, availableForVariant);
         cur.product = p;
         cur.variantId = resolvedVariantId;
-        cur.variant = resolvedVariantId ? variants.find(v => String(v.id) === resolvedVariantId) || null : null;
+        cur.variant = variant;
         state.cart.set(key, cur);
     }
 
@@ -685,14 +693,21 @@ function openProduct(p) {
                 id: radioId,
                 name: `variant-${p.id}`,
                 value: String(variant.id),
+                ...(Number(variant.stock || 0) <= 0 ? {disabled: "true"} : {}),
             });
             input.addEventListener("change", () => {
                 selectedVariantId = String(variant.id);
                 renderAction();
             });
-            const label = el("label", {class: "variant-option", for: radioId}, [
+            const label = el("label", {
+                class: `variant-option${Number(variant.stock || 0) <= 0 ? " disabled" : ""}`,
+                for: radioId
+            }, [
                 input,
                 el("span", {}, [document.createTextNode(variant.name)]),
+                el("span", {class: "variant-stock"}, [
+                    document.createTextNode(`Остаток: ${Number(variant.stock || 0)}`)
+                ]),
             ]);
             variantWrap.append(label);
         });
@@ -703,7 +718,10 @@ function openProduct(p) {
         const key = cartKey(pid, selectedVariantId);
         const cartItem = state.cart.get(key);
         const qty = cartItem ? cartItem.qty : 0;
-        const totalQty = cartQtyForProduct(pid);
+        const variant = selectedVariantId
+            ? variants.find((v) => String(v.id) === String(selectedVariantId))
+            : null;
+        const variantStock = variant ? Number(variant.stock || 0) : p.stock;
 
         actionWrap.replaceChildren();
 
@@ -730,7 +748,7 @@ function openProduct(p) {
                     renderAction();
                 }
             }, [document.createTextNode("+")]);
-            plusBtn.disabled = p.stock <= 0 || totalQty >= p.stock;
+            plusBtn.disabled = variantStock <= 0 || qty >= variantStock;
 
             actionWrap.append(el("div", {class: "qty"}, [
                 minusBtn,
@@ -813,7 +831,8 @@ function openCart() {
                         openCart();
                     }
                 }, [document.createTextNode("+")]);
-                plusBtn.disabled = p.stock <= 0 || cartQtyForProduct(p.id) >= p.stock;
+                const variantStock = it.variant ? Number(it.variant.stock || 0) : p.stock;
+                plusBtn.disabled = variantStock <= 0 || it.qty >= variantStock;
                 return el("div", {class: "qty"}, [
                     minusBtn,
                     el("div", {}, [document.createTextNode(String(it.qty))]),
@@ -1021,38 +1040,36 @@ async function refreshProductsSoft() {
 
     // 4) clamp cart quantities if stock decreased
     let changed = false;
-    const itemsByProduct = new Map();
     for (const [key, it] of state.cart.entries()) {
         const parsed = parseCartKey(key);
         const p = freshById.get(String(parsed.productId));
         if (!p) continue;
-        const list = itemsByProduct.get(String(parsed.productId)) || [];
-        list.push({key, item: it, product: p});
-        itemsByProduct.set(String(parsed.productId), list);
-    }
 
-    for (const [pid, items] of itemsByProduct.entries()) {
-        const p = items[0]?.product;
-        if (!p) continue;
         if (!p.active) {
-            items.forEach(({key}) => state.cart.delete(key));
+            state.cart.delete(key);
             changed = true;
             toast(`Товар скрыт: "${p.title}" удален из корзины`);
             continue;
         }
 
-        const totalQty = items.reduce((sum, entry) => sum + entry.item.qty, 0);
-        if (totalQty > p.stock) {
-            let excess = totalQty - p.stock;
-            for (let i = items.length - 1; i >= 0 && excess > 0; i -= 1) {
-                const entry = items[i];
-                const removeQty = Math.min(excess, entry.item.qty);
-                entry.item.qty -= removeQty;
-                excess -= removeQty;
-                if (entry.item.qty <= 0) {
-                    state.cart.delete(entry.key);
-                }
+        const variants = getProductVariants(p);
+        if (variants.length) {
+            const variant = variants.find((v) => String(v.id) === String(it.variantId));
+            if (!variant) {
+                state.cart.delete(key);
+                changed = true;
+                continue;
             }
+            const variantStock = Number(variant.stock || 0);
+            if (it.qty > variantStock) {
+                it.qty = Math.max(0, variantStock);
+                if (it.qty === 0) state.cart.delete(key);
+                changed = true;
+                toast(`Корзина обновлена: "${p.title}" • ${variant.name} доступно ${variantStock}`);
+            }
+        } else if (it.qty > p.stock) {
+            it.qty = Math.max(0, p.stock);
+            if (it.qty === 0) state.cart.delete(key);
             changed = true;
             toast(`Корзина обновлена: "${p.title}" доступно ${p.stock}`);
         }
