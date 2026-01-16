@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record ProductVariantDto(
     UUID id,
-    String name
+    String name,
+    int stock
 ) {}

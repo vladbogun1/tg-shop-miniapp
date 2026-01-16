@@ -34,6 +34,9 @@ public class ProductVariant {
   @Column(nullable = false, length = 128)
   private String name;
 
+  @Column(nullable = false)
+  private int stock;
+
   @Column(name = "sort_order", nullable = false)
   private int sortOrder;
 

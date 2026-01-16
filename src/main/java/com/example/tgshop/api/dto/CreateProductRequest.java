@@ -13,6 +13,6 @@ public record CreateProductRequest(
     @Min(0) int stock,
     List<@NotBlank String> imageUrls,
     List<UUID> tagIds,
-    List<@NotBlank String> variants,
+    List<ProductVariantRequest> variants,
     boolean active
 ) {}

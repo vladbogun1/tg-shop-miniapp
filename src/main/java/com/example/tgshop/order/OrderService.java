@@ -41,6 +41,7 @@ public class OrderService {
         log.info("🧾 ORDER Creating order for tgUserId={} items={}", cmd.tgUserId(), cmd.items().size());
         Map<UUID, Product> products = new HashMap<>();
         Map<UUID, Integer> productTotals = new HashMap<>();
+        Map<UUID, Integer> variantTotals = new HashMap<>();
 
         for (var item : cmd.items()) {
             var pid = item.productId();
@@ -53,13 +54,23 @@ public class OrderService {
                 log.warn("🧾 ORDER Order rejected: product inactive {}", pid);
                 throw new IllegalArgumentException("Product inactive: " + pid);
             }
-            int nextTotal = productTotals.merge(pid, item.quantity(), Integer::sum);
-            if (p.getStock() < nextTotal) {
-                log.warn("🧾 ORDER Order rejected: not enough stock product={} requestedTotal={} available={}",
-                        p.getTitle(), nextTotal, p.getStock());
-                throw new IllegalArgumentException("Not enough stock: " + p.getTitle());
+            ProductVariant variant = resolveVariant(p, item.variantId());
+            if (variant != null) {
+                UUID vid = variant.uuid();
+                int nextVariantTotal = variantTotals.merge(vid, item.quantity(), Integer::sum);
+                if (variant.getStock() < nextVariantTotal) {
+                    log.warn("🧾 ORDER Order rejected: not enough stock product={} variant={} requestedTotal={} available={}",
+                            p.getTitle(), variant.getName(), nextVariantTotal, variant.getStock());
+                    throw new IllegalArgumentException("Not enough stock: " + p.getTitle());
+                }
+            } else {
+                int nextTotal = productTotals.merge(pid, item.quantity(), Integer::sum);
+                if (p.getStock() < nextTotal) {
+                    log.warn("🧾 ORDER Order rejected: not enough stock product={} requestedTotal={} available={}",
+                            p.getTitle(), nextTotal, p.getStock());
+                    throw new IllegalArgumentException("Not enough stock: " + p.getTitle());
+                }
             }
-            resolveVariant(p, item.variantId());
             products.put(pid, p);
         }
 
@@ -95,7 +106,13 @@ public class OrderService {
             order.getItems().add(oi);
 
             total += p.getPriceMinor() * (long) item.quantity();
-            p.setStock(p.getStock() - item.quantity());
+            if (variant != null) {
+                variant.setStock(variant.getStock() - item.quantity());
+                int totalStock = p.getVariants().stream().mapToInt(ProductVariant::getStock).sum();
+                p.setStock(totalStock);
+            } else {
+                p.setStock(p.getStock() - item.quantity());
+            }
         }
         order.setSubtotalMinor(total);
 
@@ -161,6 +178,20 @@ public class OrderService {
         o.getItems().forEach(i -> {
             byte[] pid = i.getProductId();
             productRepository.findById(pid).ifPresent(p -> {
+                if (i.getVariantId() != null) {
+                    var variant = p.getVariants().stream()
+                        .filter(v -> java.util.Arrays.equals(v.getId(), i.getVariantId()))
+                        .findFirst()
+                        .orElse(null);
+                    if (variant != null) {
+                        variant.setStock(variant.getStock() + i.getQuantity());
+                        int totalStock = p.getVariants().stream().mapToInt(ProductVariant::getStock).sum();
+                        p.setStock(totalStock);
+                        log.debug("🧾 ORDER Restored variant stock product={} variant={} newStock={}",
+                            p.getTitle(), variant.getName(), variant.getStock());
+                        return;
+                    }
+                }
                 p.setStock(p.getStock() + i.getQuantity());
                 log.debug("🧾 ORDER Restored stock product={} newStock={}", p.getTitle(), p.getStock());
             });

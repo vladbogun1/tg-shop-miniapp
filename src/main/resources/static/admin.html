@@ -61,9 +61,11 @@
             <label>URL картинок (через запятую или новую строку)
                 <textarea name="imageUrls" rows="3" placeholder="https://..."></textarea>
             </label>
-            <label>Варианты (каждый с новой строки)
-                <textarea name="variants" rows="3" placeholder="Например: S\nM\nL"></textarea>
-            </label>
+            <div class="tag-select">
+                <div class="tag-select-title">Варианты и остатки</div>
+                <div id="productVariantPicker" class="variant-picker"></div>
+                <div class="hint">Добавь варианты с остатками (например: S — 3, M — 7).</div>
+            </div>
             <div class="tag-select">
                 <div class="tag-select-title">Теги</div>
                 <div id="productTagPicker" class="tag-picker"></div>

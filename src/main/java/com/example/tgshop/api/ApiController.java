@@ -9,6 +9,7 @@ import com.example.tgshop.api.dto.OrderDto;
 import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
 import com.example.tgshop.api.dto.ProductVariantDto;
+import com.example.tgshop.api.dto.ProductVariantRequest;
 import com.example.tgshop.api.dto.PromoCodeDto;
 import com.example.tgshop.api.dto.TagDto;
 import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
@@ -457,22 +458,27 @@ public class ApiController {
     }
 
     private static ProductVariantDto toVariantDto(ProductVariant variant) {
-        return new ProductVariantDto(variant.uuid(), variant.getName());
+        return new ProductVariantDto(variant.uuid(), variant.getName(), variant.getStock());
     }
 
-    private void applyVariants(Product product, List<String> variants) {
+    private void applyVariants(Product product, List<ProductVariantRequest> variants) {
         product.getVariants().clear();
         if (variants == null || variants.isEmpty()) return;
         int order = 0;
-        for (String raw : variants) {
-            String name = raw == null ? "" : raw.trim();
+        int totalStock = 0;
+        for (ProductVariantRequest req : variants) {
+            if (req == null) continue;
+            String name = String.valueOf(req.name()).trim();
             if (name.isBlank()) continue;
             var variant = new ProductVariant();
             variant.setProduct(product);
             variant.setName(name);
+            variant.setStock(Math.max(0, req.stock()));
             variant.setSortOrder(order++);
             product.getVariants().add(variant);
+            totalStock += variant.getStock();
         }
+        product.setStock(totalStock);
     }
 
     private void assertUniqueProductTitle(String title, byte[] existingId) {

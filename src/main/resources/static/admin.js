@@ -210,6 +210,87 @@ function getSelectedTagIds(container) {
     }
 }
 
+function getSelectedVariants(container) {
+    if (!container) return [];
+    try {
+        const raw = container.dataset.variants || "[]";
+        return JSON.parse(raw);
+    } catch {
+        return [];
+    }
+}
+
+function renderVariantPicker(container, variants, onChange) {
+    if (!container) return;
+    container.innerHTML = "";
+    const selected = Array.isArray(variants) ? variants : [];
+    container.dataset.variants = JSON.stringify(selected);
+
+    if (!selected.length) {
+        container.append(el("div", {class: "hint"}, [document.createTextNode("Варианты не добавлены.")]));
+    }
+
+    selected.forEach((variant, index) => {
+        const chip = el("span", {class: "variant-chip"}, [
+            document.createTextNode(`${variant.name} · ${variant.stock}`),
+            el("button", {
+                type: "button",
+                title: "Удалить",
+                "aria-label": "Удалить",
+                onclick: () => {
+                    const next = selected.filter((_, i) => i !== index);
+                    renderVariantPicker(container, next, onChange);
+                    onChange?.(next);
+                }
+            }, [document.createTextNode("×")]),
+        ]);
+        container.append(chip);
+    });
+
+    container.append(el("button", {
+        type: "button",
+        class: "variant-add",
+        title: "Добавить вариант",
+        "aria-label": "Добавить вариант",
+        onclick: () => openVariantModal((variant) => {
+            const next = [...selected, variant];
+            renderVariantPicker(container, next, onChange);
+            onChange?.(next);
+        })
+    }, [el("i", {class: "fa-solid fa-plus"})]));
+}
+
+function openVariantModal(onSave) {
+    const form = el("form", {class: "stack"});
+    form.append(
+        el("h2", {}, [document.createTextNode("Новый вариант")]),
+        el("label", {}, [
+            document.createTextNode("Название"),
+            el("input", {name: "name", required: "true"}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Остаток"),
+            el("input", {name: "stock", type: "number", min: "0", value: "0"}),
+        ]),
+        el("div", {class: "row"}, [
+            el("button", {type: "button", class: "ghost", onclick: closeModal}, [document.createTextNode("Отмена")]),
+            el("button", {type: "submit", class: "primary"}, [document.createTextNode("Добавить")]),
+        ]),
+    );
+
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const name = String(fd.get("name") || "").trim();
+        const stock = Math.max(0, Number(fd.get("stock") || 0));
+        if (!name) return;
+        onSave?.({name, stock});
+        closeModal();
+    });
+
+    openModal(form);
+}
+
 function closeAllTagDropdowns() {
     document.querySelectorAll(".tag-dropdown").forEach((node) => node.classList.add("hidden"));
 }
@@ -544,18 +625,14 @@ function parseImageUrls(raw) {
         .filter(Boolean);
 }
 
-function parseVariants(raw) {
-    return raw
-        .split(/\n+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-}
-
 function openEditModal(p) {
     const form = el("form", {class: "stack"});
     const selectedTags = new Set((p.tags || []).map((tag) => String(tag.id)));
     const tagPicker = el("div", {class: "tag-picker"});
     renderTagPicker(tagPicker, selectedTags);
+    const variantPicker = el("div", {class: "variant-picker"});
+    const existingVariants = (p.variants || []).map((v) => ({name: v.name, stock: v.stock ?? 0}));
+    renderVariantPicker(variantPicker, existingVariants);
     form.append(
         el("h2", {}, [document.createTextNode("Редактирование товара")]),
         el("label", {}, [
@@ -584,9 +661,9 @@ function openEditModal(p) {
             document.createTextNode("URL картинок (перезапишет старые)"),
             el("textarea", {name: "imageUrls", rows: "3"}, [(p.imageUrls || []).join("\n")]),
         ]),
-        el("label", {}, [
-            document.createTextNode("Варианты (каждый с новой строки)"),
-            el("textarea", {name: "variants", rows: "3"}, [(p.variants || []).map((v) => v.name).join("\n")]),
+        el("div", {class: "tag-select"}, [
+            el("div", {class: "tag-select-title"}, [document.createTextNode("Варианты и остатки")]),
+            variantPicker,
         ]),
         el("div", {class: "tag-select"}, [
             el("div", {class: "tag-select-title"}, [document.createTextNode("Теги")]),
@@ -605,14 +682,16 @@ function openEditModal(p) {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(form);
+        const selectedVariants = getSelectedVariants(variantPicker);
+        const totalVariantStock = selectedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
         const payload = {
             title: String(fd.get("title") || "").trim(),
             description: String(fd.get("description") || "").trim() || null,
             priceMinor: Number(fd.get("priceMinor") || 0),
             currency: String(fd.get("currency") || "UAH").trim(),
-            stock: Number(fd.get("stock") || 0),
+            stock: selectedVariants.length ? totalVariantStock : Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
-            variants: parseVariants(String(fd.get("variants") || "")),
+            variants: selectedVariants,
             tagIds: getSelectedTagIds(tagPicker),
             active: Boolean(fd.get("active")),
         };
@@ -664,14 +743,17 @@ function bindForm() {
     qs("productForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(qs("productForm"));
+        const variantPicker = qs("productVariantPicker");
+        const selectedVariants = getSelectedVariants(variantPicker);
+        const totalVariantStock = selectedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
         const payload = {
             title: String(fd.get("title") || "").trim(),
             description: String(fd.get("description") || "").trim() || null,
             priceMinor: Number(fd.get("priceMinor") || 0),
             currency: String(fd.get("currency") || "UAH").trim(),
-            stock: Number(fd.get("stock") || 0),
+            stock: selectedVariants.length ? totalVariantStock : Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
-            variants: parseVariants(String(fd.get("variants") || "")),
+            variants: selectedVariants,
             tagIds: getSelectedTagIds(qs("productTagPicker")),
             active: Boolean(fd.get("active")),
         };
@@ -679,6 +761,7 @@ function bindForm() {
         try {
             await apiPost("/api/admin/products", payload);
             qs("productForm").reset();
+            renderVariantPicker(variantPicker, []);
             await loadProducts();
         } catch (err) {
             console.error(err);
@@ -844,6 +927,7 @@ function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
     qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
+    renderVariantPicker(qs("productVariantPicker"), []);
     qs("customerToggle").addEventListener("change", (e) => {
         state.viewAsCustomer = e.target.checked;
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
