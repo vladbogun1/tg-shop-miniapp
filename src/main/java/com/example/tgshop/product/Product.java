@@ -6,7 +6,6 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
@@ -57,7 +56,7 @@ public class Product {
   @ToString.Exclude
   @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("sortOrder ASC")
-  private List<ProductVariant> variants = new ArrayList<>();
+  private Set<ProductVariant> variants = new LinkedHashSet<>();
 
   @ToString.Exclude
   @ManyToMany
