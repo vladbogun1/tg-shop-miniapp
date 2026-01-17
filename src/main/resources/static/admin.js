@@ -3,6 +3,7 @@ const state = {
     orders: [],
     archivedProducts: [],
     tags: [],
+    promoCodes: [],
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
@@ -93,6 +94,15 @@ function formatDate(iso) {
     return d.toLocaleString("ru-RU", {dateStyle: "medium", timeStyle: "short"});
 }
 
+function handleAdminError(err, fallback = "Ошибка") {
+    const msg = String(err?.message || "").trim();
+    if (msg.includes("Not admin") || msg.includes("Bad initData") || msg.includes("Bad password")) {
+        showLogin(true);
+        return;
+    }
+    alert(msg || fallback);
+}
+
 function showLogin(show) {
     qs("loginOverlay").classList.toggle("hidden", !show);
     if (show) {
@@ -131,6 +141,8 @@ function logout() {
     qs("archiveGrid").innerHTML = "";
     qs("archiveMeta").textContent = "Удаленные товары";
     qs("catalogMeta").textContent = "Нужен вход";
+    qs("promoList").innerHTML = "";
+    qs("promoMeta").textContent = "Промокоды магазина";
 }
 
 async function loadProducts() {
@@ -178,6 +190,16 @@ async function loadTags() {
     }
 }
 
+async function loadPromoCodes() {
+    try {
+        state.promoCodes = await apiGet("/api/admin/promocodes");
+        renderPromoCodes();
+    } catch (err) {
+        console.error(err);
+        showLogin(true);
+    }
+}
+
 function getSelectedTagIds(container) {
     if (!container) return [];
     try {
@@ -185,6 +207,109 @@ function getSelectedTagIds(container) {
         return JSON.parse(raw);
     } catch {
         return [];
+    }
+}
+
+function getSelectedVariants(container) {
+    if (!container) return [];
+    try {
+        const raw = container.dataset.variants || "[]";
+        return JSON.parse(raw);
+    } catch {
+        return [];
+    }
+}
+
+function renderVariantPicker(container, variants, onChange) {
+    if (!container) return;
+    container.innerHTML = "";
+    const selected = Array.isArray(variants) ? variants : [];
+    container.dataset.variants = JSON.stringify(selected);
+
+    if (!selected.length) {
+        container.append(el("div", {class: "hint"}, [document.createTextNode("Варианты не добавлены.")]));
+    }
+
+    selected.forEach((variant, index) => {
+        const chip = el("span", {class: "variant-chip"}, [
+            document.createTextNode(`${variant.name} · ${variant.stock}`),
+            el("button", {
+                type: "button",
+                title: "Удалить",
+                "aria-label": "Удалить",
+                onclick: () => {
+                    const next = selected.filter((_, i) => i !== index);
+                    renderVariantPicker(container, next, onChange);
+                    onChange?.(next);
+                }
+            }, [document.createTextNode("×")]),
+        ]);
+        container.append(chip);
+    });
+
+    container.append(el("button", {
+        type: "button",
+        class: "variant-add",
+        title: "Добавить вариант",
+        "aria-label": "Добавить вариант",
+        onclick: () => openVariantModal((variant) => {
+            const next = [...selected, variant];
+            renderVariantPicker(container, next, onChange);
+            onChange?.(next);
+        })
+    }, [el("i", {class: "fa-solid fa-plus"})]));
+}
+
+function openVariantModal(onSave) {
+    const overlay = el("div", {class: "modal modal-secondary"});
+    const card = el("div", {class: "modal-card"});
+    const closeBtn = el("button", {class: "icon", type: "button"}, [el("i", {class: "fa-solid fa-xmark"})]);
+    const form = el("form", {class: "stack"});
+    form.append(
+        el("h2", {}, [document.createTextNode("Новый вариант")]),
+        el("label", {}, [
+            document.createTextNode("Название"),
+            el("input", {name: "name", required: "true"}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Остаток"),
+            el("input", {name: "stock", type: "number", min: "0", value: "0"}),
+        ]),
+        el("div", {class: "row"}, [
+            el("button", {type: "button", class: "ghost", onclick: () => overlay.remove()}, [document.createTextNode("Отмена")]),
+            el("button", {type: "submit", class: "primary"}, [document.createTextNode("Добавить")]),
+        ]),
+    );
+
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const name = String(fd.get("name") || "").trim();
+        const stock = Math.max(0, Number(fd.get("stock") || 0));
+        if (!name) return;
+        onSave?.({name, stock});
+        overlay.remove();
+    });
+
+    closeBtn.addEventListener("click", () => overlay.remove());
+    card.append(closeBtn, form);
+    overlay.append(card);
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    document.body.append(overlay);
+}
+
+function updateStockInput(stockInput, variants) {
+    if (!stockInput) return;
+    if (variants.length) {
+        const total = variants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+        stockInput.value = String(total);
+        stockInput.disabled = true;
+        stockInput.parentElement?.classList.add("disabled");
+    } else {
+        stockInput.disabled = false;
+        stockInput.parentElement?.classList.remove("disabled");
     }
 }
 
@@ -357,13 +482,22 @@ function renderOrders() {
         const itemsWrap = el("div", {class: "order-items"});
 
         (order.items || []).forEach((item) => {
+            const variantLabel = item.variantNameSnapshot ? ` (${item.variantNameSnapshot})` : "";
             itemsWrap.append(
                 el("div", {class: "order-item"}, [
-                    document.createTextNode(`${item.titleSnapshot} × ${item.quantity}`),
+                    document.createTextNode(`${item.titleSnapshot}${variantLabel} × ${item.quantity}`),
                     el("span", {}, [document.createTextNode(formatMoney(item.priceMinorSnapshot, order.currency))]),
                 ])
             );
         });
+        if (order.discountMinor > 0) {
+            itemsWrap.append(
+                el("div", {class: "order-item"}, [
+                    document.createTextNode(order.promoCode ? `Промокод: ${order.promoCode}` : "Скидка"),
+                    el("span", {}, [document.createTextNode(`-${order.discountMinor} ${order.currency}`)]),
+                ])
+            );
+        }
 
         const row = el("tr", {}, [
             el("td", {}, [document.createTextNode(formatDate(order.createdAt))]),
@@ -451,10 +585,12 @@ function setActiveTab(tab) {
     qs("tabOrders").classList.toggle("active", tab === "orders");
     qs("tabArchive").classList.toggle("active", tab === "archive");
     qs("tabTags").classList.toggle("active", tab === "tags");
+    qs("tabPromos").classList.toggle("active", tab === "promos");
     qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
     qs("ordersSection").classList.toggle("hidden", tab !== "orders");
     qs("archiveSection").classList.toggle("hidden", tab !== "archive");
     qs("tagsSection").classList.toggle("hidden", tab !== "tags");
+    qs("promosSection").classList.toggle("hidden", tab !== "promos");
     if (tab === "orders") {
         qs("catalogMeta").textContent = "История покупок";
         loadOrders();
@@ -464,6 +600,9 @@ function setActiveTab(tab) {
     } else if (tab === "tags") {
         qs("catalogMeta").textContent = "Теги товаров";
         loadTags();
+    } else if (tab === "promos") {
+        qs("catalogMeta").textContent = "Промокоды магазина";
+        loadPromoCodes();
     } else {
         loadProducts();
     }
@@ -513,6 +652,11 @@ function openEditModal(p) {
     const selectedTags = new Set((p.tags || []).map((tag) => String(tag.id)));
     const tagPicker = el("div", {class: "tag-picker"});
     renderTagPicker(tagPicker, selectedTags);
+    const variantPicker = el("div", {class: "variant-picker"});
+    const existingVariants = (p.variants || []).map((v) => ({name: v.name, stock: v.stock ?? 0}));
+    const stockInput = el("input", {name: "stock", type: "number", min: "0", value: String(p.stock)});
+    renderVariantPicker(variantPicker, existingVariants, (next) => updateStockInput(stockInput, next));
+    updateStockInput(stockInput, existingVariants);
     form.append(
         el("h2", {}, [document.createTextNode("Редактирование товара")]),
         el("label", {}, [
@@ -535,11 +679,15 @@ function openEditModal(p) {
         ]),
         el("label", {}, [
             document.createTextNode("Остаток"),
-            el("input", {name: "stock", type: "number", min: "0", value: String(p.stock)}),
+            stockInput,
         ]),
         el("label", {}, [
             document.createTextNode("URL картинок (перезапишет старые)"),
             el("textarea", {name: "imageUrls", rows: "3"}, [(p.imageUrls || []).join("\n")]),
+        ]),
+        el("div", {class: "tag-select"}, [
+            el("div", {class: "tag-select-title"}, [document.createTextNode("Варианты и остатки")]),
+            variantPicker,
         ]),
         el("div", {class: "tag-select"}, [
             el("div", {class: "tag-select-title"}, [document.createTextNode("Теги")]),
@@ -558,13 +706,16 @@ function openEditModal(p) {
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(form);
+        const selectedVariants = getSelectedVariants(variantPicker);
+        const totalVariantStock = selectedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
         const payload = {
             title: String(fd.get("title") || "").trim(),
             description: String(fd.get("description") || "").trim() || null,
             priceMinor: Number(fd.get("priceMinor") || 0),
             currency: String(fd.get("currency") || "UAH").trim(),
-            stock: Number(fd.get("stock") || 0),
+            stock: selectedVariants.length ? totalVariantStock : Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            variants: selectedVariants,
             tagIds: getSelectedTagIds(tagPicker),
             active: Boolean(fd.get("active")),
         };
@@ -577,7 +728,7 @@ function openEditModal(p) {
             closeModal();
         } catch (err) {
             console.error(err);
-            showLogin(true);
+            handleAdminError(err, "Не удалось сохранить товар");
         }
     });
 
@@ -616,13 +767,18 @@ function bindForm() {
     qs("productForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(qs("productForm"));
+        const variantPicker = qs("productVariantPicker");
+        const selectedVariants = getSelectedVariants(variantPicker);
+        const totalVariantStock = selectedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+        const stockInput = qs("productForm").querySelector('input[name="stock"]');
         const payload = {
             title: String(fd.get("title") || "").trim(),
             description: String(fd.get("description") || "").trim() || null,
             priceMinor: Number(fd.get("priceMinor") || 0),
             currency: String(fd.get("currency") || "UAH").trim(),
-            stock: Number(fd.get("stock") || 0),
+            stock: selectedVariants.length ? totalVariantStock : Number(fd.get("stock") || 0),
             imageUrls: parseImageUrls(String(fd.get("imageUrls") || "")),
+            variants: selectedVariants,
             tagIds: getSelectedTagIds(qs("productTagPicker")),
             active: Boolean(fd.get("active")),
         };
@@ -630,10 +786,12 @@ function bindForm() {
         try {
             await apiPost("/api/admin/products", payload);
             qs("productForm").reset();
+            renderVariantPicker(variantPicker, [], (next) => updateStockInput(stockInput, next));
+            updateStockInput(stockInput, []);
             await loadProducts();
         } catch (err) {
             console.error(err);
-            showLogin(true);
+            handleAdminError(err, "Не удалось добавить товар");
         }
     });
 }
@@ -644,7 +802,7 @@ function renderTags() {
     state.tags.forEach((tag) => {
         const row = el("div", {class: "tag-item"}, [
             el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]),
-            el("div", {class: "row"}, [
+            el("div", {class: "actions"}, [
                 el("button", {
                     class: "pill icon-action",
                     title: "Переименовать",
@@ -689,6 +847,116 @@ function renderTags() {
     qs("tagsMeta").textContent = `Всего тегов: ${state.tags.length}`;
 }
 
+function openPromoEdit(promo) {
+    const form = el("form", {class: "stack"});
+    form.append(
+        el("h2", {}, [document.createTextNode("Редактирование промокода")]),
+        el("label", {}, [
+            document.createTextNode("Код"),
+            el("input", {name: "code", value: promo.code, required: "true"}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Скидка (%)"),
+            el("input", {name: "discountPercent", type: "number", min: "0", max: "100", value: String(promo.discountPercent)}),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Скидка суммой"),
+            el("input", {
+                name: "discountAmountMinor",
+                type: "number",
+                min: "0",
+                value: promo.discountAmountMinor ? String(promo.discountAmountMinor) : ""
+            }),
+        ]),
+        el("label", {}, [
+            document.createTextNode("Лимит использований (пусто = бесконечно)"),
+            el("input", {name: "maxUses", type: "number", min: "1", value: promo.maxUses ? String(promo.maxUses) : ""}),
+        ]),
+        el("label", {class: "checkbox"}, [
+            el("input", {type: "checkbox", name: "active", ...(promo.active ? {checked: "true"} : {})}),
+            el("span", {}, [document.createTextNode("Активен")]),
+        ]),
+        el("div", {class: "row"}, [
+            el("button", {type: "button", class: "ghost", onclick: closeModal}, [document.createTextNode("Отмена")]),
+            el("button", {type: "submit", class: "primary"}, [document.createTextNode("Сохранить")]),
+        ]),
+    );
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = {
+            code: String(fd.get("code") || "").trim(),
+            discountPercent: Number(fd.get("discountPercent") || 0),
+            discountAmountMinor: Number(fd.get("discountAmountMinor") || 0),
+            maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
+            active: Boolean(fd.get("active")),
+        };
+        if (!payload.code) return;
+        try {
+            const updated = await apiPatch(`/api/admin/promocodes/${promo.id}`, payload);
+            state.promoCodes = state.promoCodes.map((item) => String(item.id) === String(updated.id) ? updated : item);
+            renderPromoCodes();
+            closeModal();
+        } catch (err) {
+            console.error(err);
+            handleAdminError(err, "Не удалось обновить промокод");
+        }
+    });
+
+    openModal(form);
+}
+
+function renderPromoCodes() {
+    const list = qs("promoList");
+    list.innerHTML = "";
+    state.promoCodes.forEach((promo) => {
+        const usesLabel = promo.maxUses ? `${promo.usesCount} / ${promo.maxUses}` : `${promo.usesCount} / ∞`;
+        const discountLabel = promo.discountAmountMinor > 0
+            ? `-${promo.discountAmountMinor}`
+            : `${promo.discountPercent}%`;
+        const row = el("div", {class: "promo-card"}, [
+            el("div", {class: "promo-main"}, [
+                el("div", {class: "promo-code"}, [document.createTextNode(promo.code)]),
+                el("div", {class: "promo-meta"}, [
+                    document.createTextNode(`Скидка: ${discountLabel} • Использования: ${usesLabel}`)
+                ]),
+                promo.active
+                    ? el("span", {class: "status-tag"}, [document.createTextNode("Активен")])
+                    : el("span", {class: "status-tag danger"}, [document.createTextNode("Выключен")]),
+            ]),
+            el("div", {class: "actions"}, [
+                el("button", {
+                    class: "pill icon-action",
+                    title: "Редактировать",
+                    "aria-label": "Редактировать",
+                    onclick: () => openPromoEdit(promo),
+                }, [el("i", {class: "fa-solid fa-pen"})]),
+                el("button", {
+                    class: "pill danger icon-action",
+                    title: "Удалить",
+                    "aria-label": "Удалить",
+                    onclick: async () => {
+                        if (!confirm(`Удалить промокод "${promo.code}"?`)) return;
+                        try {
+                            await apiDelete(`/api/admin/promocodes/${promo.id}`);
+                            state.promoCodes = state.promoCodes.filter((item) => String(item.id) !== String(promo.id));
+                            renderPromoCodes();
+                        } catch (err) {
+                            console.error(err);
+                            handleAdminError(err, "Не удалось удалить промокод");
+                        }
+                    }
+                }, [el("i", {class: "fa-solid fa-trash"})]),
+            ]),
+        ]);
+        list.append(row);
+    });
+
+    qs("promoEmpty").classList.toggle("hidden", state.promoCodes.length > 0);
+    qs("promoMeta").textContent = `Всего промокодов: ${state.promoCodes.length}`;
+}
+
 function boot() {
     document.addEventListener("click", (e) => {
         if (!e.target.closest(".tag-picker")) {
@@ -698,6 +966,9 @@ function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
     qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
+    const stockInput = qs("productForm").querySelector('input[name="stock"]');
+    renderVariantPicker(qs("productVariantPicker"), [], (next) => updateStockInput(stockInput, next));
+    updateStockInput(stockInput, []);
     qs("customerToggle").addEventListener("change", (e) => {
         state.viewAsCustomer = e.target.checked;
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
@@ -705,11 +976,14 @@ function boot() {
         qs("tabOrders").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabArchive").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabTags").classList.toggle("hidden", state.viewAsCustomer);
+        qs("tabPromos").classList.toggle("hidden", state.viewAsCustomer);
         if (state.viewAsCustomer && state.activeTab === "orders") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "archive") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "tags") {
+            setActiveTab("catalog");
+        } else if (state.viewAsCustomer && state.activeTab === "promos") {
             setActiveTab("catalog");
         } else {
             setActiveTab(state.activeTab);
@@ -719,6 +993,7 @@ function boot() {
     qs("tabOrders").addEventListener("click", () => setActiveTab("orders"));
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("tabTags").addEventListener("click", () => setActiveTab("tags"));
+    qs("tabPromos").addEventListener("click", () => setActiveTab("promos"));
     qs("closeModal").addEventListener("click", closeModal);
     bindForm();
     qs("tagForm").addEventListener("submit", async (e) => {
@@ -737,6 +1012,28 @@ function boot() {
         } catch (err) {
             console.error(err);
             showLogin(true);
+        }
+    });
+
+    qs("promoForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(qs("promoForm"));
+        const payload = {
+            code: String(fd.get("code") || "").trim(),
+            discountPercent: Number(fd.get("discountPercent") || 0),
+            discountAmountMinor: Number(fd.get("discountAmountMinor") || 0),
+            maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
+            active: Boolean(fd.get("active")),
+        };
+        if (!payload.code) return;
+        try {
+            const promo = await apiPost("/api/admin/promocodes", payload);
+            state.promoCodes = [promo, ...state.promoCodes];
+            qs("promoForm").reset();
+            renderPromoCodes();
+        } catch (err) {
+            console.error(err);
+            handleAdminError(err, "Не удалось добавить промокод");
         }
     });
 

@@ -3,22 +3,30 @@ package com.example.tgshop.api;
 import com.example.tgshop.api.dto.AdminLoginRequest;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
+import com.example.tgshop.api.dto.CreatePromoCodeRequest;
 import com.example.tgshop.api.dto.CreateTagRequest;
 import com.example.tgshop.api.dto.OrderDto;
 import com.example.tgshop.api.dto.OrderItemDto;
 import com.example.tgshop.api.dto.ProductDto;
+import com.example.tgshop.api.dto.ProductVariantDto;
+import com.example.tgshop.api.dto.ProductVariantRequest;
+import com.example.tgshop.api.dto.PromoCodeDto;
 import com.example.tgshop.api.dto.TagDto;
 import com.example.tgshop.api.dto.UpdateProductArchivedRequest;
 import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
+import com.example.tgshop.api.dto.UpdatePromoCodeRequest;
 import com.example.tgshop.api.dto.UpdateTagRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
 import com.example.tgshop.order.OrderItemRepository;
 import com.example.tgshop.order.OrderRepository;
+import com.example.tgshop.promo.PromoCode;
+import com.example.tgshop.promo.PromoCodeRepository;
 import com.example.tgshop.product.Product;
 import com.example.tgshop.product.ProductImage;
+import com.example.tgshop.product.ProductVariant;
 import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
 import com.example.tgshop.tag.Tag;
@@ -51,6 +59,7 @@ public class ApiController {
     private final TgPostImageResolver tgPostImageResolver;
     private final TagRepository tagRepository;
     private final ImageStorageService imageStorageService;
+    private final PromoCodeRepository promoCodeRepository;
 
 
     @GetMapping("/products")
@@ -214,15 +223,23 @@ public class ApiController {
                 req.phone(),
                 req.address(),
                 req.comment(),
-                req.items().stream().map(i -> new OrderService.Item(i.productId(), i.quantity())).toList()
+                req.promoCode(),
+                req.items().stream()
+                    .map(i -> new OrderService.Item(i.productId(), i.variantId(), i.quantity()))
+                    .toList()
         );
 
         log.info("🛒 API Creating order for tgUserId={} items={}", v.userId(), cmd.items().size());
-        var saved = orderService.createOrder(cmd);
-        log.info("🛒 API Order created uuid={} totalMinor={}", saved.uuid(), saved.getTotalMinor());
-        return new Object() {
-            public final String orderId = saved.uuid().toString();
-        };
+        try {
+            var saved = orderService.createOrder(cmd);
+            log.info("🛒 API Order created uuid={} totalMinor={}", saved.uuid(), saved.getTotalMinor());
+            return new Object() {
+                public final String orderId = saved.uuid().toString();
+            };
+        } catch (IllegalArgumentException ex) {
+            log.warn("🛒 API Order rejected: {}", ex.getMessage());
+            throw new BadRequest(ex.getMessage());
+        }
     }
 
     @GetMapping("/me")
@@ -250,6 +267,7 @@ public class ApiController {
                                     @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                     @RequestBody @Valid CreateProductRequest req) {
         assertAdmin(initData, adminPassword);
+        assertUniqueProductTitle(req.title(), null);
         log.info("🛒 API Creating product title={} priceMinor={} stock={}", req.title(), req.priceMinor(), req.stock());
 
         Product p = new Product();
@@ -264,6 +282,7 @@ public class ApiController {
         p.setActive(req.active());
         p.setArchived(false);
         p.getTags().addAll(resolveTags(req.tagIds()));
+        applyVariants(p, req.variants());
 
         var resolvedUrls = tgPostImageResolver.resolveImages(req.imageUrls());
         log.debug("🛒 API Resolved {} image urls for new product", resolvedUrls.size());
@@ -349,6 +368,7 @@ public class ApiController {
         }
         product.getTags().clear();
         product.getTags().addAll(resolveTags(req.tagIds()));
+        applyVariants(product, req.variants());
 
         var saved = productRepository.save(product);
         log.info("🛒 API Updated product uuid={} images={}", saved.uuid(), saved.getImages().size());
@@ -426,6 +446,7 @@ public class ApiController {
                 p.getStock(),
                 p.getImages().stream().map(ProductImage::getUrl).toList(),
                 p.getTags().stream().map(ApiController::toTagDto).toList(),
+                p.getVariants().stream().map(ApiController::toVariantDto).toList(),
                 p.isActive(),
                 p.isArchived(),
                 soldCount
@@ -434,6 +455,42 @@ public class ApiController {
 
     private static TagDto toTagDto(Tag tag) {
         return new TagDto(tag.uuid(), tag.getName());
+    }
+
+    private static ProductVariantDto toVariantDto(ProductVariant variant) {
+        return new ProductVariantDto(variant.uuid(), variant.getName(), variant.getStock());
+    }
+
+    private void applyVariants(Product product, List<ProductVariantRequest> variants) {
+        product.getVariants().clear();
+        if (variants == null || variants.isEmpty()) return;
+        int order = 0;
+        int totalStock = 0;
+        for (ProductVariantRequest req : variants) {
+            if (req == null) continue;
+            String name = String.valueOf(req.name()).trim();
+            if (name.isBlank()) continue;
+            var variant = new ProductVariant();
+            variant.setProduct(product);
+            variant.setName(name);
+            variant.setStock(Math.max(0, req.stock()));
+            variant.setSortOrder(order++);
+            product.getVariants().add(variant);
+            totalStock += variant.getStock();
+        }
+        product.setStock(totalStock);
+    }
+
+    private void assertUniqueProductTitle(String title, byte[] existingId) {
+        if (title == null) return;
+        String normalized = title.trim();
+        if (existingId == null) {
+            if (productRepository.existsByTitleIgnoreCase(normalized)) {
+                throw new BadRequest("Product title must be unique");
+            }
+        } else if (productRepository.existsByTitleIgnoreCaseAndIdNot(normalized, existingId)) {
+            throw new BadRequest("Product title must be unique");
+        }
     }
 
     private List<Tag> resolveTags(List<UUID> tagIds) {
@@ -448,6 +505,8 @@ public class ApiController {
     private static OrderDto toOrderDto(com.example.tgshop.order.OrderEntity o) {
         return new OrderDto(
             o.uuid(),
+            o.getSubtotalMinor(),
+            o.getDiscountMinor(),
             o.getTotalMinor(),
             o.getCurrency(),
             o.getCustomerName(),
@@ -458,16 +517,98 @@ public class ApiController {
             o.getTgUsername(),
             o.getStatus(),
             o.getTrackingNumber(),
+            o.getPromoCode(),
             o.getCreatedAt(),
             o.getItems().stream()
                 .map(i -> new OrderItemDto(
                     UuidUtil.fromBytes(i.getProductId()),
+                    i.getVariantId() == null ? null : UuidUtil.fromBytes(i.getVariantId()),
                     i.getTitleSnapshot(),
+                    i.getVariantNameSnapshot(),
                     i.getPriceMinorSnapshot(),
                     i.getQuantity()
                 ))
                 .toList()
         );
+    }
+
+    @GetMapping("/admin/promocodes")
+    public List<PromoCodeDto> promoCodes(@RequestParam(value = "initData", required = false) String initData,
+                                         @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        return promoCodeRepository.findAll().stream()
+            .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+            .map(ApiController::toPromoDto)
+            .toList();
+    }
+
+    @PostMapping("/admin/promocodes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PromoCodeDto createPromoCode(@RequestParam(value = "initData", required = false) String initData,
+                                        @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                        @RequestBody @Valid CreatePromoCodeRequest req) {
+        assertAdmin(initData, adminPassword);
+        String code = normalizePromoCode(req.code());
+        if (promoCodeRepository.existsByCodeIgnoreCase(code)) {
+            throw new BadRequest("Promo code already exists");
+        }
+        PromoCode promo = new PromoCode();
+        promo.setCode(code);
+        promo.setDiscountPercent(req.discountPercent());
+        promo.setDiscountAmountMinor(Math.max(0, req.discountAmountMinor()));
+        promo.setMaxUses(req.maxUses());
+        promo.setActive(req.active());
+        var saved = promoCodeRepository.save(promo);
+        return toPromoDto(saved);
+    }
+
+    @PatchMapping("/admin/promocodes/{promoId}")
+    public PromoCodeDto updatePromoCode(@RequestParam(value = "initData", required = false) String initData,
+                                        @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                        @PathVariable("promoId") String promoId,
+                                        @RequestBody @Valid UpdatePromoCodeRequest req) {
+        assertAdmin(initData, adminPassword);
+        PromoCode promo = promoCodeRepository.findById(UuidUtil.toBytes(UUID.fromString(promoId)))
+            .orElseThrow(() -> new NotFound("Promo code not found"));
+        String code = normalizePromoCode(req.code());
+        if (!promo.getCode().equalsIgnoreCase(code)
+            && promoCodeRepository.existsByCodeIgnoreCase(code)) {
+            throw new BadRequest("Promo code already exists");
+        }
+        promo.setCode(code);
+        promo.setDiscountPercent(req.discountPercent());
+        promo.setDiscountAmountMinor(Math.max(0, req.discountAmountMinor()));
+        promo.setMaxUses(req.maxUses());
+        promo.setActive(req.active());
+        var saved = promoCodeRepository.save(promo);
+        return toPromoDto(saved);
+    }
+
+    @DeleteMapping("/admin/promocodes/{promoId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletePromoCode(@RequestParam(value = "initData", required = false) String initData,
+                                @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                @PathVariable("promoId") String promoId) {
+        assertAdmin(initData, adminPassword);
+        promoCodeRepository.deleteById(UuidUtil.toBytes(UUID.fromString(promoId)));
+    }
+
+    private static PromoCodeDto toPromoDto(PromoCode promo) {
+        return new PromoCodeDto(
+            promo.uuid(),
+            promo.getCode(),
+            promo.getDiscountPercent(),
+            promo.getDiscountAmountMinor(),
+            promo.getMaxUses(),
+            promo.getUsesCount(),
+            promo.isActive(),
+            promo.getCreatedAt()
+        );
+    }
+
+    private static String normalizePromoCode(String raw) {
+        if (raw == null) return "";
+        return raw.trim().toUpperCase();
     }
 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)

@@ -62,6 +62,11 @@
                 <textarea name="imageUrls" rows="3" placeholder="https://..."></textarea>
             </label>
             <div class="tag-select">
+                <div class="tag-select-title">Варианты и остатки</div>
+                <div id="productVariantPicker" class="variant-picker"></div>
+                <div class="hint">Добавь варианты с остатками (например: S — 3, M — 7).</div>
+            </div>
+            <div class="tag-select">
                 <div class="tag-select-title">Теги</div>
                 <div id="productTagPicker" class="tag-picker"></div>
                 <div class="hint">Выбери теги для товара (например: клавиатура, мышка).</div>
@@ -85,6 +90,7 @@
             <button id="tabOrders" class="tab"><i class="fa-solid fa-receipt"></i> История покупок</button>
             <button id="tabArchive" class="tab"><i class="fa-solid fa-box-archive"></i> Архив</button>
             <button id="tabTags" class="tab"><i class="fa-solid fa-tags"></i> Теги</button>
+            <button id="tabPromos" class="tab"><i class="fa-solid fa-ticket"></i> Промокоды</button>
         </div>
 
         <section id="catalogSection" class="tab-section">
@@ -144,6 +150,28 @@
                 </form>
                 <div id="tagsList" class="tags-list"></div>
                 <div id="tagsEmpty" class="orders-empty hidden">Теги пока не созданы.</div>
+            </div>
+        </section>
+
+        <section id="promosSection" class="tab-section hidden">
+            <div class="tags-panel">
+                <div class="tags-header">
+                    <div class="toolbar-title">Промокоды</div>
+                    <div id="promoMeta" class="toolbar-meta">Промокоды магазина</div>
+                </div>
+                <form id="promoForm" class="promo-form">
+                    <input name="code" placeholder="Код" required/>
+                    <input name="discountPercent" type="number" min="0" max="100" placeholder="% скидки"/>
+                    <input name="discountAmountMinor" type="number" min="0" placeholder="Скидка суммой"/>
+                    <input name="maxUses" type="number" min="1" placeholder="Лимит (пусто = ∞)"/>
+                    <label class="checkbox promo-active">
+                        <input type="checkbox" name="active" checked/>
+                        <span>Активен</span>
+                    </label>
+                    <button type="submit" class="primary"><i class="fa-solid fa-plus"></i> Добавить</button>
+                </form>
+                <div id="promoList" class="promo-list"></div>
+                <div id="promoEmpty" class="orders-empty hidden">Промокоды пока не созданы.</div>
             </div>
         </section>
     </section>

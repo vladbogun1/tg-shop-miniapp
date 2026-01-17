@@ -26,7 +26,7 @@ const state = {
     tags: [],
     activeTagId: "all",
     searchQuery: "",
-    cart: new Map(), // id -> {product, qty}
+    cart: new Map(), // key -> {product, variantId, variant, qty}
     appInfo: null,
     pendingProductId: null,
     mainBtnBound: false,
@@ -41,14 +41,34 @@ const state = {
 
 const viewportContentLocked = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
 const viewportContentZoom = "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover";
+const CART_STORAGE_KEY = "tgshop_cart";
+
+function cartKey(productId, variantId) {
+    const pid = String(productId);
+    const vid = variantId ? String(variantId) : "base";
+    return `${pid}::${vid}`;
+}
+
+function parseCartKey(key) {
+    const raw = String(key);
+    if (!raw.includes("::")) {
+        return {productId: raw, variantId: null};
+    }
+    const [productId, variantPart] = raw.split("::");
+    return {productId, variantId: variantPart && variantPart !== "base" ? variantPart : null};
+}
 
 function loadCart() {
     try {
-        const raw = localStorage.getItem("tgshop_cart");
+        const raw = localStorage.getItem(CART_STORAGE_KEY);
         if (!raw) return;
         const obj = JSON.parse(raw);
-        for (const [id, qty] of Object.entries(obj)) {
-            state.cart.set(id, {product: null, qty: Number(qty) || 0});
+        for (const [key, stored] of Object.entries(obj)) {
+            const parsed = parseCartKey(key);
+            const qty = typeof stored === "number" ? stored : Number(stored?.qty || 0);
+            const variantId = stored?.variantId ? String(stored.variantId) : parsed.variantId;
+            const normalizedKey = cartKey(parsed.productId, variantId);
+            state.cart.set(normalizedKey, {product: null, variantId, variant: null, qty: Number(qty) || 0});
         }
     } catch {
     }
@@ -56,8 +76,8 @@ function loadCart() {
 
 function saveCart() {
     const obj = {};
-    for (const [id, item] of state.cart.entries()) obj[id] = item.qty;
-    localStorage.setItem("tgshop_cart", JSON.stringify(obj));
+    for (const [key, item] of state.cart.entries()) obj[key] = item.qty;
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(obj));
 }
 
 function money(p) {
@@ -225,9 +245,29 @@ function ensureThumbIndex(p) {
 
 function bindCartProducts() {
     const byId = new Map(state.products.map(p => [String(p.id), p]));
-    for (const [id, item] of state.cart.entries()) {
-        item.product = byId.get(String(id)) || null;
-        if (!item.product) state.cart.delete(id);
+    for (const [key, item] of state.cart.entries()) {
+        const parsed = parseCartKey(key);
+        const product = byId.get(String(parsed.productId)) || null;
+        if (!product) {
+            state.cart.delete(key);
+            continue;
+        }
+        item.product = product;
+        item.variantId = item.variantId || parsed.variantId;
+        if (item.variantId) {
+            const variant = (product.variants || []).find(v => String(v.id) === String(item.variantId));
+            if (!variant) {
+                state.cart.delete(key);
+                continue;
+            }
+            item.variant = variant;
+        } else {
+            item.variant = null;
+            if ((product.variants || []).length) {
+                state.cart.delete(key);
+                continue;
+            }
+        }
     }
     saveCart();
     updateCartBadge();
@@ -271,6 +311,27 @@ function updateCardActiveState(card, p) {
 
 function getProductById(productId) {
     return state.products.find(x => String(x.id) === String(productId)) || null;
+}
+
+function getProductVariants(p) {
+    return Array.isArray(p?.variants) ? p.variants : [];
+}
+
+function cartQtyForProduct(productId) {
+    let total = 0;
+    for (const item of state.cart.values()) {
+        if (item.product && String(item.product.id) === String(productId)) {
+            total += item.qty;
+        }
+    }
+    return total;
+}
+
+function cartQtyForVariant(productId, variantId) {
+    if (!variantId) return 0;
+    const key = cartKey(productId, variantId);
+    const item = state.cart.get(key);
+    return item ? item.qty : 0;
 }
 
 function buildProductShareLink(productId) {
@@ -559,22 +620,37 @@ qs("searchClear").addEventListener("click", () => {
     applyFilters();
 });
 
-function addToCart(productId, delta) {
+function addToCart(productId, variantId, delta) {
     const pid = String(productId);
     const p = state.products.find(x => String(x.id) === pid);
     if (!p) return;
     if (!p.active) return toast("Товар скрыт");
     if (p.stock <= 0) return toast("Нет в наличии");
 
-    const cur = state.cart.get(pid) || {product: p, qty: 0};
+    const variants = getProductVariants(p);
+    const hasVariants = variants.length > 0;
+    const resolvedVariantId = variantId ? String(variantId) : null;
+    if (hasVariants && !resolvedVariantId) return toast("Выберите вариант");
+    if (resolvedVariantId && !variants.some(v => String(v.id) === resolvedVariantId)) {
+        return toast("Вариант недоступен");
+    }
+
+    const key = cartKey(pid, resolvedVariantId);
+    const cur = state.cart.get(key) || {product: p, variantId: resolvedVariantId, variant: null, qty: 0};
     const next = cur.qty + delta;
+    const variant = resolvedVariantId ? variants.find(v => String(v.id) === resolvedVariantId) || null : null;
+    const variantStock = variant ? Number(variant.stock || 0) : p.stock;
+
+    if (delta > 0 && cur.qty >= variantStock) return toast("Нет в наличии");
 
     if (next <= 0) {
-        state.cart.delete(pid);
+        state.cart.delete(key);
     } else {
-        cur.qty = Math.min(next, p.stock);
+        cur.qty = Math.min(next, variantStock);
         cur.product = p;
-        state.cart.set(pid, cur);
+        cur.variantId = resolvedVariantId;
+        cur.variant = variant;
+        state.cart.set(key, cur);
     }
 
     saveCart();
@@ -604,28 +680,78 @@ function updateCartBadge() {
 function openProduct(p) {
     const gallery = createGallery(p.imageUrls || [], p.title);
     const actionWrap = el("div", {class: "action-wrap"});
+    const variants = getProductVariants(p);
+    let selectedVariantId = null;
+
+    const variantWrap = variants.length ? el("div", {class: "variant-scroll"}) : null;
+    const updateVariantSelection = () => {
+        if (!variantWrap) return;
+        variantWrap.querySelectorAll(".variant-chip-option").forEach((node) => {
+            const id = node.getAttribute("data-variant-id");
+            node.classList.toggle("selected", id === String(selectedVariantId));
+        });
+    };
+    if (variantWrap) {
+        variants.forEach((variant) => {
+            const disabled = Number(variant.stock || 0) <= 0;
+            const chip = el("button", {
+                type: "button",
+                class: `variant-chip-option${disabled ? " disabled" : ""}`,
+                "data-variant-id": String(variant.id),
+                ...(disabled ? {disabled: "true"} : {}),
+                onclick: () => {
+                    if (disabled) return;
+                    selectedVariantId = String(variant.id);
+                    updateVariantSelection();
+                    renderAction();
+                }
+            }, [
+                el("span", {class: "variant-chip-name"}, [document.createTextNode(variant.name)]),
+                el("span", {class: "variant-chip-stock"}, [
+                    document.createTextNode(`Остаток: ${Number(variant.stock || 0)}`)
+                ]),
+            ]);
+            variantWrap.append(chip);
+        });
+        updateVariantSelection();
+    }
+
     const renderAction = () => {
         const pid = String(p.id);
-        const cartItem = state.cart.get(pid);
+        const key = cartKey(pid, selectedVariantId);
+        const cartItem = state.cart.get(key);
         const qty = cartItem ? cartItem.qty : 0;
+        const variant = selectedVariantId
+            ? variants.find((v) => String(v.id) === String(selectedVariantId))
+            : null;
+        const variantStock = variant ? Number(variant.stock || 0) : p.stock;
 
         actionWrap.replaceChildren();
+
+        if (variants.length && !selectedVariantId) {
+            const chooseBtn = el("button", {
+                class: "pill",
+                disabled: "true",
+            }, [document.createTextNode("Выберите вариант")]);
+            actionWrap.append(chooseBtn);
+            return;
+        }
 
         if (qty > 0) {
             const minusBtn = el("button", {
                 onclick: () => {
-                    addToCart(pid, -1);
+                    addToCart(pid, selectedVariantId, -1);
                     renderAction();
                 }
             }, [document.createTextNode("−")]);
 
             const plusBtn = el("button", {
                 onclick: () => {
-                    addToCart(pid, +1);
+                    addToCart(pid, selectedVariantId, +1);
                     renderAction();
                 }
             }, [document.createTextNode("+")]);
-            plusBtn.disabled = p.stock <= 0 || qty >= p.stock;
+            plusBtn.disabled = variantStock <= 0 || qty >= variantStock;
 
             actionWrap.append(el("div", {class: "qty"}, [
                 minusBtn,
@@ -644,7 +770,7 @@ function openProduct(p) {
             const addBtn = el("button", {
                 class: "primary pill",
                 onclick: () => {
-                    addToCart(pid, 1);
+                    addToCart(pid, selectedVariantId, 1);
                     renderAction();
                 }
             }, [document.createTextNode("В корзину")]);
@@ -657,6 +783,8 @@ function openProduct(p) {
     const node = el("div", {}, [
         el("h2", {}, [document.createTextNode(p.title)]),
         p.tags && p.tags.length ? createTagList(p.tags) : el("div"),
+        variants.length ? el("div", {class: "variant-title"}, [document.createTextNode("Варианты")]) : el("div"),
+        variants.length ? variantWrap : el("div"),
         el("div", {class: "row-column"}, [
             el("div", {class: "column"}, [
                 el("div", {class: "small"}, [document.createTextNode(money(p))]),
@@ -686,27 +814,34 @@ function openCart() {
     for (const [id, it] of state.cart.entries()) {
         if (!it.product) continue;
         const p = it.product;
+        const variantLabel = it.variant ? ` • ${it.variant.name}` : "";
 
         lines.push(el("div", {class: "cart-line"}, [
             el("div", {}, [
-                el("div", {style: "font-weight:700"}, [document.createTextNode(p.title)]),
+                el("div", {style: "font-weight:700"}, [document.createTextNode(`${p.title}${variantLabel}`)]),
                 el("div", {class: "small"}, [document.createTextNode(money(p))]),
             ]),
-            el("div", {class: "qty"}, [
-                el("button", {
+            (() => {
+                const minusBtn = el("button", {
                     onclick: () => {
-                        addToCart(id, -1);
+                        addToCart(p.id, it.variantId, -1);
                         openCart();
                     }
-                }, [document.createTextNode("−")]),
-                el("div", {}, [document.createTextNode(String(it.qty))]),
-                el("button", {
+                }, [document.createTextNode("−")]);
+                const plusBtn = el("button", {
                     onclick: () => {
-                        addToCart(id, +1);
+                        addToCart(p.id, it.variantId, +1);
                         openCart();
                     }
-                }, [document.createTextNode("+")]),
-            ]),
+                }, [document.createTextNode("+")]);
+                const variantStock = it.variant ? Number(it.variant.stock || 0) : p.stock;
+                plusBtn.disabled = variantStock <= 0 || it.qty >= variantStock;
+                return el("div", {class: "qty"}, [
+                    minusBtn,
+                    el("div", {}, [document.createTextNode(String(it.qty))]),
+                    plusBtn,
+                ]);
+            })(),
         ]));
     }
 
@@ -769,6 +904,11 @@ function openCheckout() {
             rows: "3",
             autocomplete: "street-address"
         })]),
+        el("label", {}, [document.createTextNode("Промокод (опционально)"), el("input", {
+            name: "promoCode",
+            autocomplete: "off"
+        })]),
+        el("div", {class: "small"}, [document.createTextNode("Скидка по промокоду применяется после проверки.")]),
         el("label", {}, [document.createTextNode("Комментарий (опционально)"), el("textarea", {
             name: "comment",
             rows: "2"
@@ -788,6 +928,7 @@ function openCheckout() {
         const phone = String(fd.get("phone") || "").trim();
         const address = String(fd.get("address") || "").trim();
         const comment = String(fd.get("comment") || "").trim();
+        const promoCode = String(fd.get("promoCode") || "").trim();
 
         if (!state.initData) return toast("initData отсутствует (открой через Telegram)");
         if (!customerName || !phone || !address) return toast("Заполни ФИО/телефон/адрес");
@@ -795,7 +936,7 @@ function openCheckout() {
         const items = [];
         for (const [id, it] of state.cart.entries()) {
             if (!it.product) continue;
-            items.push({productId: it.product.id, quantity: it.qty});
+            items.push({productId: it.product.id, variantId: it.variantId || null, quantity: it.qty});
         }
 
         try {
@@ -805,6 +946,7 @@ function openCheckout() {
                 phone,
                 address,
                 comment: comment || null,
+                promoCode: promoCode || null,
                 items,
             });
 
@@ -824,7 +966,14 @@ function openCheckout() {
             if (tg) tg.HapticFeedback.notificationOccurred("success");
         } catch (err) {
             console.error(err);
-            toast("Ошибка оформления заказа");
+            const msg = err?.message || "";
+            if (msg.toLowerCase().includes("promo")) {
+                toast("Промокод не принят");
+            } else if (msg.toLowerCase().includes("variant")) {
+                toast("Выберите вариант товара");
+            } else {
+                toast("Ошибка оформления заказа");
+            }
             if (tg) tg.HapticFeedback.notificationOccurred("error");
         }
     });
@@ -894,20 +1043,36 @@ async function refreshProductsSoft() {
 
     // 4) clamp cart quantities if stock decreased
     let changed = false;
-    for (const [id, it] of state.cart.entries()) {
-        const p = freshById.get(String(id));
+    for (const [key, it] of state.cart.entries()) {
+        const parsed = parseCartKey(key);
+        const p = freshById.get(String(parsed.productId));
         if (!p) continue;
 
         if (!p.active) {
-            state.cart.delete(String(id));
+            state.cart.delete(key);
             changed = true;
             toast(`Товар скрыт: "${p.title}" удален из корзины`);
             continue;
         }
 
-        if (it.qty > p.stock) {
+        const variants = getProductVariants(p);
+        if (variants.length) {
+            const variant = variants.find((v) => String(v.id) === String(it.variantId));
+            if (!variant) {
+                state.cart.delete(key);
+                changed = true;
+                continue;
+            }
+            const variantStock = Number(variant.stock || 0);
+            if (it.qty > variantStock) {
+                it.qty = Math.max(0, variantStock);
+                if (it.qty === 0) state.cart.delete(key);
+                changed = true;
+                toast(`Корзина обновлена: "${p.title}" • ${variant.name} доступно ${variantStock}`);
+            }
+        } else if (it.qty > p.stock) {
             it.qty = Math.max(0, p.stock);
-            if (it.qty === 0) state.cart.delete(String(id));
+            if (it.qty === 0) state.cart.delete(key);
             changed = true;
             toast(`Корзина обновлена: "${p.title}" доступно ${p.stock}`);
         }

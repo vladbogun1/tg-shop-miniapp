@@ -194,6 +194,9 @@ public class TelegramNotifyService {
             long lineTotal = i.getPriceMinorSnapshot() * (long) i.getQuantity();
             sb.append("• ")
                     .append(escapeHtml(i.getTitleSnapshot()))
+                    .append(i.getVariantNameSnapshot() != null && !i.getVariantNameSnapshot().isBlank()
+                        ? " (" + escapeHtml(i.getVariantNameSnapshot()) + ")"
+                        : "")
                     .append(" × ")
                     .append(i.getQuantity())
                     .append(" — ")
@@ -208,6 +211,16 @@ public class TelegramNotifyService {
                 .append(" ")
                 .append(escapeHtml(order.getCurrency()))
                 .append("\n");
+        if (order.getDiscountMinor() > 0) {
+            sb.append("Скидка: -")
+                .append(order.getDiscountMinor())
+                .append(" ")
+                .append(escapeHtml(order.getCurrency()))
+                .append("\n");
+        }
+        if (order.getPromoCode() != null && !order.getPromoCode().isBlank()) {
+            sb.append("Промокод: ").append(escapeHtml(order.getPromoCode())).append("\n");
+        }
 
         sb.append("\n👤 TG: ").append(escapeHtml(String.valueOf(order.getTgUserId())));
         if (order.getTgUsername() != null && !order.getTgUsername().isBlank()) {
@@ -225,6 +238,9 @@ public class TelegramNotifyService {
             long lineTotal = i.getPriceMinorSnapshot() * (long) i.getQuantity();
             sb.append("• ")
                 .append(escapeHtml(i.getTitleSnapshot()))
+                .append(i.getVariantNameSnapshot() != null && !i.getVariantNameSnapshot().isBlank()
+                    ? " (" + escapeHtml(i.getVariantNameSnapshot()) + ")"
+                    : "")
                 .append(" × ")
                 .append(i.getQuantity())
                 .append(" — ")
@@ -238,6 +254,16 @@ public class TelegramNotifyService {
             .append(" ")
             .append(escapeHtml(order.getCurrency()))
             .append("\n");
+        if (order.getDiscountMinor() > 0) {
+            sb.append("Скидка: -")
+                .append(order.getDiscountMinor())
+                .append(" ")
+                .append(escapeHtml(order.getCurrency()))
+                .append("\n");
+        }
+        if (order.getPromoCode() != null && !order.getPromoCode().isBlank()) {
+            sb.append("Промокод: ").append(escapeHtml(order.getPromoCode())).append("\n");
+        }
         return sb.toString();
     }
 
