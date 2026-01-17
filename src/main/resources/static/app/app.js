@@ -684,33 +684,37 @@ function openProduct(p) {
     const variants = getProductVariants(p);
     let selectedVariantId = null;
 
-    const variantWrap = variants.length ? el("div", {class: "variant-list"}) : null;
+    const variantWrap = variants.length ? el("div", {class: "variant-scroll"}) : null;
+    const updateVariantSelection = () => {
+        if (!variantWrap) return;
+        variantWrap.querySelectorAll(".variant-chip-option").forEach((node) => {
+            const id = node.getAttribute("data-variant-id");
+            node.classList.toggle("selected", id === String(selectedVariantId));
+        });
+    };
     if (variantWrap) {
-        variants.forEach((variant, index) => {
-            const radioId = `variant-${p.id}-${index}`;
-            const input = el("input", {
-                type: "radio",
-                id: radioId,
-                name: `variant-${p.id}`,
-                value: String(variant.id),
-                ...(Number(variant.stock || 0) <= 0 ? {disabled: "true"} : {}),
-            });
-            input.addEventListener("change", () => {
-                selectedVariantId = String(variant.id);
-                renderAction();
-            });
-            const label = el("label", {
-                class: `variant-option${Number(variant.stock || 0) <= 0 ? " disabled" : ""}`,
-                for: radioId
+        variants.forEach((variant) => {
+            const disabled = Number(variant.stock || 0) <= 0;
+            const chip = el("button", {
+                type: "button",
+                class: `variant-chip-option${disabled ? " disabled" : ""}`,
+                "data-variant-id": String(variant.id),
+                ...(disabled ? {disabled: "true"} : {}),
+                onclick: () => {
+                    if (disabled) return;
+                    selectedVariantId = String(variant.id);
+                    updateVariantSelection();
+                    renderAction();
+                }
             }, [
-                input,
-                el("span", {}, [document.createTextNode(variant.name)]),
-                el("span", {class: "variant-stock"}, [
+                el("span", {class: "variant-chip-name"}, [document.createTextNode(variant.name)]),
+                el("span", {class: "variant-chip-stock"}, [
                     document.createTextNode(`Остаток: ${Number(variant.stock || 0)}`)
                 ]),
             ]);
-            variantWrap.append(label);
+            variantWrap.append(chip);
         });
+        updateVariantSelection();
     }
 
     const renderAction = () => {

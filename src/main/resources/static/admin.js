@@ -261,6 +261,9 @@ function renderVariantPicker(container, variants, onChange) {
 }
 
 function openVariantModal(onSave) {
+    const overlay = el("div", {class: "modal modal-secondary"});
+    const card = el("div", {class: "modal-card"});
+    const closeBtn = el("button", {class: "icon", type: "button"}, [el("i", {class: "fa-solid fa-xmark"})]);
     const form = el("form", {class: "stack"});
     form.append(
         el("h2", {}, [document.createTextNode("Новый вариант")]),
@@ -273,7 +276,7 @@ function openVariantModal(onSave) {
             el("input", {name: "stock", type: "number", min: "0", value: "0"}),
         ]),
         el("div", {class: "row"}, [
-            el("button", {type: "button", class: "ghost", onclick: closeModal}, [document.createTextNode("Отмена")]),
+            el("button", {type: "button", class: "ghost", onclick: () => overlay.remove()}, [document.createTextNode("Отмена")]),
             el("button", {type: "submit", class: "primary"}, [document.createTextNode("Добавить")]),
         ]),
     );
@@ -285,10 +288,29 @@ function openVariantModal(onSave) {
         const stock = Math.max(0, Number(fd.get("stock") || 0));
         if (!name) return;
         onSave?.({name, stock});
-        closeModal();
+        overlay.remove();
     });
 
-    openModal(form);
+    closeBtn.addEventListener("click", () => overlay.remove());
+    card.append(closeBtn, form);
+    overlay.append(card);
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    document.body.append(overlay);
+}
+
+function updateStockInput(stockInput, variants) {
+    if (!stockInput) return;
+    if (variants.length) {
+        const total = variants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+        stockInput.value = String(total);
+        stockInput.disabled = true;
+        stockInput.parentElement?.classList.add("disabled");
+    } else {
+        stockInput.disabled = false;
+        stockInput.parentElement?.classList.remove("disabled");
+    }
 }
 
 function closeAllTagDropdowns() {
@@ -632,7 +654,9 @@ function openEditModal(p) {
     renderTagPicker(tagPicker, selectedTags);
     const variantPicker = el("div", {class: "variant-picker"});
     const existingVariants = (p.variants || []).map((v) => ({name: v.name, stock: v.stock ?? 0}));
-    renderVariantPicker(variantPicker, existingVariants);
+    const stockInput = el("input", {name: "stock", type: "number", min: "0", value: String(p.stock)});
+    renderVariantPicker(variantPicker, existingVariants, (next) => updateStockInput(stockInput, next));
+    updateStockInput(stockInput, existingVariants);
     form.append(
         el("h2", {}, [document.createTextNode("Редактирование товара")]),
         el("label", {}, [
@@ -655,7 +679,7 @@ function openEditModal(p) {
         ]),
         el("label", {}, [
             document.createTextNode("Остаток"),
-            el("input", {name: "stock", type: "number", min: "0", value: String(p.stock)}),
+            stockInput,
         ]),
         el("label", {}, [
             document.createTextNode("URL картинок (перезапишет старые)"),
@@ -746,6 +770,7 @@ function bindForm() {
         const variantPicker = qs("productVariantPicker");
         const selectedVariants = getSelectedVariants(variantPicker);
         const totalVariantStock = selectedVariants.reduce((sum, v) => sum + Number(v.stock || 0), 0);
+        const stockInput = qs("productForm").querySelector('input[name="stock"]');
         const payload = {
             title: String(fd.get("title") || "").trim(),
             description: String(fd.get("description") || "").trim() || null,
@@ -761,7 +786,8 @@ function bindForm() {
         try {
             await apiPost("/api/admin/products", payload);
             qs("productForm").reset();
-            renderVariantPicker(variantPicker, []);
+            renderVariantPicker(variantPicker, [], (next) => updateStockInput(stockInput, next));
+            updateStockInput(stockInput, []);
             await loadProducts();
         } catch (err) {
             console.error(err);
@@ -927,7 +953,9 @@ function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
     qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
-    renderVariantPicker(qs("productVariantPicker"), []);
+    const stockInput = qs("productForm").querySelector('input[name="stock"]');
+    renderVariantPicker(qs("productVariantPicker"), [], (next) => updateStockInput(stockInput, next));
+    updateStockInput(stockInput, []);
     qs("customerToggle").addEventListener("change", (e) => {
         state.viewAsCustomer = e.target.checked;
         qs("adminPanel").classList.toggle("hidden", state.viewAsCustomer);
