@@ -640,14 +640,13 @@ function addToCart(productId, variantId, delta) {
     const next = cur.qty + delta;
     const variant = resolvedVariantId ? variants.find(v => String(v.id) === resolvedVariantId) || null : null;
     const variantStock = variant ? Number(variant.stock || 0) : p.stock;
-    const availableForVariant = variantStock - cur.qty;
 
-    if (delta > 0 && availableForVariant <= 0) return toast("Нет в наличии");
+    if (delta > 0 && cur.qty >= variantStock) return toast("Нет в наличии");
 
     if (next <= 0) {
         state.cart.delete(key);
     } else {
-        cur.qty = Math.min(next, availableForVariant);
+        cur.qty = Math.min(next, variantStock);
         cur.product = p;
         cur.variantId = resolvedVariantId;
         cur.variant = variant;
