@@ -13,7 +13,8 @@ public record CreateOrderRequest(
     @NotBlank String phone,
     @NotBlank String address,
     String comment,
+    String promoCode,
     @NotEmpty List<Item> items
 ) {
-  public record Item(@NotNull UUID productId, @Min(1) int quantity) {}
+  public record Item(@NotNull UUID productId, UUID variantId, @Min(1) int quantity) {}
 }

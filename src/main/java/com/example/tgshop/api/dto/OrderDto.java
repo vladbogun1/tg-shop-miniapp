@@ -6,6 +6,8 @@ import java.util.UUID;
 
 public record OrderDto(
     UUID id,
+    long subtotalMinor,
+    long discountMinor,
     long totalMinor,
     String currency,
     String customerName,
@@ -16,6 +18,7 @@ public record OrderDto(
     String tgUsername,
     String status,
     String trackingNumber,
+    String promoCode,
     Instant createdAt,
     List<OrderItemDto> items
 ) {}

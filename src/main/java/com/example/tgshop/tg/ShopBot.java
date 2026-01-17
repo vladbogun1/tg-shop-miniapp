@@ -235,6 +235,9 @@ public class ShopBot extends TelegramLongPollingBot {
           long lineTotal = i.getPriceMinorSnapshot() * (long) i.getQuantity();
           sb.append("• ")
               .append(escapeHtml(i.getTitleSnapshot()))
+              .append(i.getVariantNameSnapshot() != null && !i.getVariantNameSnapshot().isBlank()
+                  ? " (" + escapeHtml(i.getVariantNameSnapshot()) + ")"
+                  : "")
               .append(" × ")
               .append(i.getQuantity())
               .append(" — ")
@@ -248,6 +251,16 @@ public class ShopBot extends TelegramLongPollingBot {
             .append(" ")
             .append(escapeHtml(order.getCurrency()))
             .append("\n");
+        if (order.getDiscountMinor() > 0) {
+          sb.append("Скидка: -")
+              .append(order.getDiscountMinor())
+              .append(" ")
+              .append(escapeHtml(order.getCurrency()))
+              .append("\n");
+        }
+        if (order.getPromoCode() != null && !order.getPromoCode().isBlank()) {
+          sb.append("Промокод: ").append(escapeHtml(order.getPromoCode())).append("\n");
+        }
         if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
           sb.append("\n📦 ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
         }
