@@ -497,36 +497,46 @@ textarea {
     margin-top: 4px;
 }
 
-.variant-list {
-    display: grid;
+.variant-scroll {
+    display: flex;
     gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
     margin: 6px 0 10px;
 }
 
-.variant-option {
-    display: flex;
+.variant-chip-option {
+    display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
     cursor: pointer;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
-.variant-option.disabled {
+.variant-chip-option.selected {
+    border-color: rgba(51, 177, 255, 0.6);
+    background: rgba(51, 177, 255, 0.15);
+    color: #ccecff;
+}
+
+.variant-chip-option.disabled {
     opacity: 0.55;
     cursor: not-allowed;
 }
 
-.variant-stock {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--muted);
+.variant-chip-name {
+    font-weight: 600;
 }
 
-.variant-option input {
-    accent-color: var(--accent);
+.variant-chip-stock {
+    font-size: 12px;
+    color: var(--muted);
 }
 
 .hr {
