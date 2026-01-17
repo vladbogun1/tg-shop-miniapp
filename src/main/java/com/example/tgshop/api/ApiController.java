@@ -555,6 +555,7 @@ public class ApiController {
         PromoCode promo = new PromoCode();
         promo.setCode(code);
         promo.setDiscountPercent(req.discountPercent());
+        promo.setDiscountAmountMinor(Math.max(0, req.discountAmountMinor()));
         promo.setMaxUses(req.maxUses());
         promo.setActive(req.active());
         var saved = promoCodeRepository.save(promo);
@@ -576,6 +577,7 @@ public class ApiController {
         }
         promo.setCode(code);
         promo.setDiscountPercent(req.discountPercent());
+        promo.setDiscountAmountMinor(Math.max(0, req.discountAmountMinor()));
         promo.setMaxUses(req.maxUses());
         promo.setActive(req.active());
         var saved = promoCodeRepository.save(promo);
@@ -596,6 +598,7 @@ public class ApiController {
             promo.uuid(),
             promo.getCode(),
             promo.getDiscountPercent(),
+            promo.getDiscountAmountMinor(),
             promo.getMaxUses(),
             promo.getUsesCount(),
             promo.isActive(),

@@ -860,6 +860,15 @@ function openPromoEdit(promo) {
             el("input", {name: "discountPercent", type: "number", min: "0", max: "100", value: String(promo.discountPercent)}),
         ]),
         el("label", {}, [
+            document.createTextNode("Скидка суммой"),
+            el("input", {
+                name: "discountAmountMinor",
+                type: "number",
+                min: "0",
+                value: promo.discountAmountMinor ? String(promo.discountAmountMinor) : ""
+            }),
+        ]),
+        el("label", {}, [
             document.createTextNode("Лимит использований (пусто = бесконечно)"),
             el("input", {name: "maxUses", type: "number", min: "1", value: promo.maxUses ? String(promo.maxUses) : ""}),
         ]),
@@ -879,6 +888,7 @@ function openPromoEdit(promo) {
         const payload = {
             code: String(fd.get("code") || "").trim(),
             discountPercent: Number(fd.get("discountPercent") || 0),
+            discountAmountMinor: Number(fd.get("discountAmountMinor") || 0),
             maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
             active: Boolean(fd.get("active")),
         };
@@ -902,11 +912,14 @@ function renderPromoCodes() {
     list.innerHTML = "";
     state.promoCodes.forEach((promo) => {
         const usesLabel = promo.maxUses ? `${promo.usesCount} / ${promo.maxUses}` : `${promo.usesCount} / ∞`;
+        const discountLabel = promo.discountAmountMinor > 0
+            ? `-${promo.discountAmountMinor}`
+            : `${promo.discountPercent}%`;
         const row = el("div", {class: "promo-card"}, [
             el("div", {class: "promo-main"}, [
                 el("div", {class: "promo-code"}, [document.createTextNode(promo.code)]),
                 el("div", {class: "promo-meta"}, [
-                    document.createTextNode(`Скидка: ${promo.discountPercent}% • Использования: ${usesLabel}`)
+                    document.createTextNode(`Скидка: ${discountLabel} • Использования: ${usesLabel}`)
                 ]),
                 promo.active
                     ? el("span", {class: "status-tag"}, [document.createTextNode("Активен")])
@@ -1008,6 +1021,7 @@ function boot() {
         const payload = {
             code: String(fd.get("code") || "").trim(),
             discountPercent: Number(fd.get("discountPercent") || 0),
+            discountAmountMinor: Number(fd.get("discountAmountMinor") || 0),
             maxUses: fd.get("maxUses") ? Number(fd.get("maxUses")) : null,
             active: Boolean(fd.get("active")),
         };

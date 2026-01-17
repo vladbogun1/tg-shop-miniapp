@@ -7,6 +7,7 @@ public record PromoCodeDto(
     UUID id,
     String code,
     int discountPercent,
+    long discountAmountMinor,
     Integer maxUses,
     int usesCount,
     boolean active,

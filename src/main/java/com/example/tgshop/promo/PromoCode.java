@@ -29,6 +29,9 @@ public class PromoCode {
   @Column(name = "discount_percent", nullable = false)
   private int discountPercent;
 
+  @Column(name = "discount_amount_minor", nullable = false)
+  private long discountAmountMinor;
+
   @Column(name = "max_uses")
   private Integer maxUses;
 

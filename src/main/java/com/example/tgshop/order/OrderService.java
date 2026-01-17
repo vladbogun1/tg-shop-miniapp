@@ -118,7 +118,9 @@ public class OrderService {
 
         long discount = 0;
         if (promo != null) {
-            if (promo.getDiscountPercent() > 0) {
+            if (promo.getDiscountAmountMinor() > 0) {
+                discount = Math.min(total, promo.getDiscountAmountMinor());
+            } else if (promo.getDiscountPercent() > 0) {
                 discount = Math.max(0, (total * promo.getDiscountPercent()) / 100);
             }
             promo.setUsesCount(promo.getUsesCount() + 1);
