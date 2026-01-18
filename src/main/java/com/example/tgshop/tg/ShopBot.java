@@ -18,14 +18,13 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
-import org.telegram.telegrambots.meta.api.methods.copy.CopyMessage;
+import org.telegram.telegrambots.meta.api.methods.forward.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.MessageId;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard;
@@ -184,9 +183,9 @@ public class ShopBot extends TelegramLongPollingBot {
         replyAnchorMap.put(headerKey, order.uuid());
 
         if (isMediaMessage(message)) {
-            MessageId copied = copyMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
-            if (copied != null) {
-                ChatKey targetKey = new ChatKey(order.getTgUserId(), copied.getMessageId());
+            Message forwarded = forwardMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
+            if (forwarded != null) {
+                ChatKey targetKey = new ChatKey(order.getTgUserId(), forwarded.getMessageId());
                 adminToUserMap.put(sourceKey, targetKey);
             }
         } else {
@@ -219,10 +218,10 @@ public class ShopBot extends TelegramLongPollingBot {
             return false;
         }
 
-        MessageId copied = copyMessageToAdmin(order, message);
-        if (copied != null) {
+        Message forwarded = forwardMessageToAdmin(order, message);
+        if (forwarded != null) {
             ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
-            ChatKey targetKey = new ChatKey(order.getAdminChatId(), copied.getMessageId());
+            ChatKey targetKey = new ChatKey(order.getAdminChatId(), forwarded.getMessageId());
             userToAdminMap.put(sourceKey, targetKey);
             userMessageOrderMap.put(sourceKey, order.uuid());
         }
@@ -245,24 +244,24 @@ public class ShopBot extends TelegramLongPollingBot {
         return safeExecuteMessage(header);
     }
 
-    private MessageId copyMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
-        CopyMessage copy = CopyMessage.builder()
+    private Message forwardMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
+        ForwardMessage forward = ForwardMessage.builder()
             .chatId(String.valueOf(userId))
             .fromChatId(String.valueOf(sourceMessage.getChatId()))
             .messageId(sourceMessage.getMessageId())
             .replyToMessageId(replyToMessageId)
             .build();
-        return safeExecute(copy);
+        return safeExecute(forward);
     }
 
-    private MessageId copyMessageToAdmin(OrderEntity order, Message sourceMessage) {
-        CopyMessage copy = CopyMessage.builder()
+    private Message forwardMessageToAdmin(OrderEntity order, Message sourceMessage) {
+        ForwardMessage forward = ForwardMessage.builder()
             .chatId(String.valueOf(order.getAdminChatId()))
             .fromChatId(String.valueOf(sourceMessage.getChatId()))
             .messageId(sourceMessage.getMessageId())
             .messageThreadId(order.getAdminThreadId())
             .build();
-        return safeExecute(copy);
+        return safeExecute(forward);
     }
 
     private void updateAdminMirrorMessage(OrderEntity order, Message message, ChatKey sourceKey) {
@@ -286,9 +285,9 @@ public class ShopBot extends TelegramLongPollingBot {
                     .build());
             }
             Integer replyTo = headerKey != null ? headerKey.messageId() : null;
-            MessageId copied = copyMessageToUser(order.getTgUserId(), message, replyTo);
-            if (copied != null) {
-                adminToUserMap.put(sourceKey, new ChatKey(order.getTgUserId(), copied.getMessageId()));
+            Message forwarded = forwardMessageToUser(order.getTgUserId(), message, replyTo);
+            if (forwarded != null) {
+                adminToUserMap.put(sourceKey, new ChatKey(order.getTgUserId(), forwarded.getMessageId()));
             }
         }
     }
@@ -315,9 +314,9 @@ public class ShopBot extends TelegramLongPollingBot {
                 .messageId(targetKey.messageId())
                 .build());
         }
-        MessageId copied = copyMessageToAdmin(order, message);
-        if (copied != null) {
-            userToAdminMap.put(sourceKey, new ChatKey(order.getAdminChatId(), copied.getMessageId()));
+        Message forwarded = forwardMessageToAdmin(order, message);
+        if (forwarded != null) {
+            userToAdminMap.put(sourceKey, new ChatKey(order.getAdminChatId(), forwarded.getMessageId()));
         }
     }
 
@@ -863,11 +862,11 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
-    public MessageId safeExecute(CopyMessage msg) {
+    public Message safeExecute(ForwardMessage msg) {
         try {
             return execute(msg);
         } catch (Exception e) {
-            log.error("🤖 TG Failed to copy message", e);
+            log.error("🤖 TG Failed to forward message", e);
             return null;
         }
     }
