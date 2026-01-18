@@ -52,6 +52,9 @@ public class TelegramNotifyService {
 
         OrderChatInfo chatInfo = ensureOrderChat(order, chatId);
         String text = buildAdminOrderText(order);
+        if (chatInfo == null || chatInfo.topicLink() == null) {
+            text = text + "\n\n⚠️ <i>Чат заказа не создан. Включите темы (Forum) в админ-чате, чтобы работать в отдельных чатах заказов.</i>";
+        }
 
         var approveBtn = InlineKeyboardButton.builder()
                 .text("✅ Одобрить")

@@ -1069,6 +1069,11 @@ public class ShopBot extends TelegramLongPollingBot {
         try {
             return execute(msg);
         } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("chat is not a forum")) {
+                log.warn("🤖 TG Admin chat is not a forum, skip topic creation");
+                return null;
+            }
             log.error("🤖 TG Failed to create forum topic", e);
             return null;
         }
