@@ -28,7 +28,6 @@ import org.telegram.telegrambots.meta.api.methods.send.SendLocation;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
-import org.telegram.telegrambots.meta.api.methods.send.SendVenue;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
 import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
@@ -377,19 +376,6 @@ public class ShopBot extends TelegramLongPollingBot {
                 .build();
             return safeExecute(msg);
         }
-        if (sourceMessage.hasVenue()) {
-            var venue = sourceMessage.getVenue();
-            SendVenue msg = SendVenue.builder()
-                .chatId(chatIdStr)
-                .messageThreadId(threadId)
-                .replyToMessageId(replyToMessageId)
-                .latitude(venue.getLocation().getLatitude())
-                .longitude(venue.getLocation().getLongitude())
-                .title(venue.getTitle())
-                .address(venue.getAddress())
-                .build();
-            return safeExecute(msg);
-        }
         return null;
     }
 
@@ -502,8 +488,7 @@ public class ShopBot extends TelegramLongPollingBot {
             || message.hasVideoNote()
             || message.hasSticker()
             || message.hasContact()
-            || message.hasLocation()
-            || message.hasVenue();
+            || message.hasLocation();
     }
 
     private void handleCallback(Update update) {
@@ -1074,15 +1059,6 @@ public class ShopBot extends TelegramLongPollingBot {
             return execute(msg);
         } catch (Exception e) {
             log.error("🤖 TG Failed to send location", e);
-            return null;
-        }
-    }
-
-    public Message safeExecute(SendVenue msg) {
-        try {
-            return execute(msg);
-        } catch (Exception e) {
-            log.error("🤖 TG Failed to send venue", e);
             return null;
         }
     }
