@@ -7,6 +7,7 @@ import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,12 +18,16 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.copy.CopyMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.MessageId;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -37,6 +42,11 @@ public class ShopBot extends TelegramLongPollingBot {
     private final OrderService orderService;
     private final Map<Integer, PendingShipment> pendingShipments = new ConcurrentHashMap<>();
     private final Map<Integer, PendingRejection> pendingRejections = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> adminToUserMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> adminToUserHeaderMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> userToAdminMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, UUID> replyAnchorMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, UUID> userMessageOrderMap = new ConcurrentHashMap<>();
 
     public ShopBot(
         AppProperties props,
@@ -59,6 +69,11 @@ public class ShopBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         if (update == null) return;
 
+        if (update.hasEditedMessage()) {
+            handleEditedMessage(update.getEditedMessage());
+            return;
+        }
+
         // 1) inline callbacks (approve/reject)
         if (update.hasCallbackQuery()) {
             log.info("🤖 TG Received callback query update");
@@ -67,13 +82,23 @@ public class ShopBot extends TelegramLongPollingBot {
         }
 
         // 2) обычные сообщения
-        if (!update.hasMessage() || !update.getMessage().hasText()) return;
+        if (!update.hasMessage()) return;
 
-        String text = update.getMessage().getText().trim();
-        long chatId = update.getMessage().getChatId();
-
-        var from = update.getMessage().getFrom();
+        Message message = update.getMessage();
+        long chatId = message.getChatId();
+        var from = message.getFrom();
         long userId = from != null ? from.getId() : 0;
+
+        if (handleOrderChatMessage(message, userId)) {
+            return;
+        }
+        if (handleUserReplyToAdmin(message)) {
+            return;
+        }
+
+        if (!message.hasText()) return;
+
+        String text = message.getText().trim();
 
         log.info("🤖 TG Received message command={} chatId={} userId={}", text, chatId, userId);
         if (handleRejectReply(update, userId)) {
@@ -101,6 +126,248 @@ public class ShopBot extends TelegramLongPollingBot {
                             "/help"
             ).build());
         }
+    }
+
+    private void handleEditedMessage(Message message) {
+        if (message == null) {
+            return;
+        }
+
+        User from = message.getFrom();
+        if (from == null || Boolean.TRUE.equals(from.getIsBot())) {
+            return;
+        }
+
+        ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+        if (message.getMessageThreadId() != null && isAdmin(from.getId())) {
+            Optional<OrderEntity> orderOpt = orderService.findByAdminThread(message.getChatId(), message.getMessageThreadId());
+            if (orderOpt.isPresent()) {
+                OrderEntity order = orderOpt.get();
+                updateAdminMirrorMessage(order, message, sourceKey);
+                return;
+            }
+        }
+
+        if (userToAdminMap.containsKey(sourceKey)) {
+            updateUserMirrorMessage(message, sourceKey);
+        }
+    }
+
+    private boolean handleOrderChatMessage(Message message, long userId) {
+        if (message == null || message.getMessageThreadId() == null) {
+            return false;
+        }
+        if (!isAdmin(userId)) {
+            return false;
+        }
+        if (message.getFrom() == null || Boolean.TRUE.equals(message.getFrom().getIsBot())) {
+            return false;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByAdminThread(message.getChatId(), message.getMessageThreadId());
+        if (orderOpt.isEmpty()) {
+            return false;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getTgUserId() <= 0) {
+            return false;
+        }
+
+        ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+        Message headerMessage = sendAdminHeaderToUser(order, message);
+        if (headerMessage == null) {
+            return true;
+        }
+
+        ChatKey headerKey = new ChatKey(headerMessage.getChatId(), headerMessage.getMessageId());
+        adminToUserHeaderMap.put(sourceKey, headerKey);
+        replyAnchorMap.put(headerKey, order.uuid());
+
+        if (isMediaMessage(message)) {
+            MessageId copied = copyMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
+            if (copied != null) {
+                ChatKey targetKey = new ChatKey(order.getTgUserId(), copied.getMessageId());
+                adminToUserMap.put(sourceKey, targetKey);
+            }
+        } else {
+            adminToUserMap.put(sourceKey, headerKey);
+        }
+
+        return true;
+    }
+
+    private boolean handleUserReplyToAdmin(Message message) {
+        if (message == null || message.getReplyToMessage() == null) {
+            return false;
+        }
+        if (message.getFrom() == null || Boolean.TRUE.equals(message.getFrom().getIsBot())) {
+            return false;
+        }
+
+        ChatKey replyKey = new ChatKey(message.getChatId(), message.getReplyToMessage().getMessageId());
+        UUID orderId = replyAnchorMap.get(replyKey);
+        if (orderId == null) {
+            return false;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByUuid(orderId);
+        if (orderOpt.isEmpty()) {
+            return false;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return false;
+        }
+
+        MessageId copied = copyMessageToAdmin(order, message);
+        if (copied != null) {
+            ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+            ChatKey targetKey = new ChatKey(order.getAdminChatId(), copied.getMessageId());
+            userToAdminMap.put(sourceKey, targetKey);
+            userMessageOrderMap.put(sourceKey, order.uuid());
+        }
+        return true;
+    }
+
+    private Message sendAdminHeaderToUser(OrderEntity order, Message adminMessage) {
+        ForceReplyKeyboard forceReply = ForceReplyKeyboard.builder()
+            .forceReply(true)
+            .selective(true)
+            .build();
+
+        String headerText = buildAdminHeaderText(order, adminMessage);
+        SendMessage header = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(headerText)
+            .replyMarkup(forceReply)
+            .build();
+        return safeExecuteMessage(header);
+    }
+
+    private MessageId copyMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
+        CopyMessage copy = CopyMessage.builder()
+            .chatId(String.valueOf(userId))
+            .fromChatId(String.valueOf(sourceMessage.getChatId()))
+            .messageId(sourceMessage.getMessageId())
+            .replyToMessageId(replyToMessageId)
+            .build();
+        return safeExecute(copy);
+    }
+
+    private MessageId copyMessageToAdmin(OrderEntity order, Message sourceMessage) {
+        CopyMessage copy = CopyMessage.builder()
+            .chatId(String.valueOf(order.getAdminChatId()))
+            .fromChatId(String.valueOf(sourceMessage.getChatId()))
+            .messageId(sourceMessage.getMessageId())
+            .messageThreadId(order.getAdminThreadId())
+            .build();
+        return safeExecute(copy);
+    }
+
+    private void updateAdminMirrorMessage(OrderEntity order, Message message, ChatKey sourceKey) {
+        ChatKey headerKey = adminToUserHeaderMap.get(sourceKey);
+        if (headerKey != null) {
+            String headerText = buildAdminHeaderText(order, message);
+            safeExecute(EditMessageText.builder()
+                .chatId(String.valueOf(headerKey.chatId()))
+                .messageId(headerKey.messageId())
+                .parseMode(ParseMode.HTML)
+                .text(headerText)
+                .build());
+        }
+
+        if (isMediaMessage(message)) {
+            ChatKey targetKey = adminToUserMap.get(sourceKey);
+            if (targetKey != null) {
+                safeExecute(DeleteMessage.builder()
+                    .chatId(String.valueOf(targetKey.chatId()))
+                    .messageId(targetKey.messageId())
+                    .build());
+            }
+            Integer replyTo = headerKey != null ? headerKey.messageId() : null;
+            MessageId copied = copyMessageToUser(order.getTgUserId(), message, replyTo);
+            if (copied != null) {
+                adminToUserMap.put(sourceKey, new ChatKey(order.getTgUserId(), copied.getMessageId()));
+            }
+        }
+    }
+
+    private void updateUserMirrorMessage(Message message, ChatKey sourceKey) {
+        UUID orderId = userMessageOrderMap.get(sourceKey);
+        if (orderId == null) {
+            return;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByUuid(orderId);
+        if (orderOpt.isEmpty()) {
+            return;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+
+        ChatKey targetKey = userToAdminMap.get(sourceKey);
+        if (targetKey != null) {
+            safeExecute(DeleteMessage.builder()
+                .chatId(String.valueOf(targetKey.chatId()))
+                .messageId(targetKey.messageId())
+                .build());
+        }
+        MessageId copied = copyMessageToAdmin(order, message);
+        if (copied != null) {
+            userToAdminMap.put(sourceKey, new ChatKey(order.getAdminChatId(), copied.getMessageId()));
+        }
+    }
+
+    private String buildAdminHeaderText(OrderEntity order, Message adminMessage) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("📩 <b>Сообщение от администратора</b>\n");
+        sb.append("Заказ <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("══════════════════\n");
+        String content = extractMessageBody(adminMessage);
+        if (content != null && !content.isBlank()) {
+            sb.append("<blockquote>")
+                .append(escapeHtml(content))
+                .append("</blockquote>\n");
+        } else {
+            sb.append("<i>Администратор отправил вложение.</i>\n");
+        }
+        sb.append("══════════════════\n");
+        sb.append("Если хотите ответить, напишите реплаем на это сообщение.");
+        return sb.toString();
+    }
+
+    private static String extractMessageBody(Message message) {
+        if (message == null) {
+            return null;
+        }
+        if (message.hasText()) {
+            return message.getText();
+        }
+        if (message.getCaption() != null) {
+            return message.getCaption();
+        }
+        return null;
+    }
+
+    private static boolean isMediaMessage(Message message) {
+        if (message == null) {
+            return false;
+        }
+        return message.hasPhoto()
+            || message.hasDocument()
+            || message.hasVideo()
+            || message.hasAudio()
+            || message.hasVoice()
+            || message.hasAnimation()
+            || message.hasVideoNote()
+            || message.hasSticker()
+            || message.hasContact()
+            || message.hasLocation()
+            || message.hasVenue()
+            || message.hasPoll();
     }
 
     private void handleCallback(Update update) {
@@ -181,9 +448,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .callbackData(TelegramNotifyService.CB_SHIP_PREFIX + updated.uuid().toString())
                 .build();
             var rejectButton = buildRejectButton(updated.uuid());
-            var kb = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(List.of(shipButton, rejectButton)))
-                .build();
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(shipButton, rejectButton), updated);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(cb.getMessage().getChatId()))
                 .messageId(cb.getMessage().getMessageId())
@@ -363,9 +628,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .text(newText)
                 .build());
             var rejectButton = buildRejectButton(shipped.uuid());
-            var kb = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(List.of(rejectButton)))
-                .build();
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(rejectButton), shipped);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
@@ -423,10 +686,11 @@ public class ShopBot extends TelegramLongPollingBot {
                 .parseMode(ParseMode.HTML)
                 .text(newText)
                 .build());
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), rejected);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
-                .replyMarkup((InlineKeyboardMarkup) null)
+                .replyMarkup(kb)
                 .build());
         } catch (Exception e) {
             log.error("🤖 TG Failed to reject order from reply reason", e);
@@ -452,6 +716,40 @@ public class ShopBot extends TelegramLongPollingBot {
         return InlineKeyboardButton.builder()
             .text("❌ Отклонить")
             .callbackData(TelegramNotifyService.CB_REJECT_PREFIX + uuid.toString())
+            .build();
+    }
+
+    private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
+        InlineKeyboardButton chatButton = buildOrderChatButton(order);
+        if (chatButton != null) {
+            if (actionButtons.isEmpty()) {
+                return InlineKeyboardMarkup.builder()
+                    .keyboard(List.of(List.of(chatButton)))
+                    .build();
+            }
+            return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(actionButtons, List.of(chatButton)))
+                .build();
+        }
+        if (actionButtons.isEmpty()) {
+            return null;
+        }
+        return InlineKeyboardMarkup.builder()
+            .keyboard(List.of(actionButtons))
+            .build();
+    }
+
+    private InlineKeyboardButton buildOrderChatButton(OrderEntity order) {
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return null;
+        }
+        String link = buildTopicLink(order.getAdminChatId(), order.getAdminThreadId());
+        if (link == null) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💬 В чат заказа")
+            .url(link)
             .build();
     }
 
@@ -516,6 +814,14 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
+    public void safeExecute(EditMessageCaption msg) {
+        try {
+            execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to edit message caption", e);
+        }
+    }
+
     public void safeExecute(EditMessageReplyMarkup msg) {
         try {
             execute(msg);
@@ -546,11 +852,38 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
+    public org.telegram.telegrambots.meta.api.objects.forum.ForumTopic safeExecute(
+        org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic msg
+    ) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to create forum topic", e);
+            return null;
+        }
+    }
+
+    public MessageId safeExecute(CopyMessage msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to copy message", e);
+            return null;
+        }
+    }
+
     private static String escapeHtml(String s) {
       if (s == null) return "";
       return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
+    private static String buildTopicLink(long chatId, int threadId) {
+        String abs = String.valueOf(Math.abs(chatId));
+        String chatPart = abs.startsWith("100") ? abs.substring(3) : abs;
+        return "https://t.me/c/" + chatPart + "/" + threadId;
+    }
+
     private record PendingShipment(UUID orderId, long chatId, int orderMessageId) {}
     private record PendingRejection(UUID orderId, long chatId, int orderMessageId) {}
+    private record ChatKey(long chatId, int messageId) {}
 }
