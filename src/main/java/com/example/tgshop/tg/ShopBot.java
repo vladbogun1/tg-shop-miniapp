@@ -268,10 +268,7 @@ public class ShopBot extends TelegramLongPollingBot {
           sb.append("\n❌ Причина: ").append(escapeHtml(rejectReason)).append("\n");
         }
 
-        sb.append("\n👤 TG: ").append(escapeHtml(String.valueOf(order.getTgUserId())));
-        if (order.getTgUsername() != null && !order.getTgUsername().isBlank()) {
-          sb.append(" (@").append(escapeHtml(order.getTgUsername())).append(")");
-        }
+        sb.append("\n👤 TG: ").append(buildUserReference(order.getTgUserId(), order.getTgUsername()));
         sb.append("\n");
 
         return sb.toString();
@@ -480,6 +477,19 @@ public class ShopBot extends TelegramLongPollingBot {
     private boolean isAdmin(long userId) {
         Set<Long> admins = props.getTelegram().adminUserIdSet();
         return admins.contains(userId);
+    }
+
+    private static String buildUserReference(long userId, String username) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<a href=\"tg://user?id=")
+            .append(userId)
+            .append("\">")
+            .append(escapeHtml(String.valueOf(userId)))
+            .append("</a>");
+        if (username != null && !username.isBlank()) {
+            sb.append(" (@").append(escapeHtml(username)).append(")");
+        }
+        return sb.toString();
     }
 
     public void safeExecute(SendMessage msg) {
