@@ -222,10 +222,7 @@ public class TelegramNotifyService {
             sb.append("Промокод: ").append(escapeHtml(order.getPromoCode())).append("\n");
         }
 
-        sb.append("\n👤 TG: ").append(escapeHtml(String.valueOf(order.getTgUserId())));
-        if (order.getTgUsername() != null && !order.getTgUsername().isBlank()) {
-            sb.append(" (@").append(escapeHtml(order.getTgUsername())).append(")");
-        }
+        sb.append("\n👤 TG: ").append(buildUserReference(order.getTgUserId(), order.getTgUsername()));
         sb.append("\n");
 
         return sb.toString();
@@ -273,6 +270,19 @@ public class TelegramNotifyService {
             return s.get().getValue();
         }
         return props.getTelegram().getDefaultAdminChatId();
+    }
+
+    private static String buildUserReference(long userId, String username) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<a href=\"tg://user?id=")
+            .append(userId)
+            .append("\">")
+            .append(escapeHtml(String.valueOf(userId)))
+            .append("</a>");
+        if (username != null && !username.isBlank()) {
+            sb.append(" (@").append(escapeHtml(username)).append(")");
+        }
+        return sb.toString();
     }
 
     public enum OrderDecision { APPROVED, REJECTED }
