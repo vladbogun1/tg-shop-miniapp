@@ -18,13 +18,26 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
-import org.telegram.telegrambots.meta.api.methods.forward.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
+import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
+import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
+import org.telegram.telegrambots.meta.api.methods.send.SendContact;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.methods.send.SendLocation;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendPoll;
+import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
+import org.telegram.telegrambots.meta.api.methods.send.SendVenue;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
+import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard;
@@ -183,9 +196,9 @@ public class ShopBot extends TelegramLongPollingBot {
         replyAnchorMap.put(headerKey, order.uuid());
 
         if (isMediaMessage(message)) {
-            Message forwarded = forwardMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
-            if (forwarded != null) {
-                ChatKey targetKey = new ChatKey(order.getTgUserId(), forwarded.getMessageId());
+            Message sent = sendMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
+            if (sent != null) {
+                ChatKey targetKey = new ChatKey(order.getTgUserId(), sent.getMessageId());
                 adminToUserMap.put(sourceKey, targetKey);
             }
         } else {
@@ -218,10 +231,10 @@ public class ShopBot extends TelegramLongPollingBot {
             return false;
         }
 
-        Message forwarded = forwardMessageToAdmin(order, message);
-        if (forwarded != null) {
+        Message sent = sendMessageToAdmin(order, message);
+        if (sent != null) {
             ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
-            ChatKey targetKey = new ChatKey(order.getAdminChatId(), forwarded.getMessageId());
+            ChatKey targetKey = new ChatKey(order.getAdminChatId(), sent.getMessageId());
             userToAdminMap.put(sourceKey, targetKey);
             userMessageOrderMap.put(sourceKey, order.uuid());
         }
@@ -244,24 +257,154 @@ public class ShopBot extends TelegramLongPollingBot {
         return safeExecuteMessage(header);
     }
 
-    private Message forwardMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
-        ForwardMessage forward = ForwardMessage.builder()
-            .chatId(String.valueOf(userId))
-            .fromChatId(String.valueOf(sourceMessage.getChatId()))
-            .messageId(sourceMessage.getMessageId())
-            .replyToMessageId(replyToMessageId)
-            .build();
-        return safeExecute(forward);
+    private Message sendMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
+        return sendMessageToChat(userId, null, replyToMessageId, sourceMessage);
     }
 
-    private Message forwardMessageToAdmin(OrderEntity order, Message sourceMessage) {
-        ForwardMessage forward = ForwardMessage.builder()
-            .chatId(String.valueOf(order.getAdminChatId()))
-            .fromChatId(String.valueOf(sourceMessage.getChatId()))
-            .messageId(sourceMessage.getMessageId())
-            .messageThreadId(order.getAdminThreadId())
-            .build();
-        return safeExecute(forward);
+    private Message sendMessageToAdmin(OrderEntity order, Message sourceMessage) {
+        return sendMessageToChat(order.getAdminChatId(), order.getAdminThreadId(), null, sourceMessage);
+    }
+
+    private Message sendMessageToChat(long chatId, Integer threadId, Integer replyToMessageId, Message sourceMessage) {
+        String chatIdStr = String.valueOf(chatId);
+        if (sourceMessage.hasText()) {
+            SendMessage msg = SendMessage.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .text(sourceMessage.getText())
+                .build();
+            return safeExecuteMessage(msg);
+        }
+        if (sourceMessage.hasPhoto()) {
+            PhotoSize photo = sourceMessage.getPhoto().get(sourceMessage.getPhoto().size() - 1);
+            SendPhoto msg = SendPhoto.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .photo(new InputFile(photo.getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasDocument()) {
+            SendDocument msg = SendDocument.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .document(new InputFile(sourceMessage.getDocument().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVideo()) {
+            SendVideo msg = SendVideo.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .video(new InputFile(sourceMessage.getVideo().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasAudio()) {
+            SendAudio msg = SendAudio.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .audio(new InputFile(sourceMessage.getAudio().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVoice()) {
+            SendVoice msg = SendVoice.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .voice(new InputFile(sourceMessage.getVoice().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasAnimation()) {
+            SendAnimation msg = SendAnimation.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .animation(new InputFile(sourceMessage.getAnimation().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasSticker()) {
+            SendSticker msg = SendSticker.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .sticker(new InputFile(sourceMessage.getSticker().getFileId()))
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVideoNote()) {
+            SendVideoNote msg = SendVideoNote.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .videoNote(new InputFile(sourceMessage.getVideoNote().getFileId()))
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasContact()) {
+            var contact = sourceMessage.getContact();
+            SendContact msg = SendContact.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .phoneNumber(contact.getPhoneNumber())
+                .firstName(contact.getFirstName())
+                .lastName(contact.getLastName())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasLocation()) {
+            var location = sourceMessage.getLocation();
+            SendLocation msg = SendLocation.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .latitude(location.getLatitude())
+                .longitude(location.getLongitude())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVenue()) {
+            var venue = sourceMessage.getVenue();
+            SendVenue msg = SendVenue.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .latitude(venue.getLocation().getLatitude())
+                .longitude(venue.getLocation().getLongitude())
+                .title(venue.getTitle())
+                .address(venue.getAddress())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasPoll()) {
+            var poll = sourceMessage.getPoll();
+            SendPoll msg = SendPoll.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .question(poll.getQuestion())
+                .options(poll.getOptions().stream().map(option -> option.getText()).toList())
+                .isAnonymous(poll.getIsAnonymous())
+                .allowsMultipleAnswers(poll.getAllowsMultipleAnswers())
+                .build();
+            return safeExecute(msg);
+        }
+        return null;
     }
 
     private void updateAdminMirrorMessage(OrderEntity order, Message message, ChatKey sourceKey) {
@@ -279,15 +422,7 @@ public class ShopBot extends TelegramLongPollingBot {
         if (isMediaMessage(message)) {
             ChatKey targetKey = adminToUserMap.get(sourceKey);
             if (targetKey != null) {
-                safeExecute(DeleteMessage.builder()
-                    .chatId(String.valueOf(targetKey.chatId()))
-                    .messageId(targetKey.messageId())
-                    .build());
-            }
-            Integer replyTo = headerKey != null ? headerKey.messageId() : null;
-            Message forwarded = forwardMessageToUser(order.getTgUserId(), message, replyTo);
-            if (forwarded != null) {
-                adminToUserMap.put(sourceKey, new ChatKey(order.getTgUserId(), forwarded.getMessageId()));
+                updateMirroredCaption(message, targetKey);
             }
         }
     }
@@ -309,15 +444,32 @@ public class ShopBot extends TelegramLongPollingBot {
 
         ChatKey targetKey = userToAdminMap.get(sourceKey);
         if (targetKey != null) {
-            safeExecute(DeleteMessage.builder()
+            updateMirroredTextOrCaption(message, targetKey);
+        }
+    }
+
+    private void updateMirroredCaption(Message sourceMessage, ChatKey targetKey) {
+        String caption = sourceMessage.getCaption();
+        if (caption == null) {
+            return;
+        }
+        safeExecute(EditMessageCaption.builder()
+            .chatId(String.valueOf(targetKey.chatId()))
+            .messageId(targetKey.messageId())
+            .caption(caption)
+            .build());
+    }
+
+    private void updateMirroredTextOrCaption(Message sourceMessage, ChatKey targetKey) {
+        if (sourceMessage.hasText()) {
+            safeExecute(EditMessageText.builder()
                 .chatId(String.valueOf(targetKey.chatId()))
                 .messageId(targetKey.messageId())
+                .text(sourceMessage.getText())
                 .build());
+            return;
         }
-        Message forwarded = forwardMessageToAdmin(order, message);
-        if (forwarded != null) {
-            userToAdminMap.put(sourceKey, new ChatKey(order.getAdminChatId(), forwarded.getMessageId()));
-        }
+        updateMirroredCaption(sourceMessage, targetKey);
     }
 
     private String buildAdminHeaderText(OrderEntity order, Message adminMessage) {
@@ -851,6 +1003,114 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
+    public Message safeExecute(SendPhoto msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send photo", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendDocument msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send document", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVideo msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send video", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendAudio msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send audio", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVoice msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send voice", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendAnimation msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send animation", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendSticker msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send sticker", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVideoNote msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send video note", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendContact msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send contact", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendLocation msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send location", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVenue msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send venue", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendPoll msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send poll", e);
+            return null;
+        }
+    }
+
     public org.telegram.telegrambots.meta.api.objects.forum.ForumTopic safeExecute(
         org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic msg
     ) {
@@ -858,15 +1118,6 @@ public class ShopBot extends TelegramLongPollingBot {
             return execute(msg);
         } catch (Exception e) {
             log.error("🤖 TG Failed to create forum topic", e);
-            return null;
-        }
-    }
-
-    public Message safeExecute(ForwardMessage msg) {
-        try {
-            return execute(msg);
-        } catch (Exception e) {
-            log.error("🤖 TG Failed to forward message", e);
             return null;
         }
     }
