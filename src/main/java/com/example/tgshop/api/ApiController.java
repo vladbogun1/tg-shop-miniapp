@@ -17,6 +17,8 @@ import com.example.tgshop.api.dto.UpdateProductActiveRequest;
 import com.example.tgshop.api.dto.UpdateProductRequest;
 import com.example.tgshop.api.dto.UpdatePromoCodeRequest;
 import com.example.tgshop.api.dto.UpdateTagRequest;
+import com.example.tgshop.api.dto.PaymentTemplateDto;
+import com.example.tgshop.api.dto.UpdatePaymentTemplateRequest;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.common.UuidUtil;
 import com.example.tgshop.order.OrderService;
@@ -29,6 +31,9 @@ import com.example.tgshop.product.ProductImage;
 import com.example.tgshop.product.ProductVariant;
 import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
+import com.example.tgshop.settings.PaymentTemplateDefaults;
+import com.example.tgshop.settings.Setting;
+import com.example.tgshop.settings.SettingRepository;
 import com.example.tgshop.tag.Tag;
 import com.example.tgshop.tag.TagRepository;
 import com.example.tgshop.media.ImageStorageService;
@@ -60,6 +65,7 @@ public class ApiController {
     private final TagRepository tagRepository;
     private final ImageStorageService imageStorageService;
     private final PromoCodeRepository promoCodeRepository;
+    private final SettingRepository settingRepository;
 
 
     @GetMapping("/products")
@@ -189,6 +195,26 @@ public class ApiController {
             .toList();
         log.debug("🛒 API Returning {} orders for admin", result.size());
         return result;
+    }
+
+    @GetMapping("/admin/settings/payment-template")
+    public PaymentTemplateDto getPaymentTemplate(@RequestParam(value = "initData", required = false) String initData,
+                                                 @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
+        assertAdmin(initData, adminPassword);
+        String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
+            .map(Setting::getValue)
+            .orElseGet(PaymentTemplateDefaults::defaultTemplate);
+        return new PaymentTemplateDto(html);
+    }
+
+    @PutMapping("/admin/settings/payment-template")
+    public PaymentTemplateDto updatePaymentTemplate(@RequestParam(value = "initData", required = false) String initData,
+                                                    @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+                                                    @RequestBody @Valid UpdatePaymentTemplateRequest req) {
+        assertAdmin(initData, adminPassword);
+        String html = req.html().trim();
+        settingRepository.save(new Setting(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY, html));
+        return new PaymentTemplateDto(html);
     }
 
     @DeleteMapping("/admin/orders/{id}")

@@ -3,6 +3,7 @@ package com.example.tgshop.tg;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
 import com.example.tgshop.order.OrderRepository;
+import com.example.tgshop.settings.PaymentTemplateDefaults;
 import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import java.util.List;
@@ -24,6 +25,7 @@ public class TelegramNotifyService {
     public static final String CB_APPROVE_PREFIX = "order:approve:";
     public static final String CB_REJECT_PREFIX  = "order:reject:";
     public static final String CB_SHIP_PREFIX = "order:ship:";
+    public static final String CB_INVOICE_PREFIX = "order:invoice:";
 
     private final TelegramSender sender;
     private final AppProperties props;
@@ -197,6 +199,26 @@ public class TelegramNotifyService {
 
         log.info("🤖 TG Sending user order shipped notification uuid={} tgUserId={}",
                 order.uuid(), order.getTgUserId());
+        sender.safeExecute(msg);
+    }
+
+    public void notifyUserPaymentRequest(OrderEntity order) {
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user payment request: missing tg user id for order uuid={}", order.uuid());
+            return;
+        }
+
+        String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
+            .map(Setting::getValue)
+            .orElseGet(PaymentTemplateDefaults::defaultTemplate);
+
+        SendMessage msg = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(html)
+            .build();
+
+        log.info("🤖 TG Sending user payment request uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
         sender.safeExecute(msg);
     }
 

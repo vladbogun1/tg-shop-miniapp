@@ -91,6 +91,7 @@
             <button id="tabArchive" class="tab"><i class="fa-solid fa-box-archive"></i> Архив</button>
             <button id="tabTags" class="tab"><i class="fa-solid fa-tags"></i> Теги</button>
             <button id="tabPromos" class="tab"><i class="fa-solid fa-ticket"></i> Промокоды</button>
+            <button id="tabPaymentTemplate" class="tab"><i class="fa-solid fa-receipt"></i> Шаблон оплаты</button>
         </div>
 
         <section id="catalogSection" class="tab-section">
@@ -172,6 +173,41 @@
                 </form>
                 <div id="promoList" class="promo-list"></div>
                 <div id="promoEmpty" class="orders-empty hidden">Промокоды пока не созданы.</div>
+            </div>
+        </section>
+
+        <section id="paymentTemplateSection" class="tab-section hidden">
+            <div class="payment-template">
+                <div class="payment-header">
+                    <div class="toolbar-title">Шаблон сообщения об оплате</div>
+                    <div class="toolbar-meta">Используется при кнопке «Отправить счёт»</div>
+                </div>
+                <div class="payment-editor">
+                    <div class="editor-toolbar">
+                        <button type="button" data-cmd="bold" title="Жирный"><i class="fa-solid fa-bold"></i></button>
+                        <button type="button" data-cmd="italic" title="Курсив"><i class="fa-solid fa-italic"></i></button>
+                        <button type="button" data-cmd="underline" title="Подчеркнутый"><i class="fa-solid fa-underline"></i></button>
+                        <button type="button" data-cmd="strikeThrough" title="Зачеркнутый"><i class="fa-solid fa-strikethrough"></i></button>
+                        <button type="button" data-cmd="blockquote" title="Цитата"><i class="fa-solid fa-quote-left"></i></button>
+                        <button type="button" data-cmd="code" title="Код"><i class="fa-solid fa-code"></i></button>
+                        <button type="button" data-cmd="pre" title="Код блок"><i class="fa-solid fa-terminal"></i></button>
+                        <button type="button" data-cmd="link" title="Ссылка"><i class="fa-solid fa-link"></i></button>
+                        <button type="button" data-cmd="line" title="Разделитель"><i class="fa-solid fa-minus"></i></button>
+                    </div>
+                    <div class="editor-body">
+                        <div id="paymentTemplateEditor" class="editor-area" contenteditable="true"></div>
+                        <div class="editor-preview">
+                            <div class="preview-title">Превью сообщения</div>
+                            <div class="preview-bubble">
+                                <div id="paymentTemplatePreview" class="preview-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="payment-actions">
+                    <button id="paymentTemplateSave" class="primary"><i class="fa-solid fa-floppy-disk"></i> Сохранить шаблон</button>
+                    <span id="paymentTemplateStatus" class="hint"></span>
+                </div>
             </div>
         </section>
     </section>

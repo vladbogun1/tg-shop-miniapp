@@ -50,6 +50,7 @@ public class ShopBot extends TelegramLongPollingBot {
     private final AppProperties props;
     private final SettingRepository settings;
     private final OrderService orderService;
+    private final TelegramNotifyService notifyService;
     private final Map<Integer, PendingShipment> pendingShipments = new ConcurrentHashMap<>();
     private final Map<Integer, PendingRejection> pendingRejections = new ConcurrentHashMap<>();
     private final Map<ChatKey, ChatKey> adminToUserMap = new ConcurrentHashMap<>();
@@ -67,6 +68,7 @@ public class ShopBot extends TelegramLongPollingBot {
         super(props.getTelegram().getBotToken());
         this.props = props;
         this.settings = settings;
+        this.notifyService = notifyService;
         this.orderService = orderService;
     }
 
@@ -520,6 +522,9 @@ public class ShopBot extends TelegramLongPollingBot {
         } else if (data != null && data.startsWith(TelegramNotifyService.CB_SHIP_PREFIX)) {
             decision = null;
             uuidStr = data.substring(TelegramNotifyService.CB_SHIP_PREFIX.length());
+        } else if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
+            decision = null;
+            uuidStr = data.substring(TelegramNotifyService.CB_INVOICE_PREFIX.length());
         } else {
             log.warn("🤖 TG Callback rejected: unknown data {}", data);
             safeExecute(AnswerCallbackQuery.builder()
@@ -542,6 +547,20 @@ public class ShopBot extends TelegramLongPollingBot {
         }
 
         try {
+            if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
+                orderService.findByUuid(uuid).ifPresentOrElse(order -> {
+                    notifyService.notifyUserPaymentRequest(order);
+                    safeExecute(AnswerCallbackQuery.builder()
+                        .callbackQueryId(cb.getId())
+                        .text("✅ Счёт отправлен")
+                        .build());
+                }, () -> safeExecute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(cb.getId())
+                    .text("Заказ не найден")
+                    .showAlert(true)
+                    .build()));
+                return;
+            }
             if (decision == null) {
                 sendTrackingNumberRequest(cb, uuid);
                 return;
@@ -841,22 +860,31 @@ public class ShopBot extends TelegramLongPollingBot {
     }
 
     private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
+        InlineKeyboardButton invoiceButton = buildInvoiceButton(order);
         InlineKeyboardButton chatButton = buildOrderChatButton(order);
-        if (chatButton != null) {
-            if (actionButtons.isEmpty()) {
-                return InlineKeyboardMarkup.builder()
-                    .keyboard(List.of(List.of(chatButton)))
-                    .build();
-            }
-            return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(actionButtons, List.of(chatButton)))
-                .build();
+        List<List<InlineKeyboardButton>> rows = new java.util.ArrayList<>();
+        if (!actionButtons.isEmpty()) {
+            rows.add(actionButtons);
         }
-        if (actionButtons.isEmpty()) {
+        if (invoiceButton != null) {
+            rows.add(List.of(invoiceButton));
+        }
+        if (chatButton != null) {
+            rows.add(List.of(chatButton));
+        }
+        if (rows.isEmpty()) {
             return null;
         }
-        return InlineKeyboardMarkup.builder()
-            .keyboard(List.of(actionButtons))
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    private InlineKeyboardButton buildInvoiceButton(OrderEntity order) {
+        if (!"APPROVED".equalsIgnoreCase(order.getStatus())) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💳 Отправить счёт")
+            .callbackData(TelegramNotifyService.CB_INVOICE_PREFIX + order.uuid().toString())
             .build();
     }
 
