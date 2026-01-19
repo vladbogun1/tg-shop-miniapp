@@ -767,3 +767,119 @@ button.ghost {
         align-items: flex-start;
     }
 }
+
+.payment-template {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.payment-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.payment-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.editor-toolbar button {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.editor-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
+    gap: 16px;
+}
+
+.editor-area {
+    min-height: 260px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+    outline: none;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.editor-area:focus {
+    border-color: rgba(51, 177, 255, 0.6);
+    box-shadow: 0 0 0 2px rgba(51, 177, 255, 0.15);
+}
+
+.editor-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.preview-title {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.preview-bubble {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    min-height: 260px;
+}
+
+.preview-content {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.preview-content blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 8px 0;
+    padding: 6px 10px;
+    color: var(--text);
+    background: rgba(51, 177, 255, 0.08);
+    border-radius: 10px;
+}
+
+.preview-content code {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px 4px;
+    border-radius: 6px;
+}
+
+.preview-content pre {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 8px;
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+.payment-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: flex-start;
+}
+
+@media (max-width: 1024px) {
+    .editor-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -4,6 +4,7 @@ const state = {
     archivedProducts: [],
     tags: [],
     promoCodes: [],
+    paymentTemplate: "",
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
@@ -60,6 +61,19 @@ async function apiPost(url, body) {
 async function apiPatch(url, body) {
     const r = await fetch(url, {
         method: "PATCH",
+        headers: apiHeaders({"Content-Type": "application/json"}),
+        body: JSON.stringify(body),
+    });
+    const text = await r.text();
+    if (!r.ok) throw new Error(text);
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return text;
+    return JSON.parse(text);
+}
+
+async function apiPut(url, body) {
+    const r = await fetch(url, {
+        method: "PUT",
         headers: apiHeaders({"Content-Type": "application/json"}),
         body: JSON.stringify(body),
     });
@@ -197,6 +211,76 @@ async function loadPromoCodes() {
     } catch (err) {
         console.error(err);
         showLogin(true);
+    }
+}
+
+async function loadPaymentTemplate() {
+    try {
+        const data = await apiGet("/api/admin/settings/payment-template");
+        state.paymentTemplate = data.html || "";
+        const editor = qs("paymentTemplateEditor");
+        if (editor) {
+            editor.innerHTML = state.paymentTemplate;
+            updatePaymentPreview();
+        }
+    } catch (err) {
+        console.error(err);
+        handleAdminError(err, "Не удалось загрузить шаблон оплаты");
+    }
+}
+
+function updatePaymentPreview() {
+    const editor = qs("paymentTemplateEditor");
+    const preview = qs("paymentTemplatePreview");
+    if (!editor || !preview) return;
+    preview.innerHTML = editor.innerHTML;
+}
+
+function applyPaymentCommand(command) {
+    const editor = qs("paymentTemplateEditor");
+    if (!editor) return;
+    editor.focus();
+
+    if (command === "blockquote") {
+        document.execCommand("formatBlock", false, "blockquote");
+        return updatePaymentPreview();
+    }
+    if (command === "code") {
+        document.execCommand("insertHTML", false, "<code>Код</code>");
+        return updatePaymentPreview();
+    }
+    if (command === "pre") {
+        document.execCommand("insertHTML", false, "<pre>Кодовый блок</pre>");
+        return updatePaymentPreview();
+    }
+    if (command === "link") {
+        const url = prompt("Введите ссылку");
+        if (url) document.execCommand("createLink", false, url);
+        return updatePaymentPreview();
+    }
+    if (command === "line") {
+        document.execCommand("insertHTML", false, "<div>────────────</div>");
+        return updatePaymentPreview();
+    }
+    document.execCommand(command, false, null);
+    updatePaymentPreview();
+}
+
+async function savePaymentTemplate() {
+    const editor = qs("paymentTemplateEditor");
+    const status = qs("paymentTemplateStatus");
+    if (!editor) return;
+    const html = editor.innerHTML.trim();
+    if (!html) return;
+    try {
+        const data = await apiPut("/api/admin/settings/payment-template", {html});
+        state.paymentTemplate = data.html || "";
+        if (status) {
+            status.textContent = "Шаблон сохранён";
+        }
+    } catch (err) {
+        console.error(err);
+        handleAdminError(err, "Не удалось сохранить шаблон");
     }
 }
 
@@ -586,11 +670,13 @@ function setActiveTab(tab) {
     qs("tabArchive").classList.toggle("active", tab === "archive");
     qs("tabTags").classList.toggle("active", tab === "tags");
     qs("tabPromos").classList.toggle("active", tab === "promos");
+    qs("tabPaymentTemplate").classList.toggle("active", tab === "payment-template");
     qs("catalogSection").classList.toggle("hidden", tab !== "catalog");
     qs("ordersSection").classList.toggle("hidden", tab !== "orders");
     qs("archiveSection").classList.toggle("hidden", tab !== "archive");
     qs("tagsSection").classList.toggle("hidden", tab !== "tags");
     qs("promosSection").classList.toggle("hidden", tab !== "promos");
+    qs("paymentTemplateSection").classList.toggle("hidden", tab !== "payment-template");
     if (tab === "orders") {
         qs("catalogMeta").textContent = "История покупок";
         loadOrders();
@@ -603,6 +689,9 @@ function setActiveTab(tab) {
     } else if (tab === "promos") {
         qs("catalogMeta").textContent = "Промокоды магазина";
         loadPromoCodes();
+    } else if (tab === "payment-template") {
+        qs("catalogMeta").textContent = "Шаблон оплаты";
+        loadPaymentTemplate();
     } else {
         loadProducts();
     }
@@ -977,6 +1066,7 @@ function boot() {
         qs("tabArchive").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabTags").classList.toggle("hidden", state.viewAsCustomer);
         qs("tabPromos").classList.toggle("hidden", state.viewAsCustomer);
+        qs("tabPaymentTemplate").classList.toggle("hidden", state.viewAsCustomer);
         if (state.viewAsCustomer && state.activeTab === "orders") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "archive") {
@@ -984,6 +1074,8 @@ function boot() {
         } else if (state.viewAsCustomer && state.activeTab === "tags") {
             setActiveTab("catalog");
         } else if (state.viewAsCustomer && state.activeTab === "promos") {
+            setActiveTab("catalog");
+        } else if (state.viewAsCustomer && state.activeTab === "payment-template") {
             setActiveTab("catalog");
         } else {
             setActiveTab(state.activeTab);
@@ -994,8 +1086,14 @@ function boot() {
     qs("tabArchive").addEventListener("click", () => setActiveTab("archive"));
     qs("tabTags").addEventListener("click", () => setActiveTab("tags"));
     qs("tabPromos").addEventListener("click", () => setActiveTab("promos"));
+    qs("tabPaymentTemplate").addEventListener("click", () => setActiveTab("payment-template"));
     qs("closeModal").addEventListener("click", closeModal);
     bindForm();
+    qs("paymentTemplateEditor").addEventListener("input", updatePaymentPreview);
+    qs("paymentTemplateSave").addEventListener("click", savePaymentTemplate);
+    qs("paymentTemplateSection").querySelectorAll(".editor-toolbar button").forEach((btn) => {
+        btn.addEventListener("click", () => applyPaymentCommand(btn.dataset.cmd));
+    });
     qs("tagForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(qs("tagForm"));
