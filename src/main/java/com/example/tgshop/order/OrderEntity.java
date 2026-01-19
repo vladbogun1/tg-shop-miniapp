@@ -61,6 +61,15 @@ public class OrderEntity {
   @Column(name = "tracking_number", length = 128)
   private String trackingNumber;
 
+  @Column(name = "admin_chat_id")
+  private Long adminChatId;
+
+  @Column(name = "admin_thread_id")
+  private Integer adminThreadId;
+
+  @Column(name = "admin_thread_message_id")
+  private Integer adminThreadMessageId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 

@@ -2,6 +2,8 @@ package com.example.tgshop.tg;
 
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
+import com.example.tgshop.order.OrderRepository;
+import com.example.tgshop.settings.PaymentTemplateDefaults;
 import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import java.util.List;
@@ -9,7 +11,10 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -20,19 +25,23 @@ public class TelegramNotifyService {
     public static final String CB_APPROVE_PREFIX = "order:approve:";
     public static final String CB_REJECT_PREFIX  = "order:reject:";
     public static final String CB_SHIP_PREFIX = "order:ship:";
+    public static final String CB_INVOICE_PREFIX = "order:invoice:";
 
     private final TelegramSender sender;
     private final AppProperties props;
     private final SettingRepository settingRepository;
+    private final OrderRepository orderRepository;
 
     public TelegramNotifyService(
             TelegramSender sender,
             AppProperties props,
-            SettingRepository settingRepository
+            SettingRepository settingRepository,
+            OrderRepository orderRepository
     ) {
         this.sender = sender;
         this.props = props;
         this.settingRepository = settingRepository;
+        this.orderRepository = orderRepository;
     }
 
     /** Админу: новый заказ + кнопки approve/reject */
@@ -43,7 +52,11 @@ public class TelegramNotifyService {
             return;
         }
 
+        OrderChatInfo chatInfo = ensureOrderChat(order, chatId);
         String text = buildAdminOrderText(order);
+        if (chatInfo == null || chatInfo.topicLink() == null) {
+            text = text + "\n\n⚠️ <i>Чат заказа не создан. Включите темы (Forum) в админ-чате, чтобы работать в отдельных чатах заказов.</i>";
+        }
 
         var approveBtn = InlineKeyboardButton.builder()
                 .text("✅ Одобрить")
@@ -55,9 +68,20 @@ public class TelegramNotifyService {
                 .callbackData(CB_REJECT_PREFIX + order.uuid().toString())
                 .build();
 
-        var kb = InlineKeyboardMarkup.builder()
+        InlineKeyboardMarkup kb;
+        if (chatInfo != null && chatInfo.topicLink() != null) {
+            var chatBtn = InlineKeyboardButton.builder()
+                .text("💬 В чат заказа")
+                .url(chatInfo.topicLink())
+                .build();
+            kb = InlineKeyboardMarkup.builder()
+                .keyboard(List.of(List.of(approveBtn, rejectBtn), List.of(chatBtn)))
+                .build();
+        } else {
+            kb = InlineKeyboardMarkup.builder()
                 .keyboard(List.of(List.of(approveBtn, rejectBtn)))
                 .build();
+        }
 
         SendMessage msg = SendMessage.builder()
                 .chatId(chatId)
@@ -178,6 +202,32 @@ public class TelegramNotifyService {
         sender.safeExecute(msg);
     }
 
+    public Message notifyUserPaymentRequest(OrderEntity order) {
+        if (order.getTgUserId() <= 0) {
+            log.warn("🤖 TG Skipping user payment request: missing tg user id for order uuid={}", order.uuid());
+            return null;
+        }
+
+        String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
+            .map(Setting::getValue)
+            .orElseGet(PaymentTemplateDefaults::defaultTemplate);
+
+        var replyMarkup = org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard.builder()
+            .forceReply(true)
+            .selective(true)
+            .build();
+
+        SendMessage msg = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(html)
+            .replyMarkup(replyMarkup)
+            .build();
+
+        log.info("🤖 TG Sending user payment request uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
+        return sender.safeExecuteMessage(msg);
+    }
+
     private String buildAdminOrderText(OrderEntity order) {
         StringBuilder sb = new StringBuilder();
         sb.append("<b>🛒 Новый заказ</b>\n");
@@ -226,6 +276,74 @@ public class TelegramNotifyService {
         sb.append("\n");
 
         return sb.toString();
+    }
+
+    private OrderChatInfo ensureOrderChat(OrderEntity order, String adminChatId) {
+        if (order.getAdminThreadId() != null && order.getAdminChatId() != null) {
+            String link = buildTopicLink(order.getAdminChatId(), order.getAdminThreadId());
+            return new OrderChatInfo(order.getAdminThreadId(), link);
+        }
+
+        Long chatId = parseChatId(adminChatId);
+        if (chatId == null) {
+            log.warn("🤖 TG Unable to parse admin chat id {}", adminChatId);
+            return null;
+        }
+
+        String topicName = buildOrderTopicName(order);
+        try {
+            ForumTopic topic = sender.safeExecute(CreateForumTopic.builder()
+                .chatId(adminChatId)
+                .name(topicName)
+                .build());
+            if (topic == null) {
+                return null;
+            }
+
+            Integer threadId = topic.getMessageThreadId();
+            if (threadId == null) {
+                return null;
+            }
+
+            SendMessage threadMessage = SendMessage.builder()
+                .chatId(adminChatId)
+                .messageThreadId(threadId)
+                .parseMode(ParseMode.HTML)
+                .text(buildAdminOrderText(order))
+                .build();
+            Message sent = sender.safeExecuteMessage(threadMessage);
+            order.setAdminChatId(chatId);
+            order.setAdminThreadId(threadId);
+            if (sent != null) {
+                order.setAdminThreadMessageId(sent.getMessageId());
+            }
+            orderRepository.save(order);
+
+            String link = buildTopicLink(chatId, threadId);
+            return new OrderChatInfo(threadId, link);
+        } catch (Exception e) {
+            log.warn("🤖 TG Failed to create order chat topic for order uuid={}", order.uuid(), e);
+            return null;
+        }
+    }
+
+    private static Long parseChatId(String chatId) {
+        try {
+            return Long.parseLong(chatId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String buildOrderTopicName(OrderEntity order) {
+        String shortId = order.uuid().toString().substring(0, 8);
+        return "Заказ " + shortId + " — " + order.getCustomerName();
+    }
+
+    private static String buildTopicLink(long chatId, int threadId) {
+        String abs = String.valueOf(Math.abs(chatId));
+        String chatPart = abs.startsWith("100") ? abs.substring(3) : abs;
+        return "https://t.me/c/" + chatPart + "/" + threadId;
     }
 
     private String buildItemsBlock(OrderEntity order) {
@@ -291,4 +409,6 @@ public class TelegramNotifyService {
         if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
+
+    private record OrderChatInfo(Integer threadId, String topicLink) {}
 }

@@ -7,6 +7,7 @@ import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,11 +19,25 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
+import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
+import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
+import org.telegram.telegrambots.meta.api.methods.send.SendContact;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.methods.send.SendLocation;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
+import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -35,8 +50,14 @@ public class ShopBot extends TelegramLongPollingBot {
     private final AppProperties props;
     private final SettingRepository settings;
     private final OrderService orderService;
+    private final TelegramNotifyService notifyService;
     private final Map<Integer, PendingShipment> pendingShipments = new ConcurrentHashMap<>();
     private final Map<Integer, PendingRejection> pendingRejections = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> adminToUserMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> adminToUserHeaderMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, ChatKey> userToAdminMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, UUID> replyAnchorMap = new ConcurrentHashMap<>();
+    private final Map<ChatKey, UUID> userMessageOrderMap = new ConcurrentHashMap<>();
 
     public ShopBot(
         AppProperties props,
@@ -47,6 +68,7 @@ public class ShopBot extends TelegramLongPollingBot {
         super(props.getTelegram().getBotToken());
         this.props = props;
         this.settings = settings;
+        this.notifyService = notifyService;
         this.orderService = orderService;
     }
 
@@ -59,6 +81,11 @@ public class ShopBot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
         if (update == null) return;
 
+        if (update.hasEditedMessage()) {
+            handleEditedMessage(update.getEditedMessage());
+            return;
+        }
+
         // 1) inline callbacks (approve/reject)
         if (update.hasCallbackQuery()) {
             log.info("🤖 TG Received callback query update");
@@ -67,13 +94,23 @@ public class ShopBot extends TelegramLongPollingBot {
         }
 
         // 2) обычные сообщения
-        if (!update.hasMessage() || !update.getMessage().hasText()) return;
+        if (!update.hasMessage()) return;
 
-        String text = update.getMessage().getText().trim();
-        long chatId = update.getMessage().getChatId();
-
-        var from = update.getMessage().getFrom();
+        Message message = update.getMessage();
+        long chatId = message.getChatId();
+        var from = message.getFrom();
         long userId = from != null ? from.getId() : 0;
+
+        if (handleOrderChatMessage(message, userId)) {
+            return;
+        }
+        if (handleUserReplyToAdmin(message)) {
+            return;
+        }
+
+        if (!message.hasText()) return;
+
+        String text = message.getText().trim();
 
         log.info("🤖 TG Received message command={} chatId={} userId={}", text, chatId, userId);
         if (handleRejectReply(update, userId)) {
@@ -101,6 +138,359 @@ public class ShopBot extends TelegramLongPollingBot {
                             "/help"
             ).build());
         }
+    }
+
+    private void handleEditedMessage(Message message) {
+        if (message == null) {
+            return;
+        }
+
+        User from = message.getFrom();
+        if (from == null || Boolean.TRUE.equals(from.getIsBot())) {
+            return;
+        }
+
+        ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+        if (message.getMessageThreadId() != null && isAdmin(from.getId())) {
+            Optional<OrderEntity> orderOpt = orderService.findByAdminThread(message.getChatId(), message.getMessageThreadId());
+            if (orderOpt.isPresent()) {
+                OrderEntity order = orderOpt.get();
+                updateAdminMirrorMessage(order, message, sourceKey);
+                return;
+            }
+        }
+
+        if (userToAdminMap.containsKey(sourceKey)) {
+            updateUserMirrorMessage(message, sourceKey);
+        }
+    }
+
+    private boolean handleOrderChatMessage(Message message, long userId) {
+        if (message == null || message.getMessageThreadId() == null) {
+            return false;
+        }
+        if (!isAdmin(userId)) {
+            return false;
+        }
+        if (message.getFrom() == null || Boolean.TRUE.equals(message.getFrom().getIsBot())) {
+            return false;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByAdminThread(message.getChatId(), message.getMessageThreadId());
+        if (orderOpt.isEmpty()) {
+            return false;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getTgUserId() <= 0) {
+            return false;
+        }
+
+        ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+        Message headerMessage = sendAdminHeaderToUser(order, message);
+        if (headerMessage == null) {
+            return true;
+        }
+
+        ChatKey headerKey = new ChatKey(headerMessage.getChatId(), headerMessage.getMessageId());
+        adminToUserHeaderMap.put(sourceKey, headerKey);
+        replyAnchorMap.put(headerKey, order.uuid());
+
+        if (isMediaMessage(message)) {
+            Message sent = sendMessageToUser(order.getTgUserId(), message, headerMessage.getMessageId());
+            if (sent != null) {
+                ChatKey targetKey = new ChatKey(order.getTgUserId(), sent.getMessageId());
+                adminToUserMap.put(sourceKey, targetKey);
+            }
+        } else {
+            adminToUserMap.put(sourceKey, headerKey);
+        }
+
+        return true;
+    }
+
+    private boolean handleUserReplyToAdmin(Message message) {
+        if (message == null || message.getReplyToMessage() == null) {
+            return false;
+        }
+        if (message.getFrom() == null || Boolean.TRUE.equals(message.getFrom().getIsBot())) {
+            return false;
+        }
+
+        ChatKey replyKey = new ChatKey(message.getChatId(), message.getReplyToMessage().getMessageId());
+        UUID orderId = replyAnchorMap.get(replyKey);
+        if (orderId == null) {
+            return false;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByUuid(orderId);
+        if (orderOpt.isEmpty()) {
+            return false;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return false;
+        }
+
+        Message sent = sendMessageToAdmin(order, message);
+        if (sent != null) {
+            ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
+            ChatKey targetKey = new ChatKey(order.getAdminChatId(), sent.getMessageId());
+            userToAdminMap.put(sourceKey, targetKey);
+            userMessageOrderMap.put(sourceKey, order.uuid());
+        }
+        return true;
+    }
+
+    private Message sendAdminHeaderToUser(OrderEntity order, Message adminMessage) {
+        ForceReplyKeyboard forceReply = ForceReplyKeyboard.builder()
+            .forceReply(true)
+            .selective(true)
+            .build();
+
+        String headerText = buildAdminHeaderText(order, adminMessage);
+        SendMessage header = SendMessage.builder()
+            .chatId(String.valueOf(order.getTgUserId()))
+            .parseMode(ParseMode.HTML)
+            .text(headerText)
+            .replyMarkup(forceReply)
+            .build();
+        return safeExecuteMessage(header);
+    }
+
+    private Message sendMessageToUser(long userId, Message sourceMessage, Integer replyToMessageId) {
+        return sendMessageToChat(userId, null, replyToMessageId, sourceMessage);
+    }
+
+    private Message sendMessageToAdmin(OrderEntity order, Message sourceMessage) {
+        return sendMessageToChat(order.getAdminChatId(), order.getAdminThreadId(), null, sourceMessage);
+    }
+
+    private Message sendMessageToChat(long chatId, Integer threadId, Integer replyToMessageId, Message sourceMessage) {
+        String chatIdStr = String.valueOf(chatId);
+        if (sourceMessage.hasText()) {
+            SendMessage msg = SendMessage.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .text(sourceMessage.getText())
+                .build();
+            return safeExecuteMessage(msg);
+        }
+        if (sourceMessage.hasPhoto()) {
+            PhotoSize photo = sourceMessage.getPhoto().get(sourceMessage.getPhoto().size() - 1);
+            SendPhoto msg = SendPhoto.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .photo(new InputFile(photo.getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasDocument()) {
+            SendDocument msg = SendDocument.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .document(new InputFile(sourceMessage.getDocument().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVideo()) {
+            SendVideo msg = SendVideo.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .video(new InputFile(sourceMessage.getVideo().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasAudio()) {
+            SendAudio msg = SendAudio.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .audio(new InputFile(sourceMessage.getAudio().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVoice()) {
+            SendVoice msg = SendVoice.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .voice(new InputFile(sourceMessage.getVoice().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasAnimation()) {
+            SendAnimation msg = SendAnimation.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .animation(new InputFile(sourceMessage.getAnimation().getFileId()))
+                .caption(sourceMessage.getCaption())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasSticker()) {
+            SendSticker msg = SendSticker.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .sticker(new InputFile(sourceMessage.getSticker().getFileId()))
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasVideoNote()) {
+            SendVideoNote msg = SendVideoNote.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .videoNote(new InputFile(sourceMessage.getVideoNote().getFileId()))
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasContact()) {
+            var contact = sourceMessage.getContact();
+            SendContact msg = SendContact.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .phoneNumber(contact.getPhoneNumber())
+                .firstName(contact.getFirstName())
+                .lastName(contact.getLastName())
+                .build();
+            return safeExecute(msg);
+        }
+        if (sourceMessage.hasLocation()) {
+            var location = sourceMessage.getLocation();
+            SendLocation msg = SendLocation.builder()
+                .chatId(chatIdStr)
+                .messageThreadId(threadId)
+                .replyToMessageId(replyToMessageId)
+                .latitude(location.getLatitude())
+                .longitude(location.getLongitude())
+                .build();
+            return safeExecute(msg);
+        }
+        return null;
+    }
+
+    private void updateAdminMirrorMessage(OrderEntity order, Message message, ChatKey sourceKey) {
+        ChatKey headerKey = adminToUserHeaderMap.get(sourceKey);
+        if (headerKey != null) {
+            String headerText = buildAdminHeaderText(order, message);
+            safeExecute(EditMessageText.builder()
+                .chatId(String.valueOf(headerKey.chatId()))
+                .messageId(headerKey.messageId())
+                .parseMode(ParseMode.HTML)
+                .text(headerText)
+                .build());
+        }
+
+        if (isMediaMessage(message)) {
+            ChatKey targetKey = adminToUserMap.get(sourceKey);
+            if (targetKey != null) {
+                updateMirroredCaption(message, targetKey);
+            }
+        }
+    }
+
+    private void updateUserMirrorMessage(Message message, ChatKey sourceKey) {
+        UUID orderId = userMessageOrderMap.get(sourceKey);
+        if (orderId == null) {
+            return;
+        }
+
+        Optional<OrderEntity> orderOpt = orderService.findByUuid(orderId);
+        if (orderOpt.isEmpty()) {
+            return;
+        }
+        OrderEntity order = orderOpt.get();
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+
+        ChatKey targetKey = userToAdminMap.get(sourceKey);
+        if (targetKey != null) {
+            updateMirroredTextOrCaption(message, targetKey);
+        }
+    }
+
+    private void updateMirroredCaption(Message sourceMessage, ChatKey targetKey) {
+        String caption = sourceMessage.getCaption();
+        if (caption == null) {
+            return;
+        }
+        safeExecute(EditMessageCaption.builder()
+            .chatId(String.valueOf(targetKey.chatId()))
+            .messageId(targetKey.messageId())
+            .caption(caption)
+            .build());
+    }
+
+    private void updateMirroredTextOrCaption(Message sourceMessage, ChatKey targetKey) {
+        if (sourceMessage.hasText()) {
+            safeExecute(EditMessageText.builder()
+                .chatId(String.valueOf(targetKey.chatId()))
+                .messageId(targetKey.messageId())
+                .text(sourceMessage.getText())
+                .build());
+            return;
+        }
+        updateMirroredCaption(sourceMessage, targetKey);
+    }
+
+    private String buildAdminHeaderText(OrderEntity order, Message adminMessage) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("📩 <b>Сообщение от администратора</b>\n");
+        sb.append("Заказ <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("══════════════════\n");
+        String content = extractMessageBody(adminMessage);
+        if (content != null && !content.isBlank()) {
+            sb.append("<blockquote>")
+                .append(escapeHtml(content))
+                .append("</blockquote>\n");
+        } else {
+            sb.append("<i>Администратор отправил вложение.</i>\n");
+        }
+        sb.append("══════════════════\n");
+        sb.append("Если хотите ответить, напишите реплаем на это сообщение.");
+        return sb.toString();
+    }
+
+    private static String extractMessageBody(Message message) {
+        if (message == null) {
+            return null;
+        }
+        if (message.hasText()) {
+            return message.getText();
+        }
+        if (message.getCaption() != null) {
+            return message.getCaption();
+        }
+        return null;
+    }
+
+    private static boolean isMediaMessage(Message message) {
+        if (message == null) {
+            return false;
+        }
+        return message.hasPhoto()
+            || message.hasDocument()
+            || message.hasVideo()
+            || message.hasAudio()
+            || message.hasVoice()
+            || message.hasAnimation()
+            || message.hasVideoNote()
+            || message.hasSticker()
+            || message.hasContact()
+            || message.hasLocation();
     }
 
     private void handleCallback(Update update) {
@@ -132,6 +522,9 @@ public class ShopBot extends TelegramLongPollingBot {
         } else if (data != null && data.startsWith(TelegramNotifyService.CB_SHIP_PREFIX)) {
             decision = null;
             uuidStr = data.substring(TelegramNotifyService.CB_SHIP_PREFIX.length());
+        } else if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
+            decision = null;
+            uuidStr = data.substring(TelegramNotifyService.CB_INVOICE_PREFIX.length());
         } else {
             log.warn("🤖 TG Callback rejected: unknown data {}", data);
             safeExecute(AnswerCallbackQuery.builder()
@@ -154,6 +547,23 @@ public class ShopBot extends TelegramLongPollingBot {
         }
 
         try {
+            if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
+                orderService.findByUuid(uuid).ifPresentOrElse(order -> {
+                    Message sent = notifyService.notifyUserPaymentRequest(order);
+                    if (sent != null) {
+                        replyAnchorMap.put(new ChatKey(order.getTgUserId(), sent.getMessageId()), order.uuid());
+                    }
+                    safeExecute(AnswerCallbackQuery.builder()
+                        .callbackQueryId(cb.getId())
+                        .text("✅ Счёт отправлен")
+                        .build());
+                }, () -> safeExecute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(cb.getId())
+                    .text("Заказ не найден")
+                    .showAlert(true)
+                    .build()));
+                return;
+            }
             if (decision == null) {
                 sendTrackingNumberRequest(cb, uuid);
                 return;
@@ -181,9 +591,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .callbackData(TelegramNotifyService.CB_SHIP_PREFIX + updated.uuid().toString())
                 .build();
             var rejectButton = buildRejectButton(updated.uuid());
-            var kb = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(List.of(shipButton, rejectButton)))
-                .build();
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(shipButton, rejectButton), updated);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(cb.getMessage().getChatId()))
                 .messageId(cb.getMessage().getMessageId())
@@ -363,9 +771,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .text(newText)
                 .build());
             var rejectButton = buildRejectButton(shipped.uuid());
-            var kb = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(List.of(rejectButton)))
-                .build();
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(rejectButton), shipped);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
@@ -423,10 +829,11 @@ public class ShopBot extends TelegramLongPollingBot {
                 .parseMode(ParseMode.HTML)
                 .text(newText)
                 .build());
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), rejected);
             safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
-                .replyMarkup((InlineKeyboardMarkup) null)
+                .replyMarkup(kb)
                 .build());
         } catch (Exception e) {
             log.error("🤖 TG Failed to reject order from reply reason", e);
@@ -452,6 +859,49 @@ public class ShopBot extends TelegramLongPollingBot {
         return InlineKeyboardButton.builder()
             .text("❌ Отклонить")
             .callbackData(TelegramNotifyService.CB_REJECT_PREFIX + uuid.toString())
+            .build();
+    }
+
+    private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
+        InlineKeyboardButton invoiceButton = buildInvoiceButton(order);
+        InlineKeyboardButton chatButton = buildOrderChatButton(order);
+        List<List<InlineKeyboardButton>> rows = new java.util.ArrayList<>();
+        if (!actionButtons.isEmpty()) {
+            rows.add(actionButtons);
+        }
+        if (invoiceButton != null) {
+            rows.add(List.of(invoiceButton));
+        }
+        if (chatButton != null) {
+            rows.add(List.of(chatButton));
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    private InlineKeyboardButton buildInvoiceButton(OrderEntity order) {
+        if (!"APPROVED".equalsIgnoreCase(order.getStatus())) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💳 Отправить счёт")
+            .callbackData(TelegramNotifyService.CB_INVOICE_PREFIX + order.uuid().toString())
+            .build();
+    }
+
+    private InlineKeyboardButton buildOrderChatButton(OrderEntity order) {
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return null;
+        }
+        String link = buildTopicLink(order.getAdminChatId(), order.getAdminThreadId());
+        if (link == null) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💬 В чат заказа")
+            .url(link)
             .build();
     }
 
@@ -516,6 +966,14 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
+    public void safeExecute(EditMessageCaption msg) {
+        try {
+            execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to edit message caption", e);
+        }
+    }
+
     public void safeExecute(EditMessageReplyMarkup msg) {
         try {
             execute(msg);
@@ -546,11 +1004,124 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
+    public Message safeExecute(SendPhoto msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send photo", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendDocument msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send document", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVideo msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send video", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendAudio msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send audio", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVoice msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send voice", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendAnimation msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send animation", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendSticker msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send sticker", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendVideoNote msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send video note", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendContact msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send contact", e);
+            return null;
+        }
+    }
+
+    public Message safeExecute(SendLocation msg) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to send location", e);
+            return null;
+        }
+    }
+
+    public org.telegram.telegrambots.meta.api.objects.forum.ForumTopic safeExecute(
+        org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic msg
+    ) {
+        try {
+            return execute(msg);
+        } catch (Exception e) {
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("chat is not a forum")) {
+                log.warn("🤖 TG Admin chat is not a forum, skip topic creation");
+                return null;
+            }
+            log.error("🤖 TG Failed to create forum topic", e);
+            return null;
+        }
+    }
+
     private static String escapeHtml(String s) {
       if (s == null) return "";
       return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
+    private static String buildTopicLink(long chatId, int threadId) {
+        String abs = String.valueOf(Math.abs(chatId));
+        String chatPart = abs.startsWith("100") ? abs.substring(3) : abs;
+        return "https://t.me/c/" + chatPart + "/" + threadId;
+    }
+
     private record PendingShipment(UUID orderId, long chatId, int orderMessageId) {}
     private record PendingRejection(UUID orderId, long chatId, int orderMessageId) {}
+    private record ChatKey(long chatId, int messageId) {}
 }
