@@ -549,7 +549,10 @@ public class ShopBot extends TelegramLongPollingBot {
         try {
             if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
                 orderService.findByUuid(uuid).ifPresentOrElse(order -> {
-                    notifyService.notifyUserPaymentRequest(order);
+                    Message sent = notifyService.notifyUserPaymentRequest(order);
+                    if (sent != null) {
+                        replyAnchorMap.put(new ChatKey(order.getTgUserId(), sent.getMessageId()), order.uuid());
+                    }
                     safeExecute(AnswerCallbackQuery.builder()
                         .callbackQueryId(cb.getId())
                         .text("✅ Счёт отправлен")

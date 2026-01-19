@@ -202,24 +202,30 @@ public class TelegramNotifyService {
         sender.safeExecute(msg);
     }
 
-    public void notifyUserPaymentRequest(OrderEntity order) {
+    public Message notifyUserPaymentRequest(OrderEntity order) {
         if (order.getTgUserId() <= 0) {
             log.warn("🤖 TG Skipping user payment request: missing tg user id for order uuid={}", order.uuid());
-            return;
+            return null;
         }
 
         String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
             .map(Setting::getValue)
             .orElseGet(PaymentTemplateDefaults::defaultTemplate);
 
+        var replyMarkup = org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard.builder()
+            .forceReply(true)
+            .selective(true)
+            .build();
+
         SendMessage msg = SendMessage.builder()
             .chatId(String.valueOf(order.getTgUserId()))
             .parseMode(ParseMode.HTML)
             .text(html)
+            .replyMarkup(replyMarkup)
             .build();
 
         log.info("🤖 TG Sending user payment request uuid={} tgUserId={}", order.uuid(), order.getTgUserId());
-        sender.safeExecute(msg);
+        return sender.safeExecuteMessage(msg);
     }
 
     private String buildAdminOrderText(OrderEntity order) {
