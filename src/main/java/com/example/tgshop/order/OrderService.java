@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -223,6 +224,14 @@ public class OrderService {
         notifyService.notifyUserOrderShipped(saved);
         log.info("🧾 ORDER Order shipped uuid={}", saved.uuid());
         return saved;
+    }
+
+    public Optional<OrderEntity> findByAdminThread(long adminChatId, int adminThreadId) {
+        return orderRepository.findByAdminChatIdAndAdminThreadId(adminChatId, adminThreadId);
+    }
+
+    public Optional<OrderEntity> findByUuid(UUID uuid) {
+        return orderRepository.findById(UuidUtil.toBytes(uuid));
     }
 
     public record CreateOrderCommand(
