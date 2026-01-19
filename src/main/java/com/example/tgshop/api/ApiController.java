@@ -212,9 +212,22 @@ public class ApiController {
                                                     @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                                     @RequestBody @Valid UpdatePaymentTemplateRequest req) {
         assertAdmin(initData, adminPassword);
-        String html = req.html().trim();
+        String html = sanitizePaymentTemplate(req.html());
         settingRepository.save(new Setting(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY, html));
         return new PaymentTemplateDto(html);
+    }
+
+    private static String sanitizePaymentTemplate(String rawHtml) {
+        if (rawHtml == null) {
+            return "";
+        }
+        String html = rawHtml.replace("\r\n", "\n").trim();
+        html = html.replaceAll("(?i)<br\\s*/?>", "\n");
+        html = html.replaceAll("(?i)</(div|p)>", "\n");
+        html = html.replaceAll("(?i)<(div|p)(\\s[^>]*)?>", "");
+        html = html.replaceAll("(?i)<a\\s+[^>]*href=['\"]([^'\"]+)['\"][^>]*>", "<a href=\"$1\">");
+        html = html.replaceAll("(?i)<(?!/?(b|strong|i|em|u|ins|s|del|code|pre|blockquote|a)(\\s|>|/))[^>]*>", "");
+        return html;
     }
 
     @DeleteMapping("/admin/orders/{id}")
