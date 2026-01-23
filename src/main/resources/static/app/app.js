@@ -32,6 +32,7 @@ const state = {
     mainBtnBound: false,
     sort: "default",
     checkoutOpen: false,
+    checkoutSubmitting: false,
 
     thumbTimer: null,
     thumbIndex: new Map(), // productId -> index
@@ -884,6 +885,9 @@ function openCheckout() {
     updateCartBadge();
 
     const form = el("form", {class: "checkout-form"});
+    const submitLabel = "✅ Отправить заказ";
+    const submitBtn = el("button", {class: "primary pill", type: "submit"}, [document.createTextNode(submitLabel)]);
+
     form.append(
         el("h2", {}, [document.createTextNode("🧾 Оформление заказа")]),
         el("div", {class: "small"}, [document.createTextNode(`К оплате/итого: ${sum} ${cur}`)]),
@@ -916,12 +920,13 @@ function openCheckout() {
         el("div", {class: "hr"}),
         el("div", {class: "row-gapped"}, [
             el("button", {class: "pill", type: "button", onclick: openCart}, [document.createTextNode("← Корзина")]),
-            el("button", {class: "primary pill", type: "submit"}, [document.createTextNode("✅ Отправить заказ")]),
+            submitBtn,
         ])
     );
 
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (state.checkoutSubmitting) return;
 
         const fd = new FormData(form);
         const customerName = String(fd.get("customerName") || "").trim();
@@ -938,6 +943,11 @@ function openCheckout() {
             if (!it.product) continue;
             items.push({productId: it.product.id, variantId: it.variantId || null, quantity: it.qty});
         }
+
+        state.checkoutSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.classList.add("loading");
+        submitBtn.textContent = "⏳ Отправка...";
 
         try {
             const res = await apiPost("/api/orders", {
@@ -964,6 +974,7 @@ function openCheckout() {
             ]));
 
             if (tg) tg.HapticFeedback.notificationOccurred("success");
+            state.checkoutSubmitting = false;
         } catch (err) {
             console.error(err);
             const msg = err?.message || "";
@@ -975,6 +986,10 @@ function openCheckout() {
                 toast("Ошибка оформления заказа");
             }
             if (tg) tg.HapticFeedback.notificationOccurred("error");
+            state.checkoutSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.classList.remove("loading");
+            submitBtn.textContent = submitLabel;
         }
     });
 

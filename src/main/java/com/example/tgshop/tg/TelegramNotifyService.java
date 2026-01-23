@@ -351,6 +351,7 @@ public class TelegramNotifyService {
             .chatId(String.valueOf(order.getAdminChatId()))
             .messageThreadId(order.getAdminThreadId())
             .name(topicName)
+            .iconCustomEmojiId("")
             .build());
     }
 
