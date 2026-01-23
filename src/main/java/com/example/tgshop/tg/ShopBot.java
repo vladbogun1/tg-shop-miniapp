@@ -61,6 +61,19 @@ public class ShopBot extends TelegramLongPollingBot implements TelegramBotGatewa
             return;
         }
 
+        if (update.hasMessage()) {
+            Message message = update.getMessage();
+            if (message.getForumTopicEdited() != null
+                && message.getFrom() != null
+                && Boolean.TRUE.equals(message.getFrom().getIsBot())) {
+                safeExecute(DeleteMessage.builder()
+                    .chatId(String.valueOf(message.getChatId()))
+                    .messageId(message.getMessageId())
+                    .build());
+                return;
+            }
+        }
+
         if (update.hasEditedMessage()) {
             adminChatBridgeService.handleEditedMessage(update.getEditedMessage(), this);
             return;

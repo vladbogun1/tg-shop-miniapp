@@ -357,10 +357,11 @@ public class TelegramNotifyService {
         if (status == null) {
             return "🆕";
         }
-        return switch (status.toUpperCase()) {
-            case "APPROVED" -> "✅";
+        String normalized = status.trim().toUpperCase();
+        return switch (normalized) {
+            case "APPROVED", "APPROVE", "ACCEPTED" -> "✅";
             case "SHIPPED" -> "📦";
-            case "REJECTED" -> "❌";
+            case "REJECTED", "DECLINED", "CANCELLED", "CANCELED" -> "❌";
             default -> "🆕";
         };
     }
