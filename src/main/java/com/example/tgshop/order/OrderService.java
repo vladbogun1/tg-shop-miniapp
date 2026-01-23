@@ -157,6 +157,7 @@ public class OrderService {
         var saved = orderRepository.save(o);
 
         notifyService.notifyUserOrderStatus(saved, TelegramNotifyService.OrderDecision.APPROVED);
+        notifyService.updateOrderTopicStatus(saved);
         log.info("🧾 ORDER Order approved uuid={}", saved.uuid());
         return saved;
     }
@@ -203,6 +204,7 @@ public class OrderService {
         var saved = orderRepository.save(o);
 
         notifyService.notifyUserOrderRejected(saved, reason);
+        notifyService.updateOrderTopicStatus(saved);
         log.info("🧾 ORDER Order rejected uuid={}", saved.uuid());
         return saved;
     }
@@ -222,6 +224,7 @@ public class OrderService {
         var saved = orderRepository.save(o);
 
         notifyService.notifyUserOrderShipped(saved);
+        notifyService.updateOrderTopicStatus(saved);
         log.info("🧾 ORDER Order shipped uuid={}", saved.uuid());
         return saved;
     }

@@ -141,7 +141,7 @@ public class AdminChatBridgeService {
             return false;
         }
 
-        Message sent = sendMessageToAdmin(order, message, gateway);
+        Message sent = sendUserMessageToAdmin(order, message, gateway);
         if (sent != null) {
             ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
             ChatKey targetKey = new ChatKey(order.getAdminChatId(), sent.getMessageId());
@@ -173,6 +173,37 @@ public class AdminChatBridgeService {
 
     private Message sendMessageToAdmin(OrderEntity order, Message sourceMessage, TelegramBotGateway gateway) {
         return sendMessageToChat(order.getAdminChatId(), order.getAdminThreadId(), null, sourceMessage, gateway);
+    }
+
+    private Message sendUserMessageToAdmin(OrderEntity order, Message sourceMessage, TelegramBotGateway gateway) {
+        String headerText = buildUserHeaderText(order);
+        if (sourceMessage.hasText()) {
+            String body = BotMessageUtils.escapeHtml(sourceMessage.getText());
+            SendMessage msg = SendMessage.builder()
+                .chatId(String.valueOf(order.getAdminChatId()))
+                .messageThreadId(order.getAdminThreadId())
+                .parseMode(ParseMode.HTML)
+                .text(headerText + "\n" + body)
+                .build();
+            return gateway.safeExecuteMessage(msg);
+        }
+
+        SendMessage header = SendMessage.builder()
+            .chatId(String.valueOf(order.getAdminChatId()))
+            .messageThreadId(order.getAdminThreadId())
+            .parseMode(ParseMode.HTML)
+            .text(headerText)
+            .build();
+        Message headerMessage = gateway.safeExecuteMessage(header);
+        Integer replyToMessageId = headerMessage != null ? headerMessage.getMessageId() : null;
+        Message sent = sendMessageToChat(
+            order.getAdminChatId(),
+            order.getAdminThreadId(),
+            replyToMessageId,
+            sourceMessage,
+            gateway
+        );
+        return sent != null ? sent : headerMessage;
     }
 
     private Message sendMessageToChat(
@@ -377,6 +408,15 @@ public class AdminChatBridgeService {
         }
         sb.append("══════════════════\n");
         sb.append("Если хотите ответить, напишите реплаем на это сообщение.");
+        return sb.toString();
+    }
+
+    private String buildUserHeaderText(OrderEntity order) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("👤 <b>Сообщение от пользователя</b>\n");
+        sb.append("Заказ <code>").append(BotMessageUtils.escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("Покупатель: ").append(BotMessageUtils.escapeHtml(order.getCustomerName())).append("\n");
+        sb.append("TG: ").append(BotMessageUtils.buildUserReference(order.getTgUserId(), order.getTgUsername()));
         return sb.toString();
     }
 

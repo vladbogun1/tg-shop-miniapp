@@ -108,6 +108,7 @@ public class OrderDecisionHandler {
                     if (sent != null) {
                         state.replyAnchorMap().put(new ChatKey(order.getTgUserId(), sent.getMessageId()), order.uuid());
                     }
+                    sendAdminStatusNote(order, "💳 Реквизиты отправлены пользователю.", gateway);
                     gateway.safeExecute(AnswerCallbackQuery.builder()
                         .callbackQueryId(cb.getId())
                         .text("✅ Счёт отправлен")
@@ -155,6 +156,7 @@ public class OrderDecisionHandler {
                 .callbackQueryId(cb.getId())
                 .text("✅ Одобрено")
                 .build());
+            sendAdminStatusNote(updated, "✅ Заказ одобрен.", gateway);
         } catch (Exception e) {
             log.error("🤖 TG Failed to handle callback decision uuid={} decision={}", uuidStr, decision, e);
             gateway.safeExecute(AnswerCallbackQuery.builder()
@@ -210,6 +212,7 @@ public class OrderDecisionHandler {
                 .messageId(pending.orderMessageId())
                 .replyMarkup(kb)
                 .build());
+            sendAdminStatusNote(shipped, "📦 Заказ отправлен. ТТН: " + BotMessageUtils.escapeHtml(trackingNumber), gateway);
         } catch (Exception e) {
             log.error("🤖 TG Failed to ship order from reply tracking number", e);
             gateway.safeExecute(SendMessage.builder()
@@ -273,6 +276,11 @@ public class OrderDecisionHandler {
                 .messageId(pending.orderMessageId())
                 .replyMarkup(kb)
                 .build());
+            String note = "❌ Заказ отклонён.";
+            if (reason != null && !reason.isBlank()) {
+                note += " Причина: " + BotMessageUtils.escapeHtml(reason);
+            }
+            sendAdminStatusNote(rejected, note, gateway);
         } catch (Exception e) {
             log.error("🤖 TG Failed to reject order from reply reason", e);
             gateway.safeExecute(SendMessage.builder()
@@ -427,6 +435,18 @@ public class OrderDecisionHandler {
             .text("❌ Отклонить")
             .callbackData(TelegramNotifyService.CB_REJECT_PREFIX + uuid.toString())
             .build();
+    }
+
+    private void sendAdminStatusNote(OrderEntity order, String text, TelegramBotGateway gateway) {
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+        gateway.safeExecute(SendMessage.builder()
+            .chatId(String.valueOf(order.getAdminChatId()))
+            .messageThreadId(order.getAdminThreadId())
+            .parseMode(ParseMode.HTML)
+            .text(text)
+            .build());
     }
 
     private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
