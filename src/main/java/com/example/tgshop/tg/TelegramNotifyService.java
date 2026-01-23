@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.EditForumTopic;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
@@ -337,7 +338,32 @@ public class TelegramNotifyService {
 
     private static String buildOrderTopicName(OrderEntity order) {
         String shortId = order.uuid().toString().substring(0, 8);
-        return "Заказ " + shortId + " — " + order.getCustomerName();
+        String statusIcon = resolveStatusIcon(order.getStatus());
+        return statusIcon + " Заказ " + shortId + " — " + order.getCustomerName();
+    }
+
+    public void updateOrderTopicStatus(OrderEntity order) {
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+        String topicName = buildOrderTopicName(order);
+        sender.safeExecute(EditForumTopic.builder()
+            .chatId(String.valueOf(order.getAdminChatId()))
+            .messageThreadId(order.getAdminThreadId())
+            .name(topicName)
+            .build());
+    }
+
+    private static String resolveStatusIcon(String status) {
+        if (status == null) {
+            return "🆕";
+        }
+        return switch (status.toUpperCase()) {
+            case "APPROVED" -> "✅";
+            case "SHIPPED" -> "📦";
+            case "REJECTED" -> "❌";
+            default -> "🆕";
+        };
     }
 
     private static String buildTopicLink(long chatId, int threadId) {

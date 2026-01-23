@@ -20,6 +20,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
 import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
+import org.telegram.telegrambots.meta.api.methods.forum.EditForumTopic;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
@@ -284,6 +285,14 @@ public class ShopBot extends TelegramLongPollingBot implements TelegramBotGatewa
             }
             log.error("🤖 TG Failed to create forum topic", e);
             return null;
+        }
+    }
+
+    public void safeExecute(EditForumTopic msg) {
+        try {
+            execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to edit forum topic", e);
         }
     }
 }
