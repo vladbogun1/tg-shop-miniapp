@@ -1,10 +1,9 @@
 package com.example.tgshop.tg;
 
 import com.example.tgshop.order.OrderEntity;
-import com.example.tgshop.tg.bot.BotState;
+import com.example.tgshop.order.OrderMessageEntity;
+import com.example.tgshop.order.OrderMessageRepository;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -14,10 +13,10 @@ import org.telegram.telegrambots.meta.api.objects.User;
 @Slf4j
 public class OrderMessageLogService {
 
-  private final BotState state;
+  private final OrderMessageRepository repository;
 
-  public OrderMessageLogService(BotState state) {
-    this.state = state;
+  public OrderMessageLogService(OrderMessageRepository repository) {
+    this.repository = repository;
   }
 
   public void recordAdminMessage(OrderEntity order, Message message) {
@@ -32,49 +31,26 @@ public class OrderMessageLogService {
     if (order == null) {
       return;
     }
-    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
-        "SYSTEM",
-        "TEXT",
-        null,
-        null,
-        text,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        Instant.now()
-    );
-    appendEntry(order.uuid(), entry);
+    OrderMessageEntity entry = new OrderMessageEntity();
+    entry.setOrder(order);
+    entry.setDirection("SYSTEM");
+    entry.setMessageType("TEXT");
+    entry.setText(text);
+    entry.setCreatedAt(Instant.now());
+    repository.save(entry);
   }
 
   public void recordSystemHtml(OrderEntity order, String html) {
     if (order == null) {
       return;
     }
-    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
-        "SYSTEM",
-        "HTML",
-        null,
-        null,
-        html,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        Instant.now()
-    );
-    appendEntry(order.uuid(), entry);
-  }
-
-  public void clearLog(UUID orderId) {
-    if (orderId == null) {
-      return;
-    }
-    state.orderLogMap().remove(orderId);
+    OrderMessageEntity entry = new OrderMessageEntity();
+    entry.setOrder(order);
+    entry.setDirection("SYSTEM");
+    entry.setMessageType("HTML");
+    entry.setText(html);
+    entry.setCreatedAt(Instant.now());
+    repository.save(entry);
   }
 
   private void recordMessage(OrderEntity order, Message message, String direction) {
@@ -157,28 +133,21 @@ public class OrderMessageLogService {
       text = "⚠️ Неподдерживаемый тип сообщения.";
     }
 
-    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
-        direction,
-        messageType,
-        senderName,
-        senderId,
-        text,
-        fileId,
-        fileName,
-        mimeType,
-        message.getMessageId(),
-        message.getReplyToMessage() != null ? message.getReplyToMessage().getMessageId() : null,
-        message.getMessageThreadId(),
-        createdAt
-    );
-    appendEntry(order.uuid(), entry);
+    OrderMessageEntity entry = new OrderMessageEntity();
+    entry.setOrder(order);
+    entry.setDirection(direction);
+    entry.setSenderName(senderName);
+    entry.setSenderId(senderId);
+    entry.setMessageType(messageType);
+    entry.setText(text);
+    entry.setFileId(fileId);
+    entry.setFileName(fileName);
+    entry.setMimeType(mimeType);
+    entry.setTgMessageId(message.getMessageId());
+    entry.setTgReplyToMessageId(message.getReplyToMessage() != null ? message.getReplyToMessage().getMessageId() : null);
+    entry.setCreatedAt(createdAt);
+    repository.save(entry);
     log.debug("🤖 TG Logged order message orderId={} direction={} type={}",
-        order.uuid(), direction, entry.messageType());
-  }
-
-  private void appendEntry(UUID orderId, BotState.OrderLogEntry entry) {
-    List<BotState.OrderLogEntry> list = state.orderLogMap()
-        .computeIfAbsent(orderId, k -> new java.util.concurrent.CopyOnWriteArrayList<>());
-    list.add(entry);
+        order.uuid(), direction, entry.getMessageType());
   }
 }
