@@ -3,6 +3,7 @@ package com.example.tgshop.tg.handlers;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.tg.OrderMessageLogService;
 import com.example.tgshop.tg.bot.BotMessageUtils;
 import com.example.tgshop.tg.bot.BotState;
 import com.example.tgshop.tg.bot.BotState.ChatKey;
@@ -38,15 +39,18 @@ public class AdminChatBridgeService {
     private final AppProperties props;
     private final OrderService orderService;
     private final BotState state;
+    private final OrderMessageLogService messageLogService;
 
     public AdminChatBridgeService(
         AppProperties props,
         OrderService orderService,
-        BotState state
+        BotState state,
+        OrderMessageLogService messageLogService
     ) {
         this.props = props;
         this.orderService = orderService;
         this.state = state;
+        this.messageLogService = messageLogService;
     }
 
     public boolean handleEditedMessage(Message message, TelegramBotGateway gateway) {
@@ -95,6 +99,7 @@ public class AdminChatBridgeService {
             return false;
         }
 
+        messageLogService.recordAdminMessage(order, message);
         ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());
         Message headerMessage = sendAdminHeaderToUser(order, message, gateway);
         if (headerMessage == null) {
@@ -141,6 +146,7 @@ public class AdminChatBridgeService {
             return false;
         }
 
+        messageLogService.recordUserMessage(order, message);
         Message sent = sendUserMessageToAdmin(order, message, gateway);
         if (sent != null) {
             ChatKey sourceKey = new ChatKey(message.getChatId(), message.getMessageId());

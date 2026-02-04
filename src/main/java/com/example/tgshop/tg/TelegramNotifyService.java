@@ -11,14 +11,16 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
-import org.telegram.telegrambots.meta.api.methods.forum.CloseForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.DeleteForumTopic;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 @Service
 @Slf4j
@@ -39,17 +41,23 @@ public class TelegramNotifyService {
     private final AppProperties props;
     private final SettingRepository settingRepository;
     private final OrderRepository orderRepository;
+    private final OrderMessageLogService messageLogService;
+    private final OrderChatArchiveService archiveService;
 
     public TelegramNotifyService(
             TelegramSender sender,
             AppProperties props,
             SettingRepository settingRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            OrderMessageLogService messageLogService,
+            OrderChatArchiveService archiveService
     ) {
         this.sender = sender;
         this.props = props;
         this.settingRepository = settingRepository;
         this.orderRepository = orderRepository;
+        this.messageLogService = messageLogService;
+        this.archiveService = archiveService;
     }
 
     /** Админу: новый заказ + кнопки approve/reject */
@@ -324,6 +332,7 @@ public class TelegramNotifyService {
             order.setAdminThreadId(threadId);
             if (sent != null) {
                 order.setAdminThreadMessageId(sent.getMessageId());
+                messageLogService.recordSystemHtml(order, buildAdminOrderText(order));
             }
             orderRepository.save(order);
 
@@ -377,17 +386,36 @@ public class TelegramNotifyService {
             return;
         }
         moveOrderToBoard(order, stage);
+        if (stage == BoardStage.CLOSED) {
+            sendOrderArchive(order);
+        }
     }
 
-    public void archiveOrderChat(OrderEntity order) {
+    public void deleteOrderChat(OrderEntity order) {
         if (order == null || order.getAdminChatId() == null || order.getAdminThreadId() == null) {
             return;
         }
-        CloseForumTopic closeTopic = CloseForumTopic.builder()
+        DeleteForumTopic deleteTopic = DeleteForumTopic.builder()
             .chatId(String.valueOf(order.getAdminChatId()))
             .messageThreadId(order.getAdminThreadId())
             .build();
-        sender.safeExecute(closeTopic);
+        sender.safeExecute(deleteTopic);
+    }
+
+    private void sendOrderArchive(OrderEntity order) {
+        if (order.getAdminBoardChatId() == null || order.getAdminBoardThreadId() == null) {
+            return;
+        }
+        archiveService.buildArchive(order).ifPresent(path -> {
+            SendDocument doc = SendDocument.builder()
+                .chatId(String.valueOf(order.getAdminBoardChatId()))
+                .messageThreadId(order.getAdminBoardThreadId())
+                .replyToMessageId(order.getAdminBoardMessageId())
+                .caption("📦 Архив переписки заказа " + order.uuid())
+                .document(new InputFile(path.toFile()))
+                .build();
+            sender.safeExecute(doc);
+        });
     }
 
     private static String resolveStatusIcon(String status) {

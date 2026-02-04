@@ -3,6 +3,7 @@ package com.example.tgshop.tg.handlers;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.tg.OrderMessageLogService;
 import com.example.tgshop.tg.TelegramNotifyService;
 import com.example.tgshop.tg.bot.BotMessageUtils;
 import com.example.tgshop.tg.bot.BotState;
@@ -34,17 +35,20 @@ public class OrderDecisionHandler {
     private final OrderService orderService;
     private final TelegramNotifyService notifyService;
     private final BotState state;
+    private final OrderMessageLogService messageLogService;
 
     public OrderDecisionHandler(
         AppProperties props,
         OrderService orderService,
         TelegramNotifyService notifyService,
-        BotState state
+        BotState state,
+        OrderMessageLogService messageLogService
     ) {
         this.props = props;
         this.orderService = orderService;
         this.notifyService = notifyService;
         this.state = state;
+        this.messageLogService = messageLogService;
     }
 
     public boolean handleCallback(Update update, TelegramBotGateway gateway) {
@@ -417,6 +421,7 @@ public class OrderDecisionHandler {
 
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
+            .messageThreadId(cb.getMessage().getMessageThreadId())
             .parseMode(ParseMode.HTML)
             .text("Введите ТТН для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
@@ -449,6 +454,7 @@ public class OrderDecisionHandler {
 
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
+            .messageThreadId(cb.getMessage().getMessageThreadId())
             .parseMode(ParseMode.HTML)
             .text("Напишите причину отклонения для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
@@ -493,6 +499,7 @@ public class OrderDecisionHandler {
             .parseMode(ParseMode.HTML)
             .text(text)
             .build());
+        messageLogService.recordSystemMessage(order, text);
     }
 
     private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
