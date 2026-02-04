@@ -68,6 +68,12 @@ public class TelegramNotifyService {
             return;
         }
 
+        if (isBoardConfigured()) {
+            ensureOrderChat(order, chatId);
+            log.info("🤖 TG Board configured, skip global admin notification for order uuid={}", order.uuid());
+            return;
+        }
+
         OrderChatInfo chatInfo = ensureOrderChat(order, chatId);
         String text = buildAdminOrderText(order);
         if (chatInfo == null || chatInfo.topicLink() == null) {
@@ -543,6 +549,13 @@ public class TelegramNotifyService {
             .map(Setting::getValue)
             .map(this::parseBoardTarget)
             .orElse(null);
+    }
+
+    private boolean isBoardConfigured() {
+        return settingRepository.findById(SETTING_BOARD_NEW).isPresent()
+            || settingRepository.findById(SETTING_BOARD_PROCESSING).isPresent()
+            || settingRepository.findById(SETTING_BOARD_SHIPPED).isPresent()
+            || settingRepository.findById(SETTING_BOARD_CLOSED).isPresent();
     }
 
     private BoardTarget parseBoardTarget(String value) {
