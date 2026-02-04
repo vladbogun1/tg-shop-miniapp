@@ -419,9 +419,10 @@ public class OrderDecisionHandler {
             .selective(true)
             .build();
 
+        Integer threadId = cb.getMessage() instanceof Message msg ? msg.getMessageThreadId() : null;
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
-            .messageThreadId(cb.getMessage().getMessageThreadId())
+            .messageThreadId(threadId)
             .parseMode(ParseMode.HTML)
             .text("Введите ТТН для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
@@ -452,9 +453,10 @@ public class OrderDecisionHandler {
             .selective(true)
             .build();
 
+        Integer threadId = cb.getMessage() instanceof Message msg ? msg.getMessageThreadId() : null;
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
-            .messageThreadId(cb.getMessage().getMessageThreadId())
+            .messageThreadId(threadId)
             .parseMode(ParseMode.HTML)
             .text("Напишите причину отклонения для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
