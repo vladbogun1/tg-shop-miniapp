@@ -531,12 +531,21 @@ public class TelegramNotifyService {
 
     private String buildBoardMessage(OrderEntity order, BoardStage stage) {
         StringBuilder sb = new StringBuilder();
-        sb.append(stage.header()).append("\n");
-        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append(stage.header()).append("\n\n");
+        sb.append("<b>🛒 Заказ</b>\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n\n");
         sb.append("👤 ").append(escapeHtml(order.getCustomerName())).append("\n");
         sb.append("📞 ").append(escapeHtml(order.getPhone())).append("\n");
-        sb.append("💰 Итого: ").append(order.getTotalMinor())
-            .append(" ").append(escapeHtml(order.getCurrency())).append("\n");
+        sb.append("📦 ").append(escapeHtml(order.getAddress())).append("\n");
+        if (order.getComment() != null && !order.getComment().isBlank()) {
+            sb.append("💬 ").append(escapeHtml(order.getComment())).append("\n");
+        }
+        sb.append(buildItemsBlock(order));
+        if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
+            sb.append("\n📦 ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
+        }
+        sb.append("\n👤 TG: ").append(buildUserReference(order.getTgUserId(), order.getTgUsername()));
+        sb.append("\n");
         return sb.toString();
     }
 
