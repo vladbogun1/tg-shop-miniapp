@@ -2,11 +2,9 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches: ["master"]
+    branches: ["**"]
     tags:
       - "v*"
-  pull_request:
-    branches: ["master"]
 
 jobs:
   build:
@@ -20,12 +18,14 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build & push image
+        if: github.event_name != 'pull_request'
         env:
           SHA_TAG: ${{ github.sha }}
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/tg-shop-miniapp
@@ -34,6 +34,8 @@ jobs:
             RELEASE_TAG=${GITHUB_REF##*/}
             echo "Building image for Release Tag = $RELEASE_TAG"
             docker buildx build --platform linux/amd64,linux/arm64 \
+              --cache-from type=gha \
+              --cache-to type=gha,mode=max \
               -t ${IMAGE_NAME}:$SHA_TAG \
               -t ${IMAGE_NAME}:latest \
               -t ${IMAGE_NAME}:$RELEASE_TAG \
@@ -41,7 +43,18 @@ jobs:
           else
             echo "Building image for commit SHA = $SHA_TAG"
             docker buildx build --platform linux/amd64,linux/arm64 \
+              --cache-from type=gha \
+              --cache-to type=gha,mode=max \
               -t ${IMAGE_NAME}:$SHA_TAG \
               -t ${IMAGE_NAME}:latest \
               --push .
           fi
+
+      - name: Build image for PR
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Building image for PR (linux/amd64 only, no push)"
+          docker buildx build --platform linux/amd64 \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --load .

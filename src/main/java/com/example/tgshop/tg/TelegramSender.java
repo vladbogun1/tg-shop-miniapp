@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.EditForumTopic;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
@@ -31,5 +32,10 @@ public class TelegramSender {
     public ForumTopic safeExecute(CreateForumTopic msg) {
         log.debug("🤖 TG Creating forum topic in chatId={}", msg.getChatId());
         return bot.safeExecute(msg);
+    }
+
+    public void safeExecute(EditForumTopic msg) {
+        log.debug("🤖 TG Editing forum topic in chatId={}", msg.getChatId());
+        bot.safeExecute(msg);
     }
 }

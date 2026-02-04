@@ -337,7 +337,33 @@ public class TelegramNotifyService {
 
     private static String buildOrderTopicName(OrderEntity order) {
         String shortId = order.uuid().toString().substring(0, 8);
-        return "Заказ " + shortId + " — " + order.getCustomerName();
+        String statusIcon = resolveStatusIcon(order.getStatus());
+        return statusIcon + " Заказ " + shortId + " — " + order.getCustomerName();
+    }
+
+    public void updateOrderTopicStatus(OrderEntity order) {
+        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+        String topicName = buildOrderTopicName(order);
+        SafeEditForumTopic editTopic = new SafeEditForumTopic();
+        editTopic.setChatId(String.valueOf(order.getAdminChatId()));
+        editTopic.setMessageThreadId(order.getAdminThreadId());
+        editTopic.setName(topicName);
+        sender.safeExecute(editTopic);
+    }
+
+    private static String resolveStatusIcon(String status) {
+        if (status == null) {
+            return "🆕";
+        }
+        String normalized = status.trim().toUpperCase();
+        return switch (normalized) {
+            case "APPROVED", "APPROVE", "ACCEPTED" -> "✅";
+            case "SHIPPED" -> "📦";
+            case "REJECTED", "DECLINED", "CANCELLED", "CANCELED" -> "❌";
+            default -> "🆕";
+        };
     }
 
     private static String buildTopicLink(long chatId, int threadId) {

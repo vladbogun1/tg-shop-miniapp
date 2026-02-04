@@ -708,6 +708,15 @@ textarea {
     pointer-events: none;
 }
 
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.pill.loading {
+    opacity: 0.65;
+}
+
 .gallery-dots {
     position: absolute;
     left: 50%;
