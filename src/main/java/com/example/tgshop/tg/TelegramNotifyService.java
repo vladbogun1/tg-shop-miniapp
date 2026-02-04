@@ -415,6 +415,7 @@ public class TelegramNotifyService {
                 .document(new InputFile(path.toFile()))
                 .build();
             sender.safeExecute(doc);
+            messageLogService.clearLog(order.uuid());
         });
     }
 
