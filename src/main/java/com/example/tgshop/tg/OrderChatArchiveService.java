@@ -1,8 +1,7 @@
 package com.example.tgshop.tg;
 
 import com.example.tgshop.order.OrderEntity;
-import com.example.tgshop.order.OrderMessageEntity;
-import com.example.tgshop.order.OrderMessageRepository;
+import com.example.tgshop.tg.bot.BotState;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -30,17 +29,17 @@ public class OrderChatArchiveService {
   private static final DateTimeFormatter TIME_TITLE =
       DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
 
-  private final OrderMessageRepository repository;
+  private final BotState state;
   private final TelegramSender sender;
 
-  public OrderChatArchiveService(OrderMessageRepository repository, TelegramSender sender) {
-    this.repository = repository;
+  public OrderChatArchiveService(BotState state, TelegramSender sender) {
+    this.state = state;
     this.sender = sender;
   }
 
   public Optional<Path> buildArchive(OrderEntity order) {
-    List<OrderMessageEntity> messages = repository.findByOrderIdOrderByCreatedAtAsc(order.getId());
-    if (messages.isEmpty()) {
+    List<BotState.OrderLogEntry> messages = state.orderLogMap().get(order.uuid());
+    if (messages == null || messages.isEmpty()) {
       return Optional.empty();
     }
     try {
@@ -66,7 +65,7 @@ public class OrderChatArchiveService {
     }
   }
 
-  private String buildHtml(OrderEntity order, List<OrderMessageEntity> messages, Path chatsDir) {
+  private String buildHtml(OrderEntity order, List<BotState.OrderLogEntry> messages, Path chatsDir) {
     String title = "Заказ " + order.uuid().toString().substring(0, 8)
         + " — " + order.getCustomerName();
     StringBuilder sb = new StringBuilder();
@@ -85,8 +84,8 @@ public class OrderChatArchiveService {
 
     Instant lastDate = null;
     int messageIndex = 1;
-    for (OrderMessageEntity entry : messages) {
-      Instant ts = entry.getCreatedAt();
+    for (BotState.OrderLogEntry entry : messages) {
+      Instant ts = entry.createdAt();
       if (ts != null && (lastDate == null || !sameDay(lastDate, ts))) {
         sb.append("<div class=\"message service\" id=\"message-")
             .append(messageIndex++)
@@ -95,9 +94,9 @@ public class OrderChatArchiveService {
             .append("</div></div>\n");
         lastDate = ts;
       }
-      int messageId = entry.getTgMessageId() != null ? entry.getTgMessageId() : messageIndex;
-      sb.append(renderMessage(entry, messageId, chatsDir));
-      if (entry.getTgMessageId() == null) {
+      int messageId = entry.tgMessageId() != null ? entry.tgMessageId() : messageIndex;
+      sb.append(renderMessage(entry, messageId, chatsDir, order.uuid().toString()));
+      if (entry.tgMessageId() == null) {
         messageIndex++;
       }
     }
@@ -106,22 +105,22 @@ public class OrderChatArchiveService {
     return sb.toString();
   }
 
-  private String renderMessage(OrderMessageEntity entry, int id, Path chatsDir) {
-    if ("SYSTEM".equalsIgnoreCase(entry.getDirection())) {
-      String body = "HTML".equalsIgnoreCase(entry.getMessageType())
-          ? entry.getText()
-          : escapeHtml(entry.getText());
+  private String renderMessage(BotState.OrderLogEntry entry, int id, Path chatsDir, String orderKey) {
+    if ("SYSTEM".equalsIgnoreCase(entry.direction())) {
+      String body = "HTML".equalsIgnoreCase(entry.messageType())
+          ? entry.text()
+          : escapeHtml(entry.text());
       return "<div class=\"message service\" id=\"message" + id + "\">"
           + "<div class=\"body details\">" + body + "</div></div>\n";
     }
 
-    String initials = buildInitials(entry.getSenderName());
-    String fromName = entry.getSenderName() != null ? entry.getSenderName() : entry.getDirection();
-    String time = entry.getCreatedAt() != null
-        ? TIME_FORMAT.format(entry.getCreatedAt().atZone(ZoneId.systemDefault()))
+    String initials = buildInitials(entry.senderName());
+    String fromName = entry.senderName() != null ? entry.senderName() : entry.direction();
+    String time = entry.createdAt() != null
+        ? TIME_FORMAT.format(entry.createdAt().atZone(ZoneId.systemDefault()))
         : "";
-    String title = entry.getCreatedAt() != null
-        ? TIME_TITLE.format(entry.getCreatedAt().atZone(ZoneId.systemDefault()))
+    String title = entry.createdAt() != null
+        ? TIME_TITLE.format(entry.createdAt().atZone(ZoneId.systemDefault()))
         : "";
 
     StringBuilder sb = new StringBuilder();
@@ -135,20 +134,20 @@ public class OrderChatArchiveService {
         .append(time).append("</div>")
         .append("<div class=\"from_name\">").append(escapeHtml(fromName)).append("</div>");
 
-    if (entry.getTgReplyToMessageId() != null) {
+    if (entry.tgReplyToMessageId() != null) {
       sb.append("<div class=\"reply_to details\">")
           .append("In reply to <a href=\"#go_to_message")
-          .append(entry.getTgReplyToMessageId())
+          .append(entry.tgReplyToMessageId())
           .append("\" onclick=\"return GoToMessage(")
-          .append(entry.getTgReplyToMessageId())
+          .append(entry.tgReplyToMessageId())
           .append(")\">this message</a></div>");
     }
 
-    if (entry.getText() != null && !entry.getText().isBlank()) {
-      sb.append("<div class=\"text\">").append(formatText(entry.getText())).append("</div>");
+    if (entry.text() != null && !entry.text().isBlank()) {
+      sb.append("<div class=\"text\">").append(formatText(entry.text())).append("</div>");
     }
 
-    String media = renderMedia(entry, chatsDir);
+    String media = renderMedia(entry, chatsDir, orderKey);
     if (media != null) {
       sb.append(media);
     }
@@ -157,11 +156,11 @@ public class OrderChatArchiveService {
     return sb.toString();
   }
 
-  private String renderMedia(OrderMessageEntity entry, Path chatsDir) {
-    if (entry.getFileId() == null || entry.getFileId().isBlank()) {
+  private String renderMedia(BotState.OrderLogEntry entry, Path chatsDir, String orderKey) {
+    if (entry.fileId() == null || entry.fileId().isBlank()) {
       return null;
     }
-    Path orderDir = chatsDir.resolve("order_" + entry.getOrder().uuid());
+    Path orderDir = chatsDir.resolve("order_" + orderKey);
     Path filesDir = orderDir.resolve("files");
     try {
       Files.createDirectories(filesDir);
@@ -170,14 +169,14 @@ public class OrderChatArchiveService {
       return null;
     }
 
-    String fileName = entry.getFileName();
-    Path downloaded = downloadFile(entry.getFileId());
+    String fileName = entry.fileName();
+    Path downloaded = downloadFile(entry.fileId());
     if (downloaded == null) {
       return null;
     }
     String ext = getExtension(downloaded.getFileName().toString());
     if (fileName == null || fileName.isBlank()) {
-      fileName = entry.getMessageType().toLowerCase() + "_" + entry.getId() + ext;
+      fileName = entry.messageType().toLowerCase() + "_" + entry.tgMessageId() + ext;
     }
     Path target = filesDir.resolve(fileName);
     try {
@@ -186,9 +185,9 @@ public class OrderChatArchiveService {
       log.warn("🤖 TG Unable to copy archive file {}", fileName, e);
       return null;
     }
-    String relPath = "chats/order_" + entry.getOrder().uuid() + "/files/" + fileName;
+    String relPath = "chats/order_" + orderKey + "/files/" + fileName;
 
-    if ("PHOTO".equalsIgnoreCase(entry.getMessageType())) {
+    if ("PHOTO".equalsIgnoreCase(entry.messageType())) {
       return "<div class=\"media_wrap clearfix\">"
           + "<a class=\"photo_wrap clearfix pull_left\" href=\"" + relPath + "\">"
           + "<img class=\"photo\" src=\"" + relPath + "\"/></a></div>";

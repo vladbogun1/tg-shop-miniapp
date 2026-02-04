@@ -1,9 +1,10 @@
 package com.example.tgshop.tg;
 
 import com.example.tgshop.order.OrderEntity;
-import com.example.tgshop.order.OrderMessageEntity;
-import com.example.tgshop.order.OrderMessageRepository;
+import com.example.tgshop.tg.bot.BotState;
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -13,10 +14,10 @@ import org.telegram.telegrambots.meta.api.objects.User;
 @Slf4j
 public class OrderMessageLogService {
 
-  private final OrderMessageRepository repository;
+  private final BotState state;
 
-  public OrderMessageLogService(OrderMessageRepository repository) {
-    this.repository = repository;
+  public OrderMessageLogService(BotState state) {
+    this.state = state;
   }
 
   public void recordAdminMessage(OrderEntity order, Message message) {
@@ -31,111 +32,153 @@ public class OrderMessageLogService {
     if (order == null) {
       return;
     }
-    OrderMessageEntity entry = new OrderMessageEntity();
-    entry.setOrder(order);
-    entry.setDirection("SYSTEM");
-    entry.setMessageType("TEXT");
-    entry.setText(text);
-    entry.setCreatedAt(Instant.now());
-    repository.save(entry);
+    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
+        "SYSTEM",
+        "TEXT",
+        null,
+        null,
+        text,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        Instant.now()
+    );
+    appendEntry(order.uuid(), entry);
   }
 
   public void recordSystemHtml(OrderEntity order, String html) {
     if (order == null) {
       return;
     }
-    OrderMessageEntity entry = new OrderMessageEntity();
-    entry.setOrder(order);
-    entry.setDirection("SYSTEM");
-    entry.setMessageType("HTML");
-    entry.setText(html);
-    entry.setCreatedAt(Instant.now());
-    repository.save(entry);
+    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
+        "SYSTEM",
+        "HTML",
+        null,
+        null,
+        html,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        Instant.now()
+    );
+    appendEntry(order.uuid(), entry);
+  }
+
+  public void clearLog(UUID orderId) {
+    if (orderId == null) {
+      return;
+    }
+    state.orderLogMap().remove(orderId);
   }
 
   private void recordMessage(OrderEntity order, Message message, String direction) {
     if (order == null || message == null) {
       return;
     }
-    OrderMessageEntity entry = new OrderMessageEntity();
-    entry.setOrder(order);
-    entry.setDirection(direction);
-    entry.setTgMessageId(message.getMessageId());
-    entry.setTgReplyToMessageId(message.getReplyToMessage() != null ? message.getReplyToMessage().getMessageId() : null);
-    entry.setTgThreadId(message.getMessageThreadId());
-    entry.setCreatedAt(message.getDate() != null ? Instant.ofEpochSecond(message.getDate()) : Instant.now());
-
+    Instant createdAt = message.getDate() != null ? Instant.ofEpochSecond(message.getDate()) : Instant.now();
+    String senderName = null;
+    Long senderId = null;
     User from = message.getFrom();
     if (from != null) {
-      String name = from.getFirstName();
+      senderName = from.getFirstName();
       if (from.getLastName() != null && !from.getLastName().isBlank()) {
-        name = name + " " + from.getLastName();
+        senderName = senderName + " " + from.getLastName();
       }
-      entry.setSenderName(name);
-      entry.setSenderId(from.getId());
+      senderId = from.getId();
     }
 
+    String messageType = "TEXT";
+    String text = null;
+    String fileId = null;
+    String fileName = null;
+    String mimeType = null;
     if (message.hasText()) {
-      entry.setMessageType("TEXT");
-      entry.setText(message.getText());
+      messageType = "TEXT";
+      text = message.getText();
     } else if (message.hasPhoto()) {
       var photo = message.getPhoto().get(message.getPhoto().size() - 1);
-      entry.setMessageType("PHOTO");
-      entry.setFileId(photo.getFileId());
-      entry.setText(message.getCaption());
+      messageType = "PHOTO";
+      fileId = photo.getFileId();
+      text = message.getCaption();
     } else if (message.hasDocument()) {
       var doc = message.getDocument();
-      entry.setMessageType("DOCUMENT");
-      entry.setFileId(doc.getFileId());
-      entry.setFileName(doc.getFileName());
-      entry.setMimeType(doc.getMimeType());
-      entry.setText(message.getCaption());
+      messageType = "DOCUMENT";
+      fileId = doc.getFileId();
+      fileName = doc.getFileName();
+      mimeType = doc.getMimeType();
+      text = message.getCaption();
     } else if (message.hasVideo()) {
       var video = message.getVideo();
-      entry.setMessageType("VIDEO");
-      entry.setFileId(video.getFileId());
-      entry.setFileName(video.getFileName());
-      entry.setMimeType(video.getMimeType());
-      entry.setText(message.getCaption());
+      messageType = "VIDEO";
+      fileId = video.getFileId();
+      fileName = video.getFileName();
+      mimeType = video.getMimeType();
+      text = message.getCaption();
     } else if (message.hasAudio()) {
       var audio = message.getAudio();
-      entry.setMessageType("AUDIO");
-      entry.setFileId(audio.getFileId());
-      entry.setFileName(audio.getFileName());
-      entry.setMimeType(audio.getMimeType());
-      entry.setText(message.getCaption());
+      messageType = "AUDIO";
+      fileId = audio.getFileId();
+      fileName = audio.getFileName();
+      mimeType = audio.getMimeType();
+      text = message.getCaption();
     } else if (message.hasVoice()) {
       var voice = message.getVoice();
-      entry.setMessageType("VOICE");
-      entry.setFileId(voice.getFileId());
-      entry.setMimeType(voice.getMimeType());
+      messageType = "VOICE";
+      fileId = voice.getFileId();
+      mimeType = voice.getMimeType();
     } else if (message.hasAnimation()) {
       var anim = message.getAnimation();
-      entry.setMessageType("ANIMATION");
-      entry.setFileId(anim.getFileId());
-      entry.setFileName(anim.getFileName());
-      entry.setMimeType(anim.getMimeType());
-      entry.setText(message.getCaption());
+      messageType = "ANIMATION";
+      fileId = anim.getFileId();
+      fileName = anim.getFileName();
+      mimeType = anim.getMimeType();
+      text = message.getCaption();
     } else if (message.hasSticker()) {
       var sticker = message.getSticker();
-      entry.setMessageType("STICKER");
-      entry.setFileId(sticker.getFileId());
+      messageType = "STICKER";
+      fileId = sticker.getFileId();
     } else if (message.hasLocation()) {
       var location = message.getLocation();
-      entry.setMessageType("TEXT");
-      entry.setText("📍 " + location.getLatitude() + ", " + location.getLongitude());
+      messageType = "TEXT";
+      text = "📍 " + location.getLatitude() + ", " + location.getLongitude();
     } else if (message.hasContact()) {
       var contact = message.getContact();
-      entry.setMessageType("TEXT");
-      entry.setText("👤 " + contact.getFirstName() + " " + contact.getLastName()
-          + " (" + contact.getPhoneNumber() + ")");
+      messageType = "TEXT";
+      text = "👤 " + contact.getFirstName() + " " + contact.getLastName()
+          + " (" + contact.getPhoneNumber() + ")";
     } else {
-      entry.setMessageType("TEXT");
-      entry.setText("⚠️ Неподдерживаемый тип сообщения.");
+      messageType = "TEXT";
+      text = "⚠️ Неподдерживаемый тип сообщения.";
     }
 
-    repository.save(entry);
+    BotState.OrderLogEntry entry = new BotState.OrderLogEntry(
+        direction,
+        messageType,
+        senderName,
+        senderId,
+        text,
+        fileId,
+        fileName,
+        mimeType,
+        message.getMessageId(),
+        message.getReplyToMessage() != null ? message.getReplyToMessage().getMessageId() : null,
+        message.getMessageThreadId(),
+        createdAt
+    );
+    appendEntry(order.uuid(), entry);
     log.debug("🤖 TG Logged order message orderId={} direction={} type={}",
-        order.uuid(), direction, entry.getMessageType());
+        order.uuid(), direction, entry.messageType());
+  }
+
+  private void appendEntry(UUID orderId, BotState.OrderLogEntry entry) {
+    List<BotState.OrderLogEntry> list = state.orderLogMap()
+        .computeIfAbsent(orderId, k -> new java.util.concurrent.CopyOnWriteArrayList<>());
+    list.add(entry);
   }
 }
