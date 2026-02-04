@@ -480,7 +480,7 @@ public class TelegramNotifyService {
             .messageThreadId(target.threadId())
             .parseMode(ParseMode.HTML)
             .text(buildBoardMessage(order, stage))
-            .replyMarkup(buildBoardChatLink(order))
+            .replyMarkup(buildBoardKeyboard(order))
             .build();
         Message sent = sender.safeExecuteMessage(msg);
         if (sent != null) {
@@ -540,20 +540,76 @@ public class TelegramNotifyService {
         return sb.toString();
     }
 
-    private InlineKeyboardMarkup buildBoardChatLink(OrderEntity order) {
-        if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+    private InlineKeyboardMarkup buildBoardKeyboard(OrderEntity order) {
+        List<List<InlineKeyboardButton>> rows = new java.util.ArrayList<>();
+        List<InlineKeyboardButton> actionButtons = buildBoardActionButtons(order);
+        if (!actionButtons.isEmpty()) {
+            rows.add(actionButtons);
+        }
+        InlineKeyboardButton invoiceButton = buildBoardInvoiceButton(order);
+        if (invoiceButton != null) {
+            rows.add(List.of(invoiceButton));
+        }
+        InlineKeyboardButton chatButton = buildBoardChatButton(order);
+        if (chatButton != null) {
+            rows.add(List.of(chatButton));
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    private List<InlineKeyboardButton> buildBoardActionButtons(OrderEntity order) {
+        if (order == null || order.getStatus() == null) {
+            return List.of();
+        }
+        String status = order.getStatus().trim().toUpperCase();
+        InlineKeyboardButton approveButton = InlineKeyboardButton.builder()
+            .text("✅ Одобрить")
+            .callbackData(CB_APPROVE_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton rejectButton = InlineKeyboardButton.builder()
+            .text("❌ Отклонить")
+            .callbackData(CB_REJECT_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton shipButton = InlineKeyboardButton.builder()
+            .text("📦 Выслал заказ")
+            .callbackData(CB_SHIP_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton deliverButton = InlineKeyboardButton.builder()
+            .text("✅ Доставлено")
+            .callbackData(CB_DELIVER_PREFIX + order.uuid().toString())
+            .build();
+        return switch (status) {
+            case "NEW" -> List.of(approveButton, rejectButton);
+            case "APPROVED" -> List.of(shipButton, rejectButton);
+            case "SHIPPED" -> List.of(deliverButton, rejectButton);
+            default -> List.of();
+        };
+    }
+
+    private InlineKeyboardButton buildBoardInvoiceButton(OrderEntity order) {
+        if (order == null || !"APPROVED".equalsIgnoreCase(order.getStatus())) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💳 Отправить счёт")
+            .callbackData(CB_INVOICE_PREFIX + order.uuid().toString())
+            .build();
+    }
+
+    private InlineKeyboardButton buildBoardChatButton(OrderEntity order) {
+        if (order == null || order.getAdminChatId() == null || order.getAdminThreadId() == null) {
             return null;
         }
         String link = buildTopicLink(order.getAdminChatId(), order.getAdminThreadId());
         if (link == null) {
             return null;
         }
-        InlineKeyboardButton chatBtn = InlineKeyboardButton.builder()
+        return InlineKeyboardButton.builder()
             .text("💬 В чат заказа")
             .url(link)
-            .build();
-        return InlineKeyboardMarkup.builder()
-            .keyboard(List.of(List.of(chatBtn)))
             .build();
     }
 

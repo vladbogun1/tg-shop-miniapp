@@ -34,19 +34,6 @@ public class ShopCommandHandler {
         log.info("🤖 TG Received message command={} chatId={} userId={}", text, chatId, userId);
         switch (text) {
             case "/start", "/shop" -> sendShopButton(chatId, gateway);
-            case "/set_admin_chat" -> {
-                if (!isAdmin(userId)) {
-                    log.warn("🤖 TG Admin chat setup rejected for non-admin userId={}", userId);
-                    gateway.safeExecute(SendMessage.builder().chatId(chatId).text("⛔ Нет доступа").build());
-                    return true;
-                }
-                settings.save(new Setting("ADMIN_CHAT_ID", String.valueOf(chatId)));
-                log.info("🤖 TG Admin chat configured chatId={} userId={}", chatId, userId);
-                gateway.safeExecute(SendMessage.builder()
-                    .chatId(chatId)
-                    .text("✅ Этот чат теперь будет получать уведомления о заказах.")
-                    .build());
-            }
             case "/set_orders_new_topic" -> registerOrderTopic(message, userId, gateway, "ADMIN_ORDER_BOARD_NEW",
                 "✅ Тема для новых заказов зарегистрирована.");
             case "/set_orders_processing_topic" -> registerOrderTopic(message, userId, gateway, "ADMIN_ORDER_BOARD_PROCESSING",
@@ -59,7 +46,6 @@ public class ShopCommandHandler {
                 .chatId(chatId)
                 .text("Доступные команды:\n" +
                     "/shop — открыть магазин\n" +
-                    "/set_admin_chat — куда слать уведомления о заказах (выполнить в нужном чате)\n" +
                     "/set_orders_new_topic — зарегистрировать тему для новых заказов\n" +
                     "/set_orders_processing_topic — зарегистрировать тему для заказов в обработке\n" +
                     "/set_orders_shipped_topic — зарегистрировать тему для высланных заказов\n" +
