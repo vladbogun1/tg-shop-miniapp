@@ -113,7 +113,6 @@ public class OrderMessageLogService {
       messageType = "ANIMATION";
       fileId = anim.getFileId();
       fileName = anim.getFileName();
-      mimeType = anim.getMimeType();
       text = message.getCaption();
     } else if (message.hasSticker()) {
       var sticker = message.getSticker();
