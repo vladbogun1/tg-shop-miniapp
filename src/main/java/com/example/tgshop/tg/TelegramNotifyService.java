@@ -379,14 +379,15 @@ public class TelegramNotifyService {
             case "NEW" -> BoardStage.NEW;
             case "APPROVED" -> BoardStage.PROCESSING;
             case "SHIPPED" -> BoardStage.SHIPPED;
-            case "DELIVERED", "REJECTED" -> BoardStage.CLOSED;
+            case "DELIVERED" -> BoardStage.CLOSED;
+            case "REJECTED" -> BoardStage.REJECTED;
             default -> null;
         };
         if (stage == null) {
             return;
         }
         moveOrderToBoard(order, stage);
-        if (stage == BoardStage.CLOSED) {
+        if (stage == BoardStage.CLOSED || stage == BoardStage.REJECTED) {
             sendOrderArchive(order);
         }
     }
@@ -400,6 +401,10 @@ public class TelegramNotifyService {
             .messageThreadId(order.getAdminThreadId())
             .build();
         sender.safeExecute(deleteTopic);
+        order.setAdminChatId(null);
+        order.setAdminThreadId(null);
+        order.setAdminThreadMessageId(null);
+        orderRepository.save(order);
     }
 
     private void sendOrderArchive(OrderEntity order) {
@@ -663,7 +668,8 @@ public class TelegramNotifyService {
         NEW(SETTING_BOARD_NEW, "🆕 <b>Новый заказ</b>"),
         PROCESSING(SETTING_BOARD_PROCESSING, "🛠 <b>В обработке</b>"),
         SHIPPED(SETTING_BOARD_SHIPPED, "📦 <b>Выслан</b>"),
-        CLOSED(SETTING_BOARD_CLOSED, "✅ <b>Завершён</b>");
+        CLOSED(SETTING_BOARD_CLOSED, "✅ <b>Завершён</b>"),
+        REJECTED(SETTING_BOARD_CLOSED, "❌ <b>Отклонено</b>");
 
         private final String settingKey;
         private final String header;
