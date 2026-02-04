@@ -67,6 +67,7 @@ public class OrderDecisionHandler {
 
         TelegramNotifyService.OrderDecision decision;
         String uuidStr;
+        boolean deliver = false;
 
         if (data != null && data.startsWith(TelegramNotifyService.CB_APPROVE_PREFIX)) {
             decision = TelegramNotifyService.OrderDecision.APPROVED;
@@ -80,6 +81,10 @@ public class OrderDecisionHandler {
         } else if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
             decision = null;
             uuidStr = data.substring(TelegramNotifyService.CB_INVOICE_PREFIX.length());
+        } else if (data != null && data.startsWith(TelegramNotifyService.CB_DELIVER_PREFIX)) {
+            decision = null;
+            uuidStr = data.substring(TelegramNotifyService.CB_DELIVER_PREFIX.length());
+            deliver = true;
         } else {
             log.warn("🤖 TG Callback rejected: unknown data {}", data);
             gateway.safeExecute(AnswerCallbackQuery.builder()
@@ -112,6 +117,39 @@ public class OrderDecisionHandler {
                     gateway.safeExecute(AnswerCallbackQuery.builder()
                         .callbackQueryId(cb.getId())
                         .text("✅ Счёт отправлен")
+                        .build());
+                }, () -> gateway.safeExecute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(cb.getId())
+                    .text("Заказ не найден")
+                    .showAlert(true)
+                    .build()));
+                return true;
+            }
+            if (deliver) {
+                orderService.findByUuid(uuid).ifPresentOrElse(order -> {
+                    OrderEntity delivered = orderService.deliver(order.uuid());
+                    String newText = buildAdminDecisionText(
+                        delivered,
+                        TelegramNotifyService.OrderDecision.APPROVED,
+                        "✅ <b>ДОСТАВЛЕНО</b>",
+                        null
+                    );
+                    gateway.safeExecute(EditMessageText.builder()
+                        .chatId(String.valueOf(cb.getMessage().getChatId()))
+                        .messageId(cb.getMessage().getMessageId())
+                        .parseMode(ParseMode.HTML)
+                        .text(newText)
+                        .build());
+                    InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), delivered);
+                    gateway.safeExecute(EditMessageReplyMarkup.builder()
+                        .chatId(String.valueOf(cb.getMessage().getChatId()))
+                        .messageId(cb.getMessage().getMessageId())
+                        .replyMarkup(kb)
+                        .build());
+                    sendAdminStatusNote(delivered, "✅ Заказ доставлен.", gateway);
+                    gateway.safeExecute(AnswerCallbackQuery.builder()
+                        .callbackQueryId(cb.getId())
+                        .text("✅ Доставлено")
                         .build());
                 }, () -> gateway.safeExecute(AnswerCallbackQuery.builder()
                     .callbackQueryId(cb.getId())
@@ -206,7 +244,8 @@ public class OrderDecisionHandler {
                 .text(newText)
                 .build());
             var rejectButton = buildRejectButton(shipped.uuid());
-            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(rejectButton), shipped);
+            var deliverButton = buildDeliverButton(shipped.uuid());
+            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(deliverButton, rejectButton), shipped);
             gateway.safeExecute(EditMessageReplyMarkup.builder()
                 .chatId(String.valueOf(pending.chatId()))
                 .messageId(pending.orderMessageId())
@@ -434,6 +473,13 @@ public class OrderDecisionHandler {
         return InlineKeyboardButton.builder()
             .text("❌ Отклонить")
             .callbackData(TelegramNotifyService.CB_REJECT_PREFIX + uuid.toString())
+            .build();
+    }
+
+    private InlineKeyboardButton buildDeliverButton(UUID uuid) {
+        return InlineKeyboardButton.builder()
+            .text("✅ Доставлено")
+            .callbackData(TelegramNotifyService.CB_DELIVER_PREFIX + uuid.toString())
             .build();
     }
 

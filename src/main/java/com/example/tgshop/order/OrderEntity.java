@@ -70,6 +70,15 @@ public class OrderEntity {
   @Column(name = "admin_thread_message_id")
   private Integer adminThreadMessageId;
 
+  @Column(name = "admin_board_chat_id")
+  private Long adminBoardChatId;
+
+  @Column(name = "admin_board_thread_id")
+  private Integer adminBoardThreadId;
+
+  @Column(name = "admin_board_message_id")
+  private Integer adminBoardMessageId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
