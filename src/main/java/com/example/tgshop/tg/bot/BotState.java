@@ -14,7 +14,6 @@ public class BotState {
     private final Map<ChatKey, ChatKey> userToAdminMap = new ConcurrentHashMap<>();
     private final Map<ChatKey, UUID> replyAnchorMap = new ConcurrentHashMap<>();
     private final Map<ChatKey, UUID> userMessageOrderMap = new ConcurrentHashMap<>();
-    private final Map<UUID, java.util.List<OrderLogEntry>> orderLogMap = new ConcurrentHashMap<>();
 
     public Map<Integer, PendingShipment> pendingShipments() {
         return pendingShipments;
@@ -44,28 +43,9 @@ public class BotState {
         return userMessageOrderMap;
     }
 
-    public Map<UUID, java.util.List<OrderLogEntry>> orderLogMap() {
-        return orderLogMap;
-    }
-
     public record PendingShipment(UUID orderId, long chatId, int orderMessageId) {}
 
     public record PendingRejection(UUID orderId, long chatId, int orderMessageId) {}
-
-    public record OrderLogEntry(
-        String direction,
-        String messageType,
-        String senderName,
-        Long senderId,
-        String text,
-        String fileId,
-        String fileName,
-        String mimeType,
-        Integer tgMessageId,
-        Integer tgReplyToMessageId,
-        Integer tgThreadId,
-        java.time.Instant createdAt
-    ) {}
 
     public record ChatKey(long chatId, int messageId) {}
 }
