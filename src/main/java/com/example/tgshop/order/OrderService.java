@@ -208,6 +208,7 @@ public class OrderService {
         notifyService.notifyUserOrderRejected(saved, reason);
         notifyService.updateOrderTopicStatus(saved);
         notifyService.updateOrderBoardForStatus(saved);
+        notifyService.deleteOrderChat(saved);
         log.info("🧾 ORDER Order rejected uuid={}", saved.uuid());
         return saved;
     }
@@ -248,7 +249,7 @@ public class OrderService {
 
         notifyService.updateOrderTopicStatus(saved);
         notifyService.updateOrderBoardForStatus(saved);
-        notifyService.archiveOrderChat(saved);
+        notifyService.deleteOrderChat(saved);
         log.info("🧾 ORDER Order delivered uuid={}", saved.uuid());
         return saved;
     }
