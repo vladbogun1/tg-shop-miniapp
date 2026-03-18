@@ -36,6 +36,8 @@ const state = {
 
     thumbTimer: null,
     thumbIndex: new Map(), // productId -> index
+    thumbObserver: null,
+    visibleThumbs: new Set(),
 
     refreshTimer: null, // auto refresh timer
 };
@@ -84,6 +86,68 @@ function saveCart() {
 function money(p) {
     // Здесь priceMinor — "целое число". Если хочешь копейки — поменяй формат.
     return `${p.priceMinor} ${p.currency || "UAH"}`;
+}
+
+function imageAttrs(url, alt, opts = {}) {
+    const {
+        lazy = true,
+        eager = false,
+        fetchPriority = "auto",
+        sizes = null,
+    } = opts;
+
+    const attrs = {
+        alt,
+        decoding: "async",
+        loading: eager ? "eager" : (lazy ? "lazy" : "eager"),
+        fetchpriority: eager ? "high" : fetchPriority,
+    };
+    if (url) attrs.src = url;
+    if (sizes) attrs.sizes = sizes;
+    return attrs;
+}
+
+function ensureThumbObserver() {
+    if (state.thumbObserver || typeof IntersectionObserver === "undefined") {
+        return;
+    }
+    state.thumbObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            const pid = entry.target?.getAttribute("data-thumb-id");
+            if (!pid) continue;
+            if (entry.isIntersecting) state.visibleThumbs.add(pid);
+            else state.visibleThumbs.delete(pid);
+        }
+    }, {
+        rootMargin: "240px 0px",
+        threshold: 0.01,
+    });
+}
+
+function observeThumb(imgEl) {
+    if (!imgEl) return;
+    ensureThumbObserver();
+    if (state.thumbObserver) {
+        state.thumbObserver.observe(imgEl);
+        return;
+    }
+    const pid = imgEl.getAttribute("data-thumb-id");
+    if (pid) state.visibleThumbs.add(pid);
+}
+
+function loadImageElement(imgEl) {
+    if (!imgEl) return;
+    const nextSrc = imgEl.dataset.src;
+    if (nextSrc && imgEl.getAttribute("src") !== nextSrc) {
+        imgEl.setAttribute("src", nextSrc);
+    }
+}
+
+function preloadImage(url) {
+    if (!url) return;
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
 }
 
 function toast(text) {
@@ -403,7 +467,10 @@ function createProductCard(p) {
     const card = el("div", {class: "card product", "data-product-id": pid});
 
     const thumbImg = img
-        ? el("img", {src: img, alt: p.title, "data-thumb-id": pid})
+        ? el("img", {
+            ...imageAttrs(img, p.title, {sizes: "(max-width: 640px) 50vw, 25vw"}),
+            "data-thumb-id": pid
+        })
         : null;
 
     const thumb = el("div", {class: "thumb"},
@@ -452,6 +519,7 @@ function createProductCard(p) {
     updateCardAvailability(card, p);
     updateCardActiveState(card, p);
     ensureThumbIndex(p);
+    observeThumb(thumbImg);
 
     return card;
 }
@@ -1192,7 +1260,9 @@ function startThumbRotator() {
     const intervalMs = 5200;
     const staggerMs = 280;
     state.thumbTimer = setInterval(() => {
-        const items = [...state.products];
+        const visibleIds = new Set(state.visibleThumbs);
+        const items = state.products.filter((p) => visibleIds.has(String(p.id)));
+        if (items.length === 0) return;
         items.forEach((p, index) => {
             const urls = (p.imageUrls || []).filter(Boolean);
             if (urls.length <= 1) return;
@@ -1203,10 +1273,12 @@ function startThumbRotator() {
 
             const delay = (index % 10) * staggerMs + Math.floor(Math.random() * 120);
             window.setTimeout(() => {
+                if (!imgEl.isConnected) return;
                 const cur = state.thumbIndex.get(pid) || 0;
                 const next = (cur + 1) % urls.length;
                 state.thumbIndex.set(pid, next);
                 if (imgEl._fadeTimer) window.clearTimeout(imgEl._fadeTimer);
+                preloadImage(urls[next]);
                 imgEl.classList.add("thumb-fade");
                 imgEl._fadeTimer = window.setTimeout(() => {
                     imgEl.src = urls[next];
@@ -1272,10 +1344,22 @@ function createGallery(urls, altText = "", opts = {}) {
     let index = Math.max(0, Math.min(clean.length - 1, initialIndex));
 
     const track = el("div", {class: "gallery-track"});
-    for (const u of clean) {
+    const images = [];
+    for (const [slideIndex, u] of clean.entries()) {
+        const eager = Math.abs(slideIndex - index) <= 1;
+        const img = el("img", {
+            ...imageAttrs(eager ? u : null, altText, {
+                lazy: !eager,
+                eager,
+                fetchPriority: eager ? "high" : "low",
+                sizes: fullscreen ? "100vw" : "(max-width: 640px) 100vw, 640px",
+            }),
+            "data-src": u
+        });
+        images.push(img);
         track.append(
             el("div", {class: "gallery-slide"}, [
-                el("img", {src: u, alt: altText})
+                img
             ])
         );
     }
@@ -1305,6 +1389,11 @@ function createGallery(urls, altText = "", opts = {}) {
 
     function apply() {
         track.style.transform = `translateX(${-index * 100}%)`;
+        [index - 1, index, index + 1].forEach((imageIndex) => {
+            if (imageIndex < 0 || imageIndex >= images.length) return;
+            loadImageElement(images[imageIndex]);
+        });
+        preloadImage(clean[index + 1]);
         dots.forEach((d, i) => d.classList.toggle("active", i === index));
         leftBtn.toggleAttribute("disabled", clean.length <= 1 || index === 0);
         rightBtn.toggleAttribute("disabled", clean.length <= 1 || index === clean.length - 1);

@@ -1,6 +1,23 @@
 const state = {
     products: [],
     orders: [],
+    ordersMeta: {
+        totalCount: 0,
+        page: 0,
+        size: 20,
+        totalPages: 0,
+        deliveredRevenueMinor: 0,
+        deliveredCount: 0,
+        currency: "UAH",
+    },
+    orderFilters: {
+        query: "",
+        status: "ALL",
+        createdFrom: "",
+        createdTo: "",
+        sort: "createdAtDesc",
+        size: 20,
+    },
     archivedProducts: [],
     tags: [],
     promoCodes: [],
@@ -34,6 +51,18 @@ function apiHeaders(extra = {}) {
     };
     if (state.password) headers["X-Admin-Password"] = state.password;
     return headers;
+}
+
+function buildUrl(url, params = {}) {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === undefined) return;
+        const normalized = typeof value === "string" ? value.trim() : value;
+        if (normalized === "") return;
+        search.set(key, String(normalized));
+    });
+    const query = search.toString();
+    return query ? `${url}?${query}` : url;
 }
 
 async function apiGet(url) {
@@ -108,6 +137,24 @@ function formatDate(iso) {
     return d.toLocaleString("ru-RU", {dateStyle: "medium", timeStyle: "short"});
 }
 
+function getOrderStatusMeta(status) {
+    const normalized = String(status || "").trim().toUpperCase();
+    switch (normalized) {
+        case "NEW":
+            return {label: "Новый", className: "new"};
+        case "APPROVED":
+            return {label: "Одобрен", className: "approved"};
+        case "SHIPPED":
+            return {label: "Выслан", className: "shipped"};
+        case "DELIVERED":
+            return {label: "Доставлен", className: "delivered"};
+        case "REJECTED":
+            return {label: "Отклонён", className: "rejected"};
+        default:
+            return {label: normalized || "—", className: ""};
+    }
+}
+
 function handleAdminError(err, fallback = "Ошибка") {
     const msg = String(err?.message || "").trim();
     if (msg.includes("Not admin") || msg.includes("Bad initData") || msg.includes("Bad password")) {
@@ -146,12 +193,25 @@ async function handleLogin(e) {
 
 function logout() {
     state.password = "";
+    state.orders = [];
+    state.ordersMeta = {
+        totalCount: 0,
+        page: 0,
+        size: 20,
+        totalPages: 0,
+        deliveredRevenueMinor: 0,
+        deliveredCount: 0,
+        currency: "UAH",
+    };
     sessionStorage.removeItem("tgshop_admin_password");
     showLogin(true);
     qs("productGrid").innerHTML = "";
     qs("ordersBody").innerHTML = "";
     qs("ordersCount").textContent = "0";
     qs("ordersRevenue").textContent = "0";
+    qs("ordersDeliveredCount").textContent = "0";
+    qs("ordersLoadedMeta").textContent = "Нужен вход";
+    qs("ordersPageInfo").textContent = "Страница 1 из 1";
     qs("archiveGrid").innerHTML = "";
     qs("archiveMeta").textContent = "Удаленные товары";
     qs("catalogMeta").textContent = "Нужен вход";
@@ -173,13 +233,52 @@ async function loadProducts() {
     }
 }
 
-async function loadOrders() {
+function readOrderFiltersFromUi() {
+    state.orderFilters.query = qs("ordersSearch").value || "";
+    state.orderFilters.status = qs("ordersStatusFilter").value || "ALL";
+    state.orderFilters.createdFrom = qs("ordersDateFrom").value || "";
+    state.orderFilters.createdTo = qs("ordersDateTo").value || "";
+    state.orderFilters.sort = qs("ordersSort").value || "createdAtDesc";
+    state.orderFilters.size = Number(qs("ordersPageSize").value || 20);
+}
+
+function syncOrderFiltersUi() {
+    qs("ordersSearch").value = state.orderFilters.query;
+    qs("ordersStatusFilter").value = state.orderFilters.status;
+    qs("ordersDateFrom").value = state.orderFilters.createdFrom;
+    qs("ordersDateTo").value = state.orderFilters.createdTo;
+    qs("ordersSort").value = state.orderFilters.sort;
+    qs("ordersPageSize").value = String(state.orderFilters.size);
+}
+
+async function loadOrders(page = state.ordersMeta.page || 0) {
     try {
-        state.orders = await apiGet("/api/admin/orders");
+        state.ordersMeta.page = Math.max(0, page);
+        const url = buildUrl("/api/admin/orders/page", {
+            query: state.orderFilters.query,
+            status: state.orderFilters.status,
+            createdFrom: state.orderFilters.createdFrom,
+            createdTo: state.orderFilters.createdTo,
+            sort: state.orderFilters.sort,
+            page: state.ordersMeta.page,
+            size: state.orderFilters.size,
+        });
+        qs("ordersLoadedMeta").textContent = "Загрузка заказов...";
+        const data = await apiGet(url);
+        state.orders = data.items || [];
+        state.ordersMeta = {
+            totalCount: data.totalCount || 0,
+            page: data.page || 0,
+            size: data.size || state.orderFilters.size,
+            totalPages: data.totalPages || 0,
+            deliveredRevenueMinor: data.deliveredRevenueMinor || 0,
+            deliveredCount: data.deliveredCount || 0,
+            currency: data.currency || "UAH",
+        };
         renderOrders();
     } catch (err) {
         console.error(err);
-        showLogin(true);
+        handleAdminError(err, "Не удалось загрузить заказы");
     }
 }
 
@@ -494,7 +593,7 @@ function renderProducts() {
         const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
         const card = el("div", {class: "card", "data-product-id": String(p.id)});
         const imgEl = img
-            ? el("img", {src: img, alt: p.title})
+            ? el("img", {src: img, alt: p.title, loading: "lazy", decoding: "async"})
             : el("div", {class: "img-fallback"}, [document.createTextNode("Нет фото")]);
         const title = el("div", {class: "card-title"}, [
             document.createTextNode(p.title),
@@ -553,17 +652,15 @@ function renderOrders() {
     const tbody = qs("ordersBody");
     tbody.innerHTML = "";
 
-    const totalOrders = state.orders.length;
-    let revenue = 0;
-    let currency = "UAH";
-    const successStatuses = new Set(["APPROVED", "SHIPPED"]);
+    const totalOrders = state.ordersMeta.totalCount || 0;
+    const currentPage = state.ordersMeta.page || 0;
+    const totalPages = state.ordersMeta.totalPages || 0;
+    const loadedCount = state.orders.length;
+    const currency = state.ordersMeta.currency || "UAH";
 
     for (const order of state.orders) {
-        if (successStatuses.has(order.status)) {
-            revenue += order.totalMinor || 0;
-        }
-        currency = order.currency || currency;
         const itemsWrap = el("div", {class: "order-items"});
+        const statusMeta = getOrderStatusMeta(order.status);
 
         (order.items || []).forEach((item) => {
             const variantLabel = item.variantNameSnapshot ? ` (${item.variantNameSnapshot})` : "";
@@ -594,7 +691,7 @@ function renderOrders() {
             el("td", {}, [document.createTextNode(order.address || "")]),
             el("td", {}, [itemsWrap]),
             el("td", {}, [document.createTextNode(formatMoney(order.totalMinor, order.currency))]),
-            el("td", {}, [document.createTextNode(order.status || "")]),
+            el("td", {}, [el("span", {class: `status-chip ${statusMeta.className}`.trim()}, [document.createTextNode(statusMeta.label)])]),
             el("td", {}, [
                 el("button", {
                     class: "pill danger icon-action",
@@ -605,11 +702,11 @@ function renderOrders() {
                         if (!confirm("Удалить заказ навсегда?")) return;
                         try {
                             await apiDelete(`/api/admin/orders/${order.id}`);
-                            state.orders = state.orders.filter((item) => item.id !== order.id);
-                            renderOrders();
+                            const nextPage = state.orders.length === 1 && currentPage > 0 ? currentPage - 1 : currentPage;
+                            await loadOrders(nextPage);
                         } catch (err) {
                             console.error(err);
-                            showLogin(true);
+                            handleAdminError(err, "Не удалось удалить заказ");
                         }
                     }
                 }, [el("i", {class: "fa-solid fa-trash"})]),
@@ -619,8 +716,37 @@ function renderOrders() {
     }
 
     qs("ordersCount").textContent = String(totalOrders);
-    qs("ordersRevenue").textContent = formatMoney(revenue, currency);
+    qs("ordersRevenue").textContent = formatMoney(state.ordersMeta.deliveredRevenueMinor || 0, currency);
+    qs("ordersDeliveredCount").textContent = String(state.ordersMeta.deliveredCount || 0);
+    qs("ordersLoadedMeta").textContent = totalOrders > 0
+        ? `Показано ${loadedCount} из ${totalOrders} заказов`
+        : "Заказы не найдены";
+    qs("ordersPageInfo").textContent = totalPages > 0
+        ? `Страница ${currentPage + 1} из ${totalPages}`
+        : "Страница 1 из 1";
+    qs("ordersPrevPage").disabled = currentPage <= 0;
+    qs("ordersNextPage").disabled = totalPages === 0 || currentPage >= totalPages - 1;
     qs("ordersEmpty").classList.toggle("hidden", totalOrders > 0);
+}
+
+function applyOrderFilters() {
+    readOrderFiltersFromUi();
+    state.ordersMeta.page = 0;
+    loadOrders(0);
+}
+
+function resetOrderFilters() {
+    state.orderFilters = {
+        query: "",
+        status: "ALL",
+        createdFrom: "",
+        createdTo: "",
+        sort: "createdAtDesc",
+        size: 20,
+    };
+    syncOrderFiltersUi();
+    state.ordersMeta.page = 0;
+    loadOrders(0);
 }
 
 function renderArchived() {
@@ -633,7 +759,7 @@ function renderArchived() {
         const img = (p.imageUrls && p.imageUrls.length > 0) ? p.imageUrls[0] : null;
         const card = el("div", {class: "card", "data-product-id": String(p.id)});
         const imgEl = img
-            ? el("img", {src: img, alt: p.title})
+            ? el("img", {src: img, alt: p.title, loading: "lazy", decoding: "async"})
             : el("div", {class: "img-fallback"}, [document.createTextNode("Нет фото")]);
         const title = el("div", {class: "card-title"}, [
             document.createTextNode(p.title),
@@ -834,7 +960,7 @@ function openPreviewModal(p) {
     if (p.imageUrls && p.imageUrls.length) {
         const imgWrap = el("div", {class: "preview-images"}, []);
         p.imageUrls.forEach((url) => {
-            imgWrap.append(el("img", {src: url, alt: p.title}));
+            imgWrap.append(el("img", {src: url, alt: p.title, loading: "lazy", decoding: "async"}));
         });
         body.append(imgWrap);
     }
@@ -1087,6 +1213,26 @@ function boot() {
     qs("tabTags").addEventListener("click", () => setActiveTab("tags"));
     qs("tabPromos").addEventListener("click", () => setActiveTab("promos"));
     qs("tabPaymentTemplate").addEventListener("click", () => setActiveTab("payment-template"));
+    syncOrderFiltersUi();
+    qs("ordersFilters").addEventListener("submit", (e) => {
+        e.preventDefault();
+        applyOrderFilters();
+    });
+    qs("ordersResetFilters").addEventListener("click", resetOrderFilters);
+    qs("ordersPageSize").addEventListener("change", () => {
+        readOrderFiltersFromUi();
+        state.ordersMeta.page = 0;
+        loadOrders(0);
+    });
+    qs("ordersPrevPage").addEventListener("click", () => {
+        if ((state.ordersMeta.page || 0) <= 0) return;
+        loadOrders((state.ordersMeta.page || 0) - 1);
+    });
+    qs("ordersNextPage").addEventListener("click", () => {
+        const totalPages = state.ordersMeta.totalPages || 0;
+        if (totalPages === 0 || (state.ordersMeta.page || 0) >= totalPages - 1) return;
+        loadOrders((state.ordersMeta.page || 0) + 1);
+    });
     qs("closeModal").addEventListener("click", closeModal);
     bindForm();
     qs("paymentTemplateEditor").addEventListener("input", updatePaymentPreview);
