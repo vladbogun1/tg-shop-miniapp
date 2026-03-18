@@ -12,11 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.DeleteForumTopic;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 @Service
 @Slf4j
@@ -26,22 +30,34 @@ public class TelegramNotifyService {
     public static final String CB_REJECT_PREFIX  = "order:reject:";
     public static final String CB_SHIP_PREFIX = "order:ship:";
     public static final String CB_INVOICE_PREFIX = "order:invoice:";
+    public static final String CB_DELIVER_PREFIX = "order:deliver:";
+
+    private static final String SETTING_BOARD_NEW = "ADMIN_ORDER_BOARD_NEW";
+    private static final String SETTING_BOARD_PROCESSING = "ADMIN_ORDER_BOARD_PROCESSING";
+    private static final String SETTING_BOARD_SHIPPED = "ADMIN_ORDER_BOARD_SHIPPED";
+    private static final String SETTING_BOARD_CLOSED = "ADMIN_ORDER_BOARD_CLOSED";
 
     private final TelegramSender sender;
     private final AppProperties props;
     private final SettingRepository settingRepository;
     private final OrderRepository orderRepository;
+    private final OrderMessageLogService messageLogService;
+    private final OrderChatArchiveService archiveService;
 
     public TelegramNotifyService(
             TelegramSender sender,
             AppProperties props,
             SettingRepository settingRepository,
-            OrderRepository orderRepository
+            OrderRepository orderRepository,
+            OrderMessageLogService messageLogService,
+            OrderChatArchiveService archiveService
     ) {
         this.sender = sender;
         this.props = props;
         this.settingRepository = settingRepository;
         this.orderRepository = orderRepository;
+        this.messageLogService = messageLogService;
+        this.archiveService = archiveService;
     }
 
     /** Админу: новый заказ + кнопки approve/reject */
@@ -49,6 +65,12 @@ public class TelegramNotifyService {
         String chatId = getAdminChatId();
         if (chatId == null || chatId.isBlank()) {
             log.warn("🤖 TG Skipping admin notification: admin chat id not configured");
+            return;
+        }
+
+        if (isBoardConfigured()) {
+            ensureOrderChat(order, chatId);
+            log.info("🤖 TG Board configured, skip global admin notification for order uuid={}", order.uuid());
             return;
         }
 
@@ -316,6 +338,7 @@ public class TelegramNotifyService {
             order.setAdminThreadId(threadId);
             if (sent != null) {
                 order.setAdminThreadMessageId(sent.getMessageId());
+                messageLogService.recordSystemHtml(order, buildAdminOrderText(order));
             }
             orderRepository.save(order);
 
@@ -353,6 +376,59 @@ public class TelegramNotifyService {
         sender.safeExecute(editTopic);
     }
 
+    public void updateOrderBoardForStatus(OrderEntity order) {
+        if (order == null || order.getStatus() == null) {
+            return;
+        }
+        String status = order.getStatus().trim().toUpperCase();
+        BoardStage stage = switch (status) {
+            case "NEW" -> BoardStage.NEW;
+            case "APPROVED" -> BoardStage.PROCESSING;
+            case "SHIPPED" -> BoardStage.SHIPPED;
+            case "DELIVERED" -> BoardStage.CLOSED;
+            case "REJECTED" -> BoardStage.REJECTED;
+            default -> null;
+        };
+        if (stage == null) {
+            return;
+        }
+        moveOrderToBoard(order, stage);
+        if (stage == BoardStage.CLOSED || stage == BoardStage.REJECTED) {
+            sendOrderArchive(order);
+        }
+    }
+
+    public void deleteOrderChat(OrderEntity order) {
+        if (order == null || order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return;
+        }
+        DeleteForumTopic deleteTopic = DeleteForumTopic.builder()
+            .chatId(String.valueOf(order.getAdminChatId()))
+            .messageThreadId(order.getAdminThreadId())
+            .build();
+        sender.safeExecute(deleteTopic);
+        order.setAdminChatId(null);
+        order.setAdminThreadId(null);
+        order.setAdminThreadMessageId(null);
+        orderRepository.save(order);
+    }
+
+    private void sendOrderArchive(OrderEntity order) {
+        if (order.getAdminBoardChatId() == null || order.getAdminBoardThreadId() == null) {
+            return;
+        }
+        archiveService.buildArchive(order).ifPresent(path -> {
+            SendDocument doc = SendDocument.builder()
+                .chatId(String.valueOf(order.getAdminBoardChatId()))
+                .messageThreadId(order.getAdminBoardThreadId())
+                .replyToMessageId(order.getAdminBoardMessageId())
+                .caption("📦 Архив переписки заказа " + order.uuid())
+                .document(new InputFile(path.toFile()))
+                .build();
+            sender.safeExecute(doc);
+        });
+    }
+
     private static String resolveStatusIcon(String status) {
         if (status == null) {
             return "🆕";
@@ -361,6 +437,7 @@ public class TelegramNotifyService {
         return switch (normalized) {
             case "APPROVED", "APPROVE", "ACCEPTED" -> "✅";
             case "SHIPPED" -> "📦";
+            case "DELIVERED" -> "✅";
             case "REJECTED", "DECLINED", "CANCELLED", "CANCELED" -> "❌";
             default -> "🆕";
         };
@@ -431,10 +508,196 @@ public class TelegramNotifyService {
 
     public enum OrderDecision { APPROVED, REJECTED }
 
+    private void moveOrderToBoard(OrderEntity order, BoardStage stage) {
+        BoardTarget target = loadBoardTarget(stage.settingKey());
+        if (target == null) {
+            return;
+        }
+        clearBoardMessage(order);
+        SendMessage msg = SendMessage.builder()
+            .chatId(String.valueOf(target.chatId()))
+            .messageThreadId(target.threadId())
+            .parseMode(ParseMode.HTML)
+            .text(buildBoardMessage(order, stage))
+            .replyMarkup(buildBoardKeyboard(order))
+            .build();
+        Message sent = sender.safeExecuteMessage(msg);
+        if (sent != null) {
+            order.setAdminBoardChatId(target.chatId());
+            order.setAdminBoardThreadId(target.threadId());
+            order.setAdminBoardMessageId(sent.getMessageId());
+            orderRepository.save(order);
+        }
+    }
+
+    private void clearBoardMessage(OrderEntity order) {
+        if (order.getAdminBoardChatId() == null || order.getAdminBoardMessageId() == null) {
+            return;
+        }
+        sender.safeExecute(DeleteMessage.builder()
+            .chatId(String.valueOf(order.getAdminBoardChatId()))
+            .messageId(order.getAdminBoardMessageId())
+            .build());
+        order.setAdminBoardChatId(null);
+        order.setAdminBoardThreadId(null);
+        order.setAdminBoardMessageId(null);
+        orderRepository.save(order);
+    }
+
+    private BoardTarget loadBoardTarget(String settingKey) {
+        return settingRepository.findById(settingKey)
+            .map(Setting::getValue)
+            .map(this::parseBoardTarget)
+            .orElse(null);
+    }
+
+    private boolean isBoardConfigured() {
+        return settingRepository.findById(SETTING_BOARD_NEW).isPresent()
+            || settingRepository.findById(SETTING_BOARD_PROCESSING).isPresent()
+            || settingRepository.findById(SETTING_BOARD_SHIPPED).isPresent()
+            || settingRepository.findById(SETTING_BOARD_CLOSED).isPresent();
+    }
+
+    private BoardTarget parseBoardTarget(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String[] parts = value.split(":");
+        if (parts.length != 2) {
+            return null;
+        }
+        try {
+            long chatId = Long.parseLong(parts[0]);
+            int threadId = Integer.parseInt(parts[1]);
+            return new BoardTarget(chatId, threadId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String buildBoardMessage(OrderEntity order, BoardStage stage) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(stage.header()).append("\n\n");
+        sb.append("<b>🛒 Заказ</b>\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n\n");
+        sb.append("👤 ").append(escapeHtml(order.getCustomerName())).append("\n");
+        sb.append("📞 ").append(escapeHtml(order.getPhone())).append("\n");
+        sb.append("📦 ").append(escapeHtml(order.getAddress())).append("\n");
+        if (order.getComment() != null && !order.getComment().isBlank()) {
+            sb.append("💬 ").append(escapeHtml(order.getComment())).append("\n");
+        }
+        sb.append(buildItemsBlock(order));
+        if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
+            sb.append("\n📦 ТТН: ").append(escapeHtml(order.getTrackingNumber())).append("\n");
+        }
+        sb.append("\n👤 TG: ").append(buildUserReference(order.getTgUserId(), order.getTgUsername()));
+        sb.append("\n");
+        return sb.toString();
+    }
+
+    private InlineKeyboardMarkup buildBoardKeyboard(OrderEntity order) {
+        List<List<InlineKeyboardButton>> rows = new java.util.ArrayList<>();
+        List<InlineKeyboardButton> actionButtons = buildBoardActionButtons(order);
+        if (!actionButtons.isEmpty()) {
+            rows.add(actionButtons);
+        }
+        InlineKeyboardButton invoiceButton = buildBoardInvoiceButton(order);
+        if (invoiceButton != null) {
+            rows.add(List.of(invoiceButton));
+        }
+        InlineKeyboardButton chatButton = buildBoardChatButton(order);
+        if (chatButton != null) {
+            rows.add(List.of(chatButton));
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    private List<InlineKeyboardButton> buildBoardActionButtons(OrderEntity order) {
+        if (order == null || order.getStatus() == null) {
+            return List.of();
+        }
+        String status = order.getStatus().trim().toUpperCase();
+        InlineKeyboardButton approveButton = InlineKeyboardButton.builder()
+            .text("✅ Одобрить")
+            .callbackData(CB_APPROVE_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton rejectButton = InlineKeyboardButton.builder()
+            .text("❌ Отклонить")
+            .callbackData(CB_REJECT_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton shipButton = InlineKeyboardButton.builder()
+            .text("📦 Выслал заказ")
+            .callbackData(CB_SHIP_PREFIX + order.uuid().toString())
+            .build();
+        InlineKeyboardButton deliverButton = InlineKeyboardButton.builder()
+            .text("✅ Доставлено")
+            .callbackData(CB_DELIVER_PREFIX + order.uuid().toString())
+            .build();
+        return switch (status) {
+            case "NEW" -> List.of(approveButton, rejectButton);
+            case "APPROVED" -> List.of(shipButton, rejectButton);
+            case "SHIPPED" -> List.of(deliverButton, rejectButton);
+            default -> List.of();
+        };
+    }
+
+    private InlineKeyboardButton buildBoardInvoiceButton(OrderEntity order) {
+        if (order == null || !"APPROVED".equalsIgnoreCase(order.getStatus())) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💳 Отправить счёт")
+            .callbackData(CB_INVOICE_PREFIX + order.uuid().toString())
+            .build();
+    }
+
+    private InlineKeyboardButton buildBoardChatButton(OrderEntity order) {
+        if (order == null || order.getAdminChatId() == null || order.getAdminThreadId() == null) {
+            return null;
+        }
+        String link = buildTopicLink(order.getAdminChatId(), order.getAdminThreadId());
+        if (link == null) {
+            return null;
+        }
+        return InlineKeyboardButton.builder()
+            .text("💬 В чат заказа")
+            .url(link)
+            .build();
+    }
+
     private static String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private record OrderChatInfo(Integer threadId, String topicLink) {}
+
+    private record BoardTarget(long chatId, int threadId) {}
+
+    private enum BoardStage {
+        NEW(SETTING_BOARD_NEW, "🆕 <b>Новый заказ</b>"),
+        PROCESSING(SETTING_BOARD_PROCESSING, "🛠 <b>В обработке</b>"),
+        SHIPPED(SETTING_BOARD_SHIPPED, "📦 <b>Выслан</b>"),
+        CLOSED(SETTING_BOARD_CLOSED, "✅ <b>Завершён</b>"),
+        REJECTED(SETTING_BOARD_CLOSED, "❌ <b>Отклонено</b>");
+
+        private final String settingKey;
+        private final String header;
+
+        BoardStage(String settingKey, String header) {
+            this.settingKey = settingKey;
+            this.header = header;
+        }
+
+        public String settingKey() {
+            return settingKey;
+        }
+
+        public String header() {
+            return header;
+        }
+    }
 }

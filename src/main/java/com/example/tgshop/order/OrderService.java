@@ -138,6 +138,7 @@ public class OrderService {
 
         // 2) админу — уведомление с кнопками
         notifyService.notifyNewOrder(saved);
+        notifyService.updateOrderBoardForStatus(saved);
 
         log.info("🧾 ORDER Order notifications dispatched uuid={}", saved.uuid());
         return saved;
@@ -158,6 +159,7 @@ public class OrderService {
 
         notifyService.notifyUserOrderStatus(saved, TelegramNotifyService.OrderDecision.APPROVED);
         notifyService.updateOrderTopicStatus(saved);
+        notifyService.updateOrderBoardForStatus(saved);
         log.info("🧾 ORDER Order approved uuid={}", saved.uuid());
         return saved;
     }
@@ -205,6 +207,8 @@ public class OrderService {
 
         notifyService.notifyUserOrderRejected(saved, reason);
         notifyService.updateOrderTopicStatus(saved);
+        notifyService.updateOrderBoardForStatus(saved);
+        notifyService.deleteOrderChat(saved);
         log.info("🧾 ORDER Order rejected uuid={}", saved.uuid());
         return saved;
     }
@@ -225,7 +229,28 @@ public class OrderService {
 
         notifyService.notifyUserOrderShipped(saved);
         notifyService.updateOrderTopicStatus(saved);
+        notifyService.updateOrderBoardForStatus(saved);
         log.info("🧾 ORDER Order shipped uuid={}", saved.uuid());
+        return saved;
+    }
+
+    @Transactional
+    public OrderEntity deliver(UUID uuid) {
+        log.info("🧾 ORDER Delivering order uuid={}", uuid);
+        OrderEntity o = orderRepository.findById(UuidUtil.toBytes(uuid))
+            .orElseThrow(() -> {
+                log.warn("🧾 ORDER Deliver failed: order not found uuid={}", uuid);
+                return new IllegalArgumentException("Order not found: " + uuid);
+            });
+
+        o.setStatus("DELIVERED");
+
+        var saved = orderRepository.save(o);
+
+        notifyService.updateOrderTopicStatus(saved);
+        notifyService.updateOrderBoardForStatus(saved);
+        notifyService.deleteOrderChat(saved);
+        log.info("🧾 ORDER Order delivered uuid={}", saved.uuid());
         return saved;
     }
 

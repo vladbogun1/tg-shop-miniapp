@@ -20,7 +20,10 @@ import org.telegram.telegrambots.meta.api.methods.send.SendSticker;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideoNote;
 import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
+import org.telegram.telegrambots.meta.api.methods.forum.CloseForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.DeleteForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.EditForumTopic;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageCaption;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
@@ -306,6 +309,32 @@ public class ShopBot extends TelegramLongPollingBot implements TelegramBotGatewa
             execute(msg);
         } catch (Exception e) {
             log.error("🤖 TG Failed to edit forum topic", e);
+        }
+    }
+
+    public void safeExecute(CloseForumTopic msg) {
+        try {
+            execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to close forum topic", e);
+        }
+    }
+
+    public void safeExecute(DeleteForumTopic msg) {
+        try {
+            execute(msg);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to delete forum topic", e);
+        }
+    }
+
+    public java.io.File safeDownloadFile(String fileId) {
+        try {
+            var tgFile = execute(GetFile.builder().fileId(fileId).build());
+            return downloadFile(tgFile);
+        } catch (Exception e) {
+            log.error("🤖 TG Failed to download file {}", fileId, e);
+            return null;
         }
     }
 }
