@@ -1,6 +1,7 @@
 package com.example.tgshop.api;
 
 import com.example.tgshop.api.dto.AdminLoginRequest;
+import com.example.tgshop.api.dto.AdminOrdersPageDto;
 import com.example.tgshop.api.dto.CreateOrderRequest;
 import com.example.tgshop.api.dto.CreateProductRequest;
 import com.example.tgshop.api.dto.CreatePromoCodeRequest;
@@ -40,12 +41,14 @@ import com.example.tgshop.media.ImageStorageService;
 import com.example.tgshop.tg.TgPostImageResolver;
 import jakarta.validation.Valid;
 
-import java.util.List;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -195,6 +198,41 @@ public class ApiController {
             .toList();
         log.debug("🛒 API Returning {} orders for admin", result.size());
         return result;
+    }
+
+    @GetMapping("/admin/orders/page")
+    public AdminOrdersPageDto adminOrdersPage(
+        @RequestParam(value = "initData", required = false) String initData,
+        @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
+        @RequestParam(value = "query", required = false) String query,
+        @RequestParam(value = "status", required = false) String status,
+        @RequestParam(value = "createdFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdFrom,
+        @RequestParam(value = "createdTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate createdTo,
+        @RequestParam(value = "sort", defaultValue = "createdAtDesc") String sort,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "20") int size
+    ) {
+        assertAdmin(initData, adminPassword);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(1, Math.min(size, 100));
+        log.info("🛒 API Requesting paged admin orders page={} size={} sort={} status={} query={}",
+            safePage, safeSize, sort, status, query);
+
+        var result = orderRepository.findAdminOrdersPage(query, status, createdFrom, createdTo, sort, safePage, safeSize);
+        int totalPages = result.totalCount() <= 0
+            ? 0
+            : (int) Math.ceil((double) result.totalCount() / safeSize);
+
+        return new AdminOrdersPageDto(
+            result.orders().stream().map(ApiController::toOrderDto).toList(),
+            result.totalCount(),
+            safePage,
+            safeSize,
+            totalPages,
+            result.deliveredRevenueMinor(),
+            result.deliveredCount(),
+            result.currency()
+        );
     }
 
     @GetMapping("/admin/settings/payment-template")

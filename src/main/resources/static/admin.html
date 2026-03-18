@@ -105,8 +105,53 @@
                     <div id="ordersCount" class="summary-value">0</div>
                 </div>
                 <div class="summary-card">
-                    <div class="summary-title">Выручка</div>
+                    <div class="summary-title">Выручка (доставлено)</div>
                     <div id="ordersRevenue" class="summary-value">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">Доставлено</div>
+                    <div id="ordersDeliveredCount" class="summary-value">0</div>
+                </div>
+            </div>
+            <form id="ordersFilters" class="orders-filters">
+                <input id="ordersSearch" type="search" placeholder="Поиск: ID, клиент, телефон, @username, адрес"/>
+                <select id="ordersStatusFilter">
+                    <option value="ALL">Все статусы</option>
+                    <option value="NEW">Новый</option>
+                    <option value="APPROVED">Одобрен</option>
+                    <option value="SHIPPED">Выслан</option>
+                    <option value="DELIVERED">Доставлен</option>
+                    <option value="REJECTED">Отклонён</option>
+                </select>
+                <input id="ordersDateFrom" type="date" aria-label="Дата заказа от"/>
+                <input id="ordersDateTo" type="date" aria-label="Дата заказа до"/>
+                <select id="ordersSort">
+                    <option value="createdAtDesc">Сначала новые</option>
+                    <option value="createdAtAsc">Сначала старые</option>
+                    <option value="totalDesc">Сумма: больше сверху</option>
+                    <option value="totalAsc">Сумма: меньше сверху</option>
+                    <option value="customerAsc">Клиент: А-Я</option>
+                    <option value="customerDesc">Клиент: Я-А</option>
+                    <option value="statusAsc">Статус: А-Я</option>
+                    <option value="statusDesc">Статус: Я-А</option>
+                </select>
+                <select id="ordersPageSize">
+                    <option value="10">10 на странице</option>
+                    <option value="20" selected>20 на странице</option>
+                    <option value="50">50 на странице</option>
+                    <option value="100">100 на странице</option>
+                </select>
+                <div class="orders-filter-actions">
+                    <button type="submit" class="primary"><i class="fa-solid fa-filter"></i> Применить</button>
+                    <button id="ordersResetFilters" type="button" class="pill">Сбросить</button>
+                </div>
+            </form>
+            <div class="orders-meta-row">
+                <div id="ordersLoadedMeta" class="toolbar-meta">Загрузка заказов...</div>
+                <div class="orders-pagination">
+                    <button id="ordersPrevPage" type="button" class="pill">← Назад</button>
+                    <div id="ordersPageInfo" class="orders-page-info">Страница 1 из 1</div>
+                    <button id="ordersNextPage" type="button" class="pill">Вперёд →</button>
                 </div>
             </div>
             <div class="orders-table-wrap">

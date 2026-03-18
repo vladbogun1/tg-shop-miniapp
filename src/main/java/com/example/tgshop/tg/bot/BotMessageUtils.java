@@ -1,8 +1,15 @@
 package com.example.tgshop.tg.bot;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 public final class BotMessageUtils {
+    private static final DateTimeFormatter ORDER_DATE_FORMAT =
+        DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm").withLocale(Locale.forLanguageTag("ru"));
+
     private BotMessageUtils() {}
 
     public static String escapeHtml(String text) {
@@ -58,5 +65,12 @@ public final class BotMessageUtils {
         String abs = String.valueOf(Math.abs(chatId));
         String chatPart = abs.startsWith("100") ? abs.substring(3) : abs;
         return "https://t.me/c/" + chatPart + "/" + threadId;
+    }
+
+    public static String formatOrderDate(Instant createdAt) {
+        if (createdAt == null) {
+            return "—";
+        }
+        return ORDER_DATE_FORMAT.format(createdAt.atZone(ZoneId.systemDefault()));
     }
 }

@@ -6,6 +6,7 @@ import com.example.tgshop.order.OrderRepository;
 import com.example.tgshop.settings.PaymentTemplateDefaults;
 import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
+import com.example.tgshop.tg.bot.BotMessageUtils;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -253,7 +254,8 @@ public class TelegramNotifyService {
     private String buildAdminOrderText(OrderEntity order) {
         StringBuilder sb = new StringBuilder();
         sb.append("<b>🛒 Новый заказ</b>\n");
-        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("🗓 Дата заказа: ").append(escapeHtml(BotMessageUtils.formatOrderDate(order.getCreatedAt()))).append("\n\n");
         sb.append("👤 ").append(escapeHtml(order.getCustomerName())).append("\n");
         sb.append("📞 ").append(escapeHtml(order.getPhone())).append("\n");
         sb.append("📦 ").append(escapeHtml(order.getAddress())).append("\n");
@@ -579,7 +581,8 @@ public class TelegramNotifyService {
         StringBuilder sb = new StringBuilder();
         sb.append(stage.header()).append("\n\n");
         sb.append("<b>🛒 Заказ</b>\n");
-        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n\n");
+        sb.append("ID: <code>").append(escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("🗓 Дата заказа: ").append(escapeHtml(BotMessageUtils.formatOrderDate(order.getCreatedAt()))).append("\n\n");
         sb.append("👤 ").append(escapeHtml(order.getCustomerName())).append("\n");
         sb.append("📞 ").append(escapeHtml(order.getPhone())).append("\n");
         sb.append("📦 ").append(escapeHtml(order.getAddress())).append("\n");
