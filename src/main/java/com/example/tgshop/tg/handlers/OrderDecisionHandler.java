@@ -3,6 +3,7 @@ package com.example.tgshop.tg.handlers;
 import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
 import com.example.tgshop.order.OrderService;
+import com.example.tgshop.tg.OrderMessageLogService;
 import com.example.tgshop.tg.TelegramNotifyService;
 import com.example.tgshop.tg.bot.BotMessageUtils;
 import com.example.tgshop.tg.bot.BotState;
@@ -34,17 +35,20 @@ public class OrderDecisionHandler {
     private final OrderService orderService;
     private final TelegramNotifyService notifyService;
     private final BotState state;
+    private final OrderMessageLogService messageLogService;
 
     public OrderDecisionHandler(
         AppProperties props,
         OrderService orderService,
         TelegramNotifyService notifyService,
-        BotState state
+        BotState state,
+        OrderMessageLogService messageLogService
     ) {
         this.props = props;
         this.orderService = orderService;
         this.notifyService = notifyService;
         this.state = state;
+        this.messageLogService = messageLogService;
     }
 
     public boolean handleCallback(Update update, TelegramBotGateway gateway) {
@@ -67,6 +71,7 @@ public class OrderDecisionHandler {
 
         TelegramNotifyService.OrderDecision decision;
         String uuidStr;
+        boolean deliver = false;
 
         if (data != null && data.startsWith(TelegramNotifyService.CB_APPROVE_PREFIX)) {
             decision = TelegramNotifyService.OrderDecision.APPROVED;
@@ -80,6 +85,10 @@ public class OrderDecisionHandler {
         } else if (data != null && data.startsWith(TelegramNotifyService.CB_INVOICE_PREFIX)) {
             decision = null;
             uuidStr = data.substring(TelegramNotifyService.CB_INVOICE_PREFIX.length());
+        } else if (data != null && data.startsWith(TelegramNotifyService.CB_DELIVER_PREFIX)) {
+            decision = null;
+            uuidStr = data.substring(TelegramNotifyService.CB_DELIVER_PREFIX.length());
+            deliver = true;
         } else {
             log.warn("🤖 TG Callback rejected: unknown data {}", data);
             gateway.safeExecute(AnswerCallbackQuery.builder()
@@ -120,6 +129,42 @@ public class OrderDecisionHandler {
                     .build()));
                 return true;
             }
+            if (deliver) {
+                orderService.findByUuid(uuid).ifPresentOrElse(order -> {
+                    OrderEntity delivered = orderService.deliver(order.uuid());
+                    String newText = buildAdminDecisionText(
+                        delivered,
+                        TelegramNotifyService.OrderDecision.APPROVED,
+                        "✅ <b>ДОСТАВЛЕНО</b>",
+                        null
+                    );
+                    messageLogService.recordSystemHtml(delivered, newText);
+                    if (shouldEditCallbackMessage(cb.getMessage())) {
+                        gateway.safeExecute(EditMessageText.builder()
+                            .chatId(String.valueOf(cb.getMessage().getChatId()))
+                            .messageId(cb.getMessage().getMessageId())
+                            .parseMode(ParseMode.HTML)
+                            .text(newText)
+                            .build());
+                        InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), delivered);
+                        gateway.safeExecute(EditMessageReplyMarkup.builder()
+                            .chatId(String.valueOf(cb.getMessage().getChatId()))
+                            .messageId(cb.getMessage().getMessageId())
+                            .replyMarkup(kb)
+                            .build());
+                    }
+                    sendAdminStatusNote(delivered, "✅ Заказ доставлен.", gateway);
+                    gateway.safeExecute(AnswerCallbackQuery.builder()
+                        .callbackQueryId(cb.getId())
+                        .text("✅ Доставлено")
+                        .build());
+                }, () -> gateway.safeExecute(AnswerCallbackQuery.builder()
+                    .callbackQueryId(cb.getId())
+                    .text("Заказ не найден")
+                    .showAlert(true)
+                    .build()));
+                return true;
+            }
             if (decision == null) {
                 sendTrackingNumberRequest(cb, uuid, gateway);
                 return true;
@@ -133,24 +178,29 @@ public class OrderDecisionHandler {
             log.info("🤖 TG Order decision applied uuid={} decision={}", updated.uuid(), decision);
 
             String newText = buildAdminDecisionText(updated, decision, null, null);
-            gateway.safeExecute(EditMessageText.builder()
-                .chatId(String.valueOf(cb.getMessage().getChatId()))
-                .messageId(cb.getMessage().getMessageId())
-                .parseMode(ParseMode.HTML)
-                .text(newText)
-                .build());
+            messageLogService.recordSystemHtml(updated, newText);
+            if (shouldEditCallbackMessage(cb.getMessage())) {
+                gateway.safeExecute(EditMessageText.builder()
+                    .chatId(String.valueOf(cb.getMessage().getChatId()))
+                    .messageId(cb.getMessage().getMessageId())
+                    .parseMode(ParseMode.HTML)
+                    .text(newText)
+                    .build());
+            }
 
             var shipButton = InlineKeyboardButton.builder()
                 .text("📦 Выслал заказ")
                 .callbackData(TelegramNotifyService.CB_SHIP_PREFIX + updated.uuid().toString())
                 .build();
             var rejectButton = buildRejectButton(updated.uuid());
-            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(shipButton, rejectButton), updated);
-            gateway.safeExecute(EditMessageReplyMarkup.builder()
-                .chatId(String.valueOf(cb.getMessage().getChatId()))
-                .messageId(cb.getMessage().getMessageId())
-                .replyMarkup(kb)
-                .build());
+            if (shouldEditCallbackMessage(cb.getMessage())) {
+                InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(shipButton, rejectButton), updated);
+                gateway.safeExecute(EditMessageReplyMarkup.builder()
+                    .chatId(String.valueOf(cb.getMessage().getChatId()))
+                    .messageId(cb.getMessage().getMessageId())
+                    .replyMarkup(kb)
+                    .build());
+            }
 
             gateway.safeExecute(AnswerCallbackQuery.builder()
                 .callbackQueryId(cb.getId())
@@ -199,19 +249,23 @@ public class OrderDecisionHandler {
                 "📦 <b>ВЫСЛАНО</b>",
                 null
             );
-            gateway.safeExecute(EditMessageText.builder()
-                .chatId(String.valueOf(pending.chatId()))
-                .messageId(pending.orderMessageId())
-                .parseMode(ParseMode.HTML)
-                .text(newText)
-                .build());
-            var rejectButton = buildRejectButton(shipped.uuid());
-            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(rejectButton), shipped);
-            gateway.safeExecute(EditMessageReplyMarkup.builder()
-                .chatId(String.valueOf(pending.chatId()))
-                .messageId(pending.orderMessageId())
-                .replyMarkup(kb)
-                .build());
+            messageLogService.recordSystemHtml(shipped, newText);
+            if (shouldEditDecisionMessage(pending.chatId(), pending.orderMessageId(), shipped)) {
+                gateway.safeExecute(EditMessageText.builder()
+                    .chatId(String.valueOf(pending.chatId()))
+                    .messageId(pending.orderMessageId())
+                    .parseMode(ParseMode.HTML)
+                    .text(newText)
+                    .build());
+                var rejectButton = buildRejectButton(shipped.uuid());
+                var deliverButton = buildDeliverButton(shipped.uuid());
+                InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(deliverButton, rejectButton), shipped);
+                gateway.safeExecute(EditMessageReplyMarkup.builder()
+                    .chatId(String.valueOf(pending.chatId()))
+                    .messageId(pending.orderMessageId())
+                    .replyMarkup(kb)
+                    .build());
+            }
             sendAdminStatusNote(shipped, "📦 Заказ отправлен. ТТН: " + BotMessageUtils.escapeHtml(trackingNumber), gateway);
         } catch (Exception e) {
             log.error("🤖 TG Failed to ship order from reply tracking number", e);
@@ -264,18 +318,21 @@ public class OrderDecisionHandler {
                 null,
                 reason
             );
-            gateway.safeExecute(EditMessageText.builder()
-                .chatId(String.valueOf(pending.chatId()))
-                .messageId(pending.orderMessageId())
-                .parseMode(ParseMode.HTML)
-                .text(newText)
-                .build());
-            InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), rejected);
-            gateway.safeExecute(EditMessageReplyMarkup.builder()
-                .chatId(String.valueOf(pending.chatId()))
-                .messageId(pending.orderMessageId())
-                .replyMarkup(kb)
-                .build());
+            messageLogService.recordSystemHtml(rejected, newText);
+            if (shouldEditDecisionMessage(pending.chatId(), pending.orderMessageId(), rejected)) {
+                gateway.safeExecute(EditMessageText.builder()
+                    .chatId(String.valueOf(pending.chatId()))
+                    .messageId(pending.orderMessageId())
+                    .parseMode(ParseMode.HTML)
+                    .text(newText)
+                    .build());
+                InlineKeyboardMarkup kb = buildAdminOrderKeyboard(List.of(), rejected);
+                gateway.safeExecute(EditMessageReplyMarkup.builder()
+                    .chatId(String.valueOf(pending.chatId()))
+                    .messageId(pending.orderMessageId())
+                    .replyMarkup(kb)
+                    .build());
+            }
             String note = "❌ Заказ отклонён.";
             if (reason != null && !reason.isBlank()) {
                 note += " Причина: " + BotMessageUtils.escapeHtml(reason);
@@ -376,8 +433,10 @@ public class OrderDecisionHandler {
             .selective(true)
             .build();
 
+        Integer threadId = cb.getMessage() instanceof Message msg ? msg.getMessageThreadId() : null;
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
+            .messageThreadId(threadId)
             .parseMode(ParseMode.HTML)
             .text("Введите ТТН для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
@@ -408,8 +467,10 @@ public class OrderDecisionHandler {
             .selective(true)
             .build();
 
+        Integer threadId = cb.getMessage() instanceof Message msg ? msg.getMessageThreadId() : null;
         SendMessage prompt = SendMessage.builder()
             .chatId(String.valueOf(cb.getMessage().getChatId()))
+            .messageThreadId(threadId)
             .parseMode(ParseMode.HTML)
             .text("Напишите причину отклонения для заказа <code>" + BotMessageUtils.escapeHtml(uuid.toString()) + "</code>")
             .replyMarkup(forceReply)
@@ -437,6 +498,27 @@ public class OrderDecisionHandler {
             .build();
     }
 
+    private InlineKeyboardButton buildDeliverButton(UUID uuid) {
+        return InlineKeyboardButton.builder()
+            .text("✅ Доставлено")
+            .callbackData(TelegramNotifyService.CB_DELIVER_PREFIX + uuid.toString())
+            .build();
+    }
+
+    private boolean shouldEditCallbackMessage(org.telegram.telegrambots.meta.api.objects.MaybeInaccessibleMessage msg) {
+        if (msg instanceof Message m) {
+            return m.getMessageThreadId() == null;
+        }
+        return false;
+    }
+
+    private boolean shouldEditDecisionMessage(long chatId, int messageId, OrderEntity order) {
+        if (order.getAdminBoardChatId() == null || order.getAdminBoardMessageId() == null) {
+            return true;
+        }
+        return order.getAdminBoardChatId().equals(chatId) && order.getAdminBoardMessageId().equals(messageId);
+    }
+
     private void sendAdminStatusNote(OrderEntity order, String text, TelegramBotGateway gateway) {
         if (order.getAdminChatId() == null || order.getAdminThreadId() == null) {
             return;
@@ -447,6 +529,7 @@ public class OrderDecisionHandler {
             .parseMode(ParseMode.HTML)
             .text(text)
             .build());
+        messageLogService.recordSystemMessage(order, text);
     }
 
     private InlineKeyboardMarkup buildAdminOrderKeyboard(List<InlineKeyboardButton> actionButtons, OrderEntity order) {
