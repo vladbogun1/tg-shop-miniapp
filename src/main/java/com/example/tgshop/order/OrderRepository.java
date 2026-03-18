@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Query;
 
-public interface OrderRepository extends JpaRepository<OrderEntity, byte[]> {
+public interface OrderRepository extends JpaRepository<OrderEntity, byte[]>, OrderAdminQueryRepository {
 
   @Query("select distinct o from OrderEntity o left join fetch o.items order by o.createdAt desc")
   List<OrderEntity> findAllWithItems();

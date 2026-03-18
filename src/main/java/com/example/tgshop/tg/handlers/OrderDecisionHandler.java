@@ -372,7 +372,8 @@ public class OrderDecisionHandler {
         StringBuilder sb = new StringBuilder();
         sb.append(status).append("\n\n");
         sb.append("<b>🛒 Заказ</b>\n");
-        sb.append("ID: <code>").append(BotMessageUtils.escapeHtml(order.uuid().toString())).append("</code>\n\n");
+        sb.append("ID: <code>").append(BotMessageUtils.escapeHtml(order.uuid().toString())).append("</code>\n");
+        sb.append("🗓 Дата заказа: ").append(BotMessageUtils.escapeHtml(BotMessageUtils.formatOrderDate(order.getCreatedAt()))).append("\n\n");
         sb.append("👤 ").append(BotMessageUtils.escapeHtml(order.getCustomerName())).append("\n");
         sb.append("📞 ").append(BotMessageUtils.escapeHtml(order.getPhone())).append("\n");
         sb.append("📦 ").append(BotMessageUtils.escapeHtml(order.getAddress())).append("\n");
