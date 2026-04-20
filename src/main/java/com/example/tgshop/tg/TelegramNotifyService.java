@@ -4,6 +4,7 @@ import com.example.tgshop.config.AppProperties;
 import com.example.tgshop.order.OrderEntity;
 import com.example.tgshop.order.OrderRepository;
 import com.example.tgshop.settings.PaymentTemplateDefaults;
+import com.example.tgshop.settings.PaymentTemplateSanitizer;
 import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import com.example.tgshop.tg.bot.BotMessageUtils;
@@ -231,9 +232,13 @@ public class TelegramNotifyService {
             return null;
         }
 
-        String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
+        String storedHtml = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
             .map(Setting::getValue)
             .orElseGet(PaymentTemplateDefaults::defaultTemplate);
+        String html = PaymentTemplateSanitizer.sanitize(storedHtml);
+        if (!html.equals(storedHtml)) {
+            settingRepository.save(new Setting(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY, html));
+        }
 
         var replyMarkup = org.telegram.telegrambots.meta.api.objects.replykeyboard.ForceReplyKeyboard.builder()
             .forceReply(true)
