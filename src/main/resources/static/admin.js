@@ -365,7 +365,12 @@ function paymentTemplateHtmlToText(html) {
     if (!html) return "";
     let text = String(html).replace(/\r\n/g, "\n");
     text = text.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_, content) => `${decodeHtmlEntities(content)}\n`);
-    text = text.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_, content) => decodeHtmlEntities(content));
+    text = text.replace(/<a\b[^>]*href=['"]([^'"]+)['"][^>]*>([\s\S]*?)<\/a>/gi, (_, href, label) => `[${decodeHtmlEntities(label)}](${decodeHtmlEntities(href)})`);
+    text = text.replace(/<(b|strong)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_, _tag, value) => `**${decodeHtmlEntities(value)}**`);
+    text = text.replace(/<(i|em)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_, _tag, value) => `//${decodeHtmlEntities(value)}//`);
+    text = text.replace(/<(u|ins)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_, _tag, value) => `__${decodeHtmlEntities(value)}__`);
+    text = text.replace(/<(s|del)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_, _tag, value) => `~~${decodeHtmlEntities(value)}~~`);
+    text = text.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_, content) => `\`${decodeHtmlEntities(content)}\``);
     text = text.replace(/<br\s*\/?>/gi, "\n");
     text = text.replace(/<\/(div|p|blockquote)>/gi, "\n");
     text = text.replace(/<(div|p|blockquote)\b[^>]*>/gi, "");
@@ -420,11 +425,86 @@ function textTemplateToTelegramHtml(rawText) {
             monoBuffer.push(line);
             continue;
         }
-        html.push(escapeHtml(line));
+        html.push(applyInlineMarkup(line));
     }
 
     flushMono();
     return html.join("\n").trim();
+}
+
+function applyInlineMarkup(rawLine) {
+    const linkTokens = [];
+    let text = String(rawLine || "");
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi, (_, label, href) => {
+        const safeHref = escapeHtml(href);
+        const safeLabel = escapeHtml(label);
+        const token = `@@LINK_${linkTokens.length}@@`;
+        linkTokens.push(`<a href="${safeHref}">${safeLabel}</a>`);
+        return token;
+    });
+    text = escapeHtml(text);
+    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+    text = text.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    text = text.replace(/\/\/([^/\n]+)\/\//g, "<i>$1</i>");
+    text = text.replace(/__([^_\n]+)__/g, "<u>$1</u>");
+    text = text.replace(/~~([^~\n]+)~~/g, "<s>$1</s>");
+    linkTokens.forEach((link, index) => {
+        text = text.replace(`@@LINK_${index}@@`, link);
+    });
+    return text;
+}
+
+function wrapSelection(editor, prefix, suffix, placeholder = "текст") {
+    if (!editor) return;
+    const start = editor.selectionStart || 0;
+    const end = editor.selectionEnd || 0;
+    const value = editor.value || "";
+    const selected = value.slice(start, end) || placeholder;
+    const next = `${value.slice(0, start)}${prefix}${selected}${suffix}${value.slice(end)}`;
+    editor.value = next;
+    const cursorStart = start + prefix.length;
+    const cursorEnd = cursorStart + selected.length;
+    editor.focus();
+    editor.setSelectionRange(cursorStart, cursorEnd);
+    updatePaymentPreview();
+}
+
+function insertAtCursor(editor, text) {
+    if (!editor) return;
+    const start = editor.selectionStart || 0;
+    const end = editor.selectionEnd || 0;
+    const value = editor.value || "";
+    editor.value = `${value.slice(0, start)}${text}${value.slice(end)}`;
+    const cursor = start + text.length;
+    editor.focus();
+    editor.setSelectionRange(cursor, cursor);
+    updatePaymentPreview();
+}
+
+function applyTemplateToolbarAction(action) {
+    const editor = qs("paymentTemplateEditor");
+    if (!editor) return;
+    switch (action) {
+        case "bold":
+            return wrapSelection(editor, "**", "**");
+        case "italic":
+            return wrapSelection(editor, "//", "//");
+        case "underline":
+            return wrapSelection(editor, "__", "__");
+        case "strike":
+            return wrapSelection(editor, "~~", "~~");
+        case "code":
+            return wrapSelection(editor, "`", "`");
+        case "link": {
+            const href = prompt("Введите ссылку (https://...)");
+            if (!href) return;
+            return wrapSelection(editor, "[", `](${href})`, "ссылка");
+        }
+        case "line":
+            return insertAtCursor(editor, "\n══════════════════\n");
+        default:
+            return;
+    }
 }
 
 function getSelectedTagIds(container) {
@@ -1281,6 +1361,9 @@ function boot() {
     bindForm();
     qs("paymentTemplateEditor").addEventListener("input", updatePaymentPreview);
     qs("paymentTemplateSave").addEventListener("click", savePaymentTemplate);
+    qs("paymentTemplateSection").querySelectorAll(".editor-toolbar [data-action]").forEach((btn) => {
+        btn.addEventListener("click", () => applyTemplateToolbarAction(btn.dataset.action));
+    });
     qs("tagForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const fd = new FormData(qs("tagForm"));
