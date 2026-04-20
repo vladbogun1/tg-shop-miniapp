@@ -260,6 +260,7 @@ public class ApiController {
             return "";
         }
         String html = rawHtml.replace("\r\n", "\n").trim();
+        html = html.replace("&nbsp;", " ").replace("&#160;", " ");
         html = html.replaceAll("(?i)<br\\s*/?>", "\n");
         html = html.replaceAll("(?i)</(div|p)>", "\n");
         html = html.replaceAll("(?i)<(div|p)(\\s[^>]*)?>", "");
