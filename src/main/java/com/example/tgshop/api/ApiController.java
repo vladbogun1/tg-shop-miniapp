@@ -33,6 +33,7 @@ import com.example.tgshop.product.ProductVariant;
 import com.example.tgshop.product.ProductRepository;
 import com.example.tgshop.security.TgInitDataValidator;
 import com.example.tgshop.settings.PaymentTemplateDefaults;
+import com.example.tgshop.settings.PaymentTemplateSanitizer;
 import com.example.tgshop.settings.Setting;
 import com.example.tgshop.settings.SettingRepository;
 import com.example.tgshop.tag.Tag;
@@ -239,9 +240,13 @@ public class ApiController {
     public PaymentTemplateDto getPaymentTemplate(@RequestParam(value = "initData", required = false) String initData,
                                                  @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword) {
         assertAdmin(initData, adminPassword);
-        String html = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
+        String storedHtml = settingRepository.findById(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY)
             .map(Setting::getValue)
             .orElseGet(PaymentTemplateDefaults::defaultTemplate);
+        String html = PaymentTemplateSanitizer.sanitize(storedHtml);
+        if (!html.equals(storedHtml)) {
+            settingRepository.save(new Setting(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY, html));
+        }
         return new PaymentTemplateDto(html);
     }
 
@@ -250,22 +255,9 @@ public class ApiController {
                                                     @RequestHeader(value = "X-Admin-Password", required = false) String adminPassword,
                                                     @RequestBody @Valid UpdatePaymentTemplateRequest req) {
         assertAdmin(initData, adminPassword);
-        String html = sanitizePaymentTemplate(req.html());
+        String html = PaymentTemplateSanitizer.sanitize(req.html());
         settingRepository.save(new Setting(PaymentTemplateDefaults.PAYMENT_TEMPLATE_KEY, html));
         return new PaymentTemplateDto(html);
-    }
-
-    private static String sanitizePaymentTemplate(String rawHtml) {
-        if (rawHtml == null) {
-            return "";
-        }
-        String html = rawHtml.replace("\r\n", "\n").trim();
-        html = html.replaceAll("(?i)<br\\s*/?>", "\n");
-        html = html.replaceAll("(?i)</(div|p)>", "\n");
-        html = html.replaceAll("(?i)<(div|p)(\\s[^>]*)?>", "");
-        html = html.replaceAll("(?i)<a\\s+[^>]*href=['\"]([^'\"]+)['\"][^>]*>", "<a href=\"$1\">");
-        html = html.replaceAll("(?i)<(?!/?(b|strong|i|em|u|ins|s|del|code|pre|blockquote|a)(\\s|>|/))[^>]*>", "");
-        return html;
     }
 
     @DeleteMapping("/admin/orders/{id}")
