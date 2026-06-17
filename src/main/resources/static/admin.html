@@ -95,7 +95,69 @@
         </div>
 
         <section id="catalogSection" class="tab-section">
-            <div id="productGrid" class="grid"></div>
+            <div class="catalog-shell">
+                <form id="catalogFilters" class="catalog-filters">
+                    <div class="catalog-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="catalogSearch" type="search" placeholder="Поиск по названию, описанию, тегам, цене, остаткам"/>
+                    </div>
+                    <div class="catalog-controls">
+                        <select id="catalogSort" aria-label="Сортировка товаров">
+                            <option value="createdAtDesc">Сначала новые</option>
+                            <option value="createdAtAsc">Сначала старые</option>
+                            <option value="titleAsc">Название: А-Я</option>
+                            <option value="titleDesc">Название: Я-А</option>
+                            <option value="priceDesc">Цена: больше сверху</option>
+                            <option value="priceAsc">Цена: меньше сверху</option>
+                            <option value="stockDesc">Остаток: больше сверху</option>
+                            <option value="stockAsc">Остаток: меньше сверху</option>
+                            <option value="soldDesc">Продажи: больше сверху</option>
+                            <option value="soldAsc">Продажи: меньше сверху</option>
+                            <option value="tagsDesc">Тегов: больше сверху</option>
+                            <option value="tagsAsc">Тегов: меньше сверху</option>
+                            <option value="variantsDesc">Вариантов: больше сверху</option>
+                            <option value="variantsAsc">Вариантов: меньше сверху</option>
+                            <option value="activeFirst">Сначала видимые</option>
+                            <option value="hiddenFirst">Сначала скрытые</option>
+                        </select>
+                        <select id="catalogStockFilter" aria-label="Фильтр по остаткам">
+                            <option value="all">Все остатки</option>
+                            <option value="inStock">Только в наличии</option>
+                            <option value="outOfStock">Нет в наличии</option>
+                            <option value="lowStock">Мало в наличии (1-5)</option>
+                        </select>
+                        <select id="catalogVisibilityFilter" aria-label="Фильтр по видимости">
+                            <option value="all">Все товары</option>
+                            <option value="active">Только видимые</option>
+                            <option value="hidden">Только скрытые</option>
+                            <option value="sold">Только с продажами</option>
+                            <option value="unsold">Ещё не продавались</option>
+                            <option value="withVariants">Только с вариантами</option>
+                            <option value="withoutVariants">Без вариантов</option>
+                            <option value="withImages">С фото</option>
+                            <option value="withoutImages">Без фото</option>
+                        </select>
+                        <button id="catalogResetFilters" type="button" class="pill">Сбросить</button>
+                        <div class="view-switch" role="group" aria-label="Режим отображения каталога">
+                            <button id="catalogViewRows" type="button" class="view-toggle">
+                                <i class="fa-solid fa-table-list"></i> Строки
+                            </button>
+                            <button id="catalogViewCards" type="button" class="view-toggle">
+                                <i class="fa-solid fa-grip"></i> Карточки
+                            </button>
+                        </div>
+                    </div>
+                    <div class="catalog-tags-panel">
+                        <div class="catalog-tags-title">Фильтр по тегам</div>
+                        <div id="catalogTagFilters" class="catalog-tag-filters"></div>
+                    </div>
+                </form>
+                <div class="catalog-results-bar">
+                    <div id="catalogResultsMeta" class="toolbar-meta">Подготовка каталога...</div>
+                </div>
+                <div id="productGrid" class="catalog-grid"></div>
+                <div id="catalogEmpty" class="orders-empty hidden">По этим фильтрам товары не найдены.</div>
+            </div>
         </section>
 
         <section id="ordersSection" class="tab-section hidden">
