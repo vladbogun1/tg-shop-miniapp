@@ -902,6 +902,10 @@ button.ghost {
     outline: none;
     font-size: 14px;
     line-height: 1.5;
+    width: 100%;
+    resize: vertical;
+    white-space: pre-wrap;
+    font-family: inherit;
 }
 
 .editor-area:focus {
@@ -931,6 +935,7 @@ button.ghost {
 .preview-content {
     font-size: 14px;
     line-height: 1.5;
+    white-space: pre-wrap;
 }
 
 .preview-content blockquote {
