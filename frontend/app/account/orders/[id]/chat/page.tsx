@@ -275,13 +275,16 @@ function Composer({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Можно отправлять только изображения");
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
       const { url } = await customerApi.uploadAttachment(file);
-      const isImage = file.type.startsWith("image/");
       await onSend({
-        type: isImage ? "PHOTO" : "FILE",
+        type: "PHOTO",
         attachmentUrl: url,
         fileName: file.name,
         mimeType: file.type,
@@ -337,7 +340,7 @@ function Composer({
           ref={fileRef}
           type="file"
           hidden
-          accept="image/*,application/pdf,.doc,.docx,.zip"
+          accept="image/*"
           onChange={onPickFile}
         />
         <textarea
