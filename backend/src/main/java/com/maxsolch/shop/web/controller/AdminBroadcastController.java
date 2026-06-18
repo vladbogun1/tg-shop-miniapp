@@ -59,12 +59,12 @@ public class AdminBroadcastController {
     @PostMapping("/test")
     @Operation(summary = "Send one test message to a specific Telegram user id")
     public BroadcastResult test(@Valid @RequestBody BroadcastTestRequest req) {
-        return broadcastService.test(req.text(), req.telegramUserId());
+        return broadcastService.test(req.text(), req.telegramUserId(), req.withButton(), req.buttonText());
     }
 
     @PostMapping
     @Operation(summary = "Start an async broadcast to the chosen audience")
     public BroadcastStatus start(@Valid @RequestBody BroadcastRequest req) {
-        return broadcastService.start(req.text(), req.audience());
+        return broadcastService.start(req.text(), req.audience(), req.withButton(), req.buttonText());
     }
 }

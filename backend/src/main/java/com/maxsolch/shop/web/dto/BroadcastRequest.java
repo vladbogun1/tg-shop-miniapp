@@ -5,5 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 /** Start a broadcast. {@code audience} = all | active | inactive | premium. */
 public record BroadcastRequest(
         @NotBlank String text,
-        String audience) {
+        String audience,
+        boolean withButton,
+        String buttonText) {
 }
