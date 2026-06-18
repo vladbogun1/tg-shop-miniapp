@@ -1,0 +1,352 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Liquid Glass v2 — Design Tokens
+   Premium Apple "Liquid Glass" / visionOS material that reads as glass WITHOUT
+   relying on backdrop-filter (weak / disabled in real Telegram Desktop & some
+   Chrome). The look is built from OPAQUE-ish tinted fills + a specular sheen
+   gradient + crisp edge hairlines + soft ambient shadow. backdrop-filter is
+   layered ONLY as a progressive enhancement.
+
+   Toggling: prefers-color-scheme + Telegram themeParams (see lib/telegram.ts,
+   which writes --accent / --bg-scene from themeParams when available).
+
+   IMPORTANT: --bg-scene / --glass-sheen etc. are GRADIENTS. Never assign them to
+   a `background-color` (Tailwind bg-[var(--bg-scene)] -> invalid -> transparent).
+   Use `background` / `background-image`.
+   ============================================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- Scene (living, COLORFUL background) ------------------------------ */
+  /* Opaque base + several bright multi-hue radial blobs so the glass blur
+     picks up real color. The blur in .glass is what makes panels read as
+     frosted glass over this. */
+  --bg-base: #0b1020;
+  --bg-solid: #0b1020;
+  --bg-hue-2: #7b5cff; /* violet */
+  --bg-hue-3: #16d6c6; /* teal */
+  --bg-hue-4: #ff5c9d; /* pink */
+  --bg-scene:
+    radial-gradient(60% 55% at 6% 0%,   color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 55%),
+    radial-gradient(55% 50% at 100% 6%, color-mix(in srgb, var(--bg-hue-2) 50%, transparent) 0%, transparent 55%),
+    radial-gradient(55% 55% at 88% 92%, color-mix(in srgb, var(--bg-hue-3) 42%, transparent) 0%, transparent 55%),
+    radial-gradient(50% 50% at 12% 96%, color-mix(in srgb, var(--bg-hue-4) 40%, transparent) 0%, transparent 55%),
+    linear-gradient(160deg, #121a33 0%, var(--bg-base) 55%);
+  /* Drifting blob layer (animated in .scene::before) — adds motion to the color. */
+  --bg-scene-accent:
+    radial-gradient(45% 45% at 75% 22%, color-mix(in srgb, var(--bg-hue-3) 40%, transparent) 0%, transparent 60%),
+    radial-gradient(45% 45% at 20% 78%, color-mix(in srgb, var(--bg-hue-4) 34%, transparent) 0%, transparent 60%),
+    radial-gradient(40% 40% at 60% 60%, color-mix(in srgb, var(--accent) 30%, transparent) 0%, transparent 60%);
+
+  /* ---- Glass material — TRANSLUCENT + BLUR (real glassmorphism) ---------- */
+  /* Low-opacity tint so the blurred, colorful background shows through. The
+     frosted look comes from backdrop-filter blur; a @supports fallback bumps
+     opacity where blur is unavailable (see .glass below). */
+  --glass-bg: rgba(17, 24, 42, 0.42);          /* cards / panels — see-through */
+  --glass-bg-strong: rgba(20, 28, 48, 0.55);   /* navbar / sheets / overlays */
+
+  /* Specular sheen — top-down white highlight fading by ~40% of the height. */
+  --glass-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 22%,
+    rgba(255, 255, 255, 0) 42%
+  );
+  --glass-sheen-strong: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.07) 24%,
+    rgba(255, 255, 255, 0) 44%
+  );
+
+  /* Edge hairlines */
+  --glass-stroke: rgba(255, 255, 255, 0.22);        /* outer border (light) */
+  --glass-stroke-top: rgba(255, 255, 255, 0.4);     /* crisp 1px top highlight */
+  --glass-stroke-bottom: rgba(0, 0, 0, 0.35);       /* soft bottom inner shadow */
+
+  /* Blur strength — kept moderate so iOS WKWebView doesn't choke (heavy blur
+     on many layers can blank the page). */
+  --glass-blur: 14px;
+  --glass-blur-strong: 20px;
+  --glass-saturate: 170%;
+
+  /* ---- Accent (default; overridden by Telegram themeParams) ------------- */
+  --accent: #5ac8fa;
+  --accent-hi: color-mix(in srgb, var(--accent) 78%, white); /* glossy top */
+  --accent-lo: color-mix(in srgb, var(--accent) 88%, black); /* glossy bottom */
+  --accent-ink: #00131c; /* text on accent */
+
+  /* ---- Text ------------------------------------------------------------- */
+  --text: rgba(255, 255, 255, 0.97);
+  --text-muted: rgba(255, 255, 255, 0.64);
+  --text-faint: rgba(255, 255, 255, 0.42);
+
+  /* ---- Semantics -------------------------------------------------------- */
+  --ok: #34c759;
+  --warn: #ff9f0a;
+  --danger: #ff453a;
+
+  /* ---- Geometry (continuous-feel large radii) -------------------------- */
+  --r-sm: 14px;
+  --r-md: 20px;
+  --r-lg: 28px;
+  --r-xl: 34px;
+  --r-pill: 999px;
+
+  /* ---- Depth shadows (ambient float) ----------------------------------- */
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.34), 0 2px 6px rgba(0, 0, 0, 0.24);
+  --shadow-2: 0 22px 60px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.32);
+
+  /* safe-area (Telegram webview / iOS notch) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Light theme — frosted light glass on dark text. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg-base: #e8edf6;
+    --bg-solid: #e8edf6;
+    --bg-hue-2: #8a7bff;
+    --bg-scene:
+      radial-gradient(90% 70% at 8% 2%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 48%),
+      radial-gradient(80% 70% at 98% 8%, color-mix(in srgb, var(--bg-hue-2) 18%, transparent) 0%, transparent 52%),
+      linear-gradient(180deg, #f3f6fc 0%, var(--bg-base) 70%);
+    --bg-scene-accent:
+      radial-gradient(55% 55% at 78% 18%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 60%);
+
+    --glass-bg: rgba(255, 255, 255, 0.78);
+    --glass-bg-strong: rgba(255, 255, 255, 0.88);
+    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 24%, rgba(255, 255, 255, 0) 42%);
+    --glass-sheen-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 26%, rgba(255, 255, 255, 0) 44%);
+    --glass-stroke: rgba(255, 255, 255, 0.9);
+    --glass-stroke-top: rgba(255, 255, 255, 1);
+    --glass-stroke-bottom: rgba(40, 55, 80, 0.12);
+
+    --accent-ink: #ffffff;
+
+    --text: rgba(18, 24, 34, 0.97);
+    --text-muted: rgba(18, 24, 34, 0.62);
+    --text-faint: rgba(18, 24, 34, 0.4);
+
+    --shadow-1: 0 8px 24px rgba(40, 55, 80, 0.16), 0 2px 6px rgba(40, 55, 80, 0.1);
+    --shadow-2: 0 22px 60px rgba(40, 55, 80, 0.22), 0 6px 18px rgba(40, 55, 80, 0.14);
+  }
+}
+
+/* Telegram forces a theme via data-theme on <html> (lib/telegram.ts) */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-base: #e8edf6;
+  --bg-solid: #e8edf6;
+  --bg-hue-2: #8a7bff;
+  --bg-scene:
+    radial-gradient(90% 70% at 8% 2%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 48%),
+    radial-gradient(80% 70% at 98% 8%, color-mix(in srgb, var(--bg-hue-2) 18%, transparent) 0%, transparent 52%),
+    linear-gradient(180deg, #f3f6fc 0%, var(--bg-base) 70%);
+  --bg-scene-accent:
+    radial-gradient(55% 55% at 78% 18%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 60%);
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 24%, rgba(255, 255, 255, 0) 42%);
+  --glass-sheen-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 26%, rgba(255, 255, 255, 0) 44%);
+  --glass-stroke: rgba(255, 255, 255, 0.9);
+  --glass-stroke-top: rgba(255, 255, 255, 1);
+  --glass-stroke-bottom: rgba(40, 55, 80, 0.12);
+  --accent-ink: #ffffff;
+  --text: rgba(18, 24, 34, 0.97);
+  --text-muted: rgba(18, 24, 34, 0.62);
+  --text-faint: rgba(18, 24, 34, 0.4);
+  --shadow-1: 0 8px 24px rgba(40, 55, 80, 0.16), 0 2px 6px rgba(40, 55, 80, 0.1);
+  --shadow-2: 0 22px 60px rgba(40, 55, 80, 0.22), 0 6px 18px rgba(40, 55, 80, 0.14);
+}
+
+/* ---------------------------------------------------------------------------
+   Tailwind v4 theme bridge — expose tokens as utilities (text-accent, etc.)
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-faint: var(--text-faint);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --radius-glass-sm: var(--r-sm);
+  --radius-glass-md: var(--r-md);
+  --radius-glass-lg: var(--r-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--text);
+  /* Opaque base under the fixed .scene so nothing ever shows through. */
+  background: var(--bg-base);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", Roboto, Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+/* The "scene" — living layered gradient background (fully opaque base). */
+.scene {
+  position: fixed;
+  inset: 0;
+  /* z-index 0 (not -1): iOS WKWebView can't reliably sample a z-index:-1 fixed
+     backdrop for backdrop-filter → blank screen. Content is lifted to z-10. */
+  z-index: 0;
+  background-color: var(--bg-base);
+  background-image: var(--bg-scene);
+}
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--bg-scene-accent);
+  /* Static: an animated will-change:transform layer here + backdrop-filter
+     elsewhere triggers a blank/black screen bug in iOS WKWebView. */
+}
+
+/* ---------------------------------------------------------------------------
+   .glass — base material (cards / panels) — REAL frosted glass.
+   Translucent tint + heavy backdrop blur: the colorful background and other
+   cards show through, blurred. A @supports fallback bumps opacity where
+   backdrop-filter is unavailable so it never becomes a sharp see-through.
+   NOTE: no `position` here — would override fixed/sticky consumers (TabBar).
+   --------------------------------------------------------------------------- */
+.glass {
+  background-image: var(--glass-sheen);
+  background-color: var(--glass-bg);
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-stroke);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-stroke-top),
+    inset 0 -10px 22px -12px var(--glass-stroke-bottom),
+    var(--shadow-1);
+  /* -webkit- first so it wins on older WebKit; standard wins on iOS 16+/Chromium. */
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  /* Force own GPU layer — fixes WebKit/iOS backdrop-filter compositing (blank screen).
+     Safe: no glass element has position:fixed DESCENDANTS (fixed ones are fixed themselves). */
+  transform: translateZ(0);
+}
+
+/* Stronger tier — navbar / sheets / modals / overlays (heavier blur). */
+.glass--strong {
+  background-image: var(--glass-sheen-strong);
+  background-color: var(--glass-bg-strong);
+  border-radius: var(--r-lg);
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-stroke-top),
+    inset 0 -14px 30px -14px var(--glass-stroke-bottom),
+    var(--shadow-2);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+}
+
+/* Fallback: no backdrop-filter → make the tint opaque enough to stay readable
+   (avoids the ugly sharp see-through). Modern Telegram clients DO support it. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background-color: rgba(15, 21, 38, 0.9); }
+  .glass--strong { background-color: rgba(18, 26, 46, 0.95); }
+}
+
+/* Bigger ambient lift for floating elements. */
+.glass--floating {
+  box-shadow:
+    inset 0 1px 0 0 var(--glass-stroke-top),
+    inset 0 -14px 30px -14px var(--glass-stroke-bottom),
+    var(--shadow-2);
+}
+
+/* Faint noise to kill gradient banding (optional, opt-in). */
+.glass--noise {
+  position: relative;
+}
+.glass--noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------------------
+   .glossy — glossy accent surface (buttons / active chips). Pill gradient with
+   a lighter top, an inner top highlight and a soft shadow. Text = --accent-ink.
+   --------------------------------------------------------------------------- */
+.glossy {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 45%),
+    linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 52%, var(--accent-lo) 100%);
+  background-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+    inset 0 -8px 16px -10px rgba(0, 0, 0, 0.45),
+    0 6px 18px -4px color-mix(in srgb, var(--accent) 55%, transparent),
+    var(--shadow-1);
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--glass-bg);
+  border-radius: var(--r-md);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Tach-targety >=44px */
+.tap {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

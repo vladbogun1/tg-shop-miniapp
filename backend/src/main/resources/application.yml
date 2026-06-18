@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: tg-shop-v2-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:tgshop_v2}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+    username: ${DB_USER:tgshop}
+    password: ${DB_PASSWORD:change_me}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    # true (Spring Boot default): keeps the JPA session open during DTO rendering so lazy
+    # collections (Order.items, product images/variants/tags) map without LazyInitializationException
+    # in list endpoints (my-orders, admin board).
+    open-in-view: true
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+  cache:
+    type: caffeine
+    cache-names: products, productById, tags, npCities, npWarehouses
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=120s
+  thymeleaf:
+    cache: true
+
+server:
+  port: 8080
+
+management:
+  info:
+    build:
+      enabled: true
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health, info, caches, metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  image-base-url: ${IMAGE_BASE_URL:http://localhost:8082/img}
+  webapp-base-url: ${WEBAPP_BASE_URL:}
+  admin-base-url: ${ADMIN_BASE_URL:}
+  telegram:
+    bot-token: ${BOT_TOKEN:}
+    bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
+    admin-user-ids: ${ADMIN_USER_IDS:}
+    init-data-ttl-seconds: ${INITDATA_TTL_SECONDS:86400}
+    allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
+    notify-chat-id: ${NOTIFY_CHAT_ID:0}
+    notify-topic-new: ${NOTIFY_TOPIC_NEW:0}
+    notify-topic-processing: ${NOTIFY_TOPIC_PROCESSING:0}
+    notify-topic-shipped: ${NOTIFY_TOPIC_SHIPPED:0}
+    notify-topic-closed: ${NOTIFY_TOPIC_CLOSED:0}
+    notify-topic-rejected: ${NOTIFY_TOPIC_REJECTED:0}
+    notify-topic-chat: ${NOTIFY_TOPIC_CHAT:0}
+  security:
+    jwt-secret: ${JWT_SECRET:Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==}
+    jwt-access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:120}
+    admin-login: ${ADMIN_LOGIN:}
+    admin-password: ${ADMIN_PASSWORD:}
+    admin-bootstrap-tg-id: ${ADMIN_BOOTSTRAP_TG_ID:1}
+  s3:
+    endpoint: ${S3_ENDPOINT:http://minio:9000}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9000}
+    access-key: ${S3_ACCESS_KEY:minioadmin}
+    secret-key: ${S3_SECRET_KEY:change_me_minio}
+    bucket: ${S3_BUCKET:product-images}
+  novaposhta:
+    api-key: ${NOVAPOSHTA_API_KEY:}
+    api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}
+    sync-cron: ${NOVAPOSHTA_SYNC_CRON:0 30 3 * * *}

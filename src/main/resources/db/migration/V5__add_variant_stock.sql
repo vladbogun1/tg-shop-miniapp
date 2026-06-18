@@ -1,2 +1,0 @@
-ALTER TABLE product_variants
-  ADD COLUMN stock INT NOT NULL DEFAULT 0;

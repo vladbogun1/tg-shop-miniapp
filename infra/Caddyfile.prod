@@ -1,0 +1,26 @@
+# Prod TLS front for Maxsolch 2.0.
+# Two HTTPS sites on non-standard ports (80/443 are taken on the host by another nginx):
+#   :666 -> customer single-origin gateway   (frontend + /api + /ws + /img)
+#   :667 -> admin single-origin gateway
+# Certs are REUSED from the existing maxsolkh.shop Let's Encrypt material (mounted at /certs),
+# because auto-ACME is impossible here (ports 80 / 443 are occupied). Renewal stays with the
+# host certbot.renew timer + the old app's Caddy; this front just reads the files.
+
+{
+	# We supply certs explicitly per-site; don't let Caddy try to issue/redirect on 80/443.
+	auto_https disable_redirects
+}
+
+# PROD_CERT_DIR mounts the whole letsencrypt root at /certs, so the relative
+# live/ -> ../../archive symlinks resolve inside the container.
+maxsolkh.shop:666 {
+	tls /certs/live/maxsolkh.shop/fullchain.pem /certs/live/maxsolkh.shop/privkey.pem
+	encode zstd gzip
+	reverse_proxy gateway:80
+}
+
+maxsolkh.shop:667 {
+	tls /certs/live/maxsolkh.shop/fullchain.pem /certs/live/maxsolkh.shop/privkey.pem
+	encode zstd gzip
+	reverse_proxy gateway-admin:80
+}
