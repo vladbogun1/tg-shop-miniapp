@@ -214,12 +214,12 @@ export interface OrderItemDto {
 }
 
 export interface PaymentRequisitesDto {
-  title?: string;
   cardNumber?: string;
+  iban?: string;
   recipient?: string;
-  bank?: string;
-  instructions?: string;
-  [k: string]: unknown;
+  edrpou?: string;
+  purpose?: string;
+  note?: string;
 }
 
 export interface OrderDetailDto {

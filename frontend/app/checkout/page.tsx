@@ -660,7 +660,7 @@ function SuccessScreen({ state }: { state: SuccessState }) {
             ["Карта", r.cardNumber],
             ["IBAN", r.iban],
             ["Получатель", r.recipient],
-            ["РНОКПП", r.taxId],
+            ["РНОКПП", r.edrpou],
             ["Назначение", r.purpose],
           ].filter(([, v]) => !!v) as [string, string][])
         : [],

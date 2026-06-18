@@ -228,8 +228,9 @@ export interface PaymentRequisites {
   cardNumber?: string;
   iban?: string;
   recipient?: string;
-  taxId?: string;
+  edrpou?: string;
   purpose?: string;
+  note?: string;
 }
 
 /** GET /api/me/orders/{id} */
