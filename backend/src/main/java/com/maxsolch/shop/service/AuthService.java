@@ -93,6 +93,18 @@ public class AuthService {
         return AuthResponse.tokenOnly(token);
     }
 
+    /**
+     * Record/refresh a user that interacted with the bot directly (e.g. /start),
+     * so the admin Users list captures people who opened the bot but not the Mini App.
+     */
+    @Transactional
+    public void recordBotUser(TelegramUser tgUser) {
+        if (tgUser == null || tgUser.id() <= 0) {
+            return;
+        }
+        upsertUser(tgUser);
+    }
+
     private User upsertUser(TelegramUser tgUser) {
         User user = userRepository.findById(tgUser.id()).orElseGet(() -> {
             User u = new User();
@@ -102,6 +114,16 @@ public class AuthService {
         user.setUsername(tgUser.username());
         user.setFirstName(tgUser.firstName());
         user.setLastName(tgUser.lastName());
+        if (tgUser.languageCode() != null) {
+            user.setLanguageCode(tgUser.languageCode());
+        }
+        user.setPremium(tgUser.premium());
+        if (tgUser.photoUrl() != null) {
+            user.setPhotoUrl(tgUser.photoUrl());
+        }
+        // They're clearly reachable again — clear any previous "blocked" flag.
+        user.setBotBlocked(false);
+        user.setBotBlockedAt(null);
         user.setLastSeenAt(Instant.now());
         return userRepository.save(user);
     }

@@ -1,7 +1,10 @@
 package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.security.TelegramUser;
+import com.maxsolch.shop.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -23,10 +26,12 @@ import java.util.List;
 public class ShopBot extends TelegramLongPollingBot {
 
     private final AppProperties props;
+    private final AuthService authService;
 
-    public ShopBot(AppProperties props) {
+    public ShopBot(AppProperties props, @Lazy AuthService authService) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
+        this.authService = authService;
     }
 
     @Override
@@ -46,6 +51,7 @@ public class ShopBot extends TelegramLongPollingBot {
             }
             long chatId = update.getMessage().getChatId();
             String text = update.getMessage().getText().trim();
+            recordUser(update.getMessage().getFrom());
             if (text.startsWith("/start")) {
                 sendStart(chatId);
             } else if (text.startsWith("/help")) {
@@ -80,6 +86,25 @@ public class ShopBot extends TelegramLongPollingBot {
                 .text("Команды:\n/start — открыть магазин\n/help — помощь")
                 .build();
         execteSafe(msg);
+    }
+
+    /** Capture/refresh the user behind a bot message (only private 1:1 chats = real users). */
+    private void recordUser(org.telegram.telegrambots.meta.api.objects.User from) {
+        if (from == null || Boolean.TRUE.equals(from.getIsBot()) || from.getId() == null) {
+            return;
+        }
+        try {
+            authService.recordBotUser(new TelegramUser(
+                    from.getId(),
+                    from.getUserName(),
+                    from.getFirstName(),
+                    from.getLastName(),
+                    from.getLanguageCode(),
+                    Boolean.TRUE.equals(from.getIsPremium()),
+                    null));
+        } catch (Exception e) {
+            log.debug("recordUser failed: {}", e.getMessage());
+        }
     }
 
     private void execteSafe(SendMessage msg) {

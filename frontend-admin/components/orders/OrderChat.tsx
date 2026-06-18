@@ -10,12 +10,13 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Send, FileText } from "lucide-react";
+import { Paperclip, Send, FileText, Check, CheckCheck } from "lucide-react";
 import { adminApi, ApiError, type MessageDto } from "@/lib/api";
 import { subscribeOrderChat } from "@/lib/ws";
-import { resolveImageSrc } from "@/lib/image";
+import { resolveImageSrc, resolveImageFull } from "@/lib/image";
 import { useToast } from "@/lib/toast";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { Lightbox } from "@/components/ui/Lightbox";
 
 function timeOf(iso: string): string {
   const d = new Date(iso);
@@ -24,7 +25,7 @@ function timeOf(iso: string): string {
     : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Bubble({ m }: { m: MessageDto }) {
+function Bubble({ m, onOpenImage }: { m: MessageDto; onOpenImage: (src: string) => void }) {
   if (m.senderType === "SYSTEM") {
     return (
       <div className="my-1 text-center text-[12px] text-[var(--text-faint)]">
@@ -43,12 +44,19 @@ function Bubble({ m }: { m: MessageDto }) {
         }`}
       >
         {m.attachmentUrl && m.type === "PHOTO" && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolveImageSrc(m.attachmentUrl, 480)}
-            alt={m.fileName ?? "вложение"}
-            className="mb-1 max-h-60 rounded-[var(--r-sm)] object-cover"
-          />
+          <button
+            type="button"
+            onClick={() => onOpenImage(resolveImageFull(m.attachmentUrl!))}
+            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)]"
+            title="Открыть полностью"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolveImageSrc(m.attachmentUrl, 480)}
+              alt={m.fileName ?? "вложение"}
+              className="max-h-60 object-cover transition-opacity group-hover:opacity-90"
+            />
+          </button>
         )}
         {m.attachmentUrl && m.type === "FILE" && (
           <a
@@ -63,11 +71,17 @@ function Bubble({ m }: { m: MessageDto }) {
         )}
         {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
         <div
-          className={`mt-1 text-right text-[10px] ${
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
             mine ? "text-[var(--accent-ink)]/70" : "text-[var(--text-faint)]"
           }`}
         >
-          {timeOf(m.createdAt)}
+          <span>{timeOf(m.createdAt)}</span>
+          {mine &&
+            (m.readAt ? (
+              <CheckCheck className="h-3.5 w-3.5" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            ))}
         </div>
       </div>
     </div>
@@ -82,6 +96,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const key = ["messages", orderId];
   const { data: messages = [] } = useQuery({
@@ -159,9 +174,11 @@ export function OrderChat({ orderId }: { orderId: string }) {
           </div>
         )}
         {messages.map((m) => (
-          <Bubble key={m.id} m={m} />
+          <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
         ))}
       </div>
+
+      <Lightbox src={lightbox} onClose={() => setLightbox(null)} />
 
       <div className="mt-2 flex items-end gap-2">
         <input ref={fileRef} type="file" hidden onChange={onFile} />
