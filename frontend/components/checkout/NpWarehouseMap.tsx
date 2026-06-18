@@ -43,14 +43,33 @@ function catLabel(c?: NpCategory): string {
   return c === "POSTOMAT" ? "Почтомат" : c === "BRANCH" ? "Отделение" : c === "POINT" ? "Пункт" : "Отделение";
 }
 
+/** White monochrome glyph per category so the type reads at a glance (not just colour). */
+function glyphSvg(category: string | undefined, g: number): string {
+  const open = `<svg viewBox="0 0 24 24" width="${g}" height="${g}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">`;
+  const body =
+    category === "POSTOMAT"
+      ? '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M12 3v18"/>' // locker grid
+      : category === "BRANCH"
+        ? '<path d="M4 9.5 5.2 4h13.6L20 9.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/>' // storefront
+        : category === "POINT"
+          ? '<path d="M5 8 6.5 4h11L19 8"/><path d="M5 8v12h14V8"/><path d="M4 13h5l1 2h4l1-2h5"/>' // pickup box
+          : '<circle cx="12" cy="12" r="3.5" fill="#fff" stroke="none"/>';
+  return open + body + "</svg>";
+}
+
 function pinIcon(category: string | undefined, active: boolean): L.DivIcon {
-  const size = active ? 32 : 22;
+  const size = active ? 36 : 28;
   const color = CAT_COLOR[category ?? "OTHER"] ?? CAT_COLOR.OTHER;
+  const g = active ? 20 : 15;
   return L.divIcon({
     className: "np-pin",
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;
-      background:${color};transform:rotate(-45deg);border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,.45);${active ? "outline:3px solid var(--accent,#5ac8fa);" : ""}"></div>`,
+    html: `<div style="position:relative;width:${size}px;height:${size}px;">
+      <div style="position:absolute;inset:0;border-radius:50% 50% 50% 0;background:${color};
+        transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);
+        ${active ? "outline:3px solid var(--accent,#5ac8fa);outline-offset:1px;" : ""}"></div>
+      <div style="position:absolute;left:0;top:0;width:${size}px;height:${Math.round(size * 0.78)}px;
+        display:flex;align-items:center;justify-content:center;">${glyphSvg(category, g)}</div>
+    </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size],
   });
