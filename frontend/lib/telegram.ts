@@ -64,6 +64,35 @@ function applyTheme(params: Record<string, unknown> | undefined): "dark" | "ligh
   return scheme;
 }
 
+/**
+ * Push our layout below/around the Telegram chrome in fullscreen Mini Apps.
+ * Combines the device safe area (notch) with Telegram's contentSafeAreaInset
+ * (the strip occupied by the close / ⋮ / collapse controls) and writes it into
+ * the --safe-* vars our headers/navbar already use. Uses max(env(), inset) so a
+ * non-fullscreen client keeps its native env() insets.
+ */
+function applySafeAreaInsets(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const wa = (window as unknown as {
+    Telegram?: {
+      WebApp?: {
+        safeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+        contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+      };
+    };
+  }).Telegram?.WebApp;
+  if (!wa) return;
+  const sa = wa.safeAreaInset ?? {};
+  const csa = wa.contentSafeAreaInset ?? {};
+  const root = document.documentElement;
+  const set = (name: string, env: string, px: number) =>
+    root.style.setProperty(name, `max(env(${env}, 0px), ${Math.max(0, px)}px)`);
+  set("--safe-top", "safe-area-inset-top", (sa.top ?? 0) + (csa.top ?? 0));
+  set("--safe-bottom", "safe-area-inset-bottom", (sa.bottom ?? 0) + (csa.bottom ?? 0));
+  set("--safe-left", "safe-area-inset-left", (sa.left ?? 0) + (csa.left ?? 0));
+  set("--safe-right", "safe-area-inset-right", (sa.right ?? 0) + (csa.right ?? 0));
+}
+
 function isLight(hex: string): boolean {
   const m = hex.replace("#", "");
   if (m.length < 6) return false;
@@ -103,6 +132,15 @@ export function useTelegram(): TgState {
 
       try { wa.ready?.(); } catch { /* noop */ }
       try { wa.expand?.(); } catch { /* noop */ }
+
+      // Fullscreen Mini App: keep content clear of the Telegram top controls.
+      try {
+        applySafeAreaInsets();
+        const ev = wa as unknown as { onEvent?: (e: string, cb: () => void) => void };
+        ev.onEvent?.("safeAreaChanged", applySafeAreaInsets);
+        ev.onEvent?.("contentSafeAreaChanged", applySafeAreaInsets);
+        ev.onEvent?.("fullscreenChanged", applySafeAreaInsets);
+      } catch { /* noop */ }
 
       const u = wa.initDataUnsafe?.user as
         | { id: number; first_name?: string; last_name?: string; username?: string;
