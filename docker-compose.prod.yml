@@ -23,6 +23,11 @@
 # ==========================================================
 
 services:
+  # Image-cache nginx is internal-only in prod (gateway proxies /img -> nginx:80).
+  # Drop the host publish (8082 is taken by portainer on the server).
+  nginx:
+    ports: !override []
+
   # Pin to pre-built registry images (override the build: from base/public).
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
