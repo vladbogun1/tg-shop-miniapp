@@ -1,0 +1,240 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Liquid Glass — Admin tokens (design doc §8.2, §8bis.2)
+   Adapted from the customer app. Admin is "admin-glass": slightly denser/
+   stronger fills and a marginally smaller blur for dense desktop layouts.
+   ============================================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* fon stseny (pod steklom) */
+  --bg-scene: radial-gradient(120% 120% at 0% 0%, #1b2330 0%, #0c1118 60%);
+  --bg-scene-accent: radial-gradient(
+    90% 90% at 90% 10%,
+    color-mix(in srgb, var(--accent) 18%, transparent) 0%,
+    transparent 55%
+  );
+
+  /* steklo — plotnaya tyomnaya podlozhka (chitaemo bez backdrop-filter v Chrome/Edge) */
+  --glass-bg: rgba(22, 29, 43, 0.9);
+  --glass-bg-strong: rgba(30, 40, 58, 0.97);
+  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 38%);
+  --glass-stroke: rgba(255, 255, 255, 0.14);
+  --glass-stroke-bottom: rgba(0, 0, 0, 0.32);
+  --glass-blur: 16px;
+  --glass-saturate: 150%;
+
+  /* aktsent */
+  --accent: #5ac8fa;
+  --accent-ink: #00131c;
+
+  /* tekst */
+  --text: rgba(255, 255, 255, 0.96);
+  --text-muted: rgba(255, 255, 255, 0.62);
+  --text-faint: rgba(255, 255, 255, 0.4);
+
+  /* semantika */
+  --ok: #34c759;
+  --warn: #ff9f0a;
+  --danger: #ff453a;
+
+  /* status accents (kanban columns) */
+  --st-new: #5ac8fa;
+  --st-approved: #34c759;
+  --st-shipped: #ff9f0a;
+  --st-delivered: #30d158;
+  --st-rejected: #ff453a;
+
+  /* geometriya — admin chut plotnee */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  /* teni glubiny */
+  --shadow-1: 0 6px 20px rgba(0, 0, 0, 0.28);
+  --shadow-2: 0 16px 48px rgba(0, 0, 0, 0.4);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg-scene: radial-gradient(120% 120% at 0% 0%, #eef2f8 0%, #d7deea 60%);
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-bg-strong: rgba(255, 255, 255, 0.78);
+    --glass-stroke: rgba(255, 255, 255, 0.85);
+    --glass-stroke-bottom: rgba(0, 0, 0, 0.08);
+    --accent-ink: #ffffff;
+    --text: rgba(20, 26, 36, 0.96);
+    --text-muted: rgba(20, 26, 36, 0.6);
+    --text-faint: rgba(20, 26, 36, 0.38);
+    --shadow-1: 0 6px 20px rgba(40, 55, 80, 0.14);
+    --shadow-2: 0 16px 48px rgba(40, 55, 80, 0.2);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-scene: radial-gradient(120% 120% at 0% 0%, #eef2f8 0%, #d7deea 60%);
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-stroke: rgba(255, 255, 255, 0.85);
+  --glass-stroke-bottom: rgba(0, 0, 0, 0.08);
+  --accent-ink: #ffffff;
+  --text: rgba(20, 26, 36, 0.96);
+  --text-muted: rgba(20, 26, 36, 0.6);
+  --text-faint: rgba(20, 26, 36, 0.38);
+  --shadow-1: 0 6px 20px rgba(40, 55, 80, 0.14);
+  --shadow-2: 0 16px 48px rgba(40, 55, 80, 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+   Tailwind v4 theme bridge
+   --------------------------------------------------------------------------- */
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-faint: var(--text-faint);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --radius-glass-sm: var(--r-sm);
+  --radius-glass-md: var(--r-md);
+  --radius-glass-lg: var(--r-lg);
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+   --------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  color: var(--text);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", Roboto, Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-scene);
+}
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg-scene-accent);
+  animation: scene-float 18s ease-in-out infinite alternate;
+}
+
+@keyframes scene-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: translate3d(-4%, 3%, 0) scale(1.1);
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   .glass — bazovyy "steklyannyy" klass (design doc §8.3)
+   --------------------------------------------------------------------------- */
+.glass {
+  background: var(--glass-sheen), var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-stroke);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 var(--glass-stroke-bottom),
+    var(--shadow-1);
+}
+
+.glass--strong {
+  background: var(--glass-bg-strong);
+}
+
+.glass--floating {
+  box-shadow:
+    inset 0 1px 0 var(--glass-stroke),
+    var(--shadow-2);
+}
+
+/* Shimmer skeleton */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--glass-bg);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.tap {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Custom thin scrollbars for dense admin panes */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-stroke) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--glass-stroke);
+  border-radius: 999px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,203 @@
+# tg-shop-v2 — self-hosted Docker stack (single Linux server, no cloud services)
+# Image pipeline: browser -> nginx (disk cache) -> imgproxy (resize/WebP/AVIF) -> minio (originals)
+# All config comes from the .env file (see .env.example).
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: tgshop_v2_mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-allowed-packet=512M
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    ports:
+      - "3341:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - tgshop
+
+  minio:
+    image: minio/minio
+    container_name: tgshop_v2_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - tgshop
+
+  # One-shot job: wait for MinIO, create the bucket and make it public-read so
+  # imgproxy/nginx can read originals. Exits when done.
+  minio-init:
+    image: minio/mc
+    container_name: tgshop_v2_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mc alias set local http://minio:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}"
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+        mc anonymous set download "local/$${S3_BUCKET}"
+        echo "MinIO bucket '$${S3_BUCKET}' ready (public-read)."
+    networks:
+      - tgshop
+
+  imgproxy:
+    image: darthsim/imgproxy
+    container_name: tgshop_v2_imgproxy
+    restart: unless-stopped
+    depends_on:
+      - minio
+    environment:
+      IMGPROXY_KEY: ${IMGPROXY_KEY}
+      IMGPROXY_SALT: ${IMGPROXY_SALT}
+      IMGPROXY_USE_S3: "true"
+      IMGPROXY_S3_ENDPOINT: http://minio:9000
+      IMGPROXY_S3_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+      IMGPROXY_ENABLE_AVIF_DETECTION: "true"
+    # internal only — no host port; reachable as http://imgproxy:8080 inside the network
+    networks:
+      - tgshop
+
+  nginx:
+    image: nginx:alpine
+    container_name: tgshop_v2_nginx
+    restart: unless-stopped
+    depends_on:
+      - imgproxy
+    ports:
+      - "8082:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_cache:/var/cache/nginx/img
+    networks:
+      - tgshop
+
+  backend:
+    build:
+      context: ./backend
+    container_name: tgshop_v2_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    environment:
+      # DB
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES}
+      # Admin browser login
+      ADMIN_LOGIN: ${ADMIN_LOGIN}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_BOOTSTRAP_TG_ID: ${ADMIN_BOOTSTRAP_TG_ID}
+      # Telegram bot
+      BOT_TOKEN: ${BOT_TOKEN}
+      BOT_USERNAME: ${BOT_USERNAME}
+      ADMIN_USER_IDS: ${ADMIN_USER_IDS}
+      INITDATA_TTL_SECONDS: ${INITDATA_TTL_SECONDS}
+      ALLOW_UNSIGNED_INIT_DATA: ${ALLOW_UNSIGNED_INIT_DATA}
+      # Telegram notify channels
+      NOTIFY_CHAT_ID: ${NOTIFY_CHAT_ID}
+      NOTIFY_TOPIC_NEW: ${NOTIFY_TOPIC_NEW}
+      NOTIFY_TOPIC_PROCESSING: ${NOTIFY_TOPIC_PROCESSING}
+      NOTIFY_TOPIC_SHIPPED: ${NOTIFY_TOPIC_SHIPPED}
+      NOTIFY_TOPIC_CLOSED: ${NOTIFY_TOPIC_CLOSED}
+      NOTIFY_TOPIC_REJECTED: ${NOTIFY_TOPIC_REJECTED}
+      NOTIFY_TOPIC_CHAT: ${NOTIFY_TOPIC_CHAT}
+      # S3 / MinIO
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      # Images
+      IMAGE_BASE_URL: ${IMAGE_BASE_URL}
+      # URLs
+      WEBAPP_BASE_URL: ${WEBAPP_BASE_URL}
+      ADMIN_BASE_URL: ${ADMIN_BASE_URL}
+    ports:
+      - "8080:8080"
+    networks:
+      - tgshop
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: tgshop_v2_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
+    ports:
+      - "3000:3000"
+    networks:
+      - tgshop
+
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+    container_name: tgshop_v2_frontend_admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
+    ports:
+      - "3001:3001"
+    networks:
+      - tgshop
+
+volumes:
+  mysql_data:
+  minio_data:
+  nginx_cache:
+
+networks:
+  tgshop:
+    driver: bridge

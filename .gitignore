@@ -1,0 +1,36 @@
+# ── secrets / env ──────────────────────────────────────────────
+.env
+.env.local
+*.local
+
+# ── Java / Maven ───────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+!**/maven-wrapper.jar
+hs_err_pid*
+
+# ── Node / Next.js ─────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-error.log*
+
+# ── Docker / runtime ───────────────────────────────────────────
+*.pid
+
+# ── infra: generated probe/backfill outputs & temp ─────────────
+infra/*_out.txt
+infra/probe_*.txt
+
+# ── OS / editor ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
