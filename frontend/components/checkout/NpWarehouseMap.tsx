@@ -2,11 +2,10 @@
 
 /**
  * NpWarehouseMap — Nova-Poshta-style branch picker on an OpenStreetMap (Leaflet).
- * Opens on the whole of Ukraine (no city filter required), clusters pins, and
- * fetches branches by the current viewport (bbox) so 50k+ points stay fast.
- *   • category tabs: Всі / Відділення / Поштомати / Пункти
- *   • search box (number / address) + optional "jump to city"
- *   • tap a pin → detail sheet with a big "Выбрать"
+ * Opens on the whole of Ukraine, clusters pins, and fetches branches by the
+ * current viewport (bbox) so 50k+ points stay fast. No text inputs — people pick
+ * by panning/zooming the map and tapping a pin (then a detail sheet with a big
+ * "Выбрать"). Only the category tabs (Всі/Відділення/Поштомати/Пункти) filter.
  * No API key / account needed (OSM tiles). Loaded client-only (next/dynamic).
  */
 import "leaflet/dist/leaflet.css";
@@ -14,11 +13,10 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import L from "leaflet";
 import "leaflet.markercluster";
-import { Box, Search, Store, MapPin, X, Check } from "lucide-react";
+import { Box, Store, MapPin, X, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
-import { customerApi, type NpWarehouse, type NpCity, type NpCategory } from "@/lib/api";
-import { GlassAutocomplete } from "@/components/ui/GlassAutocomplete";
+import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 
 const UA_CENTER: [number, number] = [49.0, 31.3];
 const UA_ZOOM = 6;
@@ -134,21 +132,10 @@ function BoundsWatcher({ onChange }: { onChange: (b: L.LatLngBounds) => void }) 
   return null;
 }
 
-/** Imperatively fits the map to a target bounds when it changes (city jump). */
-function FlyTo({ target }: { target: L.LatLngBounds | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (target) map.fitBounds(target, { padding: [40, 40], maxZoom: 15 });
-  }, [target, map]);
-  return null;
-}
-
 export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse) => void }) {
   const [category, setCategory] = useState<Cat>("all");
-  const [q, setQ] = useState("");
   const [items, setItems] = useState<NpWarehouse[]>([]);
   const [active, setActive] = useState<NpWarehouse | null>(null);
-  const [flyTarget, setFlyTarget] = useState<L.LatLngBounds | null>(null);
   const boundsRef = useRef<L.LatLngBounds | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,65 +153,24 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
             minLng: sw.lng,
             maxLng: ne.lng,
             category,
-            q: q.trim() || undefined,
             limit: 1500,
           })
           .then(setItems)
           .catch(() => setItems([]));
       }, 350);
     },
-    [category, q]
+    [category]
   );
 
-  // Re-fetch the current viewport when the filter / query changes.
+  // Re-fetch the current viewport when the category filter changes.
   useEffect(() => {
     if (boundsRef.current) fetchBox(boundsRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, q]);
-
-  // Jump to a city: fit the map to that city's branches.
-  const jumpToCity = useCallback(async (c: NpCity) => {
-    try {
-      const whs = await customerApi.getNpWarehouses(c.ref, "");
-      const pts = whs.filter((w) => typeof w.lat === "number" && typeof w.lng === "number");
-      if (pts.length) {
-        setFlyTarget(
-          L.latLngBounds(pts.map((w) => [w.lat as number, w.lng as number] as [number, number]))
-        );
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  }, [category]);
 
   return (
     <div className="flex flex-col gap-2">
-      {/* City jump + search */}
-      <GlassAutocomplete<NpCity>
-        label="Город (необязательно)"
-        fetchItems={(query) => customerApi.getNpCities(query)}
-        itemLabel={(c) => c.name}
-        itemSubLabel={(c) => c.area}
-        itemKey={(c) => c.ref}
-        onSelect={jumpToCity}
-        placeholderHint="Начните вводить город, чтобы приблизить карту"
-      />
-      <div className="glass tap flex items-center gap-2 rounded-[var(--r-md)] px-3.5 py-2.5">
-        <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Отделение / почтомат или адрес"
-          className="w-full bg-transparent text-[15px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
-        />
-        {q && (
-          <button onClick={() => setQ("")} aria-label="Очистить" className="text-[var(--text-muted)]">
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Category tabs */}
+      {/* Category tabs (buttons, not inputs) */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5">
         {CAT_TABS.map((t) => (
           <button
@@ -241,14 +187,13 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
       </div>
 
       {/* Map */}
-      <div className="relative overflow-hidden rounded-[var(--r-md)]" style={{ height: "56vh", minHeight: 340 }}>
+      <div className="relative overflow-hidden rounded-[var(--r-md)]" style={{ height: "62vh", minHeight: 360 }}>
         <MapContainer center={UA_CENTER} zoom={UA_ZOOM} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
           <TileLayer
             attribution="&copy; OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <BoundsWatcher onChange={fetchBox} />
-          <FlyTo target={flyTarget} />
           <ClusterLayer items={items} activeRef={active?.ref ?? null} onPick={setActive} />
         </MapContainer>
 
