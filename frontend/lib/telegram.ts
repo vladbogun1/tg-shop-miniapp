@@ -134,10 +134,11 @@ export function useTelegram(): TgState {
       try { wa.expand?.(); } catch { /* noop */ }
 
       // Fullscreen Mini App: request fullscreen on EVERY entry point (menu button,
-      // inline web_app buttons, /start) — not just the BotFather-configured one —
-      // then keep content clear of the Telegram top controls via the safe areas.
+      // inline web_app buttons, /start) — but ONLY on phones. On desktop/web
+      // Telegram we keep the normal windowed popup (no forced fullscreen).
       try {
         const x = wa as unknown as {
+          platform?: string;
           onEvent?: (e: string, cb: () => void) => void;
           requestFullscreen?: () => void;
           isVersionAtLeast?: (v: string) => boolean;
@@ -145,7 +146,8 @@ export function useTelegram(): TgState {
         x.onEvent?.("safeAreaChanged", applySafeAreaInsets);
         x.onEvent?.("contentSafeAreaChanged", applySafeAreaInsets);
         x.onEvent?.("fullscreenChanged", applySafeAreaInsets);
-        if (!x.isVersionAtLeast || x.isVersionAtLeast("8.0")) {
+        const isPhone = x.platform === "android" || x.platform === "ios";
+        if (isPhone && (!x.isVersionAtLeast || x.isVersionAtLeast("8.0"))) {
           x.requestFullscreen?.();
         }
         applySafeAreaInsets();
