@@ -50,7 +50,8 @@ public class NovaPoshtaService {
                 : warehouseRepository.findTop100ByCityRefAndDescriptionContainingIgnoreCaseOrderByNumberAsc(
                         cityRef, q.trim());
         return warehouses.stream()
-                .map(w -> new NpWarehouseDto(w.getRef(), w.getNumber(), w.getDescription(), w.getType()))
+                .map(w -> new NpWarehouseDto(w.getRef(), w.getNumber(), w.getDescription(), w.getType(),
+                        w.getLat(), w.getLng()))
                 .toList();
     }
 }

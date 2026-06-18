@@ -14,15 +14,18 @@
     "@tanstack/react-query": "^5.62.0",
     "@telegram-apps/sdk-react": "^2.0.25",
     "framer-motion": "^11.15.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.469.0",
     "next": "^15.5.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-leaflet": "^5.0.0",
     "sockjs-client": "^1.6.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

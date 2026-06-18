@@ -318,6 +318,8 @@ export interface NpWarehouse {
   number?: string | number;
   description: string;
   type?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 // ---- Create order -----------------------------------------------------------
