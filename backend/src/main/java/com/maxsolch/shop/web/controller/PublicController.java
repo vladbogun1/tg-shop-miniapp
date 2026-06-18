@@ -54,4 +54,16 @@ public class PublicController {
                                            @RequestParam(required = false) String q) {
         return novaPoshtaService.searchWarehouses(cityRef, q);
     }
+
+    @GetMapping("/np/warehouses/bbox")
+    @Operation(summary = "Nova Poshta warehouses inside a map viewport (bounding box) for the map picker")
+    public List<NpWarehouseDto> warehousesBbox(@RequestParam double minLat,
+                                               @RequestParam double maxLat,
+                                               @RequestParam double minLng,
+                                               @RequestParam double maxLng,
+                                               @RequestParam(required = false, defaultValue = "all") String category,
+                                               @RequestParam(required = false) String q,
+                                               @RequestParam(required = false, defaultValue = "1200") int limit) {
+        return novaPoshtaService.warehousesInBox(minLat, maxLat, minLng, maxLng, category, q, limit);
+    }
 }

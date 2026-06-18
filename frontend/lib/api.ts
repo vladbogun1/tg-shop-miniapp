@@ -313,13 +313,28 @@ export interface NpCity {
   area?: string;
 }
 
+export type NpCategory = "POSTOMAT" | "BRANCH" | "POINT" | "OTHER";
+
 export interface NpWarehouse {
   ref: string;
   number?: string | number;
   description: string;
   type?: string;
+  category?: NpCategory;
+  cityRef?: string | null;
+  cityName?: string | null;
   lat?: number | null;
   lng?: number | null;
+}
+
+export interface NpBboxParams {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  category?: "all" | "postomat" | "branch" | "point";
+  q?: string;
+  limit?: number;
 }
 
 // ---- Create order -----------------------------------------------------------
@@ -358,6 +373,19 @@ export const customerApi = {
     apiGet<NpWarehouse[]>(
       `/api/np/warehouses?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`
     ),
+  /** GET /api/np/warehouses/bbox — warehouses inside a map viewport (for the map picker). */
+  getNpWarehousesBbox: (p: NpBboxParams) => {
+    const sp = new URLSearchParams({
+      minLat: String(p.minLat),
+      maxLat: String(p.maxLat),
+      minLng: String(p.minLng),
+      maxLng: String(p.maxLng),
+      category: p.category ?? "all",
+      limit: String(p.limit ?? 1200),
+    });
+    if (p.q) sp.set("q", p.q);
+    return apiGet<NpWarehouse[]>(`/api/np/warehouses/bbox?${sp.toString()}`);
+  },
 
   // Customer (auth required)
   /** GET /api/me/unread-count -> total unread messages across the user's orders. */
