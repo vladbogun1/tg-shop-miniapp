@@ -101,9 +101,9 @@ function ViewBody({
         transform: "translateZ(0)",
       }}
     >
-      {/* ── TOP ACTION AREA (sticky, no scroll) ───────────────────────────── */}
+      {/* ── TOP ACTION AREA (sticky, no scroll) — no glass, plain header ──── */}
       <div
-        className="glass glass--strong glass--floating relative z-10 shrink-0 rounded-b-[var(--r-lg)] px-4 pb-4"
+        className="relative z-10 shrink-0 rounded-b-[var(--r-lg)] px-4 pb-4"
         style={{ paddingTop: "max(14px, var(--safe-top))" }}
       >
         <div className="mx-auto w-full max-w-[480px]">
