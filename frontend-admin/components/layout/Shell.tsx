@@ -12,6 +12,8 @@ import {
   Tags,
   Ticket,
   CreditCard,
+  Users,
+  Send,
   Menu,
   X,
   LogOut,
@@ -25,6 +27,8 @@ import { logout } from "@/lib/api";
 const NAV = [
   { href: "/", label: "Заказы", icon: KanbanSquare, exact: true },
   { href: "/metrics", label: "Метрики", icon: BarChart3 },
+  { href: "/users", label: "Пользователи", icon: Users },
+  { href: "/broadcasts", label: "Рассылки", icon: Send },
   { href: "/products", label: "Товары", icon: Package },
   { href: "/tags", label: "Теги", icon: Tags },
   { href: "/promocodes", label: "Промокоды", icon: Ticket },

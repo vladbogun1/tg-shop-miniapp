@@ -8,7 +8,7 @@
  * <html>). Gracefully no-ops in a plain browser (dev) so `npm run dev` works
  * outside Telegram.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface TgUser {
   id: number;
@@ -202,48 +202,26 @@ export function parseOrderDeepLink(param: string | null): string | null {
 }
 
 /**
- * useMainButton — drives the Telegram MainButton for a screen's primary action.
- * No-ops in a plain browser (returns isTelegram=false) so callers can render a
- * normal in-page GlassButton fallback.
+ * useMainButton — INTENTIONALLY DISABLED.
+ *
+ * We no longer drive the Telegram native MainButton: it duplicated the in-page
+ * primary button and ate vertical screen space inside the WebApp. Every caller
+ * already renders its own in-page GlassButton, so this hook now only hides any
+ * native MainButton that might be showing and always reports isTelegram=false
+ * (so callers keep showing their in-page button). Signature kept for callers.
  */
-export function useMainButton(opts: {
+export function useMainButton(_opts: {
   text: string;
   onClick: () => void;
   visible?: boolean;
   enabled?: boolean;
   loading?: boolean;
 }): { isTelegram: boolean } {
-  const { text, onClick, visible = true, enabled = true, loading = false } = opts;
-  const cbRef = useRef(onClick);
-  cbRef.current = onClick;
-
-  const wa = typeof window !== "undefined" ? webApp() : null;
-  const isTelegram = Boolean(wa?.MainButton);
-
   useEffect(() => {
     const mb = webApp()?.MainButton;
-    if (!mb) return;
-    const handler = () => cbRef.current();
-    mb.onClick(handler);
-    return () => {
-      mb.offClick(handler);
-      mb.hide();
-    };
+    mb?.hide();
   }, []);
-
-  useEffect(() => {
-    const mb = webApp()?.MainButton;
-    if (!mb) return;
-    mb.setText(text);
-    if (visible) mb.show();
-    else mb.hide();
-    if (enabled && !loading) mb.enable();
-    else mb.disable();
-    if (loading) mb.showProgress?.(false);
-    else mb.hideProgress?.();
-  }, [text, visible, enabled, loading]);
-
-  return { isTelegram };
+  return { isTelegram: false };
 }
 
 /** Best-effort light haptic tap. */

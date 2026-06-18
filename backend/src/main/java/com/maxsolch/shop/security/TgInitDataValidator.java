@@ -107,7 +107,10 @@ public class TgInitDataValidator {
             String username = textOrNull(node, "username");
             String firstName = textOrNull(node, "first_name");
             String lastName = textOrNull(node, "last_name");
-            return new TelegramUser(id, username, firstName, lastName);
+            String languageCode = textOrNull(node, "language_code");
+            boolean premium = node.path("is_premium").asBoolean(false);
+            String photoUrl = textOrNull(node, "photo_url");
+            return new TelegramUser(id, username, firstName, lastName, languageCode, premium, photoUrl);
         } catch (InitDataException e) {
             throw e;
         } catch (Exception e) {

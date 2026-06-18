@@ -391,6 +391,84 @@ export interface MetricsDto {
   deliverySpeed: DeliverySpeed;
 }
 
+// ---- users -----------------------------------------------------------------
+export interface UserCardDto {
+  telegramUserId: number;
+  username?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  languageCode?: string | null;
+  premium: boolean;
+  botBlocked: boolean;
+  ordersCount: number;
+  totalSpentMinor: number;
+  createdAt?: string | null;
+  lastSeenAt?: string | null;
+}
+
+export type UserSortBy =
+  | "createdAt"
+  | "lastSeenAt"
+  | "username"
+  | "telegramUserId"
+  | "ordersCount"
+  | "totalSpentMinor";
+
+export interface UserMetricsDto {
+  range: TimeRange;
+  currency: string;
+  totalUsers: number;
+  newUsersInRange: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  blockedUsers: number;
+  premiumUsers: number;
+  newUsersByDay: { date: string; count: number }[];
+  languages: { language: string; count: number }[];
+  topCustomers: {
+    telegramUserId: number;
+    name: string;
+    ordersCount: number;
+    totalSpentMinor: number;
+  }[];
+}
+
+// ---- broadcasts ------------------------------------------------------------
+export type BroadcastAudience = "all" | "active" | "inactive" | "premium";
+
+export interface BroadcastStatus {
+  running: boolean;
+  total: number;
+  sent: number;
+  failed: number;
+  blocked: number;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+}
+
+export interface BroadcastResult {
+  ok: boolean;
+  detail: string;
+}
+
+export interface AdminTarget {
+  telegramUserId: number;
+  name?: string | null;
+  username?: string | null;
+}
+
+// ---- conversations (notifications inbox) -----------------------------------
+export interface ConversationDto {
+  orderId: string;
+  shortId: string;
+  customerName?: string | null;
+  status: OrderStatus;
+  lastPreview: string;
+  lastSenderType?: SenderType | null;
+  lastAt?: string | null;
+  unreadCount: number;
+}
+
 // ============================================================================
 // Admin API endpoints
 // ============================================================================
@@ -437,6 +515,10 @@ export const adminApi = {
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/admin/orders/unread-count"),
+  /** GET /api/admin/orders/conversations -> orders with unread customer messages. */
+  conversations: () => apiGet<ConversationDto[]>("/api/admin/orders/conversations"),
+  /** POST /api/admin/orders/read-all -> mark all customer messages read. */
+  markAllRead: () => apiPost<{ marked: number }>("/api/admin/orders/read-all"),
 
   // ---- order chat ----
   messages: (id: string) => apiGet<MessageDto[]>(`/api/admin/orders/${id}/messages`),
@@ -472,6 +554,42 @@ export const adminApi = {
   updatePromo: (id: string, body: Partial<PromoCode>) =>
     apiPatch<PromoCode>(`/api/admin/promocodes/${id}`, body),
   deletePromo: (id: string) => apiDelete<void>(`/api/admin/promocodes/${id}`),
+
+  // ---- users ----
+  /** GET /api/admin/users -> PLAIN UserCardDto[] (not paged). */
+  users: (params: {
+    q?: string;
+    blockedOnly?: boolean;
+    page?: number;
+    size?: number;
+    sortBy?: UserSortBy;
+    sortDir?: SortDir;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.blockedOnly) sp.set("blockedOnly", "true");
+    sp.set("page", String(params.page ?? 0));
+    sp.set("size", String(params.size ?? 30));
+    if (params.sortBy) sp.set("sortBy", params.sortBy);
+    if (params.sortDir) sp.set("sortDir", params.sortDir);
+    return apiGet<UserCardDto[]>(`/api/admin/users?${sp.toString()}`);
+  },
+  /** GET /api/admin/users/metrics?range= -> UserMetricsDto. */
+  userMetrics: (range: TimeRange = "month") =>
+    apiGet<UserMetricsDto>(`/api/admin/users/metrics?range=${range}`),
+  /** GET /api/admin/orders/by-user/{tgId} -> all orders of that user (newest first). */
+  userOrders: (telegramUserId: number) =>
+    apiGet<OrderCardDto[]>(`/api/admin/orders/by-user/${telegramUserId}`),
+
+  // ---- broadcasts ----
+  broadcastAudiences: () =>
+    apiGet<Record<BroadcastAudience, number>>("/api/admin/broadcast/audiences"),
+  broadcastAdmins: () => apiGet<AdminTarget[]>("/api/admin/broadcast/admins"),
+  broadcastStatus: () => apiGet<BroadcastStatus>("/api/admin/broadcast/status"),
+  broadcast: (body: { text: string; audience: BroadcastAudience }) =>
+    apiPost<BroadcastStatus>("/api/admin/broadcast", body),
+  broadcastTest: (body: { text: string; telegramUserId: number }) =>
+    apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

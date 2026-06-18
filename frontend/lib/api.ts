@@ -284,6 +284,18 @@ export interface SendMessageRequest {
   replyToMessageId?: string;
 }
 
+/** A chat conversation row for the notifications inbox. */
+export interface Conversation {
+  orderId: string;
+  shortId: string;
+  customerName?: string | null;
+  status: OrderStatus;
+  lastPreview: string;
+  lastSenderType?: MessageSenderType | null;
+  lastAt?: string | null;
+  unreadCount: number;
+}
+
 // ---- Payment ----------------------------------------------------------------
 /** GET /api/payment-options */
 export interface PaymentOption {
@@ -348,6 +360,8 @@ export const customerApi = {
   // Customer (auth required)
   /** GET /api/me/unread-count -> total unread messages across the user's orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/me/unread-count"),
+  /** GET /api/me/conversations -> my orders with unread admin messages. */
+  conversations: () => apiGet<Conversation[]>("/api/me/conversations"),
   createOrder: (body: CreateOrderRequest) =>
     apiPost<CreateOrderResponse>("/api/orders", body),
   getOrders: () => apiGet<OrderSummary[]>("/api/me/orders"),

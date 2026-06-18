@@ -80,6 +80,12 @@ public class MeController {
         return java.util.Map.of("count", messageService.totalUnreadForCustomer(SecurityUtil.currentUserId()));
     }
 
+    @GetMapping("/conversations")
+    @Operation(summary = "My orders with unread admin messages (notifications inbox)")
+    public List<com.maxsolch.shop.web.dto.ConversationDto> conversations() {
+        return messageService.customerConversations(SecurityUtil.currentUserId());
+    }
+
     @GetMapping("/orders")
     @Operation(summary = "List my orders")
     public List<OrderSummaryDto> myOrders() {

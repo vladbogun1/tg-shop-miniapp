@@ -3,6 +3,7 @@ package com.maxsolch.shop.repository;
 import com.maxsolch.shop.domain.AdminUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
@@ -12,4 +13,6 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
     boolean existsByTelegramUserIdAndActiveTrue(Long telegramUserId);
 
     Optional<AdminUser> findByUsername(String username);
+
+    List<AdminUser> findAllByActiveTrue();
 }
