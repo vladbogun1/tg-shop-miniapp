@@ -1,0 +1,38 @@
+# ==========================================================
+#  Production TLS overlay for the server (132.145.132.80).
+#  Adds a Caddy front that terminates HTTPS on non-standard ports
+#  (80/443 are taken on the host) and proxies to the single-origin
+#  gateways from docker-compose.public.yml:
+#     https://maxsolkh.shop:666  -> gateway (customer Mini App)
+#     https://maxsolkh.shop:667  -> gateway-admin (admin)
+#
+#  Run layered on top of base + public:
+#    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
+#                   up -d --build frontend-public gateway frontend-admin-public gateway-admin caddy
+#
+#  PROD_CERT_DIR must point at a dir containing fullchain.pem + privkey.pem for maxsolkh.shop.
+#  Default reuses the existing old-app Let's Encrypt material.
+# ==========================================================
+
+services:
+  caddy:
+    image: caddy:2.8
+    container_name: tgshop_v2_caddy
+    restart: unless-stopped
+    depends_on:
+      - gateway
+      - gateway-admin
+    ports:
+      - "666:666"
+      - "667:667"
+    volumes:
+      - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ${PROD_CERT_DIR:-/home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt/live/maxsolkh.shop}:/certs:ro
+      - tgshop_v2_caddy_data:/data
+      - tgshop_v2_caddy_config:/config
+    networks:
+      - tgshop
+
+volumes:
+  tgshop_v2_caddy_data:
+  tgshop_v2_caddy_config:
