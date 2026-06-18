@@ -31,7 +31,7 @@ export function ProductCard({
     : (product.stock ?? 0) > 0;
 
   return (
-    <div className="glass glass--noise relative flex flex-col overflow-hidden rounded-[var(--r-lg)] p-2 text-left">
+    <div className="glass glass--noise relative flex h-full flex-col overflow-hidden rounded-[var(--r-lg)] p-2 text-left">
       <motion.button
         type="button"
         whileTap={{ scale: 0.97 }}
@@ -59,7 +59,7 @@ export function ProductCard({
           </span>
         </div>
         <div className="flex flex-col gap-1 px-1 pt-2">
-          <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[var(--text)]">
+          <h3 className="line-clamp-2 min-h-[2.6em] text-[14px] font-semibold leading-snug text-[var(--text)]">
             {product.title}
           </h3>
           <p className="text-[15px] font-bold text-[var(--accent)]">
@@ -68,8 +68,8 @@ export function ProductCard({
         </div>
       </motion.button>
 
-      {/* inline action */}
-      <div className="mt-2 px-1 pb-1">
+      {/* inline action — pinned to the bottom so buttons align across cards */}
+      <div className="mt-auto px-1 pb-1 pt-2">
         {hasVariants ? (
           <GlassButton
             variant="accent"
