@@ -133,14 +133,23 @@ export function useTelegram(): TgState {
       try { wa.ready?.(); } catch { /* noop */ }
       try { wa.expand?.(); } catch { /* noop */ }
 
-      // Fullscreen Mini App: keep content clear of the Telegram top controls.
+      // Fullscreen Mini App: request fullscreen on EVERY entry point (menu button,
+      // inline web_app buttons, /start) — not just the BotFather-configured one —
+      // then keep content clear of the Telegram top controls via the safe areas.
       try {
+        const x = wa as unknown as {
+          onEvent?: (e: string, cb: () => void) => void;
+          requestFullscreen?: () => void;
+          isVersionAtLeast?: (v: string) => boolean;
+        };
+        x.onEvent?.("safeAreaChanged", applySafeAreaInsets);
+        x.onEvent?.("contentSafeAreaChanged", applySafeAreaInsets);
+        x.onEvent?.("fullscreenChanged", applySafeAreaInsets);
+        if (!x.isVersionAtLeast || x.isVersionAtLeast("8.0")) {
+          x.requestFullscreen?.();
+        }
         applySafeAreaInsets();
-        const ev = wa as unknown as { onEvent?: (e: string, cb: () => void) => void };
-        ev.onEvent?.("safeAreaChanged", applySafeAreaInsets);
-        ev.onEvent?.("contentSafeAreaChanged", applySafeAreaInsets);
-        ev.onEvent?.("fullscreenChanged", applySafeAreaInsets);
-      } catch { /* noop */ }
+      } catch { /* noop — older clients without fullscreen support */ }
 
       const u = wa.initDataUnsafe?.user as
         | { id: number; first_name?: string; last_name?: string; username?: string;
