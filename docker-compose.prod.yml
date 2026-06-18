@@ -32,6 +32,8 @@ services:
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
     pull_policy: always
+    # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).
+    ports: !override []
 
   frontend-public:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-frontend:${IMAGE_TAG:-latest}
