@@ -2,14 +2,16 @@
 
 /**
  * NotificationsModal (customer) — inbox of orders with unread admin messages.
- * Telegram-style rows with last-message preview + time + unread badge. Tap a row
- * → open that order's chat and close. Centered card on desktop, bottom sheet on
- * mobile (Telegram WebView). Self-contained overlay (no shared Modal in client).
+ * Rendered in a PORTAL to <body> (the bell sits inside a .glass header whose
+ * transform would trap position:fixed). Mobile: full-screen sheet. Desktop:
+ * panel anchored top-right. Backdrop blurred like the navbar. Tap a row → that
+ * order's chat.
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { customerApi, type Conversation } from "@/lib/api";
 import { formatDate, formatTime, shortOrderId } from "@/lib/format";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -43,30 +45,34 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
     router.push(`/account/orders/${c.orderId}/chat`);
   }
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center sm:p-4"
+          className="fixed inset-0 z-[120]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={{ transform: "translateZ(0)" }}
         >
           <div
-            className="absolute inset-0 bg-black/60"
-            style={{ backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
+            className="absolute inset-0 bg-black/45"
+            style={{ backdropFilter: "blur(14px) saturate(140%)", WebkitBackdropFilter: "blur(14px) saturate(140%)" }}
             onClick={onClose}
             aria-hidden
           />
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
             transition={{ type: "spring", stiffness: 360, damping: 34 }}
-            className="glass glass--strong relative z-10 flex max-h-[80dvh] w-full flex-col rounded-t-[var(--r-lg)] sm:max-w-md sm:rounded-[var(--r-lg)]"
+            className="glass glass--strong absolute inset-x-0 bottom-0 top-0 flex flex-col sm:inset-x-auto sm:bottom-auto sm:right-3 sm:top-3 sm:max-h-[82vh] sm:w-[400px] sm:rounded-[var(--r-lg)]"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5"
+              style={{ paddingTop: "max(14px, var(--safe-top))" }}
+            >
               <h2 className="text-[16px] font-semibold text-[var(--text)]">Сообщения</h2>
               <button
                 onClick={onClose}
@@ -82,11 +88,11 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
               style={{
                 WebkitOverflowScrolling: "touch",
                 touchAction: "pan-y",
-                paddingBottom: "calc(8px + var(--safe-bottom))",
+                paddingBottom: "calc(10px + var(--safe-bottom))",
               }}
             >
               {isLoading ? (
-                <div className="flex flex-col gap-2 p-2">
+                <div className="flex flex-col gap-2 p-1">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="glass h-16 animate-pulse rounded-[var(--r-md)]" />
                   ))}
@@ -136,6 +142,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -138,16 +138,17 @@ export function OrderChat({ orderId }: { orderId: string }) {
     }
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  /** Upload + send a single image (only images are allowed in chat). */
+  async function uploadImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      push("Можно отправлять только изображения", "error");
+      return;
+    }
     setUploading(true);
     try {
       const { key: uploadKey } = await adminApi.upload(file);
-      const isImage = file.type.startsWith("image/");
       const msg = await adminApi.sendMessage(orderId, {
-        type: isImage ? "PHOTO" : "FILE",
+        type: "PHOTO",
         attachmentUrl: uploadKey,
         fileName: file.name,
         mimeType: file.type,
@@ -159,6 +160,26 @@ export function OrderChat({ orderId }: { orderId: string }) {
       push(err instanceof ApiError ? err.message : "Не удалось загрузить", "error");
     } finally {
       setUploading(false);
+    }
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) uploadImage(file);
+  }
+
+  /** Ctrl/Cmd+V an image from the clipboard → send it as a photo. */
+  function onPaste(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
+      i.type.startsWith("image/")
+    );
+    if (item) {
+      const file = item.getAsFile();
+      if (file) {
+        e.preventDefault();
+        uploadImage(file);
+      }
     }
   }
 
@@ -181,7 +202,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
       <Lightbox src={lightbox} onClose={() => setLightbox(null)} />
 
       <div className="mt-2 flex items-end gap-2">
-        <input ref={fileRef} type="file" hidden onChange={onFile} />
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
@@ -193,6 +214,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={onPaste}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -200,7 +222,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
             }
           }}
           rows={1}
-          placeholder="Сообщение клиенту…"
+          placeholder="Сообщение клиенту… (можно вставить фото из буфера)"
           className="glass thin-scroll max-h-32 flex-1 resize-none rounded-[var(--r-md)] px-3.5 py-3 text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
         />
         <GlassButton
