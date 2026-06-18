@@ -4,8 +4,10 @@
 > Подключение: `ssh -i C:/Users/nikto/oracleserver.key ubuntu@132.145.132.80`
 > Домен: **`maxsolkh.shop`** (A-запись → 132.145.132.80, подтверждено).
 >
-> **Статус: ПЛАН. Деплой ещё не выполнялся.** Сделаны только безопасные действия:
-> read-only аудит и бэкапы.
+> **Статус: ✅ ЗАДЕПЛОЕНО (2026-06-18).** v2 живёт на `https://maxsolkh.shop:666` (клиент)
+> и `https://maxsolkh.shop:667` (админка), валидный TLS, каталог/заказы смигрированы,
+> картинки через `/img`, бот `@maxsolch_bot` с кнопкой Mini App. Старый магазин (8443) и его
+> БД не тронуты. Подробности внизу (§8).
 
 ---
 
@@ -189,5 +191,51 @@ cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && docker compose down   # снять 
 ## 7. Решённые вопросы
 1. **Порты Mini App**: 666 (клиент) / 667 (админ). ✅
 2. **Образы**: CI собирает и пушит в Docker Hub (`publish.yml`), сервер тянет по тегу. ✅
-   Первый деплой — `IMAGE_TAG=v2.0.0`, потом `latest`.
+   Первый деплой — `IMAGE_TAG=v2.0.0`, после проверки переключён на `latest`.
 3. **Сертификат**: переиспользуем существующий `maxsolkh.shop` cert (mount read-only в Caddy v2). ✅
+
+---
+
+## 8. Итог деплоя (2026-06-18)
+
+Проект v2 живёт в `/home/ubuntu/TELEGRAM_BOTS/maxsolch-v2/` (compose-проект `maxsolch-v2`).
+
+| URL | Что | Проверка |
+|---|---|---|
+| `https://maxsolkh.shop:666` | Клиентский Mini App | 200, `<title>Магазин</title>`, `/api/products` 200, `/img` 200 |
+| `https://maxsolkh.shop:667` | Админка | 200, `/api/auth/admin/login` 200 (admin/maxsolch2026) |
+
+- **Образы**: arm64 (`vladbogun1/maxsolch2-{backend,frontend,admin}:latest`), тянутся, не собираются.
+- **Опубликованные host-порты v2**: только Caddy `666/667` (наружу) + служебные `3341`(mysql),
+  `9002/9003`(minio), `8090/8091`(gateway, plain HTTP). `backend` и `nginx`-кэш — **internal-only**.
+- **Данные**: смигрированы тулзой (products 409, orders 765, order_items 959, order_messages 5347,
+  картинки 1196→MinIO, бэкфилл статусов 3060 + причин отказа 85). Старая БД `tgshop-db` не тронута.
+- **Бот** `@maxsolch_bot`: long-polling на сервере, кнопка меню → Mini App.
+- **TLS**: валидный (внешний `curl` без `-k` проходит); Oracle VCN ingress на 666/667 уже открыт; ufw — добавлены `666/667/tcp`.
+
+### Особенности этого сервера (грабли деплоя)
+- Сервер **ARM64** (Oracle Ampere) → образы собираются на нативном `ubuntu-24.04-arm` раннере.
+- Host-порты `8080`(pufferpanel) и `8082`(portainer) заняты → `backend`/`nginx`-кэш сделаны
+  internal-only (`ports: !override []` в `docker-compose.prod.yml`).
+- Миграция: запускать контейнер тулзы **в двух сетях** — `maxsolch-v2_tgshop` (новая: `mysql`,
+  `minio` по имени) + `maxsolch-mini-app_default` (старая: `tgshop-db`); host-gateway к
+  published-портам режется ufw.
+  ```bash
+  cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2; set -a; source .env; set +a
+  docker build -t tg-shop-migration migration
+  docker rm -f mig 2>/dev/null
+  docker create --name mig --network maxsolch-v2_tgshop \
+    -e OLD_DB_URL=jdbc:mysql://tgshop-db:3306/tg_test -e OLD_DB_USER=root \
+    -e OLD_DB_PASSWORD=CHANGE_ME_STRONG_ROOT_PASS \
+    -e DB_HOST=mysql -e DB_PORT=3306 -e DB_NAME=tgshop_v2 -e DB_USER=$DB_USER -e DB_PASSWORD=$DB_PASSWORD \
+    -e S3_ENDPOINT=http://minio:9000 -e S3_ACCESS_KEY=$S3_ACCESS_KEY -e S3_SECRET_KEY=$S3_SECRET_KEY -e S3_BUCKET=$S3_BUCKET \
+    tg-shop-migration
+  docker network connect maxsolch-mini-app_default mig
+  docker start -a mig; docker rm -f mig
+  ```
+
+### Что осталось на потом (не блокирует)
+- Подписанные imgproxy-URL: сейчас `IMGPROXY_KEY/SALT` пустые (unsigned, как в dev). Для харднинга
+  сгенерировать hex-ключи и прописать в `.env` (бэкенд и imgproxy подхватят из одних переменных).
+- Вывод старого магазина: когда v2 подтверждён — `cd ~/TELEGRAM_BOTS/maxsolch-mini-app && docker compose stop app proxy` (БД не трогать).
+- Авто-бэкап БД v2 по cron (команда — в §6).
