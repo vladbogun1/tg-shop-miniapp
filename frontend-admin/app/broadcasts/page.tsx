@@ -19,6 +19,7 @@ import { GlassInput } from "@/components/ui/GlassInput";
 import { GlassSelect } from "@/components/ui/GlassSelect";
 import { GlassAutocomplete } from "@/components/ui/GlassAutocomplete";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { GlassToggle } from "@/components/ui/GlassToggle";
 import { useToast } from "@/lib/toast";
 
 function userLabel(u: UserCardDto): string {
@@ -41,6 +42,8 @@ export default function BroadcastsPage() {
   const [audience, setAudience] = useState<BroadcastAudience>("all");
   const [selectedUser, setSelectedUser] = useState<UserCardDto | null>(null);
   const [manualId, setManualId] = useState("");
+  const [withButton, setWithButton] = useState(true);
+  const [buttonText, setButtonText] = useState("🛍 Открыть магазин");
   const [testing, setTesting] = useState(false);
   const [starting, setStarting] = useState(false);
 
@@ -90,7 +93,12 @@ export default function BroadcastsPage() {
     if (!id || Number.isNaN(id)) return push("Выберите админа или введите ID", "error");
     setTesting(true);
     try {
-      const r = await adminApi.broadcastTest({ text, telegramUserId: id });
+      const r = await adminApi.broadcastTest({
+        text,
+        telegramUserId: id,
+        withButton,
+        buttonText: buttonText.trim() || undefined,
+      });
       push(r.detail, r.ok ? "ok" : "error");
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка отправки", "error");
@@ -109,7 +117,12 @@ export default function BroadcastsPage() {
       return;
     setStarting(true);
     try {
-      await adminApi.broadcast({ text, audience });
+      await adminApi.broadcast({
+        text,
+        audience,
+        withButton,
+        buttonText: buttonText.trim() || undefined,
+      });
       push("Рассылка запущена", "ok");
       qc.invalidateQueries({ queryKey: ["broadcast-status"] });
     } catch (e) {
@@ -149,6 +162,21 @@ export default function BroadcastsPage() {
             Поддерживается HTML Telegram: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;s&gt;, &lt;code&gt;,
             &lt;a href&gt;, &lt;blockquote&gt;. Эмодзи можно вставлять как есть.
           </p>
+
+          <div className="mt-1 flex flex-col gap-2 rounded-[var(--r-md)] bg-white/5 p-3">
+            <GlassToggle
+              checked={withButton}
+              onChange={setWithButton}
+              label="Кнопка «Открыть магазин» под сообщением"
+            />
+            {withButton && (
+              <GlassInput
+                label="Текст кнопки"
+                value={buttonText}
+                onChange={(e) => setButtonText(e.target.value)}
+              />
+            )}
+          </div>
         </div>
 
         {/* Preview */}
@@ -162,6 +190,11 @@ export default function BroadcastsPage() {
               />
             ) : (
               <div className="text-[13px] text-white/40">Сообщение появится здесь…</div>
+            )}
+            {withButton && (
+              <div className="mt-2 rounded-[8px] bg-[#2b5278] px-3 py-2 text-center text-[14px] font-medium text-white">
+                {buttonText.trim() || "🛍 Открыть магазин"}
+              </div>
             )}
           </div>
         </div>

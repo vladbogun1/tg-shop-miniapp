@@ -11,6 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.time.Instant;
 import java.util.List;
@@ -65,7 +68,7 @@ public class BroadcastService {
     }
 
     /** Start a broadcast (async). Throws 409 if one is already running. */
-    public synchronized BroadcastStatus start(String text, String audience) {
+    public synchronized BroadcastStatus start(String text, String audience, boolean withButton, String buttonText) {
         if (!enabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Бот не настроен");
         }
@@ -76,15 +79,33 @@ public class BroadcastService {
         BroadcastStatus start = new BroadcastStatus(true, ids.size(), 0, 0, 0, Instant.now(), null);
         status.set(start);
         final String html = text;
-        exec.submit(() -> run(html, ids));
+        final InlineKeyboardMarkup markup = shopButton(withButton, buttonText);
+        exec.submit(() -> run(html, ids, markup));
         return start;
     }
 
-    private void run(String html, List<Long> ids) {
+    /** Optional "open the shop" web_app button (private chats only; needs an HTTPS webapp URL). */
+    private InlineKeyboardMarkup shopButton(boolean withButton, String buttonText) {
+        if (!withButton) {
+            return null;
+        }
+        String webapp = props.getWebappBaseUrl();
+        if (webapp == null || !webapp.startsWith("https://")) {
+            return null; // Telegram rejects non-HTTPS web_app buttons → skip rather than fail the send
+        }
+        String label = (buttonText == null || buttonText.isBlank()) ? "🛍 Открыть магазин" : buttonText.trim();
+        InlineKeyboardButton btn = InlineKeyboardButton.builder()
+                .text(label)
+                .webApp(WebAppInfo.builder().url(webapp).build())
+                .build();
+        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
+    }
+
+    private void run(String html, List<Long> ids, InlineKeyboardMarkup markup) {
         int sent = 0, failed = 0, blocked = 0;
         try {
             for (Long id : ids) {
-                Outcome o = sendOne(id, html);
+                Outcome o = sendOne(id, html, markup);
                 switch (o) {
                     case OK -> sent++;
                     case BLOCKED -> blocked++;
@@ -102,11 +123,11 @@ public class BroadcastService {
     }
 
     /** Send one test message to a specific user. */
-    public BroadcastResult test(String text, long telegramUserId) {
+    public BroadcastResult test(String text, long telegramUserId, boolean withButton, String buttonText) {
         if (!enabled()) {
             return new BroadcastResult(false, "Бот не настроен");
         }
-        Outcome o = sendOne(telegramUserId, text);
+        Outcome o = sendOne(telegramUserId, text, shopButton(withButton, buttonText));
         return switch (o) {
             case OK -> new BroadcastResult(true, "Отправлено");
             case BLOCKED -> new BroadcastResult(false, "Пользователь заблокировал бота");
@@ -114,7 +135,7 @@ public class BroadcastService {
         };
     }
 
-    private Outcome sendOne(long id, String html) {
+    private Outcome sendOne(long id, String html, InlineKeyboardMarkup markup) {
         if (id <= 0) {
             return Outcome.FAILED;
         }
@@ -124,6 +145,7 @@ public class BroadcastService {
                     .text(html)
                     .parseMode("HTML")
                     .disableWebPagePreview(true)
+                    .replyMarkup(markup)
                     .build();
             bot.execute(msg);
             return Outcome.OK;

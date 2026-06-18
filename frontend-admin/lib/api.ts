@@ -586,10 +586,18 @@ export const adminApi = {
     apiGet<Record<BroadcastAudience, number>>("/api/admin/broadcast/audiences"),
   broadcastAdmins: () => apiGet<AdminTarget[]>("/api/admin/broadcast/admins"),
   broadcastStatus: () => apiGet<BroadcastStatus>("/api/admin/broadcast/status"),
-  broadcast: (body: { text: string; audience: BroadcastAudience }) =>
-    apiPost<BroadcastStatus>("/api/admin/broadcast", body),
-  broadcastTest: (body: { text: string; telegramUserId: number }) =>
-    apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
+  broadcast: (body: {
+    text: string;
+    audience: BroadcastAudience;
+    withButton?: boolean;
+    buttonText?: string;
+  }) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
+  broadcastTest: (body: {
+    text: string;
+    telegramUserId: number;
+    withButton?: boolean;
+    buttonText?: string;
+  }) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),
