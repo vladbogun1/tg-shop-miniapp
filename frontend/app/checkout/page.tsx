@@ -135,14 +135,17 @@ export default function CheckoutPage() {
       paymentOptionId: paymentId!,
     };
     try {
-      const { orderId } = await customerApi.createOrder(body);
-      // Fetch full detail for requisites (best-effort).
-      let requisites: PaymentRequisites | null | undefined;
-      try {
-        const detail = await customerApi.getOrder(orderId);
-        requisites = detail.requisites;
-      } catch {
-        /* show without requisites */
+      const created = await customerApi.createOrder(body);
+      const orderId = created.orderId;
+      // Requisites come straight back with the order; fall back to the detail fetch.
+      let requisites: PaymentRequisites | null | undefined = created.requisites;
+      if (!requisites) {
+        try {
+          const detail = await customerApi.getOrder(orderId);
+          requisites = detail.requisites;
+        } catch {
+          /* show without requisites */
+        }
       }
       haptic();
       clearCart();

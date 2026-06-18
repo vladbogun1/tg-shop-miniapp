@@ -361,6 +361,7 @@ export interface CreateOrderRequest {
 
 export interface CreateOrderResponse {
   orderId: string;
+  requisites?: PaymentRequisites | null;
 }
 
 // ---- typed endpoint helpers -------------------------------------------------
