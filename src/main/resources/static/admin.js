@@ -22,10 +22,48 @@ const state = {
     tags: [],
     promoCodes: [],
     paymentTemplate: "",
+    catalogFilters: loadCatalogPreferences(),
     viewAsCustomer: false,
     activeTab: "catalog",
     password: sessionStorage.getItem("tgshop_admin_password") || "",
 };
+
+const CATALOG_PREFS_KEY = "tgshop_admin_catalog_prefs";
+
+function defaultCatalogPreferences() {
+    return {
+        query: "",
+        sort: "createdAtDesc",
+        stock: "all",
+        visibility: "all",
+        tagIds: [],
+        view: "rows",
+    };
+}
+
+function loadCatalogPreferences() {
+    const defaults = defaultCatalogPreferences();
+    try {
+        const raw = localStorage.getItem(CATALOG_PREFS_KEY);
+        if (!raw) return defaults;
+        const parsed = JSON.parse(raw);
+        return {
+            ...defaults,
+            ...(parsed && typeof parsed === "object" ? parsed : {}),
+            tagIds: Array.isArray(parsed?.tagIds) ? parsed.tagIds.map((id) => String(id)) : [],
+        };
+    } catch {
+        return defaults;
+    }
+}
+
+function saveCatalogPreferences() {
+    try {
+        localStorage.setItem(CATALOG_PREFS_KEY, JSON.stringify(state.catalogFilters));
+    } catch {
+        // ignore storage failures
+    }
+}
 
 function qs(id) {
     return document.getElementById(id);
@@ -225,6 +263,7 @@ async function loadProducts() {
         state.products = state.viewAsCustomer
             ? await apiGet("/api/products")
             : await apiGet("/api/admin/products");
+        renderCatalogTagFilters();
         renderProducts();
     } catch (err) {
         console.error(err);
@@ -297,6 +336,8 @@ async function loadTags() {
         state.tags = await apiGet("/api/admin/tags");
         renderTags();
         renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+        renderCatalogTagFilters();
+        if (state.activeTab === "catalog") renderProducts();
     } catch (err) {
         console.error(err);
         showLogin(true);
@@ -772,6 +813,413 @@ function renderProducts() {
     }
 }
 
+function renderTagPills(tags, compact = false) {
+    if (!tags || !tags.length) return el("div", {class: "tag-row hidden"}, []);
+    const row = el("div", {class: `tag-row${compact ? " compact" : ""}`.trim()});
+    tags.forEach((tag) => {
+        row.append(el("span", {class: "tag-pill"}, [document.createTextNode(tag.name)]));
+    });
+    return row;
+}
+
+function normalizeCatalogTagSelection() {
+    const validIds = new Set(state.tags.map((tag) => String(tag.id)));
+    state.catalogFilters.tagIds = state.catalogFilters.tagIds.filter((id) => validIds.has(String(id)));
+}
+
+function renderCatalogTagFilters() {
+    const container = qs("catalogTagFilters");
+    if (!container) return;
+    container.innerHTML = "";
+    normalizeCatalogTagSelection();
+
+    const totalCount = state.products.length;
+    const selectedTagIds = new Set(state.catalogFilters.tagIds.map((id) => String(id)));
+
+    container.append(el("button", {
+        type: "button",
+        class: `catalog-filter-tag${selectedTagIds.size === 0 ? " active" : ""}`.trim(),
+        onclick: () => {
+            state.catalogFilters.tagIds = [];
+            saveCatalogPreferences();
+            renderCatalogTagFilters();
+            renderProducts();
+        }
+    }, [
+        document.createTextNode("Все"),
+        el("span", {class: "count"}, [document.createTextNode(String(totalCount))]),
+    ]));
+
+    if (!state.tags.length) {
+        container.append(el("div", {class: "hint"}, [document.createTextNode("Сначала добавь теги во вкладке «Теги».")]));
+        return;
+    }
+
+    state.tags.forEach((tag) => {
+        const tagId = String(tag.id);
+        const count = state.products.reduce((sum, product) => {
+            return sum + ((product.tags || []).some((item) => String(item.id) === tagId) ? 1 : 0);
+        }, 0);
+        const selected = selectedTagIds.has(tagId);
+        container.append(el("button", {
+            type: "button",
+            class: `catalog-filter-tag${selected ? " active" : ""}`.trim(),
+            onclick: () => {
+                if (selected) {
+                    state.catalogFilters.tagIds = state.catalogFilters.tagIds.filter((id) => String(id) !== tagId);
+                } else {
+                    state.catalogFilters.tagIds = [...state.catalogFilters.tagIds, tagId];
+                }
+                saveCatalogPreferences();
+                renderCatalogTagFilters();
+                renderProducts();
+            }
+        }, [
+            document.createTextNode(tag.name),
+            el("span", {class: "count"}, [document.createTextNode(String(count))]),
+        ]));
+    });
+}
+
+function syncCatalogFiltersUi() {
+    qs("catalogSearch").value = state.catalogFilters.query || "";
+    qs("catalogSort").value = state.catalogFilters.sort || "createdAtDesc";
+    qs("catalogStockFilter").value = state.catalogFilters.stock || "all";
+    qs("catalogVisibilityFilter").value = state.catalogFilters.visibility || "all";
+    qs("catalogViewRows").classList.toggle("active", state.catalogFilters.view !== "cards");
+    qs("catalogViewCards").classList.toggle("active", state.catalogFilters.view === "cards");
+}
+
+function readCatalogFiltersFromUi() {
+    state.catalogFilters.query = qs("catalogSearch").value || "";
+    state.catalogFilters.sort = qs("catalogSort").value || "createdAtDesc";
+    state.catalogFilters.stock = qs("catalogStockFilter").value || "all";
+    state.catalogFilters.visibility = qs("catalogVisibilityFilter").value || "all";
+    saveCatalogPreferences();
+}
+
+function setCatalogView(view) {
+    state.catalogFilters.view = view === "cards" ? "cards" : "rows";
+    saveCatalogPreferences();
+    syncCatalogFiltersUi();
+    renderProducts();
+}
+
+function resetCatalogFilters() {
+    state.catalogFilters = defaultCatalogPreferences();
+    saveCatalogPreferences();
+    syncCatalogFiltersUi();
+    renderCatalogTagFilters();
+    renderProducts();
+}
+
+function truncateText(text, maxLength = 150) {
+    const normalized = String(text || "").replace(/\s+/g, " ").trim();
+    if (normalized.length <= maxLength) return normalized;
+    return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function compareNumbers(a, b) {
+    return Number(a || 0) - Number(b || 0);
+}
+
+function compareStrings(a, b) {
+    return String(a || "").localeCompare(String(b || ""), "ru", {sensitivity: "base"});
+}
+
+function matchesCatalogFilters(product) {
+    const query = String(state.catalogFilters.query || "").trim().toLowerCase();
+    if (query) {
+        const searchable = [
+            product.title,
+            product.description,
+            product.currency,
+            product.priceMinor,
+            product.stock,
+            product.soldCount,
+            ...(product.tags || []).map((tag) => tag.name),
+            ...(product.variants || []).map((variant) => variant.name),
+        ].join(" ").toLowerCase();
+        if (!searchable.includes(query)) return false;
+    }
+
+    switch (state.catalogFilters.stock) {
+        case "inStock":
+            if (Number(product.stock || 0) <= 0) return false;
+            break;
+        case "outOfStock":
+            if (Number(product.stock || 0) > 0) return false;
+            break;
+        case "lowStock":
+            if (Number(product.stock || 0) <= 0 || Number(product.stock || 0) > 5) return false;
+            break;
+        default:
+            break;
+    }
+
+    switch (state.catalogFilters.visibility) {
+        case "active":
+            if (!product.active) return false;
+            break;
+        case "hidden":
+            if (product.active) return false;
+            break;
+        case "sold":
+            if (Number(product.soldCount || 0) <= 0) return false;
+            break;
+        case "unsold":
+            if (Number(product.soldCount || 0) > 0) return false;
+            break;
+        case "withVariants":
+            if (!(product.variants || []).length) return false;
+            break;
+        case "withoutVariants":
+            if ((product.variants || []).length) return false;
+            break;
+        case "withImages":
+            if (!(product.imageUrls || []).length) return false;
+            break;
+        case "withoutImages":
+            if ((product.imageUrls || []).length) return false;
+            break;
+        default:
+            break;
+    }
+
+    const selectedTagIds = state.catalogFilters.tagIds.map((id) => String(id));
+    if (selectedTagIds.length) {
+        const productTagIds = new Set((product.tags || []).map((tag) => String(tag.id)));
+        if (!selectedTagIds.some((id) => productTagIds.has(id))) return false;
+    }
+
+    return true;
+}
+
+function sortCatalogProducts(items) {
+    const sorted = [...items];
+    sorted.sort((left, right) => {
+        const a = left.product;
+        const b = right.product;
+        let result = 0;
+
+        switch (state.catalogFilters.sort) {
+            case "createdAtAsc":
+                result = right.index - left.index;
+                break;
+            case "createdAtDesc":
+                result = left.index - right.index;
+                break;
+            case "titleAsc":
+                result = compareStrings(a.title, b.title);
+                break;
+            case "titleDesc":
+                result = compareStrings(b.title, a.title);
+                break;
+            case "priceAsc":
+                result = compareNumbers(a.priceMinor, b.priceMinor);
+                break;
+            case "priceDesc":
+                result = compareNumbers(b.priceMinor, a.priceMinor);
+                break;
+            case "stockAsc":
+                result = compareNumbers(a.stock, b.stock);
+                break;
+            case "stockDesc":
+                result = compareNumbers(b.stock, a.stock);
+                break;
+            case "soldAsc":
+                result = compareNumbers(a.soldCount, b.soldCount);
+                break;
+            case "soldDesc":
+                result = compareNumbers(b.soldCount, a.soldCount);
+                break;
+            case "tagsAsc":
+                result = compareNumbers((a.tags || []).length, (b.tags || []).length);
+                break;
+            case "tagsDesc":
+                result = compareNumbers((b.tags || []).length, (a.tags || []).length);
+                break;
+            case "variantsAsc":
+                result = compareNumbers((a.variants || []).length, (b.variants || []).length);
+                break;
+            case "variantsDesc":
+                result = compareNumbers((b.variants || []).length, (a.variants || []).length);
+                break;
+            case "activeFirst":
+                result = Number(Boolean(b.active)) - Number(Boolean(a.active));
+                break;
+            case "hiddenFirst":
+                result = Number(Boolean(a.active)) - Number(Boolean(b.active));
+                break;
+            default:
+                result = left.index - right.index;
+                break;
+        }
+
+        if (result !== 0) return result;
+        return left.index - right.index;
+    });
+    return sorted.map((item) => item.product);
+}
+
+function getFilteredCatalogProducts() {
+    const indexed = state.products.map((product, index) => ({product, index}));
+    return sortCatalogProducts(indexed.filter(({product}) => matchesCatalogFilters(product)));
+}
+
+function renderProductThumb(product) {
+    const img = (product.imageUrls && product.imageUrls.length > 0) ? product.imageUrls[0] : null;
+    if (!img) {
+        return el("div", {class: "product-thumb-placeholder"}, [document.createTextNode("Нет фото")]);
+    }
+    return el("div", {class: "product-thumb"}, [
+        el("img", {src: img, alt: product.title, loading: "lazy", decoding: "async"})
+    ]);
+}
+
+function renderProductStats(product) {
+    const stats = el("div", {class: "product-stats"});
+    const items = [
+        ["Цена", money(product)],
+        ["Остаток", product.stock > 0 ? String(product.stock) : "0"],
+        ["Продано", String(product.soldCount || 0)],
+        ["Теги", String((product.tags || []).length)],
+    ];
+    if ((product.variants || []).length) {
+        items.push(["Варианты", String(product.variants.length)]);
+    }
+    items.forEach(([label, value]) => {
+        stats.append(el("span", {class: "stat-pill"}, [
+            document.createTextNode(`${label}: `),
+            el("strong", {}, [document.createTextNode(value)]),
+        ]));
+    });
+    return stats;
+}
+
+function renderProductActions(product) {
+    if (state.viewAsCustomer) return null;
+    return el("div", {class: "actions"}, [
+        el("button", {
+            class: "pill icon-action",
+            title: "Редактировать",
+            "aria-label": "Редактировать",
+            onclick: (e) => {
+                e.stopPropagation();
+                openEditModal(product);
+            }
+        }, [el("i", {class: "fa-solid fa-pen-to-square"})]),
+        el("button", {
+            class: `pill icon-action ${product.active ? "ghost" : "danger"}`,
+            title: product.active ? "Спрятать" : "Показать",
+            "aria-label": product.active ? "Спрятать" : "Показать",
+            onclick: async (e) => {
+                e.stopPropagation();
+                await toggleActive(product);
+            }
+        }, [el("i", {class: product.active ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"})]),
+        el("button", {
+            class: "pill danger icon-action",
+            title: "Удалить",
+            "aria-label": "Удалить",
+            onclick: async (e) => {
+                e.stopPropagation();
+                await archiveProduct(product, true);
+            }
+        }, [el("i", {class: "fa-solid fa-trash"})]),
+    ]);
+}
+
+function renderProductTitle(product) {
+    return el("div", {class: "product-head"}, [
+        el("div", {class: "card-title"}, [document.createTextNode(product.title)]),
+        (!product.active && !state.viewAsCustomer)
+            ? el("span", {class: "status-tag"}, [document.createTextNode("Скрыт")])
+            : el("span", {class: "status-tag hidden"}, []),
+        (Number(product.stock || 0) <= 0)
+            ? el("span", {class: "status-tag danger"}, [document.createTextNode("Нет в наличии")])
+            : el("span", {class: "status-tag hidden"}, []),
+    ]);
+}
+
+function renderProductCard(product) {
+    const card = el("div", {class: "card product-card", "data-product-id": String(product.id)});
+    card.append(
+        (product.imageUrls && product.imageUrls.length > 0)
+            ? el("img", {src: product.imageUrls[0], alt: product.title, loading: "lazy", decoding: "async"})
+            : el("div", {class: "img-fallback"}, [document.createTextNode("Нет фото")]),
+        renderProductTitle(product),
+        el("div", {class: "product-desc"}, [document.createTextNode(truncateText(product.description || "Без описания", 110))]),
+        renderTagPills(product.tags, true),
+        renderProductStats(product)
+    );
+    const actions = renderProductActions(product);
+    if (actions) {
+        card.append(actions);
+        card.addEventListener("click", () => openEditModal(product));
+    } else {
+        card.addEventListener("click", () => openPreviewModal(product));
+    }
+    return card;
+}
+
+function renderProductRow(product) {
+    const row = el("div", {class: "card product-row", "data-product-id": String(product.id)});
+    const main = el("div", {class: "product-main"}, [
+        renderProductTitle(product),
+        el("div", {class: "product-desc"}, [document.createTextNode(truncateText(product.description || "Без описания", 180))]),
+        renderProductStats(product),
+        renderTagPills(product.tags, true),
+    ]);
+    row.append(renderProductThumb(product), main);
+    const actions = renderProductActions(product);
+    if (actions) {
+        row.append(actions);
+        row.addEventListener("click", () => openEditModal(product));
+    } else {
+        row.addEventListener("click", () => openPreviewModal(product));
+    }
+    return row;
+}
+
+function renderProducts() {
+    const grid = qs("productGrid");
+    const empty = qs("catalogEmpty");
+    const resultsMeta = qs("catalogResultsMeta");
+    const filteredProducts = getFilteredCatalogProducts();
+    const total = state.products.length;
+    const shown = filteredProducts.length;
+    const view = state.catalogFilters.view === "cards" ? "cards" : "rows";
+
+    grid.innerHTML = "";
+    grid.className = `catalog-grid view-${view}`;
+    syncCatalogFiltersUi();
+
+    qs("catalogMeta").textContent = state.viewAsCustomer
+        ? `Покупательский вид • ${shown} из ${total}`
+        : `Каталог товаров • ${shown} из ${total}`;
+
+    if (resultsMeta) {
+        const selectedTagsCount = state.catalogFilters.tagIds.length;
+        const filterBits = [
+            state.catalogFilters.query ? "есть поиск" : null,
+            selectedTagsCount ? `тегов: ${selectedTagsCount}` : null,
+            state.catalogFilters.stock !== "all" ? "фильтр по остаткам" : null,
+            state.catalogFilters.visibility !== "all" ? "доп. фильтр" : null,
+            `режим: ${view === "cards" ? "карточки" : "строки"}`,
+        ].filter(Boolean);
+        resultsMeta.textContent = filterBits.length
+            ? `Показано ${shown} из ${total} • ${filterBits.join(" • ")}`
+            : `Показано ${shown} из ${total}`;
+    }
+
+    filteredProducts.forEach((product) => {
+        grid.append(view === "cards" ? renderProductCard(product) : renderProductRow(product));
+    });
+
+    empty.classList.toggle("hidden", shown > 0);
+}
+
 function renderOrders() {
     const tbody = qs("ordersBody");
     tbody.innerHTML = "";
@@ -1155,6 +1603,8 @@ function renderTags() {
                                 .sort((a, b) => a.name.localeCompare(b.name));
                             renderTags();
                             renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+                            renderCatalogTagFilters();
+                            await loadProducts();
                         } catch (err) {
                             console.error(err);
                             showLogin(true);
@@ -1172,6 +1622,8 @@ function renderTags() {
                             state.tags = state.tags.filter((t) => String(t.id) !== String(tag.id));
                             renderTags();
                             renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+                            renderCatalogTagFilters();
+                            await loadProducts();
                         } catch (err) {
                             console.error(err);
                             showLogin(true);
@@ -1305,6 +1757,28 @@ function boot() {
     qs("loginForm").addEventListener("submit", handleLogin);
     qs("logoutBtn").addEventListener("click", logout);
     qs("refreshBtn").addEventListener("click", () => setActiveTab(state.activeTab));
+    syncCatalogFiltersUi();
+    renderCatalogTagFilters();
+    qs("catalogFilters").addEventListener("submit", (e) => e.preventDefault());
+    qs("catalogSearch").addEventListener("input", () => {
+        readCatalogFiltersFromUi();
+        renderProducts();
+    });
+    qs("catalogSort").addEventListener("change", () => {
+        readCatalogFiltersFromUi();
+        renderProducts();
+    });
+    qs("catalogStockFilter").addEventListener("change", () => {
+        readCatalogFiltersFromUi();
+        renderProducts();
+    });
+    qs("catalogVisibilityFilter").addEventListener("change", () => {
+        readCatalogFiltersFromUi();
+        renderProducts();
+    });
+    qs("catalogResetFilters").addEventListener("click", resetCatalogFilters);
+    qs("catalogViewRows").addEventListener("click", () => setCatalogView("rows"));
+    qs("catalogViewCards").addEventListener("click", () => setCatalogView("cards"));
     const stockInput = qs("productForm").querySelector('input[name="stock"]');
     renderVariantPicker(qs("productVariantPicker"), [], (next) => updateStockInput(stockInput, next));
     updateStockInput(stockInput, []);
@@ -1377,6 +1851,7 @@ function boot() {
             qs("tagForm").reset();
             renderTags();
             renderTagPicker(qs("productTagPicker"), new Set(getSelectedTagIds(qs("productTagPicker"))));
+            renderCatalogTagFilters();
         } catch (err) {
             console.error(err);
             showLogin(true);
