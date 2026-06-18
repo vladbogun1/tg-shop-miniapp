@@ -20,7 +20,6 @@ import {
   MapPin,
   Store,
   Truck,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -40,7 +39,6 @@ const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMa
     </div>
   ),
 });
-import { GlassAutocomplete } from "@/components/ui/GlassAutocomplete";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { RadioCard } from "@/components/ui/RadioCard";
@@ -49,7 +47,6 @@ import {
   customerApi,
   type CreateOrderRequest,
   type DeliveryMethod,
-  type NpCity,
   type NpWarehouse,
   type PaymentOption,
   type PaymentRequisites,
@@ -82,9 +79,8 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [touched, setTouched] = useState(false);
 
-  // step 2 — delivery
+  // step 2 — delivery (warehouse carries its own city, so no separate city picker)
   const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
-  const [city, setCity] = useState<NpCity | null>(null);
   const [warehouse, setWarehouse] = useState<NpWarehouse | null>(null);
   const [comment, setComment] = useState("");
 
@@ -108,7 +104,7 @@ export default function CheckoutPage() {
   const phoneOk = isvalidPhone(phone);
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
-    delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!city && !!warehouse);
+    delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!warehouse);
   const step3Ok = !!paymentId;
 
   const stepOk = [step1Ok, step2Ok, step3Ok, true][step];
@@ -131,8 +127,8 @@ export default function CheckoutPage() {
       comment: comment.trim() || undefined,
       promoCode: promoCode.trim() || undefined,
       deliveryMethod: delivery,
-      npCityRef: delivery === "NOVA_POSHTA" ? city?.ref : undefined,
-      npCityName: delivery === "NOVA_POSHTA" ? city?.name : undefined,
+      npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,
+      npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
       npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
       npWarehouseName:
         delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
@@ -214,8 +210,8 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="pt-2">
-      <div className="mb-4 flex items-center gap-2">
+    <div className="pt-1">
+      <div className="mb-2 flex items-center gap-2">
         <button
           type="button"
           aria-label="Назад"
@@ -224,10 +220,10 @@ export default function CheckoutPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-[22px] font-bold text-[var(--text)]">Оформление</h1>
+        <h1 className="text-[18px] font-bold text-[var(--text)]">Оформление</h1>
       </div>
 
-      <div className="glass mb-5 rounded-[var(--r-md)] p-3">
+      <div className="glass mb-3 rounded-[var(--r-md)] p-2">
         <StepProgress steps={STEPS} current={step} />
       </div>
 
@@ -254,11 +250,6 @@ export default function CheckoutPage() {
             <DeliveryStep
               delivery={delivery}
               setDelivery={setDelivery}
-              city={city}
-              setCity={(c) => {
-                setCity(c);
-                setWarehouse(null);
-              }}
               warehouse={warehouse}
               setWarehouse={setWarehouse}
               comment={comment}
@@ -281,7 +272,6 @@ export default function CheckoutPage() {
               name={name}
               phone={formatPhone(phone)}
               delivery={delivery}
-              city={city}
               warehouse={warehouse}
               comment={comment}
               payment={chosenPayment}
@@ -374,13 +364,46 @@ function ContactsStep({
 }
 
 // ---------------------------------------------------------------------------
-// Step 2 — Delivery
+// Step 2 — Delivery (2 tabs; Nova Poshta opens the full map, then a confirm card)
 // ---------------------------------------------------------------------------
+function npLabel(w: NpWarehouse): string {
+  const cat = w.category === "POSTOMAT" ? "Почтомат" : "Отделение";
+  return w.number != null ? `${cat} № ${w.number}` : cat;
+}
+
+function DeliveryTab({
+  active,
+  onClick,
+  icon,
+  title,
+  subtitle,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tap flex flex-col items-start gap-1 rounded-[var(--r-md)] p-3 text-left transition-shadow ${
+        active ? "glossy" : "glass text-[var(--text)]"
+      }`}
+    >
+      <span className={active ? "text-[var(--accent-ink)]" : "text-[var(--accent)]"}>{icon}</span>
+      <span className="text-[14px] font-semibold leading-tight">{title}</span>
+      <span className={`text-[11px] ${active ? "text-[var(--accent-ink)]/80" : "text-[var(--text-muted)]"}`}>
+        {subtitle}
+      </span>
+    </button>
+  );
+}
+
 function DeliveryStep({
   delivery,
   setDelivery,
-  city,
-  setCity,
   warehouse,
   setWarehouse,
   comment,
@@ -389,54 +412,80 @@ function DeliveryStep({
 }: {
   delivery: DeliveryMethod;
   setDelivery: (d: DeliveryMethod) => void;
-  city: NpCity | null;
-  setCity: (c: NpCity | null) => void;
   warehouse: NpWarehouse | null;
   setWarehouse: (w: NpWarehouse | null) => void;
   comment: string;
   setComment: (v: string) => void;
   touched: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const showMap = delivery === "NOVA_POSHTA" && (!warehouse || editing);
+
   return (
     <div className="flex flex-col gap-3">
-      <RadioCard
-        selected={delivery === "NOVA_POSHTA"}
-        onSelect={() => setDelivery("NOVA_POSHTA")}
-        title="Новая Почта"
-        subtitle="Доставка в отделение или почтомат"
-        icon={<Truck className="h-5 w-5" />}
-      />
-      {delivery === "NOVA_POSHTA" && (
-        <div className="flex flex-col gap-3 pl-1">
-          <GlassAutocomplete<NpCity>
-            label="Город"
-            selectedLabel={city?.name ?? null}
-            fetchItems={(q) => customerApi.getNpCities(q)}
-            itemLabel={(c) => c.name}
-            itemSubLabel={(c) => c.area}
-            itemKey={(c) => c.ref}
-            onSelect={setCity}
-            onClear={() => setCity(null)}
-            status={touched && !city ? "danger" : undefined}
-          />
-          {city && (
-            <WarehousePicker
-              city={city}
-              warehouse={warehouse}
-              setWarehouse={setWarehouse}
-              invalid={!!(touched && !warehouse)}
+      {/* 2 tabs */}
+      <div className="grid grid-cols-2 gap-2">
+        <DeliveryTab
+          active={delivery === "NOVA_POSHTA"}
+          onClick={() => setDelivery("NOVA_POSHTA")}
+          icon={<Truck className="h-5 w-5" />}
+          title="Новая Почта"
+          subtitle="Отделение / почтомат"
+        />
+        <DeliveryTab
+          active={delivery === "PICKUP"}
+          onClick={() => setDelivery("PICKUP")}
+          icon={<Store className="h-5 w-5" />}
+          title="Самовывоз"
+          subtitle="Из точки магазина"
+        />
+      </div>
+
+      {delivery === "NOVA_POSHTA" &&
+        (showMap ? (
+          <div className="flex flex-col gap-2">
+            <p className="px-1 text-[13px] text-[var(--text-muted)]">
+              Найдите отделение на карте и нажмите «Выбрать».
+            </p>
+            <NpWarehouseMap
+              onSelect={(w) => {
+                setWarehouse(w);
+                setEditing(false);
+              }}
             />
-          )}
-        </div>
+            {warehouse && (
+              <GlassButton variant="glass" onClick={() => setEditing(false)}>
+                Отмена
+              </GlassButton>
+            )}
+          </div>
+        ) : warehouse ? (
+          <div className="glass flex flex-col gap-3 rounded-[var(--r-md)] p-4">
+            <div className="flex items-start gap-2">
+              <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" />
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-semibold text-[var(--text)]">{npLabel(warehouse)}</div>
+                <div className="text-[12px] text-[var(--text-muted)]">
+                  {warehouse.cityName ? `${warehouse.cityName}, ` : ""}
+                  {warehouse.description}
+                </div>
+              </div>
+            </div>
+            <GlassButton variant="glass" onClick={() => setEditing(true)} icon={<MapPin className="h-4 w-4" />}>
+              Изменить отделение
+            </GlassButton>
+          </div>
+        ) : null)}
+
+      {touched && delivery === "NOVA_POSHTA" && !warehouse && !showMap && (
+        <p className="px-1 text-[12px] text-[var(--danger)]">Выберите отделение на карте.</p>
       )}
 
-      <RadioCard
-        selected={delivery === "PICKUP"}
-        onSelect={() => setDelivery("PICKUP")}
-        title="Самовывоз"
-        subtitle="Заберите заказ из точки магазина"
-        icon={<Store className="h-5 w-5" />}
-      />
+      {delivery === "PICKUP" && (
+        <div className="glass rounded-[var(--r-md)] p-4 text-[13px] text-[var(--text-muted)]">
+          Заберите заказ из точки магазина — мы свяжемся с вами насчёт адреса и времени.
+        </div>
+      )}
 
       <textarea
         value={comment}
@@ -445,77 +494,6 @@ function DeliveryStep({
         rows={3}
         className="glass tap mt-1 w-full resize-none rounded-[var(--r-md)] px-4 py-3 text-[15px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
       />
-    </div>
-  );
-}
-
-// Nova Poshta branch picker — search box + interactive OSM map (tap a pin).
-function WarehousePicker({
-  city,
-  warehouse,
-  setWarehouse,
-  invalid,
-}: {
-  city: NpCity;
-  warehouse: NpWarehouse | null;
-  setWarehouse: (w: NpWarehouse | null) => void;
-  invalid: boolean;
-}) {
-  const [q, setQ] = useState("");
-  const [list, setList] = useState<NpWarehouse[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const t = setTimeout(() => {
-      customerApi
-        .getNpWarehouses(city.ref, q.trim())
-        .then((r) => !cancelled && setList(r))
-        .catch(() => !cancelled && setList([]))
-        .finally(() => !cancelled && setLoading(false));
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [city.ref, q]);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <GlassInput
-        label="Поиск отделения (№ или адрес)"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        status={invalid && !warehouse ? "danger" : undefined}
-      />
-      <p className="px-1 text-[12px] text-[var(--text-muted)]">
-        Выберите отделение на карте 👇 {loading ? "· обновляем…" : ""}
-      </p>
-      <NpWarehouseMap warehouses={list} selected={warehouse} onSelect={setWarehouse} />
-      {warehouse ? (
-        <div className="glass flex items-start gap-2 rounded-[var(--r-md)] px-3 py-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-semibold text-[var(--text)]">
-              {warehouse.number != null ? `№ ${warehouse.number}` : "Отделение"}
-            </div>
-            <div className="text-[12px] text-[var(--text-muted)]">{warehouse.description}</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWarehouse(null)}
-            className="tap grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--text-muted)]"
-            aria-label="Сбросить"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        <p className={`px-1 text-[12px] ${invalid ? "text-[var(--danger)]" : "text-[var(--text-faint)]"}`}>
-          Отделение не выбрано — нажмите точку на карте.
-        </p>
-      )}
     </div>
   );
 }
@@ -588,7 +566,6 @@ function ConfirmStep({
   name,
   phone,
   delivery,
-  city,
   warehouse,
   comment,
   payment,
@@ -600,7 +577,6 @@ function ConfirmStep({
   name: string;
   phone: string;
   delivery: DeliveryMethod;
-  city: NpCity | null;
   warehouse: NpWarehouse | null;
   comment: string;
   payment: PaymentOption | null;
@@ -612,7 +588,7 @@ function ConfirmStep({
   const deliveryText =
     delivery === "PICKUP"
       ? "Самовывоз"
-      : `Новая Почта · ${city?.name ?? ""}, ${warehouse?.description ?? ""}`;
+      : `Новая Почта · ${warehouse?.cityName ? warehouse.cityName + ", " : ""}${warehouse?.description ?? ""}`;
 
   return (
     <div className="flex flex-col gap-4">
