@@ -48,7 +48,7 @@ services:
       - "667:667"
     volumes:
       - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro
-      - ${PROD_CERT_DIR:-/home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt/live/maxsolkh.shop}:/certs:ro
+      - ${PROD_CERT_DIR:-/home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt}:/certs:ro
       - tgshop_v2_caddy_data:/data
       - tgshop_v2_caddy_config:/config
     networks:
