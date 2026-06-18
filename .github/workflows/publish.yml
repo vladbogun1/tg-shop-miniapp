@@ -1,0 +1,86 @@
+name: Publish images
+
+# Build & push the three prod images (backend, customer frontend, admin frontend)
+# to Docker Hub. Frontends are built SAME-ORIGIN (relative URLs) to match the
+# single-origin gateway prod setup (docker-compose.public.yml / .prod.yml).
+#
+# Triggers:
+#   - pushing a tag like v2.0.0  -> images tagged with that version + :latest
+#   - manual run (workflow_dispatch) with an explicit tag input
+#
+# Requires repo secrets (already present): DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
+
+on:
+  push:
+    tags: ["v2.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag (e.g. v2.0.0)"
+        required: true
+        default: "v2.0.0"
+
+env:
+  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-backend
+  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
+  ADMIN_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-admin
+
+jobs:
+  publish:
+    name: Build & push (${{ github.event.inputs.tag || github.ref_name }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: meta
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push customer frontend (same-origin)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=
+            NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push admin frontend (same-origin)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-admin
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=
+            NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          tags: |
+            ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ADMIN_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

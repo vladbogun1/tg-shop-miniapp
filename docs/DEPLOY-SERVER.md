@@ -98,28 +98,41 @@ v2 невозможен (порты 80/443 заняты), поэтому пер�
 
 ---
 
-## 5. Порядок деплоя v2 (когда подтвердим план)
+## 5. Порядок деплоя v2
+
+**Стратегия образов (выбрана):** собираются и пушатся в Docker Hub через CI
+(`.github/workflows/publish.yml`), сервер только **тянет** (диск 4.2G — не собираем).
+Образы: `vladbogun1/maxsolch2-backend`, `…-frontend`, `…-admin`.
 
 ```bash
-# 0. Освободить место на диске
+# === В CI (один раз перед деплоем) ===
+# Запушить тег v2.0.0 -> workflow publish.yml соберёт и запушит 3 образа
+# с тегами v2.0.0 и latest. (Секреты DOCKERHUB_* уже в репо.)
+git tag v2.0.0 && git push origin v2.0.0
+# (или вручную: Actions -> Publish images -> Run workflow -> tag=v2.0.0)
+
+# === На сервере ===
+# 0. Освободить место
 docker container prune -f && docker image prune -af
 
-# 1. Залить код v2 на сервер (git clone ветки v2 или scp), напр. в:
-#    /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2/
+# 1. Залить ТОЛЬКО конфиги (код собирать не нужно — образы готовы)
 git clone -b v2 https://github.com/vladbogun1/tg-shop-miniapp.git maxsolch-v2
 cd maxsolch-v2/tg-shop-v2
 
-# 2. .env (прод): домены, секреты, ALLOW_UNSIGNED_INIT_DATA=false, сильные пароли,
-#    BOT_TOKEN=@maxsolch_bot, подписанные imgproxy ключи.
+# 2. .env (прод): DOCKERHUB_USERNAME=vladbogun1, IMAGE_TAG=v2.0.0 (НЕ latest на 1-й раз!),
+#    DOMAIN=maxsolkh.shop, WEBAPP_BASE_URL=https://maxsolkh.shop:666,
+#    ADMIN_BASE_URL=https://maxsolkh.shop:667, BOT_TOKEN=@maxsolch_bot,
+#    ALLOW_UNSIGNED_INIT_DATA=false, сильные пароли, подписанные imgproxy KEY/SALT.
 
-# 3. Поднять внутренний стек + публичные gateway'и + Caddy (порты 666/667)
-docker compose up -d                                  # mysql/minio/imgproxy/nginx/backend
-docker compose -f docker-compose.yml -f docker-compose.public.yml \
-               -f docker-compose.prod.yml up -d --build \
-               frontend-public gateway frontend-admin-public gateway-admin caddy
+# 3. Pull + поднять (без сборки)
+C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml"
+docker compose $C pull
+docker compose $C up -d --no-build \
+  mysql minio imgproxy nginx backend \
+  frontend-public gateway frontend-admin-public gateway-admin caddy
 
 # 4. Миграция данных (БД старого магазина tgshop-db должна быть Up):
-#    дамп tg_test → прогнать migration-тулзу против нового tgshop_v2 (см. migration/README.md).
+#    дамп tg_test -> migration-тулза против нового tgshop_v2 (см. migration/README.md).
 #    Тулза сама накатывает бэкфилл статус-таймстампов и причин отказа.
 
 # 5. ufw + Oracle VCN
@@ -130,16 +143,18 @@ sudo ufw allow 666/tcp && sudo ufw allow 667/tcp       # 668 — только е
 #    /setdomain (для login widget, если используется) = maxsolkh.shop.
 
 # 7. Проверить: https://maxsolkh.shop:666 (клиент), https://maxsolkh.shop:667 (админ),
-#    открыть Mini App из @maxsolch_bot, оформить тестовый заказ, чат, метрики.
+#    Mini App из @maxsolch_bot, тестовый заказ, чат, метрики.
+
+# 8. После успеха — переключить на latest: в .env IMAGE_TAG=latest, затем
+#    docker compose $C pull && docker compose $C up -d --no-build
 ```
 
 ### Тег Docker-образа (важно!)
-- master уже собрался и опубликовал `:latest` → **для первого деплоя НЕ используем `:latest`**,
-  берём конкретный версионный тег (напр. `:v2.0.0` / SHA), чтобы не подтянуть «сырой» latest.
-- После успешной проверки — переключить на `:latest`.
-- ⚠️ Текущий `ci.yml` образы в реестр **не пушит** (только тест+сборка). Перед деплоем
-  по тегам нужно либо добавить publish-job в CI, либо собирать образы локально/на сервере
-  (`--build`). Решить до деплоя.
+- **Первый деплой — фиксированный `IMAGE_TAG=v2.0.0`**, НЕ `:latest` (master уже собрал latest —
+  чтобы не подтянуть «сырой»).
+- После проверки — `IMAGE_TAG=latest`.
+- ⚠️ Локальный dev-стек держит того же бота `@maxsolch_bot` → **перед/на время прод-деплоя
+  локальный стек должен быть выключен** (`docker compose down`), иначе конфликт long-polling (409).
 
 ---
 
@@ -153,10 +168,9 @@ docker compose ps
 docker compose logs -f backend
 docker compose logs -f caddy
 
-# обновление кода
-git pull origin v2
-docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
-               up -d --build
+# обновление (новый образ): запушить новый тег в CI -> на сервере сменить IMAGE_TAG в .env
+C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml"
+git pull origin v2 && docker compose $C pull && docker compose $C up -d --no-build
 
 # рестарт одного сервиса
 docker compose restart backend
@@ -172,7 +186,8 @@ cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2/tg-shop-v2 && docker compose down   # 
 
 ---
 
-## 7. Открытые вопросы (решить перед деплоем)
-1. **Порты Mini App**: 666/667 (как просил) или сразу 8443 (после вывода старого)? → план готов под 666/667.
-2. **Образы**: добавить publish в CI и деплой по тегам, или `--build` на сервере? (диск 4.2G — сборка рискованна).
-3. **Сертификат**: переиспользовать старый cert-файл (просто) или выпустить отдельный для поддомена через DNS-01?
+## 7. Решённые вопросы
+1. **Порты Mini App**: 666 (клиент) / 667 (админ). ✅
+2. **Образы**: CI собирает и пушит в Docker Hub (`publish.yml`), сервер тянет по тегу. ✅
+   Первый деплой — `IMAGE_TAG=v2.0.0`, потом `latest`.
+3. **Сертификат**: переиспользуем существующий `maxsolkh.shop` cert (mount read-only в Caddy v2). ✅
