@@ -11,14 +11,16 @@
 	auto_https disable_redirects
 }
 
+# PROD_CERT_DIR mounts the whole letsencrypt root at /certs, so the relative
+# live/ -> ../../archive symlinks resolve inside the container.
 maxsolkh.shop:666 {
-	tls /certs/fullchain.pem /certs/privkey.pem
+	tls /certs/live/maxsolkh.shop/fullchain.pem /certs/live/maxsolkh.shop/privkey.pem
 	encode zstd gzip
 	reverse_proxy gateway:80
 }
 
 maxsolkh.shop:667 {
-	tls /certs/fullchain.pem /certs/privkey.pem
+	tls /certs/live/maxsolkh.shop/fullchain.pem /certs/live/maxsolkh.shop/privkey.pem
 	encode zstd gzip
 	reverse_proxy gateway-admin:80
 }
