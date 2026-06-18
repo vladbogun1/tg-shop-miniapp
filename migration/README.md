@@ -45,8 +45,18 @@ failure does not abort the rest. Inserts use `INSERT ... ON DUPLICATE KEY UPDATE
     (old stored Telegram `file_id` only, no real files).
 12. `settings` (key/value copied verbatim, incl. `PAYMENT_TEMPLATE_HTML` and
     `ADMIN_ORDER_BOARD_*`).
+13. **`status_timestamps` (backfill)** — the old `orders` table has **no**
+    status-change date columns (only `created_at`), so `approved_at` / `shipped_at`
+    / `delivered_at` / `rejected_at` are reconstructed from the SYSTEM chat cards
+    (`MIN(created_at)` of the card whose text contains ОДОБРЕНО / ВЫСЛАНО /
+    ДОСТАВЛЕНО / ОТКЛОНЕНО). Chronology is kept monotonic. Coverage is bounded by
+    which cards actually exist in the old chat (e.g. not every delivered order has
+    a ДОСТАВЛЕНО card) — this is the maximum recoverable from the source.
+14. **`reject_reasons` (backfill)** — `reject_reason` is extracted from the
+    "❌ Причина: <text>" SYSTEM card for `REJECTED` orders that lack one.
 
-A per-table row-count summary is printed at the end.
+Steps 13–14 run **automatically** as part of the migration (only filling NULLs,
+so they are safe to re-run). A per-table row-count summary is printed at the end.
 
 ## Configuration (environment variables, per `docs/SPEC.md`)
 
@@ -128,15 +138,12 @@ and `minio` by service name; the old DB is typically reached via
 - `order_messages.attachment_url` is left NULL because the old rows only store
   Telegram `file_id`s, not retrievable URLs.
 
-## Post-import: backfill order status timestamps (for metrics)
+## Post-import: backfill (now automatic)
 
-The old chat logged SYSTEM cards whose header was the new status (ОДОБРЕНО / ВЫСЛАНО /
-ДОСТАВЛЕНО / ОТКЛОНЕНО). After the import, run this once to reconstruct approved_at /
-shipped_at / delivered_at / rejected_at on historical orders so the admin "Метрики →
-Скорость обработки" has data:
+Reconstruction of status timestamps (`approved_at` / `shipped_at` / `delivered_at` /
+`rejected_at`) and `reject_reason` from the old SYSTEM chat cards is now **built into
+the tool** (steps 13–14 above) and runs on every migration. The standalone SQL
+scripts in `infra/` (`backfill_status_times.sql`, `backfill_reject_reason.sql`) are
+kept only as a reference / manual fallback — you no longer need to run them.
 
-```bash
-docker exec -i <mysql-container> mysql --default-character-set=utf8mb4 \
-  -u<user> -p<pass> <db> < infra/backfill_status_times.sql
-```
-Idempotent (only fills NULLs; keeps real timestamps of new orders).
+Both are idempotent (only fill NULLs; never overwrite real timestamps of new orders).

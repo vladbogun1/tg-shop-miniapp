@@ -72,7 +72,48 @@ public class Migrator {
         step("order_items", this::migrateOrderItems);
         step("order_messages", this::migrateOrderMessages);
         step("settings", this::migrateSettings);
+        // Backfill derived fields from the migrated chat (must run AFTER order_messages):
+        // the old bot logged SYSTEM status cards, from which we reconstruct the status
+        // transition timestamps (for metrics) and the reject reason.
+        step("status_timestamps(backfill)", this::backfillStatusTimestamps);
+        step("reject_reasons(backfill)", this::backfillRejectReasons);
         printSummary();
+    }
+
+    /** Reconstruct approved/shipped/delivered/rejected_at from the chat SYSTEM cards. */
+    private int backfillStatusTimestamps() throws SQLException {
+        int n = 0;
+        n += runUpdate("UPDATE orders o SET o.approved_at = (SELECT MIN(m.created_at) FROM order_messages m "
+                + "WHERE m.order_id=o.id AND m.sender_type='SYSTEM' AND m.text LIKE '%ОДОБРЕНО%') "
+                + "WHERE o.approved_at IS NULL");
+        n += runUpdate("UPDATE orders o SET o.shipped_at = (SELECT MIN(m.created_at) FROM order_messages m "
+                + "WHERE m.order_id=o.id AND m.sender_type='SYSTEM' AND m.text LIKE '%ВЫСЛАНО%') "
+                + "WHERE o.shipped_at IS NULL");
+        n += runUpdate("UPDATE orders o SET o.delivered_at = (SELECT MIN(m.created_at) FROM order_messages m "
+                + "WHERE m.order_id=o.id AND m.sender_type='SYSTEM' AND m.text LIKE '%ДОСТАВЛЕНО%') "
+                + "WHERE o.delivered_at IS NULL");
+        n += runUpdate("UPDATE orders o SET o.rejected_at = (SELECT MIN(m.created_at) FROM order_messages m "
+                + "WHERE m.order_id=o.id AND m.sender_type='SYSTEM' AND m.text LIKE '%ОТКЛОНЕНО%') "
+                + "WHERE o.rejected_at IS NULL");
+        // Keep chronology monotonic (don't create negative spans for metrics).
+        runUpdate("UPDATE orders SET shipped_at=NULL WHERE shipped_at IS NOT NULL AND approved_at IS NOT NULL AND shipped_at<approved_at");
+        runUpdate("UPDATE orders SET delivered_at=NULL WHERE delivered_at IS NOT NULL AND shipped_at IS NOT NULL AND delivered_at<shipped_at");
+        return n;
+    }
+
+    /** Reconstruct reject_reason from the chat "❌ Причина: <text>" cards. */
+    private int backfillRejectReasons() throws SQLException {
+        return runUpdate("UPDATE orders o SET o.reject_reason = ("
+                + "SELECT TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(m.text, 'Причина: ', -1), '\\n', 1)) "
+                + "FROM order_messages m WHERE m.order_id=o.id AND m.sender_type='SYSTEM' AND m.text LIKE '%Причина: %' "
+                + "ORDER BY m.created_at DESC LIMIT 1) "
+                + "WHERE o.status='REJECTED' AND (o.reject_reason IS NULL OR o.reject_reason='')");
+    }
+
+    private int runUpdate(String sql) throws SQLException {
+        try (Statement s = newDb.createStatement()) {
+            return s.executeUpdate(sql);
+        }
     }
 
     // ---------------------------------------------------------------- helpers
