@@ -1,0 +1,66 @@
+# ==========================================================
+#  Production TLS overlay for the server (132.145.132.80).
+#  Adds a Caddy front that terminates HTTPS on non-standard ports
+#  (80/443 are taken on the host) and proxies to the single-origin
+#  gateways from docker-compose.public.yml:
+#     https://maxsolkh.shop:666  -> gateway (customer Mini App)
+#     https://maxsolkh.shop:667  -> gateway-admin (admin)
+#
+#  This overlay also pins backend + both frontends to PRE-BUILT registry images
+#  (built/pushed by .github/workflows/publish.yml) so the server only PULLS,
+#  never builds (disk is tight). Set IMAGE_TAG in .env (first deploy: a version
+#  like v2.0.0; later: latest).
+#
+#  Run layered on top of base + public (pull, don't build):
+#    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml pull
+#    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
+#                   up -d --no-build \
+#                   mysql minio imgproxy nginx backend \
+#                   frontend-public gateway frontend-admin-public gateway-admin caddy
+#
+#  PROD_CERT_DIR must point at a dir containing fullchain.pem + privkey.pem for maxsolkh.shop.
+#  Default reuses the existing old-app Let's Encrypt material.
+# ==========================================================
+
+services:
+  # Image-cache nginx is internal-only in prod (gateway proxies /img -> nginx:80).
+  # Drop the host publish (8082 is taken by portainer on the server).
+  nginx:
+    ports: !override []
+
+  # Pin to pre-built registry images (override the build: from base/public).
+  backend:
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
+    pull_policy: always
+    # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).
+    ports: !override []
+
+  frontend-public:
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-frontend:${IMAGE_TAG:-latest}
+    pull_policy: always
+
+  frontend-admin-public:
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-admin:${IMAGE_TAG:-latest}
+    pull_policy: always
+
+  caddy:
+    image: caddy:2.8
+    container_name: tgshop_v2_caddy
+    restart: unless-stopped
+    depends_on:
+      - gateway
+      - gateway-admin
+    ports:
+      - "666:666"
+      - "667:667"
+    volumes:
+      - ./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ${PROD_CERT_DIR:-/home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt}:/certs:ro
+      - tgshop_v2_caddy_data:/data
+      - tgshop_v2_caddy_config:/config
+    networks:
+      - tgshop
+
+volumes:
+  tgshop_v2_caddy_data:
+  tgshop_v2_caddy_config:

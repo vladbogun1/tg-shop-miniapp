@@ -1,0 +1,77 @@
+# ==========================================================
+#  Public (Telegram) release overlay — OPT-IN, isolated.
+#  Adds a single-origin gateway + a relative-URL frontend build,
+#  so one HTTPS tunnel (ngrok) serves the whole app for testing
+#  the Mini App inside @maxsolch_bot.
+#
+#  Run WITH the base file:
+#    docker compose -f docker-compose.yml -f docker-compose.public.yml up -d --build frontend-public gateway
+#    ngrok http 8090
+#    # put the ngrok https URL into WEBAPP_BASE_URL in .env, then:
+#    docker compose up -d backend
+#
+#  Does NOT touch the standard local services or the future prod (Caddy) setup.
+# ==========================================================
+
+services:
+  # Customer Mini App built for SAME-ORIGIN (relative) URLs — everything behind one origin.
+  frontend-public:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ""
+        NEXT_PUBLIC_IMAGE_BASE_URL: "/img"
+    image: tgshop-v2-frontend-public:local
+    container_name: tgshop_v2_frontend_public
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - tgshop
+
+  gateway:
+    image: nginx:alpine
+    container_name: tgshop_v2_gateway
+    restart: unless-stopped
+    depends_on:
+      - frontend-public
+      - backend
+      - imgproxy
+      - nginx
+    volumes:
+      - ./infra/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8090:80"
+    networks:
+      - tgshop
+
+  # Admin app built for SAME-ORIGIN (relative) URLs — for its own public gateway/tunnel.
+  frontend-admin-public:
+    build:
+      context: ./frontend-admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ""
+        NEXT_PUBLIC_IMAGE_BASE_URL: "/img"
+    image: tgshop-v2-frontend-admin-public:local
+    container_name: tgshop_v2_frontend_admin_public
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - tgshop
+
+  gateway-admin:
+    image: nginx:alpine
+    container_name: tgshop_v2_gateway_admin
+    restart: unless-stopped
+    depends_on:
+      - frontend-admin-public
+      - backend
+      - imgproxy
+      - nginx
+    volumes:
+      - ./infra/gateway-admin.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8091:80"
+    networks:
+      - tgshop

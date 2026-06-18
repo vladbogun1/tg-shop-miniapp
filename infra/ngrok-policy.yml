@@ -1,0 +1,8 @@
+# Adds the skip header to every inbound request so the ngrok-free browser-warning
+# interstitial never blocks the Telegram Mini App webview.
+on_http_request:
+  - actions:
+      - type: add-headers
+        config:
+          headers:
+            ngrok-skip-browser-warning: "true"

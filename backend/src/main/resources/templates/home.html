@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${appName}">tg-shop-v2 backend</title>
+    <style>
+        :root {
+            --bg: #0e1116;
+            --panel: #171c24;
+            --panel-2: #1f2630;
+            --border: #2a3340;
+            --text: #e6edf3;
+            --muted: #8b97a7;
+            --accent: #4f9cf9;
+            --green: #3fb950;
+            --red: #f85149;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(1200px 600px at 50% -10%, #1b2330 0%, var(--bg) 60%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+        }
+        .card {
+            width: 100%;
+            max-width: 720px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+        .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+        .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+        .pill {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .pill b { color: var(--text); font-weight: 600; }
+        .status { display: inline-flex; align-items: center; gap: 8px; }
+        .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        .dot.up { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .dot.down { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        a.link {
+            display: flex; flex-direction: column; gap: 4px;
+            text-decoration: none;
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: var(--text);
+            transition: border-color .15s ease, transform .15s ease;
+        }
+        a.link:hover { border-color: var(--accent); transform: translateY(-1px); }
+        a.link .t { font-weight: 600; font-size: 14px; }
+        a.link .d { color: var(--muted); font-size: 12px; }
+        .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1 th:text="${appName}">tg-shop-v2 backend</h1>
+    <p class="sub">Telegram-shop v2 — Spring Boot API</p>
+
+    <div class="meta">
+        <span class="pill">build <b th:text="${version}">dev</b></span>
+        <span class="pill">since <b th:text="${buildTime}">—</b></span>
+        <span class="pill status">
+            <span class="dot" th:classappend="${dbUp} ? 'up' : 'down'"></span>
+            DB <b th:text="${dbUp} ? 'up' : 'down'">up</b>
+        </span>
+        <span class="pill">bot <b th:text="${botUsername}">@bot</b></span>
+    </div>
+
+    <div class="links">
+        <a class="link" href="/swagger-ui.html">
+            <span class="t">Swagger UI</span>
+            <span class="d">Interactive API docs</span>
+        </a>
+        <a class="link" href="/actuator/health">
+            <span class="t">Actuator Health</span>
+            <span class="d">Liveness &amp; readiness</span>
+        </a>
+        <a class="link" href="/actuator/info">
+            <span class="t">Actuator Info</span>
+            <span class="d">Build version &amp; metadata</span>
+        </a>
+        <a class="link" href="/api/app-info">
+            <span class="t">App Info</span>
+            <span class="d">Public config JSON</span>
+        </a>
+        <a class="link" th:if="${webappBaseUrl != null}" th:href="${webappBaseUrl}">
+            <span class="t">WebApp (frontend)</span>
+            <span class="d" th:text="${webappBaseUrl}">—</span>
+        </a>
+        <a class="link" th:if="${adminBaseUrl != null}" th:href="${adminBaseUrl}">
+            <span class="t">Admin panel</span>
+            <span class="d" th:text="${adminBaseUrl}">—</span>
+        </a>
+    </div>
+
+    <div class="footer">
+        <span>Images served via <span th:text="${imageBaseUrl}">—</span></span>
+    </div>
+</div>
+</body>
+</html>
