@@ -17,13 +17,29 @@ import {
   CheckCircle2,
   Copy,
   CreditCard,
+  MapPin,
   Store,
   Truck,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StepProgress } from "@/components/checkout/StepProgress";
+
+/** Leaflet map is client-only (touches window) → load without SSR. */
+const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="flex items-center justify-center rounded-[var(--r-md)] bg-white/5 text-[13px] text-[var(--text-faint)]"
+      style={{ height: 320 }}
+    >
+      Загрузка карты…
+    </div>
+  ),
+});
 import { GlassAutocomplete } from "@/components/ui/GlassAutocomplete";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -403,21 +419,14 @@ function DeliveryStep({
             onClear={() => setCity(null)}
             status={touched && !city ? "danger" : undefined}
           />
-          <GlassAutocomplete<NpWarehouse>
-            label="Отделение / почтомат"
-            selectedLabel={warehouse?.description ?? null}
-            disabled={!city}
-            placeholderHint={city ? "Введите номер или адрес" : "Сначала выберите город"}
-            fetchItems={(q) => customerApi.getNpWarehouses(city!.ref, q)}
-            itemLabel={(w) => w.description}
-            itemSubLabel={(w) =>
-              w.number != null ? `№ ${w.number}` : undefined
-            }
-            itemKey={(w) => w.ref}
-            onSelect={setWarehouse}
-            onClear={() => setWarehouse(null)}
-            status={touched && city && !warehouse ? "danger" : undefined}
-          />
+          {city && (
+            <WarehousePicker
+              city={city}
+              warehouse={warehouse}
+              setWarehouse={setWarehouse}
+              invalid={!!(touched && !warehouse)}
+            />
+          )}
         </div>
       )}
 
@@ -436,6 +445,77 @@ function DeliveryStep({
         rows={3}
         className="glass tap mt-1 w-full resize-none rounded-[var(--r-md)] px-4 py-3 text-[15px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
       />
+    </div>
+  );
+}
+
+// Nova Poshta branch picker — search box + interactive OSM map (tap a pin).
+function WarehousePicker({
+  city,
+  warehouse,
+  setWarehouse,
+  invalid,
+}: {
+  city: NpCity;
+  warehouse: NpWarehouse | null;
+  setWarehouse: (w: NpWarehouse | null) => void;
+  invalid: boolean;
+}) {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState<NpWarehouse[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const t = setTimeout(() => {
+      customerApi
+        .getNpWarehouses(city.ref, q.trim())
+        .then((r) => !cancelled && setList(r))
+        .catch(() => !cancelled && setList([]))
+        .finally(() => !cancelled && setLoading(false));
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [city.ref, q]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <GlassInput
+        label="Поиск отделения (№ или адрес)"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        status={invalid && !warehouse ? "danger" : undefined}
+      />
+      <p className="px-1 text-[12px] text-[var(--text-muted)]">
+        Выберите отделение на карте 👇 {loading ? "· обновляем…" : ""}
+      </p>
+      <NpWarehouseMap warehouses={list} selected={warehouse} onSelect={setWarehouse} />
+      {warehouse ? (
+        <div className="glass flex items-start gap-2 rounded-[var(--r-md)] px-3 py-2.5">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-[var(--text)]">
+              {warehouse.number != null ? `№ ${warehouse.number}` : "Отделение"}
+            </div>
+            <div className="text-[12px] text-[var(--text-muted)]">{warehouse.description}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWarehouse(null)}
+            className="tap grid h-7 w-7 shrink-0 place-items-center rounded-full text-[var(--text-muted)]"
+            aria-label="Сбросить"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <p className={`px-1 text-[12px] ${invalid ? "text-[var(--danger)]" : "text-[var(--text-faint)]"}`}>
+          Отделение не выбрано — нажмите точку на карте.
+        </p>
+      )}
     </div>
   );
 }
