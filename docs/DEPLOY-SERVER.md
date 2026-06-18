@@ -117,7 +117,7 @@ docker container prune -f && docker image prune -af
 
 # 1. Залить ТОЛЬКО конфиги (код собирать не нужно — образы готовы)
 git clone -b v2 https://github.com/vladbogun1/tg-shop-miniapp.git maxsolch-v2
-cd maxsolch-v2/tg-shop-v2
+cd maxsolch-v2
 
 # 2. .env (прод): DOCKERHUB_USERNAME=vladbogun1, IMAGE_TAG=v2.0.0 (НЕ latest на 1-й раз!),
 #    DOMAIN=maxsolkh.shop, WEBAPP_BASE_URL=https://maxsolkh.shop:666,
@@ -161,7 +161,7 @@ sudo ufw allow 666/tcp && sudo ufw allow 667/tcp       # 668 — только е
 ## 6. Runbook (эксплуатация v2)
 
 ```bash
-cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2/tg-shop-v2
+cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2
 
 # статус / логи
 docker compose ps
@@ -181,7 +181,7 @@ docker exec tgshop_v2_mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD
 
 # ОТКАТ к старому магазину
 cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app && docker compose start app proxy
-cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2/tg-shop-v2 && docker compose down   # снять v2
+cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && docker compose down   # снять v2
 ```
 
 ---
