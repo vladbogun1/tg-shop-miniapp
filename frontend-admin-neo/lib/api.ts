@@ -191,6 +191,7 @@ export interface OrderCardDto {
   unreadCount: number;
   createdAt: string;
   status: OrderStatus;
+  paid: boolean;
 }
 
 export interface BoardDto {
@@ -198,6 +199,35 @@ export interface BoardDto {
   columns: Record<OrderStatus, OrderCardDto[]>;
   /** REAL total per status within the current range+q filter (may exceed columns length). */
   counts: Record<OrderStatus, number>;
+}
+
+export interface DispatchItem {
+  title: string;
+  variantName?: string | null;
+  quantity: number;
+  priceMinor: number;
+}
+
+/** Seller dispatch row: what to ship + how much COD (наложка) to collect. */
+export interface DispatchOrder {
+  id: string;
+  shortId: string;
+  customerName: string;
+  phone: string;
+  deliveryMethod: DeliveryMethod;
+  npCityName?: string | null;
+  npWarehouseName?: string | null;
+  items: DispatchItem[];
+  totalMinor: number;
+  prepaymentMinor: number;
+  receivedMinor: number;
+  codMinor: number;
+  paid: boolean;
+  currency: string;
+  paymentOptionTitle?: string | null;
+  trackingNumber?: string | null;
+  createdAt: string;
+  approvedAt?: string | null;
 }
 
 export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status";
@@ -239,6 +269,8 @@ export interface OrderDetailDto {
   paymentOptionTitle?: string | null;
   trackingNumber?: string | null;
   rejectReason?: string | null;
+  paid: boolean;
+  paidAt?: string | null;
   items: OrderItemDto[];
   requisites?: PaymentRequisitesDto | null;
   createdAt: string;
@@ -474,6 +506,13 @@ export interface ConversationDto {
 // ============================================================================
 
 export const adminApi = {
+  // ---- dispatch (seller shipping list) ----
+  /** GET /api/admin/orders/dispatch -> approved orders with COD amounts. */
+  dispatch: () => apiGet<DispatchOrder[]>("/api/admin/orders/dispatch"),
+  /** POST /api/admin/orders/dispatch/broadcast -> post the list to the seller Telegram topic. */
+  dispatchBroadcast: () =>
+    apiPost<{ posted: number }>("/api/admin/orders/dispatch/broadcast"),
+
   // ---- orders / board ----
   /** GET /api/admin/orders/board?q=&range= -> { columns } filtered. */
   board: (params: { q?: string; range?: TimeRange } = {}) => {
@@ -509,8 +548,11 @@ export const adminApi = {
   order: (id: string) => apiGet<OrderDetailDto>(`/api/admin/orders/${id}`),
   changeStatus: (
     id: string,
-    body: { status: OrderStatus; trackingNumber?: string; rejectReason?: string }
+    body: { status: OrderStatus; trackingNumber?: string; rejectReason?: string; restock?: boolean }
   ) => apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/status`, body),
+  /** PATCH /api/admin/orders/{id}/paid { paid } -> updated OrderDetailDto. */
+  setPaid: (id: string, paid: boolean) =>
+    apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { paid }),
   deleteOrder: (id: string) => apiDelete<void>(`/api/admin/orders/${id}`),
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */

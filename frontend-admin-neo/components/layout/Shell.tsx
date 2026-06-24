@@ -18,6 +18,7 @@ import {
   X,
   LogOut,
   Store,
+  Truck,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/cn";
 
 const NAV = [
   { href: "/", label: "Заказы", icon: LayoutDashboard, exact: true },
+  { href: "/dispatch", label: "Отправка", icon: Truck },
   { href: "/metrics", label: "Метрики", icon: BarChart3 },
   { href: "/users", label: "Пользователи", icon: Users },
   { href: "/broadcasts", label: "Рассылки", icon: Send },
@@ -40,6 +42,7 @@ const NAV = [
 
 const TITLE: Record<string, string> = {
   "/": "Заказы",
+  "/dispatch": "Отправка",
   "/metrics": "Метрики",
   "/users": "Пользователи",
   "/broadcasts": "Рассылки",

@@ -267,7 +267,11 @@ export default function OrderChatPage() {
             <button
               type="button"
               aria-label="Закрыть"
-              className="tap absolute right-4 flex items-center justify-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightbox(null);
+              }}
+              className="tap absolute right-4 z-20 flex h-11 w-11 items-center justify-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
               style={{ top: "calc(16px + var(--safe-top))" }}
             >
               <X className="h-6 w-6" strokeWidth={2.75} />
@@ -277,14 +281,15 @@ export default function OrderChatPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               transition={spring}
-              className="w-full"
+              className="relative z-10 w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <Image
                 src={lightbox}
                 alt="Вложение"
-                size={1000}
-                className="max-h-[80dvh] w-full rounded-[var(--r)] border-[3px] border-[var(--line)]"
+                size={1600}
+                fit
+                className="max-h-[80dvh] max-w-full rounded-[var(--r)] border-[3px] border-[var(--line)]"
               />
             </motion.div>
           </motion.div>

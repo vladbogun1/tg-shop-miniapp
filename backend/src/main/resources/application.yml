@@ -70,6 +70,7 @@ app:
     notify-topic-closed: ${NOTIFY_TOPIC_CLOSED:0}
     notify-topic-rejected: ${NOTIFY_TOPIC_REJECTED:0}
     notify-topic-chat: ${NOTIFY_TOPIC_CHAT:0}
+    notify-topic-dispatch: ${NOTIFY_TOPIC_DISPATCH:0}
   security:
     jwt-secret: ${JWT_SECRET:Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==}
     jwt-access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:43200}

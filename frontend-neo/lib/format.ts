@@ -60,13 +60,13 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Отклонён",
 };
 
-/** A CSS color token for each status. */
+/** A CSS color token for each status — distinct hues, shared with the admin. */
 export const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
-  NEW: "var(--accent)",
-  APPROVED: "var(--ok)",
-  SHIPPED: "var(--warn)",
-  DELIVERED: "var(--ok)",
-  REJECTED: "var(--danger)",
+  NEW: "var(--st-new)",
+  APPROVED: "var(--st-approved)",
+  SHIPPED: "var(--st-shipped)",
+  DELIVERED: "var(--st-delivered)",
+  REJECTED: "var(--st-rejected)",
 };
 
 /** Ordered status timeline (REJECTED handled separately). */
