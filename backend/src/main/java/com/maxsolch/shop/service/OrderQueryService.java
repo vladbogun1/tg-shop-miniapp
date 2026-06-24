@@ -110,15 +110,14 @@ public class OrderQueryService {
                 o.getDeliveredAt(),
                 o.getRejectedAt(),
                 o.isPaid(),
-                o.getPaidAt());
+                o.getPaidAt(),
+                o.getPrepaymentMinor(),
+                receivedMinor(o));
     }
 
-    /** Amount already received for an order: prepayment (prepay option) or full (full-pay option). */
+    /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
     public static long receivedMinor(Order o) {
-        if (!o.isPaid()) {
-            return 0;
-        }
-        return o.getPrepaymentMinor() > 0 ? o.getPrepaymentMinor() : o.getTotalMinor();
+        return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
     }
 
     /** Cash-on-delivery (наложка) to collect at Nova Poshta. */

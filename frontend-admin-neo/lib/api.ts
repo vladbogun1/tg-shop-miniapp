@@ -271,6 +271,8 @@ export interface OrderDetailDto {
   rejectReason?: string | null;
   paid: boolean;
   paidAt?: string | null;
+  prepaymentMinor: number;
+  receivedMinor: number;
   items: OrderItemDto[];
   requisites?: PaymentRequisitesDto | null;
   createdAt: string;
@@ -551,8 +553,9 @@ export const adminApi = {
     body: { status: OrderStatus; trackingNumber?: string; rejectReason?: string; restock?: boolean }
   ) => apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/status`, body),
   /** PATCH /api/admin/orders/{id}/paid { paid } -> updated OrderDetailDto. */
-  setPaid: (id: string, paid: boolean) =>
-    apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { paid }),
+  /** PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment. */
+  setPaid: (id: string, receivedMinor: number) =>
+    apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { receivedMinor }),
   deleteOrder: (id: string) => apiDelete<void>(`/api/admin/orders/${id}`),
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */

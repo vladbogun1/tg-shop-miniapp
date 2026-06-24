@@ -49,6 +49,7 @@ import { useToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import { OrderChat } from "./OrderChat";
 import { StatusChangeModal, type StatusChangePayload } from "./StatusChangeModal";
+import { PaymentModal } from "./PaymentModal";
 
 interface Props {
   orderId: string | null;
@@ -73,6 +74,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
   const [tab, setTab] = useState<"details" | "chat">(initialTab);
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
   const [changing, setChanging] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   // Re-sync the active tab when the drawer is (re)opened for a new order.
   useEffect(() => {
@@ -102,15 +104,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
     }
   }
 
-  async function togglePaid() {
-    if (!orderId || !order) return;
+  async function applyPayment(receivedMinor: number) {
+    if (!orderId) return;
     setChanging(true);
     try {
-      await adminApi.setPaid(orderId, !order.paid);
-      push(order.paid ? "Оплата снята" : "Заказ отмечен оплаченным", "ok");
+      await adminApi.setPaid(orderId, receivedMinor);
+      push(receivedMinor > 0 ? "Оплата обновлена" : "Оплата снята", "ok");
       qc.invalidateQueries({ queryKey: ["order", orderId] });
       qc.invalidateQueries({ queryKey: ["board"] });
       qc.invalidateQueries({ queryKey: ["orders-table"] });
+      qc.invalidateQueries({ queryKey: ["dispatch"] });
+      setPayOpen(false);
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка смены оплаты", "error");
     } finally {
@@ -242,9 +246,9 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
                         <Wallet className="h-4 w-4" />
                       )
                     }
-                    onClick={togglePaid}
+                    onClick={() => setPayOpen(true)}
                   >
-                    {order.paid ? "Снять оплату" : "Отметить оплаченным"}
+                    {order.paid ? "Изменить оплату" : "Отметить оплаченным"}
                   </Button>
                   {targets.map((target) => {
                     const meta = ACTION_META[target];
@@ -291,6 +295,14 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
         loading={changing}
         onClose={() => setPendingTarget(null)}
         onConfirm={applyStatus}
+      />
+
+      <PaymentModal
+        open={payOpen}
+        order={order ?? null}
+        loading={changing}
+        onClose={() => setPayOpen(false)}
+        onConfirm={applyPayment}
       />
     </>
   );
