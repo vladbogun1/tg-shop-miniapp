@@ -204,7 +204,7 @@ public class AdminOrderController {
     @Operation(summary = "Set the order's paid flag")
     public OrderDetailDto setPaid(@PathVariable String id,
                                   @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
-        Order updated = orderService.markPaid(load(id).getId(), req.paid());
+        Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor());
         return orderQueryService.toDetail(updated);
     }
 

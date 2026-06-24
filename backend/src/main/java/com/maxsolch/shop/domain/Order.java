@@ -110,6 +110,10 @@ public class Order {
     @Column(name = "prepayment_minor", nullable = false)
     private long prepaymentMinor = 0;
 
+    /** How much money has actually been received for this order (drives наложка/COD). */
+    @Column(name = "received_minor", nullable = false)
+    private long receivedMinor = 0;
+
     @Column(name = "tg_user_id")
     private Long tgUserId;
 

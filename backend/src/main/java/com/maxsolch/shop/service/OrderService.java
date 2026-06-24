@@ -211,7 +211,9 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(Instant.now());
-        // Delivered ⇒ paid (COD collected on delivery / prepaid). Never leave delivered-but-unpaid.
+        // Delivered ⇒ fully settled (COD collected on delivery + any prepayment). Record the
+        // full amount as received so наложка is 0 and it's never delivered-but-unpaid.
+        order.setReceivedMinor(order.getTotalMinor());
         if (!order.isPaid()) {
             order.setPaid(true);
             order.setPaidAt(Instant.now());
@@ -300,8 +302,11 @@ public class OrderService {
 
     /** Flip the order's paid flag (customer payment-proof upload, or admin correction). */
     @Transactional
-    public Order markPaid(byte[] orderId, boolean paid) {
+    public Order markPaid(byte[] orderId, long receivedMinor) {
         Order order = get(orderId);
+        long received = Math.max(0, Math.min(receivedMinor, order.getTotalMinor()));
+        order.setReceivedMinor(received);
+        boolean paid = received > 0;
         order.setPaid(paid);
         order.setPaidAt(paid ? Instant.now() : null);
         return orderRepository.save(order);

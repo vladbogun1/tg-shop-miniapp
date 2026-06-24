@@ -130,7 +130,9 @@ public class MeController {
         }
         // Post the proof into the order chat (admins get notified via MessageService).
         messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
-        Order paid = orderService.markPaid(order.getId(), true);
+        // The customer paid the prepayment (prepay option) or the full amount (full-pay option).
+        long received = order.getPrepaymentMinor() > 0 ? order.getPrepaymentMinor() : order.getTotalMinor();
+        Order paid = orderService.markPaid(order.getId(), received);
         return orderQueryService.toDetail(paid);
     }
 
