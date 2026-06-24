@@ -72,7 +72,7 @@ app:
     notify-topic-chat: ${NOTIFY_TOPIC_CHAT:0}
   security:
     jwt-secret: ${JWT_SECRET:Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==}
-    jwt-access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:120}
+    jwt-access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:43200}
     admin-login: ${ADMIN_LOGIN:}
     admin-password: ${ADMIN_PASSWORD:}
     admin-bootstrap-tg-id: ${ADMIN_BOOTSTRAP_TG_ID:1}
