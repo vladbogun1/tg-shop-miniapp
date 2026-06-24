@@ -1,0 +1,20 @@
+# ==========================================================
+#  Neo-Brutalism customer Mini App overlay (LOCAL TEST ONLY).
+#  Rebuilds the existing `frontend-public` service from ./frontend-neo instead of
+#  ./frontend, so the same gateway (:8090) + tunnel + @maxsolch_bot serve the
+#  neo-brutalism theme. Same image name / container / network — nothing else
+#  changes. Run WITH the base + public files:
+#
+#    C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.neo.yml"
+#    docker compose $C build frontend-public
+#    docker compose $C up -d frontend-public
+#    docker compose $C restart gateway
+# ==========================================================
+
+services:
+  frontend-public:
+    build:
+      context: ./frontend-neo
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ""
+        NEXT_PUBLIC_IMAGE_BASE_URL: "/img"
