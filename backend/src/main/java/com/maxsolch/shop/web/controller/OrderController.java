@@ -2,13 +2,16 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.CreateOrderCommand;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CreateOrderRequest;
 import com.maxsolch.shop.web.dto.CreateOrderResponse;
+import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,10 +30,13 @@ public class OrderController {
 
     private final OrderService orderService;
     private final UserRepository userRepository;
+    private final PaymentRequisitesRepository requisitesRepository;
 
-    public OrderController(OrderService orderService, UserRepository userRepository) {
+    public OrderController(OrderService orderService, UserRepository userRepository,
+                           PaymentRequisitesRepository requisitesRepository) {
         this.orderService = orderService;
         this.userRepository = userRepository;
+        this.requisitesRepository = requisitesRepository;
     }
 
     @PostMapping
@@ -59,6 +65,14 @@ public class OrderController {
                 req.npWarehouseName(),
                 req.paymentOptionId());
         Order order = orderService.createOrder(cmd);
-        return new CreateOrderResponse(UuidUtil.toString(order.getId()));
+        PaymentRequisitesDto requisites = requisitesRepository.findById(1)
+                .map(OrderController::toReqDto)
+                .orElse(null);
+        return new CreateOrderResponse(UuidUtil.toString(order.getId()), requisites);
+    }
+
+    private static PaymentRequisitesDto toReqDto(PaymentRequisites r) {
+        return new PaymentRequisitesDto(r.getCardNumber(), r.getIban(), r.getRecipient(),
+                r.getEdrpou(), r.getPurpose(), r.getNote());
     }
 }

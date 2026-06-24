@@ -80,6 +80,18 @@ public class AdminOrderController {
         return Map.of("count", messageService.totalUnreadForAdmin());
     }
 
+    @GetMapping("/conversations")
+    @Operation(summary = "Orders with unread customer messages (notifications inbox)")
+    public List<com.maxsolch.shop.web.dto.ConversationDto> conversations() {
+        return messageService.adminConversations();
+    }
+
+    @PostMapping("/read-all")
+    @Operation(summary = "Mark ALL unread customer messages read")
+    public Map<String, Integer> readAll() {
+        return Map.of("marked", messageService.markAllReadForAdmin());
+    }
+
     @GetMapping("/board")
     @Operation(summary = "Kanban board grouped by status (q + range filtered, newest first, capped)")
     public OrderBoardDto board(@RequestParam(required = false) String q,
@@ -100,6 +112,14 @@ public class AdminOrderController {
             counts.put(status.name(), orderRepository.countByStatusSearch(status, like, idKey, from));
         }
         return new OrderBoardDto(columns, counts);
+    }
+
+    @GetMapping("/by-user/{telegramUserId}")
+    @Operation(summary = "All orders of a single user (newest first) — for the Users profile")
+    public List<OrderCardDto> byUser(@PathVariable long telegramUserId) {
+        return orderRepository.findByTgUserIdOrderByCreatedAtDesc(telegramUserId).stream()
+                .map(o -> orderQueryService.toCard(o, messageService.unreadForAdmin(o.getId())))
+                .toList();
     }
 
     @GetMapping

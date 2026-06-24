@@ -51,6 +51,7 @@ import { StatusChangeModal, type StatusChangePayload } from "./StatusChangeModal
 interface Props {
   orderId: string | null;
   onClose: () => void;
+  initialTab?: "details" | "chat";
 }
 
 const ACTION_META: Record<
@@ -64,10 +65,10 @@ const ACTION_META: Record<
   REJECTED: { label: "Отклонить", icon: Ban, variant: "danger" },
 };
 
-export function OrderDrawer({ orderId, onClose }: Props) {
+export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props) {
   const qc = useQueryClient();
   const { push } = useToast();
-  const [tab, setTab] = useState<"details" | "chat">("details");
+  const [tab, setTab] = useState<"details" | "chat">(initialTab);
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
   const [changing, setChanging] = useState(false);
 

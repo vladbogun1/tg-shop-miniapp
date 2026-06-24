@@ -10,12 +10,13 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Send, FileText } from "lucide-react";
+import { Paperclip, Send, FileText, Check, CheckCheck } from "lucide-react";
 import { adminApi, ApiError, type MessageDto } from "@/lib/api";
 import { subscribeOrderChat } from "@/lib/ws";
-import { resolveImageSrc } from "@/lib/image";
+import { resolveImageSrc, resolveImageFull } from "@/lib/image";
 import { useToast } from "@/lib/toast";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { Lightbox } from "@/components/ui/Lightbox";
 
 function timeOf(iso: string): string {
   const d = new Date(iso);
@@ -24,7 +25,7 @@ function timeOf(iso: string): string {
     : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Bubble({ m }: { m: MessageDto }) {
+function Bubble({ m, onOpenImage }: { m: MessageDto; onOpenImage: (src: string) => void }) {
   if (m.senderType === "SYSTEM") {
     return (
       <div className="my-1 text-center text-[12px] text-[var(--text-faint)]">
@@ -43,12 +44,19 @@ function Bubble({ m }: { m: MessageDto }) {
         }`}
       >
         {m.attachmentUrl && m.type === "PHOTO" && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolveImageSrc(m.attachmentUrl, 480)}
-            alt={m.fileName ?? "вложение"}
-            className="mb-1 max-h-60 rounded-[var(--r-sm)] object-cover"
-          />
+          <button
+            type="button"
+            onClick={() => onOpenImage(resolveImageFull(m.attachmentUrl!))}
+            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)]"
+            title="Открыть полностью"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolveImageSrc(m.attachmentUrl, 480)}
+              alt={m.fileName ?? "вложение"}
+              className="max-h-60 object-cover transition-opacity group-hover:opacity-90"
+            />
+          </button>
         )}
         {m.attachmentUrl && m.type === "FILE" && (
           <a
@@ -63,11 +71,17 @@ function Bubble({ m }: { m: MessageDto }) {
         )}
         {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
         <div
-          className={`mt-1 text-right text-[10px] ${
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
             mine ? "text-[var(--accent-ink)]/70" : "text-[var(--text-faint)]"
           }`}
         >
-          {timeOf(m.createdAt)}
+          <span>{timeOf(m.createdAt)}</span>
+          {mine &&
+            (m.readAt ? (
+              <CheckCheck className="h-3.5 w-3.5" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            ))}
         </div>
       </div>
     </div>
@@ -82,6 +96,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const key = ["messages", orderId];
   const { data: messages = [] } = useQuery({
@@ -123,16 +138,17 @@ export function OrderChat({ orderId }: { orderId: string }) {
     }
   }
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  /** Upload + send a single image (only images are allowed in chat). */
+  async function uploadImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      push("Можно отправлять только изображения", "error");
+      return;
+    }
     setUploading(true);
     try {
       const { key: uploadKey } = await adminApi.upload(file);
-      const isImage = file.type.startsWith("image/");
       const msg = await adminApi.sendMessage(orderId, {
-        type: isImage ? "PHOTO" : "FILE",
+        type: "PHOTO",
         attachmentUrl: uploadKey,
         fileName: file.name,
         mimeType: file.type,
@@ -147,8 +163,28 @@ export function OrderChat({ orderId }: { orderId: string }) {
     }
   }
 
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) uploadImage(file);
+  }
+
+  /** Ctrl/Cmd+V an image from the clipboard → send it as a photo. */
+  function onPaste(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
+      i.type.startsWith("image/")
+    );
+    if (item) {
+      const file = item.getAsFile();
+      if (file) {
+        e.preventDefault();
+        uploadImage(file);
+      }
+    }
+  }
+
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 w-full flex-col">
       <div
         ref={scrollRef}
         className="thin-scroll flex flex-1 flex-col gap-2 overflow-y-auto p-1"
@@ -159,12 +195,14 @@ export function OrderChat({ orderId }: { orderId: string }) {
           </div>
         )}
         {messages.map((m) => (
-          <Bubble key={m.id} m={m} />
+          <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
         ))}
       </div>
 
+      <Lightbox src={lightbox} onClose={() => setLightbox(null)} />
+
       <div className="mt-2 flex items-end gap-2">
-        <input ref={fileRef} type="file" hidden onChange={onFile} />
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
@@ -176,6 +214,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={onPaste}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -183,7 +222,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
             }
           }}
           rows={1}
-          placeholder="Сообщение клиенту…"
+          placeholder="Сообщение клиенту… (можно вставить фото из буфера)"
           className="glass thin-scroll max-h-32 flex-1 resize-none rounded-[var(--r-md)] px-3.5 py-3 text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
         />
         <GlassButton

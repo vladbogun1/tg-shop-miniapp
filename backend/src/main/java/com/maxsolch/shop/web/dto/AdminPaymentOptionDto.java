@@ -7,5 +7,6 @@ public record AdminPaymentOptionDto(
         boolean requiresPrepayment,
         long prepaymentMinor,
         int sortOrder,
-        boolean active) {
+        /** Nullable: when the admin UI omits it, the option is treated as active. */
+        Boolean active) {
 }

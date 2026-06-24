@@ -10,6 +10,7 @@ import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.web.dto.ConversationDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -112,6 +113,69 @@ public class MessageService {
     @Transactional(readOnly = true)
     public long totalUnreadForAdmin() {
         return messageRepository.countUnreadBySenderType(SenderType.CUSTOMER);
+    }
+
+    // ----- conversations inbox (notifications modal) -----
+
+    /** Orders with unread CUSTOMER messages, newest activity first (admin inbox). */
+    @Transactional(readOnly = true)
+    public List<ConversationDto> adminConversations() {
+        return messageRepository.orderIdsWithUnread(SenderType.CUSTOMER).stream()
+                .map(id -> buildConversation(id, SenderType.CUSTOMER))
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                .limit(100)
+                .toList();
+    }
+
+    /** A customer's orders with unread ADMIN messages, newest first (customer inbox). */
+    @Transactional(readOnly = true)
+    public List<ConversationDto> customerConversations(long userId) {
+        return messageRepository.orderIdsWithUnreadForUser(userId, SenderType.ADMIN).stream()
+                .map(id -> buildConversation(id, SenderType.ADMIN))
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                .limit(100)
+                .toList();
+    }
+
+    private ConversationDto buildConversation(byte[] orderId, SenderType unreadSender) {
+        Order o = orderRepository.findById(orderId).orElse(null);
+        if (o == null) {
+            return null;
+        }
+        OrderMessage last = messageRepository.findFirstByOrderIdOrderByCreatedAtDescIdDesc(orderId);
+        long unread = messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, unreadSender);
+        String shortId = UuidUtil.toString(orderId);
+        if (shortId != null && shortId.length() >= 8) {
+            shortId = shortId.substring(0, 8);
+        }
+        return new ConversationDto(
+                UuidUtil.toString(orderId),
+                shortId,
+                o.getCustomerName(),
+                o.getStatus() == null ? null : o.getStatus().name(),
+                last == null ? "" : stripHtml(previewOf(last)),
+                last == null ? null : last.getSenderType().name(),
+                last == null ? o.getCreatedAt() : last.getCreatedAt(),
+                unread);
+    }
+
+    /** Mark ALL unread customer messages read (admin "read all"). Returns count marked. */
+    @Transactional
+    public int markAllReadForAdmin() {
+        return messageRepository.markAllRead(SenderType.CUSTOMER, Instant.now());
+    }
+
+    /** Strip HTML tags + collapse whitespace for short text previews (SYSTEM cards carry HTML). */
+    private static String stripHtml(String s) {
+        if (s == null || s.isBlank()) {
+            return "";
+        }
+        return s.replaceAll("<[^>]+>", "").replace("&amp;", "&").replace("&lt;", "<")
+                .replace("&gt;", ">").replaceAll("\\s+", " ").trim();
     }
 
     private OrderMessage persist(Order order, SenderType senderType, Long senderId, String senderName,

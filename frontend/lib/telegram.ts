@@ -8,7 +8,7 @@
  * <html>). Gracefully no-ops in a plain browser (dev) so `npm run dev` works
  * outside Telegram.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface TgUser {
   id: number;
@@ -64,6 +64,35 @@ function applyTheme(params: Record<string, unknown> | undefined): "dark" | "ligh
   return scheme;
 }
 
+/**
+ * Push our layout below/around the Telegram chrome in fullscreen Mini Apps.
+ * Combines the device safe area (notch) with Telegram's contentSafeAreaInset
+ * (the strip occupied by the close / ⋮ / collapse controls) and writes it into
+ * the --safe-* vars our headers/navbar already use. Uses max(env(), inset) so a
+ * non-fullscreen client keeps its native env() insets.
+ */
+function applySafeAreaInsets(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const wa = (window as unknown as {
+    Telegram?: {
+      WebApp?: {
+        safeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+        contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+      };
+    };
+  }).Telegram?.WebApp;
+  if (!wa) return;
+  const sa = wa.safeAreaInset ?? {};
+  const csa = wa.contentSafeAreaInset ?? {};
+  const root = document.documentElement;
+  const set = (name: string, env: string, px: number) =>
+    root.style.setProperty(name, `max(env(${env}, 0px), ${Math.max(0, px)}px)`);
+  set("--safe-top", "safe-area-inset-top", (sa.top ?? 0) + (csa.top ?? 0));
+  set("--safe-bottom", "safe-area-inset-bottom", (sa.bottom ?? 0) + (csa.bottom ?? 0));
+  set("--safe-left", "safe-area-inset-left", (sa.left ?? 0) + (csa.left ?? 0));
+  set("--safe-right", "safe-area-inset-right", (sa.right ?? 0) + (csa.right ?? 0));
+}
+
 function isLight(hex: string): boolean {
   const m = hex.replace("#", "");
   if (m.length < 6) return false;
@@ -103,6 +132,26 @@ export function useTelegram(): TgState {
 
       try { wa.ready?.(); } catch { /* noop */ }
       try { wa.expand?.(); } catch { /* noop */ }
+
+      // Fullscreen Mini App: request fullscreen on EVERY entry point (menu button,
+      // inline web_app buttons, /start) — but ONLY on phones. On desktop/web
+      // Telegram we keep the normal windowed popup (no forced fullscreen).
+      try {
+        const x = wa as unknown as {
+          platform?: string;
+          onEvent?: (e: string, cb: () => void) => void;
+          requestFullscreen?: () => void;
+          isVersionAtLeast?: (v: string) => boolean;
+        };
+        x.onEvent?.("safeAreaChanged", applySafeAreaInsets);
+        x.onEvent?.("contentSafeAreaChanged", applySafeAreaInsets);
+        x.onEvent?.("fullscreenChanged", applySafeAreaInsets);
+        const isPhone = x.platform === "android" || x.platform === "ios";
+        if (isPhone && (!x.isVersionAtLeast || x.isVersionAtLeast("8.0"))) {
+          x.requestFullscreen?.();
+        }
+        applySafeAreaInsets();
+      } catch { /* noop — older clients without fullscreen support */ }
 
       const u = wa.initDataUnsafe?.user as
         | { id: number; first_name?: string; last_name?: string; username?: string;
@@ -202,48 +251,26 @@ export function parseOrderDeepLink(param: string | null): string | null {
 }
 
 /**
- * useMainButton — drives the Telegram MainButton for a screen's primary action.
- * No-ops in a plain browser (returns isTelegram=false) so callers can render a
- * normal in-page GlassButton fallback.
+ * useMainButton — INTENTIONALLY DISABLED.
+ *
+ * We no longer drive the Telegram native MainButton: it duplicated the in-page
+ * primary button and ate vertical screen space inside the WebApp. Every caller
+ * already renders its own in-page GlassButton, so this hook now only hides any
+ * native MainButton that might be showing and always reports isTelegram=false
+ * (so callers keep showing their in-page button). Signature kept for callers.
  */
-export function useMainButton(opts: {
+export function useMainButton(_opts: {
   text: string;
   onClick: () => void;
   visible?: boolean;
   enabled?: boolean;
   loading?: boolean;
 }): { isTelegram: boolean } {
-  const { text, onClick, visible = true, enabled = true, loading = false } = opts;
-  const cbRef = useRef(onClick);
-  cbRef.current = onClick;
-
-  const wa = typeof window !== "undefined" ? webApp() : null;
-  const isTelegram = Boolean(wa?.MainButton);
-
   useEffect(() => {
     const mb = webApp()?.MainButton;
-    if (!mb) return;
-    const handler = () => cbRef.current();
-    mb.onClick(handler);
-    return () => {
-      mb.offClick(handler);
-      mb.hide();
-    };
+    mb?.hide();
   }, []);
-
-  useEffect(() => {
-    const mb = webApp()?.MainButton;
-    if (!mb) return;
-    mb.setText(text);
-    if (visible) mb.show();
-    else mb.hide();
-    if (enabled && !loading) mb.enable();
-    else mb.disable();
-    if (loading) mb.showProgress?.(false);
-    else mb.hideProgress?.();
-  }, [text, visible, enabled, loading]);
-
-  return { isTelegram };
+  return { isTelegram: false };
 }
 
 /** Best-effort light haptic tap. */

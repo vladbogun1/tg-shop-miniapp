@@ -228,8 +228,9 @@ export interface PaymentRequisites {
   cardNumber?: string;
   iban?: string;
   recipient?: string;
-  taxId?: string;
+  edrpou?: string;
   purpose?: string;
+  note?: string;
 }
 
 /** GET /api/me/orders/{id} */
@@ -284,6 +285,18 @@ export interface SendMessageRequest {
   replyToMessageId?: string;
 }
 
+/** A chat conversation row for the notifications inbox. */
+export interface Conversation {
+  orderId: string;
+  shortId: string;
+  customerName?: string | null;
+  status: OrderStatus;
+  lastPreview: string;
+  lastSenderType?: MessageSenderType | null;
+  lastAt?: string | null;
+  unreadCount: number;
+}
+
 // ---- Payment ----------------------------------------------------------------
 /** GET /api/payment-options */
 export interface PaymentOption {
@@ -301,11 +314,28 @@ export interface NpCity {
   area?: string;
 }
 
+export type NpCategory = "POSTOMAT" | "BRANCH" | "POINT" | "OTHER";
+
 export interface NpWarehouse {
   ref: string;
   number?: string | number;
   description: string;
   type?: string;
+  category?: NpCategory;
+  cityRef?: string | null;
+  cityName?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface NpBboxParams {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+  category?: "all" | "postomat" | "branch" | "point";
+  q?: string;
+  limit?: number;
 }
 
 // ---- Create order -----------------------------------------------------------
@@ -331,6 +361,7 @@ export interface CreateOrderRequest {
 
 export interface CreateOrderResponse {
   orderId: string;
+  requisites?: PaymentRequisites | null;
 }
 
 // ---- typed endpoint helpers -------------------------------------------------
@@ -344,10 +375,25 @@ export const customerApi = {
     apiGet<NpWarehouse[]>(
       `/api/np/warehouses?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`
     ),
+  /** GET /api/np/warehouses/bbox — warehouses inside a map viewport (for the map picker). */
+  getNpWarehousesBbox: (p: NpBboxParams) => {
+    const sp = new URLSearchParams({
+      minLat: String(p.minLat),
+      maxLat: String(p.maxLat),
+      minLng: String(p.minLng),
+      maxLng: String(p.maxLng),
+      category: p.category ?? "all",
+      limit: String(p.limit ?? 1200),
+    });
+    if (p.q) sp.set("q", p.q);
+    return apiGet<NpWarehouse[]>(`/api/np/warehouses/bbox?${sp.toString()}`);
+  },
 
   // Customer (auth required)
   /** GET /api/me/unread-count -> total unread messages across the user's orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/me/unread-count"),
+  /** GET /api/me/conversations -> my orders with unread admin messages. */
+  conversations: () => apiGet<Conversation[]>("/api/me/conversations"),
   createOrder: (body: CreateOrderRequest) =>
     apiPost<CreateOrderResponse>("/api/orders", body),
   getOrders: () => apiGet<OrderSummary[]>("/api/me/orders"),

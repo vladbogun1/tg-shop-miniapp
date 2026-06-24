@@ -101,9 +101,9 @@ function ViewBody({
         transform: "translateZ(0)",
       }}
     >
-      {/* ── TOP ACTION AREA (sticky, no scroll) ───────────────────────────── */}
+      {/* ── TOP ACTION AREA (sticky, no scroll) — no glass, plain header ──── */}
       <div
-        className="glass glass--strong glass--floating relative z-10 shrink-0 rounded-b-[var(--r-lg)] px-4 pb-4"
+        className="relative z-10 shrink-0 rounded-b-[var(--r-lg)] px-4 pb-4"
         style={{ paddingTop: "max(14px, var(--safe-top))" }}
       >
         <div className="mx-auto w-full max-w-[480px]">
@@ -184,7 +184,9 @@ function ViewBody({
       </div>
 
       {/* ── SCROLLABLE region (gallery + description) ─────────────────────── */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(24px+var(--safe-bottom))] pt-4">
+      {/* pb clears the floating TabBar (~44px + 12px margin) so the end of long
+          descriptions can scroll fully into view above the navbar. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(96px+var(--safe-bottom))] pt-4">
         <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
           <Gallery images={product.images} alt={product.title} />
 

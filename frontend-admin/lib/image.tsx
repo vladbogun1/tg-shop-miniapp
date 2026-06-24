@@ -40,6 +40,17 @@ export function imgproxyUrl(key: string, size = 600): string {
   return `${IMAGE_BASE}/insecure/rs:fill:${size}:${size}/plain/s3://${BUCKET}/${key}@webp`;
 }
 
+/**
+ * Full-size source for a lightbox: imgproxy `rs:fit` (preserves aspect ratio,
+ * up to maxSide px) instead of the square `rs:fill` crop used in thumbnails.
+ * Absolute URLs are returned as-is.
+ */
+export function resolveImageFull(value: string, maxSide = 1600): string {
+  if (isAbsoluteUrl(value)) return value.startsWith("//") ? `https:${value}` : value;
+  const key = value.replace(/^\/+/, "");
+  return `${IMAGE_BASE}/insecure/rs:fit:${maxSide}:${maxSide}/plain/s3://${BUCKET}/${key}@webp`;
+}
+
 const BLUR =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23202733'/%3E%3C/svg%3E";
 
