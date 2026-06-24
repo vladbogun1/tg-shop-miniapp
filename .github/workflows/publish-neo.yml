@@ -1,0 +1,52 @@
+name: Publish neo customer image
+
+# Builds ONLY the Neo-Brutalism customer Mini App (./frontend-neo) as an arm64
+# image and pushes it to Docker Hub under a SEPARATE tag (:neo) — it does NOT
+# touch :latest, so a temporary prod swap can be rolled back by simply pulling
+# :latest again. Same-origin (relative URL) build to match the gateway prod setup.
+#
+# Trigger: any push to the redesign branch touching frontend-neo, or manually.
+# Requires repo secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
+
+on:
+  push:
+    branches: ["redesign-neo-brutalism"]
+    paths:
+      - "frontend-neo/**"
+      - ".github/workflows/publish-neo.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag for the neo customer image"
+        required: true
+        default: "neo"
+
+env:
+  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
+
+jobs:
+  publish-neo:
+    name: Build & push neo customer image (${{ github.event.inputs.tag || 'neo' }})
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push neo customer frontend (same-origin)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-neo
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=
+            NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.event.inputs.tag || 'neo' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
