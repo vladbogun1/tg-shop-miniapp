@@ -13,16 +13,18 @@ on:
     branches: ["redesign-neo-brutalism"]
     paths:
       - "frontend-neo/**"
+      - "frontend-admin-neo/**"
       - ".github/workflows/publish-neo.yml"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag for the neo customer image"
+        description: "Image tag for the neo images"
         required: true
         default: "neo"
 
 env:
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
+  ADMIN_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-admin
 
 jobs:
   publish-neo:
@@ -48,5 +50,17 @@ jobs:
             NEXT_PUBLIC_API_BASE_URL=
             NEXT_PUBLIC_IMAGE_BASE_URL=/img
           tags: ${{ env.FRONTEND_IMAGE }}:${{ github.event.inputs.tag || 'neo' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push neo admin frontend (same-origin)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-admin-neo
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=
+            NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          tags: ${{ env.ADMIN_IMAGE }}:${{ github.event.inputs.tag || 'neo' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
