@@ -31,6 +31,14 @@
   --warn: #E8A300;
   --danger: #E5341F;
 
+  /* Order-status hues — distinct & identical to the admin (shared identity).
+     Chips carry an ink border + dark text, so these read on light & dark. */
+  --st-new: #3F8CF5;       /* blue — new */
+  --st-approved: #9B6BFF;  /* violet — approved */
+  --st-shipped: #F5A623;   /* amber — shipped */
+  --st-delivered: #22C07D; /* green — delivered */
+  --st-rejected: #F0503C;  /* red — rejected */
+
   --r: 3px;            /* near-sharp corners */
 
   --safe-top: env(safe-area-inset-top, 0px);

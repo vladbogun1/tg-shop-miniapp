@@ -13,6 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
+  Check,
   ChevronRight,
   MessageCircle,
   PackageOpen,
@@ -165,6 +166,16 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
               {shortOrderId(order.id)}
             </span>
             <StatusChip status={order.status} />
+            {order.paid ? (
+              <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[10px] font-black text-[var(--accent-ink)]">
+                <Check className="h-3 w-3" strokeWidth={3} />
+                Оплачен
+              </span>
+            ) : (
+              <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-black text-[var(--muted)]">
+                Не оплачен
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-[13px] font-semibold text-[var(--muted)]">
             {formatDate(order.createdAt)} · {order.itemsCount} тов.

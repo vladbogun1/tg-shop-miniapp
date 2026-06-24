@@ -39,6 +39,8 @@ public class AppProperties {
         private int notifyTopicRejected;
         /** Forum topic for "new chat message" notifications (customer → admin). */
         private int notifyTopicChat;
+        /** Forum topic for the seller's dispatch list (what to ship + COD amount). */
+        private int notifyTopicDispatch;
     }
 
     @Getter

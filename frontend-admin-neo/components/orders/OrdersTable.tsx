@@ -180,6 +180,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                   />
                   <th className="px-4 py-3">Доставка</th>
                   <th className="px-4 py-3">Оплата</th>
+                  <th className="px-4 py-3 text-center">Платёж</th>
                   <th className="px-4 py-3 text-center">Чат</th>
                   <th className="px-4 py-3 text-right">Действие</th>
                 </tr>
@@ -213,6 +214,11 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       {o.paymentOptionTitle || "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
+                      <Badge tone={o.paid ? "ok" : "warn"}>
+                        {o.paid ? "Оплачен" : "Не оплачен"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       {o.unreadCount > 0 ? (
                         <Badge tone="danger">
                           <MessageCircle className="h-3 w-3" />
@@ -238,7 +244,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12">
+                    <td colSpan={10} className="px-4 py-12">
                       <EmptyState
                         icon={PackageSearch}
                         title="Заказы не найдены"

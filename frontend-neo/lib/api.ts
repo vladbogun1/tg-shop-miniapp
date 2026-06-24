@@ -210,6 +210,7 @@ export interface OrderSummary {
   createdAt: string;
   itemsCount: number;
   unreadCount: number;
+  paid: boolean;
 }
 
 export interface OrderItem {
@@ -253,6 +254,8 @@ export interface OrderDetail {
   rejectReason?: string | null;
   items: OrderItem[];
   requisites?: PaymentRequisites | null;
+  paid: boolean;
+  paidAt?: string | null;
   createdAt: string;
 }
 
@@ -402,6 +405,12 @@ export const customerApi = {
     apiGet<Message[]>(`/api/me/orders/${id}/messages`),
   sendMessage: (id: string, body: SendMessageRequest) =>
     apiPost<Message>(`/api/me/orders/${id}/messages`, body),
+  /** Submit a transfer screenshot → posts it to the order chat and marks the order paid. */
+  payWithProof: (id: string, body: SendMessageRequest) =>
+    apiPost<OrderDetail>(`/api/me/orders/${id}/pay`, body),
+  /** Cancel an unpaid order (NEW/APPROVED) with an optional reason. */
+  cancelOrder: (id: string, reason?: string) =>
+    apiPost<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   markRead: (id: string) =>
     apiPost<void>(`/api/me/orders/${id}/messages/read`),
   uploadAttachment: (file: File) =>

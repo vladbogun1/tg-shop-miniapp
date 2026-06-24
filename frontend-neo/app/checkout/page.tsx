@@ -27,11 +27,12 @@ import {
   MapPin,
   Store,
   Truck,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StepProgress } from "@/components/checkout/StepProgress";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
@@ -774,6 +775,8 @@ function SuccessScreen({ state }: { state: SuccessState }) {
         </section>
       )}
 
+      <PaymentProof orderId={state.orderId} />
+
       <div className="mt-6 flex w-full flex-col gap-3">
         <GlassButton
           variant="accent"
@@ -789,6 +792,93 @@ function SuccessScreen({ state }: { state: SuccessState }) {
         </Link>
       </div>
     </div>
+  );
+}
+
+/**
+ * Payment confirmation — upload a transfer screenshot. On upload it's posted to
+ * the order chat (P2P proof) AND the order is marked paid (customerApi.payWithProof).
+ */
+function PaymentProof({ orderId }: { orderId: string }) {
+  const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setState("uploading");
+    setErr(null);
+    try {
+      const { url } = await customerApi.uploadAttachment(file);
+      await customerApi.payWithProof(orderId, {
+        type: "PHOTO",
+        attachmentUrl: url,
+        fileName: file.name,
+        mimeType: file.type,
+      });
+      haptic();
+      setState("done");
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Не удалось отправить скрин");
+      setState("error");
+    } finally {
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  if (state === "done") {
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c4)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]"
+      >
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
+          <span className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
+            Оплата подтверждена
+          </span>
+        </div>
+        <p className="mt-1 text-[12px] font-bold text-[var(--ink)]">
+          Скрин перевода отправлен в чат заказа. Менеджер всё видит.
+        </p>
+      </motion.section>
+    );
+  }
+
+  return (
+    <section className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]">
+      <h3 className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
+        Подтверждение перевода
+      </h3>
+      <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
+        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, и заказ
+        станет «оплачен».
+      </p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={onFile}
+      />
+      <GlassButton
+        variant="accent"
+        fullWidth
+        loading={state === "uploading"}
+        icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
+        onClick={() => inputRef.current?.click()}
+      >
+        Загрузить скрин перевода
+      </GlassButton>
+      {err && (
+        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
+      )}
+      <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--faint)]">
+        Можно оплатить позже — со страницы заказа
+      </p>
+    </section>
   );
 }
 

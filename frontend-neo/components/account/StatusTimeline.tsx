@@ -63,7 +63,7 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-[12px] font-black"
                 style={{
                   background: done ? stepColor : "var(--surface-2)",
-                  color: done ? "var(--ink)" : "var(--faint)",
+                  color: done ? "var(--accent-ink)" : "var(--faint)",
                   boxShadow: isCurrent
                     ? "3px 3px 0 var(--shadow)"
                     : "none",

@@ -14,6 +14,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "cwd": "frontend"
+    },
+    {
+      "name": "admin-v2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3002,
+      "cwd": "frontend-admin-v2"
     }
   ]
 }

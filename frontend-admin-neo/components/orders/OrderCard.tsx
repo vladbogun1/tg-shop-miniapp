@@ -6,7 +6,14 @@
  * unread chat badge, time. Neo `.card` surface with `nb-press` press-into-shadow.
  */
 import { motion } from "framer-motion";
-import { Truck, Store, CreditCard, MessageCircle, Package2 } from "lucide-react";
+import {
+  Truck,
+  Store,
+  CreditCard,
+  MessageCircle,
+  Package2,
+  Wallet,
+} from "lucide-react";
 import type { OrderCardDto } from "@/lib/api";
 import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
@@ -55,6 +62,10 @@ export function OrderCard({ order, onClick, dragging }: Props) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <Badge tone={order.paid ? "ok" : "warn"}>
+          <Wallet className="h-3 w-3" />
+          {order.paid ? "Оплачен" : "Не оплачен"}
+        </Badge>
         <Badge tone="neutral">
           {order.deliveryMethod === "NOVA_POSHTA" ? (
             <Truck className="h-3 w-3" />

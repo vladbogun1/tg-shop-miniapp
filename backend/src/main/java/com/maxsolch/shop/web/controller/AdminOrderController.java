@@ -13,6 +13,7 @@ import com.maxsolch.shop.service.TimeRange;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.OrderBoardDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
@@ -170,6 +171,18 @@ public class AdminOrderController {
         }
     }
 
+    @GetMapping("/dispatch")
+    @Operation(summary = "Seller dispatch list — approved orders with COD (наложка) amounts")
+    public List<DispatchOrderDto> dispatch() {
+        return orderQueryService.dispatchList();
+    }
+
+    @PostMapping("/dispatch/broadcast")
+    @Operation(summary = "Post the dispatch cards of all approved orders to the seller Telegram topic")
+    public Map<String, Integer> dispatchBroadcast() {
+        return Map.of("posted", orderService.broadcastDispatch());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Order detail")
     public OrderDetailDto detail(@PathVariable String id) {
@@ -181,8 +194,17 @@ public class AdminOrderController {
     public OrderDetailDto updateStatus(@PathVariable String id,
                                        @Valid @RequestBody UpdateOrderStatusRequest req) {
         OrderStatus target = parseStatus(req.status());
+        boolean restock = req.restock() == null || req.restock();
         Order updated = orderService.changeStatus(load(id).getId(), target,
-                req.trackingNumber(), req.rejectReason());
+                req.trackingNumber(), req.rejectReason(), restock);
+        return orderQueryService.toDetail(updated);
+    }
+
+    @PatchMapping("/{id}/paid")
+    @Operation(summary = "Set the order's paid flag")
+    public OrderDetailDto setPaid(@PathVariable String id,
+                                  @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
+        Order updated = orderService.markPaid(load(id).getId(), req.paid());
         return orderQueryService.toDetail(updated);
     }
 

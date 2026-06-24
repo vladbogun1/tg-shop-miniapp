@@ -8,7 +8,7 @@ export function StatusChip({ status }: { status: OrderStatus }) {
   const color = ORDER_STATUS_COLOR[status];
   return (
     <span
-      className="inline-flex items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-[var(--ink)]"
+      className="inline-flex items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-[var(--accent-ink)]"
       style={{ background: color }}
     >
       {ORDER_STATUS_LABEL[status]}

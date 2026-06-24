@@ -13,11 +13,14 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { Toggle } from "@/components/ui/Toggle";
 
 export interface StatusChangePayload {
   status: OrderStatus;
   trackingNumber?: string;
   rejectReason?: string;
+  /** REJECTED only: return items to stock (skip when goods aren't sellable). */
+  restock?: boolean;
 }
 
 interface Props {
@@ -31,6 +34,7 @@ interface Props {
 export function StatusChangeModal({ open, target, onClose, onConfirm, loading }: Props) {
   const [ttn, setTtn] = useState("");
   const [reason, setReason] = useState("");
+  const [restock, setRestock] = useState(true);
 
   if (!target) return null;
   const needsTtn = target === "SHIPPED";
@@ -44,9 +48,11 @@ export function StatusChangeModal({ open, target, onClose, onConfirm, loading }:
       status: target,
       trackingNumber: needsTtn ? ttn.trim() : undefined,
       rejectReason: needsReason ? reason.trim() : undefined,
+      restock: needsReason ? restock : undefined,
     });
     setTtn("");
     setReason("");
+    setRestock(true);
   }
 
   return (
@@ -78,12 +84,24 @@ export function StatusChangeModal({ open, target, onClose, onConfirm, loading }:
         />
       )}
       {needsReason && (
-        <Textarea
-          label="Причина отклонения (обязательно)"
-          rows={3}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
+        <div className="flex flex-col gap-3">
+          <Textarea
+            label="Причина отклонения / отмены (обязательно)"
+            rows={3}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <div className="rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+            <Toggle
+              checked={restock}
+              onChange={setRestock}
+              label="Вернуть товар на склад (+1 к остатку)"
+            />
+            <p className="mt-1.5 text-[12px] text-[var(--text-muted)]">
+              Выключите, если товар вернулся не в товарном виде и продавать его снова нельзя.
+            </p>
+          </div>
+        </div>
       )}
       {!needsTtn && !needsReason && (
         <p className="text-[14px] text-[var(--text-muted)]">

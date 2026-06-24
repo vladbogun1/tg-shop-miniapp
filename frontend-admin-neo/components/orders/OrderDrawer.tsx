@@ -22,6 +22,8 @@ import {
   Ban,
   Trash2,
   ExternalLink,
+  Wallet,
+  WalletMinimal,
 } from "lucide-react";
 import {
   adminApi,
@@ -100,6 +102,22 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
     }
   }
 
+  async function togglePaid() {
+    if (!orderId || !order) return;
+    setChanging(true);
+    try {
+      await adminApi.setPaid(orderId, !order.paid);
+      push(order.paid ? "Оплата снята" : "Заказ отмечен оплаченным", "ok");
+      qc.invalidateQueries({ queryKey: ["order", orderId] });
+      qc.invalidateQueries({ queryKey: ["board"] });
+      qc.invalidateQueries({ queryKey: ["orders-table"] });
+    } catch (e) {
+      push(e instanceof ApiError ? e.message : "Ошибка смены оплаты", "error");
+    } finally {
+      setChanging(false);
+    }
+  }
+
   function requestStatus(target: OrderStatus) {
     // SHIPPED/REJECTED need a modal; others apply immediately.
     if (target === "SHIPPED" || target === "REJECTED") setPendingTarget(target);
@@ -142,6 +160,21 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
         {order ? shortId(order.id) : "Заказ"}
       </span>
       {order && <StatusBadge status={order.status} />}
+      {order && (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--accent-ink)]",
+            order.paid ? "bg-[var(--ok)]" : "bg-[var(--warn)]"
+          )}
+        >
+          {order.paid ? (
+            <Wallet className="h-3 w-3" />
+          ) : (
+            <WalletMinimal className="h-3 w-3" />
+          )}
+          {order.paid ? "Оплачен" : "Не оплачен"}
+        </span>
+      )}
     </div>
   );
 
@@ -196,8 +229,23 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
               </div>
 
               {/* Action bar */}
-              {order && (targets.length > 0 || isTerminal) && (
+              {order && (
                 <div className="flex flex-wrap items-center gap-2 border-t-[3px] border-[var(--border)] px-5 py-4">
+                  <Button
+                    size="sm"
+                    variant={order.paid ? "surface" : "accent"}
+                    loading={changing && pendingTarget === null}
+                    icon={
+                      order.paid ? (
+                        <WalletMinimal className="h-4 w-4" />
+                      ) : (
+                        <Wallet className="h-4 w-4" />
+                      )
+                    }
+                    onClick={togglePaid}
+                  >
+                    {order.paid ? "Снять оплату" : "Отметить оплаченным"}
+                  </Button>
                   {targets.map((target) => {
                     const meta = ACTION_META[target];
                     const Icon = meta.icon;

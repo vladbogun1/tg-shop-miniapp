@@ -12,5 +12,6 @@ public record OrderCardDto(
         String paymentOptionTitle,
         long unreadCount,
         Instant createdAt,
-        String status) {
+        String status,
+        boolean paid) {
 }

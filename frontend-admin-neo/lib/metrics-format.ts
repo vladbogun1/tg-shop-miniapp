@@ -35,11 +35,14 @@ export function hoursLabel(h: number | null | undefined): string {
    cream and dark grey backgrounds (recharts can't read CSS vars). */
 export const CHART_COLORS = {
   accent: "#FF5A2C",
-  new: "#2F6BFF",
-  approved: "#16B36B",
-  shipped: "#E8A300",
-  delivered: "#12B886",
-  rejected: "#E5341F",
+  // Status hues — kept in sync with the --st-* tokens in globals.css so charts,
+  // the kanban board and status chips all use the same identity. approved
+  // (violet) is now clearly distinct from delivered (green).
+  new: "#3F8CF5",
+  approved: "#9B6BFF",
+  shipped: "#F5A623",
+  delivered: "#22C07D",
+  rejected: "#F0503C",
   grid: "rgba(128,128,128,0.28)",
   axis: "#8b8b8b",
   text: "#8b8b8b",

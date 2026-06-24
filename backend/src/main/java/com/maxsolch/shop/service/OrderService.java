@@ -101,6 +101,7 @@ public class OrderService {
                     .orElseThrow(() -> new BadRequestException("unknown payment option"));
             order.setPaymentOptionId(po.getId());
             order.setPaymentOptionTitle(po.getTitle());
+            order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
         }
 
         long subtotal = 0;
@@ -182,7 +183,10 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.APPROVED);
         order.setApprovedAt(Instant.now());
-        return afterTransition(order);
+        Order saved = afterTransition(order);
+        // Post a dispatch card (what to ship / how much COD to collect) to the seller topic.
+        notificationService.onApprovedDispatch(saved);
+        return saved;
     }
 
     @Transactional
@@ -207,19 +211,50 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(Instant.now());
+        // Delivered ⇒ paid (COD collected on delivery / prepaid). Never leave delivered-but-unpaid.
+        if (!order.isPaid()) {
+            order.setPaid(true);
+            order.setPaidAt(Instant.now());
+        }
         return afterTransition(order);
     }
 
+    /**
+     * Customer-initiated cancellation — allowed only while the order is NOT paid and still
+     * NEW/APPROVED (e.g. a card problem). Restores stock and moves the order to REJECTED
+     * with a customer reason.
+     */
     @Transactional
-    public Order reject(byte[] orderId, String reason) {
+    public Order cancelByCustomer(byte[] orderId, String reason) {
+        Order order = get(orderId);
+        if (order.isPaid()) {
+            throw new BadRequestException("оплаченный заказ нельзя отменить — напишите в чат");
+        }
+        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+            throw new BadRequestException("этот заказ уже нельзя отменить");
+        }
+        restoreStock(order);
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(Instant.now());
+        String r = reason == null ? "" : reason.trim();
+        order.setRejectReason(r.isBlank() ? "Отменён покупателем" : "Отменён покупателем: " + r);
+        return afterTransition(order);
+    }
+
+    /**
+     * Admin reject/cancel. Allowed from ANY status (incl. DELIVERED — e.g. a customer
+     * return at Nova Poshta). {@code restock} controls whether the items go back on the
+     * shelf (skip it when the returned goods are not in sellable condition).
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, boolean restock) {
         Order order = get(orderId);
         if (order.getStatus() == OrderStatus.REJECTED) {
             throw new BadRequestException("order already rejected");
         }
-        if (order.getStatus() == OrderStatus.DELIVERED) {
-            throw new BadRequestException("delivered orders cannot be rejected");
+        if (restock) {
+            restoreStock(order);
         }
-        restoreStock(order);
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(Instant.now());
         order.setRejectReason(reason);
@@ -228,12 +263,13 @@ public class OrderService {
 
     /** Dispatcher used by the admin board / status PATCH endpoint. */
     @Transactional
-    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber, String reason) {
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, boolean restock) {
         return switch (target) {
             case APPROVED -> approve(orderId);
             case SHIPPED -> ship(orderId, trackingNumber);
             case DELIVERED -> deliver(orderId);
-            case REJECTED -> reject(orderId, reason);
+            case REJECTED -> reject(orderId, reason, restock);
             case NEW -> throw new BadRequestException("cannot transition back to NEW");
         };
     }
@@ -244,12 +280,44 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order not found"));
     }
 
+    /**
+     * Sync the seller "К ОТПРАВКЕ" topic with the current APPROVED orders. For each order we
+     * reconcile its card with Telegram: missing cards are posted, manually-deleted cards are
+     * re-posted, and existing cards are refreshed in place. Idempotent — pressing the button
+     * repeatedly never creates duplicates. Returns how many cards were (re)posted.
+     */
+    @Transactional
+    public int broadcastDispatch() {
+        List<Order> approved = orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED);
+        int posted = 0;
+        for (Order o : approved) {
+            if (notificationService.syncDispatchCard(o)) {
+                posted++;
+            }
+        }
+        return posted;
+    }
+
+    /** Flip the order's paid flag (customer payment-proof upload, or admin correction). */
+    @Transactional
+    public Order markPaid(byte[] orderId, boolean paid) {
+        Order order = get(orderId);
+        order.setPaid(paid);
+        order.setPaidAt(paid ? Instant.now() : null);
+        return orderRepository.save(order);
+    }
+
     // ----- helpers -----
 
     private Order afterTransition(Order order) {
         Order saved = orderRepository.save(order);
         notificationService.onStatusChanged(saved);
         notificationService.notifyCustomerStatus(saved);
+        // Once an order leaves APPROVED (shipped / delivered / cancelled) it no longer belongs in
+        // the seller's "К ОТПРАВКЕ" topic — remove its dispatch card. Re-approval re-posts it.
+        if (saved.getStatus() != OrderStatus.APPROVED) {
+            notificationService.removeDispatchCard(saved);
+        }
         return saved;
     }
 

@@ -93,8 +93,9 @@ export function MessageBubble({
             <Image
               src={msg.attachmentUrl}
               alt={msg.fileName ?? "Фото"}
-              size={600}
-              className="max-h-72 w-full"
+              size={1000}
+              fit
+              className="max-h-72 max-w-full"
             />
           </button>
         )}

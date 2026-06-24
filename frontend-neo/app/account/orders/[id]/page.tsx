@@ -15,7 +15,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  Ban,
   Check,
+  CheckCircle2,
   Copy,
   CreditCard,
   MapPin,
@@ -24,15 +26,17 @@ import {
   Receipt,
   Store,
   Truck,
+  Upload,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
+  ApiError,
   customerApi,
   type OrderDetail,
   type PaymentRequisites,
@@ -110,13 +114,23 @@ export default function OrderDetailPage() {
         </motion.div>
       )}
 
-      {data && <OrderBody order={data} id={id} />}
+      {data && <OrderBody order={data} id={id} onPaid={() => void refetch()} />}
     </div>
   );
 }
 
-function OrderBody({ order, id }: { order: OrderDetail; id: string }) {
+function OrderBody({
+  order,
+  id,
+  onPaid,
+}: {
+  order: OrderDetail;
+  id: string;
+  onPaid: () => void;
+}) {
   const isPickup = order.deliveryMethod === "PICKUP";
+  const cancelable =
+    !order.paid && (order.status === "NEW" || order.status === "APPROVED");
 
   return (
     <>
@@ -129,9 +143,12 @@ function OrderBody({ order, id }: { order: OrderDetail; id: string }) {
       >
         {/* status + timeline */}
         <motion.section variants={riseItem} className="nb p-4">
-          <h3 className="nb-up mb-3 text-[12px] font-black text-[var(--faint)]">
-            Статус
-          </h3>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
+              Статус
+            </h3>
+            <PaidBadge paid={order.paid} />
+          </div>
           <StatusTimeline status={order.status} />
 
           {order.status === "REJECTED" && order.rejectReason && (
@@ -294,6 +311,30 @@ function OrderBody({ order, id }: { order: OrderDetail; id: string }) {
             </div>
           </motion.section>
         )}
+
+        {/* payment proof / paid state */}
+        <motion.section variants={riseItem}>
+          {order.paid ? (
+            <div className="nb flex items-center gap-2 bg-[var(--c4)] p-4">
+              <CheckCircle2
+                className="h-5 w-5 shrink-0 text-[var(--accent-ink)]"
+                strokeWidth={2.75}
+              />
+              <span className="nb-up text-[14px] font-black text-[var(--accent-ink)]">
+                Оплачено
+              </span>
+            </div>
+          ) : (
+            <PaymentProof orderId={order.id} onPaid={onPaid} />
+          )}
+        </motion.section>
+
+        {/* cancel (only while unpaid + NEW/APPROVED) */}
+        {cancelable && (
+          <motion.section variants={riseItem}>
+            <CancelOrder orderId={order.id} onDone={onPaid} />
+          </motion.section>
+        )}
       </motion.div>
 
       {/* sticky chat CTA — within thumb reach, above the TabBar */}
@@ -428,6 +469,208 @@ function CopyButton({ value, label }: { value: string; label: string }) {
         <Copy className="h-4 w-4 text-[var(--muted)]" strokeWidth={2.5} />
       )}
     </button>
+  );
+}
+
+/** Neo paid-status badge — green «ОПЛАЧЕН» with a check, else muted «НЕ ОПЛАЧЕН». */
+function PaidBadge({ paid }: { paid: boolean }) {
+  if (paid) {
+    return (
+      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
+        <Check className="h-3 w-3" strokeWidth={3} />
+        Оплачен
+      </span>
+    );
+  }
+  return (
+    <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-black text-[var(--muted)]">
+      Не оплачен
+    </span>
+  );
+}
+
+/**
+ * Payment confirmation — upload a transfer screenshot. On upload it's posted to
+ * the order chat (P2P proof) AND the order is marked paid (customerApi.payWithProof).
+ * On success the order query is refetched so the badge flips to «ОПЛАЧЕН».
+ */
+function PaymentProof({
+  orderId,
+  onPaid,
+}: {
+  orderId: string;
+  onPaid: () => void;
+}) {
+  const [state, setState] = useState<"idle" | "uploading" | "error">("idle");
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setState("uploading");
+    setErr(null);
+    try {
+      const { url } = await customerApi.uploadAttachment(file);
+      await customerApi.payWithProof(orderId, {
+        type: "PHOTO",
+        attachmentUrl: url,
+        fileName: file.name,
+        mimeType: file.type,
+      });
+      haptic();
+      setState("idle");
+      onPaid();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Не удалось отправить скрин");
+      setState("error");
+    } finally {
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="nb p-4 text-left">
+      <h3 className="nb-up flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
+        <Upload className="h-4 w-4" strokeWidth={2.5} /> Подтверждение перевода
+      </h3>
+      <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
+        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, и заказ
+        станет «оплачен».
+      </p>
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+      <GlassButton
+        variant="accent"
+        fullWidth
+        loading={state === "uploading"}
+        icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
+        onClick={() => inputRef.current?.click()}
+      >
+        Загрузить скрин перевода
+      </GlassButton>
+      {err && (
+        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
+      )}
+    </div>
+  );
+}
+
+const CANCEL_REASONS = [
+  "Проблема с оплатой / картой",
+  "Передумал(а)",
+  "Оформил(а) по ошибке",
+  "Нашёл(ла) дешевле",
+  "Другое",
+];
+
+/** Cancel an unpaid order with a reason picker (NEW/APPROVED only). */
+function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<string | null>(null);
+  const [other, setOther] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function confirm() {
+    const finalReason = reason === "Другое" ? other.trim() : reason ?? undefined;
+    setBusy(true);
+    setErr(null);
+    try {
+      haptic();
+      await customerApi.cancelOrder(orderId, finalReason || undefined);
+      onDone();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Не удалось отменить заказ");
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          haptic();
+          setOpen(true);
+        }}
+        className="tap nb-flat nb-press flex w-full items-center justify-center gap-2 py-3 text-[13px] font-extrabold uppercase tracking-wide text-[var(--danger)]"
+        style={{ borderColor: "var(--danger)" }}
+      >
+        <Ban className="h-4 w-4" strokeWidth={2.75} /> Отменить заказ
+      </button>
+    );
+  }
+
+  const confirmDisabled =
+    busy || !reason || (reason === "Другое" && !other.trim());
+
+  return (
+    <div className="nb p-4">
+      <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
+        Причина отмены
+      </h3>
+      <div className="mt-3 flex flex-col gap-2">
+        {CANCEL_REASONS.map((r) => {
+          const on = reason === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => {
+                haptic();
+                setReason(r);
+              }}
+              className={`tap flex items-center gap-2.5 border-[2.5px] border-[var(--line)] px-3 py-2.5 text-left text-[13px] font-bold ${
+                on
+                  ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                  : "bg-[var(--surface)] text-[var(--ink)]"
+              }`}
+            >
+              <span
+                className={`grid h-4 w-4 shrink-0 place-items-center border-[2px] border-[var(--line)] ${
+                  on ? "bg-[var(--accent-ink)]" : ""
+                }`}
+              >
+                {on && (
+                  <Check className="h-3 w-3 text-[var(--accent)]" strokeWidth={3} />
+                )}
+              </span>
+              {r}
+            </button>
+          );
+        })}
+      </div>
+      {reason === "Другое" && (
+        <textarea
+          value={other}
+          onChange={(e) => setOther(e.target.value)}
+          placeholder="Опишите причину"
+          rows={2}
+          className="mt-2 w-full resize-none border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+        />
+      )}
+      {err && (
+        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
+      )}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="tap nb-flat nb-press flex-1 py-2.5 text-[13px] font-extrabold uppercase text-[var(--ink)]"
+        >
+          Назад
+        </button>
+        <button
+          type="button"
+          disabled={confirmDisabled}
+          onClick={confirm}
+          className="tap nb-press flex-1 border-[3px] border-[var(--line)] py-2.5 text-[13px] font-black uppercase text-white shadow-[4px_4px_0_var(--shadow)] disabled:opacity-50"
+          style={{ background: "var(--danger)" }}
+        >
+          {busy ? "…" : "Отменить заказ"}
+        </button>
+      </div>
+    </div>
   );
 }
 

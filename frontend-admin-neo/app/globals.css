@@ -45,11 +45,13 @@
   --danger-ink: #7A1A10;
   --info: #2F6BFF;
 
-  --st-new: #2F6BFF;
-  --st-approved: #16B36B;
-  --st-shipped: #E8A300;
-  --st-delivered: #12B886;
-  --st-rejected: #E5341F;
+  /* Distinct, identifiable status hues — same in light & dark (chips/bars carry
+     an ink border so they read on both backgrounds; chip text is --accent-ink). */
+  --st-new: #3F8CF5;       /* blue — incoming */
+  --st-approved: #9B6BFF;  /* violet — confirmed */
+  --st-shipped: #F5A623;   /* amber — in transit */
+  --st-delivered: #22C07D; /* green — success */
+  --st-rejected: #F0503C;  /* red — cancelled */
 
   --r-sm: 3px;
   --r-md: 3px;
@@ -97,11 +99,8 @@
   --danger: #FF5747;
   --info: #5B8BFF;
 
-  --st-new: #5B8BFF;
-  --st-approved: #2BD489;
-  --st-shipped: #FFB627;
-  --st-delivered: #2BD489;
-  --st-rejected: #FF5747;
+  /* Status hues stay identical to light theme (inherited from :root) so the
+     5 statuses are consistent everywhere — do not override them here. */
 }
 
 @theme inline {
