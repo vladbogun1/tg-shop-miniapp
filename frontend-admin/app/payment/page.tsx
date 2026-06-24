@@ -173,44 +173,55 @@ export default function PaymentPage() {
           <Skeleton className="h-60" />
         ) : (
           <div className="flex flex-col gap-3">
-            <GlassInput label="Заголовок" value={req.title ?? ""} onChange={(e) => setReq({ ...req, title: e.target.value })} />
             <GlassInput
               label="Номер карты"
               value={req.cardNumber ?? ""}
               onChange={(e) => setReq({ ...req, cardNumber: e.target.value })}
             />
             <GlassInput
+              label="IBAN"
+              value={req.iban ?? ""}
+              onChange={(e) => setReq({ ...req, iban: e.target.value })}
+            />
+            <GlassInput
               label="Получатель"
               value={req.recipient ?? ""}
               onChange={(e) => setReq({ ...req, recipient: e.target.value })}
             />
-            <GlassInput label="Банк" value={req.bank ?? ""} onChange={(e) => setReq({ ...req, bank: e.target.value })} />
+            <GlassInput
+              label="РНОКПП / ЕДРПОУ"
+              value={req.edrpou ?? ""}
+              onChange={(e) => setReq({ ...req, edrpou: e.target.value })}
+            />
+            <GlassInput
+              label="Назначение платежа"
+              value={req.purpose ?? ""}
+              onChange={(e) => setReq({ ...req, purpose: e.target.value })}
+            />
             <GlassTextarea
-              label="Инструкция"
-              rows={3}
-              value={req.instructions ?? ""}
-              onChange={(e) => setReq({ ...req, instructions: e.target.value })}
+              label="Примечание (необязательно)"
+              rows={2}
+              value={req.note ?? ""}
+              onChange={(e) => setReq({ ...req, note: e.target.value })}
             />
 
-            {/* Live preview */}
+            {/* Live preview — matches what the customer sees */}
             <div>
-              <div className="mb-2 text-[12px] font-medium text-[var(--text-muted)]">Превью</div>
+              <div className="mb-2 text-[12px] font-medium text-[var(--text-muted)]">Превью (как у клиента)</div>
               <div className="glass glass--strong rounded-[var(--r-md)] p-4">
                 <div className="mb-2 flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
                   <CreditCard className="h-4 w-4 text-[var(--accent)]" />
-                  {req.title || "Реквизиты для оплаты"}
+                  Реквизиты для оплаты
                 </div>
-                {req.cardNumber && (
-                  <div className="font-mono text-[16px] tracking-wider text-[var(--text)]">
-                    {req.cardNumber}
-                  </div>
-                )}
-                {req.recipient && <div className="text-[13px] text-[var(--text-muted)]">{req.recipient}</div>}
-                {req.bank && <div className="text-[13px] text-[var(--text-faint)]">{req.bank}</div>}
-                {req.instructions && (
-                  <p className="mt-2 whitespace-pre-wrap text-[13px] text-[var(--text-muted)]">
-                    {req.instructions}
-                  </p>
+                <div className="flex flex-col gap-2">
+                  {req.cardNumber && <ReqRow label="Карта" value={req.cardNumber} mono />}
+                  {req.iban && <ReqRow label="IBAN" value={req.iban} mono />}
+                  {req.recipient && <ReqRow label="Получатель" value={req.recipient} />}
+                  {req.edrpou && <ReqRow label="РНОКПП / ЕДРПОУ" value={req.edrpou} mono />}
+                  {req.purpose && <ReqRow label="Назначение" value={req.purpose} />}
+                </div>
+                {req.note && (
+                  <p className="mt-2 whitespace-pre-wrap text-[12px] text-[var(--text-faint)]">{req.note}</p>
                 )}
               </div>
             </div>
@@ -227,6 +238,15 @@ export default function PaymentPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function ReqRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
+      <div className={`text-[14px] text-[var(--text)] ${mono ? "font-mono tracking-wide" : ""}`}>{value}</div>
     </div>
   );
 }

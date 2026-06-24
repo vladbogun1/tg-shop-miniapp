@@ -64,7 +64,8 @@ public class AdminPaymentController {
             po.setRequiresPrepayment(dto.requiresPrepayment());
             po.setPrepaymentMinor(dto.prepaymentMinor());
             po.setSortOrder(dto.sortOrder() == 0 ? order : dto.sortOrder());
-            po.setActive(dto.active());
+            // No active toggle in the admin UI yet → an option present in the list is active.
+            po.setActive(dto.active() == null || dto.active());
             paymentOptionRepository.save(po);
             order++;
         }

@@ -181,8 +181,8 @@ function OrderBody({ order, id }: { order: OrderDetail; id: string }) {
             {order.requisites.recipient && (
               <InfoRow label="Получатель" value={order.requisites.recipient} />
             )}
-            {order.requisites.taxId && (
-              <InfoRow label="РНОКПП" value={order.requisites.taxId} />
+            {order.requisites.edrpou && (
+              <InfoRow label="РНОКПП" value={order.requisites.edrpou} />
             )}
             {order.requisites.purpose && (
               <InfoRow label="Назначение" value={order.requisites.purpose} />
