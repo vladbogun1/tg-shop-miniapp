@@ -1,12 +1,12 @@
-name: Publish neo customer image
+name: Publish neo images
 
-# Builds ONLY the Neo-Brutalism customer Mini App (./frontend-neo) as an arm64
-# image and pushes it to Docker Hub under a SEPARATE tag (:neo) — it does NOT
-# touch :latest, so a temporary prod swap can be rolled back by simply pulling
-# :latest again. Same-origin (relative URL) build to match the gateway prod setup.
+# Builds the Neo-Brutalism stack (backend + customer + admin) as arm64 images and
+# pushes them to Docker Hub under a SEPARATE tag (:neo) — it does NOT touch :latest,
+# so a temporary prod swap can be rolled back by simply pulling :latest again.
+# Frontends are same-origin (relative URL) to match the gateway prod setup.
 #
-# Trigger: any push to the redesign branch touching frontend-neo, or manually.
-# Requires repo secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
+# Trigger: push to the redesign branch touching backend / frontend-neo /
+# frontend-admin-neo, or manually. Requires secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
 
 on:
   push:
@@ -14,6 +14,7 @@ on:
     paths:
       - "frontend-neo/**"
       - "frontend-admin-neo/**"
+      - "backend/**"
       - ".github/workflows/publish-neo.yml"
   workflow_dispatch:
     inputs:
@@ -23,6 +24,7 @@ on:
         default: "neo"
 
 env:
+  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-backend
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
   ADMIN_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-admin
 
@@ -40,6 +42,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push neo backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.event.inputs.tag || 'neo' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build & push neo customer frontend (same-origin)
         uses: docker/build-push-action@v6
