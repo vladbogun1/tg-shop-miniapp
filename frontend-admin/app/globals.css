@@ -1,142 +1,116 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   Liquid Glass v2 — Admin tokens
-   Same backdrop-filter-independent material as the customer app, tuned for
-   dense desktop layouts: slightly denser fills, marginally smaller radii.
-   Glass reads correctly WITHOUT backdrop-filter (opaque tint + sheen + edge
-   hairlines + ambient shadow); blur is progressive enhancement only.
+   NEO-BRUTALISM — admin design system
+   ----------------------------------------------------------------------------
+   Thick ink borders, hard offset shadows (no blur), near-sharp corners, raw
+   bold color, heavy type. Light by default; dark (greyer, so the hard shadows
+   read) via [data-theme="dark"]. Token names are kept identical to the previous
+   theme so every component restyles via tokens + utility classes.
    ============================================================================ */
 
-:root {
-  color-scheme: dark;
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F1E6;
+  --bg-2: #EFEBDD;
+  --surface: #FFFFFF;
+  --surface-2: #F1EEE3;
+  --surface-3: #E7E2D2;
+  --surface-hover: #EDE9DB;
 
-  /* ---- Scene (living, colorful background) ------------------------------ */
-  --bg-base: #0b1020;
-  --bg-solid: #0b1020;
-  --bg-hue-2: #7b5cff;
-  --bg-hue-3: #16d6c6;
-  --bg-hue-4: #ff5c9d;
-  --bg-scene:
-    radial-gradient(50% 48% at 6% 0%,   color-mix(in srgb, var(--accent) 42%, transparent) 0%, transparent 55%),
-    radial-gradient(48% 46% at 100% 4%, color-mix(in srgb, var(--bg-hue-2) 38%, transparent) 0%, transparent 55%),
-    radial-gradient(48% 48% at 90% 96%, color-mix(in srgb, var(--bg-hue-3) 32%, transparent) 0%, transparent 55%),
-    radial-gradient(46% 46% at 8% 98%,  color-mix(in srgb, var(--bg-hue-4) 28%, transparent) 0%, transparent 55%),
-    linear-gradient(160deg, #111933 0%, var(--bg-base) 55%);
-  --bg-scene-accent:
-    radial-gradient(40% 40% at 80% 18%, color-mix(in srgb, var(--bg-hue-3) 30%, transparent) 0%, transparent 60%),
-    radial-gradient(40% 40% at 16% 82%, color-mix(in srgb, var(--bg-hue-4) 26%, transparent) 0%, transparent 60%);
+  --line: #141414;
+  --border: #141414;
+  --border-2: #141414;
+  --border-strong: #141414;
+  --shadow: #141414;
 
-  /* ---- Glass material — translucent + blur (a touch denser than customer
-     for data readability over busy tables/board). --------------------------- */
-  --glass-bg: rgba(18, 25, 44, 0.52);
-  --glass-bg-strong: rgba(20, 28, 48, 0.66);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 22%, rgba(255, 255, 255, 0) 40%);
-  --glass-sheen-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 24%, rgba(255, 255, 255, 0) 42%);
-  --glass-stroke: rgba(255, 255, 255, 0.18);
-  --glass-stroke-top: rgba(255, 255, 255, 0.34);
-  --glass-stroke-bottom: rgba(0, 0, 0, 0.4);
-  --glass-blur: 22px;
-  --glass-blur-strong: 32px;
-  --glass-saturate: 175%;
+  --text: #141414;
+  --text-muted: #5F5B50;
+  --text-faint: #8C8878;
 
-  /* ---- Accent ----------------------------------------------------------- */
-  --accent: #5ac8fa;
-  --accent-hi: color-mix(in srgb, var(--accent) 78%, white);
-  --accent-lo: color-mix(in srgb, var(--accent) 88%, black);
-  --accent-ink: #00131c;
+  --accent: #FF5A2C;
+  --accent-2: #2F6BFF;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-soft-2: color-mix(in srgb, var(--accent) 26%, transparent);
+  --accent-ink: #141414;
+  --grad-accent: var(--accent);
+  --grad-accent-soft: var(--accent-soft);
 
-  /* ---- Text ------------------------------------------------------------- */
-  --text: rgba(255, 255, 255, 0.97);
-  --text-muted: rgba(255, 255, 255, 0.64);
-  --text-faint: rgba(255, 255, 255, 0.42);
+  --c3: #FFD23F;
 
-  /* ---- Semantics -------------------------------------------------------- */
-  --ok: #34c759;
-  --warn: #ff9f0a;
-  --danger: #ff453a;
+  --ok: #16B36B;
+  --warn: #E8A300;
+  --danger: #E5341F;
+  --danger-ink: #7A1A10;
+  --info: #2F6BFF;
 
-  /* status accents (kanban columns) */
-  --st-new: #5ac8fa;
-  --st-approved: #34c759;
-  --st-shipped: #ff9f0a;
-  --st-delivered: #30d158;
-  --st-rejected: #ff453a;
+  /* Distinct, identifiable status hues — same in light & dark (chips/bars carry
+     an ink border so they read on both backgrounds; chip text is --accent-ink). */
+  --st-new: #3F8CF5;       /* blue — incoming */
+  --st-approved: #9B6BFF;  /* violet — confirmed */
+  --st-shipped: #F5A623;   /* amber — in transit */
+  --st-delivered: #22C07D; /* green — success */
+  --st-rejected: #F0503C;  /* red — cancelled */
 
-  /* ---- Geometry — admin a touch tighter -------------------------------- */
-  --r-sm: 12px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 28px;
-  --r-pill: 999px;
+  --r-sm: 3px;
+  --r-md: 3px;
+  --r-lg: 3px;
+  --r-xl: 4px;
+  --r-pill: 4px;
 
-  /* ---- Depth shadows ---------------------------------------------------- */
-  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.34), 0 2px 6px rgba(0, 0, 0, 0.24);
-  --shadow-2: 0 22px 60px rgba(0, 0, 0, 0.5), 0 6px 18px rgba(0, 0, 0, 0.32);
+  --shadow-1: 4px 4px 0 var(--shadow);
+  --shadow-2: 5px 5px 0 var(--shadow);
+  --shadow-3: 7px 7px 0 var(--shadow);
+  --shadow-accent: 4px 4px 0 var(--shadow);
+  --ring-accent: 0 0 0 3px var(--accent-soft-2);
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-    --bg-base: #e8edf6;
-    --bg-solid: #e8edf6;
-    --bg-hue-2: #8a7bff;
-    --bg-scene:
-      radial-gradient(70% 60% at 6% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 48%),
-      radial-gradient(60% 60% at 99% 4%, color-mix(in srgb, var(--bg-hue-2) 14%, transparent) 0%, transparent 52%),
-      linear-gradient(180deg, #f3f6fc 0%, var(--bg-base) 70%);
-    --bg-scene-accent:
-      radial-gradient(45% 45% at 82% 14%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 60%);
-    --glass-bg: rgba(255, 255, 255, 0.82);
-    --glass-bg-strong: rgba(255, 255, 255, 0.9);
-    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 24%, rgba(255, 255, 255, 0) 42%);
-    --glass-sheen-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 26%, rgba(255, 255, 255, 0) 44%);
-    --glass-stroke: rgba(255, 255, 255, 0.9);
-    --glass-stroke-top: rgba(255, 255, 255, 1);
-    --glass-stroke-bottom: rgba(40, 55, 80, 0.12);
-    --accent-ink: #ffffff;
-    --text: rgba(18, 24, 34, 0.97);
-    --text-muted: rgba(18, 24, 34, 0.62);
-    --text-faint: rgba(18, 24, 34, 0.4);
-    --shadow-1: 0 8px 24px rgba(40, 55, 80, 0.16), 0 2px 6px rgba(40, 55, 80, 0.1);
-    --shadow-2: 0 22px 60px rgba(40, 55, 80, 0.22), 0 6px 18px rgba(40, 55, 80, 0.14);
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Greyer (not near-black) so the hard offset shadows read on every block. */
+  --bg: #26262B;
+  --bg-2: #1F1F23;
+  --surface: #34343B;
+  --surface-2: #2D2D33;
+  --surface-3: #3A3A42;
+  --surface-hover: #3D3D45;
+
+  --line: #F4F1E6;
+  --border: #F4F1E6;
+  --border-2: #F4F1E6;
+  --border-strong: #F4F1E6;
+  --shadow: #0A0A0C;
+
+  --text: #F4F1E6;
+  --text-muted: #AEACA6;
+  --text-faint: #79776F;
+
+  --accent: #FF6A3D;
+  --accent-2: #5B8BFF;
+  --accent-ink: #141414;
+  --danger-ink: #FFB4AB;
+
+  --ok: #2BD489;
+  --warn: #FFB627;
+  --danger: #FF5747;
+  --info: #5B8BFF;
+
+  /* Status hues stay identical to light theme (inherited from :root) so the
+     5 statuses are consistent everywhere — do not override them here. */
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg-base: #e8edf6;
-  --bg-solid: #e8edf6;
-  --bg-hue-2: #8a7bff;
-  --bg-scene:
-    radial-gradient(70% 60% at 6% 0%, color-mix(in srgb, var(--accent) 18%, transparent) 0%, transparent 48%),
-    radial-gradient(60% 60% at 99% 4%, color-mix(in srgb, var(--bg-hue-2) 14%, transparent) 0%, transparent 52%),
-    linear-gradient(180deg, #f3f6fc 0%, var(--bg-base) 70%);
-  --bg-scene-accent:
-    radial-gradient(45% 45% at 82% 14%, color-mix(in srgb, var(--accent) 14%, transparent) 0%, transparent 60%);
-  --glass-bg: rgba(255, 255, 255, 0.82);
-  --glass-bg-strong: rgba(255, 255, 255, 0.9);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 24%, rgba(255, 255, 255, 0) 42%);
-  --glass-sheen-strong: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 26%, rgba(255, 255, 255, 0) 44%);
-  --glass-stroke: rgba(255, 255, 255, 0.9);
-  --glass-stroke-top: rgba(255, 255, 255, 1);
-  --glass-stroke-bottom: rgba(40, 55, 80, 0.12);
-  --accent-ink: #ffffff;
-  --text: rgba(18, 24, 34, 0.97);
-  --text-muted: rgba(18, 24, 34, 0.62);
-  --text-faint: rgba(18, 24, 34, 0.4);
-  --shadow-1: 0 8px 24px rgba(40, 55, 80, 0.16), 0 2px 6px rgba(40, 55, 80, 0.1);
-  --shadow-2: 0 22px 60px rgba(40, 55, 80, 0.22), 0 6px 18px rgba(40, 55, 80, 0.14);
-}
-
-/* ---------------------------------------------------------------------------
-   Tailwind v4 theme bridge
-   --------------------------------------------------------------------------- */
 @theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-accent-ink: var(--accent-ink);
   --color-ink: var(--text);
   --color-ink-muted: var(--text-muted);
@@ -144,139 +118,104 @@
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
-  --radius-glass-sm: var(--r-sm);
-  --radius-glass-md: var(--r-md);
-  --radius-glass-lg: var(--r-lg);
+  --color-info: var(--info);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
 }
 
-/* ---------------------------------------------------------------------------
-   Base
-   --------------------------------------------------------------------------- */
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-}
-
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; min-height: 100%; }
 body {
   color: var(--text);
-  background: var(--bg-base);
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", Roboto, Inter, system-ui, sans-serif;
+  background: var(--bg);
+  font-family: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
   letter-spacing: -0.01em;
 }
 
-.scene {
+/* ".aurora" → flat ink graph-paper grid (no gradient/blur). */
+.aurora {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-color: var(--bg-base);
-  background-image: var(--bg-scene);
-}
-.scene::before {
-  content: "";
-  position: absolute;
-  inset: -10%;
-  background-image: var(--bg-scene-accent);
-  animation: scene-float 26s ease-in-out infinite alternate;
-  will-change: transform, opacity;
-}
-
-@keyframes scene-float {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.85;
-  }
-  to {
-    transform: translate3d(3%, -2.5%, 0) scale(1.12);
-    opacity: 1;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   .glass — base material (cards / panels)
-   --------------------------------------------------------------------------- */
-.glass {
-  /* no `position` — would override fixed/sticky consumers (sidebar, topbar). */
-  background-image: var(--glass-sheen);
-  background-color: var(--glass-bg);
-  border-radius: var(--r-md);
-  border: 1px solid var(--glass-stroke);
-  box-shadow:
-    inset 0 1px 0 0 var(--glass-stroke-top),
-    inset 0 -10px 22px -12px var(--glass-stroke-bottom),
-    var(--shadow-1);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  transform: translateZ(0);
-}
-
-.glass--strong {
-  background-image: var(--glass-sheen-strong);
-  background-color: var(--glass-bg-strong);
-  border-radius: var(--r-lg);
-  box-shadow:
-    inset 0 1px 0 0 var(--glass-stroke-top),
-    inset 0 -14px 30px -14px var(--glass-stroke-bottom),
-    var(--shadow-2);
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
-}
-
-/* Fallback where backdrop-filter is unavailable → opaque tint (no sharp see-through). */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass { background-color: rgba(15, 21, 38, 0.93); }
-  .glass--strong { background-color: rgba(18, 26, 46, 0.97); }
-}
-
-.glass--floating {
-  box-shadow:
-    inset 0 1px 0 0 var(--glass-stroke-top),
-    inset 0 -14px 30px -14px var(--glass-stroke-bottom),
-    var(--shadow-2);
-}
-
-.glass--noise {
-  position: relative;
-}
-.glass--noise::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
   pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* ---------------------------------------------------------------------------
-   .glossy — glossy accent surface (buttons / active pills)
-   --------------------------------------------------------------------------- */
-.glossy {
+  background-color: var(--bg);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 45%),
-    linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 52%, var(--accent-lo) 100%);
-  background-color: var(--accent);
-  color: var(--accent-ink);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-    inset 0 -8px 16px -10px rgba(0, 0, 0, 0.45),
-    0 6px 18px -4px color-mix(in srgb, var(--accent) 55%, transparent),
-    var(--shadow-1);
+    linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
-/* Shimmer skeleton */
+/* ----------------------------------------------------------------------------
+   Surfaces — thick ink border + hard offset shadow + sharp corners
+   ---------------------------------------------------------------------------- */
+.card {
+  background-color: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+.card-2 {
+  background-color: var(--surface-2);
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+}
+.panel {
+  background-color: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+.elevated {
+  background-color: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 7px 7px 0 var(--shadow);
+}
+.hairline { border: 2px solid var(--line); }
+.card-sheen { position: relative; }
+
+/* press = drop into the shadow */
+.nb-press { transition: transform .07s ease, box-shadow .07s ease; }
+.nb-press:active { transform: translate(4px, 4px); box-shadow: none; }
+
+/* ----------------------------------------------------------------------------
+   Accent surfaces (flat accent fill, ink border, hard shadow)
+   ---------------------------------------------------------------------------- */
+.accent-fill,
+.glossy {
+  background-color: var(--accent);
+  background-image: none;
+  color: var(--accent-ink);
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+
+/* legacy .glass shims → neo card */
+.glass {
+  background-color: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+.glass--strong { background-color: var(--surface); border: 3px solid var(--line); box-shadow: 5px 5px 0 var(--shadow); }
+.glass--floating { box-shadow: 7px 7px 0 var(--shadow); }
+
+.text-gradient { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--accent); }
+
+/* Bright yellow fills are light in BOTH themes → keep text/icons dark on them. */
+.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
+
+/* ----------------------------------------------------------------------------
+   Skeleton shimmer
+   ---------------------------------------------------------------------------- */
 .shimmer {
   position: relative;
   overflow: hidden;
-  background-color: var(--glass-bg);
+  background-color: var(--surface-2);
+  border: 2px solid var(--line);
   border-radius: var(--r-md);
 }
 .shimmer::after {
@@ -284,46 +223,28 @@ body {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background-image: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.12),
-    transparent
-  );
-  animation: shimmer 1.4s infinite;
+  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 8%, transparent), transparent);
+  animation: shimmer 1.5s infinite;
 }
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
 
-.tap {
-  min-width: 44px;
-  min-height: 44px;
-}
+/* ----------------------------------------------------------------------------
+   Utilities
+   ---------------------------------------------------------------------------- */
+.tap { min-width: 40px; min-height: 40px; }
 
-/* Custom thin scrollbars for dense admin panes */
-.thin-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--glass-stroke) transparent;
-}
-.thin-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.thin-scroll::-webkit-scrollbar-thumb {
-  background: var(--glass-stroke);
-  border-radius: 999px;
-}
-.thin-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
+.thin-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.thin-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 0; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.focusable:focus-visible { outline: none; box-shadow: var(--ring-accent); }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

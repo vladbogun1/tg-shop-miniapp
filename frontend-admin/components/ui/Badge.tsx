@@ -1,26 +1,67 @@
 "use client";
 
-/** Badge — small glass pill for delivery/payment/status/unread markers. */
 import type { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import type { OrderStatus } from "@/lib/api";
+import { STATUS_LABEL } from "@/lib/orders";
 
-interface Props {
+type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
+
+const TONE: Record<Tone, string> = {
+  neutral: "bg-[var(--surface-3)] text-[var(--text-muted)] border-[var(--line)]",
+  accent: "bg-[var(--accent)] text-[var(--accent-ink)] border-[var(--line)]",
+  ok: "bg-[var(--ok)] text-[var(--accent-ink)] border-[var(--line)]",
+  warn: "bg-[var(--warn)] text-[var(--accent-ink)] border-[var(--line)]",
+  danger: "bg-[var(--danger)] text-[var(--accent-ink)] border-[var(--line)]",
+  info: "bg-[var(--info)] text-[var(--accent-ink)] border-[var(--line)]",
+};
+
+export function Badge({
+  children,
+  tone = "neutral",
+  className,
+  dot,
+}: {
   children: ReactNode;
-  color?: string;
-  icon?: ReactNode;
+  tone?: Tone;
   className?: string;
-}
-
-export function Badge({ children, color, icon, className }: Props) {
+  dot?: boolean;
+}) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-[var(--r-pill)] px-2 py-0.5 text-[11px] font-medium ${className ?? ""}`}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-[2px] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+        TONE[tone],
+        className
+      )}
+    >
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+      {children}
+    </span>
+  );
+}
+
+const STATUS_TONE: Record<OrderStatus, Tone> = {
+  NEW: "info",
+  APPROVED: "ok",
+  SHIPPED: "warn",
+  DELIVERED: "accent",
+  REJECTED: "danger",
+};
+
+export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-[2px] border-[var(--line)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--accent-ink)]",
+        className
+      )}
       style={{
-        background: color ? `color-mix(in srgb, ${color} 22%, transparent)` : "var(--glass-bg)",
-        color: color ?? "var(--text-muted)",
+        backgroundColor: `var(--st-${status.toLowerCase()})`,
       }}
     >
-      {icon}
-      {children}
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-ink)]" />
+      {STATUS_LABEL[status]}
     </span>
   );
 }

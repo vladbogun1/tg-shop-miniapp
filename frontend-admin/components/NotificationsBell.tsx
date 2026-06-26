@@ -1,14 +1,12 @@
 "use client";
 
 /**
- * NotificationsBell — envelope button for the admin topbar. Polls
- * GET /api/admin/orders/unread-count (~20s). HIDDEN entirely when nothing is
- * unread; when there are unread messages it shows the envelope + count badge and
- * opens the NotificationsModal (conversations inbox) on click.
+ * Topbar inbox button. Polls unread-count (~20s). Always visible; shows a badge
+ * when there are unread customer messages. Opens the conversations inbox.
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Mail } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useState } from "react";
 import { adminApi, isAuthenticated } from "@/lib/api";
 import { NotificationsModal } from "@/components/NotificationsModal";
@@ -28,30 +26,27 @@ export function NotificationsBell() {
 
   return (
     <>
-      <AnimatePresence>
-        {count > 0 && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            whileTap={{ scale: 0.92 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            onClick={() => setOpen(true)}
-            aria-label={`Новые сообщения: ${count}`}
-            title={`Новые сообщения: ${count}`}
-            className="glass tap relative grid h-10 w-10 place-items-center rounded-[var(--r-pill)] text-[var(--text)]"
-          >
-            <Mail className="h-[18px] w-[18px]" />
-            <span
-              className="glossy absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none"
-              aria-hidden
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={count > 0 ? `Новые сообщения: ${count}` : "Сообщения"}
+        className="nb-press focusable relative grid h-10 w-10 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[4px_4px_0_var(--shadow)]"
+      >
+        <Bell className="h-[18px] w-[18px]" />
+        <AnimatePresence>
+          {count > 0 && (
+            <motion.span
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 26 }}
+              className="absolute -right-2 -top-2 flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--accent)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
             >
               {count > 99 ? "99+" : count}
-            </span>
-          </motion.button>
-        )}
-      </AnimatePresence>
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
       <NotificationsModal open={open} onClose={() => setOpen(false)} />
     </>
   );

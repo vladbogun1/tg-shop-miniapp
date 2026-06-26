@@ -4,6 +4,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.service.OrderQueryService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.OrderStatus;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -208,6 +210,153 @@ public class NotificationService {
         } catch (Exception e) {
             log.warn("onCustomerChatMessage failed for order {}: {}", idStr(order), e.getMessage());
         }
+    }
+
+    /** Order approved → post a dispatch card (what to ship + COD to collect) to the seller topic. */
+    public void onApprovedDispatch(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        postDispatchCard(order);
+    }
+
+    /**
+     * Post a dispatch card to the seller's "Отправка" topic and remember its message id on the
+     * order, so it can later be removed when the order ships. Idempotent: if the order already has
+     * a tracked dispatch card we do nothing (avoids duplicates from re-runs / the sync button).
+     * The id is stored on the managed entity and flushed by the caller's transaction.
+     * Returns {@code true} if a new card was actually posted.
+     */
+    public boolean postDispatchCard(Order order) {
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId == null || chatId.isBlank() || order.getDispatchMessageId() != null) {
+            return false;
+        }
+        try {
+            SendMessage msg = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(buildDispatchCard(order))
+                    .parseMode("HTML")
+                    .replyMarkup(adminButtons(order))
+                    .build();
+            int topic = props.getTelegram().getNotifyTopicDispatch();
+            if (topic > 0) {
+                msg.setMessageThreadId(topic);
+            }
+            Message sent = bot.execute(msg);
+            if (sent != null) {
+                order.setDispatchMessageId(sent.getMessageId());
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("postDispatchCard failed for order {}: {}", idStr(order), e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Reconcile one APPROVED order's dispatch card with Telegram, self-healing manual deletions:
+     * if we have a tracked id we try to edit the message in place (which also refreshes the COD
+     * line) — and if Telegram reports the message is gone, we clear the stale id and re-post a
+     * fresh card. If we have no id, we post one. Returns {@code true} when a NEW card was posted
+     * (i.e. it was missing or had been deleted), so the sync button can report a real count.
+     */
+    public boolean syncDispatchCard(Order order) {
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId == null || chatId.isBlank()) {
+            return false;
+        }
+        Integer messageId = order.getDispatchMessageId();
+        if (messageId == null) {
+            return postDispatchCard(order);
+        }
+        try {
+            EditMessageText edit = EditMessageText.builder()
+                    .chatId(chatId)
+                    .messageId(messageId)
+                    .text(buildDispatchCard(order))
+                    .parseMode("HTML")
+                    .replyMarkup(adminButtons(order))
+                    .build();
+            bot.execute(edit);
+            return false; // edit succeeded → the message still exists (and is now refreshed)
+        } catch (Exception e) {
+            String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (m.contains("not modified")) {
+                return false; // exists, content unchanged
+            }
+            if (m.contains("message to edit not found") || m.contains("message can't be edited")
+                    || m.contains("message_id_invalid") || m.contains("message to delete not found")) {
+                // The seller deleted it by hand — drop the stale id and re-post a fresh card.
+                order.setDispatchMessageId(null);
+                return postDispatchCard(order);
+            }
+            log.warn("syncDispatchCard failed for order {}: {}", idStr(order), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Remove the dispatch card once the order leaves APPROVED (shipped / delivered / cancelled),
+     * so the "Отправка" topic only ever shows what still needs shipping. Best-effort; clears the
+     * tracked id either way so the card is never re-deleted.
+     */
+    public void removeDispatchCard(Order order) {
+        Integer messageId = order.getDispatchMessageId();
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (messageId == null || chatId == null || chatId.isBlank()) {
+            return;
+        }
+        try {
+            bot.execute(DeleteMessage.builder()
+                    .chatId(chatId)
+                    .messageId(messageId)
+                    .build());
+        } catch (Exception e) {
+            log.debug("removeDispatchCard failed for order {}: {}", idStr(order), e.getMessage());
+        }
+        order.setDispatchMessageId(null);
+    }
+
+    /** Seller-facing dispatch card: address, items, and the exact COD (наложка) to set. */
+    private String buildDispatchCard(Order order) {
+        String cur = nz(order.getCurrency());
+        long received = OrderQueryService.receivedMinor(order);
+        long cod = OrderQueryService.codMinor(order);
+        StringBuilder sb = new StringBuilder();
+        sb.append("📦 <b>К ОТПРАВКЕ</b> · #").append(shortId(order)).append('\n');
+        sb.append("➖➖➖➖➖➖➖➖➖➖\n");
+        sb.append("👤 ").append(esc(nz(order.getCustomerName()))).append('\n');
+        sb.append("📞 ").append(esc(nz(order.getPhone()))).append('\n');
+        sb.append("🚚 ").append(deliveryLabel(order)).append('\n');
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            sb.append("\n<b>🛒 Отправить:</b>\n");
+            for (OrderItem it : order.getItems()) {
+                sb.append("• ").append(esc(it.getTitleSnapshot()));
+                if (it.getVariantNameSnapshot() != null) {
+                    sb.append(" <i>(").append(esc(it.getVariantNameSnapshot())).append(")</i>");
+                }
+                sb.append(" × ").append(it.getQuantity()).append('\n');
+            }
+        }
+        sb.append("\n💰 Сумма заказа: <b>").append(money(order.getTotalMinor())).append(' ').append(cur).append("</b>\n");
+        if (order.getPaymentOptionTitle() != null) {
+            sb.append("💳 ").append(esc(order.getPaymentOptionTitle())).append('\n');
+        }
+        if (received > 0) {
+            sb.append("✅ Уже оплачено: ").append(money(received)).append(' ').append(cur).append('\n');
+        }
+        if (cod <= 0) {
+            sb.append("\n🟢 <b>НАЛОЖКА: 0</b> — заказ оплачен, отправляем без наложенного платежа.");
+        } else if (received > 0) {
+            sb.append("\n🟡 <b>НАЛОЖКА (взять при выдаче): ").append(money(cod)).append(' ').append(cur).append("</b>\n")
+                    .append("<i>(сумма ").append(money(order.getTotalMinor()))
+                    .append(" − предоплата ").append(money(received)).append(")</i>");
+        } else {
+            sb.append("\n🔴 <b>НАЛОЖКА (взять при выдаче): ").append(money(cod)).append(' ').append(cur)
+                    .append("</b> — не оплачено.");
+        }
+        return sb.toString();
     }
 
     // ----- helpers -----

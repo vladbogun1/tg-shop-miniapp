@@ -9,5 +9,6 @@ public record OrderSummaryDto(
         String currency,
         Instant createdAt,
         int itemsCount,
-        long unreadCount) {
+        long unreadCount,
+        boolean paid) {
 }

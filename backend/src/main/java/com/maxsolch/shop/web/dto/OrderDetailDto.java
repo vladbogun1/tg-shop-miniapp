@@ -28,5 +28,9 @@ public record OrderDetailDto(
         Instant approvedAt,
         Instant shippedAt,
         Instant deliveredAt,
-        Instant rejectedAt) {
+        Instant rejectedAt,
+        boolean paid,
+        Instant paidAt,
+        long prepaymentMinor,
+        long receivedMinor) {
 }

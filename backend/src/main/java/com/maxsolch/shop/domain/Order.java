@@ -100,6 +100,20 @@ public class Order {
     @Column(name = "payment_option_title", length = 255)
     private String paymentOptionTitle;
 
+    @Column(name = "paid", nullable = false)
+    private boolean paid = false;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
+    /** Prepayment amount snapshot for this order (0 for full-payment options). */
+    @Column(name = "prepayment_minor", nullable = false)
+    private long prepaymentMinor = 0;
+
+    /** How much money has actually been received for this order (drives наложка/COD). */
+    @Column(name = "received_minor", nullable = false)
+    private long receivedMinor = 0;
+
     @Column(name = "tg_user_id")
     private Long tgUserId;
 
@@ -114,6 +128,10 @@ public class Order {
 
     @Column(name = "notify_message_id")
     private Integer notifyMessageId;
+
+    /** Message id of the seller dispatch ("К ОТПРАВКЕ") card, while the order is APPROVED. */
+    @Column(name = "dispatch_message_id")
+    private Integer dispatchMessageId;
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;

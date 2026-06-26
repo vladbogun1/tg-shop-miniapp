@@ -1,22 +1,26 @@
 "use client";
 
 /**
- * OrderChat — embedded admin-side chat (design doc §6ter.2, SPEC chat).
+ * OrderChat — embedded admin-side chat.
  *  - GET /api/admin/orders/{id}/messages on open, mark read.
- *  - Telegram-style bubbles (ADMIN outgoing = accent, CUSTOMER incoming = glass).
+ *  - Neo bubbles with hard edges (ADMIN outgoing = accent fill/dark text,
+ *    CUSTOMER incoming = surface + ink border, SYSTEM = centered).
  *  - Realtime via STOMP /topic/orders/{id}/chat.
  *  - Attachment upload via /api/admin/uploads -> attachmentUrl.
  *  - Send hits POST .../messages (backend pings customer bot).
+ *  - Read receipts (✓/✓✓ by readAt), lightbox on images, paste-to-send.
  */
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { Paperclip, Send, FileText, Check, CheckCheck } from "lucide-react";
 import { adminApi, ApiError, type MessageDto } from "@/lib/api";
 import { subscribeOrderChat } from "@/lib/ws";
 import { resolveImageSrc, resolveImageFull } from "@/lib/image";
 import { useToast } from "@/lib/toast";
-import { GlassButton } from "@/components/ui/GlassButton";
+import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
+import { cn } from "@/lib/cn";
 
 function timeOf(iso: string): string {
   const d = new Date(iso);
@@ -25,29 +29,43 @@ function timeOf(iso: string): string {
     : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Bubble({ m, onOpenImage }: { m: MessageDto; onOpenImage: (src: string) => void }) {
+function Bubble({
+  m,
+  onOpenImage,
+}: {
+  m: MessageDto;
+  onOpenImage: (src: string) => void;
+}) {
   if (m.senderType === "SYSTEM") {
     return (
-      <div className="my-1 text-center text-[12px] text-[var(--text-faint)]">
-        {m.text}
+      <div className="my-1 flex justify-center">
+        <span className="rounded-[var(--r-sm)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] px-2.5 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+          {m.text}
+        </span>
       </div>
     );
   }
   const mine = m.senderType === "ADMIN";
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      className={cn("flex", mine ? "justify-end" : "justify-start")}
+    >
       <div
-        className={`max-w-[78%] rounded-[var(--r-md)] px-3 py-2 text-[14px] ${
+        className={cn(
+          "max-w-[78%] rounded-[var(--r-md)] border-2 border-[var(--line)] px-3 py-2 text-[14px] shadow-[var(--shadow-1)]",
           mine
-            ? "text-[var(--accent-ink)] [background:var(--accent)]"
-            : "glass text-[var(--text)]"
-        }`}
+            ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+            : "bg-[var(--surface)] text-[var(--text)]"
+        )}
       >
         {m.attachmentUrl && m.type === "PHOTO" && (
           <button
             type="button"
             onClick={() => onOpenImage(resolveImageFull(m.attachmentUrl!))}
-            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)]"
+            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)]"
             title="Открыть полностью"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -71,9 +89,10 @@ function Bubble({ m, onOpenImage }: { m: MessageDto; onOpenImage: (src: string) 
         )}
         {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
         <div
-          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+          className={cn(
+            "mt-1 flex items-center justify-end gap-1 text-[10px]",
             mine ? "text-[var(--accent-ink)]/70" : "text-[var(--text-faint)]"
-          }`}
+          )}
         >
           <span>{timeOf(m.createdAt)}</span>
           {mine &&
@@ -84,7 +103,7 @@ function Bubble({ m, onOpenImage }: { m: MessageDto; onOpenImage: (src: string) 
             ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -190,7 +209,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         className="thin-scroll flex flex-1 flex-col gap-2 overflow-y-auto p-1"
       >
         {messages.length === 0 && (
-          <div className="my-auto text-center text-[13px] text-[var(--text-faint)]">
+          <div className="my-auto text-center text-[13px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
             Сообщений пока нет
           </div>
         )}
@@ -206,7 +225,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="glass grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] text-[var(--text-muted)] hover:text-[var(--text)] disabled:opacity-50"
+          className="nb-press grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-50"
           aria-label="Прикрепить"
         >
           <Paperclip className="h-5 w-5" />
@@ -223,13 +242,13 @@ export function OrderChat({ orderId }: { orderId: string }) {
           }}
           rows={1}
           placeholder="Сообщение клиенту… (можно вставить фото из буфера)"
-          className="glass thin-scroll max-h-32 flex-1 resize-none rounded-[var(--r-md)] px-3.5 py-3 text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
+          className="thin-scroll max-h-32 flex-1 resize-none rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-[14px] text-[var(--text)] outline-none transition-all placeholder:text-[var(--text-faint)] focus:shadow-[var(--ring-accent)]"
         />
-        <GlassButton
+        <Button
           variant="accent"
           onClick={send}
           loading={sending}
-          className="!h-11 !w-11 !rounded-[var(--r-md)] !p-0"
+          className="h-11 w-11 shrink-0 rounded-[var(--r-md)] p-0"
           icon={<Send className="h-5 w-5" />}
         />
       </div>

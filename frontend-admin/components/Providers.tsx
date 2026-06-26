@@ -1,8 +1,5 @@
 "use client";
 
-/**
- * App-wide providers: TanStack Query + toast + auth gate.
- */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ToastProvider } from "@/lib/toast";

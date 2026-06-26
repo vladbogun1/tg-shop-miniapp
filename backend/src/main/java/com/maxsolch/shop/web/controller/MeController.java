@@ -9,10 +9,12 @@ import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
+import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.ForbiddenException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.web.dto.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
@@ -47,6 +49,7 @@ public class MeController {
     private final OrderRepository orderRepository;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
+    private final OrderService orderService;
     private final ImageStorageService imageStorageService;
 
     public MeController(UserRepository userRepository,
@@ -54,12 +57,14 @@ public class MeController {
                         OrderRepository orderRepository,
                         OrderQueryService orderQueryService,
                         MessageService messageService,
+                        OrderService orderService,
                         ImageStorageService imageStorageService) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.orderRepository = orderRepository;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
+        this.orderService = orderService;
         this.imageStorageService = imageStorageService;
     }
 
@@ -114,6 +119,29 @@ public class MeController {
         Order order = ownedOrder(id);
         String name = order.getCustomerName();
         return messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
+    }
+
+    @PostMapping("/orders/{id}/pay")
+    @Operation(summary = "Submit a transfer screenshot → posts it to the order chat and marks the order paid")
+    public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req) {
+        Order order = ownedOrder(id);
+        if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
+            throw new BadRequestException("payment proof (screenshot) is required");
+        }
+        // Post the proof into the order chat (admins get notified via MessageService).
+        messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
+        // The customer paid the prepayment (prepay option) or the full amount (full-pay option).
+        long received = order.getPrepaymentMinor() > 0 ? order.getPrepaymentMinor() : order.getTotalMinor();
+        Order paid = orderService.markPaid(order.getId(), received);
+        return orderQueryService.toDetail(paid);
+    }
+
+    @PostMapping("/orders/{id}/cancel")
+    @Operation(summary = "Cancel an unpaid order (NEW/APPROVED) with an optional reason")
+    public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req) {
+        Order order = ownedOrder(id);
+        Order cancelled = orderService.cancelByCustomer(order.getId(), req == null ? null : req.reason());
+        return orderQueryService.toDetail(cancelled);
     }
 
     @PostMapping("/orders/{id}/messages/read")

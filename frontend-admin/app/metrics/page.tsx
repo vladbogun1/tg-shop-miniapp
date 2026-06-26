@@ -2,18 +2,23 @@
 
 /**
  * Метрики — analytics dashboard (GET /api/admin/metrics?range=).
- * Liquid-glass themed recharts: revenue area, orders bar, status donut,
- * top products horizontal bar, delivery-method donut, payment-option list,
- * and delivery-speed KPI cards. All money ÷100, dates dd.MM, with empty states.
+ * Neo-brutalist recharts: revenue area, orders bar, status donut, top-products
+ * horizontal bar, delivery-method donut, payment-option bars, and delivery-speed
+ * KPI tiles. All money ÷100, dates dd.MM, with loading/empty states.
  */
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   Wallet,
   ShoppingBag,
   PackageCheck,
   Receipt,
   XCircle,
+  BarChart3,
+  CreditCard,
+  Timer,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -30,7 +35,7 @@ import {
   Legend,
 } from "recharts";
 import { adminApi, type MetricsDto } from "@/lib/api";
-import { useTimeRange } from "@/lib/range";
+import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { STATUS_LABEL, DELIVERY_LABEL } from "@/lib/orders";
 import {
   CHART_COLORS,
@@ -40,16 +45,25 @@ import {
   shortDate,
   hoursLabel,
 } from "@/lib/metrics-format";
-import { RangeSwitcher } from "@/components/ui/RangeSwitcher";
-import { MetricCard, ChartCard } from "@/components/metrics/MetricCard";
-import { GlassTooltip } from "@/components/metrics/ChartTooltip";
-import { Skeleton } from "@/components/ui/Skeleton";
+import type { TimeRange } from "@/lib/api";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { StatCard } from "@/components/ui/StatCard";
+import { CenterSpinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { staggerContainer, riseItem } from "@/lib/motion";
+import { ChartTooltip } from "@/components/metrics/ChartTooltip";
 
 const axisProps = {
   tick: { fill: CHART_COLORS.axis, fontSize: 11 },
   tickLine: false,
   axisLine: { stroke: CHART_COLORS.grid },
 } as const;
+
+const RANGE_SEG_OPTIONS = RANGE_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+}));
 
 export default function MetricsPage() {
   const [range, setRange] = useTimeRange();
@@ -63,33 +77,23 @@ export default function MetricsPage() {
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-[20px] font-bold text-[var(--text)]">Метрики</h1>
-        <RangeSwitcher value={range} onChange={setRange} />
-      </div>
+      <PageHeader
+        title="Метрики"
+        subtitle="Аналитика заказов, выручки и доставки"
+        actions={
+          <SegmentedControl<TimeRange>
+            options={RANGE_SEG_OPTIONS}
+            value={range}
+            onChange={setRange}
+          />
+        }
+      />
 
       {isLoading || !data ? (
-        <DashboardSkeleton />
+        <CenterSpinner label="Загружаем метрики…" />
       ) : (
         <Dashboard m={data} />
       )}
-    </div>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-[var(--r-lg)]" />
-        ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[280px] rounded-[var(--r-lg)]" />
-        ))}
-      </div>
     </div>
   );
 }
@@ -123,49 +127,69 @@ function Dashboard({ m }: { m: MetricsDto }) {
   const ordersByDay = m.ordersByDay ?? [];
 
   return (
-    <div className="flex flex-col gap-4">
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="flex flex-col gap-4"
+    >
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <MetricCard
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <StatCard
           label="Выручка"
-          value={moneyShort(m.revenueMinor, currency)}
+          rawValue={m.revenueMinor}
+          format={(n) => moneyShort(n, currency)}
           hint="доставленные"
           accent={CHART_COLORS.delivered}
-          icon={<Wallet className="h-4 w-4" />}
+          icon={Wallet}
         />
-        <MetricCard
+        <StatCard
           label="Заказов всего"
-          value={m.totalOrders.toLocaleString("ru-RU")}
-          icon={<ShoppingBag className="h-4 w-4" />}
+          rawValue={m.totalOrders}
+          accent={CHART_COLORS.accent}
+          icon={ShoppingBag}
         />
-        <MetricCard
+        <StatCard
           label="Доставлено"
-          value={m.deliveredOrders.toLocaleString("ru-RU")}
+          rawValue={m.deliveredOrders}
           accent={CHART_COLORS.delivered}
-          icon={<PackageCheck className="h-4 w-4" />}
+          icon={PackageCheck}
         />
-        <MetricCard
+        <StatCard
           label="Средний чек"
-          value={moneyShort(m.avgOrderValueMinor, currency)}
-          icon={<Receipt className="h-4 w-4" />}
+          rawValue={m.avgOrderValueMinor}
+          format={(n) => moneyShort(n, currency)}
+          accent={CHART_COLORS.new}
+          icon={Receipt}
         />
-        <MetricCard
+        <StatCard
           label="Отклонено"
-          value={m.rejectedOrders.toLocaleString("ru-RU")}
+          rawValue={m.rejectedOrders}
           accent={CHART_COLORS.rejected}
-          icon={<XCircle className="h-4 w-4" />}
+          icon={XCircle}
         />
       </div>
 
       {/* Revenue + Orders by day */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Выручка по дням" empty={revenueByDay.length === 0}>
+        <ChartPanel title="Выручка по дням" empty={revenueByDay.length === 0}>
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={revenueByDay} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+            <AreaChart
+              data={revenueByDay}
+              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={CHART_COLORS.accent} stopOpacity={0.5} />
-                  <stop offset="100%" stopColor={CHART_COLORS.accent} stopOpacity={0} />
+                  <stop
+                    offset="0%"
+                    stopColor={CHART_COLORS.accent}
+                    stopOpacity={0.5}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={CHART_COLORS.accent}
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke={CHART_COLORS.grid} vertical={false} />
@@ -178,7 +202,7 @@ function Dashboard({ m }: { m: MetricsDto }) {
               <Tooltip
                 cursor={{ stroke: CHART_COLORS.grid }}
                 content={
-                  <GlassTooltip
+                  <ChartTooltip
                     labelFormatter={shortDate}
                     valueFormatter={(v) => moneyShort(v, currency)}
                   />
@@ -194,18 +218,21 @@ function Dashboard({ m }: { m: MetricsDto }) {
               />
             </AreaChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartPanel>
 
-        <ChartCard title="Заказы по дням" empty={ordersByDay.length === 0}>
+        <ChartPanel title="Заказы по дням" empty={ordersByDay.length === 0}>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={ordersByDay} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <BarChart
+              data={ordersByDay}
+              margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+            >
               <CartesianGrid stroke={CHART_COLORS.grid} vertical={false} />
               <XAxis dataKey="date" tickFormatter={shortDate} {...axisProps} />
               <YAxis {...axisProps} allowDecimals={false} width={32} />
               <Tooltip
                 cursor={{ fill: "rgba(255,255,255,0.05)" }}
                 content={
-                  <GlassTooltip
+                  <ChartTooltip
                     labelFormatter={shortDate}
                     valueFormatter={(v) => `${v} зак.`}
                   />
@@ -215,17 +242,18 @@ function Dashboard({ m }: { m: MetricsDto }) {
                 dataKey="count"
                 name="Заказы"
                 fill={CHART_COLORS.accent}
-                radius={[4, 4, 0, 0]}
+                stroke={CHART_COLORS.text}
+                strokeWidth={1}
                 maxBarSize={28}
               />
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartPanel>
       </div>
 
       {/* Status donut + Top products */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Заказы по статусам" empty={statusData.length === 0}>
+        <ChartPanel title="Заказы по статусам" empty={statusData.length === 0}>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
@@ -235,16 +263,18 @@ function Dashboard({ m }: { m: MetricsDto }) {
                 innerRadius={56}
                 outerRadius={88}
                 paddingAngle={2}
-                stroke="none"
+                stroke={CHART_COLORS.text}
+                strokeWidth={2}
               >
                 {statusData.map((d) => (
-                  <Cell key={d.key} fill={STATUS_COLOR[d.key] ?? CHART_COLORS.accent} />
+                  <Cell
+                    key={d.key}
+                    fill={STATUS_COLOR[d.key] ?? CHART_COLORS.accent}
+                  />
                 ))}
               </Pie>
               <Tooltip
-                content={
-                  <GlassTooltip valueFormatter={(v, n) => `${n}: ${v}`} />
-                }
+                content={<ChartTooltip valueFormatter={(v, n) => `${n}: ${v}`} />}
               />
               <Legend
                 wrapperStyle={{ fontSize: 12, color: CHART_COLORS.text }}
@@ -252,10 +282,13 @@ function Dashboard({ m }: { m: MetricsDto }) {
               />
             </PieChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartPanel>
 
-        <ChartCard title="Топ товаров" empty={topProducts.length === 0}>
-          <ResponsiveContainer width="100%" height={Math.max(240, topProducts.length * 34)}>
+        <ChartPanel title="Топ товаров" empty={topProducts.length === 0}>
+          <ResponsiveContainer
+            width="100%"
+            height={Math.max(240, topProducts.length * 34)}
+          >
             <BarChart
               data={topProducts}
               layout="vertical"
@@ -273,24 +306,35 @@ function Dashboard({ m }: { m: MetricsDto }) {
               <Tooltip
                 cursor={{ fill: "rgba(255,255,255,0.05)" }}
                 content={
-                  <GlassTooltip
-                    valueFormatter={(v, n) => `${n === "qty" ? "Кол-во" : n}: ${v}`}
+                  <ChartTooltip
+                    valueFormatter={(v, n) =>
+                      `${n === "qty" ? "Кол-во" : n}: ${v}`
+                    }
                   />
                 }
               />
-              <Bar dataKey="qty" name="qty" radius={[0, 4, 4, 0]} maxBarSize={22}>
+              <Bar
+                dataKey="qty"
+                name="qty"
+                stroke={CHART_COLORS.text}
+                strokeWidth={1}
+                maxBarSize={22}
+              >
                 {topProducts.map((_, i) => (
-                  <Cell key={i} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} />
+                  <Cell
+                    key={i}
+                    fill={SERIES_PALETTE[i % SERIES_PALETTE.length]}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartPanel>
       </div>
 
       {/* Delivery methods donut + Payment options list */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Способы доставки" empty={deliveryData.length === 0}>
+        <ChartPanel title="Способы доставки" empty={deliveryData.length === 0}>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie
@@ -300,14 +344,18 @@ function Dashboard({ m }: { m: MetricsDto }) {
                 innerRadius={48}
                 outerRadius={78}
                 paddingAngle={2}
-                stroke="none"
+                stroke={CHART_COLORS.text}
+                strokeWidth={2}
               >
                 {deliveryData.map((d, i) => (
-                  <Cell key={d.key} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} />
+                  <Cell
+                    key={d.key}
+                    fill={SERIES_PALETTE[i % SERIES_PALETTE.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip
-                content={<GlassTooltip valueFormatter={(v, n) => `${n}: ${v}`} />}
+                content={<ChartTooltip valueFormatter={(v, n) => `${n}: ${v}`} />}
               />
               <Legend
                 wrapperStyle={{ fontSize: 12, color: CHART_COLORS.text }}
@@ -315,23 +363,31 @@ function Dashboard({ m }: { m: MetricsDto }) {
               />
             </PieChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartPanel>
 
-        <ChartCard title="Оплата" empty={paymentOptions.length === 0}>
+        <ChartPanel
+          title="Оплата"
+          icon={<CreditCard className="h-[18px] w-[18px]" />}
+          empty={paymentOptions.length === 0}
+        >
           <div className="flex flex-col gap-3 py-2">
             {paymentOptions.map((p, i) => (
-              <div key={p.title} className="flex flex-col gap-1">
+              <div key={p.title} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[var(--text)]">{p.title}</span>
-                  <span className="font-semibold text-[var(--text-muted)]">
+                  <span className="font-bold uppercase tracking-wide text-[var(--text)]">
+                    {p.title}
+                  </span>
+                  <span className="font-extrabold text-[var(--text)]">
                     {p.count}
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/8">
-                  <div
-                    className="h-full rounded-full"
+                <div className="h-3 overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-3)]">
+                  <motion.div
+                    className="h-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(p.count / maxPayment) * 100}%` }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                     style={{
-                      width: `${(p.count / maxPayment) * 100}%`,
                       background: SERIES_PALETTE[i % SERIES_PALETTE.length],
                     }}
                   />
@@ -339,22 +395,69 @@ function Dashboard({ m }: { m: MetricsDto }) {
               </div>
             ))}
           </div>
-        </ChartCard>
+        </ChartPanel>
       </div>
 
       {/* Delivery speed */}
-      <div className="glass rounded-[var(--r-lg)] p-4">
-        <h3 className="mb-3 text-[14px] font-semibold text-[var(--text)]">
-          Скорость обработки
-        </h3>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <SpeedCard label="До одобрения" value={m.deliverySpeed?.avgApproveHours} />
-          <SpeedCard label="До отправки" value={m.deliverySpeed?.avgShipHours} />
-          <SpeedCard label="До доставки" value={m.deliverySpeed?.avgDeliverHours} />
+      <motion.div variants={riseItem} className="panel p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <Timer className="h-[18px] w-[18px] text-[var(--accent)]" />
+          <h3 className="text-[15px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+            Скорость обработки
+          </h3>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <SpeedCard
+            label="До одобрения"
+            value={m.deliverySpeed?.avgApproveHours}
+          />
+          <SpeedCard
+            label="До отправки"
+            value={m.deliverySpeed?.avgShipHours}
+          />
+          <SpeedCard
+            label="До доставки"
+            value={m.deliverySpeed?.avgDeliverHours}
+          />
           <SpeedCard label="Полный цикл" value={m.deliverySpeed?.avgTotalHours} />
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/** ChartPanel — neo-brutalist panel wrapper for a chart with a title + empty state. */
+function ChartPanel({
+  title,
+  icon,
+  empty,
+  children,
+}: {
+  title: string;
+  icon?: ReactNode;
+  empty?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <motion.div variants={riseItem} className="panel p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="text-[var(--accent)]">
+          {icon ?? <BarChart3 className="h-[18px] w-[18px]" />}
+        </span>
+        <h3 className="text-[15px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+          {title}
+        </h3>
       </div>
-    </div>
+      {empty ? (
+        <EmptyState
+          icon={BarChart3}
+          title="Нет данных за период"
+          description="Попробуйте выбрать другой временной диапазон."
+        />
+      ) : (
+        children
+      )}
+    </motion.div>
   );
 }
 
@@ -366,11 +469,11 @@ function SpeedCard({
   value: number | null | undefined;
 }) {
   return (
-    <div className="rounded-[var(--r-md)] bg-white/5 p-3">
-      <div className="text-[11px] font-medium text-[var(--text-muted)]">
+    <div className="card-2 p-4">
+      <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
         {label}
       </div>
-      <div className="mt-1 text-[18px] font-bold text-[var(--text)]">
+      <div className="mt-1.5 text-[20px] font-extrabold text-[var(--text)]">
         {hoursLabel(value)}
       </div>
     </div>

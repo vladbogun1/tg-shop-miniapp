@@ -8,6 +8,7 @@ import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
+import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.OrderItemDto;
@@ -54,7 +55,8 @@ public class OrderQueryService {
                 o.getCurrency(),
                 o.getCreatedAt(),
                 itemsCount(o),
-                readModel.unread(o.getId()));
+                readModel.unread(o.getId()),
+                o.isPaid());
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +71,8 @@ public class OrderQueryService {
                 o.getPaymentOptionTitle(),
                 unread,
                 o.getCreatedAt(),
-                o.getStatus().name());
+                o.getStatus().name(),
+                o.isPaid());
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +108,63 @@ public class OrderQueryService {
                 o.getApprovedAt(),
                 o.getShippedAt(),
                 o.getDeliveredAt(),
-                o.getRejectedAt());
+                o.getRejectedAt(),
+                o.isPaid(),
+                o.getPaidAt(),
+                o.getPrepaymentMinor(),
+                receivedMinor(o));
+    }
+
+    /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
+    public static long receivedMinor(Order o) {
+        return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
+    }
+
+    /** Cash-on-delivery (наложка) to collect at Nova Poshta. */
+    public static long codMinor(Order o) {
+        return Math.max(0, o.getTotalMinor() - receivedMinor(o));
+    }
+
+    /** All APPROVED orders mapped to dispatch rows (newest first). */
+    @Transactional(readOnly = true)
+    public List<DispatchOrderDto> dispatchList() {
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED).stream()
+                .map(this::toDispatch)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DispatchOrderDto toDispatch(Order o) {
+        long received = receivedMinor(o);
+        long cod = codMinor(o);
+        List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
+                .map(it -> new DispatchOrderDto.DispatchItem(
+                        it.getTitleSnapshot(), it.getVariantNameSnapshot(),
+                        it.getQuantity(), it.getPriceMinorSnapshot()))
+                .toList();
+        String shortId = UuidUtil.toString(o.getId());
+        if (shortId != null && shortId.length() >= 8) {
+            shortId = shortId.substring(0, 8);
+        }
+        return new DispatchOrderDto(
+                UuidUtil.toString(o.getId()),
+                shortId,
+                o.getCustomerName(),
+                o.getPhone(),
+                o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name(),
+                o.getNpCityName(),
+                o.getNpWarehouseName(),
+                items,
+                o.getTotalMinor(),
+                o.getPrepaymentMinor(),
+                received,
+                cod,
+                o.isPaid(),
+                o.getCurrency(),
+                o.getPaymentOptionTitle(),
+                o.getTrackingNumber(),
+                o.getCreatedAt(),
+                o.getApprovedAt());
     }
 
     private OrderItemDto toItemDto(OrderItem it) {
