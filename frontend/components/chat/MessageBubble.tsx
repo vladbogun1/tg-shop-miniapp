@@ -1,14 +1,21 @@
 "use client";
 
 /**
- * Telegram-style chat bubble (design doc §6.3): incoming left, outgoing right
- * (accent glass). Reply quote, attachment preview (photo via Image / file row),
- * time, and read ticks for outgoing messages.
+ * NEO-BRUTALISM chat bubble (design doc §6.3).
+ * - outgoing (CUSTOMER): accent fill + ink border aligned right, read ticks
+ *   (✓ pending / ✓✓ read by `readAt`).
+ * - incoming (ADMIN): surface + ink border aligned left with sender name.
+ * - SYSTEM: centered bordered pill.
+ * PHOTO messages render the image (via `Image`) and open a lightbox on tap.
+ * Reply quote, file row, time via `formatTime` preserved from the original.
+ * Sharp corners, thick borders, hard offset shadow.
  */
+import { motion } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
 import type { Message } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { Image } from "@/lib/image";
+import { spring } from "@/lib/motion";
 
 export function MessageBubble({
   msg,
@@ -24,58 +31,71 @@ export function MessageBubble({
   if (msg.type === "SYSTEM") {
     return (
       <div className="my-2 flex justify-center">
-        <span className="glass rounded-[var(--r-pill)] px-3 py-1 text-[12px] text-[var(--text-muted)]">
+        <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
           {msg.text}
         </span>
       </div>
     );
   }
 
+  const isPhoto = msg.type === "PHOTO" && !!msg.attachmentUrl;
+  // A photo with no other content: let the image fill the bubble, overlay the time.
+  const photoOnly = isPhoto && !msg.text && !repliedTo && !msg.senderName;
+
   return (
-    <div className={`flex ${outgoing ? "justify-end" : "justify-start"}`}>
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={spring}
+      className={`flex ${outgoing ? "justify-end" : "justify-start"}`}
+    >
       <div
-        className={`relative max-w-[78%] rounded-[var(--r-md)] px-3 py-2 ${
+        className={`relative max-w-[80%] overflow-hidden rounded-[var(--r)] border-[3px] border-[var(--line)] shadow-[4px_4px_0_var(--shadow)] ${
+          photoOnly ? "p-1" : "px-3 py-2"
+        } ${
           outgoing
-            ? "[background:color-mix(in_srgb,var(--accent)_88%,transparent)] text-[var(--accent-ink)]"
-            : "glass glass--strong text-[var(--text)]"
+            ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+            : "bg-[var(--surface)] text-[var(--ink)]"
         }`}
-        style={{
-          borderBottomRightRadius: outgoing ? 6 : undefined,
-          borderBottomLeftRadius: outgoing ? undefined : 6,
-        }}
       >
         {!outgoing && msg.senderName && (
-          <p className="mb-0.5 text-[12px] font-semibold text-[var(--accent)]">
+          <p className="mb-0.5 text-[12px] font-black uppercase tracking-wide text-[var(--accent)]">
             {msg.senderName}
           </p>
         )}
 
         {repliedTo && (
           <div
-            className={`mb-1.5 rounded-[var(--r-sm)] border-l-2 px-2 py-1 text-[12px] ${
-              outgoing ? "border-black/30 bg-black/10" : "border-[var(--accent)] bg-white/5"
+            className={`mb-1.5 rounded-[var(--r)] border-l-[3px] px-2 py-1 text-[12px] ${
+              outgoing
+                ? "border-[var(--accent-ink)] bg-[color-mix(in_srgb,var(--accent-ink)_14%,transparent)]"
+                : "border-[var(--accent)] bg-[var(--surface-2)]"
             }`}
           >
-            <span className="block font-semibold opacity-80">
+            <span className="block font-extrabold opacity-90">
               {repliedTo.senderName ?? "Сообщение"}
             </span>
-            <span className="line-clamp-1 opacity-70">
+            <span className="line-clamp-1 opacity-75">
               {repliedTo.text ?? (repliedTo.type === "PHOTO" ? "Фото" : "Файл")}
             </span>
           </div>
         )}
 
-        {msg.type === "PHOTO" && msg.attachmentUrl && (
+        {isPhoto && (
           <button
             type="button"
             onClick={() => onImageClick?.(msg.attachmentUrl!)}
-            className="mb-1 block overflow-hidden rounded-[var(--r-sm)]"
+            className={`block w-full overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)] ${
+              photoOnly ? "" : "mb-1"
+            }`}
           >
             <Image
               src={msg.attachmentUrl}
               alt={msg.fileName ?? "Фото"}
-              size={500}
-              className="max-h-60 w-full"
+              size={1000}
+              fit
+              className="max-h-72 max-w-full"
             />
           </button>
         )}
@@ -85,35 +105,39 @@ export function MessageBubble({
             href={msg.attachmentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`mb-1 flex items-center gap-2 rounded-[var(--r-sm)] px-2 py-1.5 ${
-              outgoing ? "bg-black/10" : "bg-white/5"
+            className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-2 py-1.5 ${
+              outgoing
+                ? "bg-[color-mix(in_srgb,var(--accent-ink)_12%,transparent)]"
+                : "bg-[var(--surface-2)]"
             }`}
           >
-            <FileText className="h-5 w-5 shrink-0" />
-            <span className="truncate text-[13px]">{msg.fileName ?? "Файл"}</span>
+            <FileText className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+            <span className="truncate text-[13px] font-bold">{msg.fileName ?? "Файл"}</span>
           </a>
         )}
 
         {msg.text && (
-          <p className="whitespace-pre-wrap break-words text-[14px] leading-snug">
+          <p className="whitespace-pre-wrap break-words text-[14px] font-medium leading-snug">
             {msg.text}
           </p>
         )}
 
         <div
-          className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${
-            outgoing ? "opacity-70" : "text-[var(--text-faint)]"
+          className={`flex items-center justify-end gap-1 text-[10px] font-bold ${
+            photoOnly
+              ? "absolute bottom-2 right-2 rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[var(--ink)]"
+              : `mt-0.5 ${outgoing ? "opacity-80" : "text-[var(--faint)]"}`
           }`}
         >
           <span>{formatTime(msg.createdAt)}</span>
           {outgoing &&
             (msg.readAt ? (
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={3} />
             ) : (
-              <Check className="h-3.5 w-3.5" />
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
             ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

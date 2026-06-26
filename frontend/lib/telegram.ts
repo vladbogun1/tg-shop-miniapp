@@ -39,29 +39,24 @@ const DEFAULT_STATE: TgState = {
 };
 
 /**
- * Apply Telegram themeParams to our Liquid Glass CSS variables.
- * Accent comes from the user's Telegram theme (design doc §8.1 / §8.2).
+ * NEO-BRUTALISM theme is a FIXED brand look (light by default, dark via the
+ * in-app ThemeToggle persisted to localStorage). We intentionally do NOT let
+ * Telegram themeParams drive --accent / data-theme — otherwise a dark Telegram
+ * client would flip our shop to dark. So this only reports the detected scheme
+ * for state; it makes no DOM writes. data-theme is owned by the layout init
+ * script + ThemeToggle.
  */
 function applyTheme(params: Record<string, unknown> | undefined): "dark" | "light" {
-  if (typeof document === "undefined" || !params) return "dark";
-  const root = document.documentElement;
-
-  const accent = (params.button_color || params.accent_text_color) as string | undefined;
-  if (accent) root.style.setProperty("--accent", accent);
-
-  const bg = (params.secondary_bg_color || params.bg_color) as string | undefined;
-  if (bg) {
-    root.style.setProperty(
-      "--bg-scene",
-      `radial-gradient(120% 120% at 0% 0%, ${bg} 0%, ${bg} 60%)`
-    );
-  }
-
-  // Telegram exposes bg_color; derive light/dark by luminance.
-  const bgColor = (params.bg_color as string | undefined) ?? "#0c1118";
-  const scheme = isLight(bgColor) ? "light" : "dark";
-  root.setAttribute("data-theme", scheme);
-  return scheme;
+  const stored = (() => {
+    try {
+      return typeof window !== "undefined" ? window.localStorage.getItem("neo-theme") : null;
+    } catch {
+      return null;
+    }
+  })();
+  if (stored === "dark") return "dark";
+  if (stored === "light") return "light";
+  return "light"; // default
 }
 
 /**
@@ -93,15 +88,6 @@ function applySafeAreaInsets(): void {
   set("--safe-right", "safe-area-inset-right", (sa.right ?? 0) + (csa.right ?? 0));
 }
 
-function isLight(hex: string): boolean {
-  const m = hex.replace("#", "");
-  if (m.length < 6) return false;
-  const r = parseInt(m.slice(0, 2), 16);
-  const g = parseInt(m.slice(2, 4), 16);
-  const b = parseInt(m.slice(4, 6), 16);
-  // Relative luminance
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150;
-}
 
 /**
  * useTelegram — call once near the app root. Initializes the SDK and returns

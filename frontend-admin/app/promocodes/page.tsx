@@ -2,19 +2,24 @@
 
 /**
  * Promocodes (route "/promocodes") — list + create/edit (code, discountPercent,
- * discountAmountMinor, maxUses, active) + delete.
+ * discountAmountMinor, maxUses, active) + delete. Neo-brutalism restyle — visuals
+ * only, functionality + API calls preserved 1:1 with the original.
  */
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Pencil, Trash2, Ticket, Percent, Wallet } from "lucide-react";
 import { adminApi, ApiError, type PromoCode } from "@/lib/api";
 import { money, toMajor, toMinor } from "@/lib/money";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Modal } from "@/components/ui/Modal";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassInput } from "@/components/ui/GlassInput";
-import { GlassToggle } from "@/components/ui/GlassToggle";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Toggle } from "@/components/ui/Toggle";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { CenterSpinner } from "@/components/ui/Spinner";
+import { staggerContainer, riseItem, hoverLift } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 
 export default function PromocodesPage() {
@@ -22,6 +27,8 @@ export default function PromocodesPage() {
   const { push } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PromoCode | null>(null);
+  const [confirming, setConfirming] = useState<PromoCode | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { data: promos = [], isLoading } = useQuery({
     queryKey: ["promocodes"],
@@ -41,10 +48,22 @@ export default function PromocodesPage() {
     if (!open) return;
     setCode(editing?.code ?? "");
     setPercent(editing?.discountPercent ? String(editing.discountPercent) : "");
-    setAmountMajor(editing?.discountAmountMinor ? String(toMajor(editing.discountAmountMinor)) : "");
+    setAmountMajor(
+      editing?.discountAmountMinor ? String(toMajor(editing.discountAmountMinor)) : ""
+    );
     setMaxUses(editing?.maxUses ? String(editing.maxUses) : "");
     setActive(editing?.active ?? true);
   }, [open, editing]);
+
+  function openCreate() {
+    setEditing(null);
+    setOpen(true);
+  }
+
+  function openEdit(p: PromoCode) {
+    setEditing(p);
+    setOpen(true);
+  }
 
   async function save() {
     if (!code.trim()) {
@@ -73,120 +92,212 @@ export default function PromocodesPage() {
   }
 
   async function remove(p: PromoCode) {
+    setDeleting(true);
     try {
       await adminApi.deletePromo(p.id);
+      push("Промокод удалён", "ok");
       refresh();
+      setConfirming(null);
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка", "error");
+    } finally {
+      setDeleting(false);
     }
   }
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-[20px] font-bold text-[var(--text)]">Промокоды</h1>
-        <GlassButton
-          variant="accent"
-          size="sm"
-          icon={<Plus className="h-4 w-4" />}
-          onClick={() => {
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          Создать
-        </GlassButton>
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        title="Промокоды"
+        subtitle="Скидки для клиентов — процент или фиксированная сумма"
+        actions={
+          <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+            Новый промокод
+          </Button>
+        }
+      />
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16" />
-          ))}
-        </div>
+        <CenterSpinner label="Загрузка промокодов" />
       ) : promos.length === 0 ? (
-        <div className="glass rounded-[var(--r-md)] px-4 py-10 text-center text-[var(--text-faint)]">
-          Промокодов нет
-        </div>
+        <EmptyState
+          icon={Ticket}
+          title="Промокодов пока нет"
+          description="Создайте первый промокод, чтобы предлагать клиентам скидки на заказы."
+          action={
+            <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+              Новый промокод
+            </Button>
+          }
+        />
       ) : (
-        <div className="flex flex-col gap-2">
-          {promos.map((p) => (
-            <div key={p.id} className="glass flex items-center gap-3 rounded-[var(--r-md)] px-4 py-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[15px] font-bold text-[var(--text)]">{p.code}</span>
-                  <Badge color={p.active ? "var(--ok)" : "var(--text-faint)"}>
-                    {p.active ? "активен" : "выкл"}
-                  </Badge>
-                </div>
-                <div className="mt-0.5 text-[12px] text-[var(--text-muted)]">
-                  {p.discountPercent ? `−${p.discountPercent}%` : ""}
-                  {p.discountAmountMinor ? `−${money(p.discountAmountMinor)}` : ""}
-                  {p.maxUses ? ` · лимит ${p.usedCount ?? 0}/${p.maxUses}` : ""}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setEditing(p);
-                  setOpen(true);
-                }}
-                className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--text)]"
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="flex flex-col gap-3"
+        >
+          {promos.map((p) => {
+            const limited = !!p.maxUses;
+            const used = p.usedCount ?? 0;
+            const exhausted = limited && used >= (p.maxUses ?? 0);
+            return (
+              <motion.div
+                key={p.id}
+                variants={riseItem}
+                {...hoverLift}
+                className="card flex items-center gap-4 px-4 py-3.5"
               >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => remove(p)}
-                className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--danger)]"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+                  <Ticket className="h-5 w-5" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[15px] font-black tracking-wide text-[var(--text)]">
+                      {p.code}
+                    </span>
+                    <Badge tone={p.active ? "ok" : "neutral"} dot>
+                      {p.active ? "активен" : "выключен"}
+                    </Badge>
+                    {exhausted && <Badge tone="warn">лимит исчерпан</Badge>}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
+                    {p.discountPercent ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Percent className="h-3.5 w-3.5 text-[var(--text-faint)]" />
+                        {p.discountPercent}% скидка
+                      </span>
+                    ) : null}
+                    {p.discountAmountMinor ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Wallet className="h-3.5 w-3.5 text-[var(--text-faint)]" />
+                        −{money(p.discountAmountMinor)}
+                      </span>
+                    ) : null}
+                    <span className="text-[var(--text-faint)]">
+                      {limited ? `Использовано ${used} / ${p.maxUses}` : `Использовано ${used} · без лимита`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Редактировать"
+                    onClick={() => openEdit(p)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Удалить"
+                    className="hover:text-[var(--danger)]"
+                    onClick={() => setConfirming(p)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       )}
 
+      {/* create / edit */}
       <Modal
         open={open}
         onClose={() => setOpen(false)}
         title={editing ? "Редактировать промокод" : "Новый промокод"}
         footer={
           <>
-            <GlassButton variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={() => setOpen(false)}>
               Отмена
-            </GlassButton>
-            <GlassButton variant="accent" loading={saving} onClick={save}>
+            </Button>
+            <Button variant="accent" loading={saving} onClick={save}>
               Сохранить
-            </GlassButton>
+            </Button>
           </>
         }
       >
         <div className="flex flex-col gap-4">
-          <GlassInput label="Код" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+          <Input
+            label="Код"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="SUMMER25"
+            className="font-mono tracking-wide"
+            icon={<Ticket className="h-4 w-4" />}
+          />
           <div className="grid grid-cols-2 gap-3">
-            <GlassInput
+            <Input
               label="Скидка %"
               inputMode="numeric"
               value={percent}
               onChange={(e) => setPercent(e.target.value)}
+              icon={<Percent className="h-4 w-4" />}
             />
-            <GlassInput
+            <Input
               label="Скидка (UAH)"
               inputMode="decimal"
               value={amountMajor}
               onChange={(e) => setAmountMajor(e.target.value)}
+              icon={<Wallet className="h-4 w-4" />}
             />
           </div>
           <p className="-mt-2 text-[12px] text-[var(--text-faint)]">
             Фикс. скидка приоритетнее процентной (см. контракт).
           </p>
-          <GlassInput
-            label="Макс. использований (пусто = без лимита)"
+          <Input
+            label="Макс. использований"
+            hint="Пусто = без лимита"
             inputMode="numeric"
             value={maxUses}
             onChange={(e) => setMaxUses(e.target.value)}
           />
-          <GlassToggle checked={active} onChange={setActive} label="Активен" />
+          <div className="card-2 rounded-[var(--r-md)] px-3.5 py-3">
+            <Toggle checked={active} onChange={setActive} label="Активен" />
+          </div>
         </div>
+      </Modal>
+
+      {/* delete confirm */}
+      <Modal
+        open={!!confirming}
+        onClose={() => (deleting ? undefined : setConfirming(null))}
+        title="Удалить промокод?"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" disabled={deleting} onClick={() => setConfirming(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleting}
+              onClick={() => confirming && remove(confirming)}
+            >
+              Удалить
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[14px] leading-relaxed text-[var(--text-muted)]">
+          Промокод{" "}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={confirming?.id ?? "none"}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="font-mono font-bold text-[var(--text)]"
+            >
+              {confirming?.code}
+            </motion.span>
+          </AnimatePresence>{" "}
+          будет удалён без возможности восстановления.
+        </p>
       </Modal>
     </div>
   );

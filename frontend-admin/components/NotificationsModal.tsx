@@ -1,11 +1,8 @@
 "use client";
 
 /**
- * NotificationsModal (admin) — inbox of orders with unread customer messages.
- * Rendered in a PORTAL to <body> (the bell lives inside the .glass header whose
- * transform would otherwise trap position:fixed). Desktop: panel anchored at the
- * top-right under the bell. Mobile: full-screen sheet. Backdrop is blurred like
- * the navbar. Click a row → that order's chat; "Прочитать всё" marks all read.
+ * Conversations inbox — orders with unread customer messages. Portal to body.
+ * Desktop: panel anchored top-right; mobile: full-screen sheet.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,9 +10,9 @@ import { CheckCheck, MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { adminApi, type ConversationDto } from "@/lib/api";
-import { STATUS_EMOJI, STATUS_LABEL, timeAgo } from "@/lib/orders";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { Badge } from "@/components/ui/Badge";
+import { STATUS_EMOJI, timeAgo } from "@/lib/orders";
+import { Button } from "@/components/ui/Button";
+import { StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/lib/toast";
 
@@ -59,36 +56,26 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div
-          className="fixed inset-0 z-[200]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div
-            className="absolute inset-0 bg-black/45"
-            style={{ backdropFilter: "blur(14px) saturate(140%)", WebkitBackdropFilter: "blur(14px) saturate(140%)" }}
-            onClick={onClose}
-            aria-hidden
-          />
+        <motion.div className="fixed inset-0 z-[200]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <div className="absolute inset-0 bg-black/55" onClick={onClose} aria-hidden />
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.99 }}
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.99 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            className="glass glass--strong absolute inset-x-0 bottom-0 top-0 flex flex-col sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-4 sm:max-h-[80vh] sm:w-[400px] sm:rounded-[var(--r-lg)]"
+            className="elevated absolute inset-x-0 bottom-0 top-0 flex flex-col rounded-none border-x-0 border-t-0 sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-4 sm:max-h-[80vh] sm:w-[420px] sm:rounded-[var(--r-md)] sm:border-[3px]"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
-              <h2 className="text-[16px] font-semibold text-[var(--text)]">Новые сообщения</h2>
+            <div className="flex items-center justify-between gap-3 border-b-[3px] border-[var(--line)] px-4 py-3.5">
+              <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">Новые сообщения</h2>
               <div className="flex items-center gap-1">
                 {rows.length > 0 && (
-                  <GlassButton variant="glass" size="sm" onClick={readAll} icon={<CheckCheck className="h-4 w-4" />}>
+                  <Button variant="ghost" size="sm" onClick={readAll} icon={<CheckCheck className="h-4 w-4" />}>
                     Прочитать всё
-                  </GlassButton>
+                  </Button>
                 )}
                 <button
                   onClick={onClose}
-                  className="grid h-9 w-9 place-items-center rounded-full text-[var(--text-muted)] hover:bg-white/10"
+                  className="nb-press grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)]"
                   aria-label="Закрыть"
                 >
                   <X className="h-5 w-5" />
@@ -104,7 +91,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                   ))}
                 </div>
               ) : rows.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-12 text-center text-[var(--text-faint)]">
+                <div className="flex flex-col items-center gap-2 py-16 text-center text-[var(--text-faint)]">
                   <MessageCircle className="h-8 w-8 opacity-50" />
                   <span className="text-[14px]">Нет новых сообщений</span>
                 </div>
@@ -114,14 +101,14 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                     <button
                       key={c.orderId}
                       onClick={() => openChat(c)}
-                      className="flex items-center gap-3 rounded-[var(--r-md)] bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                      className="nb-press flex items-center gap-3 rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] p-3 text-left shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--surface-hover)]"
                     >
-                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 text-[18px]">
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-[var(--line)] bg-[var(--surface)] text-[18px]">
                         {STATUS_EMOJI[c.status] ?? "📦"}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-[14px] font-semibold text-[var(--text)]">
+                          <span className="truncate text-[14px] font-bold text-[var(--text)]">
                             {c.customerName || "Без имени"}
                           </span>
                           <span className="shrink-0 text-[11px] text-[var(--text-faint)]">
@@ -134,14 +121,14 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                             {c.lastPreview || "—"}
                           </span>
                           {c.unreadCount > 0 && (
-                            <span className="glossy flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none">
+                            <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--accent)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]">
                               {c.unreadCount > 99 ? "99+" : c.unreadCount}
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-1.5">
+                        <div className="mt-1 flex items-center gap-1.5">
                           <span className="font-mono text-[10px] text-[var(--text-faint)]">#{c.shortId}</span>
-                          <Badge>{STATUS_LABEL[c.status]}</Badge>
+                          <StatusBadge status={c.status} />
                         </div>
                       </div>
                     </button>

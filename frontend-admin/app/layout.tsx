@@ -11,28 +11,29 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Админка — tg-shop-v2",
-  description: "Liquid Glass admin panel",
+  title: "MAXSOLCH — админка",
+  description: "tg-shop admin panel (Neo-Brutalism)",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0c1118",
+  themeColor: "#F4F1E6",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Apply the stored theme before paint to avoid a flash (light by default).
+const themeInit = `(function(){try{var t=localStorage.getItem('admin-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={inter.variable}>
+    <html lang="ru" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>
-        {/* Telegram WebApp SDK — present when the panel is opened in Telegram. */}
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-        <div className="scene" aria-hidden />
+        <div className="aurora" aria-hidden />
         <Providers>{children}</Providers>
       </body>
     </html>

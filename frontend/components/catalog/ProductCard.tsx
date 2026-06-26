@@ -1,21 +1,17 @@
 "use client";
 
 /**
- * Liquid-glass product card (design doc §8.4): photo with blur-up, title, price,
- * stock badge. Micro press lift on the photo/title area.
- *
- * Rework: the card carries an inline add-to-cart control at the bottom.
- *  - Product WITHOUT variants → AddToCartControl ("В корзину" → "− qty +").
- *    The +/- taps call stopPropagation so they don't open the product view.
- *  - Product WITH variants → a "Выбрать" GlassButton that opens the product
- *    view (variant must be picked there before adding).
- * Tapping the photo/title always opens the product view.
+ * ProductCard — NEO-BRUTALISM tile.
+ * Thick ink border + hard offset shadow, sharp corners, raw stock sticker, heavy
+ * type. Same contract/behavior as before: tap photo/title → product view;
+ * no-variant products get an inline AddToCartControl, variant products get a
+ * "Выбрать" button that opens the view.
  */
-import { motion } from "framer-motion";
+import { SlidersHorizontal } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
-import { GlassButton } from "@/components/ui/GlassButton";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
+import { haptic } from "@/lib/telegram";
 import type { Product } from "@/lib/api";
 
 export function ProductCard({
@@ -30,55 +26,48 @@ export function ProductCard({
     ? (product.variants ?? []).some((v) => v.stock > 0)
     : (product.stock ?? 0) > 0;
 
+  const open = () => {
+    haptic();
+    onOpen(product);
+  };
+
   return (
-    <div className="glass glass--noise relative flex h-full flex-col overflow-hidden rounded-[var(--r-lg)] p-2 text-left">
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 28 }}
-        onClick={() => onOpen(product)}
-        className="flex flex-col text-left"
-      >
-        <div className="relative aspect-square w-full overflow-hidden rounded-[var(--r-md)]">
-          <Image
-            src={product.images?.[0]?.url}
-            alt={product.title}
-            size={600}
-            className="h-full w-full"
-          />
+    <div className="nb flex h-full w-full flex-col overflow-hidden">
+      <button type="button" onClick={open} className="nb-press flex flex-col text-left">
+        <div className="relative aspect-square w-full overflow-hidden border-b-[3px] border-[var(--line)]">
+          <Image src={product.images?.[0]?.url} alt={product.title} size={600} className="h-full w-full" />
           <span
-            className="absolute left-2 top-2 rounded-[var(--r-pill)] px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
+            className="absolute left-2 top-2 -rotate-2 border-[2px] border-[var(--line)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide"
             style={{
-              background: inStock
-                ? "color-mix(in srgb, var(--ok) 24%, transparent)"
-                : "color-mix(in srgb, var(--danger) 24%, transparent)",
-              color: inStock ? "var(--ok)" : "var(--danger)",
+              background: inStock ? "var(--c4)" : "var(--danger)",
+              color: inStock ? "#0c2417" : "#fff",
             }}
           >
-            {inStock ? "В наличии" : "Нет в наличии"}
+            {inStock ? "В наличии" : "Нет"}
           </span>
         </div>
-        <div className="flex flex-col gap-1 px-1 pt-2">
-          <h3 className="line-clamp-2 min-h-[2.6em] text-[14px] font-semibold leading-snug text-[var(--text)]">
+
+        <div className="flex flex-col gap-1.5 px-2.5 pt-2.5">
+          <h3 className="line-clamp-2 min-h-[2.6em] text-[13.5px] font-bold leading-snug text-[var(--ink)]">
             {product.title}
           </h3>
-          <p className="text-[15px] font-bold text-[var(--accent)]">
+          <span className="self-start border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[15px] font-black text-[var(--ink)]">
             {money(product.priceMinor, product.currency)}
-          </p>
+          </span>
         </div>
-      </motion.button>
+      </button>
 
-      {/* inline action — pinned to the bottom so buttons align across cards */}
-      <div className="mt-auto px-1 pb-1 pt-2">
+      <div className="mt-auto p-2.5 pt-2.5">
         {hasVariants ? (
-          <GlassButton
-            variant="accent"
-            fullWidth
+          <button
+            type="button"
+            onClick={open}
             disabled={!inStock}
-            onClick={() => onOpen(product)}
+            className="nb-accent nb-press tap nb-up flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-[13px] disabled:opacity-50"
           >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.75} />
             {inStock ? "Выбрать" : "Нет в наличии"}
-          </GlassButton>
+          </button>
         ) : (
           <AddToCartControl product={product} variant={null} fullWidth size="sm" />
         )}

@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * Orders board (route "/") — design doc §6ter.
+ * Orders board (route "/").
  *  - Desktop (lg+): kanban with dnd-kit drag-between-columns -> PATCH status.
  *    SHIPPED prompts ТТН, REJECTED prompts reason. Transitions validated.
  *    Optimistic update + rollback on error.
- *  - Mobile: tab-list fallback with "Переместить в…" sheet (MobileBoard).
- *  - Toolbar: search + Доска/Таблица toggle.
+ *  - Mobile: status-tab list fallback with "Переместить в…" sheet (MobileBoard).
+ *  - Toolbar: search + range filter + Доска/Таблица toggle + refresh.
  *  - Realtime: polling refetch (board query refetchInterval).
  */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
@@ -29,11 +30,14 @@ import {
   type OrderStatus,
 } from "@/lib/api";
 import { STATUS_ORDER, canTransition } from "@/lib/orders";
-import { useTimeRange } from "@/lib/range";
+import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useToast } from "@/lib/toast";
-import { GlassChip } from "@/components/ui/GlassChip";
-import { RangeSwitcher } from "@/components/ui/RangeSwitcher";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { CenterSpinner } from "@/components/ui/Spinner";
+import { staggerContainer, riseItem } from "@/lib/motion";
 import { KanbanColumn } from "@/components/orders/KanbanColumn";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
@@ -45,6 +49,11 @@ import {
 } from "@/components/orders/StatusChangeModal";
 
 type View = "board" | "table";
+
+const VIEW_OPTIONS: { value: View; label: string }[] = [
+  { value: "board", label: "Доска" },
+  { value: "table", label: "Таблица" },
+];
 
 export default function BoardPage() {
   const qc = useQueryClient();
@@ -155,53 +164,51 @@ export default function BoardPage() {
 
   return (
     <div>
-      {/* Toolbar */}
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="glass flex min-w-[200px] flex-1 items-center gap-2 rounded-[var(--r-md)] px-3.5 py-2.5">
-          <Search className="h-4 w-4 text-[var(--text-muted)]" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск: имя, товар, ТТН, №…"
-            className="w-full bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
-          />
-        </div>
-        <RangeSwitcher value={range} onChange={setRange} />
-        <div className="flex gap-2">
-          <GlassChip
-            active={view === "board"}
-            onClick={() => setView("board")}
-            icon={<LayoutGrid className="h-4 w-4" />}
-          >
-            Доска
-          </GlassChip>
-          <GlassChip
-            active={view === "table"}
-            onClick={() => setView("table")}
-            icon={<Table2 className="h-4 w-4" />}
-          >
-            Таблица
-          </GlassChip>
-          <GlassChip
+      <PageHeader
+        title="Заказы"
+        subtitle="Управляйте заказами на доске или в таблице"
+        actions={
+          <Button
+            variant="surface"
+            icon={<RefreshCw className="h-4 w-4" />}
             onClick={() => {
               qc.invalidateQueries({ queryKey: ["board"] });
               qc.invalidateQueries({ queryKey: ["orders-table"] });
             }}
-            icon={<RefreshCw className="h-4 w-4" />}
           >
             Обновить
-          </GlassChip>
+          </Button>
+        }
+      />
+
+      {/* Toolbar */}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="min-w-[220px] flex-1">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск: имя, товар, ТТН, №…"
+            icon={<Search className="h-4 w-4" />}
+          />
         </div>
+        <div className="thin-scroll max-w-full overflow-x-auto">
+          <SegmentedControl
+            options={RANGE_OPTIONS}
+            value={range}
+            onChange={setRange}
+          />
+        </div>
+        <SegmentedControl
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {view === "table" ? (
         <OrdersTable search={search} range={range} onOpen={setOpenId} />
       ) : isLoading || !board ? (
-        <div className="flex gap-4">
-          {STATUS_ORDER.slice(0, 4).map((s) => (
-            <Skeleton key={s} className="h-96 w-72" />
-          ))}
-        </div>
+        <CenterSpinner label="Загружаем доску…" />
       ) : (
         <>
           {/* Desktop kanban */}
@@ -212,21 +219,27 @@ export default function BoardPage() {
               onDragEnd={onDragEnd}
               onDragCancel={() => setActiveId(null)}
             >
-              <div className="thin-scroll flex gap-4 overflow-x-auto pb-4">
+              <motion.div
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+                className="thin-scroll flex gap-4 overflow-x-auto pb-4"
+              >
                 {STATUS_ORDER.map((s) => (
-                  <KanbanColumn
-                    key={s}
-                    status={s}
-                    orders={board.columns[s] ?? []}
-                    count={board.counts?.[s] ?? board.columns[s]?.length ?? 0}
-                    onCardClick={setOpenId}
-                    dragActive={activeId !== null}
-                    validTarget={
-                      !!activeOrder && canTransition(activeOrder.status, s)
-                    }
-                  />
+                  <motion.div key={s} variants={riseItem}>
+                    <KanbanColumn
+                      status={s}
+                      orders={board.columns[s] ?? []}
+                      count={board.counts?.[s] ?? board.columns[s]?.length ?? 0}
+                      onCardClick={setOpenId}
+                      dragActive={activeId !== null}
+                      validTarget={
+                        !!activeOrder && canTransition(activeOrder.status, s)
+                      }
+                    />
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
               <DragOverlay>
                 {activeOrder ? (
                   <div className="w-72">
