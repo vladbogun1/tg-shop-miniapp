@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Tiny glass toast system (design doc §8.4 "tosty steklyannye").
- * Provider + useToast() hook. No external deps.
+ * Toast system (Aurora). Provider + useToast() hook. No external deps.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -12,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 type ToastKind = "ok" | "error" | "info";
 interface Toast {
@@ -32,41 +31,51 @@ export function useToast(): Ctx {
 
 let idSeq = 1;
 
+const ICON = {
+  ok: <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-[var(--ok)]" />,
+  error: <AlertCircle className="h-[18px] w-[18px] shrink-0 text-[var(--danger)]" />,
+  info: <Info className="h-[18px] w-[18px] shrink-0 text-[var(--accent)]" />,
+};
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const push = useCallback((text: string, kind: ToastKind = "info") => {
-    const id = idSeq++;
-    setToasts((t) => [...t, { id, kind, text }]);
-    setTimeout(() => {
-      setToasts((t) => t.filter((x) => x.id !== id));
-    }, 3600);
+  const remove = useCallback((id: number) => {
+    setToasts((t) => t.filter((x) => x.id !== id));
   }, []);
+
+  const push = useCallback(
+    (text: string, kind: ToastKind = "info") => {
+      const id = idSeq++;
+      setToasts((t) => [...t, { id, kind, text }]);
+      setTimeout(() => remove(id), 3800);
+    },
+    [remove]
+  );
 
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[100] flex flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-5 right-5 z-[400] flex flex-col gap-2.5">
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, y: 16, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              className="glass glass--floating pointer-events-auto flex max-w-[340px] items-center gap-2.5 rounded-[var(--r-md)] px-4 py-3 text-[14px]"
+              layout
+              initial={{ opacity: 0, x: 40, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 40, scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 420, damping: 30 }}
+              className="elevated pointer-events-auto flex max-w-[360px] items-center gap-3 px-4 py-3"
             >
-              {t.kind === "ok" && (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ok)]" />
-              )}
-              {t.kind === "error" && (
-                <AlertCircle className="h-4 w-4 shrink-0 text-[var(--danger)]" />
-              )}
-              {t.kind === "info" && (
-                <Info className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-              )}
-              <span className="text-[var(--text)]">{t.text}</span>
+              {ICON[t.kind]}
+              <span className="text-[14px] leading-snug text-[var(--text)]">{t.text}</span>
+              <button
+                onClick={() => remove(t.id)}
+                className="ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </motion.div>
           ))}
         </AnimatePresence>

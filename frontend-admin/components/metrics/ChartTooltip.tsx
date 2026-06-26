@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * GlassTooltip — themed recharts tooltip content. Rows are pre-formatted by the
- * caller via `formatter`, so this stays generic for money / counts / hours.
+ * ChartTooltip — recharts tooltip styled as a neo-brutalist bordered card
+ * (thick ink border + hard offset shadow, --surface bg). Rows are pre-formatted
+ * by the caller via `valueFormatter`, so this stays generic for money / counts /
+ * hours. It renders normal DOM (not SVG), so it can use CSS vars + utilities.
  */
 type Formatter = (value: number, name: string) => string;
 
@@ -23,7 +25,7 @@ interface Props {
   valueFormatter?: Formatter;
 }
 
-export function GlassTooltip({
+export function ChartTooltip({
   active,
   payload,
   label,
@@ -32,25 +34,32 @@ export function GlassTooltip({
 }: Props) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="glass glass--strong rounded-[var(--r-md)] px-3 py-2 text-[12px] shadow-[var(--shadow-2)]">
+    <div className="min-w-[120px] rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[12px] shadow-[var(--shadow-3)]">
       {label != null && (
-        <div className="mb-1 font-semibold text-[var(--text)]">
+        <div className="mb-1.5 font-extrabold uppercase tracking-wide text-[var(--text)]">
           {labelFormatter ? labelFormatter(String(label)) : String(label)}
         </div>
       )}
-      {payload.map((p, i) => {
-        const value = p.value ?? 0;
-        const name = p.name ?? "";
-        return (
-          <div key={i} className="flex items-center gap-2 text-[var(--text-muted)]">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: p.color ?? "var(--accent)" }}
-            />
-            <span>{valueFormatter ? valueFormatter(value, name) : value}</span>
-          </div>
-        );
-      })}
+      <div className="flex flex-col gap-1">
+        {payload.map((p, i) => {
+          const value = p.value ?? 0;
+          const name = p.name ?? "";
+          return (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[var(--text-muted)]"
+            >
+              <span
+                className="inline-block h-3 w-3 shrink-0 border-2 border-[var(--line)]"
+                style={{ background: p.color ?? "var(--accent)" }}
+              />
+              <span className="font-bold text-[var(--text)]">
+                {valueFormatter ? valueFormatter(value, name) : value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

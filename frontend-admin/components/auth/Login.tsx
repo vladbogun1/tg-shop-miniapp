@@ -2,15 +2,13 @@
 
 /**
  * Admin login — browser username + password (POST /api/auth/admin/login).
- * Credentials are managed server-side (bcrypt) and bootstrapped from
- * ADMIN_LOGIN / ADMIN_PASSWORD env on the backend.
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { LogIn, ShieldCheck } from "lucide-react";
+import { LogIn, ShieldCheck, User, Lock } from "lucide-react";
 import { authAdminLogin, ApiError } from "@/lib/api";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { useToast } from "@/lib/toast";
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
@@ -31,53 +29,64 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
       push("Вход выполнен", "ok");
       onSuccess();
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Не удалось войти";
-      push(msg, "error");
+      push(e instanceof ApiError ? e.message : "Не удалось войти", "error");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="grid min-h-dvh place-items-center px-4">
+    <div className="relative grid min-h-dvh place-items-center px-4">
       <motion.form
         onSubmit={submit}
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
-        className="glass glass--floating glass--strong w-full max-w-md rounded-[var(--r-lg)] p-7"
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 280, damping: 26 }}
+        className="elevated w-full max-w-md p-8"
       >
-        <div className="mb-6 flex flex-col items-center text-center">
-          <div className="mb-3 grid h-14 w-14 place-items-center rounded-[var(--r-lg)] [background:var(--accent)]">
-            <ShieldCheck className="h-7 w-7 text-[var(--accent-ink)]" />
-          </div>
-          <h1 className="text-[22px] font-bold text-[var(--text)]">Админ-панель</h1>
-          <p className="mt-1 text-[14px] text-[var(--text-muted)]">tg-shop-v2 — вход для администратора</p>
+        <div className="mb-7 flex flex-col items-center text-center">
+          <motion.div
+            initial={{ scale: 0.6, rotate: -12, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
+            className="accent-fill mb-4 grid h-16 w-16 place-items-center rounded-[var(--r-md)]"
+          >
+            <ShieldCheck className="h-8 w-8" />
+          </motion.div>
+          <h1 className="text-[26px] font-black uppercase tracking-wide text-[var(--text)]">
+            MAXSOLCH <span className="text-[var(--accent)]">админка</span>
+          </h1>
+          <p className="mt-1.5 text-[14px] font-medium text-[var(--text-muted)]">
+            Вход для администратора магазина
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <GlassInput
+        <div className="flex flex-col gap-4">
+          <Input
             label="Логин"
             value={username}
             autoComplete="username"
+            icon={<User className="h-4 w-4" />}
             onChange={(e) => setUsername(e.target.value)}
           />
-          <GlassInput
+          <Input
             label="Пароль"
             type="password"
             value={password}
             autoComplete="current-password"
+            icon={<Lock className="h-4 w-4" />}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <GlassButton
+          <Button
             type="submit"
             variant="accent"
-            fullWidth
+            size="lg"
             loading={loading}
             icon={<LogIn className="h-4 w-4" />}
+            className="mt-1 w-full"
           >
             Войти
-          </GlassButton>
+          </Button>
         </div>
       </motion.form>
     </div>

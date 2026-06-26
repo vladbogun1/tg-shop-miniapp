@@ -17,8 +17,14 @@ export default function OrderDeepLinkPage() {
 
   return (
     <div>
-      <p className="text-[14px] text-[var(--text-muted)]">Заказ открыт в панели.</p>
-      <OrderDrawer orderId={id} initialTab={initialTab} onClose={() => router.push("/")} />
+      <p className="text-[13px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+        Заказ открыт в панели.
+      </p>
+      <OrderDrawer
+        orderId={id}
+        initialTab={initialTab}
+        onClose={() => router.push("/")}
+      />
     </div>
   );
 }

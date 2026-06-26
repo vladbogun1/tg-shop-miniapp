@@ -31,16 +31,21 @@ export function hoursLabel(h: number | null | undefined): string {
  * theme to the dark glass. These are literal values (recharts can't read CSS
  * vars from JS), kept in sync with globals.css :root.
  */
+/* Neo palette. grid/axis/text are neutral grey so they read on BOTH the light
+   cream and dark grey backgrounds (recharts can't read CSS vars). */
 export const CHART_COLORS = {
-  accent: "#5ac8fa",
-  new: "#5ac8fa",
-  approved: "#34c759",
-  shipped: "#ff9f0a",
-  delivered: "#30d158",
-  rejected: "#ff453a",
-  grid: "rgba(255,255,255,0.08)",
-  axis: "rgba(255,255,255,0.4)",
-  text: "rgba(255,255,255,0.96)",
+  accent: "#FF5A2C",
+  // Status hues — kept in sync with the --st-* tokens in globals.css so charts,
+  // the kanban board and status chips all use the same identity. approved
+  // (violet) is now clearly distinct from delivered (green).
+  new: "#3F8CF5",
+  approved: "#9B6BFF",
+  shipped: "#F5A623",
+  delivered: "#22C07D",
+  rejected: "#F0503C",
+  grid: "rgba(128,128,128,0.28)",
+  axis: "#8b8b8b",
+  text: "#8b8b8b",
 } as const;
 
 /** Status -> chart color, matching the kanban accents. */
@@ -54,12 +59,12 @@ export const STATUS_COLOR: Record<string, string> = {
 
 /** A small rotating palette for categorical series (top products, payments). */
 export const SERIES_PALETTE = [
-  "#5ac8fa",
-  "#34c759",
-  "#ff9f0a",
-  "#30d158",
-  "#bf5af2",
-  "#64d2ff",
-  "#ffd60a",
-  "#ff453a",
+  "#FF5A2C",
+  "#2F6BFF",
+  "#16B36B",
+  "#E8A300",
+  "#12B886",
+  "#E5341F",
+  "#7B5Cff",
+  "#FF73B5",
 ];

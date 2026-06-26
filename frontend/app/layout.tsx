@@ -31,13 +31,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className={inter.variable}>
+    <html lang="ru" className={inter.variable} suppressHydrationWarning>
       <head>
+        {/* Apply the stored neo theme before paint (default light). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('neo-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();",
+          }}
+        />
         {/* Official Telegram WebApp SDK — guarantees window.Telegram.WebApp (initData,
             theme, MainButton) in any Telegram client (mobile + desktop). */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
+        />
+        {/* Reveal the webview ASAP: call WebApp.ready()/expand() as soon as the SDK
+            exists, INDEPENDENT of React/initData. On iOS the Telegram loading
+            placeholder stays until ready() fires; if it were only called from a
+            React effect (and skipped when initData is briefly empty) the Mini App
+            could hang on the placeholder forever. This poller fixes that. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){function r(){try{var w=window.Telegram&&window.Telegram.WebApp;if(w){if(w.ready)w.ready();if(w.expand)w.expand();return true;}}catch(e){}return false;}if(!r()){var n=0,t=setInterval(function(){if(r()||++n>60)clearInterval(t);},50);}})();",
+          }}
         />
       </head>
       <body>

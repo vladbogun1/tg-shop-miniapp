@@ -1,8 +1,16 @@
 "use client";
 
-/** Glass step progress indicator (design doc §6bis.1: "стеклянный степпер"). */
+/**
+ * StepProgress — NEO-BRUTALISM segmented step indicator.
+ *
+ * Numbered bordered chips on a connecting rail. The active chip is accent-filled
+ * and pops with a spring; done chips show a check; pending chips sit flat. A
+ * thick ink rail connects the chips and fills with accent up to the active step.
+ * Pure presentation — same props/behaviour as the original (steps + current).
+ */
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { spring } from "@/lib/motion";
 
 export function StepProgress({
   steps,
@@ -11,51 +19,73 @@ export function StepProgress({
   steps: string[];
   current: number;
 }) {
+  const count = steps.length;
+  // 0..1 fraction of the rail filled — reaches the centre of the active chip.
+  const fill = count > 1 ? Math.max(0, Math.min(1, current / (count - 1))) : 0;
+
   return (
-    <div className="flex items-center gap-1.5">
-      {steps.map((label, i) => {
-        const done = i < current;
-        const active = i === current;
-        return (
-          <div key={label} className="flex flex-1 flex-col items-center gap-1">
-            <div className="flex w-full items-center">
-              <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold transition-colors"
-                style={{
-                  background:
-                    done || active ? "var(--accent)" : "var(--glass-bg)",
-                  color:
-                    done || active ? "var(--accent-ink)" : "var(--text-muted)",
-                  boxShadow: active
-                    ? "0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent)"
-                    : undefined,
-                }}
-              >
-                {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
-              </span>
-              {i < steps.length - 1 && (
-                <span className="relative mx-1 h-0.5 flex-1 overflow-hidden rounded-full bg-white/12">
-                  <motion.span
-                    className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ background: "var(--accent)" }}
-                    initial={false}
-                    animate={{ width: done ? "100%" : "0%" }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                </span>
-              )}
-            </div>
-            <span
-              className="text-center text-[10px] font-medium leading-tight"
+    <div className="px-1 pt-1">
+      {/* Rail + chips */}
+      <div className="relative flex items-center justify-between">
+        {/* Base rail (between first & last chip centres). */}
+        <div className="absolute left-4 right-4 top-1/2 h-[3px] -translate-y-1/2 bg-[var(--line)]" />
+        {/* Accent fill over the rail. */}
+        <motion.div
+          className="absolute left-4 top-1/2 h-[3px] -translate-y-1/2 origin-left bg-[var(--accent)]"
+          style={{ right: 16 }}
+          initial={false}
+          animate={{ scaleX: fill }}
+          transition={spring}
+        />
+
+        {steps.map((label, i) => {
+          const done = i < current;
+          const active = i === current;
+          const on = done || active;
+          return (
+            <motion.span
+              key={label}
+              className="relative z-10 grid h-8 w-8 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] text-[13px] font-black"
+              initial={false}
+              animate={{
+                scale: active ? 1.12 : 1,
+                y: active ? -1 : 0,
+              }}
+              transition={spring}
               style={{
-                color: active ? "var(--text)" : "var(--text-faint)",
+                background: on ? "var(--accent)" : "var(--surface)",
+                color: on ? "var(--accent-ink)" : "var(--muted)",
+                boxShadow: active ? "3px 3px 0 var(--shadow)" : "none",
+              }}
+            >
+              {done ? <Check className="h-4 w-4" strokeWidth={3.5} /> : i + 1}
+            </motion.span>
+          );
+        })}
+      </div>
+
+      {/* Labels */}
+      <div className="mt-2 flex items-start justify-between">
+        {steps.map((label, i) => {
+          const active = i === current;
+          const done = i < current;
+          return (
+            <span
+              key={label}
+              className="flex-1 text-center text-[10px] font-bold uppercase leading-tight tracking-wide transition-colors"
+              style={{
+                color: active
+                  ? "var(--ink)"
+                  : done
+                    ? "var(--muted)"
+                    : "var(--faint)",
               }}
             >
               {label}
             </span>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

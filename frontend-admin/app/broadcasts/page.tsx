@@ -1,25 +1,42 @@
 "use client";
 
 /**
- * Рассылки — compose an HTML-formatted Telegram broadcast, send a test to a
- * specific user (admin dropdown or manual id), then broadcast to an audience
- * (all / active / inactive / premium) with live progress.
+ * Рассылки (Neo-brutalism restyle) — compose an HTML-formatted Telegram broadcast,
+ * send a test to a specific user (admin autocomplete or manual id), then
+ * broadcast to an audience (all / active / inactive / premium) with live
+ * progress polling. Functionality & API calls preserved 1:1 with the original;
+ * only the visual layer changed.
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
-import { Bold, Italic, Code, Link2, Quote, Send, FlaskConical } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  Bold,
+  Italic,
+  Code,
+  Link2,
+  Quote,
+  Send,
+  FlaskConical,
+  MessageSquareText,
+  Eye,
+  Users,
+} from "lucide-react";
 import {
   adminApi,
   type BroadcastAudience,
   type UserCardDto,
   ApiError,
 } from "@/lib/api";
-import { GlassTextarea } from "@/components/ui/GlassTextarea";
-import { GlassInput } from "@/components/ui/GlassInput";
-import { GlassSelect } from "@/components/ui/GlassSelect";
-import { GlassAutocomplete } from "@/components/ui/GlassAutocomplete";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassToggle } from "@/components/ui/GlassToggle";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Textarea } from "@/components/ui/Textarea";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Toggle } from "@/components/ui/Toggle";
+import { Autocomplete } from "@/components/ui/Autocomplete";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { staggerContainer, riseItem, spring } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 
 function userLabel(u: UserCardDto): string {
@@ -46,6 +63,7 @@ export default function BroadcastsPage() {
   const [buttonText, setButtonText] = useState("🛍 Открыть магазин");
   const [testing, setTesting] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const { data: audiences } = useQuery({
     queryKey: ["broadcast-audiences"],
@@ -78,10 +96,12 @@ export default function BroadcastsPage() {
     });
   }
 
-  const audienceOptions = (Object.keys(AUDIENCE_LABEL) as BroadcastAudience[]).map((a) => ({
-    value: a,
-    label: `${AUDIENCE_LABEL[a]}${audiences ? ` · ${audiences[a]}` : ""}`,
-  }));
+  const audienceOptions = (Object.keys(AUDIENCE_LABEL) as BroadcastAudience[]).map(
+    (a) => ({
+      value: a,
+      label: `${AUDIENCE_LABEL[a]}${audiences ? ` · ${audiences[a]}` : ""}`,
+    })
+  );
 
   const targetId =
     manualId.trim() || (selectedUser ? String(selectedUser.telegramUserId) : "");
@@ -107,14 +127,13 @@ export default function BroadcastsPage() {
     }
   }
 
-  async function startBroadcast() {
+  function requestBroadcast() {
     if (!text.trim()) return push("Введите текст сообщения", "error");
-    if (
-      !window.confirm(
-        `Разослать сообщение аудитории «${AUDIENCE_LABEL[audience]}» (${audienceCount} получателей)?`
-      )
-    )
-      return;
+    setConfirmOpen(true);
+  }
+
+  async function startBroadcast() {
+    setConfirmOpen(false);
     setStarting(true);
     try {
       await adminApi.broadcast({
@@ -133,12 +152,46 @@ export default function BroadcastsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-[20px] font-bold text-[var(--text)]">Рассылки</h1>
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="flex flex-col"
+    >
+      {/* Scoped styling for HTML rendered inside the Telegram preview bubble. */}
+      <style>{`
+        .tg-preview a { color: #6ab3f3; text-decoration: none; }
+        .tg-preview a:hover { text-decoration: underline; }
+        .tg-preview code {
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          background: rgba(255,255,255,0.08);
+          border-radius: 5px;
+          padding: 1px 5px;
+          font-size: 13px;
+        }
+        .tg-preview blockquote {
+          border-left: 3px solid #6ab3f3;
+          margin: 4px 0;
+          padding: 2px 0 2px 10px;
+          color: rgba(255,255,255,0.85);
+        }
+        .tg-preview b, .tg-preview strong { font-weight: 700; }
+        .tg-preview i, .tg-preview em { font-style: italic; }
+      `}</style>
+
+      <PageHeader
+        title="Рассылки"
+        subtitle="Соберите сообщение, проверьте предпросмотр, отправьте тест и разошлите аудитории."
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Compose */}
-        <div className="glass flex flex-col gap-3 rounded-[var(--r-lg)] p-4">
+        <motion.div variants={riseItem} className="card flex flex-col gap-3 p-5">
+          <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+            <MessageSquareText className="h-4 w-4 text-[var(--accent)]" />
+            Сообщение
+          </div>
+
           <div className="flex flex-wrap items-center gap-1.5">
             <FmtBtn icon={<Bold className="h-4 w-4" />} onClick={() => wrap("<b>", "</b>")} title="Жирный" />
             <FmtBtn icon={<Italic className="h-4 w-4" />} onClick={() => wrap("<i>", "</i>")} title="Курсив" />
@@ -151,7 +204,7 @@ export default function BroadcastsPage() {
             />
           </div>
 
-          <GlassTextarea
+          <Textarea
             id="bcast-ta"
             label="Текст сообщения (HTML)"
             value={text}
@@ -163,52 +216,58 @@ export default function BroadcastsPage() {
             &lt;a href&gt;, &lt;blockquote&gt;. Эмодзи можно вставлять как есть.
           </p>
 
-          <div className="mt-1 flex flex-col gap-2 rounded-[var(--r-md)] bg-white/5 p-3">
-            <GlassToggle
+          {/* Highlighted sub-panel: shop button toggle + editable text */}
+          <div className="mt-1 flex flex-col gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent-soft)] p-4">
+            <Toggle
               checked={withButton}
               onChange={setWithButton}
               label="Кнопка «Открыть магазин» под сообщением"
             />
             {withButton && (
-              <GlassInput
+              <Input
                 label="Текст кнопки"
                 value={buttonText}
                 onChange={(e) => setButtonText(e.target.value)}
               />
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Preview */}
-        <div className="glass flex flex-col gap-3 rounded-[var(--r-lg)] p-4">
-          <div className="text-[13px] font-semibold text-[var(--text-muted)]">Предпросмотр</div>
-          <div className="rounded-[var(--r-md)] bg-[#17212b] p-3">
-            {text.trim() ? (
-              <div
-                className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"
-                dangerouslySetInnerHTML={{ __html: text }}
-              />
-            ) : (
-              <div className="text-[13px] text-white/40">Сообщение появится здесь…</div>
-            )}
-            {withButton && (
-              <div className="mt-2 rounded-[8px] bg-[#2b5278] px-3 py-2 text-center text-[14px] font-medium text-white">
-                {buttonText.trim() || "🛍 Открыть магазин"}
-              </div>
-            )}
+        <motion.div variants={riseItem} className="card flex flex-col gap-3 p-5">
+          <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+            <Eye className="h-4 w-4 text-[var(--accent)]" />
+            Предпросмотр
           </div>
-        </div>
+          <div className="rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[#0e1621] p-4">
+            <div className="max-w-[85%] rounded-[14px] rounded-tl-[4px] bg-[#17212b] p-3 shadow-[var(--shadow-2)]">
+              {text.trim() ? (
+                <div
+                  className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"
+                  dangerouslySetInnerHTML={{ __html: text }}
+                />
+              ) : (
+                <div className="text-[13px] text-white/40">Сообщение появится здесь…</div>
+              )}
+              {withButton && (
+                <div className="mt-2 rounded-[8px] bg-[#2b5278] px-3 py-2 text-center text-[14px] font-medium text-white">
+                  {buttonText.trim() || "🛍 Открыть магазин"}
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Test send */}
-      <div className="glass flex flex-col gap-3 rounded-[var(--r-lg)] p-4">
-        <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
+      <motion.div variants={riseItem} className="card mt-4 flex flex-col gap-3 p-5">
+        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
           <FlaskConical className="h-4 w-4 text-[var(--accent)]" />
           Тестовая отправка
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
-            <GlassAutocomplete<UserCardDto>
+            <Autocomplete<UserCardDto>
               label="Пользователь"
               selectedLabel={selectedUser ? userLabel(selectedUser) : null}
               fetchItems={(q) => adminApi.users({ q, size: 8 })}
@@ -228,7 +287,7 @@ export default function BroadcastsPage() {
             />
           </div>
           <div className="min-w-[150px] flex-1">
-            <GlassInput
+            <Input
               label="или ID вручную"
               value={manualId}
               inputMode="numeric"
@@ -238,38 +297,41 @@ export default function BroadcastsPage() {
               }}
             />
           </div>
-          <GlassButton
-            variant="glass"
+          <Button
+            variant="surface"
             loading={testing}
             onClick={sendTest}
             icon={<Send className="h-4 w-4" />}
           >
             Отправить тест
-          </GlassButton>
+          </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Broadcast */}
-      <div className="glass flex flex-col gap-3 rounded-[var(--r-lg)] p-4">
-        <div className="text-[14px] font-semibold text-[var(--text)]">Рассылка</div>
+      <motion.div variants={riseItem} className="card mt-4 flex flex-col gap-3 p-5">
+        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+          <Users className="h-4 w-4 text-[var(--accent)]" />
+          Рассылка
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
-            <GlassSelect
+            <Select
               label="Аудитория"
               value={audience}
               options={audienceOptions}
-              onChange={(v) => setAudience(v as BroadcastAudience)}
+              onChange={(v) => setAudience(v)}
             />
           </div>
-          <GlassButton
+          <Button
             variant="accent"
             loading={starting}
             disabled={running || audienceCount === 0}
-            onClick={startBroadcast}
+            onClick={requestBroadcast}
             icon={<Send className="h-4 w-4" />}
           >
             Разослать ({audienceCount})
-          </GlassButton>
+          </Button>
         </div>
 
         {status && (status.running || status.total > 0) && (
@@ -281,8 +343,43 @@ export default function BroadcastsPage() {
             blocked={status.blocked}
           />
         )}
-      </div>
-    </div>
+      </motion.div>
+
+      {/* Confirm dialog */}
+      <Modal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Подтвердите рассылку"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
+              Отмена
+            </Button>
+            <Button
+              variant="accent"
+              loading={starting}
+              onClick={startBroadcast}
+              icon={<Send className="h-4 w-4" />}
+            >
+              Разослать
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[14px] leading-relaxed text-[var(--text)]">
+          Разослать сообщение аудитории{" "}
+          <span className="font-semibold text-[var(--accent)]">
+            «{AUDIENCE_LABEL[audience]}»
+          </span>{" "}
+          —{" "}
+          <span className="font-semibold">{audienceCount}</span> получателей?
+        </p>
+        <p className="mt-2 text-[13px] text-[var(--text-muted)]">
+          Действие нельзя отменить после запуска.
+        </p>
+      </Modal>
+    </motion.div>
   );
 }
 
@@ -291,19 +388,21 @@ function FmtBtn({
   onClick,
   title,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   onClick: () => void;
   title: string;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       title={title}
       onClick={onClick}
-      className="grid h-9 w-9 place-items-center rounded-[var(--r-md)] bg-white/5 text-[var(--text-muted)] transition-colors hover:bg-white/10 hover:text-[var(--text)]"
+      whileTap={{ scale: 0.92 }}
+      transition={spring}
+      className="focusable nb-press grid h-9 w-9 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
     >
       {icon}
-    </button>
+    </motion.button>
   );
 }
 
@@ -323,26 +422,33 @@ function BroadcastProgress({
   const done = sent + failed + blocked;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
-    <div className="mt-1 flex flex-col gap-2 rounded-[var(--r-md)] bg-white/5 p-3">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="card-2 mt-1 flex flex-col gap-2 rounded-[var(--r-md)] p-4"
+    >
       <div className="flex items-center justify-between text-[13px]">
-        <span className="font-medium text-[var(--text)]">
+        <span className="font-bold uppercase tracking-wide text-[var(--text)]">
           {running ? "Идёт рассылка…" : "Рассылка завершена"}
         </span>
-        <span className="text-[var(--text-muted)]">
+        <span className="font-bold text-[var(--text-muted)]">
           {done} / {total} ({pct}%)
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-[var(--accent)] transition-all"
-          style={{ width: `${pct}%` }}
+      <div className="h-3.5 overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-3)]">
+        <motion.div
+          className="h-full bg-[var(--accent)]"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ type: "spring", stiffness: 120, damping: 24 }}
         />
       </div>
       <div className="flex flex-wrap gap-4 text-[12px]">
-        <span className="text-[#30d158]">✓ Доставлено: {sent}</span>
-        <span className="text-[#ff453a]">✕ Ошибок: {failed}</span>
-        <span className="text-[#ff9f0a]">⊘ Заблокировали: {blocked}</span>
+        <span className="text-[var(--ok)]">✓ Доставлено: {sent}</span>
+        <span className="text-[var(--danger)]">✕ Ошибок: {failed}</span>
+        <span className="text-[var(--warn)]">⊘ Заблокировали: {blocked}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }

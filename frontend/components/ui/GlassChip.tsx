@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * GlassChip — glass pill for filters / variants / tags (design doc §8.4).
- * Active = accent fill. Custom control, no default styling.
+ * GlassChip — NEO-BRUTALISM pill/chip (API unchanged: children, active, onClick,
+ * icon). Active = solid accent fill. Thick border, press feedback.
  */
-import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
 interface Props {
@@ -16,17 +15,15 @@ interface Props {
 
 export function GlassChip({ children, active, onClick, icon }: Props) {
   return (
-    <motion.button
+    <button
       type="button"
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
       onClick={onClick}
-      className={`tap inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r-pill)] px-3.5 py-2 text-[13px] font-medium transition-colors ${
-        active ? "glossy" : "glass text-[var(--text-muted)]"
+      className={`tap inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-3.5 py-2 text-[13px] font-bold transition-transform active:translate-x-[2px] active:translate-y-[2px] ${
+        active ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface)] text-[var(--ink)]"
       }`}
     >
       {icon}
       {children}
-    </motion.button>
+    </button>
   );
 }

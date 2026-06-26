@@ -1,12 +1,12 @@
 {
   "name": "tg-shop-v2-frontend-admin",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "tg-shop-v2 — admin panel (Liquid Glass, desktop-first)",
+  "description": "tg-shop-v2 — admin panel (Neo-Brutalism, desktop-first)",
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 3005",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 3005",
     "lint": "next lint"
   },
   "dependencies": {

@@ -1,14 +1,21 @@
 "use client";
 
 /**
- * Products (route "/products") — list/grid of products (GET /api/admin/products)
- * with search, status filters (in-stock / out-of-stock-but-visible / hidden),
- * tag filter, sorting (smart default surfaces visible-but-out-of-stock first),
- * and a list⇄cards view toggle (list is the default — easier to scan).
- * Create/edit modal, active/archive toggles. Delete = archive (docs/SPEC.md).
+ * Products (route "/products") — Neo-Brutalism restyle.
+ *
+ * Preserves 100% of the original functionality:
+ *  - search by title, tag filter, status SegmentedControl chips with counts
+ *    (Все / В наличии / Закончились (видны) / Скрытые),
+ *  - smart default sort (active-but-out-of-stock surfaced first) + manual sorts,
+ *  - list view (DEFAULT) ⇄ cards view toggle,
+ *  - effective stock = sum of variant stocks else product.stock,
+ *  - red highlight + "Закончился" badge for active items with effective stock 0,
+ *  - active/archive toggles, archived view toggle, create/edit modal.
+ * Only the visuals change. Same query keys (["products", archivedView], ["tags"]).
  */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   Plus,
   Archive,
@@ -17,32 +24,37 @@ import {
   List as ListIcon,
   LayoutGrid,
   Search,
+  PackageSearch,
 } from "lucide-react";
 import { adminApi, ApiError, type Product } from "@/lib/api";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
-import { GlassChip } from "@/components/ui/GlassChip";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassToggle } from "@/components/ui/GlassToggle";
-import { GlassInput } from "@/components/ui/GlassInput";
-import { GlassSelect } from "@/components/ui/GlassSelect";
-import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { ProductModal } from "@/components/products/ProductModal";
+import { cn } from "@/lib/cn";
+import { staggerContainer, riseItem, hoverLift } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Toggle } from "@/components/ui/Toggle";
+import { Badge } from "@/components/ui/Badge";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ProductModal } from "@/components/products/ProductModal";
 
 type StatusFilter = "all" | "instock" | "out" | "hidden";
-type SortKey = "smart" | "title" | "price_desc" | "price_asc" | "stock_asc" | "stock_desc" | "sold";
+type SortKey =
+  | "smart"
+  | "title"
+  | "price_desc"
+  | "price_asc"
+  | "stock_asc"
+  | "stock_desc"
+  | "sold";
 type ViewMode = "list" | "cards";
 
-const STATUS_CHIPS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "instock", label: "В наличии" },
-  { key: "out", label: "Закончились" },
-  { key: "hidden", label: "Скрытые" },
-];
-
-const SORT_OPTIONS = [
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "smart", label: "Умная (требуют внимания)" },
   { value: "title", label: "Название А–Я" },
   { value: "price_desc", label: "Цена ↓" },
@@ -148,115 +160,172 @@ export default function ProductsPage() {
   const counts = useMemo(() => {
     const active = products.filter((p) => p.active !== false);
     return {
+      all: products.length,
+      instock: active.filter((p) => effStock(p) > 0).length,
       out: active.filter((p) => effStock(p) === 0).length,
       hidden: products.filter((p) => p.active === false).length,
     };
   }, [products]);
 
+  const statusOptions = useMemo(
+    () => [
+      { value: "all" as StatusFilter, label: "Все", count: counts.all },
+      { value: "instock" as StatusFilter, label: "В наличии", count: counts.instock },
+      { value: "out" as StatusFilter, label: "Закончились", count: counts.out },
+      { value: "hidden" as StatusFilter, label: "Скрытые", count: counts.hidden },
+    ],
+    [counts]
+  );
+
+  const tagOptions = useMemo(
+    () => [{ value: "", label: "Все теги" }, ...tags.map((t) => ({ value: t.id, label: t.name }))],
+    [tags]
+  );
+
   return (
     <div>
-      {/* Top bar: view tabs + add */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          <GlassChip active={!archivedView} onClick={() => setArchivedView(false)}>
-            Активные
-          </GlassChip>
-          <GlassChip active={archivedView} onClick={() => setArchivedView(true)}>
-            Архив
-          </GlassChip>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="glass flex items-center gap-0.5 rounded-[var(--r-pill)] p-0.5">
-            <button
-              onClick={() => setView("list")}
-              aria-label="Список"
-              className={`grid h-8 w-9 place-items-center rounded-[var(--r-pill)] ${
-                view === "list" ? "glossy" : "text-[var(--text-muted)]"
-              }`}
+      <PageHeader
+        title="Товары"
+        subtitle="Каталог, остатки и видимость"
+        actions={
+          <>
+            <SegmentedControl<"active" | "archived">
+              options={[
+                { value: "active", label: "Активные" },
+                { value: "archived", label: "Архив" },
+              ]}
+              value={archivedView ? "archived" : "active"}
+              onChange={(v) => setArchivedView(v === "archived")}
+            />
+            <Button
+              variant="accent"
+              icon={<Plus className="h-4 w-4" />}
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
             >
-              <ListIcon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setView("cards")}
-              aria-label="Карточки"
-              className={`grid h-8 w-9 place-items-center rounded-[var(--r-pill)] ${
-                view === "cards" ? "glossy" : "text-[var(--text-muted)]"
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
-          <GlassButton
-            variant="accent"
-            size="sm"
-            icon={<Plus className="h-4 w-4" />}
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-          >
-            Новый товар
-          </GlassButton>
-        </div>
-      </div>
+              Новый товар
+            </Button>
+          </>
+        }
+      />
 
       {/* Filters */}
-      <div className="mb-4 flex flex-col gap-3">
+      <div className="mb-5 flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[200px] flex-1">
-            <GlassInput
+          <div className="min-w-[220px] flex-1">
+            <Input
               label="Поиск по названию"
+              placeholder="Например, кроссовки…"
+              icon={<Search className="h-4 w-4" />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="min-w-[160px]">
-            <GlassSelect
+          <div className="min-w-[170px]">
+            <Select
               label="Тег"
-              value={tagId}
+              value={tagId ?? ""}
               onChange={(v) => setTagId(v || null)}
               placeholder="Все теги"
-              options={[{ value: "", label: "Все теги" }, ...tags.map((t) => ({ value: t.id, label: t.name }))]}
+              options={tagOptions}
             />
           </div>
-          <div className="min-w-[200px]">
-            <GlassSelect
+          <div className="min-w-[210px]">
+            <Select<SortKey>
               label="Сортировка"
               value={sort}
-              onChange={(v) => setSort(v as SortKey)}
+              onChange={(v) => setSort(v)}
               options={SORT_OPTIONS}
             />
           </div>
-        </div>
-        {!archivedView && (
-          <div className="flex flex-wrap gap-2">
-            {STATUS_CHIPS.map((c) => (
-              <GlassChip key={c.key} active={status === c.key} onClick={() => setStatus(c.key)}>
-                {c.label}
-                {c.key === "out" && counts.out > 0 ? ` · ${counts.out}` : ""}
-                {c.key === "hidden" && counts.hidden > 0 ? ` · ${counts.hidden}` : ""}
-              </GlassChip>
-            ))}
+          <div className="flex items-center gap-2 pb-0.5">
+            <div className="inline-flex items-center gap-1 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-1 shadow-[4px_4px_0_var(--shadow)]">
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                aria-label="Список"
+                className={cn(
+                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors",
+                  view === "list"
+                    ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                )}
+              >
+                <ListIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("cards")}
+                aria-label="Карточки"
+                className={cn(
+                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors",
+                  view === "cards"
+                    ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
           </div>
+        </div>
+
+        {!archivedView && (
+          <SegmentedControl<StatusFilter>
+            options={statusOptions}
+            value={status}
+            onChange={setStatus}
+          />
         )}
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-[var(--r-md)]" />
+            <Skeleton key={i} className="h-[80px] rounded-[var(--r-md)]" />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="glass rounded-[var(--r-lg)] px-4 py-16 text-center text-[var(--text-faint)]">
-          {products.length === 0
-            ? archivedView
-              ? "Архив пуст"
-              : "Товаров пока нет"
-            : "Ничего не найдено по фильтрам"}
-        </div>
+        <EmptyState
+          icon={PackageSearch}
+          title={
+            products.length === 0
+              ? archivedView
+                ? "Архив пуст"
+                : "Товаров пока нет"
+              : "Ничего не найдено"
+          }
+          description={
+            products.length === 0
+              ? archivedView
+                ? "Архивированные товары появятся здесь."
+                : "Создайте первый товар, чтобы начать."
+              : "Попробуйте изменить поиск или фильтры."
+          }
+          action={
+            products.length === 0 && !archivedView ? (
+              <Button
+                variant="accent"
+                icon={<Plus className="h-4 w-4" />}
+                onClick={() => {
+                  setEditing(null);
+                  setModalOpen(true);
+                }}
+              >
+                Новый товар
+              </Button>
+            ) : undefined
+          }
+        />
       ) : view === "list" ? (
-        <div className="flex flex-col gap-2">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="flex flex-col gap-3"
+        >
           {visible.map((p) => (
             <ProductRow
               key={p.id}
@@ -270,9 +339,14 @@ export default function ProductsPage() {
               onArchive={(a) => setArchived(p, a)}
             />
           ))}
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
           {visible.map((p) => (
             <ProductCard
               key={p.id}
@@ -286,7 +360,7 @@ export default function ProductsPage() {
               onArchive={(a) => setArchived(p, a)}
             />
           ))}
-        </div>
+        </motion.div>
       )}
 
       <ProductModal
@@ -310,123 +384,181 @@ interface RowProps {
 
 function StockBadge({ p }: { p: Product }) {
   const stock = effStock(p);
-  if (p.active !== false && stock === 0) return <Badge color="var(--danger)">Закончился</Badge>;
-  if (stock <= 3 && stock > 0) return <Badge color="var(--warn)">Мало: {stock}</Badge>;
-  return <span className="text-[12px] text-[var(--text-muted)]">Остаток: {stock}</span>;
+  if (p.active !== false && stock === 0) return <Badge tone="danger">Закончился</Badge>;
+  if (stock <= 3 && stock > 0) return <Badge tone="warn">Мало: {stock}</Badge>;
+  return (
+    <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+      Остаток: {stock}
+    </span>
+  );
+}
+
+/** Yellow neo price tag — dark text forced globally on --c3 fills. */
+function PriceTag({ p, className }: { p: Product; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[13px] font-extrabold text-[var(--accent-ink)]",
+        className
+      )}
+    >
+      {money(p.priceMinor, p.currency)}
+    </span>
+  );
+}
+
+function IconBtn({
+  label,
+  onClick,
+  danger,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={cn(
+        "nb-press grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors",
+        danger ? "hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]" : "hover:bg-[var(--surface-hover)]"
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) {
   const danger = p.active !== false && effStock(p) === 0 && !archivedView;
   return (
-    <div
-      className={`glass flex items-center gap-3 rounded-[var(--r-md)] p-2.5 ${
-        danger ? "[box-shadow:inset_3px_0_0_var(--danger)]" : ""
-      }`}
+    <motion.div
+      variants={riseItem}
+      {...hoverLift}
+      className={cn(
+        "card flex items-center gap-3.5 p-3",
+        danger && "border-[var(--danger)]"
+      )}
     >
-      <Image src={p.images?.[0]?.url} alt={p.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-sm)]" />
+      <Image
+        src={p.images?.[0]?.url}
+        alt={p.title}
+        size={120}
+        className="h-14 w-14 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+      />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="truncate text-[14px] font-semibold text-[var(--text)]">{p.title}</h3>
-          {!p.active && !archivedView && <Badge color="var(--warn)">скрыт</Badge>}
+          <h3 className="truncate text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+            {p.title}
+          </h3>
+          {!p.active && !archivedView && <Badge tone="warn">скрыт</Badge>}
         </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[var(--text-muted)]">
-          <span className="font-bold text-[var(--text)]">{money(p.priceMinor, p.currency)}</span>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-muted)]">
+          <PriceTag p={p} />
           <StockBadge p={p} />
-          {p.variants && p.variants.length > 0 && <span>{p.variants.length} вар.</span>}
-          {(p.soldCount ?? 0) > 0 && <span>продано {p.soldCount}</span>}
+          {p.variants && p.variants.length > 0 && (
+            <span className="font-bold uppercase tracking-wide">{p.variants.length} вар.</span>
+          )}
+          {(p.soldCount ?? 0) > 0 && (
+            <span className="font-bold uppercase tracking-wide">продано {p.soldCount}</span>
+          )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-2">
         {!archivedView ? (
           <>
-            <GlassToggle checked={!!p.active} onChange={onActive} />
-            <button
-              onClick={onEdit}
-              className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--text)]"
-              aria-label="Редактировать"
-            >
+            <Toggle checked={!!p.active} onChange={onActive} />
+            <IconBtn label="Редактировать" onClick={onEdit}>
               <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => onArchive(true)}
-              className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--danger)]"
-              aria-label="В архив"
-            >
+            </IconBtn>
+            <IconBtn label="В архив" onClick={() => onArchive(true)} danger>
               <Archive className="h-4 w-4" />
-            </button>
+            </IconBtn>
           </>
         ) : (
-          <GlassButton
+          <Button
             size="sm"
-            variant="glass"
+            variant="surface"
             icon={<ArchiveRestore className="h-4 w-4" />}
             onClick={() => onArchive(false)}
           >
             Восстановить
-          </GlassButton>
+          </Button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps) {
   const danger = p.active !== false && effStock(p) === 0 && !archivedView;
   return (
-    <div
-      className={`glass flex flex-col overflow-hidden rounded-[var(--r-lg)] ${
-        danger ? "[box-shadow:inset_0_0_0_1.5px_var(--danger)]" : ""
-      }`}
+    <motion.div
+      variants={riseItem}
+      {...hoverLift}
+      className={cn(
+        "card flex flex-col overflow-hidden p-0",
+        danger && "border-[var(--danger)]"
+      )}
     >
-      <Image src={p.images?.[0]?.url} alt={p.title} size={400} className="aspect-square w-full" />
-      <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 text-[14px] font-semibold text-[var(--text)]">{p.title}</h3>
-          {!p.active && !archivedView && <Badge color="var(--warn)">скрыт</Badge>}
+      <div className="relative border-b-[3px] border-[var(--line)]">
+        <Image src={p.images?.[0]?.url} alt={p.title} size={400} className="aspect-square w-full" />
+        {!p.active && !archivedView && (
+          <div className="absolute left-2 top-2">
+            <Badge tone="warn">скрыт</Badge>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-3.5">
+        <h3 className="line-clamp-2 text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+          {p.title}
+        </h3>
+        <div className="mt-2">
+          <PriceTag p={p} className="text-[15px]" />
         </div>
-        <div className="mt-1 text-[15px] font-bold text-[var(--text)]">
-          {money(p.priceMinor, p.currency)}
-        </div>
-        <div className="mt-1">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           <StockBadge p={p} />
           {p.variants && p.variants.length > 0 ? (
-            <span className="ml-2 text-[12px] text-[var(--text-muted)]">{p.variants.length} вар.</span>
+            <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              {p.variants.length} вар.
+            </span>
           ) : null}
+          {(p.soldCount ?? 0) > 0 && (
+            <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              продано {p.soldCount}
+            </span>
+          )}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <div className="mt-3.5 flex items-center justify-between gap-2 border-t-2 border-[var(--line)] pt-3.5">
           {!archivedView ? (
             <>
-              <GlassToggle checked={!!p.active} onChange={onActive} />
-              <div className="flex gap-1">
-                <button
-                  onClick={onEdit}
-                  className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--text)]"
-                  aria-label="Редактировать"
-                >
+              <Toggle checked={!!p.active} onChange={onActive} />
+              <div className="flex gap-2">
+                <IconBtn label="Редактировать" onClick={onEdit}>
                   <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => onArchive(true)}
-                  className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-white/10 hover:text-[var(--danger)]"
-                  aria-label="В архив"
-                >
+                </IconBtn>
+                <IconBtn label="В архив" onClick={() => onArchive(true)} danger>
                   <Archive className="h-4 w-4" />
-                </button>
+                </IconBtn>
               </div>
             </>
           ) : (
-            <GlassButton
+            <Button
               size="sm"
-              variant="glass"
-              fullWidth
+              variant="surface"
+              className="w-full"
               icon={<ArchiveRestore className="h-4 w-4" />}
               onClick={() => onArchive(false)}
             >
               Восстановить
-            </GlassButton>
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

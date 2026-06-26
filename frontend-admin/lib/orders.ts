@@ -44,7 +44,8 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   NEW: ["APPROVED", "REJECTED"],
   APPROVED: ["SHIPPED", "REJECTED"],
   SHIPPED: ["DELIVERED", "REJECTED"],
-  DELIVERED: [],
+  // Delivered can still be cancelled/returned (e.g. a Nova Poshta return).
+  DELIVERED: ["REJECTED"],
   REJECTED: [],
 };
 
