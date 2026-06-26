@@ -1,12 +1,12 @@
 {
   "name": "tg-shop-v2-frontend",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "tg-shop-v2 — customer Telegram Mini App (Liquid Glass)",
+  "description": "tg-shop-v2 — customer Mini App (Neo-Brutalism)",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3004",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3004",
     "lint": "next lint"
   },
   "dependencies": {

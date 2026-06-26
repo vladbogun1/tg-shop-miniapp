@@ -1,24 +1,41 @@
 "use client";
 
 /**
- * UserProfileDrawer — right drawer (full-screen on mobile) with a user's
- * profile + ALL their orders. Click an order to open the full OrderDrawer
- * (which renders at a higher z-index, on top of this drawer).
+ * UserProfileDrawer (Neo-Brutalism) — right drawer with a user's profile + ALL
+ * their orders (GET /api/admin/orders/by-user/{tgId}).
+ *
+ * Decoupling: clicking an order row navigates to the dedicated order route
+ * (`/orders/{id}`) via the router — this drawer never imports OrderDrawer.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { X, Crown, Ban, ShoppingBag, Wallet } from "lucide-react";
-import { adminApi, type UserCardDto } from "@/lib/api";
+import {
+  Crown,
+  Ban,
+  ShoppingBag,
+  Wallet,
+  Send,
+  Package,
+  ChevronRight,
+} from "lucide-react";
+import { adminApi, type UserCardDto, type OrderCardDto } from "@/lib/api";
 import { money } from "@/lib/money";
-import { formatDateTime, timeAgo, STATUS_VAR, STATUS_EMOJI, STATUS_LABEL } from "@/lib/orders";
-import { OrderCard } from "@/components/orders/OrderCard";
-import { Badge } from "@/components/ui/Badge";
+import {
+  formatDateTime,
+  timeAgo,
+  shortId,
+  DELIVERY_LABEL,
+} from "@/lib/orders";
+import { Drawer } from "@/components/ui/Drawer";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { staggerContainer, riseItem, spring } from "@/lib/motion";
 
 interface Props {
   user: UserCardDto | null;
   onClose: () => void;
-  onOpenOrder: (id: string) => void;
 }
 
 function displayName(u: UserCardDto): string {
@@ -26,117 +43,176 @@ function displayName(u: UserCardDto): string {
   return full || (u.username ? "@" + u.username : "#" + u.telegramUserId);
 }
 
-export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
+function initials(u: UserCardDto): string {
+  const a = u.firstName?.trim()?.[0] ?? u.username?.trim()?.[0] ?? "";
+  const b = u.lastName?.trim()?.[0] ?? "";
+  const both = (a + b).toUpperCase();
+  return both || String(u.telegramUserId).slice(0, 2);
+}
+
+function telegramHref(u: UserCardDto): string {
+  return u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.telegramUserId}`;
+}
+
+export function UserProfileDrawer({ user, onClose }: Props) {
+  const router = useRouter();
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ["user-orders", user?.telegramUserId],
     queryFn: () => adminApi.userOrders(user!.telegramUserId),
     enabled: !!user,
   });
 
+  const header = user ? (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="accent-fill grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-sm)] text-[14px] font-extrabold text-[var(--accent-ink)]">
+        {initials(user)}
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+            {displayName(user)}
+          </span>
+          {user.premium && (
+            <Badge tone="warn">
+              <Crown className="h-3 w-3" /> premium
+            </Badge>
+          )}
+          {user.botBlocked && (
+            <Badge tone="danger">
+              <Ban className="h-3 w-3" /> заблокировал
+            </Badge>
+          )}
+        </div>
+        <div className="mt-0.5 truncate text-[12px] text-[var(--text-faint)]">
+          {user.username ? "@" + user.username + " · " : ""}#{user.telegramUserId}
+          {user.languageCode ? " · " + user.languageCode : ""}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <AnimatePresence>
+    <Drawer open={!!user} onClose={onClose} header={header} width="max-w-2xl">
       {user && (
-        <motion.div
-          className="fixed inset-0 z-[60] flex justify-end"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 340, damping: 34 }}
-            className="glass glass--strong relative z-10 flex h-dvh w-full flex-col sm:w-[560px]"
+        <div className="flex flex-col gap-5 p-5">
+          {/* Telegram link */}
+          <a
+            href={telegramHref(user)}
+            target="_blank"
+            rel="noreferrer"
+            className="focusable card-2 nb-press inline-flex w-fit items-center gap-2 px-3.5 py-2 text-[13px] font-extrabold uppercase tracking-wide text-[var(--text)] shadow-[4px_4px_0_var(--shadow)]"
           >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-white/10 px-5 py-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[16px] font-bold text-[var(--text)]">
-                    {displayName(user)}
-                  </span>
-                  {user.premium && (
-                    <Badge color="#ffd60a" icon={<Crown className="h-3 w-3" />}>
-                      premium
-                    </Badge>
-                  )}
-                  {user.botBlocked && (
-                    <Badge color="#ff453a" icon={<Ban className="h-3 w-3" />}>
-                      заблокировал
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-0.5 text-[12px] text-[var(--text-faint)]">
-                  {user.username ? "@" + user.username + " · " : ""}#{user.telegramUserId}
-                  {user.languageCode ? " · " + user.languageCode : ""}
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--text-muted)] hover:bg-white/10"
-                aria-label="Закрыть"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            <Send className="h-4 w-4 text-[var(--accent)]" />
+            Открыть в Telegram
+          </a>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 px-5 py-4">
-              <div className="rounded-[var(--r-md)] bg-white/5 p-3">
-                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-                  <ShoppingBag className="h-3.5 w-3.5" /> Заказов
-                </div>
-                <div className="mt-1 text-[18px] font-bold text-[var(--text)]">{user.ordersCount}</div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card p-4">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+                <ShoppingBag className="h-3.5 w-3.5" /> Заказов
               </div>
-              <div className="rounded-[var(--r-md)] bg-white/5 p-3">
-                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-                  <Wallet className="h-3.5 w-3.5" /> Потрачено
-                </div>
-                <div className="mt-1 text-[18px] font-bold text-[var(--text)]">
-                  {money(user.totalSpentMinor)}
-                </div>
+              <div className="mt-1.5 text-[22px] font-extrabold text-[var(--text)]">
+                {user.ordersCount}
               </div>
             </div>
-            <div className="px-5 pb-2 text-[12px] text-[var(--text-faint)]">
-              {user.createdAt ? `Регистрация: ${formatDateTime(user.createdAt)}` : ""}
-              {user.lastSeenAt ? ` · был(а) ${timeAgo(user.lastSeenAt)}` : ""}
+            <div className="card p-4">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+                <Wallet className="h-3.5 w-3.5" /> Потрачено
+              </div>
+              <div className="mt-1.5 text-[22px] font-extrabold text-[var(--text)]">
+                {money(user.totalSpentMinor)}
+              </div>
             </div>
+          </div>
 
-            {/* Orders */}
-            <div className="thin-scroll flex-1 overflow-y-auto px-5 pb-6">
-              <div className="mb-2 text-[13px] font-semibold text-[var(--text-muted)]">
+          <div className="text-[12px] text-[var(--text-faint)]">
+            {user.createdAt ? `Регистрация: ${formatDateTime(user.createdAt)}` : ""}
+            {user.lastSeenAt ? ` · был(а) ${timeAgo(user.lastSeenAt)}` : ""}
+          </div>
+
+          {/* Orders */}
+          <div>
+            <div className="mb-2.5 flex items-center gap-2">
+              <span className="h-4 w-1.5 bg-[var(--accent)]" />
+              <span className="text-[13px] font-extrabold uppercase tracking-wide text-[var(--text)]">
                 Заказы
-              </div>
-              {isLoading ? (
-                <div className="flex flex-col gap-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-28 rounded-[var(--r-md)]" />
-                  ))}
-                </div>
-              ) : (orders ?? []).length === 0 ? (
-                <div className="py-10 text-center text-[13px] text-[var(--text-faint)]">
-                  Заказов нет
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {(orders ?? []).map((o) => (
-                    <div key={o.id} className="relative">
-                      <div className="absolute right-3 top-3 z-10">
-                        <Badge color={STATUS_VAR[o.status]}>
-                          {STATUS_EMOJI[o.status]} {STATUS_LABEL[o.status]}
-                        </Badge>
-                      </div>
-                      <OrderCard order={o} onClick={() => onOpenOrder(o.id)} />
-                    </div>
-                  ))}
-                </div>
-              )}
+              </span>
             </div>
-          </motion.aside>
-        </motion.div>
+            {isLoading ? (
+              <div className="flex flex-col gap-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-[88px] rounded-[var(--r-md)]" />
+                ))}
+              </div>
+            ) : (orders ?? []).length === 0 ? (
+              <EmptyState icon={Package} title="Заказов нет" />
+            ) : (
+              <motion.div
+                className="flex flex-col gap-2.5"
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+              >
+                {(orders ?? []).map((o) => (
+                  <OrderRow
+                    key={o.id}
+                    order={o}
+                    onClick={() => router.push("/orders/" + o.id)}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+    </Drawer>
+  );
+}
+
+function OrderRow({
+  order,
+  onClick,
+}: {
+  order: OrderCardDto;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      variants={riseItem}
+      whileHover={{ y: -2, transition: spring }}
+      whileTap={{ scale: 0.99 }}
+      onClick={onClick}
+      className="card nb-press group flex w-full items-center gap-3 p-3.5 text-left"
+    >
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)]">
+        <Package className="h-[18px] w-[18px]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[13px] font-extrabold text-[var(--text)]">
+            {shortId(order.id)}
+          </span>
+          <StatusBadge status={order.status} />
+        </div>
+        <div className="mt-0.5 truncate text-[12px] text-[var(--text-faint)]">
+          {order.itemsCount} тов. · {DELIVERY_LABEL[order.deliveryMethod]} ·{" "}
+          {formatDateTime(order.createdAt)}
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="text-[14px] font-extrabold text-[var(--text)]">
+          {money(order.totalMinor, order.currency)}
+        </div>
+        {order.unreadCount > 0 && (
+          <div className="mt-1 inline-flex items-center justify-center rounded-full border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[11px] font-bold text-[var(--accent-ink)]">
+            {order.unreadCount}
+          </div>
+        )}
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5" />
+    </motion.button>
   );
 }

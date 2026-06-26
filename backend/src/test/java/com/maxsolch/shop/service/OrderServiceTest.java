@@ -391,7 +391,7 @@ class OrderServiceTest {
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdWithDetails(p.getId())).thenReturn(Optional.of(p));
 
-        Order rejected = service.reject(o.getId(), "out of stock");
+        Order rejected = service.reject(o.getId(), "out of stock", true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getRejectedAt()).isNotNull();
@@ -406,19 +406,22 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.reject(o.getId(), "x"))
+        assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("already rejected");
     }
 
     @Test
-    void reject_deliveredOrder_throws() {
+    void reject_deliveredOrder_allowedForReturns() {
+        // A delivered order can be cancelled (e.g. a Nova Poshta return). With
+        // restock=false the items are NOT put back on the shelf.
         Order o = persistedOrder(OrderStatus.DELIVERED);
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.reject(o.getId(), "x"))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("delivered orders cannot be rejected");
+        Order rejected = service.reject(o.getId(), "возврат на НП", false);
+
+        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(rejected.getRejectReason()).isEqualTo("возврат на НП");
     }
 
     // ---------- changeStatus dispatcher ----------
@@ -427,7 +430,7 @@ class OrderServiceTest {
     void changeStatus_toNew_throwsInvalidTransition() {
         Order o = persistedOrder(OrderStatus.NEW);
         // findById not needed: NEW case throws before any lookup
-        assertThatThrownBy(() -> service.changeStatus(o.getId(), OrderStatus.NEW, null, null))
+        assertThatThrownBy(() -> service.changeStatus(o.getId(), OrderStatus.NEW, null, null, true))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("cannot transition back to NEW");
     }
@@ -437,7 +440,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
 
-        Order result = service.changeStatus(o.getId(), OrderStatus.APPROVED, null, null);
+        Order result = service.changeStatus(o.getId(), OrderStatus.APPROVED, null, null, true);
 
         assertThat(result.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(result.getApprovedAt()).isNotNull();

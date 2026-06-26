@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * QtyStepper — glass quantity control (−  N  +). Custom, ≥44px targets.
- * Clamps between min and max; disables buttons at bounds.
+ * QtyStepper — NEO-BRUTALISM quantity control (API unchanged: value, onChange,
+ * min, max, size). Sharp bordered −/+ squares around the count.
  */
-import { motion } from "framer-motion";
 import { Minus, Plus } from "lucide-react";
 
 export function QtyStepper({
@@ -20,11 +19,8 @@ export function QtyStepper({
   max?: number;
   size?: "sm" | "md";
 }) {
-  const btn =
-    size === "sm"
-      ? "h-9 w-9 min-h-0 min-w-0"
-      : "h-11 w-11";
-  const num = size === "sm" ? "min-w-[28px] text-[14px]" : "min-w-[36px] text-[16px]";
+  const btn = size === "sm" ? "h-9 w-9 min-h-0 min-w-0" : "h-11 w-11";
+  const num = size === "sm" ? "min-w-[30px] text-[15px]" : "min-w-[40px] text-[17px]";
 
   const Btn = ({
     onClick,
@@ -37,28 +33,25 @@ export function QtyStepper({
     children: React.ReactNode;
     label: string;
   }) => (
-    <motion.button
+    <button
       type="button"
       aria-label={label}
-      whileTap={{ scale: 0.9 }}
       disabled={disabled}
       onClick={onClick}
-      className={`tap flex items-center justify-center rounded-[var(--r-pill)] text-[var(--text)] transition-opacity disabled:opacity-30 ${btn}`}
+      className={`grid place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-30 ${btn}`}
     >
       {children}
-    </motion.button>
+    </button>
   );
 
   return (
-    <div className="glass inline-flex items-center rounded-[var(--r-pill)] px-1">
+    <div className="inline-flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] p-1">
       <Btn label="Уменьшить" disabled={value <= min} onClick={() => onChange(value - 1)}>
-        <Minus className="h-4 w-4" />
+        <Minus className="h-4 w-4" strokeWidth={3} />
       </Btn>
-      <span className={`text-center font-semibold text-[var(--text)] ${num}`}>
-        {value}
-      </span>
+      <span className={`text-center font-black tabular-nums text-[var(--ink)] ${num}`}>{value}</span>
       <Btn label="Увеличить" disabled={value >= max} onClick={() => onChange(value + 1)}>
-        <Plus className="h-4 w-4" />
+        <Plus className="h-4 w-4" strokeWidth={3} />
       </Btn>
     </div>
   );

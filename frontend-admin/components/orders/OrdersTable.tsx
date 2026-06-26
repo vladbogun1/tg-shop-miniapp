@@ -5,15 +5,17 @@
  * The backend returns a plain array (not a paged wrapper), so paging is a
  * simple Next/Prev driven by page/size: if the returned array length < size,
  * we are on the last page and Next is disabled. Respects q + range + status.
- * On mobile it collapses to cards (§8bis.2).
+ * On mobile it collapses to cards.
  */
 import { useEffect, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
   ExternalLink,
+  PackageSearch,
 } from "lucide-react";
 import {
   adminApi,
@@ -26,17 +28,19 @@ import {
 import { money } from "@/lib/money";
 import {
   STATUS_LABEL,
-  STATUS_VAR,
   STATUS_ORDER,
   DELIVERY_LABEL,
   shortId,
   formatDateTime,
 } from "@/lib/orders";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Button } from "@/components/ui/Button";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { staggerContainer, riseItem } from "@/lib/motion";
+import { cn } from "@/lib/cn";
 import { OrderCard } from "./OrderCard";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassChip } from "@/components/ui/GlassChip";
 
 interface Props {
   search: string;
@@ -46,9 +50,16 @@ interface Props {
 
 const SIZE = 20;
 
+type StatusFilter = OrderStatus | "ALL";
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "ALL", label: "Все" },
+  ...STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
+];
+
 export function OrdersTable({ search, range, onOpen }: Props) {
   const [page, setPage] = useState(0);
-  const [status, setStatus] = useState<OrderStatus | "">("");
+  const [status, setStatus] = useState<StatusFilter>("ALL");
   const [sortBy, setSortBy] = useState<OrderSortBy>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -74,7 +85,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
       adminApi.orders({
         q: search || undefined,
         range,
-        status: status || undefined,
+        status: status === "ALL" ? undefined : status,
         page,
         size: SIZE,
         sortBy,
@@ -89,47 +100,54 @@ export function OrdersTable({ search, range, onOpen }: Props) {
   return (
     <div>
       {/* Status filter */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <GlassChip active={status === ""} onClick={() => setStatus("")}>
-          Все
-        </GlassChip>
-        {STATUS_ORDER.map((s) => (
-          <GlassChip key={s} active={status === s} onClick={() => setStatus(s)}>
-            {STATUS_LABEL[s]}
-          </GlassChip>
-        ))}
+      <div className="thin-scroll mb-4 overflow-x-auto pb-1">
+        <SegmentedControl
+          options={STATUS_FILTER_OPTIONS}
+          value={status}
+          onChange={setStatus}
+        />
       </div>
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14" />
+            <Skeleton key={i} className="h-14 rounded-[var(--r-md)]" />
           ))}
         </div>
       ) : (
         <>
           {/* Mobile cards */}
-          <div className="grid gap-2.5 sm:hidden">
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="grid gap-2.5 sm:hidden"
+          >
             {rows.length === 0 ? (
-              <div className="glass rounded-[var(--r-lg)] px-4 py-10 text-center text-[var(--text-faint)]">
-                Заказы не найдены
-              </div>
+              <EmptyState
+                icon={PackageSearch}
+                title="Заказы не найдены"
+                description="Попробуйте изменить фильтры или поисковый запрос."
+              />
             ) : (
               rows.map((o) => (
-                <OrderCard key={o.id} order={o} onClick={() => onOpen(o.id)} />
+                <motion.div key={o.id} variants={riseItem}>
+                  <OrderCard order={o} onClick={() => onOpen(o.id)} />
+                </motion.div>
               ))
             )}
-          </div>
+          </motion.div>
 
           {/* Desktop table */}
           <div
-            className={`glass thin-scroll hidden overflow-x-auto rounded-[var(--r-lg)] transition-opacity sm:block ${
-              isFetching ? "opacity-70" : ""
-            }`}
+            className={cn(
+              "card thin-scroll hidden overflow-x-auto p-0 transition-opacity sm:block",
+              isFetching && "opacity-70"
+            )}
           >
             <table className="w-full min-w-[860px] border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-white/10 text-left text-[var(--text-muted)]">
+              <thead className="sticky top-0 z-10 bg-[var(--surface-2)]">
+                <tr className="border-b-[3px] border-[var(--line)] text-left text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">
                   <SortHeader
                     col="createdAt"
                     label="Дата"
@@ -137,7 +155,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <th className="px-4 py-3 font-medium">Заказ</th>
+                  <th className="px-4 py-3">Заказ</th>
                   <SortHeader
                     col="customerName"
                     label="Клиент"
@@ -160,10 +178,11 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <th className="px-4 py-3 font-medium">Доставка</th>
-                  <th className="px-4 py-3 font-medium">Оплата</th>
-                  <th className="px-4 py-3 text-center font-medium">Чат</th>
-                  <th className="px-4 py-3 text-right font-medium">Действие</th>
+                  <th className="px-4 py-3">Доставка</th>
+                  <th className="px-4 py-3">Оплата</th>
+                  <th className="px-4 py-3 text-center">Платёж</th>
+                  <th className="px-4 py-3 text-center">Чат</th>
+                  <th className="px-4 py-3 text-right">Действие</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,24 +190,22 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                   <tr
                     key={o.id}
                     onClick={() => onOpen(o.id)}
-                    className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/5"
+                    className="cursor-pointer border-b-2 border-[var(--border-2)] transition-colors last:border-0 hover:bg-[var(--surface-2)]"
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-[var(--text-faint)]">
                       {formatDateTime(o.createdAt)}
                     </td>
-                    <td className="px-4 py-3 font-mono text-[var(--text-muted)]">
+                    <td className="px-4 py-3 font-mono font-bold text-[var(--text-muted)]">
                       {shortId(o.id)}
                     </td>
-                    <td className="px-4 py-3 text-[var(--text)]">
+                    <td className="px-4 py-3 font-semibold text-[var(--text)]">
                       {o.customerName || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-[var(--text)]">
+                    <td className="px-4 py-3 text-right font-black text-[var(--text)]">
                       {money(o.totalMinor, o.currency)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={STATUS_VAR[o.status]}>
-                        {STATUS_LABEL[o.status]}
-                      </Badge>
+                      <StatusBadge status={o.status} />
                     </td>
                     <td className="px-4 py-3 text-[var(--text-muted)]">
                       {DELIVERY_LABEL[o.deliveryMethod]}
@@ -197,11 +214,14 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       {o.paymentOptionTitle || "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
+                      <Badge tone={o.paid ? "ok" : "warn"}>
+                        {o.paid ? "Оплачен" : "Не оплачен"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       {o.unreadCount > 0 ? (
-                        <Badge
-                          color="var(--danger)"
-                          icon={<MessageCircle className="h-3 w-3" />}
-                        >
+                        <Badge tone="danger">
+                          <MessageCircle className="h-3 w-3" />
                           {o.unreadCount}
                         </Badge>
                       ) : (
@@ -214,7 +234,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                           e.stopPropagation();
                           onOpen(o.id);
                         }}
-                        className="inline-flex items-center gap-1 rounded-[var(--r-pill)] px-2.5 py-1 text-[12px] font-medium text-[var(--accent)] transition-colors hover:bg-white/10"
+                        className="nb-press inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[12px] font-black uppercase tracking-wide text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         Открыть
@@ -224,11 +244,12 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={9}
-                      className="px-4 py-10 text-center text-[var(--text-faint)]"
-                    >
-                      Заказы не найдены
+                    <td colSpan={10} className="px-4 py-12">
+                      <EmptyState
+                        icon={PackageSearch}
+                        title="Заказы не найдены"
+                        description="Попробуйте изменить фильтры или поисковый запрос."
+                      />
                     </td>
                   </tr>
                 )}
@@ -238,9 +259,9 @@ export function OrdersTable({ search, range, onOpen }: Props) {
 
           {(page > 0 || hasNext) && (
             <div className="mt-4 flex items-center justify-center gap-3">
-              <GlassButton
-                size="sm"
-                variant="glass"
+              <Button
+                size="icon"
+                variant="surface"
                 disabled={page === 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 icon={<ChevronLeft className="h-4 w-4" />}
@@ -248,9 +269,9 @@ export function OrdersTable({ search, range, onOpen }: Props) {
               <span className="text-[13px] text-[var(--text-muted)]">
                 Стр. {page + 1}
               </span>
-              <GlassButton
-                size="sm"
-                variant="glass"
+              <Button
+                size="icon"
+                variant="surface"
                 disabled={!hasNext}
                 onClick={() => setPage((p) => p + 1)}
                 icon={<ChevronRight className="h-4 w-4" />}
@@ -281,16 +302,16 @@ function SortHeader({
 }) {
   const active = sortBy === col;
   return (
-    <th
-      className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : ""}`}
-    >
+    <th className={cn("px-4 py-3", align === "right" && "text-right")}>
       <button
         type="button"
         onClick={() => onSort(col)}
         aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-        className={`inline-flex items-center gap-1 transition-colors hover:text-[var(--text)] ${
-          align === "right" ? "flex-row-reverse" : ""
-        } ${active ? "text-[var(--accent)]" : ""}`}
+        className={cn(
+          "inline-flex items-center gap-1 transition-colors hover:text-[var(--text)]",
+          align === "right" && "flex-row-reverse",
+          active && "text-[var(--accent)]"
+        )}
       >
         {label}
         <span className="text-[10px] leading-none">

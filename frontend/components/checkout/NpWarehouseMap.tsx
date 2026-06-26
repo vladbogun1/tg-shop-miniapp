@@ -7,16 +7,26 @@
  * by panning/zooming the map and tapping a pin (then a detail sheet with a big
  * "Выбрать"). Only the category tabs (Всі/Відділення/Поштомати/Пункти) filter.
  * No API key / account needed (OSM tiles). Loaded client-only (next/dynamic).
+ *
+ * NEO-BRUTALISM redesign: the surrounding chrome (category chips, map frame,
+ * detail sheet) is restyled to the neo system (thick ink borders, hard offset
+ * shadows, sharp corners, heavy type). ALL map logic — Leaflet, markercluster,
+ * bbox fetching (customerApi.getNpWarehousesBbox), category filtering,
+ * pin-by-category, the detail sheet and "Выбрать" confirm — is unchanged. iOS
+ * scroll handling preserved (scrollWheelZoom + isolated frame). Leaflet tiles
+ * stay as-is.
  */
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import L from "leaflet";
 import "leaflet.markercluster";
+import { AnimatePresence, motion } from "framer-motion";
 import { Box, Store, MapPin, X, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
+import { sheetVariants } from "@/lib/motion";
 
 const UA_CENTER: [number, number] = [49.0, 31.3];
 const UA_ZOOM = 6;
@@ -169,70 +179,111 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
   }, [category]);
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Category tabs (buttons, not inputs) */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        {CAT_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setCategory(t.key)}
-            className={`shrink-0 rounded-[var(--r-pill)] px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-              category === t.key ? "glossy" : "glass text-[var(--text-muted)]"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div className="flex flex-col gap-2.5">
+      {/* Category tabs (neo chips, not inputs) */}
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1.5 pl-0.5 pt-0.5">
+        {CAT_TABS.map((t) => {
+          const on = category === t.key;
+          return (
+            <motion.button
+              key={t.key}
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setCategory(t.key)}
+              className="tap min-h-0 shrink-0 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              style={{
+                background: on ? "var(--accent)" : "var(--surface)",
+                color: on ? "var(--accent-ink)" : "var(--ink)",
+                boxShadow: on ? "3px 3px 0 var(--shadow)" : "none",
+              }}
+            >
+              {t.label}
+            </motion.button>
+          );
+        })}
       </div>
 
-      {/* Map */}
-      <div className="relative overflow-hidden rounded-[var(--r-md)]" style={{ height: "62vh", minHeight: 360 }}>
-        <MapContainer center={UA_CENTER} zoom={UA_ZOOM} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            attribution="&copy; OpenStreetMap"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <BoundsWatcher onChange={fetchBox} />
-          <ClusterLayer items={items} activeRef={active?.ref ?? null} onPick={setActive} />
-        </MapContainer>
+      {/* Map frame — thick ink border, hard offset shadow, isolated stacking (iOS) */}
+      <div
+        className="relative isolate overflow-hidden rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-1 shadow-[5px_5px_0_var(--shadow)]"
+        style={{ height: "62vh", minHeight: 360 }}
+      >
+        <div className="relative h-full w-full overflow-hidden rounded-[1px]">
+          <MapContainer
+            center={UA_CENTER}
+            zoom={UA_ZOOM}
+            scrollWheelZoom
+            style={{ height: "100%", width: "100%" }}
+          >
+            <TileLayer
+              attribution="&copy; OpenStreetMap"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <BoundsWatcher onChange={fetchBox} />
+            <ClusterLayer items={items} activeRef={active?.ref ?? null} onPick={setActive} />
+          </MapContainer>
 
-        {/* Branch detail sheet (bottom) */}
-        {active && (
-          <div className="absolute inset-x-2 bottom-2 z-[1000] rounded-[var(--r-md)] bg-[#141a2c] p-3 shadow-[0_-4px_24px_rgba(0,0,0,.5)]">
-            <div className="flex items-start gap-2">
-              <span
-                className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-white"
-                style={{ background: CAT_COLOR[active.category ?? "OTHER"] }}
-              >
-                {active.category === "POSTOMAT" ? <Box className="h-4 w-4" /> : <Store className="h-4 w-4" />}
+          {/* Hint pill (top), hidden once a pin is open */}
+          {!active && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 z-[1000] flex justify-center px-2">
+              <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)]">
+                Тапните по отделению на карте
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-bold text-white">
-                  {catLabel(active.category)} {active.number != null ? `№ ${active.number}` : ""}
-                </div>
-                <div className="mt-0.5 flex items-start gap-1 text-[12px] text-white/70">
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>{active.description}</span>
-                </div>
-              </div>
-              <button
-                onClick={() => setActive(null)}
-                aria-label="Закрыть"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-white/60 hover:bg-white/10"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => onSelect(active)}
-              className="glossy mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--r-md)] py-3 text-[15px] font-semibold"
-            >
-              <Check className="h-5 w-5" /> Выбрать это отделение
-            </button>
-          </div>
-        )}
+          )}
+
+          {/* Branch detail sheet (bottom) */}
+          <AnimatePresence>
+            {active && (
+              <motion.div
+                key={active.ref}
+                variants={sheetVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="absolute inset-x-2 bottom-2 z-[1000] rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[5px_5px_0_var(--shadow)]"
+              >
+                <div className="flex items-start gap-3">
+                  <span
+                    className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-white"
+                    style={{ background: CAT_COLOR[active.category ?? "OTHER"] }}
+                  >
+                    {active.category === "POSTOMAT" ? (
+                      <Box className="h-4 w-4" strokeWidth={2.75} />
+                    ) : (
+                      <Store className="h-4 w-4" strokeWidth={2.75} />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-extrabold text-[var(--ink)]">
+                      {catLabel(active.category)}{" "}
+                      {active.number != null ? `№ ${active.number}` : ""}
+                    </div>
+                    <div className="mt-0.5 flex items-start gap-1 text-[12px] font-medium text-[var(--muted)]">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{active.description}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActive(null)}
+                    aria-label="Закрыть"
+                    className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
+                  >
+                    <X className="h-4 w-4" strokeWidth={3} />
+                  </button>
+                </div>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => onSelect(active)}
+                  className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] py-3 text-[14px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+                >
+                  <Check className="h-5 w-5" strokeWidth={3} /> Выбрать это отделение
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
