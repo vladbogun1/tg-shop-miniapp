@@ -219,9 +219,6 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
           >
             {step === 0 ? "Отмена" : "Назад"}
           </Button>
-          <span className="hidden text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)] sm:block">
-            Шаг {step + 1} из {STEPS.length}
-          </span>
           {isLast ? (
             <Button variant="accent" loading={saving} onClick={save} icon={<Check className="h-4 w-4" />}>
               {product ? "Сохранить" : "Создать товар"}
@@ -235,7 +232,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       }
     >
       {/* Stepper header */}
-      <Stepper step={step} onJump={go} valid={stepValid} />
+      <Stepper step={step} onJump={go} />
 
       {/* Animated step body */}
       <div className="relative mt-5 overflow-hidden">
@@ -507,54 +504,39 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   );
 }
 
-/** Numbered progress header — clickable to jump; compact on mobile. */
-function Stepper({
-  step,
-  valid,
-  onJump,
-}: {
-  step: number;
-  valid: (i: number) => boolean;
-  onJump: (i: number) => void;
-}) {
+/**
+ * Progress header — a segmented bar (fits any width, no horizontal overflow) plus
+ * the CURRENT step's name + counter. Segments are tappable to jump back/forward.
+ */
+function Stepper({ step, onJump }: { step: number; onJump: (i: number) => void }) {
   return (
-    <div className="flex items-center gap-1.5">
-      {STEPS.map((s, i) => {
-        const done = i < step;
-        const current = i === step;
-        return (
-          <div key={s.key} className="flex flex-1 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onJump(i)}
-              className={cn(
-                "flex min-w-0 flex-1 items-center gap-2 rounded-[var(--r-sm)] border-2 px-2 py-1.5 text-left transition-colors",
-                current
-                  ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]"
-                  : done
-                    ? "border-[var(--line)] bg-[var(--surface-3)] text-[var(--text)]"
-                    : "border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-faint)]"
-              )}
-            >
-              <span
-                className={cn(
-                  "grid h-5 w-5 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] text-[11px] font-black",
-                  current
-                    ? "bg-[var(--surface)] text-[var(--text)]"
-                    : done
-                      ? "bg-[var(--ok)] text-[var(--accent-ink)]"
-                      : "bg-[var(--surface)] text-[var(--text-faint)]"
-                )}
-              >
-                {done && !current ? <Check className="h-3 w-3" strokeWidth={3} /> : i + 1}
-              </span>
-              <span className="hidden truncate text-[12px] font-extrabold uppercase tracking-wide md:block">
-                {s.label}
-              </span>
-            </button>
-          </div>
-        );
-      })}
+    <div className="w-full">
+      <div className="flex items-center gap-1.5">
+        {STEPS.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => onJump(i)}
+            aria-label={`Шаг ${i + 1}: ${s.label}`}
+            className={cn(
+              "h-2.5 flex-1 rounded-full border-2 border-[var(--line)] transition-colors",
+              i < step
+                ? "bg-[var(--ok)]"
+                : i === step
+                  ? "bg-[var(--accent)]"
+                  : "bg-[var(--surface-2)]"
+            )}
+          />
+        ))}
+      </div>
+      <div className="mt-2.5 flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate text-[15px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+          {step + 1}. {STEPS[step].label}
+        </span>
+        <span className="shrink-0 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+          {step + 1}/{STEPS.length}
+        </span>
+      </div>
     </div>
   );
 }
