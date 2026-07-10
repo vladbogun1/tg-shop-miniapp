@@ -292,45 +292,52 @@ function DragScroll({ children, className }: { children: ReactNode; className?: 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    // Wheel → horizontal scroll (desktop).
     const onWheel = (e: WheelEvent) => {
       if (e.deltaY === 0 || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
       el.scrollLeft += e.deltaY;
       e.preventDefault();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+
+    // Drag-scroll via window listeners (NO pointer capture — capture would steal the
+    // click from the chips, making tags unselectable). We only start scrolling after
+    // a small movement threshold, so a plain click still selects a tag.
+    const onMove = (e: PointerEvent) => {
+      if (!st.current.down) return;
+      const dx = e.clientX - st.current.startX;
+      if (Math.abs(dx) > 5) st.current.moved = true;
+      if (st.current.moved) el.scrollLeft = st.current.startLeft - dx;
+    };
+    const onUp = () => {
+      if (!st.current.down) return;
+      st.current.down = false;
+      el.style.cursor = "grab";
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
   }, []);
 
   return (
     <div
       ref={ref}
       className={className}
-      style={{ cursor: "grab" }}
+      // userSelect:none stops text selection while dragging; touch keeps native scroll.
+      style={{ cursor: "grab", userSelect: "none", touchAction: "pan-x" }}
       onPointerDown={(e) => {
-        if (e.pointerType !== "mouse") return;
+        if (e.pointerType !== "mouse") return; // touch/pen → native overflow scroll + tap
         const el = ref.current!;
         st.current = { down: true, startX: e.clientX, startLeft: el.scrollLeft, moved: false };
-        try {
-          el.setPointerCapture(e.pointerId);
-        } catch {
-          /* ignore */
-        }
-      }}
-      onPointerMove={(e) => {
-        if (!st.current.down) return;
-        const dx = e.clientX - st.current.startX;
-        if (Math.abs(dx) > 4) st.current.moved = true;
-        ref.current!.scrollLeft = st.current.startLeft - dx;
-      }}
-      onPointerUp={(e) => {
-        st.current.down = false;
-        try {
-          ref.current!.releasePointerCapture(e.pointerId);
-        } catch {
-          /* ignore */
-        }
+        el.style.cursor = "grabbing";
       }}
       onClickCapture={(e) => {
+        // Swallow the click only if this was a real drag; a plain click reaches the chip.
         if (st.current.moved) {
           e.preventDefault();
           e.stopPropagation();
