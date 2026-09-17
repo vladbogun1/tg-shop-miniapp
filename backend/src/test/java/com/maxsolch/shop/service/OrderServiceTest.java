@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,8 @@ class OrderServiceTest {
     PaymentOptionRepository paymentOptionRepository;
     @Mock
     NotificationService notificationService;
+    @Mock
+    ApplicationEventPublisher events;
 
     OrderService service;
 
@@ -55,7 +58,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService);
+                promoCodeRepository, paymentOptionRepository, notificationService, events);
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
         // orderRepository.save returns the same instance with an id assigned (PrePersist not run here).
@@ -131,8 +134,8 @@ class OrderServiceTest {
 
         verify(productRepository).saveAll(any());
         verify(orderRepository).save(any(Order.class));
-        verify(notificationService).onNewOrder(any(Order.class));
-        verify(notificationService).notifyCustomerStatus(any(Order.class));
+        // Telegram is notified from an after-commit listener now, so the service only publishes.
+        verify(events).publishEvent(any(OrderEvents.Created.class));
     }
 
     @Test
@@ -352,7 +355,7 @@ class OrderServiceTest {
         assertThat(delivered.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(delivered.getDeliveredAt()).isNotNull();
 
-        verify(notificationService, times(3)).onStatusChanged(any(Order.class));
+        verify(events, times(3)).publishEvent(any(OrderEvents.StatusChanged.class));
     }
 
     @Test

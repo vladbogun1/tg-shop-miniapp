@@ -18,7 +18,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -36,28 +40,47 @@ public class AdminPaymentController {
         this.requisitesRepository = requisitesRepository;
     }
 
+    /**
+     * The options the editor works with. Deactivated ones are intentionally hidden: they only exist
+     * so historical orders keep a valid {@code payment_option_id} reference (see replaceOptions).
+     */
     @GetMapping("/payment-options")
-    @Operation(summary = "List all payment options")
+    @Operation(summary = "List active payment options")
     public List<AdminPaymentOptionDto> options() {
-        return paymentOptionRepository.findAllByOrderBySortOrderAsc().stream()
+        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
                 .map(this::toDto)
                 .toList();
     }
 
+    /**
+     * Saves the list of payment options as an upsert + soft delete.
+     *
+     * <p>It used to {@code deleteAll()} and re-insert. Orders reference {@code payment_option_id}
+     * with {@code ON DELETE SET NULL}, so every save quietly detached the payment option from all
+     * historical orders — and a customer checking out during that window got "unknown payment
+     * option". Now surviving rows are updated in place, and options that disappear from the list
+     * are merely deactivated so existing orders keep pointing at something real.
+     */
     @PutMapping("/payment-options")
     @Transactional
-    @Operation(summary = "Replace the full list of payment options")
+    @Operation(summary = "Save the list of payment options (upsert; missing ones are deactivated)")
     public List<AdminPaymentOptionDto> replaceOptions(@RequestBody List<AdminPaymentOptionDto> body) {
-        paymentOptionRepository.deleteAll();
+        List<AdminPaymentOptionDto> incoming = body == null ? List.of() : body;
+
+        Map<String, PaymentOption> existing = new LinkedHashMap<>();
+        for (PaymentOption po : paymentOptionRepository.findAllByOrderBySortOrderAsc()) {
+            existing.put(UuidUtil.toString(po.getId()), po);
+        }
+
+        Set<String> keptIds = new HashSet<>();
         int order = 0;
-        for (AdminPaymentOptionDto dto : body) {
-            PaymentOption po = new PaymentOption();
+        for (AdminPaymentOptionDto dto : incoming) {
+            PaymentOption po = null;
             if (dto.id() != null && !dto.id().isBlank()) {
-                try {
-                    po.setId(UuidUtil.toBytes(dto.id()));
-                } catch (IllegalArgumentException ignored) {
-                    // generate a fresh id via @PrePersist
-                }
+                po = existing.get(dto.id().trim());
+            }
+            if (po == null) {
+                po = new PaymentOption();
             }
             po.setTitle(dto.title());
             po.setDescription(dto.description());
@@ -66,8 +89,17 @@ public class AdminPaymentController {
             po.setSortOrder(dto.sortOrder() == 0 ? order : dto.sortOrder());
             // No active toggle in the admin UI yet → an option present in the list is active.
             po.setActive(dto.active() == null || dto.active());
-            paymentOptionRepository.save(po);
+            PaymentOption saved = paymentOptionRepository.save(po);
+            keptIds.add(UuidUtil.toString(saved.getId()));
             order++;
+        }
+
+        // Removed from the list → hide it from checkout, but keep the row for old orders.
+        for (Map.Entry<String, PaymentOption> entry : existing.entrySet()) {
+            if (!keptIds.contains(entry.getKey()) && entry.getValue().isActive()) {
+                entry.getValue().setActive(false);
+                paymentOptionRepository.save(entry.getValue());
+            }
         }
         return options();
     }

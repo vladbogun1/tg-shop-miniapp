@@ -5,6 +5,7 @@ import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -79,6 +80,28 @@ public class ImageStorageService {
         String filename = sanitize(file.getOriginalFilename());
         String key = "chat/" + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
+    }
+
+    /**
+     * Best-effort delete of a stored object. Used when an admin removes a picture from a product —
+     * without it every replaced image stayed in the bucket forever.
+     *
+     * <p>Never throws: losing a byte-range in object storage must not fail the product save that
+     * the user is actually performing. External http(s) urls (legacy/migrated images) are skipped.
+     */
+    public void deleteQuietly(String key) {
+        if (key == null || key.isBlank() || key.startsWith("http://") || key.startsWith("https://")) {
+            return;
+        }
+        try {
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(key.trim())
+                    .build());
+            log.info("Deleted orphaned object '{}'", key);
+        } catch (Exception e) {
+            log.warn("Could not delete object '{}': {}", key, e.getMessage());
+        }
     }
 
     private String upload(MultipartFile file, String key) {
