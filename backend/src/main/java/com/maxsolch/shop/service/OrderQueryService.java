@@ -112,7 +112,8 @@ public class OrderQueryService {
                 ctx.itemsFor(id),
                 ctx.unreadFor(id),
                 o.isPaid(),
-                o.isPaymentClaimed());
+                o.isPaymentClaimed(),
+                receivedMinor(o));
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +131,8 @@ public class OrderQueryService {
                 o.getCreatedAt(),
                 o.getStatus().name(),
                 o.isPaid(),
-                o.isPaymentClaimed());
+                o.isPaymentClaimed(),
+                receivedMinor(o));
     }
 
     /** Maps a whole page of orders, fetching the shared context once. */

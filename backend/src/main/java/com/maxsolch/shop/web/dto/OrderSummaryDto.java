@@ -12,5 +12,7 @@ public record OrderSummaryDto(
         long unreadCount,
         boolean paid,
         /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
-        boolean paymentClaimed) {
+        boolean paymentClaimed,
+        /** Confirmed amount received (0 until an admin confirms the transfer). */
+        long receivedMinor) {
 }

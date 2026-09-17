@@ -89,6 +89,8 @@ export interface OrderSummary {
   paid: boolean;
   /** Customer uploaded a transfer screenshot; awaiting confirmation. */
   paymentClaimed: boolean;
+  /** Confirmed amount received (0 until an admin confirms the transfer). */
+  receivedMinor: number;
 }
 
 export interface OrderDetail {
@@ -139,6 +141,8 @@ export interface OrderCard {
   status: OrderStatus;
   paid: boolean;
   paymentClaimed: boolean;
+  /** Confirmed amount received, so a partial payment is distinguishable on the board. */
+  receivedMinor: number;
 }
 
 // ---- chat -------------------------------------------------------------------

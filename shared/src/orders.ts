@@ -90,10 +90,19 @@ export function paymentState(order: {
   totalMinor?: number;
   receivedMinor?: number;
 }): PaymentState {
-  const total = order.totalMinor ?? 0;
-  const received = order.receivedMinor ?? 0;
-  if (order.paid && (total === 0 || received >= total)) return "PAID";
-  if (order.paid && received > 0) return "PARTIAL";
+  // `paid` is the admin's confirmation and always wins: a confirmed order is never "на проверке",
+  // whatever the claim flag says (every historical order carries claimed=true from the V12
+  // backfill). Treating an absent receivedMinor as 0 previously made every paid order look
+  // unconfirmed on the board, where the card payload does not carry the amount.
+  if (order.paid) {
+    const total = order.totalMinor ?? 0;
+    const received = order.receivedMinor;
+    // Only claim "partial" when the amount is actually known and falls short.
+    if (received !== undefined && total > 0 && received > 0 && received < total) {
+      return "PARTIAL";
+    }
+    return "PAID";
+  }
   if (order.paymentClaimed) return "CLAIMED";
   return "UNPAID";
 }
