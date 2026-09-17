@@ -173,13 +173,15 @@ public class OrderQueryService {
                         .map(pi -> pi.getUrl())
                         .orElse(null);
         return new OrderItemDto(
+                it.getId(),
                 UuidUtil.toString(it.getProductId()),
                 it.getTitleSnapshot(),
                 it.getPriceMinorSnapshot(),
                 it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId()),
                 it.getVariantNameSnapshot(),
                 it.getQuantity(),
-                imageUrl);
+                imageUrl,
+                it.isGift());
     }
 
     private PaymentRequisitesDto toRequisitesDto(PaymentRequisites r) {

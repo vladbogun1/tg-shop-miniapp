@@ -44,4 +44,8 @@ public class OrderItem {
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
+
+    /** Free gift added by an admin (price 0, but stock is still decremented). */
+    @Column(name = "gift", nullable = false)
+    private boolean gift = false;
 }

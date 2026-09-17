@@ -151,6 +151,65 @@ public class NotificationService {
         }
     }
 
+    /** DM the customer that an admin added a free gift to their order. */
+    public void notifyCustomerGift(Order order, String productTitle, String variantName, int qty) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            StringBuilder t = new StringBuilder();
+            t.append("🎁 <b>Подарок к заказу</b>\n");
+            t.append("Заказ <b>#").append(shortId(order)).append("</b>\n");
+            t.append("Мы добавили вам подарок: <b>").append(esc(nz(productTitle))).append("</b>");
+            if (variantName != null && !variantName.isBlank()) {
+                t.append(" <i>(").append(esc(variantName)).append(")</i>");
+            }
+            if (qty > 1) {
+                t.append(" × ").append(qty);
+            }
+            t.append(". Приятного пользования!");
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerGift failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** DM the customer that an admin applied a discount to their order. */
+    public void notifyCustomerDiscount(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            String cur = nz(order.getCurrency());
+            String text = "🏷 <b>Скидка на заказ</b>\n"
+                    + "Заказ <b>#" + shortId(order) + "</b>\n"
+                    + "Вам применена скидка "
+                    + money(order.getDiscountMinor()) + " " + cur + ".\n"
+                    + "Новая сумма к оплате: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>";
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerDiscount failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** Admin posted a chat message → DM the customer with a deep-link to the order chat. */
     public void onAdminChatMessage(Order order, String preview) {
         if (!enabled()) {
@@ -332,11 +391,15 @@ public class NotificationService {
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             sb.append("\n<b>🛒 Отправить:</b>\n");
             for (OrderItem it : order.getItems()) {
-                sb.append("• ").append(esc(it.getTitleSnapshot()));
+                sb.append(it.isGift() ? "• 🎁 " : "• ").append(esc(it.getTitleSnapshot()));
                 if (it.getVariantNameSnapshot() != null) {
                     sb.append(" <i>(").append(esc(it.getVariantNameSnapshot())).append(")</i>");
                 }
-                sb.append(" × ").append(it.getQuantity()).append('\n');
+                sb.append(" × ").append(it.getQuantity());
+                if (it.isGift()) {
+                    sb.append(" <i>(подарок)</i>");
+                }
+                sb.append('\n');
             }
         }
         sb.append("\n💰 Сумма заказа: <b>").append(money(order.getTotalMinor())).append(' ').append(cur).append("</b>\n");
