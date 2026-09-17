@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * GlassChip — NEO-BRUTALISM pill/chip (API unchanged: children, active, onClick,
+ * Chip — NEO-BRUTALISM pill/chip (API unchanged: children, active, onClick,
  * icon). Active = solid accent fill. Thick border, press feedback.
  */
 import type { ReactNode } from "react";
@@ -13,7 +13,7 @@ interface Props {
   icon?: ReactNode;
 }
 
-export function GlassChip({ children, active, onClick, icon }: Props) {
+export function Chip({ children, active, onClick, icon }: Props) {
   return (
     <button
       type="button"

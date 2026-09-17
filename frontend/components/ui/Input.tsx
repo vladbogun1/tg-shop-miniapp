@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * GlassInput — NEO-BRUTALISM field (API unchanged: label floating, status, hint).
+ * Input — NEO-BRUTALISM field (API unchanged: label floating, status, hint).
  * Thick ink border; accent border on focus; danger/ok on validation. Sharp corners.
  */
 import { useId, useState, type InputHTMLAttributes } from "react";
@@ -12,7 +12,7 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, "placeholder
   hint?: string;
 }
 
-export function GlassInput({
+export function Input({
   label,
   status,
   hint,

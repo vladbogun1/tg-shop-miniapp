@@ -48,8 +48,8 @@ const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMa
     </div>
   ),
 });
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
 import {
   ApiError,
@@ -225,7 +225,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col items-center gap-4 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center shadow-[5px_5px_0_var(--shadow)]">
           <p className="text-[14px] font-bold text-[var(--muted)]">Корзина пуста.</p>
           <Link href="/">
-            <GlassButton variant="accent">В каталог</GlassButton>
+            <Button variant="accent">В каталог</Button>
           </Link>
         </div>
       </div>
@@ -348,11 +348,11 @@ export default function CheckoutPage() {
           className="pointer-events-auto mx-4 flex items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[5px_5px_0_var(--shadow)]"
         >
           {step > 0 && (
-            <GlassButton variant="glass" onClick={back}>
+            <Button variant="surface" onClick={back}>
               Назад
-            </GlassButton>
+            </Button>
           )}
-          <GlassButton
+          <Button
             variant="accent"
             fullWidth
             className="flex-1"
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
             onClick={next}
           >
             {primaryLabel}
-          </GlassButton>
+          </Button>
         </motion.div>
       </div>
     </div>
@@ -394,7 +394,7 @@ function ContactsStep({
       <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
         Куда и кому доставить заказ — начнём с контактов.
       </p>
-      <GlassInput
+      <Input
         label="Имя и фамилия"
         value={name}
         onChange={(e) => onName(e.target.value)}
@@ -402,7 +402,7 @@ function ContactsStep({
         hint={touched && !nameOk ? "Укажите имя" : undefined}
         autoComplete="name"
       />
-      <GlassInput
+      <Input
         label="Телефон"
         inputMode="tel"
         value={formatPhone(phone)}
@@ -519,9 +519,9 @@ function DeliveryStep({
               }}
             />
             {warehouse && (
-              <GlassButton variant="glass" onClick={() => setEditing(false)}>
+              <Button variant="surface" onClick={() => setEditing(false)}>
                 Отмена
-              </GlassButton>
+              </Button>
             )}
           </div>
         ) : warehouse ? (
@@ -545,13 +545,13 @@ function DeliveryStep({
                 </div>
               </div>
             </div>
-            <GlassButton
-              variant="glass"
+            <Button
+              variant="surface"
               onClick={() => setEditing(true)}
               icon={<MapPin className="h-4 w-4" strokeWidth={2.75} />}
             >
               Изменить отделение
-            </GlassButton>
+            </Button>
           </motion.div>
         ) : null)}
 
@@ -833,17 +833,17 @@ function SuccessScreen({ state }: { state: SuccessState }) {
       <PaymentProof orderId={state.orderId} />
 
       <div className="mt-6 flex w-full flex-col gap-3">
-        <GlassButton
+        <Button
           variant="accent"
           fullWidth
           onClick={() => router.push(`/account/orders/${state.orderId}`)}
         >
           Перейти к заказу
-        </GlassButton>
+        </Button>
         <Link href="/" className="w-full">
-          <GlassButton variant="ghost" fullWidth>
+          <Button variant="ghost" fullWidth>
             В каталог
-          </GlassButton>
+          </Button>
         </Link>
       </div>
     </div>
@@ -921,7 +921,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
         hidden
         onChange={onFile}
       />
-      <GlassButton
+      <Button
         variant="accent"
         fullWidth
         loading={state === "uploading"}
@@ -929,7 +929,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
         onClick={() => inputRef.current?.click()}
       >
         Загрузить скрин перевода
-      </GlassButton>
+      </Button>
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
       )}

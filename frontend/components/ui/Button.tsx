@@ -1,15 +1,14 @@
 "use client";
 
 /**
- * GlassButton — NEO-BRUTALISM button (API unchanged: variant glass|accent|ghost,
- * size sm|md, loading, icon, fullWidth). Thick border, hard offset shadow the
- * button "drops into" on press.
+ * Neo-Brutalism button: thick ink border and a hard offset shadow the button "drops into"
+ * on press. Variants: surface (neutral) | accent (primary) | ghost (bare text).
  */
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-type Variant = "glass" | "accent" | "ghost";
+type Variant = "surface" | "accent" | "ghost";
 
 interface Props extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: Variant;
@@ -29,15 +28,15 @@ const sizes: Record<"sm" | "md", string> = {
 };
 
 const variants: Record<Variant, string> = {
-  glass:
+  surface:
     "border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
   accent:
     "border-[3px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
   ghost: "text-[var(--muted)] hover:text-[var(--ink)] bg-transparent",
 };
 
-export function GlassButton({
-  variant = "glass",
+export function Button({
+  variant = "surface",
   loading = false,
   icon,
   children,

@@ -129,6 +129,10 @@ services:
       minio:
         condition: service_started
     environment:
+      # Local stack runs as "dev": StartupSecurityCheck only tolerates ALLOW_UNSIGNED_INIT_DATA
+      # and placeholder secrets under this profile. docker-compose.prod.yml overrides it.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Kyiv}
       # DB
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}

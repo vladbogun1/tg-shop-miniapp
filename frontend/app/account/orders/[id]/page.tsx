@@ -34,7 +34,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
-import { GlassButton } from "@/components/ui/GlassButton";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
   ApiError,
@@ -103,7 +103,7 @@ export default function OrderDetailPage() {
           <p className="text-[14px] font-semibold text-[var(--muted)]">
             Не удалось загрузить заказ.
           </p>
-          <GlassButton
+          <Button
             variant="accent"
             loading={isRefetching}
             onClick={() => {
@@ -112,7 +112,7 @@ export default function OrderDetailPage() {
             }}
           >
             Повторить
-          </GlassButton>
+          </Button>
         </motion.div>
       )}
 
@@ -367,13 +367,13 @@ function OrderBody({
           onClick={() => haptic()}
           className="block"
         >
-          <GlassButton
+          <Button
             variant="accent"
             fullWidth
             icon={<MessageCircle className="h-4 w-4" strokeWidth={2.75} />}
           >
             Написать в чат
-          </GlassButton>
+          </Button>
         </Link>
       </div>
     </>
@@ -572,7 +572,7 @@ function PaymentProof({
         поступление и подтвердит оплату.
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
-      <GlassButton
+      <Button
         variant="accent"
         fullWidth
         loading={state === "uploading"}
@@ -580,7 +580,7 @@ function PaymentProof({
         onClick={() => inputRef.current?.click()}
       >
         Загрузить скрин перевода
-      </GlassButton>
+      </Button>
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
       )}

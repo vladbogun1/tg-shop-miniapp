@@ -1,7 +1,12 @@
 # tg-shop-v2 — технический контракт (canonical)
 
 Единый источник правды для всех подсистем (backend / frontend / infra / migration).
-Полное обоснование решений — в `../../ДИЗАЙН-ДОКУМЕНТ-новый-проект.md`.
+Полное обоснование решений — в `../ДИЗАЙН-ДОКУМЕНТ-новый-проект.md`.
+Настройки и требования безопасности — в [`SECURITY.md`](SECURITY.md).
+
+> **Актуальность.** Разделы ниже описывают Фазы 1–2 и местами отстают от кода.
+> Изменения, внесённые по аудиту 2026-09, собраны в конце документа («Дополнения 2026-09»)
+> и имеют приоритет над текстом выше.
 
 ## Версии
 - Java 21
@@ -163,3 +168,52 @@ Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
 - Customer (FE-1): app/ маршруты shop (есть), product (sheet), cart, checkout (stepper), account (orders list), account/orders/[id] (detail + chat). Zustand для корзины (persist localStorage). WS клиент (@stomp/stompjs) для чата. Telegram MainButton на чекаут. Деньги money() ÷100.
 - Admin (FE-2): отдельная зона `app/admin/*` (или подприложение). Auth через Telegram (POST /api/auth/admin/telegram) или dev-логин. Канбан-доска (dnd-kit) `/admin` (board), разворот заказа (drawer) с деталями+чатом, `/admin/products` CRUD + загрузка картинок, `/admin/tags`, `/admin/promocodes`, `/admin/payment` (настройки оплаты). Desktop-first, мобильный фолбэк (канбан→таб-список). Liquid glass (можно «admin-glass», чуть плотнее).
 - NEXT_PUBLIC_API_BASE_URL = origin БЕЗ /api. Image base = imgproxy.
+
+
+---
+
+# Дополнения 2026-09 (приоритетнее текста выше)
+
+## Оплата — заявка ≠ подтверждение
+- `POST /api/me/orders/{id}/pay` постит скрин в чат и ставит `orders.payment_claimed` +
+  `payment_claimed_at`. **Не** меняет `paid` / `received_minor` / наложку.
+- Подтверждает только админ: `PATCH /api/admin/orders/{id}/paid { receivedMinor }` (0 = снять оплату).
+- `OrderSummaryDto`, `OrderCardDto`, `OrderDetailDto`, `DispatchOrderDto` отдают `paymentClaimed`
+  (в detail — ещё и `paymentClaimedAt`).
+
+## Новые эндпоинты
+- `GET /api/promo-codes/preview?code=&subtotalMinor=` (публичный) → `{ valid, discountMinor, totalMinor, message }`.
+  Считает ту же скидку, что и заказ, использование промокода **не** расходует.
+- `GET /api/media?key=&exp=&sig=` (публичный, авторизация — подпись в ссылке) → приватное
+  вложение чата. `MessageDto.attachmentUrl` теперь содержит готовую подписанную ссылку
+  (`/api/media?...`), а не S3-ключ.
+- `GET /api/admin/audit?page=&size=` → журнал действий администраторов.
+
+## Изменённые эндпоинты
+- `POST /api/orders` принимает заголовок `Idempotency-Key`: повтор с тем же ключом возвращает
+  уже созданный заказ.
+- `GET /api/me/orders/{id}/messages` и `GET /api/admin/orders/{id}/messages` — постранично:
+  `?before=<messageId>&limit=` (по умолчанию 50, максимум 200), порядок — от старых к новым.
+- `PUT /api/admin/payment-options` — апсерт по id; вариант, пропавший из списка, деактивируется,
+  а не удаляется (иначе рвутся ссылки исторических заказов). `GET` отдаёт только активные.
+- `ProductUpsertRequest.variants[]` принимает `id` — обязателен для существующих вариантов,
+  иначе сервер сматчит их только по имени.
+- `GET /api/admin/broadcast/audiences` отдаёт числа (long), а не размеры списков.
+
+## Правила и инварианты
+- **Сток.** Списание под `SELECT … FOR UPDATE`; при наличии вариантов `product.stock` = сумма
+  стоков вариантов (ролап), отдельного счётчика нет.
+- **Промокод.** Фикс. сумма важнее процента, процент кэпится 100%, скидка ≤ subtotal; счётчик
+  использований инкрементится под блокировкой строки.
+- **Переходы статусов.** `NEW → APPROVED | SHIPPED | REJECTED`, `APPROVED → SHIPPED | REJECTED`,
+  `SHIPPED → DELIVERED | REJECTED`, `DELIVERED → REJECTED` (возврат), `REJECTED` — терминальный.
+  Возврата в `NEW` нет.
+- **Уведомления.** Отправляются после коммита транзакции (`OrderEvents` + `OrderNotificationListener`).
+- **Таймзона.** Дневные бакеты метрик режутся по `app.timezone` (по умолчанию `Europe/Kyiv`).
+- **Деньги.** Округление до целых единиц валюты одинаковое на бэке и фронте (`Math.round`).
+
+## Фронтенд
+- `frontend`, `frontend-admin` и `shared` — один npm workspace. Общий код (деньги, даты, правила
+  статусов, HTTP-клиент, построение URL картинок, STOMP-клиент, типы API) живёт в `@shop/shared`.
+- WebSocket: токен передаётся **только** в STOMP-заголовке CONNECT; `?token=` не поддерживается.
+- Docker-образы фронтов собираются из корня репозитория (`-f frontend/Dockerfile .`).
