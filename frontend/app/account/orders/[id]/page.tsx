@@ -201,6 +201,11 @@ function OrderBody({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-[14px] font-bold text-[var(--ink)]">
+                    {it.gift && (
+                      <span className="mr-1 inline-block rounded-[var(--r)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
+                        🎁 Подарок
+                      </span>
+                    )}
                     {it.title}
                   </p>
                   {it.variantName && (
@@ -209,15 +214,15 @@ function OrderBody({
                     </p>
                   )}
                   <p className="mt-0.5 text-[12px] font-medium text-[var(--faint)]">
-                    {it.quantity} ×{" "}
-                    {money(it.priceMinor, it.currency ?? order.currency)}
+                    {it.gift
+                      ? `Подарок${it.quantity > 1 ? ` × ${it.quantity}` : ""} · бесплатно`
+                      : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
                   </p>
                 </div>
                 <span className="shrink-0 text-[14px] font-black text-[var(--ink)]">
-                  {money(
-                    it.priceMinor * it.quantity,
-                    it.currency ?? order.currency
-                  )}
+                  {it.gift
+                    ? "0 ₴"
+                    : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
                 </span>
               </div>
             ))}

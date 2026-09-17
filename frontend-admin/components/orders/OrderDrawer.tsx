@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Wallet,
   WalletMinimal,
+  Gift,
+  Percent,
 } from "lucide-react";
 import {
   adminApi,
@@ -50,6 +52,8 @@ import { cn } from "@/lib/cn";
 import { OrderChat } from "./OrderChat";
 import { StatusChangeModal, type StatusChangePayload } from "./StatusChangeModal";
 import { PaymentModal } from "./PaymentModal";
+import { GiftPicker } from "./GiftPicker";
+import { DiscountModal } from "./DiscountModal";
 
 interface Props {
   orderId: string | null;
@@ -75,6 +79,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
   const [changing, setChanging] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
 
   // Re-sync the active tab when the drawer is (re)opened for a new order.
   useEffect(() => {
@@ -117,6 +123,28 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
       setPayOpen(false);
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка смены оплаты", "error");
+    } finally {
+      setChanging(false);
+    }
+  }
+
+  function refreshOrder() {
+    if (orderId) qc.invalidateQueries({ queryKey: ["order", orderId] });
+    qc.invalidateQueries({ queryKey: ["board"] });
+    qc.invalidateQueries({ queryKey: ["orders-table"] });
+    qc.invalidateQueries({ queryKey: ["dispatch"] });
+    qc.invalidateQueries({ queryKey: ["products"] });
+  }
+
+  async function removeGift(itemId: number) {
+    if (!orderId) return;
+    setChanging(true);
+    try {
+      await adminApi.removeOrderItem(orderId, itemId);
+      push("Подарок убран", "ok");
+      refreshOrder();
+    } catch (e) {
+      push(e instanceof ApiError ? e.message : "Не удалось убрать", "error");
     } finally {
       setChanging(false);
     }
@@ -228,7 +256,13 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
                     <Skeleton className="h-32 rounded-[var(--r-md)]" />
                   </div>
                 ) : (
-                  <DetailBody order={order} />
+                  <DetailBody
+                    order={order}
+                    busy={changing}
+                    onRemoveGift={removeGift}
+                    onAddGift={() => setGiftOpen(true)}
+                    onDiscount={() => setDiscountOpen(true)}
+                  />
                 )}
               </div>
 
@@ -304,6 +338,20 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
         onClose={() => setPayOpen(false)}
         onConfirm={applyPayment}
       />
+
+      <GiftPicker
+        open={giftOpen}
+        orderId={orderId}
+        onClose={() => setGiftOpen(false)}
+        onDone={refreshOrder}
+      />
+
+      <DiscountModal
+        open={discountOpen}
+        order={order ?? null}
+        onClose={() => setDiscountOpen(false)}
+        onDone={refreshOrder}
+      />
     </>
   );
 }
@@ -340,7 +388,19 @@ function Section({
   );
 }
 
-function DetailBody({ order }: { order: OrderDetailDto }) {
+function DetailBody({
+  order,
+  busy,
+  onRemoveGift,
+  onAddGift,
+  onDiscount,
+}: {
+  order: OrderDetailDto;
+  busy: boolean;
+  onRemoveGift: (id: number) => void;
+  onAddGift: () => void;
+  onDiscount: () => void;
+}) {
   return (
     <div className="flex flex-col gap-4">
       {/* Customer */}
@@ -378,32 +438,49 @@ function DetailBody({ order }: { order: OrderDetailDto }) {
       {/* Items */}
       <Section title="Состав">
         <div className="flex flex-col gap-3">
-          {order.items.map((it, i) => (
-            <div key={it.id ?? i} className="flex items-center gap-3">
-              <Image
-                src={it.imageUrl ?? undefined}
-                alt={it.title}
-                size={96}
-                className="h-12 w-12 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px] text-[var(--text)]">
-                  {it.title}
-                </div>
-                {it.variantName && (
-                  <div className="text-[12px] text-[var(--text-faint)]">
-                    {it.variantName}
+          {order.items.map((it, i) => {
+            const editable = order.status === "NEW" || order.status === "APPROVED";
+            return (
+              <div key={it.id ?? i} className="flex items-center gap-3">
+                <Image
+                  src={it.imageUrl ?? undefined}
+                  alt={it.title}
+                  size={96}
+                  className="h-12 w-12 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    {it.gift && (
+                      <span className="shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)]">
+                        🎁 Подарок
+                      </span>
+                    )}
+                    <span className="truncate text-[14px] text-[var(--text)]">{it.title}</span>
                   </div>
+                  {it.variantName && (
+                    <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>
+                  )}
+                </div>
+                <div className="text-right text-[13px]">
+                  <div className="text-[var(--text-muted)]">×{it.quantity}</div>
+                  <div className="font-semibold text-[var(--text)]">
+                    {it.gift ? "0 ₴" : money(it.priceMinor, order.currency)}
+                  </div>
+                </div>
+                {it.gift && editable && it.id != null && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveGift(it.id!)}
+                    disabled={busy}
+                    className="nb-press grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]"
+                    aria-label="Убрать подарок"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 )}
               </div>
-              <div className="text-right text-[13px]">
-                <div className="text-[var(--text-muted)]">×{it.quantity}</div>
-                <div className="font-semibold text-[var(--text)]">
-                  {money(it.priceMinor, order.currency)}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="mt-4 space-y-1 border-t-2 border-[var(--border)] pt-3 text-[13px]">
           <div className="flex justify-between text-[var(--text-muted)]">
@@ -421,6 +498,16 @@ function DetailBody({ order }: { order: OrderDetailDto }) {
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
         </div>
+        {(order.status === "NEW" || order.status === "APPROVED") && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="surface" icon={<Gift className="h-4 w-4" />} onClick={onAddGift}>
+              Добавить подарок
+            </Button>
+            <Button size="sm" variant="surface" icon={<Percent className="h-4 w-4" />} onClick={onDiscount}>
+              {order.discountMinor > 0 ? "Изменить скидку" : "Скидка"}
+            </Button>
+          </div>
+        )}
       </Section>
 
       {/* Requisites */}

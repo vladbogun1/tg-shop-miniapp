@@ -223,6 +223,7 @@ export interface OrderItem {
   priceMinor: number;
   currency?: string;
   imageUrl?: string | null;
+  gift?: boolean;
 }
 
 export interface PaymentRequisites {
