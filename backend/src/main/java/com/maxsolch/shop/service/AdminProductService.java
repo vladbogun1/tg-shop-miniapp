@@ -5,6 +5,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.Tag;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.web.BadRequestException;
@@ -19,7 +20,10 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Admin product CRUD + tag/variant/image management. Mutations evict the public catalog caches.
@@ -29,10 +33,14 @@ public class AdminProductService {
 
     private final ProductRepository productRepository;
     private final TagRepository tagRepository;
+    private final ImageStorageService imageStorageService;
 
-    public AdminProductService(ProductRepository productRepository, TagRepository tagRepository) {
+    public AdminProductService(ProductRepository productRepository,
+                               TagRepository tagRepository,
+                               ImageStorageService imageStorageService) {
         this.productRepository = productRepository;
         this.tagRepository = tagRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     @Transactional(readOnly = true)
@@ -76,6 +84,10 @@ public class AdminProductService {
     @Transactional
     public AdminProductDto update(String id, ProductUpsertRequest req) {
         Product p = load(id);
+        if (req.title() != null && !req.title().trim().equalsIgnoreCase(p.getTitle())
+                && productRepository.existsByTitle(req.title().trim())) {
+            throw new BadRequestException("product title already exists");
+        }
         applyScalars(p, req);
         applyImages(p, req);
         applyTags(p, req);
@@ -123,22 +135,50 @@ public class AdminProductService {
         }
     }
 
+    /**
+     * Reconciles the image list against what the client sent, matching on the stored key.
+     *
+     * <p>Rewriting the whole collection (clear + re-insert) churned primary keys on every save and,
+     * worse, left every removed picture in object storage forever. Now rows that survive are reused
+     * (only their sort order moves) and dropped ones are deleted from MinIO as well.
+     */
     private void applyImages(Product p, ProductUpsertRequest req) {
         if (req.imageKeys() == null) {
             return;
         }
-        p.getImages().clear();
-        int order = 0;
-        for (String key : req.imageKeys()) {
-            if (key == null || key.isBlank()) {
-                continue;
-            }
-            ProductImage img = new ProductImage();
-            img.setProduct(p);
-            img.setUrl(key.trim());
-            img.setSortOrder(order++);
-            p.getImages().add(img);
+        List<String> keys = req.imageKeys().stream()
+                .filter(k -> k != null && !k.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        // Drop what the admin removed. The collection is mutated in place rather than cleared and
+        // refilled: with orphanRemoval a clear() schedules every row for deletion, and re-adding
+        // the same instances in one flush is exactly the pattern that makes Hibernate delete and
+        // re-insert (new ids) — which is the bug being fixed here.
+        List<String> orphanKeys = p.getImages().stream()
+                .map(ProductImage::getUrl)
+                .filter(url -> !keys.contains(url))
+                .toList();
+        p.getImages().removeIf(img -> !keys.contains(img.getUrl()));
+
+        Map<String, ProductImage> existing = new LinkedHashMap<>();
+        for (ProductImage img : p.getImages()) {
+            existing.putIfAbsent(img.getUrl(), img);
         }
+        int order = 0;
+        for (String key : keys) {
+            ProductImage img = existing.get(key);
+            if (img == null) {
+                img = new ProductImage();
+                img.setProduct(p);
+                img.setUrl(key);
+                p.getImages().add(img);
+            }
+            img.setSortOrder(order++);
+        }
+
+        orphanKeys.forEach(imageStorageService::deleteQuietly);
     }
 
     private void applyTags(Product p, ProductUpsertRequest req) {
@@ -156,29 +196,71 @@ public class AdminProductService {
         }
     }
 
+    /**
+     * Reconciles variants instead of recreating them.
+     *
+     * <p>The previous clear + re-insert handed every variant a brand new UUID on each save, which
+     * silently broke anything holding the old one: persisted carts in customers' browsers and the
+     * {@code order_items.variant_id} of existing orders. Matching is by id when the client sends
+     * one, then by name (the admin UI historically sent no ids at all), so existing rows keep their
+     * identity either way; only genuinely removed variants are deleted.
+     */
     private void applyVariants(Product p, ProductUpsertRequest req) {
         if (req.variants() == null) {
             return;
         }
-        p.getVariants().clear();
+        Map<String, ProductVariant> byId = new LinkedHashMap<>();
+        Map<String, ProductVariant> byName = new LinkedHashMap<>();
+        for (ProductVariant v : p.getVariants()) {
+            byId.put(UuidUtil.toString(v.getId()), v);
+            byName.putIfAbsent(normalized(v.getName()), v);
+        }
+
+        // Resolve every incoming variant to an existing row (by id, else by name) or a new one.
+        List<ProductVariant> keep = new ArrayList<>();
         int order = 0;
         int rollup = 0;
         for (ProductUpsertRequest.VariantInput vi : req.variants()) {
             if (vi.name() == null || vi.name().isBlank()) {
                 continue;
             }
-            ProductVariant v = new ProductVariant();
-            v.setProduct(p);
+            ProductVariant v = null;
+            if (vi.id() != null && !vi.id().isBlank()) {
+                v = byId.remove(vi.id().trim());
+                if (v != null) {
+                    byName.remove(normalized(v.getName()));
+                }
+            }
+            if (v == null) {
+                v = byName.remove(normalized(vi.name()));
+                if (v != null) {
+                    byId.remove(UuidUtil.toString(v.getId()));
+                }
+            }
+            if (v == null) {
+                v = new ProductVariant();
+                v.setProduct(p);
+                p.getVariants().add(v);
+            }
             v.setName(vi.name().trim());
             v.setStock(vi.stock());
             v.setSortOrder(order++);
-            p.getVariants().add(v);
+            keep.add(v);
             rollup += vi.stock();
         }
-        // Roll up variant stock into product stock when variants exist.
+
+        // Anything not matched was removed by the admin (orphanRemoval deletes the rows).
+        p.getVariants().removeIf(v -> !keep.contains(v));
+
+        // Product stock is the rollup of variant stock whenever variants exist (OrderService
+        // relies on the same invariant when reserving/releasing units).
         if (!p.getVariants().isEmpty()) {
             p.setStock(rollup);
         }
+    }
+
+    private static String normalized(String name) {
+        return name == null ? "" : name.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private Product load(String id) {

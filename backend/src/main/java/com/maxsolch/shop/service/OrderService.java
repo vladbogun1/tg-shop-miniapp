@@ -17,6 +17,7 @@ import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +31,10 @@ import java.util.Optional;
 
 /**
  * Order lifecycle and business rules: stock, promo, delivery/payment snapshots, status transitions.
- * Owns notifications (best-effort) on create and every transition.
+ *
+ * <p>Telegram notifications are not sent from here: the service publishes {@link OrderEvents} and
+ * {@code OrderNotificationListener} delivers them after the transaction commits, so no database
+ * connection or stock row lock is ever held across a network call to Telegram.
  */
 @Slf4j
 @Service
@@ -41,17 +45,20 @@ public class OrderService {
     private final PromoCodeRepository promoCodeRepository;
     private final PaymentOptionRepository paymentOptionRepository;
     private final NotificationService notificationService;
+    private final ApplicationEventPublisher events;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
                         PaymentOptionRepository paymentOptionRepository,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        ApplicationEventPublisher events) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.paymentOptionRepository = paymentOptionRepository;
         this.notificationService = notificationService;
+        this.events = events;
     }
 
     /**
@@ -163,8 +170,11 @@ public class OrderService {
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
 
-        notificationService.onNewOrder(saved);
-        notificationService.notifyCustomerStatus(saved);
+        // Telegram is contacted only after this transaction commits (see
+        // OrderNotificationListener): otherwise the DB connection and the stock row locks stay
+        // held for the whole API round trip, and a customer could be told about an order that
+        // then failed to save.
+        events.publishEvent(new OrderEvents.Created(saved.getId()));
         return saved;
     }
 
@@ -176,10 +186,8 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.APPROVED);
         order.setApprovedAt(Instant.now());
-        Order saved = afterTransition(order);
-        // Post a dispatch card (what to ship / how much COD to collect) to the seller topic.
-        notificationService.onApprovedDispatch(saved);
-        return saved;
+        // The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit.
+        return afterTransition(order);
     }
 
     @Transactional
@@ -308,8 +316,7 @@ public class OrderService {
         }
         Order saved = orderRepository.save(order);
         // The dispatch card must show "заявлена, не подтверждена" so nothing ships as prepaid.
-        refreshDispatch(saved);
-        notificationService.onPaymentClaimed(saved);
+        events.publishEvent(new OrderEvents.PaymentClaimed(saved.getId()));
         return saved;
     }
 
@@ -327,7 +334,7 @@ public class OrderService {
         order.setPaidAt(paid ? Instant.now() : null);
         Order saved = orderRepository.save(order);
         // COD on the seller's card changes with the received amount — keep it in sync.
-        refreshDispatch(saved);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -387,15 +394,13 @@ public class OrderService {
         productRepository.save(product);
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        refreshDispatch(saved);
-        if (notifyCustomer) {
-            if (gift) {
-                notificationService.notifyCustomerGift(saved, product.getTitle(),
-                        variant == null ? null : variant.getName(), qty);
-            } else {
-                notificationService.notifyCustomerOrderChanged(saved);
-            }
-        }
+        events.publishEvent(new OrderEvents.Edited(
+                saved.getId(),
+                gift ? OrderEvents.EditKind.GIFT : OrderEvents.EditKind.COMPOSITION,
+                notifyCustomer,
+                product.getTitle(),
+                variant == null ? null : variant.getName(),
+                qty));
         return saved;
     }
 
@@ -418,7 +423,7 @@ public class OrderService {
         order.getItems().remove(item);
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        refreshDispatch(saved);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -450,10 +455,8 @@ public class OrderService {
         item.setQuantity(newQty);
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        refreshDispatch(saved);
-        if (notifyCustomer) {
-            notificationService.notifyCustomerOrderChanged(saved);
-        }
+        events.publishEvent(OrderEvents.Edited.of(
+                saved.getId(), OrderEvents.EditKind.COMPOSITION, notifyCustomer));
         return saved;
     }
 
@@ -493,10 +496,8 @@ public class OrderService {
         order.setDiscountMinor(Math.min(Math.max(0, discount), subtotal));
         order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
         Order saved = orderRepository.save(order);
-        refreshDispatch(saved);
-        if (notifyCustomer && saved.getDiscountMinor() > 0) {
-            notificationService.notifyCustomerDiscount(saved);
-        }
+        events.publishEvent(OrderEvents.Edited.of(
+                saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
         return saved;
     }
 
@@ -593,22 +594,14 @@ public class OrderService {
         });
     }
 
-    /** After an edit, refresh the seller dispatch card if the order is APPROVED. */
-    private void refreshDispatch(Order order) {
-        if (order.getStatus() == OrderStatus.APPROVED) {
-            notificationService.syncDispatchCard(order);
-        }
-    }
-
+    /**
+     * Persists a status transition and hands the Telegram side to the after-commit listener: it
+     * moves the channel card, DMs the customer, and adds or removes the seller's dispatch card
+     * depending on whether the order still awaits shipment.
+     */
     private Order afterTransition(Order order) {
         Order saved = orderRepository.save(order);
-        notificationService.onStatusChanged(saved);
-        notificationService.notifyCustomerStatus(saved);
-        // Once an order leaves APPROVED (shipped / delivered / cancelled) it no longer belongs in
-        // the seller's "К ОТПРАВКЕ" topic — remove its dispatch card. Re-approval re-posts it.
-        if (saved.getStatus() != OrderStatus.APPROVED) {
-            notificationService.removeDispatchCard(saved);
-        }
+        events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
         return saved;
     }
 
