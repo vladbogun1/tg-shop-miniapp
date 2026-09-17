@@ -17,7 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GlassButton } from "@/components/ui/GlassButton";
+import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
@@ -64,9 +64,9 @@ export default function CartPage() {
             Добавьте товары из каталога — и они появятся здесь.
           </p>
           <Link href="/" className="mt-1">
-            <GlassButton variant="accent" icon={<ArrowRight className="h-4 w-4" strokeWidth={2.75} />}>
+            <Button variant="accent" icon={<ArrowRight className="h-4 w-4" strokeWidth={2.75} />}>
               В каталог
-            </GlassButton>
+            </Button>
           </Link>
         </motion.div>
       </div>
@@ -199,7 +199,7 @@ export default function CartPage() {
               {money(subtotal, currency)}
             </div>
           </div>
-          <GlassButton
+          <Button
             variant="accent"
             fullWidth
             className="flex-1"
@@ -210,7 +210,7 @@ export default function CartPage() {
             }}
           >
             Оформить
-          </GlassButton>
+          </Button>
         </motion.div>
       </div>
     </div>

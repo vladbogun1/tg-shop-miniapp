@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { GlassButton } from "@/components/ui/GlassButton";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
@@ -113,7 +113,7 @@ export default function AccountPage() {
           title="Не удалось загрузить"
           text="Войдите через Telegram или проверьте подключение."
         >
-          <GlassButton
+          <Button
             variant="accent"
             loading={isRefetching}
             onClick={() => {
@@ -122,7 +122,7 @@ export default function AccountPage() {
             }}
           >
             Повторить
-          </GlassButton>
+          </Button>
         </EmptyState>
       )}
 
@@ -133,7 +133,7 @@ export default function AccountPage() {
           text="Оформите первый заказ — он появится здесь."
         >
           <Link href="/" onClick={() => haptic()}>
-            <GlassButton variant="accent">В каталог</GlassButton>
+            <Button variant="accent">В каталог</Button>
           </Link>
         </EmptyState>
       )}

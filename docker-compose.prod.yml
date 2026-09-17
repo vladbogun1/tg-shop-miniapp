@@ -43,6 +43,10 @@ services:
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
     pull_policy: always
+    environment:
+      # NOT "dev": the startup check refuses to boot with ALLOW_UNSIGNED_INIT_DATA=true or
+      # placeholder secrets outside the dev profile. That is the point.
+      SPRING_PROFILES_ACTIVE: prod
     # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).
     ports: !override []
 
