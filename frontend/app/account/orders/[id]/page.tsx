@@ -47,17 +47,21 @@ import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { riseItem, spring, staggerContainer } from "@/lib/motion";
+import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/lib/telegram";
 
 export default function OrderDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const token = useAccessToken();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["me", "orders", id],
     queryFn: () => customerApi.getOrder(id),
-    enabled: !!id,
+    // Wait for the Telegram sign-in to produce a token: firing this on mount raced the
+    // initData exchange and the 403 that came back was shown as "не удалось загрузить".
+    enabled: !!id && !!token,
   });
 
   return (
@@ -84,7 +88,7 @@ export default function OrderDetailPage() {
         {data && <StatusChip status={data.status} />}
       </header>
 
-      {isLoading && (
+      {(isLoading || !token) && (
         <div className="flex flex-col gap-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="shimmer h-32 rounded-[var(--r)]" />

@@ -34,6 +34,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
@@ -114,17 +115,11 @@ export default function CheckoutPage() {
   const paymentOptions = paymentQuery.data ?? [];
   const chosenPayment = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
-  // Ask the server what the promo code is actually worth. The checkout used to show the
-  // pre-discount subtotal with a note that the discount "применится на сервере", so the customer
-  // confirmed one amount and was charged another.
-  const promoQuery = useQuery({
-    queryKey: ["promo-preview", promoCode, subtotal],
-    queryFn: () => customerApi.previewPromo(promoCode.trim(), subtotal),
-    enabled: promoCode.trim().length > 0 && subtotal > 0,
-    staleTime: 60_000,
-  });
-  const promoPreview = promoQuery.data ?? null;
-  const discount = promoPreview?.valid ? promoPreview.discountMinor : 0;
+  // Same check the cart runs, so the two screens cannot disagree about the price — and it keeps
+  // refreshing the hold on a limited code while the customer works through the steps.
+  const promo = usePromoPreview(promoCode, subtotal);
+  const promoPreview = promo.data;
+  const discount = promo.discount;
   const total = Math.max(0, subtotal - discount);
   // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
   const dueNow =
@@ -240,25 +235,21 @@ export default function CheckoutPage() {
 
   return (
     <div className="pt-1">
-      {/* header */}
-      <div className="mb-3 flex items-center gap-2">
+      {/* Compact header: back button + current step + rail on ONE row. The previous title row
+          plus a bordered step card took ~15% of the screen height before any content. */}
+      <div className="mb-3 flex items-center gap-2.5">
         <motion.button
           type="button"
           aria-label="Назад"
           whileTap={{ scale: 0.94 }}
           onClick={back}
-          className="tap -ml-1 grid h-10 w-10 min-h-0 min-w-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+          className="tap -ml-1 grid h-10 w-10 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
         >
           <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
         </motion.button>
-        <h1 className="text-[22px] font-black uppercase tracking-wide text-[var(--ink)]">
-          Оформление
-        </h1>
-      </div>
-
-      {/* neo step progress */}
-      <div className="mb-4 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-2 py-3 shadow-[5px_5px_0_var(--shadow)]">
-        <StepProgress steps={STEPS} current={step} />
+        <div className="min-w-0 flex-1">
+          <StepProgress steps={STEPS} current={step} />
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -336,10 +327,12 @@ export default function CheckoutPage() {
       {/* spacer so content never hides behind the sticky bar */}
       <div aria-hidden className="h-24" />
 
-      {/* STICKY neo bottom bar — Назад + Далее/Оформить (above the TabBar) */}
+      {/* Bottom action bar — Назад + Далее/Оформить. FIXED, not sticky: a sticky bar only pins
+          once the page is long enough to scroll past it, so on a short step (and now that the tab
+          bar is hidden during checkout) it used to come to rest halfway up the screen. */}
       <div
-        className="pointer-events-none sticky z-30 -mx-4"
-        style={{ bottom: "calc(84px + var(--safe-bottom))" }}
+        className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-full max-w-[480px]"
+        style={{ bottom: "calc(var(--tabbar-h) + var(--safe-bottom) + 12px)" }}
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}

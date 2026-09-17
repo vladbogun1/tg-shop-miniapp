@@ -14,6 +14,7 @@ import { MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { customerApi, type Conversation } from "@/lib/api";
+import { useAccessToken } from "@/lib/auth";
 import { formatDate, formatTime, shortOrderId } from "@/lib/format";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { backdrop, sheetVariants, spring } from "@/lib/motion";
@@ -33,10 +34,11 @@ function senderPrefix(t?: string | null): string {
 
 export function NotificationsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
+  const token = useAccessToken();
   const { data, isLoading } = useQuery({
     queryKey: ["me", "conversations"],
     queryFn: () => customerApi.conversations(),
-    enabled: open,
+    enabled: open && !!token,
     refetchInterval: open ? 15_000 : false,
   });
   const rows = data ?? [];

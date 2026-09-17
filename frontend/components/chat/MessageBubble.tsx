@@ -93,7 +93,9 @@ export function MessageBubble({
             <Image
               src={msg.attachmentUrl}
               alt={msg.fileName ?? "Фото"}
-              size={1000}
+              // A bubble is ~260px wide; asking for the stored original here is what made chat
+              // photos crawl. The lightbox asks for the big one.
+              size={480}
               fit
               className="max-h-72 max-w-full"
             />

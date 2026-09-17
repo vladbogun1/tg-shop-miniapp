@@ -50,6 +50,8 @@ class OrderServiceTest {
     NotificationService notificationService;
     @Mock
     ApplicationEventPublisher events;
+    @Mock
+    PromoService promoService;
 
     OrderService service;
 
@@ -59,7 +61,10 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService, events);
+                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoService);
+        // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
+        lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
         // orderRepository.save returns the same instance with an id assigned (PrePersist not run here).

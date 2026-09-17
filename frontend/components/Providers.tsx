@@ -6,12 +6,14 @@
  *  - Telegram init (ready/expand/safe areas) via useTelegram().
  *  - Auth boot: exchange initData → JWT (held in memory by lib/api).
  *  - Deep link: ?startapp=order_<id> opens that order's chat.
+ *  - Interaction journal (lib/analytics): buffered locally, flushed to the backend in batches.
  *
  * Everything degrades gracefully outside Telegram / with the backend offline.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
 import {
   getStartParam,
@@ -39,7 +41,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(makeClient);
   const tg = useTelegram();
   const router = useRouter();
+  const pathname = usePathname();
   const deepLinked = useRef(false);
+
+  // Clicks, screen views and client errors, buffered locally and shipped in batches.
+  useEffect(() => startAnalytics(), []);
+  useEffect(() => {
+    track("view", pathname);
+  }, [pathname]);
 
   // The native Telegram MainButton stays hidden; each screen renders its own primary button.
   useHideMainButton();

@@ -46,19 +46,22 @@ public class OrderService {
     private final PaymentOptionRepository paymentOptionRepository;
     private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
+    private final PromoService promoService;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
                         PaymentOptionRepository paymentOptionRepository,
                         NotificationService notificationService,
-                        ApplicationEventPublisher events) {
+                        ApplicationEventPublisher events,
+                        PromoService promoService) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.paymentOptionRepository = paymentOptionRepository;
         this.notificationService = notificationService;
         this.events = events;
+        this.promoService = promoService;
     }
 
     /**
@@ -155,12 +158,17 @@ public class OrderService {
 
         // Promo: fixed amount takes priority over percent.
         long discount = 0;
-        PromoCode promo = resolvePromo(cmd.promoCode());
+        PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
         if (promo != null) {
             discount = discountFor(promo, subtotal);
             order.setPromoCode(promo.getCode());
             promo.setUsesCount(promo.getUsesCount() + 1);
             promoCodeRepository.save(promo);
+            if (cmd.tgUserId() != null) {
+                // The use is counted on the code now; leaving the hold in place would block one
+                // more use for the rest of the half hour.
+                promoService.consume(promo.getId(), cmd.tgUserId());
+            }
         }
 
         order.setSubtotalMinor(subtotal);
@@ -476,7 +484,9 @@ public class OrderService {
         if (clear) {
             order.setPromoCode(null);
         } else if (promoCode != null && !promoCode.isBlank()) {
-            PromoCode p = resolvePromo(promoCode);
+            // An admin applying a code by hand is a deliberate decision, so customers' half-hour
+            // holds do not stand in their way — only the code's own usage limit does.
+            PromoCode p = resolvePromo(promoCode, null, false);
             discount = discountFor(p, subtotal);
             p.setUsesCount(p.getUsesCount() + 1);
             promoCodeRepository.save(p);
@@ -628,7 +638,7 @@ public class OrderService {
      * checkouts. Without the lock a code limited to one use could be redeemed by several
      * simultaneous orders.
      */
-    private PromoCode resolvePromo(String code) {
+    private PromoCode resolvePromo(String code, Long tgUserId, boolean respectHolds) {
         if (code == null || code.isBlank()) {
             return null;
         }
@@ -637,7 +647,12 @@ public class OrderService {
             throw new BadRequestException("invalid promo code");
         }
         PromoCode promo = opt.get();
-        if (promo.getMaxUses() != null && promo.getUsesCount() >= promo.getMaxUses()) {
+        // Remaining uses minus other customers' live holds: a code someone reserved from their cart
+        // must not be taken by a checkout that merely submitted first.
+        long left = respectHolds
+                ? promoService.remainingUses(promo, tgUserId)
+                : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
+        if (left <= 0) {
             throw new BadRequestException("promo code usage limit reached");
         }
         return promo;

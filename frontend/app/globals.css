@@ -42,6 +42,10 @@
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Height the bottom tab-bar occupies. TabBar rewrites it (0px when it hides itself), and
+     every bottom-docked block reads it instead of repeating a magic 84px. */
+  --tabbar-h: 84px;
 }
 
 :root[data-theme="dark"] {
@@ -111,7 +115,16 @@ body {
   border-radius: var(--r);
   box-shadow: 5px 5px 0 var(--shadow);
 }
-.nb-lg { box-shadow: 7px 7px 0 var(--shadow); }
+/* Same block as .nb, only with a deeper shadow. It used to override box-shadow ALONE, so
+   `className="nb-lg"` without `nb` produced a borderless, transparent card and the page
+   showed through it (empty cart, cart summary bar, SoonPanel). Declaring the full block
+   here keeps `nb nb-lg` working and makes the standalone form correct too. */
+.nb-lg {
+  background: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 7px 7px 0 var(--shadow);
+}
 .nb-flat {
   background: var(--surface);
   border: 3px solid var(--line);

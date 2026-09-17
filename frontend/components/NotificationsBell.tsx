@@ -12,14 +12,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { useState } from "react";
 import { customerApi } from "@/lib/api";
+import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/lib/telegram";
 import { NotificationsModal } from "@/components/NotificationsModal";
 
 export function NotificationsBell() {
   const [open, setOpen] = useState(false);
+  const token = useAccessToken();
   const { data } = useQuery({
     queryKey: ["me", "unread-count"],
     queryFn: () => customerApi.unreadCount(),
+    // Polling before the sign-in finished produced a 403 every 20s and an empty bell.
+    enabled: !!token,
     refetchInterval: 20_000,
     refetchOnWindowFocus: true,
     retry: false,

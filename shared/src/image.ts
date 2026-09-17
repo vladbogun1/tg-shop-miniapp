@@ -18,6 +18,18 @@ export function isApiMediaUrl(value: string): boolean {
   return value.startsWith("/api/");
 }
 
+/**
+ * Render widths `/api/media` will honour (MediaThumbnailer.ALLOWED_WIDTHS on the backend). The
+ * server renders the variant through the internal imgproxy; anything not in this list is served as
+ * the stored original, which for a phone screenshot is several megabytes — the reason chat photos
+ * took so long to appear.
+ */
+const MEDIA_WIDTHS = [320, 480, 960, 1600];
+
+function mediaWidthFor(size: number): number {
+  return MEDIA_WIDTHS.find((w) => w >= size) ?? MEDIA_WIDTHS[MEDIA_WIDTHS.length - 1];
+}
+
 /** imgproxy URL for an S3 object key. `fit` keeps the whole image; otherwise it crops to a square. */
 export function imgproxyUrl(imageBase: string, key: string, size = 600, fit = false): string {
   const base = imageBase.replace(/\/$/, "");
@@ -44,7 +56,10 @@ export function resolveImageSrc(value: string, opts: ResolveOptions): string {
     return value.startsWith("//") ? `https:${value}` : value;
   }
   if (isApiMediaUrl(value)) {
-    return `${(opts.apiBase ?? "").replace(/\/$/, "")}${value}`;
+    const base = `${(opts.apiBase ?? "").replace(/\/$/, "")}${value}`;
+    // The link is signed for the object, not the size, so asking for a variant is safe — and it
+    // keeps the URL stable per size, which is what lets the browser cache it.
+    return value.includes("?") ? `${base}&w=${mediaWidthFor(opts.size ?? 600)}` : base;
   }
   return imgproxyUrl(opts.imageBase, value.replace(/^\/+/, ""), opts.size ?? 600, opts.fit ?? false);
 }

@@ -57,17 +57,20 @@ export default function OrderChatPage() {
 
   useEffect(() => onAccessToken(setToken), []);
 
+  // Gated on the token, not just the id: opening the chat from a deep link regularly beat the
+  // initData exchange, the history request came back 403, and the screen settled on "не удалось
+  // загрузить переписку" — the "didn't load the first time" the shop kept seeing.
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["me", "orders", id, "messages"],
     queryFn: () => customerApi.getMessages(id),
-    enabled: !!id,
+    enabled: !!id && !!token,
   });
 
   // Order detail — only used to surface the status chip in the header.
   const { data: order } = useQuery({
     queryKey: ["me", "orders", id],
     queryFn: () => customerApi.getOrder(id),
-    enabled: !!id,
+    enabled: !!id && !!token,
   });
 
   // Seed state from the newest page of history.
@@ -104,6 +107,10 @@ export default function OrderChatPage() {
       setLoadingEarlier(false);
     }
   }
+
+  // A query disabled while the token is still on its way is "pending, not fetching", so the
+  // screen would flash its empty state before the first request even goes out.
+  const loading = isLoading || !token;
 
   const appendMessage = useCallback((m: Message) => {
     if (seenIds.current.has(m.id)) return;
@@ -218,7 +225,7 @@ export default function OrderChatPage() {
         ref={scrollRef}
         className="no-scrollbar flex-1 overflow-y-auto overscroll-contain px-3 py-3"
       >
-        {isLoading && (
+        {loading && (
           <div className="flex flex-col gap-3">
             {[0, 1, 2, 3].map((i) => (
               <div
@@ -247,7 +254,7 @@ export default function OrderChatPage() {
           </div>
         )}
 
-        {!isLoading && !isError && messages.length === 0 && (
+        {!loading && !isError && messages.length === 0 && (
           <div className="mt-12 flex flex-col items-center gap-3 text-center">
             <div className="grid h-14 w-14 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c3)] text-2xl shadow-[4px_4px_0_var(--shadow)]">
               💬
