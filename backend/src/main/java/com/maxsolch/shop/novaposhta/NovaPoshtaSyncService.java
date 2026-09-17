@@ -8,10 +8,10 @@ import com.maxsolch.shop.domain.NovaPoshtaCity;
 import com.maxsolch.shop.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.repository.NovaPoshtaCityRepository;
 import com.maxsolch.shop.repository.NovaPoshtaWarehouseRepository;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,18 +26,25 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Syncs the Nova Poshta warehouse directory into the local DB (and derives cities). Runs daily and
  * once on startup if the warehouse table is empty. Best-effort: never blocks or crashes the context.
  *
- * <p>Background work is handed to an injected {@link TaskExecutor} rather than annotating a method
- * with {@code @Async} and calling it from inside this same bean: a self-invocation bypasses the
- * Spring proxy, so the "async" startup sync actually ran inline on the ApplicationReadyEvent
- * thread and stalled boot for as long as ~35k warehouses took to fetch and insert. For the same
- * reason the per-page transaction is opened by an injected helper bean instead of a
- * {@code @Transactional} method called from within this class.
+ * <p>Background work runs on this service's own single daemon thread rather than through
+ * {@code @Async} on a method of this same bean: a self-invocation bypasses the Spring proxy, so
+ * the "async" startup sync actually ran inline on the ApplicationReadyEvent thread and stalled
+ * boot for as long as ~35k warehouses took to fetch and insert. For the same reason the per-page
+ * transaction is opened by an injected helper bean instead of a {@code @Transactional} method
+ * called from within this class.
+ *
+ * <p>The thread is owned here instead of injecting a {@code TaskExecutor}: this application
+ * registers its own {@code Executor} beans for the STOMP channels, which makes Boot's
+ * {@code applicationTaskExecutor} auto-configuration back off — so there is no unambiguous
+ * {@code TaskExecutor} to inject, and asking for one prevents the context from starting at all.
  */
 @Slf4j
 @Service
@@ -49,7 +56,12 @@ public class NovaPoshtaSyncService {
     private final AppProperties props;
     private final NovaPoshtaWarehouseRepository warehouseRepository;
     private final NovaPoshtaUpsertService upsertService;
-    private final TaskExecutor taskExecutor;
+    /** One daemon thread: the sync is a rare, long, strictly serial job. */
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "np-sync");
+        t.setDaemon(true);
+        return t;
+    });
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -59,12 +71,15 @@ public class NovaPoshtaSyncService {
 
     public NovaPoshtaSyncService(AppProperties props,
                                  NovaPoshtaWarehouseRepository warehouseRepository,
-                                 NovaPoshtaUpsertService upsertService,
-                                 TaskExecutor taskExecutor) {
+                                 NovaPoshtaUpsertService upsertService) {
         this.props = props;
         this.warehouseRepository = warehouseRepository;
         this.upsertService = upsertService;
-        this.taskExecutor = taskExecutor;
+    }
+
+    @PreDestroy
+    void shutdown() {
+        executor.shutdownNow();
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -86,7 +101,7 @@ public class NovaPoshtaSyncService {
 
     /** Runs the sync on a background thread. Safe to call from anywhere, including this bean. */
     public void syncAsync() {
-        taskExecutor.execute(() -> {
+        executor.execute(() -> {
             try {
                 sync();
             } catch (Exception e) {
