@@ -58,13 +58,13 @@ public class BroadcastService {
         return status.get();
     }
 
-    /** Audience sizes for the compose UI. */
-    public java.util.Map<String, Integer> audienceCounts() {
+    /** Audience sizes for the compose UI — four COUNTs, not four fully materialised id lists. */
+    public java.util.Map<String, Long> audienceCounts() {
         return java.util.Map.of(
-                "all", userRepository.audienceAll().size(),
-                "active", userRepository.audienceActive().size(),
-                "inactive", userRepository.audienceInactive().size(),
-                "premium", userRepository.audiencePremium().size());
+                "all", userRepository.audienceAllCount(),
+                "active", userRepository.audienceActiveCount(),
+                "inactive", userRepository.audienceInactiveCount(),
+                "premium", userRepository.audiencePremiumCount());
     }
 
     /** Start a broadcast (async). Throws 409 if one is already running. */

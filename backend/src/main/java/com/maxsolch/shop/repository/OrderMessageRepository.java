@@ -19,6 +19,16 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
 
     long countByOrderIdAndSenderTypeAndReadAtIsNull(byte[] orderId, SenderType senderType);
 
+    /**
+     * Unread counts for every order in one grouped query: {@code [orderId, count]}.
+     *
+     * <p>The board rendered up to 300 cards per column and asked for each card's unread count
+     * separately — about 1500 COUNT queries per refresh, every ten seconds.
+     */
+    @Query("select m.order.id, count(m) from OrderMessage m "
+            + "where m.senderType = :senderType and m.readAt is null group by m.order.id")
+    List<Object[]> unreadCountsBySender(@Param("senderType") SenderType senderType);
+
     /** Order ids that have at least one unread message of the given sender type (admin inbox). */
     @Query("select distinct m.order.id from OrderMessage m where m.senderType = :senderType and m.readAt is null")
     List<byte[]> orderIdsWithUnread(@Param("senderType") SenderType senderType);
@@ -30,7 +40,7 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
                                            @Param("senderType") SenderType senderType);
 
     /** Mark ALL unread messages of a sender type read (admin "read all"). */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update OrderMessage m set m.readAt = :now where m.senderType = :senderType and m.readAt is null")
     int markAllRead(@Param("senderType") SenderType senderType, @Param("now") Instant now);
 
@@ -43,7 +53,8 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
             + "and m.readAt is null and m.order.userId = :userId")
     long countUnreadForUser(@Param("userId") Long userId, @Param("senderType") SenderType senderType);
 
-    @Modifying
+    // clear/flush so the persistence context does not keep serving pre-update copies of these rows.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update OrderMessage m set m.readAt = :now "
             + "where m.order.id = :orderId and m.senderType = :senderType and m.readAt is null")
     int markRead(@Param("orderId") byte[] orderId,

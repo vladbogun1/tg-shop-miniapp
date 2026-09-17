@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.BroadcastService;
@@ -30,15 +31,19 @@ public class AdminBroadcastController {
 
     private final BroadcastService broadcastService;
     private final AdminUserRepository adminUserRepository;
+    private final AdminAuditService audit;
 
-    public AdminBroadcastController(BroadcastService broadcastService, AdminUserRepository adminUserRepository) {
+    public AdminBroadcastController(BroadcastService broadcastService,
+                                    AdminUserRepository adminUserRepository,
+                                    AdminAuditService audit) {
         this.broadcastService = broadcastService;
         this.adminUserRepository = adminUserRepository;
+        this.audit = audit;
     }
 
     @GetMapping("/audiences")
     @Operation(summary = "Reachable audience sizes (all/active/inactive/premium)")
-    public Map<String, Integer> audiences() {
+    public Map<String, Long> audiences() {
         return broadcastService.audienceCounts();
     }
 
@@ -65,6 +70,8 @@ public class AdminBroadcastController {
     @PostMapping
     @Operation(summary = "Start an async broadcast to the chosen audience")
     public BroadcastStatus start(@Valid @RequestBody BroadcastRequest req) {
+        audit.record("BROADCAST_START", "BROADCAST", null,
+                "аудитория " + (req.audience() == null ? "all" : req.audience()));
         return broadcastService.start(req.text(), req.audience(), req.withButton(), req.buttonText());
     }
 }

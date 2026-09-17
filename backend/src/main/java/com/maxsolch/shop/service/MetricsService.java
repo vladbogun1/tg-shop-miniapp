@@ -1,17 +1,19 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.DeliveryMethod;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.dto.MetricsDto;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,10 +26,13 @@ import java.util.TreeMap;
 import java.util.function.Function;
 
 /**
- * Computes admin analytics over orders in a {@link TimeRange}. Loads the range-bounded set of orders
- * (range-capped by the date filter) and aggregates in Java, accessing items lazily inside the
- * read-only transaction.
+ * Admin analytics over a {@link TimeRange}.
+ *
+ * <p>Reads a flat {@link MetricsRow} projection (one query, no entities, no lazy item loading) and
+ * gets the best-seller breakdown from a grouped query. Day buckets are cut in the shop's business
+ * timezone: doing it in UTC pushed every late-evening order in Ukraine into the next day's column.
  */
+@Slf4j
 @Service
 public class MetricsService {
 
@@ -36,18 +41,36 @@ public class MetricsService {
     private static final int TOP_PRODUCTS = 10;
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final ZoneId zone;
 
-    public MetricsService(OrderRepository orderRepository) {
+    public MetricsService(OrderRepository orderRepository,
+                          OrderItemRepository orderItemRepository,
+                          AppProperties props) {
         this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.zone = resolveZone(props.getTimezone());
+    }
+
+    private static ZoneId resolveZone(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return ZoneId.of("Europe/Kyiv");
+        }
+        try {
+            return ZoneId.of(configured.trim());
+        } catch (Exception e) {
+            log.warn("Unknown app.timezone '{}', falling back to Europe/Kyiv", configured);
+            return ZoneId.of("Europe/Kyiv");
+        }
     }
 
     @Transactional(readOnly = true)
     public MetricsDto compute(TimeRange range) {
         Instant from = range.from();
-        List<Order> orders = orderRepository.findForMetrics(from);
+        List<MetricsRow> orders = orderRepository.findMetricsRows(from);
 
         String currency = orders.stream()
-                .map(Order::getCurrency)
+                .map(MetricsRow::currency)
                 .filter(c -> c != null && !c.isBlank())
                 .findFirst()
                 .orElse(DEFAULT_CURRENCY);
@@ -57,8 +80,8 @@ public class MetricsService {
         for (OrderStatus s : OrderStatus.values()) {
             byStatus.put(s, 0L);
         }
-        for (Order o : orders) {
-            byStatus.merge(o.getStatus(), 1L, Long::sum);
+        for (MetricsRow o : orders) {
+            byStatus.merge(o.status(), 1L, Long::sum);
         }
         Map<String, Long> statusCounts = new LinkedHashMap<>();
         for (OrderStatus s : OrderStatus.values()) {
@@ -70,20 +93,20 @@ public class MetricsService {
 
         // Revenue = sum of total_minor for DELIVERED orders in range.
         long revenueMinor = orders.stream()
-                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-                .mapToLong(Order::getTotalMinor)
+                .filter(o -> o.status() == OrderStatus.DELIVERED)
+                .mapToLong(MetricsRow::totalMinor)
                 .sum();
         long avgOrderValueMinor = deliveredOrders == 0 ? 0 : revenueMinor / deliveredOrders;
 
-        // Per-day buckets (UTC). TreeMap keeps chronological ordering by yyyy-MM-dd key.
+        // Per-day buckets in the business timezone. TreeMap keeps yyyy-MM-dd keys chronological.
         Map<String, long[]> revenuePerDay = new TreeMap<>(); // [revenueMinor, ordersCount]
         Map<String, Long> ordersPerDay = new TreeMap<>();
-        for (Order o : orders) {
-            String day = dayOf(o.getCreatedAt());
+        for (MetricsRow o : orders) {
+            String day = dayOf(o.createdAt());
             ordersPerDay.merge(day, 1L, Long::sum);
-            if (o.getStatus() == OrderStatus.DELIVERED) {
+            if (o.status() == OrderStatus.DELIVERED) {
                 long[] acc = revenuePerDay.computeIfAbsent(day, k -> new long[2]);
-                acc[0] += o.getTotalMinor();
+                acc[0] += o.totalMinor();
                 acc[1] += 1;
             }
         }
@@ -94,37 +117,23 @@ public class MetricsService {
         ordersPerDay.forEach((day, count) ->
                 ordersByDay.add(new MetricsDto.OrdersByDay(day, count)));
 
-        // Top products by quantity across all orders in range (uses item snapshots).
-        Map<String, long[]> productAgg = new LinkedHashMap<>(); // title -> [qty, revenueMinor]
-        for (Order o : orders) {
-            for (OrderItem it : o.getItems()) {
-                String title = it.getTitleSnapshot();
-                long[] acc = productAgg.computeIfAbsent(title, k -> new long[2]);
-                acc[0] += it.getQuantity();
-                acc[1] += (long) it.getQuantity() * it.getPriceMinorSnapshot();
-            }
-        }
-        List<MetricsDto.TopProduct> topProducts = productAgg.entrySet().stream()
-                .map(e -> new MetricsDto.TopProduct(e.getKey(), e.getValue()[0], e.getValue()[1]))
-                .sorted(Comparator.comparingLong(MetricsDto.TopProduct::qty).reversed())
-                .limit(TOP_PRODUCTS)
-                .toList();
+        List<MetricsDto.TopProduct> topProducts = topProducts(from);
 
         // Delivery methods (both keys zero-filled).
         Map<String, Long> deliveryMethods = new LinkedHashMap<>();
         for (DeliveryMethod m : DeliveryMethod.values()) {
             deliveryMethods.put(m.name(), 0L);
         }
-        for (Order o : orders) {
-            if (o.getDeliveryMethod() != null) {
-                deliveryMethods.merge(o.getDeliveryMethod().name(), 1L, Long::sum);
+        for (MetricsRow o : orders) {
+            if (o.deliveryMethod() != null) {
+                deliveryMethods.merge(o.deliveryMethod().name(), 1L, Long::sum);
             }
         }
 
         // Payment options by title.
         Map<String, Long> paymentAgg = new LinkedHashMap<>();
-        for (Order o : orders) {
-            String title = o.getPaymentOptionTitle();
+        for (MetricsRow o : orders) {
+            String title = o.paymentOptionTitle();
             if (title != null && !title.isBlank()) {
                 paymentAgg.merge(title, 1L, Long::sum);
             }
@@ -156,6 +165,16 @@ public class MetricsService {
                 deliverySpeed);
     }
 
+    /** Best sellers, grouped and sorted by the database rather than by walking every order. */
+    private List<MetricsDto.TopProduct> topProducts(Instant from) {
+        return orderItemRepository.topProducts(from, PageRequest.of(0, TOP_PRODUCTS)).stream()
+                .map(r -> new MetricsDto.TopProduct(
+                        r[0] == null ? "—" : r[0].toString(),
+                        ((Number) r[1]).longValue(),
+                        ((Number) r[2]).longValue()))
+                .toList();
+    }
+
     /**
      * Real delivery-speed averages from per-transition timestamps (V4). Each metric averages over the
      * orders in range that have BOTH endpoints set; migrated historical orders lack these (NULL) and
@@ -168,21 +187,21 @@ public class MetricsService {
      *   <li>avgTotalHours   = avg(deliveredAt - createdAt)</li>
      * </ul>
      */
-    private MetricsDto.DeliverySpeed deliverySpeed(List<Order> orders) {
+    private MetricsDto.DeliverySpeed deliverySpeed(List<MetricsRow> orders) {
         return new MetricsDto.DeliverySpeed(
-                avgHours(orders, Order::getCreatedAt, Order::getApprovedAt),
-                avgHours(orders, Order::getApprovedAt, Order::getShippedAt),
-                avgHours(orders, Order::getShippedAt, Order::getDeliveredAt),
-                avgHours(orders, Order::getCreatedAt, Order::getDeliveredAt));
+                avgHours(orders, MetricsRow::createdAt, MetricsRow::approvedAt),
+                avgHours(orders, MetricsRow::approvedAt, MetricsRow::shippedAt),
+                avgHours(orders, MetricsRow::shippedAt, MetricsRow::deliveredAt),
+                avgHours(orders, MetricsRow::createdAt, MetricsRow::deliveredAt));
     }
 
     /** Average span in hours between two timestamps over orders where both are non-null; null if none. */
-    private static Double avgHours(List<Order> orders,
-                                   Function<Order, Instant> start,
-                                   Function<Order, Instant> end) {
+    private static Double avgHours(List<MetricsRow> orders,
+                                   Function<MetricsRow, Instant> start,
+                                   Function<MetricsRow, Instant> end) {
         double sum = 0;
         long count = 0;
-        for (Order o : orders) {
+        for (MetricsRow o : orders) {
             Instant s = start.apply(o);
             Instant e = end.apply(o);
             if (s != null && e != null) {
@@ -196,11 +215,11 @@ public class MetricsService {
         return count == 0 ? null : round2(sum / count);
     }
 
-    private static String dayOf(Instant instant) {
+    private String dayOf(Instant instant) {
         if (instant == null) {
             return "unknown";
         }
-        return LocalDate.ofInstant(instant, ZoneOffset.UTC).format(DAY);
+        return LocalDate.ofInstant(instant, zone).format(DAY);
     }
 
     private static double round2(double v) {

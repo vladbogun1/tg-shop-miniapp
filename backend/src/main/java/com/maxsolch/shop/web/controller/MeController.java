@@ -99,9 +99,8 @@ public class MeController {
     @Operation(summary = "List my orders")
     public List<OrderSummaryDto> myOrders() {
         long userId = SecurityUtil.currentUserId();
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(orderQueryService::toSummary)
-                .toList();
+        // Unread and item counts come from two grouped queries, not one pair per order.
+        return orderQueryService.toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @GetMapping("/orders/{id}")
