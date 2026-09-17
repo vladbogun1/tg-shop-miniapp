@@ -167,6 +167,24 @@ export default function ProductsPage() {
     };
   }, [products]);
 
+  // Warehouse summary over active (non-archived) products: units + total retail value.
+  const stockSummary = useMemo(() => {
+    const active = products.filter((p) => p.active !== false);
+    let units = 0;
+    let valueMinor = 0;
+    for (const p of active) {
+      const u = effStock(p);
+      units += u;
+      valueMinor += u * p.priceMinor;
+    }
+    return {
+      count: active.length,
+      units,
+      valueMinor,
+      out: active.filter((p) => effStock(p) === 0).length,
+    };
+  }, [products]);
+
   const statusOptions = useMemo(
     () => [
       { value: "all" as StatusFilter, label: "Все", count: counts.all },
@@ -210,6 +228,16 @@ export default function ProductsPage() {
           </>
         }
       />
+
+      {/* Warehouse summary */}
+      {!archivedView && (
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="Товаров" value={String(stockSummary.count)} />
+          <StatTile label="На складе" value={`${stockSummary.units} шт`} />
+          <StatTile label="Стоимость склада" value={money(stockSummary.valueMinor)} accent />
+          <StatTile label="Закончились" value={String(stockSummary.out)} />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-5 flex flex-col gap-4">
@@ -560,5 +588,24 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function StatTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="card flex flex-col gap-1 p-3.5">
+      <span className="text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">
+        {label}
+      </span>
+      <span
+        className={
+          accent
+            ? "text-[20px] font-black text-[var(--accent)]"
+            : "text-[20px] font-black text-[var(--text)]"
+        }
+      >
+        {value}
+      </span>
+    </div>
   );
 }

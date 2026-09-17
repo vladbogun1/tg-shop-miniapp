@@ -312,7 +312,196 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    // ----- admin order editing: gifts & discounts -----
+
+    /** Admin adds a FREE gift product to an order: stock is decremented (unit is reserved),
+     *  the item is added at price 0 (so total/наложка don't change), gifts merge by product+variant. */
+    @Transactional
+    public Order addGift(byte[] orderId, String productId, String variantId, int qty, boolean notifyCustomer) {
+        Order order = get(orderId);
+        requireEditable(order);
+        if (qty < 1) {
+            throw new BadRequestException("quantity must be >= 1");
+        }
+        Product product = productRepository.findByIdWithDetails(toBytes(productId, "productId"))
+                .orElseThrow(() -> new BadRequestException("unknown product: " + productId));
+        if (product.isArchived()) {
+            throw new BadRequestException("product is archived: " + product.getTitle());
+        }
+        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        ProductVariant variant = null;
+        if (hasVariants) {
+            if (variantId == null || variantId.isBlank()) {
+                throw new BadRequestException("variant is required for product: " + product.getTitle());
+            }
+            variant = findVariant(product, variantId);
+            if (variant == null) {
+                throw new BadRequestException("variant does not belong to product: " + variantId);
+            }
+        }
+        reserveStock(product, variant, qty);
+
+        byte[] vId = variant == null ? null : variant.getId();
+        OrderItem existing = order.getItems().stream()
+                .filter(OrderItem::isGift)
+                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
+                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + qty);
+        } else {
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProductId(product.getId());
+            item.setTitleSnapshot(product.getTitle());
+            item.setPriceMinorSnapshot(0);
+            item.setQuantity(qty);
+            item.setGift(true);
+            if (variant != null) {
+                item.setVariantId(variant.getId());
+                item.setVariantNameSnapshot(variant.getName());
+            }
+            order.getItems().add(item);
+        }
+        productRepository.save(product);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        refreshDispatch(saved);
+        if (notifyCustomer) {
+            notificationService.notifyCustomerGift(saved, product.getTitle(),
+                    variant == null ? null : variant.getName(), qty);
+        }
+        return saved;
+    }
+
+    /** Admin removes an order item (a gift or a line), restoring its stock and recomputing totals. */
+    @Transactional
+    public Order removeItem(byte[] orderId, long itemId) {
+        Order order = get(orderId);
+        requireEditable(order);
+        OrderItem item = order.getItems().stream()
+                .filter(i -> i.getId() != null && i.getId() == itemId)
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("order item not found"));
+        restoreItemStock(item);
+        order.getItems().remove(item);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        refreshDispatch(saved);
+        return saved;
+    }
+
+    /** Admin applies / updates / removes a discount: an existing promo code, or a manual amount/percent. */
+    @Transactional
+    public Order applyDiscount(byte[] orderId, String promoCode, Long amountMinor,
+                               Integer percent, boolean clear, boolean notifyCustomer) {
+        Order order = get(orderId);
+        requireEditable(order);
+        long subtotal = order.getItems().stream()
+                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
+
+        // Release any previous REAL promo usage before re-applying.
+        releasePromoUsage(order.getPromoCode());
+
+        long discount = 0;
+        if (clear) {
+            order.setPromoCode(null);
+        } else if (promoCode != null && !promoCode.isBlank()) {
+            PromoCode p = resolvePromo(promoCode);
+            discount = p.getDiscountAmountMinor() > 0
+                    ? Math.min(p.getDiscountAmountMinor(), subtotal)
+                    : subtotal * p.getDiscountPercent() / 100;
+            p.setUsesCount(p.getUsesCount() + 1);
+            promoCodeRepository.save(p);
+            order.setPromoCode(p.getCode());
+        } else if (amountMinor != null && amountMinor > 0) {
+            discount = Math.min(amountMinor, subtotal);
+            order.setPromoCode("Ручная скидка");
+        } else if (percent != null && percent > 0) {
+            int pc = Math.min(percent, 100);
+            discount = subtotal * pc / 100;
+            order.setPromoCode("Ручная скидка " + pc + "%");
+        } else {
+            order.setPromoCode(null);
+        }
+
+        order.setSubtotalMinor(subtotal);
+        order.setDiscountMinor(Math.min(Math.max(0, discount), subtotal));
+        order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
+        Order saved = orderRepository.save(order);
+        refreshDispatch(saved);
+        if (notifyCustomer && saved.getDiscountMinor() > 0) {
+            notificationService.notifyCustomerDiscount(saved);
+        }
+        return saved;
+    }
+
     // ----- helpers -----
+
+    /** Order composition/discount may only be edited before dispatch. */
+    private void requireEditable(Order order) {
+        OrderStatus s = order.getStatus();
+        if (s != OrderStatus.NEW && s != OrderStatus.APPROVED) {
+            throw new BadRequestException("заказ можно менять только в статусе «Новый» или «Одобрен»");
+        }
+    }
+
+    /** Decrement stock for one product/variant line (reserves the units). */
+    private void reserveStock(Product product, ProductVariant variant, int qty) {
+        if (variant != null) {
+            if (variant.getStock() < qty) {
+                throw new BadRequestException("not enough stock for variant: " + variant.getName());
+            }
+            variant.setStock(variant.getStock() - qty);
+        } else if (product.getStock() < qty) {
+            throw new BadRequestException("not enough stock for product: " + product.getTitle());
+        }
+        product.setStock(Math.max(0, product.getStock() - qty));
+    }
+
+    /** Return one item's units to product + variant stock. */
+    private void restoreItemStock(OrderItem item) {
+        productRepository.findByIdWithDetails(item.getProductId()).ifPresent(product -> {
+            product.setStock(product.getStock() + item.getQuantity());
+            if (item.getVariantId() != null) {
+                ProductVariant variant = findVariant(product, UuidUtil.toString(item.getVariantId()));
+                if (variant != null) {
+                    variant.setStock(variant.getStock() + item.getQuantity());
+                }
+            }
+            productRepository.save(product);
+        });
+    }
+
+    /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
+    private void recomputeTotals(Order order) {
+        long subtotal = order.getItems().stream()
+                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
+        order.setSubtotalMinor(subtotal);
+        long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
+        order.setDiscountMinor(discount);
+        order.setTotalMinor(Math.max(0, subtotal - discount));
+    }
+
+    /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
+    private void releasePromoUsage(String code) {
+        if (code == null || code.isBlank()) {
+            return;
+        }
+        promoCodeRepository.findByCode(code).ifPresent(p -> {
+            if (p.getUsesCount() > 0) {
+                p.setUsesCount(p.getUsesCount() - 1);
+                promoCodeRepository.save(p);
+            }
+        });
+    }
+
+    /** After an edit, refresh the seller dispatch card if the order is APPROVED. */
+    private void refreshDispatch(Order order) {
+        if (order.getStatus() == OrderStatus.APPROVED) {
+            notificationService.syncDispatchCard(order);
+        }
+    }
 
     private Order afterTransition(Order order) {
         Order saved = orderRepository.save(order);
@@ -328,16 +517,7 @@ public class OrderService {
 
     private void restoreStock(Order order) {
         for (OrderItem item : order.getItems()) {
-            productRepository.findByIdWithDetails(item.getProductId()).ifPresent(product -> {
-                product.setStock(product.getStock() + item.getQuantity());
-                if (item.getVariantId() != null) {
-                    ProductVariant variant = findVariant(product, UuidUtil.toString(item.getVariantId()));
-                    if (variant != null) {
-                        variant.setStock(variant.getStock() + item.getQuantity());
-                    }
-                }
-                productRepository.save(product);
-            });
+            restoreItemStock(item);
         }
     }
 
