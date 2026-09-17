@@ -29,7 +29,10 @@ import java.util.UUID;
  * logged with a correlation id while the client gets a generic message instead of internals.
  */
 @Slf4j
-@RestControllerAdvice(basePackages = "com.maxsolch.shop.web.controller")
+// Scoped to the whole application package, not just web.controller: MediaController lives in
+// com.maxsolch.shop.media, so a rejected media link fell through to Spring's default error page —
+// the right status, but the wrong body and a full stack trace in the log for every blocked request.
+@RestControllerAdvice(basePackages = "com.maxsolch.shop")
 public class ApiExceptionHandler {
 
     @ExceptionHandler(InitDataException.class)
