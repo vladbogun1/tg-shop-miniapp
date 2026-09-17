@@ -39,15 +39,20 @@
    ```
 2. Cert выпущен по webroot в `/home/ubuntu/edge-proxy/letsencrypt` (`authenticator = webroot`).
 3. Caddy читает его через `PROD_CERT_DIR=/home/ubuntu/edge-proxy/letsencrypt`.
-4. **Автопродление** — root-cron дважды в день; после продления релоадит и nginx, и Caddy:
+4. **Автопродление** — root-cron дважды в день вызывает скрипт-обёртку:
    ```
-   17 3,15 * * * docker run --rm \
-     -v /home/ubuntu/edge-proxy/letsencrypt:/etc/letsencrypt \
-     -v /home/ubuntu/edge-proxy/maxsolch-stub:/var/www/certbot \
-     certbot/certbot renew --webroot -w /var/www/certbot --quiet \
-     && docker exec edge_proxy nginx -s reload \
-     && docker exec tgshop_v2_caddy caddy reload --config /etc/caddy/Caddyfile
+   17 3,15 * * * /usr/local/bin/renew-maxsolkh-certs.sh >/dev/null 2>&1
    ```
+   Скрипт `renew-maxsolkh-certs.sh`: гоняет `certbot renew --webroot`, всегда делает
+   `nginx -s reload` (дёшево, перечитывает все certs), и — **только при фактическом
+   продлении** cert'а maxsolkh.shop (сравнивает sha256 fullchain до/после) —
+   **`docker restart tgshop_v2_caddy`**.
+
+   > ⚠️ ВАЖНО: Caddy с `tls <file>` **кэширует** сертификат и `caddy reload` **НЕ
+   > перечитывает** файл с тем же путём — обновлённый cert подхватывается **только
+   > рестартом** контейнера. Поэтому в проде именно `docker restart`, а не `caddy reload`.
+   > (Историческая грабля: cron с `caddy reload` продлевал cert на диске, но Caddy
+   > продолжал отдавать старый из памяти.)
 
 **Проверить продление без риска (LE staging):**
 ```bash
@@ -62,7 +67,7 @@ docker run --rm -v /home/ubuntu/edge-proxy/letsencrypt:/etc/letsencrypt \
   -v /home/ubuntu/edge-proxy/maxsolch-stub:/var/www/certbot \
   certbot/certbot certonly --webroot -w /var/www/certbot \
   -d maxsolkh.shop --cert-name maxsolkh.shop --non-interactive --agree-tos
-docker exec tgshop_v2_caddy caddy reload --config /etc/caddy/Caddyfile
+docker restart tgshop_v2_caddy   # НЕ reload — Caddy перечитывает file-cert только при рестарте
 ```
 
 **Если challenge не проходит** — проверь, что файл отдаётся снаружи:
