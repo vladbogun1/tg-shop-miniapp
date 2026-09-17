@@ -39,6 +39,20 @@ services:
   minio:
     ports: !override []
 
+  # SECURITY: the public overlay publishes the single-origin gateways on 8090/8091 so a local
+  # tunnel (cloudflared/ngrok) can reach them. On the server that made the entire API and the
+  # admin panel answer over PLAIN HTTP at http://<host>:8090 / :8091, straight past Caddy and TLS —
+  # an admin password typed there would travel in cleartext. Caddy talks to them over the compose
+  # network (reverse_proxy gateway:80), so binding to loopback loses nothing and still lets a
+  # tunnel running ON the server connect.
+  gateway:
+    ports: !override
+      - "127.0.0.1:8090:80"
+
+  gateway-admin:
+    ports: !override
+      - "127.0.0.1:8091:80"
+
   # Pin to pre-built registry images (override the build: from base/public).
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
