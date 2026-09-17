@@ -37,34 +37,20 @@ jobs:
           path: backend/target/*.jar
           if-no-files-found: ignore
 
-  frontend:
-    name: Frontend (Next.js build)
+  # Both apps and the shared package are one npm workspace, so a single install covers all of
+  # them — and lint/typecheck actually run now (there was no ESLint config at all before, which
+  # made `next lint` a no-op).
+  frontends:
+    name: Frontends (lint · typecheck · build)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run build
-
-  frontend-admin:
-    name: Admin (Next.js build)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend-admin
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend-admin/package-lock.json
-      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
       - run: npm run build

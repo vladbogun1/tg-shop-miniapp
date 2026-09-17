@@ -28,20 +28,3 @@ export function getTelegramInitData(): string | null {
   app.expand?.();
   return app.initData && app.initData.length > 0 ? app.initData : null;
 }
-
-/**
- * Build a crafted unsigned initData string for DEV (works only when backend has
- * ALLOW_UNSIGNED_INIT_DATA=true). Mirrors Telegram's query-string format.
- */
-export function buildDevInitData(userId: string, firstName = "Admin"): string {
-  const user = JSON.stringify({
-    id: Number(userId),
-    first_name: firstName,
-    username: "dev_admin",
-  });
-  const params = new URLSearchParams();
-  params.set("auth_date", String(Math.floor(Date.now() / 1000)));
-  params.set("user", user);
-  params.set("hash", "devhash");
-  return params.toString();
-}

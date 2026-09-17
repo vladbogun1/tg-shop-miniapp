@@ -7,12 +7,13 @@
     "dev": "next dev -p 3004",
     "build": "next build",
     "start": "next start -p 3004",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@shop/shared": "*",
     "@stomp/stompjs": "^7.3.0",
     "@tanstack/react-query": "^5.62.0",
-    "@telegram-apps/sdk-react": "^2.0.25",
     "framer-motion": "^11.15.0",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
@@ -21,17 +22,18 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-leaflet": "^5.0.0",
-    "sockjs-client": "^1.6.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/leaflet": "^1.9.21",
     "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/sockjs-client": "^1.5.4",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "^15.5.4",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"
   }

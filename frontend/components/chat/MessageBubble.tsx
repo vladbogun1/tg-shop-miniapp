@@ -12,7 +12,7 @@
  */
 import { motion } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
-import type { Message } from "@/lib/api";
+import { mediaUrl, type Message } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
@@ -101,8 +101,10 @@ export function MessageBubble({
         )}
 
         {msg.type === "FILE" && msg.attachmentUrl && (
+          // attachmentUrl is a server-relative signed link, so it needs the API origin to open
+          // in a new tab (the chat pages and the Mini App can be served from different hosts).
           <a
-            href={msg.attachmentUrl}
+            href={mediaUrl(msg.attachmentUrl) ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-2 py-1.5 ${

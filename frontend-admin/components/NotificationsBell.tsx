@@ -16,7 +16,7 @@ export function NotificationsBell() {
   const { data } = useQuery({
     queryKey: ["admin", "unread-count"],
     queryFn: () => adminApi.unreadCount(),
-    refetchInterval: 20_000,
+    refetchInterval: 45_000,
     refetchOnWindowFocus: true,
     retry: false,
     enabled: isAuthenticated(),

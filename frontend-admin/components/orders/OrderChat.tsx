@@ -68,7 +68,6 @@ function Bubble({
             className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)]"
             title="Открыть полностью"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolveImageSrc(m.attachmentUrl, 480)}
               alt={m.fileName ?? "вложение"}

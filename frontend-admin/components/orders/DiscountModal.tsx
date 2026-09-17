@@ -60,7 +60,6 @@ export function DiscountModal({
     }
     if (kind === "amount") return Math.min(Math.round(num * 100), subtotal);
     return Math.floor((subtotal * Math.min(num, 100)) / 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, kind, num, promoCode, subtotal, activePromos]);
 
   const newTotal = Math.max(0, subtotal - discount);

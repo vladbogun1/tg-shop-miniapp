@@ -11,7 +11,7 @@
  * AnimatePresence — see NEO.md caveat) and animate out on removal.
  *
  * Behaviour is unchanged vs the original: same cart store, same navigation to
- * /checkout, same useMainButton call, same promo handling. Look & layout only.
+ * /checkout, same promo handling. Look & layout only.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
@@ -23,7 +23,7 @@ import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { haptic, useMainButton } from "@/lib/telegram";
+import { haptic } from "@/lib/telegram";
 
 export default function CartPage() {
   const router = useRouter();
@@ -37,12 +37,6 @@ export default function CartPage() {
 
   const empty = lines.length === 0;
   const currency = lines[0]?.currency ?? "UAH";
-
-  useMainButton({
-    text: `Оформить · ${money(subtotal, currency)}`,
-    onClick: () => router.push("/checkout"),
-    visible: !empty,
-  });
 
   // ---- empty state ---------------------------------------------------------
   if (empty) {
