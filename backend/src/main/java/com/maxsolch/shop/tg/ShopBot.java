@@ -77,7 +77,7 @@ public class ShopBot extends TelegramLongPollingBot {
                     .keyboard(List.of(List.of(btn)))
                     .build());
         }
-        execteSafe(msg);
+        executeSafe(msg);
     }
 
     private void sendHelp(long chatId) {
@@ -85,7 +85,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .chatId(String.valueOf(chatId))
                 .text("Команды:\n/start — открыть магазин\n/help — помощь")
                 .build();
-        execteSafe(msg);
+        executeSafe(msg);
     }
 
     /** Capture/refresh the user behind a bot message (only private 1:1 chats = real users). */
@@ -107,7 +107,7 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
-    private void execteSafe(SendMessage msg) {
+    private void executeSafe(SendMessage msg) {
         try {
             execute(msg);
         } catch (TelegramApiException e) {

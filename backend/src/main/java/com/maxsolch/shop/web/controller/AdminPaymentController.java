@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.PaymentRequisites;
@@ -33,11 +34,14 @@ public class AdminPaymentController {
 
     private final PaymentOptionRepository paymentOptionRepository;
     private final PaymentRequisitesRepository requisitesRepository;
+    private final AdminAuditService audit;
 
     public AdminPaymentController(PaymentOptionRepository paymentOptionRepository,
-                                  PaymentRequisitesRepository requisitesRepository) {
+                                  PaymentRequisitesRepository requisitesRepository,
+                                  AdminAuditService audit) {
         this.paymentOptionRepository = paymentOptionRepository;
         this.requisitesRepository = requisitesRepository;
+        this.audit = audit;
     }
 
     /**
@@ -94,6 +98,7 @@ public class AdminPaymentController {
             order++;
         }
 
+        audit.record("PAYMENT_OPTIONS", "PAYMENT", null, "сохранено вариантов: " + incoming.size());
         // Removed from the list → hide it from checkout, but keep the row for old orders.
         for (Map.Entry<String, PaymentOption> entry : existing.entrySet()) {
             if (!keptIds.contains(entry.getKey()) && entry.getValue().isActive()) {
@@ -127,6 +132,8 @@ public class AdminPaymentController {
         r.setEdrpou(body.edrpou());
         r.setPurpose(body.purpose());
         r.setNote(body.note());
+        // Payment details are money-critical and must never be logged verbatim.
+        audit.record("PAYMENT_REQUISITES", "PAYMENT", null, "реквизиты обновлены");
         return toReqDto(requisitesRepository.save(r));
     }
 

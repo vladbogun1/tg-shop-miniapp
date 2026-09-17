@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.security.RequiredAdmin;
@@ -35,13 +36,16 @@ public class AdminProductController {
     private final AdminProductService productService;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
+    private final AdminAuditService audit;
 
     public AdminProductController(AdminProductService productService,
                                   ImageStorageService imageStorageService,
-                                  UploadValidator uploadValidator) {
+                                  UploadValidator uploadValidator,
+                                  AdminAuditService audit) {
         this.productService = productService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
+        this.audit = audit;
     }
 
     @GetMapping("/products")
@@ -59,13 +63,18 @@ public class AdminProductController {
     @PostMapping("/products")
     @Operation(summary = "Create product")
     public AdminProductDto create(@Valid @RequestBody ProductUpsertRequest req) {
-        return productService.create(req);
+        AdminProductDto created = productService.create(req);
+        audit.record("PRODUCT_CREATE", "PRODUCT", created.id(), created.title());
+        return created;
     }
 
     @PatchMapping("/products/{id}")
     @Operation(summary = "Update product")
     public AdminProductDto update(@PathVariable String id, @Valid @RequestBody ProductUpsertRequest req) {
-        return productService.update(id, req);
+        AdminProductDto updated = productService.update(id, req);
+        audit.record("PRODUCT_UPDATE", "PRODUCT", id,
+                updated.title() + ", price " + updated.priceMinor() + ", stock " + updated.stock());
+        return updated;
     }
 
     @PatchMapping("/products/{id}/active")
@@ -74,6 +83,7 @@ public class AdminProductController {
         if (body.active() == null) {
             throw new BadRequestException("active is required");
         }
+        audit.record("PRODUCT_ACTIVE", "PRODUCT", id, body.active() ? "показан" : "скрыт");
         return productService.setActive(id, body.active());
     }
 
@@ -83,6 +93,7 @@ public class AdminProductController {
         if (body.archived() == null) {
             throw new BadRequestException("archived is required");
         }
+        audit.record("PRODUCT_ARCHIVE", "PRODUCT", id, body.archived() ? "в архив" : "из архива");
         return productService.setArchived(id, body.archived());
     }
 
