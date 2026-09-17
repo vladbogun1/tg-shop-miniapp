@@ -449,7 +449,11 @@ export const adminApi = {
   markAllRead: () => apiPost<{ marked: number }>("/api/admin/orders/read-all"),
 
   // ---- order chat ----
-  messages: (id: string) => apiGet<MessageDto[]>(`/api/admin/orders/${id}/messages`),
+  /** A page of chat history, oldest-first; `before` walks further back. */
+  messages: (id: string, before?: number) =>
+    apiGet<MessageDto[]>(
+      `/api/admin/orders/${id}/messages${before ? `?before=${before}` : ""}`
+    ),
   sendMessage: (id: string, body: SendMessageRequest) =>
     apiPost<MessageDto>(`/api/admin/orders/${id}/messages`, body),
   markRead: (id: string) =>

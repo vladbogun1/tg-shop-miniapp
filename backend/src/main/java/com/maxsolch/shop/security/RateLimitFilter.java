@@ -83,7 +83,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return new Bucket(uploadAttempts, UPLOAD_LIMIT, 60);
         }
         if (path.startsWith("/api/np/") || path.startsWith("/api/products")
-                || path.equals("/api/tags") || path.equals("/api/payment-options")) {
+                || path.equals("/api/tags") || path.equals("/api/payment-options")
+                || path.equals("/api/promo-codes/preview")) {
             return new Bucket(publicReads, PUBLIC_LIMIT, 60);
         }
         return null;

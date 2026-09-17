@@ -19,7 +19,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F4F1E6",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F1E6" },
+    { media: "(prefers-color-scheme: dark)", color: "#26262B" },
+  ],
 };
 
 // Apply the stored theme before paint to avoid a flash (light by default).

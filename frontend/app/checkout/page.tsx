@@ -114,6 +114,24 @@ export default function CheckoutPage() {
   const paymentOptions = paymentQuery.data ?? [];
   const chosenPayment = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
+  // Ask the server what the promo code is actually worth. The checkout used to show the
+  // pre-discount subtotal with a note that the discount "применится на сервере", so the customer
+  // confirmed one amount and was charged another.
+  const promoQuery = useQuery({
+    queryKey: ["promo-preview", promoCode, subtotal],
+    queryFn: () => customerApi.previewPromo(promoCode.trim(), subtotal),
+    enabled: promoCode.trim().length > 0 && subtotal > 0,
+    staleTime: 60_000,
+  });
+  const promoPreview = promoQuery.data ?? null;
+  const discount = promoPreview?.valid ? promoPreview.discountMinor : 0;
+  const total = Math.max(0, subtotal - discount);
+  // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
+  const dueNow =
+    chosenPayment?.requiresPrepayment && chosenPayment.prepaymentMinor
+      ? Math.min(chosenPayment.prepaymentMinor, total)
+      : total;
+
   // ---- validation ----------------------------------------------------------
   const nameOk = name.trim().length >= 2;
   const phoneOk = isValidPhone(phone);
@@ -218,7 +236,7 @@ export default function CheckoutPage() {
     return <SuccessScreen state={success} />;
   }
 
-  const primaryLabel = step < 3 ? "Далее" : `Оформить · ${money(subtotal, currency)}`;
+  const primaryLabel = step < 3 ? "Далее" : `Оформить · ${money(total, currency)}`;
 
   return (
     <div className="pt-1">
@@ -292,7 +310,11 @@ export default function CheckoutPage() {
               comment={comment}
               payment={chosenPayment}
               promoCode={promoCode}
+              promoMessage={promoPreview && !promoPreview.valid ? promoPreview.message ?? null : null}
               subtotal={subtotal}
+              discount={discount}
+              total={total}
+              dueNow={dueNow}
               currency={currency}
               items={lines.map((l) => ({
                 title: l.title + (l.variantName ? ` · ${l.variantName}` : ""),
@@ -629,7 +651,11 @@ function ConfirmStep({
   comment,
   payment,
   promoCode,
+  promoMessage,
   subtotal,
+  discount,
+  total,
+  dueNow,
   currency,
   items,
 }: {
@@ -640,7 +666,13 @@ function ConfirmStep({
   comment: string;
   payment: PaymentOption | null;
   promoCode: string;
+  /** Why the entered code does not apply, when it does not. */
+  promoMessage: string | null;
   subtotal: number;
+  discount: number;
+  total: number;
+  /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
+  dueNow: number;
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
 }) {
@@ -667,17 +699,54 @@ function ConfirmStep({
           </div>
         ))}
         <div className="my-3 h-[2.5px] bg-[var(--line)]" />
+
+        {discount > 0 && (
+          <>
+            <div className="flex items-center justify-between py-0.5">
+              <span className="text-[13px] font-semibold text-[var(--muted)]">Сумма</span>
+              <span className="text-[14px] font-bold text-[var(--muted)]">
+                {money(subtotal, currency)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-0.5">
+              <span className="text-[13px] font-semibold text-[var(--muted)]">
+                Скидка{promoCode ? ` · ${promoCode}` : ""}
+              </span>
+              <span className="text-[14px] font-extrabold text-[var(--ok)]">
+                −{money(discount, currency)}
+              </span>
+            </div>
+            <div className="my-2 h-[2px] bg-[var(--line)]" />
+          </>
+        )}
+
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
             Итого
           </span>
           <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[18px] font-black text-[var(--ink)]">
-            {money(subtotal, currency)}
+            {money(total, currency)}
           </span>
         </div>
-        {promoCode && (
-          <p className="mt-2 text-[12px] font-bold text-[var(--muted)]">
-            Промокод: {promoCode} (скидка применится на сервере)
+
+        {/* Prepay options charge part of the total now and the rest on delivery — show both. */}
+        {dueNow !== total && (
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-[var(--ink)]">К оплате сейчас</span>
+            <span className="text-[15px] font-black text-[var(--ink)]">
+              {money(dueNow, currency)}
+            </span>
+          </div>
+        )}
+        {dueNow !== total && (
+          <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
+            Остаток {money(total - dueNow, currency)} — при получении.
+          </p>
+        )}
+
+        {promoCode && discount === 0 && (
+          <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">
+            Промокод «{promoCode}»: {promoMessage ?? "проверяем…"}
           </p>
         )}
       </section>

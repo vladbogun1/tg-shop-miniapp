@@ -20,6 +20,7 @@ import {
   type PaymentOption,
   type PaymentRequisites,
   type Product,
+  type PromoPreview,
   type SendMessageRequest,
 } from "@shop/shared";
 
@@ -35,6 +36,7 @@ export type {
   PaymentOption,
   PaymentRequisites,
   Product,
+  PromoPreview,
   SendMessageRequest,
 };
 export type {
@@ -151,6 +153,11 @@ export const customerApi = {
   getProducts: () => http.get<Product[]>("/api/products"),
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
   getPaymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+  /** What a promo code is worth for this cart — read-only, does not consume a use. */
+  previewPromo: (code: string, subtotalMinor: number) =>
+    http.get<PromoPreview>(
+      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+    ),
   getNpCities: (q: string) => http.get<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
   getNpWarehouses: (cityRef: string, q: string) =>
     http.get<NpWarehouse[]>(
@@ -180,7 +187,14 @@ export const customerApi = {
     http.post<CreateOrderResponse>("/api/orders", body, { "Idempotency-Key": idempotencyKey }),
   getOrders: () => http.get<OrderSummary[]>("/api/me/orders"),
   getOrder: (id: string) => http.get<OrderDetail>(`/api/me/orders/${id}`),
-  getMessages: (id: string) => http.get<Message[]>(`/api/me/orders/${id}/messages`),
+  /**
+   * A page of chat history, oldest-first. Without `before` it returns the newest page —
+   * the whole thread used to be fetched on every open.
+   */
+  getMessages: (id: string, before?: number) =>
+    http.get<Message[]>(
+      `/api/me/orders/${id}/messages${before ? `?before=${before}` : ""}`
+    ),
   sendMessage: (id: string, body: SendMessageRequest) =>
     http.post<Message>(`/api/me/orders/${id}/messages`, body),
   /**

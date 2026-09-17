@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payment-options").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/promo-codes/preview").permitAll()
                         .requestMatchers("/api/np/**").permitAll()
                         // Private attachments: the signed, expiring link in the query string IS the
                         // authorisation (an <img> tag cannot send a bearer token). See MediaSigner.
