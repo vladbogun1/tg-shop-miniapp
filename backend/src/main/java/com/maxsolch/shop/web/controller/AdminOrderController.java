@@ -208,6 +208,33 @@ public class AdminOrderController {
         return orderQueryService.toDetail(updated);
     }
 
+    @PostMapping("/{id}/gift")
+    @Operation(summary = "Add a free gift product to the order (stock decremented, price 0)")
+    public OrderDetailDto addGift(@PathVariable String id,
+                                  @Valid @RequestBody com.maxsolch.shop.web.dto.GiftRequest req) {
+        int qty = req.quantity() == null ? 1 : req.quantity();
+        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
+        Order updated = orderService.addGift(load(id).getId(), req.productId(), req.variantId(), qty, notify);
+        return orderQueryService.toDetail(updated);
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    @Operation(summary = "Remove an order item (gift/line) and restore its stock")
+    public OrderDetailDto removeItem(@PathVariable String id, @PathVariable long itemId) {
+        Order updated = orderService.removeItem(load(id).getId(), itemId);
+        return orderQueryService.toDetail(updated);
+    }
+
+    @PostMapping("/{id}/discount")
+    @Operation(summary = "Apply/update/remove a discount (promo code or manual amount/percent)")
+    public OrderDetailDto discount(@PathVariable String id,
+                                   @RequestBody com.maxsolch.shop.web.dto.ApplyDiscountRequest req) {
+        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
+        Order updated = orderService.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
+                req.percent(), Boolean.TRUE.equals(req.clear()), notify);
+        return orderQueryService.toDetail(updated);
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete order")
     public ResponseEntity<Void> delete(@PathVariable String id) {

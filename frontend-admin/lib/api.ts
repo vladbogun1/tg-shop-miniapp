@@ -234,13 +234,15 @@ export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status"
 export type SortDir = "asc" | "desc";
 
 export interface OrderItemDto {
-  id?: string;
+  id?: number;
   productId?: string;
+  variantId?: string | null;
   title: string;
   variantName?: string | null;
   quantity: number;
   priceMinor: number;
   imageUrl?: string | null;
+  gift?: boolean;
 }
 
 export interface PaymentRequisitesDto {
@@ -556,6 +558,19 @@ export const adminApi = {
   /** PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment. */
   setPaid: (id: string, receivedMinor: number) =>
     apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { receivedMinor }),
+  /** Add a free gift product to the order (stock decremented, price 0). */
+  addGift: (
+    id: string,
+    body: { productId: string; variantId?: string; quantity?: number; notifyCustomer?: boolean }
+  ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/gift`, body),
+  /** Remove an order item (gift/line), restoring its stock. */
+  removeOrderItem: (id: string, itemId: number) =>
+    apiDelete<OrderDetailDto>(`/api/admin/orders/${id}/items/${itemId}`),
+  /** Apply/update/remove a discount: promo code, or manual amount/percent, or clear. */
+  applyOrderDiscount: (
+    id: string,
+    body: { promoCode?: string; amountMinor?: number; percent?: number; clear?: boolean; notifyCustomer?: boolean }
+  ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/discount`, body),
   deleteOrder: (id: string) => apiDelete<void>(`/api/admin/orders/${id}`),
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */
