@@ -28,6 +28,12 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       # Локально в браузере нет настоящего Telegram, поэтому initData подставляется заглушкой
-      # (infra/dev/telegram-stub.js) и подпись не проверяется. Вне профиля dev бэкенд с этим
-      # флагом не стартует вовсе — см. StartupSecurityCheck.
+      # (?tgstub=<id>, см. frontend/app/layout.tsx) и подпись не проверяется. Вне профиля dev
+      # бэкенд с этим флагом не стартует вовсе — см. StartupSecurityCheck.
       ALLOW_UNSIGNED_INIT_DATA: "true"
+      # В .env лежит БОЕВОЙ токен бота: без этой строки тестовый заказ со стенда улетел бы
+      # карточкой в настоящий канал магазина и личкой реальному покупателю. Пустой токен =
+      # бот не регистрируется и уведомления не отправляются (TelegramBotConfig,
+      # NotificationService.enabled()).
+      BOT_TOKEN: ""
+      NOTIFY_CHAT_ID: ""

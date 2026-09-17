@@ -107,7 +107,12 @@ public class SecurityConfig {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOriginPatterns(allowedOrigins.patterns());
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "ngrok-skip-browser-warning"));
+        // Idempotency-Key was missing, so with split origins (a local dev server against the API,
+        // or a tunnel) the browser's preflight rejected every POST /api/orders — the order simply
+        // never left the phone. Same-origin prod never sends a preflight, which is why it hid here.
+        cfg.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "Accept", "Idempotency-Key",
+                "ngrok-skip-browser-warning"));
         cfg.setExposedHeaders(List.of("Authorization"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);

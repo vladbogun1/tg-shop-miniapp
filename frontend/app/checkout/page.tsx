@@ -80,6 +80,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
+  const setPromoCode = useCart((s) => s.setPromoCode);
   const clearCart = useCart((s) => s.clear);
   const subtotal = useCartSubtotal();
   const currency = lines[0]?.currency ?? "UAH";
@@ -120,6 +121,7 @@ export default function CheckoutPage() {
   const promo = usePromoPreview(promoCode, subtotal);
   const promoPreview = promo.data;
   const discount = promo.discount;
+  const promoValid = promo.data?.valid === true;
   const total = Math.max(0, subtotal - discount);
   // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
   const dueNow =
@@ -153,7 +155,12 @@ export default function CheckoutPage() {
       customerName: name.trim(),
       phone: phoneE164(phone),
       comment: comment.trim() || undefined,
-      promoCode: promoCode.trim() || undefined,
+      // ONLY a code the server has just confirmed. A code it already rejected must never be sent:
+      // the order came back 400 "invalid promo code", and since the field lives in the cart there
+      // was no way to remove it from here — the customer was stuck on the last step for good.
+      // The total shown on the button is the undiscounted one in that case, so dropping the code
+      // charges exactly what was displayed.
+      promoCode: promoValid ? promoCode.trim() : undefined,
       deliveryMethod: delivery,
       npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,
       npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
@@ -184,9 +191,17 @@ export default function CheckoutPage() {
         requisites,
       });
     } catch (e) {
-      setSubmitError(
-        e instanceof ApiError ? e.message : "Не удалось оформить заказ"
-      );
+      // The cart validated the code, so a rejection here means somebody took the last use in the
+      // meantime. Drop it and let them place the order again at the price without it, instead of
+      // leaving them on a step where the code cannot be edited.
+      if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
+        setPromoCode("");
+        setSubmitError(`${e.message}. Промокод убран — оформите заказ ещё раз.`);
+      } else {
+        setSubmitError(
+          e instanceof ApiError ? e.message : "Не удалось оформить заказ"
+        );
+      }
     } finally {
       setSubmitting(false);
     }

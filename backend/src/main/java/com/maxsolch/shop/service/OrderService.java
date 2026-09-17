@@ -40,6 +40,13 @@ import java.util.Optional;
 @Service
 public class OrderService {
 
+    /**
+     * Error code for "this promo code cannot be used". The cart validates codes before checkout, so
+     * reaching this means the last use was taken in the meantime — the app drops the code and lets
+     * the customer place the order at the price it then shows, instead of dead-ending them.
+     */
+    public static final String PROMO_REJECTED = "PROMO_REJECTED";
+
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final PromoCodeRepository promoCodeRepository;
@@ -644,7 +651,9 @@ public class OrderService {
         }
         Optional<PromoCode> opt = promoCodeRepository.findByCodeAndActiveTrueForUpdate(code.trim());
         if (opt.isEmpty()) {
-            throw new BadRequestException("invalid promo code");
+            // Russian, and tagged: this text is shown to the customer, and the app clears the
+            // dead code from the cart instead of leaving them stuck on the last step.
+            throw new BadRequestException("Промокод не найден или больше не действует", PROMO_REJECTED);
         }
         PromoCode promo = opt.get();
         // Remaining uses minus other customers' live holds: a code someone reserved from their cart
@@ -653,7 +662,7 @@ public class OrderService {
                 ? promoService.remainingUses(promo, tgUserId)
                 : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
         if (left <= 0) {
-            throw new BadRequestException("promo code usage limit reached");
+            throw new BadRequestException("Промокод уже разобрали", PROMO_REJECTED);
         }
         return promo;
     }
