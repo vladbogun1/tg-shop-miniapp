@@ -317,7 +317,8 @@ public class OrderService {
     /** Admin adds a FREE gift product to an order: stock is decremented (unit is reserved),
      *  the item is added at price 0 (so total/наложка don't change), gifts merge by product+variant. */
     @Transactional
-    public Order addGift(byte[] orderId, String productId, String variantId, int qty, boolean notifyCustomer) {
+    public Order addItem(byte[] orderId, String productId, String variantId, int qty,
+                         boolean gift, boolean notifyCustomer) {
         Order order = get(orderId);
         requireEditable(order);
         if (qty < 1) {
@@ -343,7 +344,7 @@ public class OrderService {
 
         byte[] vId = variant == null ? null : variant.getId();
         OrderItem existing = order.getItems().stream()
-                .filter(OrderItem::isGift)
+                .filter(i -> i.isGift() == gift)
                 .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
                 .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
                 .findFirst().orElse(null);
@@ -354,9 +355,9 @@ public class OrderService {
             item.setOrder(order);
             item.setProductId(product.getId());
             item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(0);
+            item.setPriceMinorSnapshot(gift ? 0 : product.getPriceMinor());
             item.setQuantity(qty);
-            item.setGift(true);
+            item.setGift(gift);
             if (variant != null) {
                 item.setVariantId(variant.getId());
                 item.setVariantNameSnapshot(variant.getName());
@@ -368,10 +369,20 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         refreshDispatch(saved);
         if (notifyCustomer) {
-            notificationService.notifyCustomerGift(saved, product.getTitle(),
-                    variant == null ? null : variant.getName(), qty);
+            if (gift) {
+                notificationService.notifyCustomerGift(saved, product.getTitle(),
+                        variant == null ? null : variant.getName(), qty);
+            } else {
+                notificationService.notifyCustomerOrderChanged(saved);
+            }
         }
         return saved;
+    }
+
+    /** Admin adds a FREE gift (shortcut: addItem with gift=true). */
+    @Transactional
+    public Order addGift(byte[] orderId, String productId, String variantId, int qty, boolean notifyCustomer) {
+        return addItem(orderId, productId, variantId, qty, true, notifyCustomer);
     }
 
     /** Admin removes an order item (a gift or a line), restoring its stock and recomputing totals. */
@@ -388,6 +399,41 @@ public class OrderService {
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
         refreshDispatch(saved);
+        return saved;
+    }
+
+    /** Admin changes an item's quantity, reserving/releasing stock by the delta. */
+    @Transactional
+    public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
+        Order order = get(orderId);
+        requireEditable(order);
+        if (newQty < 1) {
+            throw new BadRequestException("quantity must be >= 1 (use remove to delete)");
+        }
+        OrderItem item = order.getItems().stream()
+                .filter(i -> i.getId() != null && i.getId() == itemId)
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("order item not found"));
+        int delta = newQty - item.getQuantity();
+        if (delta != 0) {
+            Product product = productRepository.findByIdWithDetails(item.getProductId())
+                    .orElseThrow(() -> new BadRequestException("product not found"));
+            ProductVariant variant = item.getVariantId() == null ? null
+                    : findVariant(product, UuidUtil.toString(item.getVariantId()));
+            if (delta > 0) {
+                reserveStock(product, variant, delta);
+            } else {
+                releaseStock(product, variant, -delta);
+            }
+            productRepository.save(product);
+        }
+        item.setQuantity(newQty);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        refreshDispatch(saved);
+        if (notifyCustomer) {
+            notificationService.notifyCustomerOrderChanged(saved);
+        }
         return saved;
     }
 
@@ -457,6 +503,14 @@ public class OrderService {
             throw new BadRequestException("not enough stock for product: " + product.getTitle());
         }
         product.setStock(Math.max(0, product.getStock() - qty));
+    }
+
+    /** Return qty to product + variant stock (inverse of reserveStock; product/variant already loaded). */
+    private void releaseStock(Product product, ProductVariant variant, int qty) {
+        if (variant != null) {
+            variant.setStock(variant.getStock() + qty);
+        }
+        product.setStock(product.getStock() + qty);
     }
 
     /** Return one item's units to product + variant stock. */

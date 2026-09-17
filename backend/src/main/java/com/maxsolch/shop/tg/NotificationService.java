@@ -210,6 +210,31 @@ public class NotificationService {
         }
     }
 
+    /** DM the customer that an admin edited their order composition (new total). */
+    public void notifyCustomerOrderChanged(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            String cur = nz(order.getCurrency());
+            String text = "🧾 <b>Состав заказа обновлён</b>\n"
+                    + "Заказ <b>#" + shortId(order) + "</b>\n"
+                    + "Новая сумма к оплате: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>";
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerOrderChanged failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** Admin posted a chat message → DM the customer with a deep-link to the order chat. */
     public void onAdminChatMessage(Order order, String preview) {
         if (!enabled()) {

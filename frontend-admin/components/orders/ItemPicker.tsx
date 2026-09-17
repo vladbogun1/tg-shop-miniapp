@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * GiftPicker — admin picks a product (and variant, if any) from the catalog to add
- * as a FREE gift to an order. Stock is decremented server-side so the gifted unit
- * can't be sold to someone else. Price is 0 → order total/наложка don't change.
+ * ItemPicker — admin picks a product (and variant, if any) to ADD to an order:
+ * a normal paid line, or a free gift (toggle). Stock is reserved server-side so the
+ * unit can't be sold to someone else. Used to edit an order's composition (add/replace).
  */
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Gift, Search } from "lucide-react";
+import { Gift, Plus, Search } from "lucide-react";
 import { adminApi, ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { money } from "@/lib/money";
 import { useToast } from "@/lib/toast";
@@ -18,14 +18,16 @@ import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Image } from "@/lib/image";
 
-export function GiftPicker({
+export function ItemPicker({
   open,
   orderId,
+  defaultGift = false,
   onClose,
   onDone,
 }: {
   open: boolean;
   orderId: string | null;
+  defaultGift?: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -34,6 +36,7 @@ export function GiftPicker({
   const [selected, setSelected] = useState<Product | null>(null);
   const [variant, setVariant] = useState<ProductVariant | null>(null);
   const [qty, setQty] = useState(1);
+  const [gift, setGift] = useState(defaultGift);
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -59,6 +62,7 @@ export function GiftPicker({
     setSelected(null);
     setVariant(null);
     setQty(1);
+    setGift(defaultGift);
     setQ("");
   }
 
@@ -66,18 +70,19 @@ export function GiftPicker({
     if (!orderId || !selected || !canAdd) return;
     setSaving(true);
     try {
-      await adminApi.addGift(orderId, {
+      await adminApi.addOrderItem(orderId, {
         productId: selected.id,
         variantId: variant?.id,
         quantity: qty,
+        gift,
         notifyCustomer: notify,
       });
-      push("Подарок добавлен 🎁", "ok");
+      push(gift ? "Подарок добавлен 🎁" : "Товар добавлен в заказ", "ok");
       reset();
       onDone();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось добавить подарок", "error");
+      push(e instanceof ApiError ? e.message : "Не удалось добавить", "error");
     } finally {
       setSaving(false);
     }
@@ -91,12 +96,18 @@ export function GiftPicker({
         onClose();
       }}
       size="md"
-      title="🎁 Добавить подарок"
+      title="Добавить в заказ"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
           <Toggle checked={notify} onChange={setNotify} label="Уведомить клиента" />
-          <Button variant="accent" loading={saving} disabled={!canAdd} icon={<Gift className="h-4 w-4" />} onClick={add}>
-            Добавить
+          <Button
+            variant="accent"
+            loading={saving}
+            disabled={!canAdd}
+            icon={gift ? <Gift className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            onClick={add}
+          >
+            {gift ? "Добавить подарок" : "Добавить товар"}
           </Button>
         </div>
       }
@@ -147,7 +158,11 @@ export function GiftPicker({
             <Image src={selected.images?.[0]?.url} alt={selected.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] font-extrabold text-[var(--text)]">{selected.title}</div>
-              <div className="text-[12px] text-[var(--text-faint)]">Цена {money(selected.priceMinor, selected.currency)} → в подарок 0 ₴</div>
+              <div className="text-[12px] text-[var(--text-faint)]">
+                {gift
+                  ? `Цена ${money(selected.priceMinor, selected.currency)} → в подарок 0 ₴`
+                  : `Цена ${money(selected.priceMinor, selected.currency)} × ${qty} = ${money(selected.priceMinor * qty, selected.currency)}`}
+              </div>
             </div>
             <button type="button" onClick={reset} className="text-[12px] font-bold uppercase tracking-wide text-[var(--accent)] hover:underline">
               Другой
@@ -193,6 +208,13 @@ export function GiftPicker({
             {qty > available && (
               <span className="pb-2.5 text-[12px] font-bold text-[var(--danger)]">Не хватает на складе</span>
             )}
+          </div>
+
+          <div className="rounded-[var(--r-md)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+            <Toggle checked={gift} onChange={setGift} label="🎁 Подарок (бесплатно)" />
+            <p className="mt-1 text-[12px] text-[var(--text-faint)]">
+              {gift ? "Позиция добавится за 0 ₴ (итог не изменится)." : "Обычная платная позиция — итог заказа увеличится."}
+            </p>
           </div>
         </div>
       )}

@@ -563,6 +563,17 @@ export const adminApi = {
     id: string,
     body: { productId: string; variantId?: string; quantity?: number; notifyCustomer?: boolean }
   ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/gift`, body),
+  /** Add a product line to the order (paid, or gift when gift=true). */
+  addOrderItem: (
+    id: string,
+    body: { productId: string; variantId?: string; quantity?: number; gift?: boolean; notifyCustomer?: boolean }
+  ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/items`, body),
+  /** Change an order item's quantity (reserves/releases stock). */
+  changeOrderItemQty: (
+    id: string,
+    itemId: number,
+    body: { quantity: number; notifyCustomer?: boolean }
+  ) => apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/items/${itemId}`, body),
   /** Remove an order item (gift/line), restoring its stock. */
   removeOrderItem: (id: string, itemId: number) =>
     apiDelete<OrderDetailDto>(`/api/admin/orders/${id}/items/${itemId}`),

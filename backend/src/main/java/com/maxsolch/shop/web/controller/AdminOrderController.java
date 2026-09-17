@@ -218,6 +218,27 @@ public class AdminOrderController {
         return orderQueryService.toDetail(updated);
     }
 
+    @PostMapping("/{id}/items")
+    @Operation(summary = "Add a product line to the order (paid, or gift when gift=true)")
+    public OrderDetailDto addItem(@PathVariable String id,
+                                  @Valid @RequestBody com.maxsolch.shop.web.dto.AddItemRequest req) {
+        int qty = req.quantity() == null ? 1 : req.quantity();
+        boolean gift = Boolean.TRUE.equals(req.gift());
+        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
+        Order updated = orderService.addItem(load(id).getId(), req.productId(), req.variantId(), qty, gift, notify);
+        return orderQueryService.toDetail(updated);
+    }
+
+    @PatchMapping("/{id}/items/{itemId}")
+    @Operation(summary = "Change an order item's quantity (reserves/releases stock)")
+    public OrderDetailDto changeItemQty(@PathVariable String id, @PathVariable long itemId,
+                                        @RequestBody com.maxsolch.shop.web.dto.ChangeItemQtyRequest req) {
+        int qty = req.quantity() == null ? 1 : req.quantity();
+        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
+        Order updated = orderService.changeItemQuantity(load(id).getId(), itemId, qty, notify);
+        return orderQueryService.toDetail(updated);
+    }
+
     @DeleteMapping("/{id}/items/{itemId}")
     @Operation(summary = "Remove an order item (gift/line) and restore its stock")
     public OrderDetailDto removeItem(@PathVariable String id, @PathVariable long itemId) {
