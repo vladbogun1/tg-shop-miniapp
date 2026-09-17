@@ -28,6 +28,17 @@ services:
   nginx:
     ports: !override []
 
+  # SECURITY: the base compose publishes MySQL on 3341 for local tooling. On a
+  # public server that is an internet-reachable database — keep it internal-only.
+  mysql:
+    ports: !override []
+
+  # SECURITY: same for MinIO — the S3 API (9002) and, worse, the admin console
+  # (9003) must never be reachable from the internet. imgproxy/backend talk to
+  # it over the compose network as http://minio:9000.
+  minio:
+    ports: !override []
+
   # Pin to pre-built registry images (override the build: from base/public).
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}

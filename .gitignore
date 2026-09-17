@@ -27,6 +27,12 @@ yarn-error.log*
 # ── infra: generated probe/backfill outputs & temp ─────────────
 infra/*_out.txt
 infra/probe_*.txt
+infra/probe_*.sql
+infra/backfill_*.sql
+
+# ── Python (infra helper scripts) ──────────────────────────────
+__pycache__/
+*.py[cod]
 
 # ── OS / editor ────────────────────────────────────────────────
 .DS_Store
