@@ -52,7 +52,8 @@ public class AuthService {
                 || !passwordEncoder.matches(password, admin.getPasswordHash())) {
             throw new UnauthorizedException("Неверный логин или пароль");
         }
-        String token = jwtService.issueToken(admin.getTelegramUserId(), Role.ADMIN);
+        String token = jwtService.issueToken(admin.getTelegramUserId(), Role.ADMIN,
+                admin.getTokenVersion());
         return AuthResponse.tokenOnly(token);
     }
 
@@ -83,13 +84,11 @@ public class AuthService {
     @Transactional
     public AuthResponse authenticateAdmin(String initData) {
         TelegramUser tgUser = initDataValidator.validate(initData);
-        boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(tgUser.id());
-        if (!admin) {
-            throw new InitDataException("not an admin");
-        }
+        AdminUser admin = adminUserRepository.findByTelegramUserIdAndActiveTrue(tgUser.id())
+                .orElseThrow(() -> new InitDataException("not an admin"));
         // keep the user profile snapshot fresh too
         upsertUser(tgUser);
-        String token = jwtService.issueToken(tgUser.id(), Role.ADMIN);
+        String token = jwtService.issueToken(tgUser.id(), Role.ADMIN, admin.getTokenVersion());
         return AuthResponse.tokenOnly(token);
     }
 

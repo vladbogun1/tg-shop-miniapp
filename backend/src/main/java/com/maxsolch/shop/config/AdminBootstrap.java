@@ -3,6 +3,7 @@ package com.maxsolch.shop.config;
 import com.maxsolch.shop.domain.AdminRole;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.security.AdminTokenValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,13 +23,16 @@ public class AdminBootstrap implements CommandLineRunner {
     private final AppProperties props;
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AdminTokenValidator adminTokenValidator;
 
     public AdminBootstrap(AppProperties props,
                           AdminUserRepository adminUserRepository,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder,
+                          AdminTokenValidator adminTokenValidator) {
         this.props = props;
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.adminTokenValidator = adminTokenValidator;
     }
 
     @Override
@@ -50,12 +54,25 @@ public class AdminBootstrap implements CommandLineRunner {
             return a;
         });
         admin.setUsername(login.trim());
-        admin.setPasswordHash(passwordEncoder.encode(password));
+        // Re-hash only when the password actually changed: BCrypt produces a different hash every
+        // time, so unconditional encoding would rewrite the row (and, with the token-version bump
+        // below, log every admin out) on every single restart.
+        boolean passwordChanged = admin.getPasswordHash() == null
+                || !passwordEncoder.matches(password, admin.getPasswordHash());
+        if (passwordChanged) {
+            admin.setPasswordHash(passwordEncoder.encode(password));
+            // A credentials change must invalidate tokens minted with the old password.
+            admin.setTokenVersion(admin.getTokenVersion() + 1);
+        }
         admin.setActive(true);
         if (admin.getRole() == null) {
             admin.setRole(AdminRole.SUPER_ADMIN);
         }
         adminUserRepository.save(admin);
-        log.info("Admin bootstrap: login '{}' ready (tg id {})", login.trim(), tgId);
+        if (passwordChanged) {
+            adminTokenValidator.invalidate(tgId);
+        }
+        log.info("Admin bootstrap: login '{}' ready (tg id {}){}", login.trim(), tgId,
+                passwordChanged ? " — пароль изменён, прежние токены отозваны" : "");
     }
 }

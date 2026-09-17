@@ -56,7 +56,8 @@ public class OrderQueryService {
                 o.getCreatedAt(),
                 itemsCount(o),
                 readModel.unread(o.getId()),
-                o.isPaid());
+                o.isPaid(),
+                o.isPaymentClaimed());
     }
 
     @Transactional(readOnly = true)
@@ -72,7 +73,8 @@ public class OrderQueryService {
                 unread,
                 o.getCreatedAt(),
                 o.getStatus().name(),
-                o.isPaid());
+                o.isPaid(),
+                o.isPaymentClaimed());
     }
 
     @Transactional(readOnly = true)
@@ -112,7 +114,9 @@ public class OrderQueryService {
                 o.isPaid(),
                 o.getPaidAt(),
                 o.getPrepaymentMinor(),
-                receivedMinor(o));
+                receivedMinor(o),
+                o.isPaymentClaimed(),
+                o.getPaymentClaimedAt());
     }
 
     /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
@@ -160,6 +164,7 @@ public class OrderQueryService {
                 received,
                 cod,
                 o.isPaid(),
+                o.isPaymentClaimed(),
                 o.getCurrency(),
                 o.getPaymentOptionTitle(),
                 o.getTrackingNumber(),

@@ -10,5 +10,7 @@ public record OrderSummaryDto(
         Instant createdAt,
         int itemsCount,
         long unreadCount,
-        boolean paid) {
+        boolean paid,
+        /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
+        boolean paymentClaimed) {
 }
