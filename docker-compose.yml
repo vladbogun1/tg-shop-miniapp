@@ -164,16 +164,20 @@ services:
     networks:
       - tgshop
 
+  # NOTE: NEXT_PUBLIC_* are inlined into the client bundle at BUILD time, so they
+  # must be passed as build args — an `environment:` block here would be a no-op
+  # and the image would silently keep the Dockerfile's localhost defaults.
+  # Changing them in .env therefore requires a rebuild (`up -d --build frontend`).
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
     container_name: tgshop_v2_frontend
     restart: unless-stopped
     depends_on:
       - backend
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-      NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
     ports:
       - "3000:3000"
     networks:
@@ -182,13 +186,13 @@ services:
   frontend-admin:
     build:
       context: ./frontend-admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
     container_name: tgshop_v2_frontend_admin
     restart: unless-stopped
     depends_on:
       - backend
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
-      NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
     ports:
       - "3001:3001"
     networks:
