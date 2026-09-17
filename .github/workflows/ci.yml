@@ -37,6 +37,74 @@ jobs:
           path: backend/target/*.jar
           if-no-files-found: ignore
 
+  # Unit tests never load the Spring context, so a perfectly compiling wiring mistake (a bean that
+  # cannot be autowired) reaches production as a crash loop. This boots the real jar against a real
+  # MySQL and waits for /actuator/health, with the same strict profile prod uses.
+  backend-boot:
+    name: Backend (context boots against MySQL)
+    runs-on: ubuntu-latest
+    needs: backend
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpw
+          MYSQL_DATABASE: tgshop_v2
+          MYSQL_USER: tgshop
+          MYSQL_PASSWORD: tgshoppw
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpw"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Package
+        working-directory: backend
+        run: mvn -B -ntp -DskipTests package
+      - name: Boot and probe
+        working-directory: backend
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: tgshop_v2
+          DB_USER: tgshop
+          DB_PASSWORD: tgshoppw
+          # Non-placeholder values: StartupSecurityCheck refuses to boot without them.
+          JWT_SECRET: c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==
+          ADMIN_LOGIN: admin
+          ADMIN_PASSWORD: ci-not-a-placeholder
+          ALLOW_UNSIGNED_INIT_DATA: "false"
+          BOT_TOKEN: ""
+          WEBAPP_BASE_URL: https://example.test:666
+          ADMIN_BASE_URL: https://example.test:667
+        run: |
+          java -jar target/app.jar --server.port=8099 > boot.log 2>&1 &
+          APP_PID=$!
+          for i in $(seq 1 40); do
+            if curl -sf --max-time 5 http://localhost:8099/actuator/health | grep -q '"status":"UP"'; then
+              echo "context is up"
+              kill $APP_PID
+              exit 0
+            fi
+            if ! kill -0 $APP_PID 2>/dev/null; then
+              echo "::error::application exited during startup"
+              tail -60 boot.log
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::application did not become healthy in time"
+          tail -60 boot.log
+          kill $APP_PID 2>/dev/null || true
+          exit 1
+
   # Both apps and the shared package are one npm workspace, so a single install covers all of
   # them — and lint/typecheck actually run now (there was no ESLint config at all before, which
   # made `next lint` a no-op).

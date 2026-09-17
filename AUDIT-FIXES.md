@@ -106,8 +106,11 @@
 - [x] **A-32. JWT нельзя отозвать.** `admin_users.token_version` + claim `tv` + `AdminTokenValidator`.
 - [x] **A-33. Тесты.** 94 (было 59): `StartupSecurityCheckTest`, `UploadValidatorTest`,
   `MediaSignerTest`, `AdminTokenValidatorTest`, оплата/промо в `OrderServiceTest`, таймзона
-  в `MetricsServiceTest`. Фронтовые unit-тесты не добавлялись — это потребовало бы нового
-  тест-раннера (vitest), а зависимости в этой итерации решено не трогать.
+  в `MetricsServiceTest`. Плюс CI-джоба `backend-boot`: поднимает настоящий jar против MySQL
+  с профилем `prod` и ждёт `/actuator/health`. Добавлена после того, как деплой v2.6.0 упал
+  на невалидном бине (`TaskExecutor`), который компилировался и проходил юнит-тесты —
+  контекст в тестах не поднимался вообще. Фронтовые unit-тесты не добавлялись: нужен был бы
+  новый тест-раннер (vitest), а зависимости в этой итерации решено не трогать.
 
 ## Мусор / housekeeping
 
