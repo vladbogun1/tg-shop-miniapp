@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -450,5 +451,98 @@ class OrderServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(result.getApprovedAt()).isNotNull();
+    }
+
+    // ---------- payment: a claim is not a confirmation ----------
+
+    @Test
+    void claimPayment_marksTheClaimButTouchesNoMoney() {
+        // This is the whole point of the split: uploading a screenshot must not zero out the
+        // cash-on-delivery amount, or a customer gets goods shipped without paying.
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order claimed = service.claimPayment(o.getId());
+
+        assertThat(claimed.isPaymentClaimed()).isTrue();
+        assertThat(claimed.getPaymentClaimedAt()).isNotNull();
+        assertThat(claimed.isPaid()).isFalse();
+        assertThat(claimed.getReceivedMinor()).isZero();
+        assertThat(OrderQueryService.codMinor(claimed)).isEqualTo(50_000);
+        verify(events).publishEvent(any(OrderEvents.PaymentClaimed.class));
+    }
+
+    @Test
+    void claimPayment_isIdempotent() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Instant first = service.claimPayment(o.getId()).getPaymentClaimedAt();
+        Instant second = service.claimPayment(o.getId()).getPaymentClaimedAt();
+
+        assertThat(second).isEqualTo(first);
+    }
+
+    @Test
+    void markPaid_recordsTheAmountAndShrinksCod() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order paid = service.markPaid(o.getId(), 10_000);
+
+        assertThat(paid.isPaid()).isTrue();
+        assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
+        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
+    }
+
+    @Test
+    void markPaid_isCappedAtTheOrderTotal() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order paid = service.markPaid(o.getId(), 999_999);
+
+        assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
+        assertThat(OrderQueryService.codMinor(paid)).isZero();
+    }
+
+    @Test
+    void markPaid_withZeroClearsThePayment() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        o.setPaid(true);
+        o.setReceivedMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order cleared = service.markPaid(o.getId(), 0);
+
+        assertThat(cleared.isPaid()).isFalse();
+        assertThat(cleared.getPaidAt()).isNull();
+        assertThat(cleared.getReceivedMinor()).isZero();
+    }
+
+    // ---------- promo discount rules ----------
+
+    @Test
+    void discountFor_capsPercentAtOneHundred() {
+        PromoCode broken = new PromoCode();
+        broken.setDiscountPercent(150); // misconfigured code
+
+        // Capped at the subtotal, so a total can never go negative and the stored discount can
+        // never exceed the order itself.
+        assertThat(OrderService.discountFor(broken, 10_000)).isEqualTo(10_000);
+    }
+
+    @Test
+    void discountFor_fixedAmountBeatsPercentAndIsCapped() {
+        PromoCode promo = new PromoCode();
+        promo.setDiscountAmountMinor(30_000);
+        promo.setDiscountPercent(10);
+
+        assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000);
+        assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
     }
 }
