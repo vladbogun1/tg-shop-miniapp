@@ -58,6 +58,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tags").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payment-options").permitAll()
                         .requestMatchers("/api/np/**").permitAll()
+                        // Private attachments: the signed, expiring link in the query string IS the
+                        // authorisation (an <img> tag cannot send a bearer token). See MediaSigner.
+                        .requestMatchers(HttpMethod.GET, "/api/media").permitAll()
                         // WebSocket handshake (STOMP auth happens in the ChannelInterceptor)
                         .requestMatchers("/ws/**").permitAll()
                         // Customer endpoints

@@ -51,8 +51,10 @@ services:
     networks:
       - tgshop
 
-  # One-shot job: wait for MinIO, create the bucket and make it public-read so
-  # imgproxy/nginx can read originals. Exits when done.
+  # One-shot job: wait for MinIO and create the bucket. The bucket stays PRIVATE:
+  # imgproxy reads originals with the S3 credentials, and chat attachments (customers'
+  # payment screenshots) are served only through the backend's signed /api/media links.
+  # It used to be public-read, which made every uploaded file world-readable forever.
   minio-init:
     image: minio/mc
     container_name: tgshop_v2_minio_init
@@ -69,8 +71,8 @@ services:
         set -e
         mc alias set local http://minio:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}"
         mc mb --ignore-existing "local/$${S3_BUCKET}"
-        mc anonymous set download "local/$${S3_BUCKET}"
-        echo "MinIO bucket '$${S3_BUCKET}' ready (public-read)."
+        mc anonymous set none "local/$${S3_BUCKET}"
+        echo "MinIO bucket '$${S3_BUCKET}' ready (private)."
     networks:
       - tgshop
 
@@ -91,6 +93,13 @@ services:
       IMGPROXY_USE_ETAG: "true"
       IMGPROXY_ENABLE_WEBP_DETECTION: "true"
       IMGPROXY_ENABLE_AVIF_DETECTION: "true"
+      # Only our own bucket may be proxied. Without this, an unsigned imgproxy is an open
+      # image proxy: anyone could point it at arbitrary URLs and burn CPU (or reach internal
+      # addresses) through it.
+      IMGPROXY_ALLOWED_SOURCES: "s3://${S3_BUCKET}/"
+      # Refuse absurd source images instead of trying to decode them.
+      IMGPROXY_MAX_SRC_RESOLUTION: "30"
+      IMGPROXY_DOWNLOAD_TIMEOUT: "10"
     # internal only — no host port; reachable as http://imgproxy:8080 inside the network
     networks:
       - tgshop
