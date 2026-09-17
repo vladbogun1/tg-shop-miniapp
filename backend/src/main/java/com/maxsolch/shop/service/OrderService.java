@@ -648,7 +648,7 @@ public class OrderService {
      * capped at the subtotal so a misconfigured code (say 150%) can never produce a negative total
      * or a stored discount larger than the order itself.
      */
-    private static long discountFor(PromoCode promo, long subtotal) {
+    public static long discountFor(PromoCode promo, long subtotal) {
         long discount;
         if (promo.getDiscountAmountMinor() > 0) {
             discount = promo.getDiscountAmountMinor();

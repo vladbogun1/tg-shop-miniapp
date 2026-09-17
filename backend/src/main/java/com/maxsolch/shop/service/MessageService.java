@@ -14,6 +14,7 @@ import com.maxsolch.shop.web.dto.ConversationDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,11 +52,26 @@ public class MessageService {
         this.mediaSigner = mediaSigner;
     }
 
+    /** Default page size for the chat — roughly two screens of history. */
+    public static final int DEFAULT_PAGE = 50;
+    private static final int MAX_PAGE = 200;
+
+    /**
+     * A page of chat history, oldest-first for rendering.
+     *
+     * @param beforeId load messages older than this id (for "показать более ранние"); null = newest
+     */
     @Transactional(readOnly = true)
-    public List<MessageDto> list(byte[] orderId) {
-        return messageRepository.findByOrderIdOrderByCreatedAtAsc(orderId).stream()
-                .map(this::toDto)
-                .toList();
+    public List<MessageDto> list(byte[] orderId, Long beforeId, Integer limit) {
+        int size = Math.min(Math.max(1, limit == null ? DEFAULT_PAGE : limit), MAX_PAGE);
+        List<OrderMessage> page =
+                messageRepository.findPage(orderId, beforeId, PageRequest.of(0, size));
+        List<MessageDto> dtos = new java.util.ArrayList<>(page.size());
+        // findPage returns newest-first so the database can stop early; the UI wants oldest-first.
+        for (int i = page.size() - 1; i >= 0; i--) {
+            dtos.add(toDto(page.get(i)));
+        }
+        return dtos;
     }
 
     @Transactional

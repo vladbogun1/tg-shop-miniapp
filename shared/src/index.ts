@@ -10,5 +10,6 @@ export * from "./http";
 export * from "./image";
 export * from "./money";
 export * from "./orders";
+export * from "./telegram-html";
 export * from "./types";
 export * from "./ws";

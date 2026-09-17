@@ -110,10 +110,12 @@ public class MeController {
     }
 
     @GetMapping("/orders/{id}/messages")
-    @Operation(summary = "List chat messages for my order")
-    public List<MessageDto> messages(@PathVariable String id) {
+    @Operation(summary = "Chat messages, newest page first (use before= to load older ones)")
+    public List<MessageDto> messages(@PathVariable String id,
+                                     @RequestParam(required = false) Long before,
+                                     @RequestParam(required = false) Integer limit) {
         Order order = ownedOrder(id);
-        return messageService.list(order.getId());
+        return messageService.list(order.getId(), before, limit);
     }
 
     @PostMapping("/orders/{id}/messages")

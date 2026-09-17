@@ -310,9 +310,11 @@ public class AdminOrderController {
     }
 
     @GetMapping("/{id}/messages")
-    @Operation(summary = "List chat messages (admin)")
-    public List<MessageDto> messages(@PathVariable String id) {
-        return messageService.list(load(id).getId());
+    @Operation(summary = "Chat messages, newest page first (use before= to load older ones)")
+    public List<MessageDto> messages(@PathVariable String id,
+                                     @RequestParam(required = false) Long before,
+                                     @RequestParam(required = false) Integer limit) {
+        return messageService.list(load(id).getId(), before, limit);
     }
 
     @PostMapping("/{id}/messages")

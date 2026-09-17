@@ -2,6 +2,7 @@ package com.maxsolch.shop.repository;
 
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,20 @@ import java.util.List;
 public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long> {
 
     List<OrderMessage> findByOrderIdOrderByCreatedAtAsc(byte[] orderId);
+
+    /**
+     * Newest page of an order's chat, optionally everything before a given message id.
+     *
+     * <p>The chat used to fetch the entire history on open — fine for a three-message order, not
+     * for a long-running dispute. Ordered descending so the database can stop at the page size;
+     * the service flips it back for display.
+     */
+    @Query("select m from OrderMessage m where m.order.id = :orderId "
+            + "and (:beforeId is null or m.id < :beforeId) "
+            + "order by m.id desc")
+    List<OrderMessage> findPage(@Param("orderId") byte[] orderId,
+                                @Param("beforeId") Long beforeId,
+                                Pageable pageable);
 
     /** Most recent message of an order (any sender) — for conversation previews. */
     OrderMessage findFirstByOrderIdOrderByCreatedAtDescIdDesc(byte[] orderId);

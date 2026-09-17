@@ -7,7 +7,7 @@
  * progress polling. Functionality & API calls preserved 1:1 with the original;
  * only the visual layer changed.
  */
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -22,6 +22,7 @@ import {
   Eye,
   Users,
 } from "lucide-react";
+import { sanitizeTelegramHtml, validateTelegramHtml } from "@shop/shared";
 import {
   adminApi,
   type BroadcastAudience,
@@ -107,8 +108,14 @@ export default function BroadcastsPage() {
     manualId.trim() || (selectedUser ? String(selectedUser.telegramUserId) : "");
   const audienceCount = audiences?.[audience] ?? 0;
 
+  // Telegram rejects the whole message on a single bad tag. Catching that here beats discovering
+  // it as N silent failures after the broadcast has already started.
+  const htmlProblems = useMemo(() => validateTelegramHtml(text), [text]);
+  const htmlOk = htmlProblems.length === 0;
+  const previewHtml = useMemo(() => sanitizeTelegramHtml(text), [text]);
+
   async function sendTest() {
-    if (!text.trim()) return push("Введите текст сообщения", "error");
+    if (!htmlOk) return push(htmlProblems[0].message, "error");
     const id = Number(targetId);
     if (!id || Number.isNaN(id)) return push("Выберите админа или введите ID", "error");
     setTesting(true);
@@ -128,7 +135,7 @@ export default function BroadcastsPage() {
   }
 
   function requestBroadcast() {
-    if (!text.trim()) return push("Введите текст сообщения", "error");
+    if (!htmlOk) return push(htmlProblems[0].message, "error");
     setConfirmOpen(true);
   }
 
@@ -216,6 +223,18 @@ export default function BroadcastsPage() {
             &lt;a href&gt;, &lt;blockquote&gt;. Эмодзи можно вставлять как есть.
           </p>
 
+          {/* Telegram refuses the whole message on one bad tag, and a broadcast would just report
+              it as N failed sends — so the problems are shown before anything is sent. */}
+          {text.trim() && !htmlOk && (
+            <ul className="flex flex-col gap-1 rounded-[var(--r-sm)] border-2 border-[var(--danger)] bg-[var(--surface-2)] px-3 py-2">
+              {htmlProblems.map((p) => (
+                <li key={p.message} className="text-[12px] font-bold text-[var(--danger)]">
+                  {p.message}
+                </li>
+              ))}
+            </ul>
+          )}
+
           {/* Highlighted sub-panel: shop button toggle + editable text */}
           <div className="mt-1 flex flex-col gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent-soft)] p-4">
             <Toggle
@@ -244,7 +263,9 @@ export default function BroadcastsPage() {
               {text.trim() ? (
                 <div
                   className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"
-                  dangerouslySetInnerHTML={{ __html: text }}
+                  // Sanitised to Telegram's tag subset (see @shop/shared): attributes are dropped
+                  // except safe hrefs, so the preview cannot execute what was pasted into it.
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               ) : (
                 <div className="text-[13px] text-white/40">Сообщение появится здесь…</div>
@@ -326,7 +347,7 @@ export default function BroadcastsPage() {
           <Button
             variant="accent"
             loading={starting}
-            disabled={running || audienceCount === 0}
+            disabled={running || audienceCount === 0 || !htmlOk}
             onClick={requestBroadcast}
             icon={<Send className="h-4 w-4" />}
           >

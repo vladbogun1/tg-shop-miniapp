@@ -194,6 +194,14 @@ export interface PaymentOption {
   prepaymentMinor?: number;
 }
 
+/** GET /api/promo-codes/preview — what a code is worth for the current cart. */
+export interface PromoPreview {
+  valid: boolean;
+  discountMinor: number;
+  totalMinor: number;
+  message?: string | null;
+}
+
 export interface NpCity {
   ref: string;
   name: string;
