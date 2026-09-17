@@ -24,6 +24,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import {
   customerApi,
   getAccessToken,
+  onAccessToken,
   type Message,
   type SendMessageRequest,
 } from "@/lib/api";
@@ -43,7 +44,13 @@ export default function OrderChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seenIds = useRef<Set<string>>(new Set());
+  const seenIds = useRef<Set<number>>(new Set());
+  // Opening the chat from a Telegram deep link can beat the initData→JWT exchange. Tracking the
+  // token in state means the socket connects the moment it arrives, instead of retrying forever
+  // with no credentials.
+  const [token, setToken] = useState<string | null>(() => getAccessToken());
+
+  useEffect(() => onAccessToken(setToken), []);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["me", "orders", id, "messages"],
@@ -71,12 +78,12 @@ export default function OrderChatPage() {
     setMessages((prev) => [...prev, m]);
   }, []);
 
-  // WebSocket realtime.
+  // WebSocket realtime — (re)connects whenever the order or the token changes.
   useEffect(() => {
-    if (!id) return;
-    const conn = connectOrderChat(id, getAccessToken(), appendMessage, setConnected);
+    if (!id || !token) return;
+    const conn = connectOrderChat(id, appendMessage, setConnected);
     return () => conn.disconnect();
-  }, [id, appendMessage]);
+  }, [id, token, appendMessage]);
 
   // Mark admin messages read (on load + when new admin msg arrives).
   useEffect(() => {
@@ -96,7 +103,7 @@ export default function OrderChatPage() {
   }, [messages.length]);
 
   const byId = useMemo(() => {
-    const map = new Map<string, Message>();
+    const map = new Map<number, Message>();
     messages.forEach((m) => map.set(m.id, m));
     return map;
   }, [messages]);

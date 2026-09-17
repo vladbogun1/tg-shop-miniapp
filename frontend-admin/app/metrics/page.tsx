@@ -72,7 +72,8 @@ export default function MetricsPage() {
     queryKey: ["metrics", range],
     queryFn: () => adminApi.metrics(range),
     placeholderData: keepPreviousData,
-    refetchInterval: 30_000,
+    // Analytics aggregate the whole order history; refreshing twice a minute was pointless.
+    refetchInterval: 120_000,
   });
 
   return (

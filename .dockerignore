@@ -1,0 +1,16 @@
+# Repo-root build context for the Next.js images (they are npm workspaces).
+**/node_modules
+**/.next
+**/out
+**/dist
+**/target
+.git
+.env
+.env*.local
+*.log
+backend
+migration
+infra
+docs
+safety-backups
+**/*.md

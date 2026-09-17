@@ -14,7 +14,7 @@
  *
  * Behaviour is unchanged: same API calls (customerApi.getPaymentOptions /
  * createOrder / getOrder), same per-step validation, same query keys, same
- * dynamic ssr:false map import, same useMainButton wiring, same cart clear.
+ * dynamic ssr:false map import, same cart clear.
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Copy,
   CreditCard,
   MapPin,
@@ -32,7 +33,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { StepProgress } from "@/components/checkout/StepProgress";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
@@ -53,6 +54,7 @@ import { RadioCard } from "@/components/ui/RadioCard";
 import {
   ApiError,
   customerApi,
+  newIdempotencyKey,
   type CreateOrderRequest,
   type DeliveryMethod,
   type NpWarehouse,
@@ -62,8 +64,8 @@ import {
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { formatPhone, isvalidPhone, phoneE164 } from "@/lib/phone";
-import { haptic, useMainButton } from "@/lib/telegram";
+import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
+import { haptic } from "@/lib/telegram";
 
 const STEPS = ["Контакты", "Доставка", "Оплата", "Готово"];
 
@@ -97,6 +99,10 @@ export default function CheckoutPage() {
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
   // submit
+  // One key per checkout attempt: if the response is lost and the user taps again, the server
+  // returns the order it already created instead of placing a second one (and deducting stock
+  // twice). Regenerated only after a successful order.
+  const idempotencyKey = useRef(newIdempotencyKey());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
@@ -110,7 +116,7 @@ export default function CheckoutPage() {
 
   // ---- validation ----------------------------------------------------------
   const nameOk = name.trim().length >= 2;
-  const phoneOk = isvalidPhone(phone);
+  const phoneOk = isValidPhone(phone);
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
     delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!warehouse);
@@ -144,7 +150,7 @@ export default function CheckoutPage() {
       paymentOptionId: paymentId!,
     };
     try {
-      const created = await customerApi.createOrder(body);
+      const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       // Requisites come straight back with the order; fall back to the detail fetch.
       let requisites: PaymentRequisites | null | undefined = created.requisites;
@@ -158,6 +164,7 @@ export default function CheckoutPage() {
       }
       haptic();
       clearCart();
+      idempotencyKey.current = newIdempotencyKey();
       setSuccess({
         orderId,
         paymentTitle: chosenPayment?.title ?? "",
@@ -190,23 +197,6 @@ export default function CheckoutPage() {
     if (step === 0) router.back();
     else setStep((s) => s - 1);
   }
-
-  // Telegram MainButton (primary action per step).
-  const mainText = success
-    ? "Готово"
-    : step < 3
-      ? "Далее"
-      : `Оформить · ${money(subtotal, currency)}`;
-  useMainButton({
-    text: mainText,
-    onClick: () => {
-      if (success) router.push(`/account/orders/${success.orderId}`);
-      else next();
-    },
-    visible: !emptyCart,
-    enabled: success ? true : stepOk,
-    loading: submitting,
-  });
 
   if (emptyCart) {
     return (
@@ -718,10 +708,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 function SuccessScreen({ state }: { state: SuccessState }) {
   const router = useRouter();
-  useMainButton({
-    text: "К заказу",
-    onClick: () => router.push(`/account/orders/${state.orderId}`),
-  });
 
   const r = state.requisites;
   const reqRows = useMemo(
@@ -796,8 +782,11 @@ function SuccessScreen({ state }: { state: SuccessState }) {
 }
 
 /**
- * Payment confirmation — upload a transfer screenshot. On upload it's posted to
- * the order chat (P2P proof) AND the order is marked paid (customerApi.payWithProof).
+ * Payment confirmation — upload a transfer screenshot.
+ *
+ * The screenshot is posted into the order chat and flags the order as "payment claimed". It does
+ * NOT mark the order paid: a picture is not money, and treating it as proof used to zero out the
+ * cash-on-delivery amount on the seller's dispatch card. An admin checks the transfer and confirms.
  */
 function PaymentProof({ orderId }: { orderId: string }) {
   const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
@@ -811,7 +800,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
     setErr(null);
     try {
       const { url } = await customerApi.uploadAttachment(file);
-      await customerApi.payWithProof(orderId, {
+      await customerApi.submitPaymentProof(orderId, {
         type: "PHOTO",
         attachmentUrl: url,
         fileName: file.name,
@@ -835,13 +824,13 @@ function PaymentProof({ orderId }: { orderId: string }) {
         className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c4)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]"
       >
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
+          <Clock className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
           <span className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Оплата подтверждена
+            Оплата на проверке
           </span>
         </div>
         <p className="mt-1 text-[12px] font-bold text-[var(--ink)]">
-          Скрин перевода отправлен в чат заказа. Менеджер всё видит.
+          Скрин перевода отправлен в чат заказа. Менеджер проверит поступление и подтвердит оплату.
         </p>
       </motion.section>
     );
@@ -853,8 +842,8 @@ function PaymentProof({ orderId }: { orderId: string }) {
         Подтверждение перевода
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, и заказ
-        станет «оплачен».
+        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит
+        поступление и подтвердит оплату.
       </p>
       <input
         ref={inputRef}

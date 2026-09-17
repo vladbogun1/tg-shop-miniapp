@@ -92,7 +92,12 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
     setStock(String(product?.stock ?? 0));
     setActive(product?.active ?? true);
     setTagIds(product?.tags?.map((t) => t.id) ?? []);
-    setVariants(product?.variants?.map((v) => ({ name: v.name, stock: v.stock })) ?? []);
+    // Keep the id: it is what tells the server "this is the same variant", so renaming one edits
+    // the existing row instead of deleting it and minting a new UUID (which broke customers'
+    // saved carts and the variant reference on past orders).
+    setVariants(
+      product?.variants?.map((v) => ({ id: v.id, name: v.name, stock: v.stock })) ?? []
+    );
     setImageKeys(
       product?.images
         ?.slice()
@@ -185,7 +190,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       tagIds,
       variants: variants
         .filter((v) => v.name.trim())
-        .map((v) => ({ name: v.name.trim(), stock: Number(v.stock) || 0 })),
+        .map((v) => ({ id: v.id, name: v.name.trim(), stock: Number(v.stock) || 0 })),
     };
     setSaving(true);
     try {

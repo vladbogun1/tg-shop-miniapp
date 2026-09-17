@@ -3,9 +3,9 @@
 /**
  * Telegram Mini App provider/hook.
  *
- * Initializes @telegram-apps/sdk-react: ready/expand, reads initData, applies
- * theme (themeParams -> CSS variables --accent / --bg-scene + data-theme on
- * <html>). Gracefully no-ops in a plain browser (dev) so `npm run dev` works
+ * Reads initData / user / platform from the official telegram-web-app.js (loaded in the layout
+ * head), calls ready()/expand(), requests fullscreen on phones and mirrors Telegram's safe-area
+ * insets into CSS variables. Gracefully no-ops in a plain browser (dev) so `npm run dev` works
  * outside Telegram.
  */
 import { useEffect, useState } from "react";
@@ -39,24 +39,23 @@ const DEFAULT_STATE: TgState = {
 };
 
 /**
- * NEO-BRUTALISM theme is a FIXED brand look (light by default, dark via the
- * in-app ThemeToggle persisted to localStorage). We intentionally do NOT let
- * Telegram themeParams drive --accent / data-theme — otherwise a dark Telegram
- * client would flip our shop to dark. So this only reports the detected scheme
- * for state; it makes no DOM writes. data-theme is owned by the layout init
- * script + ThemeToggle.
+ * The Neo-Brutalism look is a FIXED brand theme: light by default, dark via the in-app
+ * ThemeToggle (persisted in localStorage). Telegram's themeParams deliberately do NOT drive it —
+ * otherwise a customer with a dark Telegram client would get a dark shop. This only reports which
+ * scheme is in effect; `data-theme` is owned by the layout's pre-paint script and the toggle.
+ *
+ * (The previous version took a `themeParams` argument it never read, and its result was chained
+ * through `??` operators that could never fire.)
  */
-function applyTheme(params: Record<string, unknown> | undefined): "dark" | "light" {
-  const stored = (() => {
-    try {
-      return typeof window !== "undefined" ? window.localStorage.getItem("neo-theme") : null;
-    } catch {
-      return null;
+function currentScheme(): "dark" | "light" {
+  try {
+    if (typeof window !== "undefined" && window.localStorage.getItem("neo-theme") === "dark") {
+      return "dark";
     }
-  })();
-  if (stored === "dark") return "dark";
-  if (stored === "light") return "light";
-  return "light"; // default
+  } catch {
+    /* storage blocked (private mode) — fall through to the default */
+  }
+  return "light";
 }
 
 /**
@@ -143,7 +142,7 @@ export function useTelegram(): TgState {
         | { id: number; first_name?: string; last_name?: string; username?: string;
             language_code?: string; photo_url?: string }
         | undefined;
-      const scheme = applyTheme(wa.themeParams) ?? wa.colorScheme ?? "dark";
+      const scheme = currentScheme();
 
       if (!cancelled) {
         setState({
@@ -237,26 +236,16 @@ export function parseOrderDeepLink(param: string | null): string | null {
 }
 
 /**
- * useMainButton — INTENTIONALLY DISABLED.
+ * Keeps Telegram's native MainButton hidden.
  *
- * We no longer drive the Telegram native MainButton: it duplicated the in-page
- * primary button and ate vertical screen space inside the WebApp. Every caller
- * already renders its own in-page GlassButton, so this hook now only hides any
- * native MainButton that might be showing and always reports isTelegram=false
- * (so callers keep showing their in-page button). Signature kept for callers.
+ * The primary action is an in-page button instead: the native one duplicated it and ate vertical
+ * space inside the WebApp. Called once from the app root — every screen used to invoke a no-op
+ * `useMainButton(...)` whose arguments (label, click handler, loading state) were all ignored.
  */
-export function useMainButton(_opts: {
-  text: string;
-  onClick: () => void;
-  visible?: boolean;
-  enabled?: boolean;
-  loading?: boolean;
-}): { isTelegram: boolean } {
+export function useHideMainButton(): void {
   useEffect(() => {
-    const mb = webApp()?.MainButton;
-    mb?.hide();
+    webApp()?.MainButton?.hide();
   }, []);
-  return { isTelegram: false };
 }
 
 /** Best-effort light haptic tap. */

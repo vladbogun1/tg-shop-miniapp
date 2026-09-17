@@ -5,7 +5,7 @@
 
 /** Keep only digits, normalise to a 12-digit "380…" national+country form. */
 function digits(raw: string): string {
-  let d = raw.replace(/\D/g, "");
+  const d = raw.replace(/\D/g, "");
   // Strip leading 0 if user typed local "0XX…" without country code.
   if (d.startsWith("380")) return d.slice(0, 12);
   if (d.startsWith("80")) return ("3" + d).slice(0, 12);
@@ -41,6 +41,6 @@ export function phoneE164(raw: string): string {
 }
 
 /** True when the phone is a complete UA number. */
-export function isvalidPhone(raw: string): boolean {
+export function isValidPhone(raw: string): boolean {
   return phoneE164(raw) !== "";
 }

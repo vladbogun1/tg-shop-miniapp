@@ -1,4 +1,1 @@
-/** Tiny classNames joiner (truthy strings only). */
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
-}
+export { cn } from "@shop/shared";

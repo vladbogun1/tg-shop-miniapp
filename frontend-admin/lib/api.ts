@@ -1,21 +1,57 @@
 /**
- * Typed fetch wrapper + admin auth (docs/SPEC.md Фаза 2).
+ * Admin API client.
  *
- * - JWT stored in localStorage, attached as `Authorization: Bearer <token>`.
- * - On 401/403 the wrapper clears the token and notifies subscribers so the UI
- *   can bounce back to the login screen.
- * - NEXT_PUBLIC_API_BASE_URL is the origin WITHOUT /api; request paths already
- *   include the leading "/api/...".
+ * The fetch plumbing, error type and the DTOs shared with the customer app live in
+ * `@shop/shared`; this file keeps only what is admin-specific — the localStorage-backed token,
+ * the admin-only payloads, and the typed endpoint list.
  */
+import {
+  ApiError,
+  createHttpClient,
+  normalizeBaseUrl,
+  type Conversation,
+  type DeliveryMethod,
+  type Message,
+  type OrderCard,
+  type OrderDetail,
+  type OrderStatus,
+  type PaymentRequisites,
+  type Product,
+  type ProductImage,
+  type ProductTag,
+  type ProductVariant,
+  type SendMessageRequest,
+  type SenderType,
+  type TimeRange,
+} from "@shop/shared";
 
-const API_BASE =
-  (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080")
-    .replace(/\/$/, "")
-    .replace(/\/api$/, "");
+export { ApiError };
+export type {
+  Conversation,
+  DeliveryMethod,
+  Message,
+  OrderStatus,
+  Product,
+  ProductImage,
+  ProductTag,
+  ProductVariant,
+  SendMessageRequest,
+  SenderType,
+  TimeRange,
+};
+
+/** Names the admin UI already uses for the shared shapes. */
+export type OrderCardDto = OrderCard;
+export type OrderDetailDto = OrderDetail;
+export type MessageDto = Message;
+export type ConversationDto = Conversation;
+export type PaymentRequisitesDto = PaymentRequisites;
+
+const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
 export const apiOrigin = API_BASE;
 
-// ---- token store (localStorage) -----------------------------------------
+// ---- token store (localStorage) --------------------------------------------
 const TOKEN_KEY = "tgshop_admin_jwt";
 let accessToken: string | null = null;
 
@@ -51,91 +87,29 @@ export function logout(): void {
   unauthorizedListeners.forEach((cb) => cb());
 }
 
-// ---- errors ----------------------------------------------------------------
-export class ApiError extends Error {
-  status: number;
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
-
-// ---- core fetch ------------------------------------------------------------
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const isFormData = init.body instanceof FormData;
-  if (init.body && !isFormData && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  } catch {
-    throw new ApiError("Не удалось связаться с сервером", 0);
-  }
-
-  if (res.status === 401 || res.status === 403) {
+const http = createHttpClient({
+  baseUrl: API_BASE,
+  getToken: getAccessToken,
+  onUnauthorized: () => {
     setAccessToken(null);
     unauthorizedListeners.forEach((cb) => cb());
-    throw new ApiError("Сессия истекла, войдите снова", res.status);
-  }
+  },
+});
 
-  if (!res.ok) {
-    let msg = `Ошибка ${res.status}`;
-    try {
-      const data = (await res.json()) as { message?: string; error?: string };
-      msg = data.message ?? data.error ?? msg;
-    } catch {
-      /* non-json */
-    }
-    throw new ApiError(msg, res.status);
-  }
-
-  if (res.status === 204) return undefined as T;
-  const text = await res.text();
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
-}
-
-export function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path, { method: "GET" });
-}
-export function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "POST",
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "PATCH",
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-export function apiPut<T>(path: string, body?: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "PUT",
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-export function apiDelete<T>(path: string): Promise<T> {
-  return request<T>(path, { method: "DELETE" });
-}
+export const apiGet = http.get;
+export const apiPost = http.post;
+export const apiPatch = http.patch;
+export const apiPut = http.put;
+export const apiDelete = http.del;
 
 /** Multipart upload -> { key } (POST /api/admin/uploads). */
-export async function uploadFile(
-  path: string,
-  file: File
-): Promise<{ key: string }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  return request<{ key: string }>(path, { method: "POST", body: fd });
+export function uploadFile(path: string, file: File): Promise<{ key: string }> {
+  return http.upload<{ key: string }>(path, file);
+}
+
+/** Makes a server-relative signed media link (chat attachments) absolute. */
+export function mediaUrl(path: string | null | undefined): string | null {
+  return http.absolute(path);
 }
 
 // ---- admin auth ------------------------------------------------------------
@@ -145,9 +119,7 @@ export interface AdminAuthResponse {
 
 /** POST /api/auth/admin/telegram { initData } -> { accessToken }. */
 export async function authAdminTelegram(initData: string): Promise<AdminAuthResponse> {
-  const res = await apiPost<AdminAuthResponse>("/api/auth/admin/telegram", {
-    initData,
-  });
+  const res = await http.post<AdminAuthResponse>("/api/auth/admin/telegram", { initData });
   setAccessToken(res.accessToken);
   return res;
 }
@@ -157,42 +129,14 @@ export async function authAdminLogin(
   username: string,
   password: string
 ): Promise<AdminAuthResponse> {
-  const res = await apiPost<AdminAuthResponse>("/api/auth/admin/login", {
-    username,
-    password,
-  });
+  const res = await http.post<AdminAuthResponse>("/api/auth/admin/login", { username, password });
   setAccessToken(res.accessToken);
   return res;
 }
 
 // ============================================================================
-// Domain DTOs (docs/SPEC.md Фаза 2 — field names match EXACTLY)
+// Admin-only payloads
 // ============================================================================
-
-export type OrderStatus =
-  | "NEW"
-  | "APPROVED"
-  | "SHIPPED"
-  | "DELIVERED"
-  | "REJECTED";
-
-export type DeliveryMethod = "NOVA_POSHTA" | "PICKUP";
-export type SenderType = "CUSTOMER" | "ADMIN" | "SYSTEM";
-export type MessageType = "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
-
-export interface OrderCardDto {
-  id: string;
-  customerName: string;
-  totalMinor: number;
-  currency: string;
-  itemsCount: number;
-  deliveryMethod: DeliveryMethod;
-  paymentOptionTitle: string;
-  unreadCount: number;
-  createdAt: string;
-  status: OrderStatus;
-  paid: boolean;
-}
 
 export interface BoardDto {
   /** Cards per status, capped at 300 per column on the backend. */
@@ -208,7 +152,11 @@ export interface DispatchItem {
   priceMinor: number;
 }
 
-/** Seller dispatch row: what to ship + how much COD (наложка) to collect. */
+/**
+ * Seller dispatch row for an APPROVED order: what to ship and how much cash to collect.
+ * `paymentClaimed` without `paid` means the customer sent a screenshot nobody has verified —
+ * the COD amount stays full until an admin confirms it.
+ */
 export interface DispatchOrder {
   id: string;
   shortId: string;
@@ -223,6 +171,7 @@ export interface DispatchOrder {
   receivedMinor: number;
   codMinor: number;
   paid: boolean;
+  paymentClaimed: boolean;
   currency: string;
   paymentOptionTitle?: string | null;
   trackingNumber?: string | null;
@@ -245,102 +194,6 @@ export interface OrderItemDto {
   gift?: boolean;
 }
 
-export interface PaymentRequisitesDto {
-  cardNumber?: string;
-  iban?: string;
-  recipient?: string;
-  edrpou?: string;
-  purpose?: string;
-  note?: string;
-}
-
-export interface OrderDetailDto {
-  id: string;
-  status: OrderStatus;
-  subtotalMinor: number;
-  discountMinor: number;
-  totalMinor: number;
-  currency: string;
-  customerName: string;
-  phone: string;
-  comment?: string | null;
-  promoCode?: string | null;
-  deliveryMethod: DeliveryMethod;
-  npCityName?: string | null;
-  npWarehouseName?: string | null;
-  paymentOptionTitle?: string | null;
-  trackingNumber?: string | null;
-  rejectReason?: string | null;
-  paid: boolean;
-  paidAt?: string | null;
-  prepaymentMinor: number;
-  receivedMinor: number;
-  items: OrderItemDto[];
-  requisites?: PaymentRequisitesDto | null;
-  createdAt: string;
-  approvedAt?: string | null;
-  shippedAt?: string | null;
-  deliveredAt?: string | null;
-  rejectedAt?: string | null;
-  // admin-side extra (GET /api/admin/orders/{id} returns + tg user)
-  tgUserId?: number | null;
-  tgUsername?: string | null;
-}
-
-export interface MessageDto {
-  id: string;
-  orderId: string;
-  senderType: SenderType;
-  senderName?: string | null;
-  type: MessageType;
-  text?: string | null;
-  attachmentUrl?: string | null;
-  fileName?: string | null;
-  mimeType?: string | null;
-  replyToMessageId?: string | null;
-  createdAt: string;
-  readAt?: string | null;
-}
-
-export interface SendMessageRequest {
-  text?: string;
-  type: MessageType;
-  attachmentUrl?: string;
-  fileName?: string;
-  mimeType?: string;
-  replyToMessageId?: string;
-}
-
-export interface ProductImage {
-  id?: number;
-  url?: string;
-  sortOrder?: number;
-}
-export interface ProductTag {
-  id: string;
-  name: string;
-}
-export interface ProductVariant {
-  id?: string;
-  name: string;
-  stock: number;
-  sortOrder?: number;
-}
-export interface Product {
-  id: string;
-  title: string;
-  description?: string;
-  priceMinor: number;
-  currency?: string;
-  stock?: number;
-  active?: boolean;
-  archived?: boolean;
-  soldCount?: number;
-  images?: ProductImage[];
-  variants?: ProductVariant[];
-  tags?: ProductTag[];
-}
-
 export interface ProductWriteRequest {
   title: string;
   description?: string;
@@ -350,7 +203,12 @@ export interface ProductWriteRequest {
   active: boolean;
   imageKeys: string[];
   tagIds: string[];
-  variants: { name: string; stock: number }[];
+  /**
+   * Existing variants MUST carry their id: without it the server can only match by name, and a
+   * rename would delete the row and create a new one — which used to invalidate customers'
+   * saved carts and the variant reference on past orders.
+   */
+  variants: { id?: string; name: string; stock: number }[];
 }
 
 export interface PromoCode {
@@ -379,8 +237,19 @@ export interface Paged<T> {
   size: number;
 }
 
+/** One row of the admin action log (GET /api/admin/audit). */
+export interface AuditEntry {
+  id: number;
+  adminId: number;
+  adminName?: string | null;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  details?: string | null;
+  createdAt: string;
+}
+
 // ---- metrics ---------------------------------------------------------------
-export type TimeRange = "month" | "halfyear" | "year" | "all";
 
 export interface RevenueByDay {
   date: string; // yyyy-MM-dd
@@ -491,18 +360,6 @@ export interface AdminTarget {
   telegramUserId: number;
   name?: string | null;
   username?: string | null;
-}
-
-// ---- conversations (notifications inbox) -----------------------------------
-export interface ConversationDto {
-  orderId: string;
-  shortId: string;
-  customerName?: string | null;
-  status: OrderStatus;
-  lastPreview: string;
-  lastSenderType?: SenderType | null;
-  lastAt?: string | null;
-  unreadCount: number;
 }
 
 // ============================================================================
@@ -669,6 +526,11 @@ export const adminApi = {
     withButton?: boolean;
     buttonText?: string;
   }) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
+
+  // ---- audit log ----
+  /** GET /api/admin/audit -> recent admin actions (newest first). */
+  audit: (page = 0, size = 50) =>
+    apiGet<AuditEntry[]>(`/api/admin/audit?page=${page}&size=${size}`),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

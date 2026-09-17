@@ -179,7 +179,9 @@ services:
   # Changing them in .env therefore requires a rebuild (`up -d --build frontend`).
   frontend:
     build:
-      context: ./frontend
+      # Repo root: the Next apps are npm workspaces that depend on ./shared.
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}
@@ -194,7 +196,8 @@ services:
 
   frontend-admin:
     build:
-      context: ./frontend-admin
+      context: .
+      dockerfile: frontend-admin/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         NEXT_PUBLIC_IMAGE_BASE_URL: ${NEXT_PUBLIC_IMAGE_BASE_URL}

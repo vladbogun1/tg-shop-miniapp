@@ -18,6 +18,7 @@ import {
   Ban,
   Check,
   CheckCircle2,
+  Clock,
   Copy,
   CreditCard,
   MapPin,
@@ -41,6 +42,7 @@ import {
   type OrderDetail,
   type PaymentRequisites,
 } from "@/lib/api";
+import { PAYMENT_STATE_LABEL, paymentState, type PaymentState } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -147,7 +149,7 @@ function OrderBody({
             <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
               Статус
             </h3>
-            <PaidBadge paid={order.paid} />
+            <PaidBadge state={paymentState(order)} />
           </div>
           <StatusTimeline status={order.status} />
 
@@ -317,7 +319,7 @@ function OrderBody({
           </motion.section>
         )}
 
-        {/* payment proof / paid state */}
+        {/* payment: confirmed / awaiting confirmation / upload a receipt */}
         <motion.section variants={riseItem}>
           {order.paid ? (
             <div className="nb flex items-center gap-2 bg-[var(--c4)] p-4">
@@ -326,8 +328,21 @@ function OrderBody({
                 strokeWidth={2.75}
               />
               <span className="nb-up text-[14px] font-black text-[var(--accent-ink)]">
-                Оплачено
+                Оплата подтверждена
               </span>
+            </div>
+          ) : order.paymentClaimed ? (
+            <div className="nb flex items-start gap-2 bg-[var(--c3)] p-4">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ink)]" strokeWidth={2.75} />
+              <div>
+                <span className="nb-up block text-[14px] font-black text-[var(--ink)]">
+                  Оплата на проверке
+                </span>
+                <p className="mt-1 text-[12px] font-semibold text-[var(--ink)]">
+                  Скрин получен. Менеджер проверит поступление и подтвердит оплату — статус
+                  обновится здесь.
+                </p>
+              </div>
             </div>
           ) : (
             <PaymentProof orderId={order.id} onPaid={onPaid} />
@@ -477,13 +492,24 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** Neo paid-status badge — green «ОПЛАЧЕН» with a check, else muted «НЕ ОПЛАЧЕН». */
-function PaidBadge({ paid }: { paid: boolean }) {
-  if (paid) {
+/**
+ * Payment badge. "Оплата на проверке" is its own state on purpose: uploading a screenshot is a
+ * claim, and showing it as «ОПЛАЧЕН» is what let an unpaid order look settled.
+ */
+function PaidBadge({ state }: { state: PaymentState }) {
+  if (state === "PAID") {
     return (
       <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
         <Check className="h-3 w-3" strokeWidth={3} />
         Оплачен
+      </span>
+    );
+  }
+  if (state === "PARTIAL" || state === "CLAIMED") {
+    return (
+      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[11px] font-black text-[var(--ink)]">
+        <Clock className="h-3 w-3" strokeWidth={3} />
+        {PAYMENT_STATE_LABEL[state]}
       </span>
     );
   }
@@ -495,9 +521,11 @@ function PaidBadge({ paid }: { paid: boolean }) {
 }
 
 /**
- * Payment confirmation — upload a transfer screenshot. On upload it's posted to
- * the order chat (P2P proof) AND the order is marked paid (customerApi.payWithProof).
- * On success the order query is refetched so the badge flips to «ОПЛАЧЕН».
+ * Upload a transfer screenshot.
+ *
+ * The screenshot goes into the order chat and flags the order as "payment claimed" — it does NOT
+ * mark it paid. Only an admin who sees the money confirms it, so the cash-on-delivery amount on
+ * the seller's dispatch card stays correct until then.
  */
 function PaymentProof({
   orderId,
@@ -517,7 +545,7 @@ function PaymentProof({
     setErr(null);
     try {
       const { url } = await customerApi.uploadAttachment(file);
-      await customerApi.payWithProof(orderId, {
+      await customerApi.submitPaymentProof(orderId, {
         type: "PHOTO",
         attachmentUrl: url,
         fileName: file.name,
@@ -540,8 +568,8 @@ function PaymentProof({
         <Upload className="h-4 w-4" strokeWidth={2.5} /> Подтверждение перевода
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, и заказ
-        станет «оплачен».
+        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит
+        поступление и подтвердит оплату.
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
       <GlassButton

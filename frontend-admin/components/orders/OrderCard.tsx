@@ -12,12 +12,12 @@ import {
   CreditCard,
   MessageCircle,
   Package2,
-  Wallet,
 } from "lucide-react";
 import type { OrderCardDto } from "@/lib/api";
 import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
 import { Badge } from "@/components/ui/Badge";
+import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -62,10 +62,7 @@ export function OrderCard({ order, onClick, dragging }: Props) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Badge tone={order.paid ? "ok" : "warn"}>
-          <Wallet className="h-3 w-3" />
-          {order.paid ? "Оплачен" : "Не оплачен"}
-        </Badge>
+        <PaymentBadge order={order} />
         <Badge tone="neutral">
           {order.deliveryMethod === "NOVA_POSHTA" ? (
             <Truck className="h-3 w-3" />
