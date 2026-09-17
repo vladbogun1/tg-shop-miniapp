@@ -18,9 +18,10 @@ RUN npm ci
 # ---- build ----
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/frontend-admin/node_modules ./frontend-admin/node_modules
-COPY package.json package-lock.json ./
+# Copy the whole installed tree rather than just /app/node_modules: npm hoists workspace
+# dependencies to the root, but anything it cannot hoist (a version conflict) ends up in
+# <workspace>/node_modules, and a COPY of a path that may not exist fails the build.
+COPY --from=deps /app ./
 COPY shared ./shared
 COPY frontend-admin ./frontend-admin
 # Public env vars are inlined at build time; the single-origin public build overrides them
