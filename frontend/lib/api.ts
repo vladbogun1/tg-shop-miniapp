@@ -76,6 +76,7 @@ export function onAccessToken(cb: (token: string | null) => void): () => void {
   return () => tokenListeners.delete(cb);
 }
 
+
 /** Origin without /api — for building the WebSocket endpoint and absolute media links. */
 export function getApiBase(): string {
   return API_BASE;
@@ -177,6 +178,21 @@ export const customerApi = {
   },
 
   // Customer (auth required)
+  /**
+   * Validates the code AND holds a limited one for this customer for half an hour, so the discount
+   * the cart shows is still there at the last step. Falls back to the public preview when the
+   * Telegram sign-in has not finished yet.
+   */
+  reservePromo: (code: string, subtotalMinor: number) =>
+    http.post<PromoPreview>(
+      `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+    ),
+  /** Gives a held code back when the customer clears or replaces it. */
+  releasePromo: (code: string) =>
+    http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`),
+  /** Buffered interaction journal, flushed in batches — see lib/analytics. */
+  sendAnalytics: (batch: { sessionId: string; events: unknown[] }) =>
+    http.post<void>("/api/me/analytics", batch),
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
   /**

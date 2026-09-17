@@ -41,6 +41,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int AUTH_WINDOW_MINUTES = 5;
     private static final int UPLOAD_LIMIT = 30;
     private static final int PUBLIC_LIMIT = 120;
+    private static final int ANALYTICS_LIMIT = 20;
 
     private final Cache<String, AtomicInteger> authAttempts = Caffeine.newBuilder()
             .maximumSize(10_000)
@@ -53,6 +54,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .build();
 
     private final Cache<String, AtomicInteger> publicReads = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build();
+
+    private final Cache<String, AtomicInteger> analyticsFlushes = Caffeine.newBuilder()
             .maximumSize(50_000)
             .expireAfterWrite(Duration.ofMinutes(1))
             .build();
@@ -78,6 +84,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private Bucket bucketFor(String path, String method) {
         if (path.startsWith("/api/auth/")) {
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
+        if (path.equals("/api/me/analytics") && "POST".equalsIgnoreCase(method)) {
+            // The client flushes on a timer (~4/min) plus on close; this leaves room for a busy
+            // session and still caps a client that decided to send an event per tap.
+            return new Bucket(analyticsFlushes, ANALYTICS_LIMIT, 60);
         }
         if (path.endsWith("/uploads") && "POST".equalsIgnoreCase(method)) {
             return new Bucket(uploadAttempts, UPLOAD_LIMIT, 60);

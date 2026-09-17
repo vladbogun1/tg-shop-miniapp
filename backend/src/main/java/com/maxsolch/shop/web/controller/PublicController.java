@@ -3,8 +3,7 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.novaposhta.NovaPoshtaService;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
-import com.maxsolch.shop.repository.PromoCodeRepository;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.service.PromoService;
 import com.maxsolch.shop.web.dto.NpCityDto;
 import com.maxsolch.shop.web.dto.NpWarehouseDto;
 import com.maxsolch.shop.web.dto.PaymentOptionDto;
@@ -25,14 +24,14 @@ public class PublicController {
 
     private final PaymentOptionRepository paymentOptionRepository;
     private final NovaPoshtaService novaPoshtaService;
-    private final PromoCodeRepository promoCodeRepository;
+    private final PromoService promoService;
 
     public PublicController(PaymentOptionRepository paymentOptionRepository,
                             NovaPoshtaService novaPoshtaService,
-                            PromoCodeRepository promoCodeRepository) {
+                            PromoService promoService) {
         this.paymentOptionRepository = paymentOptionRepository;
         this.novaPoshtaService = novaPoshtaService;
-        this.promoCodeRepository = promoCodeRepository;
+        this.promoService = promoService;
     }
 
     /**
@@ -40,25 +39,17 @@ public class PublicController {
      *
      * <p>Checkout could only say "скидка применится на сервере" and show the pre-discount total,
      * so the customer confirmed one amount and got another. This computes the same discount the
-     * order will use — read-only, and it does not consume a use.
+     * order will use — read-only, and it does not consume a use or hold one.
+     *
+     * <p>Stays unauthenticated so the cart can answer while the Telegram sign-in is still in
+     * flight; the authenticated {@code POST /api/me/promo/reserve} is what actually holds a
+     * limited code.
      */
     @GetMapping("/promo-codes/preview")
     @Operation(summary = "Preview a promo code's discount for a subtotal")
     public PromoPreviewDto previewPromo(@RequestParam String code,
                                         @RequestParam long subtotalMinor) {
-        long subtotal = Math.max(0, subtotalMinor);
-        if (code == null || code.isBlank()) {
-            return new PromoPreviewDto(false, 0, subtotal, "Введите промокод");
-        }
-        return promoCodeRepository.findByCodeAndActiveTrue(code.trim())
-                .map(promo -> {
-                    if (promo.getMaxUses() != null && promo.getUsesCount() >= promo.getMaxUses()) {
-                        return new PromoPreviewDto(false, 0, subtotal, "Промокод больше не действует");
-                    }
-                    long discount = OrderService.discountFor(promo, subtotal);
-                    return new PromoPreviewDto(true, discount, subtotal - discount, null);
-                })
-                .orElseGet(() -> new PromoPreviewDto(false, 0, subtotal, "Промокод не найден"));
+        return promoService.preview(code, subtotalMinor, null);
     }
 
     @GetMapping("/payment-options")

@@ -198,12 +198,19 @@ export interface PaymentOption {
   prepaymentMinor?: number;
 }
 
-/** GET /api/promo-codes/preview — what a code is worth for the current cart. */
+/**
+ * What a promo code is worth for the current cart.
+ *
+ * Returned both by the public preview (`GET /api/promo-codes/preview`) and by the authenticated
+ * hold (`POST /api/me/promo/reserve`); only the latter ever fills `reservedUntil`.
+ */
 export interface PromoPreview {
   valid: boolean;
   discountMinor: number;
   totalMinor: number;
   message?: string | null;
+  /** ISO instant until which a LIMITED code is held for this customer; null when unlimited. */
+  reservedUntil?: string | null;
 }
 
 export interface NpCity {

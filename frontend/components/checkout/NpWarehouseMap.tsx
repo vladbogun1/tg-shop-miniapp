@@ -24,6 +24,7 @@ import "leaflet.markercluster";
 import { AnimatePresence, motion } from "framer-motion";
 import { Box, Store, MapPin, X, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
@@ -48,7 +49,13 @@ const CAT_COLOR: Record<string, string> = {
 };
 
 function catLabel(c?: NpCategory): string {
-  return c === "POSTOMAT" ? "Почтомат" : c === "BRANCH" ? "Отделение" : c === "POINT" ? "Пункт" : "Отделение";
+  return c === "POSTOMAT"
+    ? "Почтомат"
+    : c === "BRANCH"
+      ? "Отделение"
+      : c === "POINT"
+        ? "Пункт"
+        : "Отделение";
 }
 
 /** White monochrome glyph per category so the type reads at a glance (not just colour). */
@@ -130,7 +137,11 @@ function ClusterLayer({
 }
 
 /** Reports the viewport bounds on move/zoom + once on mount. */
-function BoundsWatcher({ onChange }: { onChange: (b: L.LatLngBounds) => void }) {
+function BoundsWatcher({
+  onChange,
+}: {
+  onChange: (b: L.LatLngBounds) => void;
+}) {
   const map = useMapEvents({
     moveend: () => onChange(map.getBounds()),
     zoomend: () => onChange(map.getBounds()),
@@ -142,12 +153,19 @@ function BoundsWatcher({ onChange }: { onChange: (b: L.LatLngBounds) => void }) 
   return null;
 }
 
-export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse) => void }) {
+export default function NpWarehouseMap({
+  onSelect,
+}: {
+  onSelect: (w: NpWarehouse) => void;
+}) {
   const [category, setCategory] = useState<Cat>("all");
   const [items, setItems] = useState<NpWarehouse[]>([]);
   const [active, setActive] = useState<NpWarehouse | null>(null);
   const boundsRef = useRef<L.LatLngBounds | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // document.body only exists once mounted; the detail sheet is portalled into it (see below).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const fetchBox = useCallback(
     (b: L.LatLngBounds) => {
@@ -169,7 +187,7 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
           .catch(() => setItems([]));
       }, 350);
     },
-    [category]
+    [category],
   );
 
   // Re-fetch the current viewport when the category filter changes.
@@ -206,7 +224,9 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
       {/* Map frame — thick ink border, hard offset shadow, isolated stacking (iOS) */}
       <div
         className="relative isolate overflow-hidden rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-1 shadow-[5px_5px_0_var(--shadow)]"
-        style={{ height: "62vh", minHeight: 360 }}
+        // Fit the map to what is actually left on screen (header ~60px, tabs ~40px, comment box
+        // and the action bar ~200px) instead of a flat 62vh that pushed everything below the fold.
+        style={{ height: "min(62vh, calc(100dvh - 320px))", minHeight: 300 }}
       >
         <div className="relative h-full w-full overflow-hidden rounded-[1px]">
           <MapContainer
@@ -220,7 +240,11 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <BoundsWatcher onChange={fetchBox} />
-            <ClusterLayer items={items} activeRef={active?.ref ?? null} onPick={setActive} />
+            <ClusterLayer
+              items={items}
+              activeRef={active?.ref ?? null}
+              onPick={setActive}
+            />
           </MapContainer>
 
           {/* Hint pill (top), hidden once a pin is open */}
@@ -231,8 +255,18 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
               </span>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Branch detail sheet (bottom) */}
+      {/* Branch detail sheet, docked to the bottom of the SCREEN and rendered into <body>.
+          Inside the map frame it landed below the fold as often as not: tapping a pin appeared to
+          do nothing, and reaching "Выбрать это отделение" meant scrolling beside the map, because
+          the map itself swallows the gesture. The portal is what makes "fixed" mean the viewport —
+          the map frame is an isolated stacking context (kept for iOS) and the checkout step is
+          animated with a transform, and either one would otherwise trap it. It deliberately covers
+          the checkout action bar while open: "Далее" is disabled until a branch is picked anyway. */}
+      {mounted &&
+        createPortal(
           <AnimatePresence>
             {active && (
               <motion.div
@@ -241,12 +275,17 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="absolute inset-x-2 bottom-2 z-[1000] rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[5px_5px_0_var(--shadow)]"
+                className="fixed inset-x-3 z-[1200] mx-auto max-w-[456px] rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[7px_7px_0_var(--shadow)]"
+                style={{
+                  bottom: "calc(var(--tabbar-h) + var(--safe-bottom) + 12px)",
+                }}
               >
                 <div className="flex items-start gap-3">
                   <span
                     className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-white"
-                    style={{ background: CAT_COLOR[active.category ?? "OTHER"] }}
+                    style={{
+                      background: CAT_COLOR[active.category ?? "OTHER"],
+                    }}
                   >
                     {active.category === "POSTOMAT" ? (
                       <Box className="h-4 w-4" strokeWidth={2.75} />
@@ -278,13 +317,14 @@ export default function NpWarehouseMap({ onSelect }: { onSelect: (w: NpWarehouse
                   onClick={() => onSelect(active)}
                   className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] py-3 text-[14px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
                 >
-                  <Check className="h-5 w-5" strokeWidth={3} /> Выбрать это отделение
+                  <Check className="h-5 w-5" strokeWidth={3} /> Выбрать это
+                  отделение
                 </motion.button>
               </motion.div>
             )}
-          </AnimatePresence>
-        </div>
-      </div>
+          </AnimatePresence>,
+          document.body,
+        )}
     </div>
   );
 }

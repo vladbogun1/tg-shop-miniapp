@@ -1,5 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.analytics.ClientEventBatch;
+import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
@@ -11,6 +13,7 @@ import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.service.PromoService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.ForbiddenException;
 import com.maxsolch.shop.web.NotFoundException;
@@ -20,6 +23,7 @@ import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.OrderSummaryDto;
+import com.maxsolch.shop.web.dto.PromoPreviewDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,6 +58,8 @@ public class MeController {
     private final OrderService orderService;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
+    private final PromoService promoService;
+    private final ClientEventService clientEventService;
 
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
@@ -61,7 +68,9 @@ public class MeController {
                         MessageService messageService,
                         OrderService orderService,
                         ImageStorageService imageStorageService,
-                        UploadValidator uploadValidator) {
+                        UploadValidator uploadValidator,
+                        PromoService promoService,
+                        ClientEventService clientEventService) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.orderRepository = orderRepository;
@@ -70,6 +79,44 @@ public class MeController {
         this.orderService = orderService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
+        this.promoService = promoService;
+        this.clientEventService = clientEventService;
+    }
+
+    /**
+     * Takes the Mini App's buffered interaction journal.
+     *
+     * <p>There was no way to see what a customer actually did before they gave up — only the
+     * orders and messages that came out of it. The client keeps events locally and flushes them on
+     * a timer and on close, so the database sees occasional batches instead of a write per tap.
+     * Never fails loudly: a rejected batch would be noise in the app for data nobody is waiting on.
+     */
+    @PostMapping("/analytics")
+    @Operation(summary = "Submit a batch of buffered client events")
+    public ResponseEntity<Void> analytics(@RequestBody ClientEventBatch batch) {
+        clientEventService.record(SecurityUtil.currentUserId(), batch);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Checks the code for this cart and, when it is a limited one, holds it for this customer for
+     * half an hour. The cart calls this as the code is typed, so the discount shown there is the
+     * discount the order will actually get — and cannot be taken by somebody else's checkout in
+     * the meantime.
+     */
+    @PostMapping("/promo/reserve")
+    @Operation(summary = "Validate a promo code and hold it for this customer")
+    public PromoPreviewDto reservePromo(@RequestParam String code,
+                                        @RequestParam long subtotalMinor) {
+        return promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId());
+    }
+
+    /** Gives a held code back when the customer clears or replaces it. */
+    @DeleteMapping("/promo/reserve")
+    @Operation(summary = "Release a held promo code")
+    public ResponseEntity<Void> releasePromo(@RequestParam String code) {
+        promoService.release(code, SecurityUtil.currentUserId());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping

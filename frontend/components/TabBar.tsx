@@ -3,12 +3,22 @@
 /**
  * Bottom tab-bar — NEO-BRUTALISM: thick ink frame, hard shadow, active tab gets
  * a solid accent block. Магазин / Корзина / Аккаунт. Safe-area aware, ≥44px.
+ *
+ * It hides itself in three cases and publishes its height as `--tabbar-h` so every page that
+ * docks something to the bottom (cart summary, checkout actions, page padding) follows along
+ * instead of hardcoding an offset:
+ *   - in the chat, which owns the whole screen;
+ *   - during checkout — from there the customer is finishing an order, not browsing, and the bar
+ *     cost ~84px of the little vertical space the delivery step needs;
+ *   - while the on-screen keyboard is up, where it used to cover the very field being typed in.
  */
 import { motion } from "framer-motion";
 import { ShoppingBag, ShoppingCart, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { useCartCount } from "@/lib/cart";
+import { useKeyboardOpen } from "@/lib/viewport";
 
 const TABS = [
   { href: "/", label: "Магазин", Icon: ShoppingBag },
@@ -16,11 +26,22 @@ const TABS = [
   { href: "/account", label: "Аккаунт", Icon: User },
 ] as const;
 
+/** Bar height + its bottom margin; mirrored into `--tabbar-h` for the docked blocks. */
+const BAR_H = "84px";
+
 export function TabBar() {
   const pathname = usePathname();
   const cartCount = useCartCount();
+  const keyboardOpen = useKeyboardOpen();
 
-  if (pathname.includes("/chat")) return null;
+  const hidden =
+    pathname.includes("/chat") || pathname.startsWith("/checkout") || keyboardOpen;
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--tabbar-h", hidden ? "0px" : BAR_H);
+  }, [hidden]);
+
+  if (hidden) return null;
 
   return (
     <nav

@@ -10,13 +10,15 @@
  * catalog. Items animate in directly (NOT via variant-propagation through
  * AnimatePresence — see NEO.md caveat) and animate out on removal.
  *
- * Behaviour is unchanged vs the original: same cart store, same navigation to
- * /checkout, same promo handling. Look & layout only.
+ * The promo code is checked HERE (PromoField) rather than only on the last checkout step, and
+ * the totals below show the discounted amount — the cart used to promise the full price and let
+ * the final step reject the code with no way to remove it.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
 import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Image } from "@/lib/image";
@@ -24,6 +26,7 @@ import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { useKeyboardOpen } from "@/lib/viewport";
 
 export default function CartPage() {
   const router = useRouter();
@@ -34,6 +37,11 @@ export default function CartPage() {
   const setPromoCode = useCart((s) => s.setPromoCode);
   const subtotal = useCartSubtotal();
   const count = useCartCount();
+  const promo = usePromoPreview(promoCode, subtotal);
+  // While the promo code is being typed the bottom dock is pure obstruction: the tab bar already
+  // hides itself, and this bar sat on top of the field and its answer ("промокод не найден").
+  const keyboardOpen = useKeyboardOpen();
+  const total = Math.max(0, subtotal - promo.discount);
 
   const empty = lines.length === 0;
   const currency = lines[0]?.currency ?? "UAH";
@@ -154,49 +162,52 @@ export default function CartPage() {
         </AnimatePresence>
       </div>
 
-      {/* promo */}
-      <div className="nb mt-4 flex items-center gap-2 px-4 py-3">
-        <span className="text-[16px]" aria-hidden>
-          🎟️
-        </span>
-        <input
-          value={promoCode}
-          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-          placeholder="Промокод"
-          className="tap min-h-0 w-full bg-transparent text-[15px] font-bold uppercase tracking-wide text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[var(--faint)] placeholder:normal-case placeholder:tracking-normal"
-        />
-      </div>
-      <p className="mt-1.5 px-1 text-[12px] font-medium text-[var(--faint)]">
-        Скидка по промокоду применится при оформлении.
-      </p>
+      <PromoField
+        code={promoCode}
+        onChange={setPromoCode}
+        subtotal={subtotal}
+        currency={currency}
+        preview={promo}
+      />
 
       {/* totals card */}
       <div className="nb mt-4 p-4">
         <Row label="Товары" value={money(subtotal, currency)} />
+        {promo.discount > 0 && (
+          <div className="mt-2">
+            <Row
+              label={`Скидка${promoCode.trim() ? ` · ${promoCode.trim()}` : ""}`}
+              value={`−${money(promo.discount, currency)}`}
+            />
+          </div>
+        )}
         <div className="my-3 h-[2.5px] bg-[var(--line)]" />
-        <Row label="Итого" value={money(subtotal, currency)} strong />
+        <Row label="Итого" value={money(total, currency)} strong />
       </div>
 
       {/* spacer so content never hides behind the sticky bar */}
       <div aria-hidden className="h-24" />
 
-      {/* STICKY bottom summary bar (above the TabBar) */}
+      {/* Bottom summary bar, docked above the tab bar (`--tabbar-h`, which goes to 0 when the tab
+          bar hides itself). Fixed rather than sticky so the "Оформить" button is always in reach,
+          not only once the list is long enough to scroll. */}
       <div
-        className="pointer-events-none sticky z-30 -mx-4"
-        style={{ bottom: "calc(84px + var(--safe-bottom))" }}
+        className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-full max-w-[480px]"
+        style={{ bottom: "calc(var(--tabbar-h) + var(--safe-bottom) + 12px)" }}
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: keyboardOpen ? 0 : 1, y: keyboardOpen ? 24 : 0 }}
+          style={{ pointerEvents: keyboardOpen ? "none" : "auto" }}
           transition={spring}
-          className="nb-lg pointer-events-auto mx-4 flex items-center gap-3 p-3 pl-4"
+          className="nb-lg mx-4 flex items-center gap-3 p-3 pl-4"
         >
           <div className="min-w-0">
             <div className="nb-up text-[11px] font-black text-[var(--faint)]">
               Итого
             </div>
             <div className="text-[20px] font-black leading-tight text-[var(--ink)]">
-              {money(subtotal, currency)}
+              {money(total, currency)}
             </div>
           </div>
           <Button

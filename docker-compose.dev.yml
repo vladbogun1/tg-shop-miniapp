@@ -1,0 +1,33 @@
+# ==========================================================
+#  Локальная разработка и UI-тестирование.
+#
+#  Поднимает только инфраструктуру (БД, хранилище, картинки, API); фронты при этом
+#  запускаются дев-серверами Next (`npm run dev -w frontend` / `-w frontend-admin`),
+#  чтобы правки в UI были видны сразу, без пересборки образов.
+#
+#    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d \
+#      mysql minio minio-init imgproxy nginx backend
+#
+#  Подробности и наполнение данными — docs/LOCAL-TESTING.md.
+# ==========================================================
+
+services:
+  # Docker Hub отдаёт minio/minio и darthsim/imgproxy только авторизованным (и упирается в
+  # лимиты), поэтому локально тянем те же образы из реестров, где они лежат без логина.
+  # Прод это не затрагивает: он собирается из базового файла.
+  minio:
+    image: quay.io/minio/minio:latest
+
+  imgproxy:
+    image: ghcr.io/imgproxy/imgproxy:latest
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # Локально в браузере нет настоящего Telegram, поэтому initData подставляется заглушкой
+      # (infra/dev/telegram-stub.js) и подпись не проверяется. Вне профиля dev бэкенд с этим
+      # флагом не стартует вовсе — см. StartupSecurityCheck.
+      ALLOW_UNSIGNED_INIT_DATA: "true"

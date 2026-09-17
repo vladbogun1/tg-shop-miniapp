@@ -38,17 +38,28 @@ public class MediaController {
 
     private final ImageStorageService storage;
     private final MediaSigner signer;
+    private final MediaThumbnailer thumbnailer;
 
-    public MediaController(ImageStorageService storage, MediaSigner signer) {
+    public MediaController(ImageStorageService storage,
+                           MediaSigner signer,
+                           MediaThumbnailer thumbnailer) {
         this.storage = storage;
         this.signer = signer;
+        this.thumbnailer = thumbnailer;
     }
 
+    /**
+     * @param w optional render width. Chat bubbles ask for a small variant instead of the stored
+     *          original — a phone screenshot is megabytes and was being downloaded in full for a
+     *          260px bubble. Only {@link MediaThumbnailer} widths are honoured; anything else
+     *          falls back to the original rather than failing the request.
+     */
     @GetMapping
     @Operation(summary = "Fetch a private attachment using a signed link")
     public ResponseEntity<InputStreamResource> get(@RequestParam("key") String key,
                                                    @RequestParam("exp") long exp,
-                                                   @RequestParam("sig") String sig) {
+                                                   @RequestParam("sig") String sig,
+                                                   @RequestParam(value = "w", required = false) Integer w) {
         if (key == null || !key.startsWith(ALLOWED_PREFIX)) {
             // Never let a signed link be pointed at, say, a product image or another prefix.
             throw new ForbiddenException("Недоступный объект");
@@ -56,16 +67,28 @@ public class MediaController {
         if (!signer.isValid(key, exp, sig)) {
             throw new ForbiddenException("Ссылка недействительна или истекла");
         }
+
+        if (MediaThumbnailer.isAllowedWidth(w)) {
+            MediaThumbnailer.Variant variant = thumbnailer.render(key, w);
+            if (variant != null) {
+                return body(variant.stream(), parseType(variant.contentType()));
+            }
+        }
+
         ImageStorageService.StoredObject object = storage.get(key);
         if (object == null) {
             throw new NotFoundException("Файл не найден");
         }
-        InputStream stream = object.stream();
-        MediaType contentType = parseType(object.contentType());
+        return body(object.stream(), parseType(object.contentType()));
+    }
+
+    private static ResponseEntity<InputStreamResource> body(InputStream stream, MediaType contentType) {
         return ResponseEntity.ok()
                 .contentType(contentType)
-                // Private: the link is per-viewer and short-lived, so no shared cache may keep it.
-                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(10)).cachePrivate())
+                // Private: the link is per-viewer, so no shared cache may keep it. The URL itself is
+                // stable for the signing window (see MediaSigner), so the browser's own cache is
+                // what actually saves the re-download — hence a max-age on that same scale.
+                .cacheControl(CacheControl.maxAge(Duration.ofMinutes(30)).cachePrivate())
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                 // Stored files are user uploads: never let a browser sniff one into something
                 // executable.

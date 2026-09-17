@@ -27,15 +27,23 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
+import { useAccessToken } from "@/lib/auth";
 import { spring } from "@/lib/motion";
 import { haptic, useTelegram } from "@/lib/telegram";
 
 export default function AccountPage() {
   const tg = useTelegram();
+  const token = useAccessToken();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["me", "orders"],
     queryFn: () => customerApi.getOrders(),
+    // Wait for the Telegram sign-in to produce a token: firing this on mount raced the
+    // initData exchange and the 403 that came back was shown as "не удалось загрузить".
+    enabled: !!token,
   });
+  // A query disabled while the token is still on its way is "pending, not fetching", so the
+  // screen would flash its empty state before the first request even goes out.
+  const loading = isLoading || !token;
   const orders = data ?? [];
 
   const displayName =
@@ -99,7 +107,7 @@ export default function AccountPage() {
         Мои заказы
       </h2>
 
-      {isLoading && (
+      {loading && (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="shimmer h-[104px] rounded-[var(--r)]" />
@@ -126,7 +134,7 @@ export default function AccountPage() {
         </EmptyState>
       )}
 
-      {!isLoading && !isError && orders.length === 0 && (
+      {!loading && !isError && orders.length === 0 && (
         <EmptyState
           icon={<PackageOpen className="h-8 w-8" strokeWidth={2.5} />}
           title="Заказов пока нет"
@@ -138,7 +146,7 @@ export default function AccountPage() {
         </EmptyState>
       )}
 
-      {!isLoading && !isError && orders.length > 0 && (
+      {!loading && !isError && orders.length > 0 && (
         <div className="flex flex-col gap-3">
           {orders.map((o, i) => (
             <OrderCard key={o.id} order={o} index={i} />

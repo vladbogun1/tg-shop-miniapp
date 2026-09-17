@@ -27,6 +27,18 @@ public class MediaSigner {
     /** Long enough to view a chat thread, short enough that a leaked link dies quickly. */
     public static final long TTL_SECONDS = 3600;
 
+    /**
+     * Expiries are snapped to this grid instead of being "now + TTL".
+     *
+     * <p>A fresh {@code exp} on every response meant a fresh URL on every response, so the browser
+     * treated the same photo as a new resource each time the chat was opened or the history was
+     * refetched, and re-downloaded it — which is a large part of why attachments took so long to
+     * appear. Snapped, the link for a given object is byte-identical for half an hour and the
+     * cached copy is reused. Validity stays between {@value #WINDOW_SECONDS} and
+     * {@code 2 * WINDOW_SECONDS} seconds.
+     */
+    private static final long WINDOW_SECONDS = 1800;
+
     private static final String ALGORITHM = "HmacSHA256";
 
     private final byte[] key;
@@ -43,7 +55,8 @@ public class MediaSigner {
         if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
-        long expiresAt = Instant.now().getEpochSecond() + TTL_SECONDS;
+        long now = Instant.now().getEpochSecond();
+        long expiresAt = (now / WINDOW_SECONDS + 2) * WINDOW_SECONDS;
         String signature = sign(objectKey, expiresAt);
         return "/api/media?key=" + urlEncode(objectKey)
                 + "&exp=" + expiresAt

@@ -31,6 +31,29 @@ export const viewport: Viewport = {
   ],
 };
 
+// DEV ONLY — see the comment at the injection site in <head> below.
+const DEV_TELEGRAM_STUB = [
+  "(function(){try{",
+  "var id=new URLSearchParams(location.search).get('tgstub');if(!id)return;",
+  "var u={id:Number(id),first_name:'Dev',last_name:'Tester',username:'dev_tester',language_code:'ru'};",
+  "var d='user='+encodeURIComponent(JSON.stringify(u))+'&auth_date='+Math.floor(Date.now()/1000)+'&hash=devstub';",
+  "var n=function(){},i={top:0,bottom:0,left:0,right:0};",
+  "var w={initData:d,initDataUnsafe:{user:u},version:'8.0',platform:'web',colorScheme:'light',",
+  "themeParams:{},safeAreaInset:i,contentSafeAreaInset:i,isExpanded:true,viewportHeight:innerHeight,",
+  "viewportStableHeight:innerHeight,ready:n,expand:n,close:n,onEvent:n,offEvent:n,",
+  "requestFullscreen:n,exitFullscreen:n,isVersionAtLeast:function(){return true},",
+  "setHeaderColor:n,setBackgroundColor:n,enableClosingConfirmation:n,disableClosingConfirmation:n,",
+  "HapticFeedback:{impactOccurred:n,notificationOccurred:n,selectionChanged:n},",
+  "MainButton:{setText:n,show:n,hide:n,enable:n,disable:n,showProgress:n,hideProgress:n,onClick:n,offClick:n,setParams:n},",
+  "BackButton:{show:n,hide:n,onClick:n,offClick:n}};",
+  "var t={};",
+  "var lock=function(o,k,v){Object.defineProperty(o,k,{get:function(){return v;},set:function(){},configurable:false});};",
+  // telegram-web-app.js does `window.Telegram = window.Telegram || {}` and then assigns
+  // `.WebApp`, so both the namespace and the WebApp itself have to be write-protected.
+  "lock(t,'WebApp',w);lock(window,'Telegram',t);",
+  "}catch(e){}})();",
+].join("");
+
 export default function RootLayout({
   children,
 }: {
@@ -46,6 +69,22 @@ export default function RootLayout({
               "(function(){try{var t=localStorage.getItem('neo-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();",
           }}
         />
+        {/* DEV ONLY. Outside Telegram there is no window.Telegram.WebApp, so the Mini App stays
+            unauthenticated and half the screens cannot be opened — which made UI defects
+            impossible to reproduce locally or in Playwright. ?tgstub=<telegramUserId> installs a
+            minimal WebApp stub; the backend accepts its unsigned initData only because
+            ALLOW_UNSIGNED_INIT_DATA is on, and with that flag the app refuses to boot outside the
+            dev profile. window.Telegram is locked with defineProperty because telegram-web-app.js
+            loads below and would otherwise replace the stub with an empty initData. Next inlines
+            NODE_ENV, so the whole block is dropped from a production build.
+            See docs/LOCAL-TESTING.md. */}
+        {process.env.NODE_ENV === "development" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: DEV_TELEGRAM_STUB,
+            }}
+          />
+        )}
         {/* Official Telegram WebApp SDK — guarantees window.Telegram.WebApp (initData,
             theme, MainButton) in any Telegram client (mobile + desktop). */}
         <Script
@@ -74,7 +113,7 @@ export default function RootLayout({
             className="relative z-10 mx-auto min-h-dvh w-full max-w-[480px] px-4"
             style={{
               paddingTop: "max(16px, var(--safe-top))",
-              paddingBottom: "calc(96px + var(--safe-bottom))",
+              paddingBottom: "calc(var(--tabbar-h) + 12px + var(--safe-bottom))",
             }}
           >
             {children}
