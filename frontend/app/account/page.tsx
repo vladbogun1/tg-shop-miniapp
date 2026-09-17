@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Check,
+  Clock,
   ChevronRight,
   MessageCircle,
   PackageOpen,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { GlassButton } from "@/components/ui/GlassButton";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
@@ -112,7 +113,7 @@ export default function AccountPage() {
           title="Не удалось загрузить"
           text="Войдите через Telegram или проверьте подключение."
         >
-          <GlassButton
+          <Button
             variant="accent"
             loading={isRefetching}
             onClick={() => {
@@ -121,7 +122,7 @@ export default function AccountPage() {
             }}
           >
             Повторить
-          </GlassButton>
+          </Button>
         </EmptyState>
       )}
 
@@ -132,7 +133,7 @@ export default function AccountPage() {
           text="Оформите первый заказ — он появится здесь."
         >
           <Link href="/" onClick={() => haptic()}>
-            <GlassButton variant="accent">В каталог</GlassButton>
+            <Button variant="accent">В каталог</Button>
           </Link>
         </EmptyState>
       )}
@@ -166,10 +167,17 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
               {shortOrderId(order.id)}
             </span>
             <StatusChip status={order.status} />
+            {/* A screenshot the customer sent is "на проверке", not "оплачен" — only an admin
+                confirming the transfer flips it to paid. */}
             {order.paid ? (
               <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[10px] font-black text-[var(--accent-ink)]">
                 <Check className="h-3 w-3" strokeWidth={3} />
                 Оплачен
+              </span>
+            ) : order.paymentClaimed ? (
+              <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[10px] font-black text-[var(--ink)]">
+                <Clock className="h-3 w-3" strokeWidth={3} />
+                На проверке
               </span>
             ) : (
               <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-black text-[var(--muted)]">

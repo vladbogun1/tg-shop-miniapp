@@ -2,6 +2,7 @@ package com.maxsolch.shop.repository;
 
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.service.MetricsRow;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,40 +23,12 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     List<Order> findAllByOrderByCreatedAtDesc();
 
     /**
-     * Smart, paged search for the order table. Matches {@code q} case-insensitively across the
-     * order's own text fields and its item product titles (via EXISTS on items). {@code from} is an
-     * optional lower bound on createdAt. {@code idKey} is an optional exact binary order-id match
-     * (set by the service when {@code q} parses as a UUID) so callers can search by order id.
-     * {@code q} must already be lowercased and wrapped in {@code %...%}.
+     * Smart, paged search for the order table. The predicate itself lives in
+     * {@link OrderSearchQueries} so the list, its count, and the two board queries below cannot
+     * drift apart.
      */
-    @Query(value = "select o from Order o where "
-            + "(:status is null or o.status = :status) "
-            + "and (:from is null or o.createdAt >= :from) "
-            + "and (:q is null or "
-            + "  (:idKey is not null and o.id = :idKey) "
-            + "  or lower(o.customerName) like :q "
-            + "  or lower(o.phone) like :q "
-            + "  or lower(coalesce(o.trackingNumber, '')) like :q "
-            + "  or lower(coalesce(o.promoCode, '')) like :q "
-            + "  or lower(coalesce(o.npWarehouseName, '')) like :q "
-            + "  or lower(coalesce(o.npCityName, '')) like :q "
-            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q "
-            + "  or exists (select 1 from OrderItem it where it.order = o "
-            + "             and lower(it.titleSnapshot) like :q))",
-            countQuery = "select count(o) from Order o where "
-            + "(:status is null or o.status = :status) "
-            + "and (:from is null or o.createdAt >= :from) "
-            + "and (:q is null or "
-            + "  (:idKey is not null and o.id = :idKey) "
-            + "  or lower(o.customerName) like :q "
-            + "  or lower(o.phone) like :q "
-            + "  or lower(coalesce(o.trackingNumber, '')) like :q "
-            + "  or lower(coalesce(o.promoCode, '')) like :q "
-            + "  or lower(coalesce(o.npWarehouseName, '')) like :q "
-            + "  or lower(coalesce(o.npCityName, '')) like :q "
-            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q "
-            + "  or exists (select 1 from OrderItem it where it.order = o "
-            + "             and lower(it.titleSnapshot) like :q))")
+    @Query(value = "select o from Order o" + OrderSearchQueries.WHERE_LIST,
+            countQuery = "select count(o) from Order o" + OrderSearchQueries.WHERE_LIST)
     Page<Order> search(@Param("status") OrderStatus status,
                        @Param("q") String q,
                        @Param("idKey") byte[] idKey,
@@ -63,23 +36,10 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                        Pageable pageable);
 
     /**
-     * Board column query: same smart-search predicate but scoped to a single status and paged so the
-     * caller can cap each column. {@code q} may be null for no text filter.
+     * Board column query: the same predicate scoped to a single status and paged, so the caller can
+     * cap how many cards a column renders.
      */
-    @Query("select o from Order o where o.status = :status "
-            + "and (:from is null or o.createdAt >= :from) "
-            + "and (:q is null or "
-            + "  (:idKey is not null and o.id = :idKey) "
-            + "  or lower(o.customerName) like :q "
-            + "  or lower(o.phone) like :q "
-            + "  or lower(coalesce(o.trackingNumber, '')) like :q "
-            + "  or lower(coalesce(o.promoCode, '')) like :q "
-            + "  or lower(coalesce(o.npWarehouseName, '')) like :q "
-            + "  or lower(coalesce(o.npCityName, '')) like :q "
-            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q "
-            + "  or exists (select 1 from OrderItem it where it.order = o "
-            + "             and lower(it.titleSnapshot) like :q)) "
-            + "order by o.createdAt desc")
+    @Query("select o from Order o" + OrderSearchQueries.WHERE_COLUMN + "order by o.createdAt desc")
     List<Order> searchByStatus(@Param("status") OrderStatus status,
                                @Param("q") String q,
                                @Param("idKey") byte[] idKey,
@@ -87,31 +47,33 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                Pageable pageable);
 
     /**
-     * True count of orders for a single status using the same smart-search predicate as
-     * {@link #searchByStatus}, but unbounded by any page cap. Used by the board to report accurate
-     * per-column totals even when the visible cards are capped.
+     * True count for one status — unbounded by the page cap, so a column can report "12 of 300"
+     * honestly.
      */
-    @Query("select count(o) from Order o where o.status = :status "
-            + "and (:from is null or o.createdAt >= :from) "
-            + "and (:q is null or "
-            + "  (:idKey is not null and o.id = :idKey) "
-            + "  or lower(o.customerName) like :q "
-            + "  or lower(o.phone) like :q "
-            + "  or lower(coalesce(o.trackingNumber, '')) like :q "
-            + "  or lower(coalesce(o.promoCode, '')) like :q "
-            + "  or lower(coalesce(o.npWarehouseName, '')) like :q "
-            + "  or lower(coalesce(o.npCityName, '')) like :q "
-            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q "
-            + "  or exists (select 1 from OrderItem it where it.order = o "
-            + "             and lower(it.titleSnapshot) like :q))")
+    @Query("select count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN)
     long countByStatusSearch(@Param("status") OrderStatus status,
                              @Param("q") String q,
                              @Param("idKey") byte[] idKey,
                              @Param("from") Instant from);
 
     /**
-     * Range-bounded fetch for analytics. Items are accessed lazily inside the metrics transaction.
+     * Per-status counts for every column in ONE query. The board used to issue a separate COUNT per
+     * status on every poll.
      */
-    @Query("select o from Order o where (:from is null or o.createdAt >= :from) order by o.createdAt asc")
-    List<Order> findForMetrics(@Param("from") Instant from);
+    @Query("select o.status, count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES
+            + "group by o.status")
+    List<Object[]> countsByStatus(@Param("q") String q,
+                                  @Param("idKey") byte[] idKey,
+                                  @Param("from") Instant from);
+
+    /**
+     * Range-bounded analytics rows. Returns a flat projection rather than entities: the dashboard
+     * polls frequently and only needs these columns, so there is no reason to hydrate orders (and,
+     * previously, to lazily fetch each one's items — one extra query per order).
+     */
+    @Query("select new com.maxsolch.shop.service.MetricsRow("
+            + "o.status, o.totalMinor, o.currency, o.deliveryMethod, o.paymentOptionTitle, "
+            + "o.createdAt, o.approvedAt, o.shippedAt, o.deliveredAt) "
+            + "from Order o where (:from is null or o.createdAt >= :from) order by o.createdAt asc")
+    List<MetricsRow> findMetricsRows(@Param("from") Instant from);
 }

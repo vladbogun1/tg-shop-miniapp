@@ -5,24 +5,31 @@ import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ConversationDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.List;
 
 /**
- * Order-chat persistence + realtime broadcast. Customer messages do NOT ping the bot;
- * admin messages persist + broadcast + DM the customer (NotificationService.onAdminChatMessage).
+ * Order-chat persistence + realtime broadcast.
+ *
+ * <p>Both side effects (STOMP fan-out and the Telegram ping) are deferred until the transaction
+ * commits, so subscribers never see a message that was rolled back. Customer messages notify the
+ * admins' topic; admin messages DM the customer.
  */
 @Service
 public class MessageService {
@@ -30,23 +37,41 @@ public class MessageService {
     private final OrderMessageRepository messageRepository;
     private final OrderRepository orderRepository;
     private final SimpMessagingTemplate messagingTemplate;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher events;
+    private final MediaSigner mediaSigner;
 
     public MessageService(OrderMessageRepository messageRepository,
                           OrderRepository orderRepository,
                           SimpMessagingTemplate messagingTemplate,
-                          NotificationService notificationService) {
+                          ApplicationEventPublisher events,
+                          MediaSigner mediaSigner) {
         this.messageRepository = messageRepository;
         this.orderRepository = orderRepository;
         this.messagingTemplate = messagingTemplate;
-        this.notificationService = notificationService;
+        this.events = events;
+        this.mediaSigner = mediaSigner;
     }
 
+    /** Default page size for the chat — roughly two screens of history. */
+    public static final int DEFAULT_PAGE = 50;
+    private static final int MAX_PAGE = 200;
+
+    /**
+     * A page of chat history, oldest-first for rendering.
+     *
+     * @param beforeId load messages older than this id (for "показать более ранние"); null = newest
+     */
     @Transactional(readOnly = true)
-    public List<MessageDto> list(byte[] orderId) {
-        return messageRepository.findByOrderIdOrderByCreatedAtAsc(orderId).stream()
-                .map(this::toDto)
-                .toList();
+    public List<MessageDto> list(byte[] orderId, Long beforeId, Integer limit) {
+        int size = Math.min(Math.max(1, limit == null ? DEFAULT_PAGE : limit), MAX_PAGE);
+        List<OrderMessage> page =
+                messageRepository.findPage(orderId, beforeId, PageRequest.of(0, size));
+        List<MessageDto> dtos = new java.util.ArrayList<>(page.size());
+        // findPage returns newest-first so the database can stop early; the UI wants oldest-first.
+        for (int i = page.size() - 1; i >= 0; i--) {
+            dtos.add(toDto(page.get(i)));
+        }
+        return dtos;
     }
 
     @Transactional
@@ -55,9 +80,10 @@ public class MessageService {
         Order order = order(orderId);
         OrderMessage saved = persist(order, SenderType.CUSTOMER, senderId, senderName, req);
         MessageDto dto = toDto(saved);
-        broadcast(orderId, dto);
-        // notify admins (chat-messages topic); customer is the sender → no DM to them
-        notificationService.onCustomerChatMessage(order, previewOf(saved));
+        // Both the WebSocket fan-out and the Telegram ping happen after this transaction commits:
+        // broadcasting earlier could push a message that a rollback then erases, and the customer
+        // is the sender here so only the admins get notified.
+        afterCommit(orderId, dto, false, previewOf(saved));
         return dto;
     }
 
@@ -67,9 +93,27 @@ public class MessageService {
         Order order = order(orderId);
         OrderMessage saved = persist(order, SenderType.ADMIN, senderId, senderName, req);
         MessageDto dto = toDto(saved);
-        broadcast(orderId, dto);
-        notificationService.onAdminChatMessage(order, previewOf(saved));
+        afterCommit(orderId, dto, true, previewOf(saved));
         return dto;
+    }
+
+    /**
+     * Fans the message out once the transaction has committed: WebSocket subscribers first, then
+     * the Telegram side (a DM to the customer for admin messages, a ping in the admins' topic for
+     * customer messages) via {@link OrderEvents.ChatMessage}.
+     */
+    private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, String preview) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    broadcast(orderId, dto);
+                }
+            });
+        } else {
+            broadcast(orderId, dto);
+        }
+        events.publishEvent(new OrderEvents.ChatMessage(orderId, fromAdmin, preview));
     }
 
     /** Short preview of a message for notifications. */
@@ -227,7 +271,9 @@ public class MessageService {
                 m.getSenderName(),
                 m.getType().name(),
                 m.getText(),
-                m.getAttachmentUrl(),
+                // Attachments live in a private bucket; the client gets a short-lived signed link
+                // rather than a raw object key it could never fetch (and that anyone else could).
+                mediaSigner.signedUrl(m.getAttachmentUrl()),
                 m.getFileName(),
                 m.getMimeType(),
                 m.getReplyToMessageId(),

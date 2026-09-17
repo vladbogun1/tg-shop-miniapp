@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Gallery — product image carousel for the fullscreen product view (Aurora Glass).
+ * Gallery — product image carousel for the fullscreen product view (Neo-Brutalism).
  *
  * - Pointer-drag swipe (framer-motion) to move between slides.
- * - ‹ › glass arrow buttons overlaid on the sides (disabled at first/last).
- * - A glass "n / total" counter pill (top-right) + dot indicators along the
- *   bottom. Active dot fills with the accent gradient and stretches.
+ * - ‹ › arrow buttons overlaid on the sides (disabled at first/last).
+ * - An "n / total" counter pill (top-right) + dot indicators along the bottom.
  * - Graceful single-image case: no arrows / dots / counter, drag disabled.
  * - Uses the custom imgproxy <Image>; handles the no-image case (placeholder).
  */
@@ -51,7 +50,7 @@ export function Gallery({
   };
 
   return (
-    <div className="glass relative aspect-square w-full overflow-hidden rounded-[var(--r-lg)] p-1">
+    <div className="nb relative aspect-square w-full overflow-hidden p-1">
       <div className="relative h-full w-full overflow-hidden rounded-[calc(var(--r-lg)-4px)]">
         <motion.div
           className="flex h-full"
@@ -89,7 +88,7 @@ export function Gallery({
             />
 
             {/* counter pill */}
-            <div className="glass glass--strong absolute right-2.5 top-2.5 rounded-[var(--r-pill)] px-2.5 py-1 text-[11px] font-semibold text-[var(--text)]">
+            <div className="nb-flat absolute right-2.5 top-2.5 bg-[var(--surface)] px-2.5 py-1 text-[11px] font-black text-[var(--ink)]">
               {slide + 1} / {slides.length}
             </div>
 
@@ -133,7 +132,7 @@ function ArrowBtn({
       disabled={disabled}
       onClick={onClick}
       aria-label={side === "left" ? "Предыдущее фото" : "Следующее фото"}
-      className={`glass glass--strong tap absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[var(--r-pill)] text-[var(--text)] transition-opacity disabled:opacity-0 ${
+      className={`nb-flat tap absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-[var(--surface)] text-[var(--ink)] transition-opacity disabled:opacity-0 ${
         side === "left" ? "left-2" : "right-2"
       }`}
     >

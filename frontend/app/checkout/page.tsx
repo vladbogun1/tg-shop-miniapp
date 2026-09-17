@@ -14,7 +14,7 @@
  *
  * Behaviour is unchanged: same API calls (customerApi.getPaymentOptions /
  * createOrder / getOrder), same per-step validation, same query keys, same
- * dynamic ssr:false map import, same useMainButton wiring, same cart clear.
+ * dynamic ssr:false map import, same cart clear.
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Clock,
   Copy,
   CreditCard,
   MapPin,
@@ -32,7 +33,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { StepProgress } from "@/components/checkout/StepProgress";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
@@ -47,12 +48,13 @@ const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMa
     </div>
   ),
 });
-import { GlassButton } from "@/components/ui/GlassButton";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
 import {
   ApiError,
   customerApi,
+  newIdempotencyKey,
   type CreateOrderRequest,
   type DeliveryMethod,
   type NpWarehouse,
@@ -62,8 +64,8 @@ import {
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { formatPhone, isvalidPhone, phoneE164 } from "@/lib/phone";
-import { haptic, useMainButton } from "@/lib/telegram";
+import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
+import { haptic } from "@/lib/telegram";
 
 const STEPS = ["Контакты", "Доставка", "Оплата", "Готово"];
 
@@ -97,6 +99,10 @@ export default function CheckoutPage() {
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
   // submit
+  // One key per checkout attempt: if the response is lost and the user taps again, the server
+  // returns the order it already created instead of placing a second one (and deducting stock
+  // twice). Regenerated only after a successful order.
+  const idempotencyKey = useRef(newIdempotencyKey());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
@@ -108,9 +114,27 @@ export default function CheckoutPage() {
   const paymentOptions = paymentQuery.data ?? [];
   const chosenPayment = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
+  // Ask the server what the promo code is actually worth. The checkout used to show the
+  // pre-discount subtotal with a note that the discount "применится на сервере", so the customer
+  // confirmed one amount and was charged another.
+  const promoQuery = useQuery({
+    queryKey: ["promo-preview", promoCode, subtotal],
+    queryFn: () => customerApi.previewPromo(promoCode.trim(), subtotal),
+    enabled: promoCode.trim().length > 0 && subtotal > 0,
+    staleTime: 60_000,
+  });
+  const promoPreview = promoQuery.data ?? null;
+  const discount = promoPreview?.valid ? promoPreview.discountMinor : 0;
+  const total = Math.max(0, subtotal - discount);
+  // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
+  const dueNow =
+    chosenPayment?.requiresPrepayment && chosenPayment.prepaymentMinor
+      ? Math.min(chosenPayment.prepaymentMinor, total)
+      : total;
+
   // ---- validation ----------------------------------------------------------
   const nameOk = name.trim().length >= 2;
-  const phoneOk = isvalidPhone(phone);
+  const phoneOk = isValidPhone(phone);
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
     delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!warehouse);
@@ -144,7 +168,7 @@ export default function CheckoutPage() {
       paymentOptionId: paymentId!,
     };
     try {
-      const created = await customerApi.createOrder(body);
+      const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       // Requisites come straight back with the order; fall back to the detail fetch.
       let requisites: PaymentRequisites | null | undefined = created.requisites;
@@ -158,6 +182,7 @@ export default function CheckoutPage() {
       }
       haptic();
       clearCart();
+      idempotencyKey.current = newIdempotencyKey();
       setSuccess({
         orderId,
         paymentTitle: chosenPayment?.title ?? "",
@@ -191,23 +216,6 @@ export default function CheckoutPage() {
     else setStep((s) => s - 1);
   }
 
-  // Telegram MainButton (primary action per step).
-  const mainText = success
-    ? "Готово"
-    : step < 3
-      ? "Далее"
-      : `Оформить · ${money(subtotal, currency)}`;
-  useMainButton({
-    text: mainText,
-    onClick: () => {
-      if (success) router.push(`/account/orders/${success.orderId}`);
-      else next();
-    },
-    visible: !emptyCart,
-    enabled: success ? true : stepOk,
-    loading: submitting,
-  });
-
   if (emptyCart) {
     return (
       <div className="pt-2">
@@ -217,7 +225,7 @@ export default function CheckoutPage() {
         <div className="flex flex-col items-center gap-4 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center shadow-[5px_5px_0_var(--shadow)]">
           <p className="text-[14px] font-bold text-[var(--muted)]">Корзина пуста.</p>
           <Link href="/">
-            <GlassButton variant="accent">В каталог</GlassButton>
+            <Button variant="accent">В каталог</Button>
           </Link>
         </div>
       </div>
@@ -228,7 +236,7 @@ export default function CheckoutPage() {
     return <SuccessScreen state={success} />;
   }
 
-  const primaryLabel = step < 3 ? "Далее" : `Оформить · ${money(subtotal, currency)}`;
+  const primaryLabel = step < 3 ? "Далее" : `Оформить · ${money(total, currency)}`;
 
   return (
     <div className="pt-1">
@@ -302,7 +310,11 @@ export default function CheckoutPage() {
               comment={comment}
               payment={chosenPayment}
               promoCode={promoCode}
+              promoMessage={promoPreview && !promoPreview.valid ? promoPreview.message ?? null : null}
               subtotal={subtotal}
+              discount={discount}
+              total={total}
+              dueNow={dueNow}
               currency={currency}
               items={lines.map((l) => ({
                 title: l.title + (l.variantName ? ` · ${l.variantName}` : ""),
@@ -336,11 +348,11 @@ export default function CheckoutPage() {
           className="pointer-events-auto mx-4 flex items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[5px_5px_0_var(--shadow)]"
         >
           {step > 0 && (
-            <GlassButton variant="glass" onClick={back}>
+            <Button variant="surface" onClick={back}>
               Назад
-            </GlassButton>
+            </Button>
           )}
-          <GlassButton
+          <Button
             variant="accent"
             fullWidth
             className="flex-1"
@@ -350,7 +362,7 @@ export default function CheckoutPage() {
             onClick={next}
           >
             {primaryLabel}
-          </GlassButton>
+          </Button>
         </motion.div>
       </div>
     </div>
@@ -382,7 +394,7 @@ function ContactsStep({
       <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
         Куда и кому доставить заказ — начнём с контактов.
       </p>
-      <GlassInput
+      <Input
         label="Имя и фамилия"
         value={name}
         onChange={(e) => onName(e.target.value)}
@@ -390,7 +402,7 @@ function ContactsStep({
         hint={touched && !nameOk ? "Укажите имя" : undefined}
         autoComplete="name"
       />
-      <GlassInput
+      <Input
         label="Телефон"
         inputMode="tel"
         value={formatPhone(phone)}
@@ -507,9 +519,9 @@ function DeliveryStep({
               }}
             />
             {warehouse && (
-              <GlassButton variant="glass" onClick={() => setEditing(false)}>
+              <Button variant="surface" onClick={() => setEditing(false)}>
                 Отмена
-              </GlassButton>
+              </Button>
             )}
           </div>
         ) : warehouse ? (
@@ -533,13 +545,13 @@ function DeliveryStep({
                 </div>
               </div>
             </div>
-            <GlassButton
-              variant="glass"
+            <Button
+              variant="surface"
               onClick={() => setEditing(true)}
               icon={<MapPin className="h-4 w-4" strokeWidth={2.75} />}
             >
               Изменить отделение
-            </GlassButton>
+            </Button>
           </motion.div>
         ) : null)}
 
@@ -639,7 +651,11 @@ function ConfirmStep({
   comment,
   payment,
   promoCode,
+  promoMessage,
   subtotal,
+  discount,
+  total,
+  dueNow,
   currency,
   items,
 }: {
@@ -650,7 +666,13 @@ function ConfirmStep({
   comment: string;
   payment: PaymentOption | null;
   promoCode: string;
+  /** Why the entered code does not apply, when it does not. */
+  promoMessage: string | null;
   subtotal: number;
+  discount: number;
+  total: number;
+  /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
+  dueNow: number;
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
 }) {
@@ -677,17 +699,54 @@ function ConfirmStep({
           </div>
         ))}
         <div className="my-3 h-[2.5px] bg-[var(--line)]" />
+
+        {discount > 0 && (
+          <>
+            <div className="flex items-center justify-between py-0.5">
+              <span className="text-[13px] font-semibold text-[var(--muted)]">Сумма</span>
+              <span className="text-[14px] font-bold text-[var(--muted)]">
+                {money(subtotal, currency)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-0.5">
+              <span className="text-[13px] font-semibold text-[var(--muted)]">
+                Скидка{promoCode ? ` · ${promoCode}` : ""}
+              </span>
+              <span className="text-[14px] font-extrabold text-[var(--ok)]">
+                −{money(discount, currency)}
+              </span>
+            </div>
+            <div className="my-2 h-[2px] bg-[var(--line)]" />
+          </>
+        )}
+
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
             Итого
           </span>
           <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[18px] font-black text-[var(--ink)]">
-            {money(subtotal, currency)}
+            {money(total, currency)}
           </span>
         </div>
-        {promoCode && (
-          <p className="mt-2 text-[12px] font-bold text-[var(--muted)]">
-            Промокод: {promoCode} (скидка применится на сервере)
+
+        {/* Prepay options charge part of the total now and the rest on delivery — show both. */}
+        {dueNow !== total && (
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-[var(--ink)]">К оплате сейчас</span>
+            <span className="text-[15px] font-black text-[var(--ink)]">
+              {money(dueNow, currency)}
+            </span>
+          </div>
+        )}
+        {dueNow !== total && (
+          <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
+            Остаток {money(total - dueNow, currency)} — при получении.
+          </p>
+        )}
+
+        {promoCode && discount === 0 && (
+          <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">
+            Промокод «{promoCode}»: {promoMessage ?? "проверяем…"}
           </p>
         )}
       </section>
@@ -718,10 +777,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 function SuccessScreen({ state }: { state: SuccessState }) {
   const router = useRouter();
-  useMainButton({
-    text: "К заказу",
-    onClick: () => router.push(`/account/orders/${state.orderId}`),
-  });
 
   const r = state.requisites;
   const reqRows = useMemo(
@@ -778,17 +833,17 @@ function SuccessScreen({ state }: { state: SuccessState }) {
       <PaymentProof orderId={state.orderId} />
 
       <div className="mt-6 flex w-full flex-col gap-3">
-        <GlassButton
+        <Button
           variant="accent"
           fullWidth
           onClick={() => router.push(`/account/orders/${state.orderId}`)}
         >
           Перейти к заказу
-        </GlassButton>
+        </Button>
         <Link href="/" className="w-full">
-          <GlassButton variant="ghost" fullWidth>
+          <Button variant="ghost" fullWidth>
             В каталог
-          </GlassButton>
+          </Button>
         </Link>
       </div>
     </div>
@@ -796,8 +851,11 @@ function SuccessScreen({ state }: { state: SuccessState }) {
 }
 
 /**
- * Payment confirmation — upload a transfer screenshot. On upload it's posted to
- * the order chat (P2P proof) AND the order is marked paid (customerApi.payWithProof).
+ * Payment confirmation — upload a transfer screenshot.
+ *
+ * The screenshot is posted into the order chat and flags the order as "payment claimed". It does
+ * NOT mark the order paid: a picture is not money, and treating it as proof used to zero out the
+ * cash-on-delivery amount on the seller's dispatch card. An admin checks the transfer and confirms.
  */
 function PaymentProof({ orderId }: { orderId: string }) {
   const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
@@ -811,7 +869,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
     setErr(null);
     try {
       const { url } = await customerApi.uploadAttachment(file);
-      await customerApi.payWithProof(orderId, {
+      await customerApi.submitPaymentProof(orderId, {
         type: "PHOTO",
         attachmentUrl: url,
         fileName: file.name,
@@ -835,13 +893,13 @@ function PaymentProof({ orderId }: { orderId: string }) {
         className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c4)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]"
       >
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
+          <Clock className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
           <span className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Оплата подтверждена
+            Оплата на проверке
           </span>
         </div>
         <p className="mt-1 text-[12px] font-bold text-[var(--ink)]">
-          Скрин перевода отправлен в чат заказа. Менеджер всё видит.
+          Скрин перевода отправлен в чат заказа. Менеджер проверит поступление и подтвердит оплату.
         </p>
       </motion.section>
     );
@@ -853,8 +911,8 @@ function PaymentProof({ orderId }: { orderId: string }) {
         Подтверждение перевода
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, и заказ
-        станет «оплачен».
+        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит
+        поступление и подтвердит оплату.
       </p>
       <input
         ref={inputRef}
@@ -863,7 +921,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
         hidden
         onChange={onFile}
       />
-      <GlassButton
+      <Button
         variant="accent"
         fullWidth
         loading={state === "uploading"}
@@ -871,7 +929,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
         onClick={() => inputRef.current?.click()}
       >
         Загрузить скрин перевода
-      </GlassButton>
+      </Button>
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
       )}

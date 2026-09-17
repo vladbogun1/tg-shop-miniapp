@@ -17,7 +17,9 @@ public final class SecurityUtil {
         if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p) {
             return p;
         }
-        throw new ForbiddenException("not authenticated");
+        // No principal at all means "not authenticated" (401), not "authenticated but not
+        // allowed" (403) — the admin frontend distinguishes them when deciding to re-login.
+        throw new UnauthorizedException("not authenticated");
     }
 
     public static long currentUserId() {

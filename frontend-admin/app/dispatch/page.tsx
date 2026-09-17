@@ -21,7 +21,7 @@ import { money } from "@/lib/money";
 import { useToast } from "@/lib/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -116,7 +116,7 @@ function DispatchCard({ o, index }: { o: DispatchOrder; index: number }) {
             {o.phone}
           </a>
         </div>
-        <Badge tone={o.paid ? "ok" : "warn"}>{o.paid ? "Оплачен" : "Не оплачен"}</Badge>
+        <PaymentBadge order={o} icon={false} />
       </div>
 
       {/* Address */}

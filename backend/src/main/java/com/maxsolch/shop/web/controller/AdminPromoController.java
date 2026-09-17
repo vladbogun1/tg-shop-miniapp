@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.repository.PromoCodeRepository;
@@ -32,9 +33,11 @@ import java.util.List;
 public class AdminPromoController {
 
     private final PromoCodeRepository promoCodeRepository;
+    private final AdminAuditService audit;
 
-    public AdminPromoController(PromoCodeRepository promoCodeRepository) {
+    public AdminPromoController(PromoCodeRepository promoCodeRepository, AdminAuditService audit) {
         this.promoCodeRepository = promoCodeRepository;
+        this.audit = audit;
     }
 
     @GetMapping
@@ -54,22 +57,32 @@ public class AdminPromoController {
         PromoCode p = new PromoCode();
         p.setCode(req.code().trim());
         apply(p, req);
-        return toDto(promoCodeRepository.save(p));
+        PromoCodeDto created = toDto(promoCodeRepository.save(p));
+        audit.record("PROMO_CREATE", "PROMO", created.id(), created.code());
+        return created;
     }
 
     @PatchMapping("/{id}")
     @Operation(summary = "Update promo code")
     public PromoCodeDto update(@PathVariable String id, @Valid @RequestBody PromoCodeUpsertRequest req) {
         PromoCode p = load(id);
+        String previousCode = p.getCode();
         p.setCode(req.code().trim());
         apply(p, req);
-        return toDto(promoCodeRepository.save(p));
+        PromoCodeDto updated = toDto(promoCodeRepository.save(p));
+        audit.record("PROMO_UPDATE", "PROMO", id,
+                previousCode.equals(updated.code()) ? updated.code()
+                        : previousCode + " -> " + updated.code());
+        return updated;
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete promo code")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        promoCodeRepository.delete(load(id));
+        PromoCode promo = load(id);
+        audit.record("PROMO_DELETE", "PROMO", id,
+                promo.getCode() + ", использован " + promo.getUsesCount() + " раз");
+        promoCodeRepository.delete(promo);
         return ResponseEntity.noContent().build();
     }
 

@@ -44,6 +44,7 @@ import {
 } from "@/lib/orders";
 import { Image } from "@/lib/image";
 import { StatusBadge } from "@/components/ui/Badge";
+import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Drawer } from "@/components/ui/Drawer";
@@ -61,11 +62,14 @@ interface Props {
   initialTab?: "details" | "chat";
 }
 
+/**
+ * Buttons per target status. There is no NEW entry: the backend rejects any transition back to
+ * NEW outright, so the action it used to render could never succeed.
+ */
 const ACTION_META: Record<
-  OrderStatus,
+  Exclude<OrderStatus, "NEW">,
   { label: string; icon: typeof Check; variant: "accent" | "surface" | "danger" }
 > = {
-  NEW: { label: "В новые", icon: Check, variant: "surface" },
   APPROVED: { label: "Одобрить", icon: Check, variant: "accent" },
   SHIPPED: { label: "Выслать (+ТТН)", icon: Send, variant: "accent" },
   DELIVERED: { label: "Доставлено", icon: PackageCheck, variant: "accent" },
@@ -205,21 +209,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
         {order ? shortId(order.id) : "Заказ"}
       </span>
       {order && <StatusBadge status={order.status} />}
-      {order && (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--accent-ink)]",
-            order.paid ? "bg-[var(--ok)]" : "bg-[var(--warn)]"
-          )}
-        >
-          {order.paid ? (
-            <Wallet className="h-3 w-3" />
-          ) : (
-            <WalletMinimal className="h-3 w-3" />
-          )}
-          {order.paid ? "Оплачен" : "Не оплачен"}
-        </span>
-      )}
+      {order && <PaymentBadge order={order} />}
     </div>
   );
 
@@ -283,6 +273,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
               {/* Action bar */}
               {order && (
                 <div className="flex flex-wrap items-center gap-2 border-t-[3px] border-[var(--border)] px-5 py-4">
+                  {/* A pending claim is highlighted: the customer says they paid and is waiting
+                      for someone to check the transfer. Until then the COD amount stays full. */}
                   <Button
                     size="sm"
                     variant={order.paid ? "surface" : "accent"}
@@ -296,10 +288,14 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
                     }
                     onClick={() => setPayOpen(true)}
                   >
-                    {order.paid ? "Изменить оплату" : "Отметить оплаченным"}
+                    {order.paid
+                      ? "Изменить оплату"
+                      : order.paymentClaimed
+                        ? "Проверить оплату"
+                        : "Отметить оплаченным"}
                   </Button>
                   {targets.map((target) => {
-                    const meta = ACTION_META[target];
+                    const meta = ACTION_META[target as Exclude<OrderStatus, "NEW">];
                     const Icon = meta.icon;
                     return (
                       <Button

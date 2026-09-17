@@ -124,7 +124,7 @@ function UserMetrics({ range }: { range: TimeRange }) {
     queryKey: ["user-metrics", range],
     queryFn: () => adminApi.userMetrics(range),
     placeholderData: keepPreviousData,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
 
   if (isLoading || !m) {

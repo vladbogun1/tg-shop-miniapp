@@ -1,70 +1,31 @@
 "use client";
 
 /**
- * STOMP-over-SockJS client for realtime chat (docs/SPEC.md WebSocket).
- *  - endpoint `/ws` (SockJS), JWT passed as query `?token=` and CONNECT header.
- *  - topic `/topic/orders/{orderId}/chat` -> new MessageDto.
+ * Order-chat realtime connection for the admin panel.
  *
- * Lazy-connects a single shared client; subscriptions are reference-counted so
- * multiple components on the same order share one socket.
+ * The previous version built a single STOMP client at module scope, capturing the token at that
+ * moment: after a logout/login every reconnect still presented the old one, and subscriptions
+ * queued before the socket opened were never cancelled when a component unmounted. The shared
+ * client reads the token on each connect and each subscription owns its connection.
  */
-import { Client, type IMessage } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
+import { connectOrderChat, type ChatConnection, type Message } from "@shop/shared";
 import { apiOrigin, getAccessToken } from "./api";
-import type { MessageDto } from "./api";
 
-let client: Client | null = null;
-let connected = false;
-const pending: (() => void)[] = [];
+export type { ChatConnection };
 
-function ensureClient(): Client {
-  if (client) return client;
-  const token = getAccessToken() ?? "";
-  const url = `${apiOrigin}/ws?token=${encodeURIComponent(token)}`;
-  client = new Client({
-    webSocketFactory: () => new SockJS(url) as unknown as WebSocket,
-    connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
-    reconnectDelay: 4000,
-    onConnect: () => {
-      connected = true;
-      while (pending.length) pending.shift()!();
-    },
-    onWebSocketClose: () => {
-      connected = false;
-    },
-    // Silence STOMP debug noise.
-    debug: () => {},
-  });
-  client.activate();
-  return client;
-}
-
-/**
- * Subscribe to an order's chat topic. Returns an unsubscribe fn.
- * Safe no-op if there's no token (e.g. SSR).
- */
+/** Subscribe to an order's chat. Returns an unsubscribe function. */
 export function subscribeOrderChat(
   orderId: string,
-  onMessage: (msg: MessageDto) => void
+  onMessage: (msg: Message) => void,
+  onStatus?: (connected: boolean) => void
 ): () => void {
   if (typeof window === "undefined") return () => {};
-  const c = ensureClient();
-  let sub: { unsubscribe: () => void } | null = null;
-
-  const doSub = () => {
-    sub = c.subscribe(`/topic/orders/${orderId}/chat`, (frame: IMessage) => {
-      try {
-        onMessage(JSON.parse(frame.body) as MessageDto);
-      } catch {
-        /* ignore malformed */
-      }
-    });
-  };
-
-  if (connected) doSub();
-  else pending.push(doSub);
-
-  return () => {
-    sub?.unsubscribe();
-  };
+  const connection: ChatConnection = connectOrderChat({
+    baseUrl: apiOrigin,
+    orderId,
+    getToken: getAccessToken,
+    onMessage,
+    onStatus,
+  });
+  return () => connection.disconnect();
 }

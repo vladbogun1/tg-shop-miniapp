@@ -1,66 +1,64 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.DeliveryMethod;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.dto.MetricsDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+/**
+ * Metrics are computed from a flat {@link MetricsRow} projection plus a grouped best-sellers query
+ * (previously: full entities and a lazy items walk per order).
+ */
 @ExtendWith(MockitoExtension.class)
 class MetricsServiceTest {
 
     @Mock
     OrderRepository orderRepository;
+    @Mock
+    OrderItemRepository orderItemRepository;
 
-    @InjectMocks
     MetricsService metricsService;
 
     private final Instant base = Instant.parse("2026-06-01T00:00:00Z");
 
-    private Order order(OrderStatus status, long totalMinor, DeliveryMethod dm) {
-        Order o = new Order();
-        o.setStatus(status);
-        o.setTotalMinor(totalMinor);
-        o.setCurrency("UAH");
-        o.setDeliveryMethod(dm);
-        o.setCreatedAt(base);
-        o.setItems(new ArrayList<>());
-        return o;
-    }
-
-    private OrderItem item(String title, int qty, long priceMinor) {
-        OrderItem it = new OrderItem();
-        it.setTitleSnapshot(title);
-        it.setQuantity(qty);
-        it.setPriceMinorSnapshot(priceMinor);
-        return it;
-    }
-
     @BeforeEach
-    void noop() {
-        // each test stubs findForMetrics as needed
+    void setUp() {
+        AppProperties props = new AppProperties();
+        props.setTimezone("Europe/Kyiv");
+        metricsService = new MetricsService(orderRepository, orderItemRepository, props);
+        lenient().when(orderItemRepository.topProducts(any(), any())).thenReturn(List.of());
+    }
+
+    private MetricsRow row(OrderStatus status, long totalMinor, DeliveryMethod dm) {
+        return new MetricsRow(status, totalMinor, "UAH", dm, null, base, null, null, null);
+    }
+
+    private MetricsRow row(OrderStatus status, long totalMinor, DeliveryMethod dm,
+                           Instant approvedAt, Instant shippedAt, Instant deliveredAt) {
+        return new MetricsRow(status, totalMinor, "UAH", dm, null, base,
+                approvedAt, shippedAt, deliveredAt);
     }
 
     @Test
     void emptyList_yieldsZerosAndNullsWithoutNpe() {
-        when(orderRepository.findForMetrics(any())).thenReturn(List.of());
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of());
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
@@ -86,13 +84,12 @@ class MetricsServiceTest {
 
     @Test
     void revenueCountsOnlyDeliveredOrders() {
-        List<Order> orders = List.of(
-                order(OrderStatus.DELIVERED, 10_000, DeliveryMethod.PICKUP),
-                order(OrderStatus.DELIVERED, 5_000, DeliveryMethod.NOVA_POSHTA),
-                order(OrderStatus.NEW, 99_999, DeliveryMethod.PICKUP),      // not delivered
-                order(OrderStatus.SHIPPED, 88_888, DeliveryMethod.PICKUP)   // not delivered
-        );
-        when(orderRepository.findForMetrics(any())).thenReturn(orders);
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.DELIVERED, 10_000, DeliveryMethod.PICKUP),
+                row(OrderStatus.DELIVERED, 5_000, DeliveryMethod.NOVA_POSHTA),
+                row(OrderStatus.NEW, 99_999, DeliveryMethod.PICKUP),      // not delivered
+                row(OrderStatus.SHIPPED, 88_888, DeliveryMethod.PICKUP)   // not delivered
+        ));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
@@ -104,14 +101,13 @@ class MetricsServiceTest {
 
     @Test
     void statusCountsReflectInput() {
-        List<Order> orders = List.of(
-                order(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
-                order(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
-                order(OrderStatus.APPROVED, 1, DeliveryMethod.PICKUP),
-                order(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP),
-                order(OrderStatus.REJECTED, 1, DeliveryMethod.PICKUP)
-        );
-        when(orderRepository.findForMetrics(any())).thenReturn(orders);
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
+                row(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
+                row(OrderStatus.APPROVED, 1, DeliveryMethod.PICKUP),
+                row(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP),
+                row(OrderStatus.REJECTED, 1, DeliveryMethod.PICKUP)
+        ));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
@@ -129,12 +125,11 @@ class MetricsServiceTest {
 
     @Test
     void deliveryMethodsBothZeroFilledThenCounted() {
-        List<Order> orders = List.of(
-                order(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
-                order(OrderStatus.NEW, 1, DeliveryMethod.NOVA_POSHTA),
-                order(OrderStatus.NEW, 1, DeliveryMethod.NOVA_POSHTA)
-        );
-        when(orderRepository.findForMetrics(any())).thenReturn(orders);
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.NEW, 1, DeliveryMethod.PICKUP),
+                row(OrderStatus.NEW, 1, DeliveryMethod.NOVA_POSHTA),
+                row(OrderStatus.NEW, 1, DeliveryMethod.NOVA_POSHTA)
+        ));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
@@ -145,12 +140,11 @@ class MetricsServiceTest {
 
     @Test
     void avgDeliverySpeedComputedFromTimestamps() {
-        Order o = order(OrderStatus.DELIVERED, 10_000, DeliveryMethod.PICKUP);
-        o.setCreatedAt(base);
-        o.setApprovedAt(base.plus(2, ChronoUnit.HOURS));
-        o.setShippedAt(base.plus(5, ChronoUnit.HOURS));
-        o.setDeliveredAt(base.plus(11, ChronoUnit.HOURS));
-        when(orderRepository.findForMetrics(any())).thenReturn(List.of(o));
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.DELIVERED, 10_000, DeliveryMethod.PICKUP,
+                        base.plus(2, ChronoUnit.HOURS),
+                        base.plus(5, ChronoUnit.HOURS),
+                        base.plus(11, ChronoUnit.HOURS))));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
         MetricsDto.DeliverySpeed speed = dto.deliverySpeed();
@@ -163,19 +157,13 @@ class MetricsServiceTest {
 
     @Test
     void deliverySpeedAveragesAcrossQualifyingOrders_skipsIncomplete() {
-        Order full = order(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP);
-        full.setCreatedAt(base);
-        full.setApprovedAt(base.plus(4, ChronoUnit.HOURS));
-
-        Order full2 = order(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP);
-        full2.setCreatedAt(base);
-        full2.setApprovedAt(base.plus(6, ChronoUnit.HOURS));
-
-        Order incomplete = order(OrderStatus.NEW, 1, DeliveryMethod.PICKUP);
-        incomplete.setCreatedAt(base); // no approvedAt -> excluded from approve avg
-
-        when(orderRepository.findForMetrics(any()))
-                .thenReturn(List.of(full, full2, incomplete));
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP,
+                        base.plus(4, ChronoUnit.HOURS), null, null),
+                row(OrderStatus.DELIVERED, 1, DeliveryMethod.PICKUP,
+                        base.plus(6, ChronoUnit.HOURS), null, null),
+                // no approvedAt -> excluded from the approve average
+                row(OrderStatus.NEW, 1, DeliveryMethod.PICKUP)));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
@@ -184,34 +172,44 @@ class MetricsServiceTest {
     }
 
     @Test
-    void topProductsAggregatedFromItemSnapshots() {
-        Order a = order(OrderStatus.DELIVERED, 0, DeliveryMethod.PICKUP);
-        a.getItems().add(item("Widget", 3, 1_000));
-        a.getItems().add(item("Gadget", 1, 5_000));
-
-        Order b = order(OrderStatus.NEW, 0, DeliveryMethod.PICKUP);
-        b.getItems().add(item("Widget", 2, 1_000));
-
-        when(orderRepository.findForMetrics(any())).thenReturn(List.of(a, b));
+    void topProductsComeFromTheGroupedQuery() {
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                row(OrderStatus.DELIVERED, 0, DeliveryMethod.PICKUP)));
+        when(orderItemRepository.topProducts(any(), any())).thenReturn(List.of(
+                new Object[]{"Widget", 5L, 5_000L},
+                new Object[]{"Gadget", 1L, 5_000L}));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
         assertThat(dto.topProducts()).hasSize(2);
-        // sorted by qty desc: Widget (5) before Gadget (1)
         MetricsDto.TopProduct top = dto.topProducts().get(0);
         assertThat(top.title()).isEqualTo("Widget");
         assertThat(top.qty()).isEqualTo(5);
-        assertThat(top.revenueMinor()).isEqualTo(5_000); // 5 * 1000
+        assertThat(top.revenueMinor()).isEqualTo(5_000);
     }
 
     @Test
     void currencyTakenFromFirstOrderWithCurrency() {
-        Order o = order(OrderStatus.NEW, 1, DeliveryMethod.PICKUP);
-        o.setCurrency("USD");
-        when(orderRepository.findForMetrics(any())).thenReturn(List.of(o));
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                new MetricsRow(OrderStatus.NEW, 1, "USD", DeliveryMethod.PICKUP, null,
+                        base, null, null, null)));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
         assertThat(dto.currency()).isEqualTo("USD");
+    }
+
+    @Test
+    void dayBucketsUseTheBusinessTimezoneNotUtc() {
+        // 22:30 UTC on 2026-06-01 is 01:30 on 2026-06-02 in Kyiv (UTC+3 in summer).
+        Instant lateEvening = Instant.parse("2026-06-01T22:30:00Z");
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                new MetricsRow(OrderStatus.NEW, 1_000, "UAH", DeliveryMethod.PICKUP, null,
+                        lateEvening, null, null, null)));
+
+        MetricsDto dto = metricsService.compute(TimeRange.MONTH);
+
+        assertThat(dto.ordersByDay()).hasSize(1);
+        assertThat(dto.ordersByDay().get(0).date()).isEqualTo("2026-06-02");
     }
 }

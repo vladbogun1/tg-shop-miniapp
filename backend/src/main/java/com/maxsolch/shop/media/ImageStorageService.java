@@ -2,9 +2,13 @@ package com.maxsolch.shop.media;
 
 import com.maxsolch.shop.config.AppProperties;
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.StatObjectArgs;
+import io.minio.StatObjectResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -79,6 +83,58 @@ public class ImageStorageService {
         String filename = sanitize(file.getOriginalFilename());
         String key = "chat/" + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
+    }
+
+    /** A stored object's bytes plus the content type it was uploaded with. */
+    public record StoredObject(InputStream stream, String contentType) {
+    }
+
+    /**
+     * Reads an object back out of storage. Used by {@link MediaController} to serve private chat
+     * attachments, which is why the bucket no longer needs to be world-readable.
+     *
+     * @return the object, or null if it does not exist
+     */
+    public StoredObject get(String key) {
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        try {
+            StatObjectResponse stat = minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(key)
+                    .build());
+            InputStream stream = minioClient.getObject(GetObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(key)
+                    .build());
+            return new StoredObject(stream, stat.contentType());
+        } catch (Exception e) {
+            log.warn("Could not read object '{}': {}", key, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Best-effort delete of a stored object. Used when an admin removes a picture from a product —
+     * without it every replaced image stayed in the bucket forever.
+     *
+     * <p>Never throws: losing a byte-range in object storage must not fail the product save that
+     * the user is actually performing. External http(s) urls (legacy/migrated images) are skipped.
+     */
+    public void deleteQuietly(String key) {
+        if (key == null || key.isBlank() || key.startsWith("http://") || key.startsWith("https://")) {
+            return;
+        }
+        try {
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(key.trim())
+                    .build());
+            log.info("Deleted orphaned object '{}'", key);
+        } catch (Exception e) {
+            log.warn("Could not delete object '{}': {}", key, e.getMessage());
+        }
     }
 
     private String upload(MultipartFile file, String key) {

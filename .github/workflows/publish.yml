@@ -61,7 +61,9 @@ jobs:
       - name: Build & push customer frontend (same-origin)
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          # Repo root: the Next apps are npm workspaces depending on ./shared.
+          context: .
+          file: ./frontend/Dockerfile
           push: true
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=
@@ -75,7 +77,8 @@ jobs:
       - name: Build & push admin frontend (same-origin)
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend-admin
+          context: .
+          file: ./frontend-admin/Dockerfile
           push: true
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=

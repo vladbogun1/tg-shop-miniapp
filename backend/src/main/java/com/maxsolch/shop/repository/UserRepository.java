@@ -74,6 +74,29 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.telegramUserId FROM User u WHERE u.telegramUserId > 0 AND u.botBlocked = false")
     List<Long> audienceAll();
 
+    // Sizes for the compose screen. Previously the four id lists above were fetched in full just
+    // to call .size() on them — four table scans materialised into memory to show four numbers.
+    @Query("SELECT COUNT(u) FROM User u WHERE u.telegramUserId > 0 AND u.botBlocked = false")
+    long audienceAllCount();
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.telegramUserId > 0 AND u.botBlocked = false "
+            + "AND u.premium = true")
+    long audiencePremiumCount();
+
+    @Query("""
+            SELECT COUNT(u) FROM User u
+            WHERE u.telegramUserId > 0 AND u.botBlocked = false
+              AND EXISTS (SELECT 1 FROM Order o WHERE o.tgUserId = u.telegramUserId)
+            """)
+    long audienceActiveCount();
+
+    @Query("""
+            SELECT COUNT(u) FROM User u
+            WHERE u.telegramUserId > 0 AND u.botBlocked = false
+              AND NOT EXISTS (SELECT 1 FROM Order o WHERE o.tgUserId = u.telegramUserId)
+            """)
+    long audienceInactiveCount();
+
     @Query("SELECT u.telegramUserId FROM User u WHERE u.telegramUserId > 0 AND u.botBlocked = false AND u.premium = true")
     List<Long> audiencePremium();
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.TagRepository;
@@ -32,9 +33,11 @@ import java.util.List;
 public class AdminTagController {
 
     private final TagRepository tagRepository;
+    private final AdminAuditService audit;
 
-    public AdminTagController(TagRepository tagRepository) {
+    public AdminTagController(TagRepository tagRepository, AdminAuditService audit) {
         this.tagRepository = tagRepository;
+        this.audit = audit;
     }
 
     @GetMapping
@@ -71,7 +74,9 @@ public class AdminTagController {
     @CacheEvict(value = {"tags", "products", "productById"}, allEntries = true)
     @Operation(summary = "Delete tag")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        tagRepository.delete(load(id));
+        Tag tag = load(id);
+        audit.record("TAG_DELETE", "TAG", id, tag.getName());
+        tagRepository.delete(tag);
         return ResponseEntity.noContent().build();
     }
 
