@@ -5,6 +5,7 @@ import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
@@ -36,15 +37,18 @@ public class MessageService {
     private final OrderRepository orderRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ApplicationEventPublisher events;
+    private final MediaSigner mediaSigner;
 
     public MessageService(OrderMessageRepository messageRepository,
                           OrderRepository orderRepository,
                           SimpMessagingTemplate messagingTemplate,
-                          ApplicationEventPublisher events) {
+                          ApplicationEventPublisher events,
+                          MediaSigner mediaSigner) {
         this.messageRepository = messageRepository;
         this.orderRepository = orderRepository;
         this.messagingTemplate = messagingTemplate;
         this.events = events;
+        this.mediaSigner = mediaSigner;
     }
 
     @Transactional(readOnly = true)
@@ -251,7 +255,9 @@ public class MessageService {
                 m.getSenderName(),
                 m.getType().name(),
                 m.getText(),
-                m.getAttachmentUrl(),
+                // Attachments live in a private bucket; the client gets a short-lived signed link
+                // rather than a raw object key it could never fetch (and that anyone else could).
+                mediaSigner.signedUrl(m.getAttachmentUrl()),
                 m.getFileName(),
                 m.getMimeType(),
                 m.getReplyToMessageId(),
