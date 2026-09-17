@@ -8,11 +8,18 @@
 
 export class ApiError extends Error {
   readonly status: number;
+  /**
+   * Stable reason tag from the server, when it sent one (e.g. "PROMO_REJECTED"). Branching on this
+   * instead of on the message text is what lets those messages stay plain Russian and be reworded
+   * without silently breaking the apps.
+   */
+  readonly code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -72,10 +79,12 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
     if (res.status === 401 || res.status === 403) {
       onUnauthorized?.(res.status);
-      throw new ApiError(await messageOf(res, "Сессия истекла, войдите снова"), res.status);
+      const failure = await failureOf(res, "Сессия истекла, войдите снова");
+      throw new ApiError(failure.message, res.status, failure.code);
     }
     if (!res.ok) {
-      throw new ApiError(await messageOf(res, `Ошибка ${res.status}`), res.status);
+      const failure = await failureOf(res, `Ошибка ${res.status}`);
+      throw new ApiError(failure.message, res.status, failure.code);
     }
 
     if (res.status === 204) return undefined as T;
@@ -84,12 +93,15 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     return JSON.parse(text) as T;
   }
 
-  async function messageOf(res: Response, fallback: string): Promise<string> {
+  async function failureOf(
+    res: Response,
+    fallback: string
+  ): Promise<{ message: string; code?: string }> {
     try {
-      const data = (await res.json()) as { message?: string; error?: string };
-      return data.message || data.error || fallback;
+      const data = (await res.json()) as { message?: string; error?: string; code?: string };
+      return { message: data.message || data.error || fallback, code: data.code };
     } catch {
-      return fallback;
+      return { message: fallback };
     }
   }
 

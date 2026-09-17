@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -52,7 +53,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
-        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage(), ex.getCode());
     }
 
     @ExceptionHandler(ForbiddenException.class)
@@ -135,10 +136,18 @@ public class ApiExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.of(
-                "timestamp", Instant.now().toString(),
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", message == null ? "" : message));
+        return error(status, message, null);
+    }
+
+    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message, String code) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message == null ? "" : message);
+        if (code != null) {
+            body.put("code", code);
+        }
+        return ResponseEntity.status(status).body(body);
     }
 }

@@ -328,9 +328,13 @@ class OrderServiceTest {
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "NOPE");
 
+        // The apps branch on the CODE, not the wording: the message is customer-facing Russian and
+        // is free to change.
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("invalid promo code");
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.type(BadRequestException.class))
+                .extracting(BadRequestException::getCode)
+                .isEqualTo(OrderService.PROMO_REJECTED);
     }
 
     // ---------- status transitions ----------
