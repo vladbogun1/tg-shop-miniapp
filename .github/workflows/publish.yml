@@ -8,6 +8,10 @@ name: Publish images
 #   - pushing a tag like v2.0.0  -> images tagged with that version + :latest
 #   - manual run (workflow_dispatch) with an explicit tag input
 #
+# A PRE-RELEASE tag (v2.7.0-rc1, -beta, -alpha) does NOT move :latest. Those builds are for
+# trying a branch on the server without merging it, and the whole point is that :latest keeps
+# pointing at what master produced — so a rollback is just IMAGE_TAG back to the last release.
+#
 # Requires repo secrets (already present): DOCKERHUB_USERNAME, DOCKERHUB_TOKEN.
 
 on:
@@ -38,6 +42,15 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # The second tag every image gets. For a real release that is ":latest"; for a
+          # pre-release it is the tag itself, i.e. the same push twice — a no-op that leaves
+          # :latest alone without needing a conditional tag list.
+          case "$TAG" in
+            *-rc*|*-beta*|*-alpha*) MOVING="$TAG" ;;
+            *)                      MOVING="latest" ;;
+          esac
+          echo "moving=$MOVING" >> "$GITHUB_OUTPUT"
+          echo "Tagging images as $TAG and $MOVING"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -54,7 +67,7 @@ jobs:
           push: true
           tags: |
             ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.moving }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -70,7 +83,7 @@ jobs:
             NEXT_PUBLIC_IMAGE_BASE_URL=/img
           tags: |
             ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.moving }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -85,6 +98,6 @@ jobs:
             NEXT_PUBLIC_IMAGE_BASE_URL=/img
           tags: |
             ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ADMIN_IMAGE }}:latest
+            ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.moving }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
