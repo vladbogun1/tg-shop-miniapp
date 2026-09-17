@@ -14,7 +14,8 @@ import java.util.Base64;
 import java.util.Date;
 
 /**
- * Issues and validates HS256 JWTs. Subject = telegram user id, custom claim {@code role}.
+ * Issues and validates HS256 JWTs. Subject = telegram user id, custom claims {@code role} and
+ * {@code tv} (token version — see {@link AdminTokenValidator} for how ADMIN tokens are revoked).
  */
 @Service
 public class JwtService {
@@ -30,11 +31,17 @@ public class JwtService {
     }
 
     public String issueToken(long telegramUserId, Role role) {
+        return issueToken(telegramUserId, role, 0);
+    }
+
+    /** Issues a token pinned to {@code tokenVersion} (admins: {@code admin_users.token_version}). */
+    public String issueToken(long telegramUserId, Role role, int tokenVersion) {
         Instant now = Instant.now();
         Instant exp = now.plus(ttlMinutes, ChronoUnit.MINUTES);
         return Jwts.builder()
                 .subject(String.valueOf(telegramUserId))
                 .claim("role", role.name())
+                .claim("tv", tokenVersion)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(exp))
                 .signWith(key)
@@ -54,6 +61,7 @@ public class JwtService {
         Claims claims = jws.getPayload();
         long telegramUserId = Long.parseLong(claims.getSubject());
         Role role = Role.valueOf(claims.get("role", String.class));
-        return new AuthPrincipal(telegramUserId, role);
+        Integer tokenVersion = claims.get("tv", Integer.class);
+        return new AuthPrincipal(telegramUserId, role, tokenVersion == null ? 0 : tokenVersion);
     }
 }

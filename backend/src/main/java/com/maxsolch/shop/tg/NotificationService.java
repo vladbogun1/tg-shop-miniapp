@@ -296,6 +296,42 @@ public class NotificationService {
         }
     }
 
+    /**
+     * The customer uploaded a transfer screenshot. It is a claim, not a confirmation, so the admins
+     * are pinged to go and verify it — nothing about the order's money changes on its own.
+     */
+    public void onPaymentClaimed(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId == null || chatId.isBlank()) {
+            return;
+        }
+        try {
+            String cur = nz(order.getCurrency());
+            String text = "🧾 <b>Клиент заявил об оплате</b>\n"
+                    + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                    + "Сумма заказа: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>\n"
+                    + "Скрин перевода — в чате заказа.\n"
+                    + "<i>Проверьте поступление и подтвердите оплату в админке — "
+                    + "до подтверждения наложка остаётся полной.</i>";
+            SendMessage msg = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(adminButtons(order))
+                    .build();
+            int topic = props.getTelegram().getNotifyTopicChat();
+            if (topic > 0) {
+                msg.setMessageThreadId(topic);
+            }
+            bot.execute(msg);
+        } catch (Exception e) {
+            log.warn("onPaymentClaimed failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** Order approved → post a dispatch card (what to ship + COD to collect) to the seller topic. */
     public void onApprovedDispatch(Order order) {
         if (!enabled()) {
@@ -433,6 +469,10 @@ public class NotificationService {
         }
         if (received > 0) {
             sb.append("✅ Уже оплачено: ").append(money(received)).append(' ').append(cur).append('\n');
+        }
+        if (cod > 0 && order.isPaymentClaimed()) {
+            // A claim is not money: spell it out so the card is never mistaken for "paid".
+            sb.append("🧾 <i>Клиент прислал скрин перевода — НЕ подтверждён админом</i>\n");
         }
         if (cod <= 0) {
             sb.append("\n🟢 <b>НАЛОЖКА: 0</b> — заказ оплачен, отправляем без наложенного платежа.");
@@ -575,8 +615,13 @@ public class NotificationService {
         return d.toString();
     }
 
+    /**
+     * Minor units → whole currency units, rounded the same way the frontends do
+     * (lib/money.ts uses Math.round). Truncating here made a Telegram card and the app show
+     * different totals for the same order whenever kopecks were involved.
+     */
     private String money(long minor) {
-        long whole = minor / 100;
+        long whole = Math.round(minor / 100.0);
         return String.format("%,d", whole).replace(',', ' ');
     }
 

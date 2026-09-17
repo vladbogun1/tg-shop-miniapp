@@ -105,7 +105,7 @@ class OrderServiceTest {
     @Test
     void createOrder_happyPath_setsTotalsStockSnapshotsAndStatusNew() {
         Product p = simpleProduct(10, 2_500); // 25.00
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 2)), null);
@@ -136,11 +136,14 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_withVariant_decrementsVariantAndProductStock() {
-        Product p = simpleProduct(10, 1_000);
+    void createOrder_withVariant_decrementsVariantAndRollsUpProductStock() {
+        // When a product has variants, the variant counters are the source of truth and
+        // product.stock is their sum (same rule AdminProductService applies when saving a
+        // product). Decrementing both independently is what used to let stock drift.
+        Product p = simpleProduct(4, 1_000);
         ProductVariant v = variant(p, 4);
         p.getVariants().add(v);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         String variantUuid = UuidUtil.toString(v.getId());
         CreateOrderCommand command = cmd(
@@ -149,7 +152,7 @@ class OrderServiceTest {
         Order order = service.createOrder(command);
 
         assertThat(v.getStock()).isEqualTo(1);   // 4 - 3
-        assertThat(p.getStock()).isEqualTo(7);   // rollup 10 - 3
+        assertThat(p.getStock()).isEqualTo(1);   // rollup = sum(variants)
         OrderItem it = order.getItems().get(0);
         assertThat(it.getVariantNameSnapshot()).isEqualTo("Size M");
         assertThat(it.getVariantId()).isEqualTo(v.getId());
@@ -160,7 +163,7 @@ class OrderServiceTest {
     @Test
     void createOrder_outOfStock_throws() {
         Product p = simpleProduct(1, 1_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 5)), null);
@@ -175,7 +178,7 @@ class OrderServiceTest {
     void createOrder_variantRequiredButMissing_throws() {
         Product p = simpleProduct(10, 1_000);
         p.getVariants().add(variant(p, 5)); // product has variants
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null); // no variant
@@ -189,7 +192,7 @@ class OrderServiceTest {
     void createOrder_variantNotBelongingToProduct_throws() {
         Product p = simpleProduct(10, 1_000);
         p.getVariants().add(variant(p, 5));
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         String foreignVariant = UUID.randomUUID().toString();
         CreateOrderCommand command = cmd(
@@ -205,7 +208,7 @@ class OrderServiceTest {
         Product p = simpleProduct(10, 1_000);
         ProductVariant v = variant(p, 1);
         p.getVariants().add(v);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, UuidUtil.toString(v.getId()), 5)), null);
@@ -228,7 +231,7 @@ class OrderServiceTest {
     void createOrder_inactiveProduct_throws() {
         Product p = simpleProduct(10, 1_000);
         p.setActive(false);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null);
@@ -243,14 +246,14 @@ class OrderServiceTest {
     @Test
     void createOrder_percentPromo_appliesPercentDiscount() {
         Product p = simpleProduct(10, 10_000); // 100.00
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("SAVE10");
         promo.setDiscountPercent(10);
         promo.setDiscountAmountMinor(0);
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("SAVE10")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE10");
@@ -268,14 +271,14 @@ class OrderServiceTest {
     @Test
     void createOrder_fixedAmount_takesPriorityOverPercent() {
         Product p = simpleProduct(10, 10_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("MIX");
         promo.setDiscountPercent(50);          // would be 5000
         promo.setDiscountAmountMinor(2_000);   // fixed wins
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("MIX")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("MIX")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "MIX");
@@ -289,13 +292,13 @@ class OrderServiceTest {
     @Test
     void createOrder_fixedAmountExceedsSubtotal_totalNeverNegative() {
         Product p = simpleProduct(10, 3_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("BIG");
         promo.setDiscountAmountMinor(999_999); // way more than subtotal
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("BIG")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("BIG")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "BIG");
@@ -310,8 +313,8 @@ class OrderServiceTest {
     @Test
     void createOrder_invalidPromo_throws() {
         Product p = simpleProduct(10, 1_000);
-        lenient().when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
-        when(promoCodeRepository.findByCodeAndActiveTrue("NOPE")).thenReturn(Optional.empty());
+        lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("NOPE")).thenReturn(Optional.empty());
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "NOPE");
@@ -377,7 +380,7 @@ class OrderServiceTest {
         // order with one item referencing product+variant
         Order o = persistedOrder(OrderStatus.NEW);
 
-        Product p = simpleProduct(2, 1_000);
+        Product p = simpleProduct(1, 1_000);
         ProductVariant v = variant(p, 1);
         p.getVariants().add(v);
 
@@ -389,15 +392,15 @@ class OrderServiceTest {
         o.getItems().add(it);
 
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
-        when(productRepository.findByIdWithDetails(p.getId())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
         Order rejected = service.reject(o.getId(), "out of stock", true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getRejectedAt()).isNotNull();
         assertThat(rejected.getRejectReason()).isEqualTo("out of stock");
-        assertThat(p.getStock()).isEqualTo(5); // 2 + 3 restored
         assertThat(v.getStock()).isEqualTo(4); // 1 + 3 restored
+        assertThat(p.getStock()).isEqualTo(4); // rollup = sum(variants)
         verify(productRepository).save(p);
     }
 

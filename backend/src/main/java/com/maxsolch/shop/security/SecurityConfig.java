@@ -1,6 +1,7 @@
 package com.maxsolch.shop.security;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.config.AllowedOrigins;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,7 +15,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -22,11 +22,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final AppProperties props;
+    private final RateLimitFilter rateLimitFilter;
+    private final AllowedOrigins allowedOrigins;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, AppProperties props) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter,
+                          RateLimitFilter rateLimitFilter,
+                          AllowedOrigins allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
-        this.props = props;
+        this.rateLimitFilter = rateLimitFilter;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Bean
@@ -39,8 +43,12 @@ public class SecurityConfig {
                         // Home / Thymeleaf + static
                         .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/static/**").permitAll()
-                        // Actuator (health/info public; others ADMIN later)
+                        // Actuator: health/info are public (docker healthchecks / uptime probes);
+                        // everything else (caches, metrics, env...) is ADMIN-only. Previously the
+                        // rest fell through to anyRequest().authenticated(), so any CUSTOMER token
+                        // could read them.
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // OpenAPI / Swagger
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Public API
@@ -59,30 +67,41 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Everything else requires authentication; admin routes use @RequiredAdmin
                         .anyRequest().authenticated())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
+     * Both filters are {@code @Component}s, which makes Spring Boot auto-register them in the
+     * plain servlet chain on top of the security chain — they would run twice per request (and the
+     * rate limiter would count every request twice). These beans opt them out of auto-registration;
+     * the security chain above is the only place they run.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter filter) {
+        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
      * CORS for the separately-deployed frontend (Mini App / admin web).
-     * Allows configured origins plus any localhost port for local dev.
+     * The origin list lives in {@link AllowedOrigins} so the WebSocket handshake uses the same one;
+     * localhost/tunnel wildcards are added only under the dev profile.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        List<String> patterns = new ArrayList<>();
-        patterns.add("http://localhost:*");
-        patterns.add("http://127.0.0.1:*");
-        patterns.add("https://*.ngrok-free.app");
-        patterns.add("https://*.ngrok-free.dev");
-        if (props.getWebappBaseUrl() != null && !props.getWebappBaseUrl().isBlank()) {
-            patterns.add(props.getWebappBaseUrl());
-        }
-        if (props.getAdminBaseUrl() != null && !props.getAdminBaseUrl().isBlank()) {
-            patterns.add(props.getAdminBaseUrl());
-        }
-        cfg.setAllowedOriginPatterns(patterns);
+        cfg.setAllowedOriginPatterns(allowedOrigins.patterns());
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "ngrok-skip-browser-warning"));
         cfg.setExposedHeaders(List.of("Authorization"));

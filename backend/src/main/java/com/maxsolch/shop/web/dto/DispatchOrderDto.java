@@ -23,6 +23,8 @@ public record DispatchOrderDto(
         long receivedMinor,
         long codMinor,
         boolean paid,
+        /** Screenshot received from the customer but not yet confirmed — COD stays full. */
+        boolean paymentClaimed,
         String currency,
         String paymentOptionTitle,
         String trackingNumber,

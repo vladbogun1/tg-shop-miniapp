@@ -12,6 +12,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
+    /** Business timezone for analytics day buckets / human-facing dates (default Europe/Kyiv). */
+    private String timezone = "Europe/Kyiv";
+
     private String imageBaseUrl;
     private String webappBaseUrl;
     private String adminBaseUrl;

@@ -1,6 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.web.BadRequestException;
@@ -33,11 +34,14 @@ public class AdminProductController {
 
     private final AdminProductService productService;
     private final ImageStorageService imageStorageService;
+    private final UploadValidator uploadValidator;
 
     public AdminProductController(AdminProductService productService,
-                                  ImageStorageService imageStorageService) {
+                                  ImageStorageService imageStorageService,
+                                  UploadValidator uploadValidator) {
         this.productService = productService;
         this.imageStorageService = imageStorageService;
+        this.uploadValidator = uploadValidator;
     }
 
     @GetMapping("/products")
@@ -85,9 +89,7 @@ public class AdminProductController {
     @PostMapping("/uploads")
     @Operation(summary = "Upload a product image (returns S3 key)")
     public UploadResponse upload(@RequestParam("file") MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("file is required");
-        }
+        uploadValidator.validateImage(file);
         return UploadResponse.ofKey(imageStorageService.uploadProductImage(file));
     }
 }
