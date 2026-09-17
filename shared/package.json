@@ -1,0 +1,14 @@
+{
+  "name": "@shop/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Code shared by the customer Mini App and the admin panel (money, dates, order rules, API core, image URLs, WebSocket)",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "@stomp/stompjs": ">=7"
+  }
+}

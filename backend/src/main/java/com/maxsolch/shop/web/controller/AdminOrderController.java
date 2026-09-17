@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,15 +56,18 @@ public class AdminOrderController {
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
+    private final AdminAuditService audit;
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
-                                MessageService messageService) {
+                                MessageService messageService,
+                                AdminAuditService audit) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
+        this.audit = audit;
     }
 
     /** Per-status column cap on the board so we never load all 10k orders. */
@@ -103,14 +108,30 @@ public class AdminOrderController {
         byte[] idKey = idKeyOrNull(q);
         Pageable cap = PageRequest.of(0, BOARD_COLUMN_LIMIT);
 
+        // Fetch every column first, then map them together: the unread and item counts come from
+        // two grouped queries for the whole board instead of two per card (5 columns x 300 cards
+        // used to mean ~3000 queries on every 10-second refresh).
+        Map<String, List<Order>> byStatus = new LinkedHashMap<>();
+        List<Order> all = new ArrayList<>();
+        for (OrderStatus status : OrderStatus.values()) {
+            List<Order> orders = orderRepository.searchByStatus(status, like, idKey, from, cap);
+            byStatus.put(status.name(), orders);
+            all.addAll(orders);
+        }
+        OrderQueryService.CardContext ctx =
+                orderQueryService.cardContext(all, SenderType.CUSTOMER);
+
         Map<String, List<OrderCardDto>> columns = new LinkedHashMap<>();
+        byStatus.forEach((status, orders) ->
+                columns.put(status, orders.stream().map(o -> orderQueryService.toCard(o, ctx)).toList()));
+
+        // True per-column totals in one grouped query (was one COUNT per status).
         Map<String, Long> counts = new LinkedHashMap<>();
         for (OrderStatus status : OrderStatus.values()) {
-            List<OrderCardDto> cards = orderRepository.searchByStatus(status, like, idKey, from, cap).stream()
-                    .map(o -> orderQueryService.toCard(o, messageService.unreadForAdmin(o.getId())))
-                    .toList();
-            columns.put(status.name(), cards);
-            counts.put(status.name(), orderRepository.countByStatusSearch(status, like, idKey, from));
+            counts.put(status.name(), 0L);
+        }
+        for (Object[] row : orderRepository.countsByStatus(like, idKey, from)) {
+            counts.put(((OrderStatus) row[0]).name(), ((Number) row[1]).longValue());
         }
         return new OrderBoardDto(columns, counts);
     }
@@ -118,9 +139,9 @@ public class AdminOrderController {
     @GetMapping("/by-user/{telegramUserId}")
     @Operation(summary = "All orders of a single user (newest first) — for the Users profile")
     public List<OrderCardDto> byUser(@PathVariable long telegramUserId) {
-        return orderRepository.findByTgUserIdOrderByCreatedAtDesc(telegramUserId).stream()
-                .map(o -> orderQueryService.toCard(o, messageService.unreadForAdmin(o.getId())))
-                .toList();
+        return orderQueryService.toCards(
+                orderRepository.findByTgUserIdOrderByCreatedAtDesc(telegramUserId),
+                SenderType.CUSTOMER);
     }
 
     @GetMapping
@@ -136,10 +157,11 @@ public class AdminOrderController {
         String like = likeOrNull(q);
         byte[] idKey = idKeyOrNull(q);
         Instant from = TimeRange.parse(range).from();
-        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size), sortOf(sortBy, sortDir));
-        return orderRepository.search(statusFilter, like, idKey, from, pageable).getContent().stream()
-                .map(o -> orderQueryService.toCard(o, messageService.unreadForAdmin(o.getId())))
-                .toList();
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
+                sortOf(sortBy, sortDir));
+        return orderQueryService.toCards(
+                orderRepository.search(statusFilter, like, idKey, from, pageable).getContent(),
+                SenderType.CUSTOMER);
     }
 
     /** Whitelisted sort, falling back to {@code createdAt desc} for unknown fields/directions. */
@@ -197,6 +219,11 @@ public class AdminOrderController {
         boolean restock = req.restock() == null || req.restock();
         Order updated = orderService.changeStatus(load(id).getId(), target,
                 req.trackingNumber(), req.rejectReason(), restock);
+        audit.record("ORDER_STATUS", "ORDER", id,
+                "статус → " + target.name()
+                        + (req.trackingNumber() == null ? "" : ", ТТН " + req.trackingNumber())
+                        + (req.rejectReason() == null ? "" : ", причина: " + req.rejectReason())
+                        + (target == OrderStatus.REJECTED ? (restock ? ", сток возвращён" : ", БЕЗ возврата стока") : ""));
         return orderQueryService.toDetail(updated);
     }
 
@@ -205,6 +232,10 @@ public class AdminOrderController {
     public OrderDetailDto setPaid(@PathVariable String id,
                                   @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
         Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor());
+        audit.record("ORDER_PAID", "ORDER", id,
+                req.receivedMinor() > 0
+                        ? "подтверждено получено: " + req.receivedMinor() + " (мин. ед.)"
+                        : "оплата снята");
         return orderQueryService.toDetail(updated);
     }
 
@@ -215,6 +246,7 @@ public class AdminOrderController {
         int qty = req.quantity() == null ? 1 : req.quantity();
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.addGift(load(id).getId(), req.productId(), req.variantId(), qty, notify);
+        audit.record("ORDER_GIFT", "ORDER", id, "подарок " + req.productId() + " x" + qty);
         return orderQueryService.toDetail(updated);
     }
 
@@ -226,6 +258,8 @@ public class AdminOrderController {
         boolean gift = Boolean.TRUE.equals(req.gift());
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.addItem(load(id).getId(), req.productId(), req.variantId(), qty, gift, notify);
+        audit.record("ORDER_ITEM_ADD", "ORDER", id,
+                (gift ? "подарок " : "позиция ") + req.productId() + " x" + qty);
         return orderQueryService.toDetail(updated);
     }
 
@@ -236,6 +270,7 @@ public class AdminOrderController {
         int qty = req.quantity() == null ? 1 : req.quantity();
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.changeItemQuantity(load(id).getId(), itemId, qty, notify);
+        audit.record("ORDER_ITEM_QTY", "ORDER", id, "позиция #" + itemId + " → x" + qty);
         return orderQueryService.toDetail(updated);
     }
 
@@ -243,6 +278,7 @@ public class AdminOrderController {
     @Operation(summary = "Remove an order item (gift/line) and restore its stock")
     public OrderDetailDto removeItem(@PathVariable String id, @PathVariable long itemId) {
         Order updated = orderService.removeItem(load(id).getId(), itemId);
+        audit.record("ORDER_ITEM_REMOVE", "ORDER", id, "удалена позиция #" + itemId);
         return orderQueryService.toDetail(updated);
     }
 
@@ -253,20 +289,32 @@ public class AdminOrderController {
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
                 req.percent(), Boolean.TRUE.equals(req.clear()), notify);
+        audit.record("ORDER_DISCOUNT", "ORDER", id,
+                Boolean.TRUE.equals(req.clear()) ? "скидка снята"
+                        : "скидка: " + (req.promoCode() != null ? "промокод " + req.promoCode()
+                                : req.amountMinor() != null ? req.amountMinor() + " (мин. ед.)"
+                                : req.percent() + "%"));
         return orderQueryService.toDetail(updated);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete order")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        orderRepository.delete(load(id));
+        Order order = load(id);
+        // Hard delete cascades to items and chat history — record it before it is gone.
+        audit.record("ORDER_DELETE", "ORDER", id,
+                "удалён заказ " + order.getCustomerName() + ", " + order.getTotalMinor() + " (мин. ед.), "
+                        + "статус " + order.getStatus());
+        orderRepository.delete(order);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/messages")
-    @Operation(summary = "List chat messages (admin)")
-    public List<MessageDto> messages(@PathVariable String id) {
-        return messageService.list(load(id).getId());
+    @Operation(summary = "Chat messages, newest page first (use before= to load older ones)")
+    public List<MessageDto> messages(@PathVariable String id,
+                                     @RequestParam(required = false) Long before,
+                                     @RequestParam(required = false) Integer limit) {
+        return messageService.list(load(id).getId(), before, limit);
     }
 
     @PostMapping("/{id}/messages")
@@ -274,7 +322,8 @@ public class AdminOrderController {
     public MessageDto sendMessage(@PathVariable String id, @RequestBody SendMessageRequest req) {
         Order order = load(id);
         long adminId = SecurityUtil.currentUserId();
-        return messageService.postAdminMessage(order.getId(), adminId, "Менеджер", req);
+        // Sign with the actual admin instead of a hardcoded "Менеджер".
+        return messageService.postAdminMessage(order.getId(), adminId, audit.currentAdminName(), req);
     }
 
     @PostMapping("/{id}/messages/read")

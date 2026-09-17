@@ -4,6 +4,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
@@ -51,6 +52,7 @@ public class MeController {
     private final MessageService messageService;
     private final OrderService orderService;
     private final ImageStorageService imageStorageService;
+    private final UploadValidator uploadValidator;
 
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
@@ -58,7 +60,8 @@ public class MeController {
                         OrderQueryService orderQueryService,
                         MessageService messageService,
                         OrderService orderService,
-                        ImageStorageService imageStorageService) {
+                        ImageStorageService imageStorageService,
+                        UploadValidator uploadValidator) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.orderRepository = orderRepository;
@@ -66,6 +69,7 @@ public class MeController {
         this.messageService = messageService;
         this.orderService = orderService;
         this.imageStorageService = imageStorageService;
+        this.uploadValidator = uploadValidator;
     }
 
     @GetMapping
@@ -95,9 +99,8 @@ public class MeController {
     @Operation(summary = "List my orders")
     public List<OrderSummaryDto> myOrders() {
         long userId = SecurityUtil.currentUserId();
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(orderQueryService::toSummary)
-                .toList();
+        // Unread and item counts come from two grouped queries, not one pair per order.
+        return orderQueryService.toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @GetMapping("/orders/{id}")
@@ -107,10 +110,12 @@ public class MeController {
     }
 
     @GetMapping("/orders/{id}/messages")
-    @Operation(summary = "List chat messages for my order")
-    public List<MessageDto> messages(@PathVariable String id) {
+    @Operation(summary = "Chat messages, newest page first (use before= to load older ones)")
+    public List<MessageDto> messages(@PathVariable String id,
+                                     @RequestParam(required = false) Long before,
+                                     @RequestParam(required = false) Integer limit) {
         Order order = ownedOrder(id);
-        return messageService.list(order.getId());
+        return messageService.list(order.getId(), before, limit);
     }
 
     @PostMapping("/orders/{id}/messages")
@@ -122,7 +127,8 @@ public class MeController {
     }
 
     @PostMapping("/orders/{id}/pay")
-    @Operation(summary = "Submit a transfer screenshot → posts it to the order chat and marks the order paid")
+    @Operation(summary = "Submit a transfer screenshot → posts it to the order chat and flags the "
+            + "order as 'payment claimed' (an admin still has to confirm the money arrived)")
     public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req) {
         Order order = ownedOrder(id);
         if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
@@ -130,10 +136,12 @@ public class MeController {
         }
         // Post the proof into the order chat (admins get notified via MessageService).
         messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
-        // The customer paid the prepayment (prepay option) or the full amount (full-pay option).
-        long received = order.getPrepaymentMinor() > 0 ? order.getPrepaymentMinor() : order.getTotalMinor();
-        Order paid = orderService.markPaid(order.getId(), received);
-        return orderQueryService.toDetail(paid);
+        // NOTE: this only records a CLAIM. It must not set paid/received — doing so used to zero
+        // out the cash-on-delivery amount on the seller's dispatch card, so any customer could get
+        // goods shipped without paying by uploading an arbitrary picture. Confirmation is manual:
+        // PATCH /api/admin/orders/{id}/paid.
+        Order claimed = orderService.claimPayment(order.getId());
+        return orderQueryService.toDetail(claimed);
     }
 
     @PostMapping("/orders/{id}/cancel")
@@ -155,9 +163,7 @@ public class MeController {
     @PostMapping("/uploads")
     @Operation(summary = "Upload a chat attachment")
     public UploadResponse upload(@RequestParam("file") MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("file is required");
-        }
+        uploadValidator.validateAttachment(file);
         return UploadResponse.ofKey(imageStorageService.uploadChatAttachment(file));
     }
 

@@ -13,5 +13,7 @@ public record OrderCardDto(
         long unreadCount,
         Instant createdAt,
         String status,
-        boolean paid) {
+        boolean paid,
+        /** Customer claims they paid (screenshot uploaded) but no admin confirmed it yet. */
+        boolean paymentClaimed) {
 }

@@ -21,7 +21,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Search, LayoutGrid, Table2, RefreshCw } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
 import {
   adminApi,
   ApiError,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/api";
 import { STATUS_ORDER, canTransition } from "@/lib/orders";
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
+import { useDebounced } from "@/lib/use-debounced";
 import { useToast } from "@/lib/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
@@ -74,11 +75,16 @@ export default function BoardPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
-  const boardKey = ["board", search, range] as const;
+  // Debounced so typing does not fire a board load per keystroke.
+  const debouncedSearch = useDebounced(search);
+  const boardKey = ["board", debouncedSearch, range] as const;
   const { data: board, isLoading } = useQuery({
     queryKey: boardKey,
-    queryFn: () => adminApi.board({ q: search || undefined, range }),
-    refetchInterval: 10_000,
+    queryFn: () => adminApi.board({ q: debouncedSearch || undefined, range }),
+    // The board is the heaviest admin query; 10s polling kept the database busy all day for
+    // changes that are rare. Mutations invalidate it immediately, so this is only a safety net
+    // for changes made elsewhere (another admin, the bot).
+    refetchInterval: 30_000,
     placeholderData: keepPreviousData,
   });
 
@@ -206,7 +212,7 @@ export default function BoardPage() {
       </div>
 
       {view === "table" ? (
-        <OrdersTable search={search} range={range} onOpen={setOpenId} />
+        <OrdersTable search={debouncedSearch} range={range} onOpen={setOpenId} />
       ) : isLoading || !board ? (
         <CenterSpinner label="Загружаем доску…" />
       ) : (

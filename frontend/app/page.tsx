@@ -28,7 +28,7 @@ import { ProductView } from "@/components/catalog/ProductView";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Toast } from "@/components/ui/Toast";
-import { apiGet, type Product, type ProductTag } from "@/lib/api";
+import { customerApi, type Product, type ProductTag } from "@/lib/api";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 
@@ -57,7 +57,7 @@ export default function CatalogPage() {
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["products"],
-    queryFn: () => apiGet<Product[]>("/api/products"),
+    queryFn: () => customerApi.getProducts(),
   });
 
   const products = useMemo(() => data ?? [], [data]);

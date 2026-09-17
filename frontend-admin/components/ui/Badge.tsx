@@ -41,14 +41,6 @@ export function Badge({
   );
 }
 
-const STATUS_TONE: Record<OrderStatus, Tone> = {
-  NEW: "info",
-  APPROVED: "ok",
-  SHIPPED: "warn",
-  DELIVERED: "accent",
-  REJECTED: "danger",
-};
-
 export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
   return (
     <span

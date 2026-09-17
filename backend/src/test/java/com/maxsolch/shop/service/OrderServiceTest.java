@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +48,8 @@ class OrderServiceTest {
     PaymentOptionRepository paymentOptionRepository;
     @Mock
     NotificationService notificationService;
+    @Mock
+    ApplicationEventPublisher events;
 
     OrderService service;
 
@@ -55,7 +59,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService);
+                promoCodeRepository, paymentOptionRepository, notificationService, events);
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
         // orderRepository.save returns the same instance with an id assigned (PrePersist not run here).
@@ -105,7 +109,7 @@ class OrderServiceTest {
     @Test
     void createOrder_happyPath_setsTotalsStockSnapshotsAndStatusNew() {
         Product p = simpleProduct(10, 2_500); // 25.00
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 2)), null);
@@ -131,16 +135,19 @@ class OrderServiceTest {
 
         verify(productRepository).saveAll(any());
         verify(orderRepository).save(any(Order.class));
-        verify(notificationService).onNewOrder(any(Order.class));
-        verify(notificationService).notifyCustomerStatus(any(Order.class));
+        // Telegram is notified from an after-commit listener now, so the service only publishes.
+        verify(events).publishEvent(any(OrderEvents.Created.class));
     }
 
     @Test
-    void createOrder_withVariant_decrementsVariantAndProductStock() {
-        Product p = simpleProduct(10, 1_000);
+    void createOrder_withVariant_decrementsVariantAndRollsUpProductStock() {
+        // When a product has variants, the variant counters are the source of truth and
+        // product.stock is their sum (same rule AdminProductService applies when saving a
+        // product). Decrementing both independently is what used to let stock drift.
+        Product p = simpleProduct(4, 1_000);
         ProductVariant v = variant(p, 4);
         p.getVariants().add(v);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         String variantUuid = UuidUtil.toString(v.getId());
         CreateOrderCommand command = cmd(
@@ -149,7 +156,7 @@ class OrderServiceTest {
         Order order = service.createOrder(command);
 
         assertThat(v.getStock()).isEqualTo(1);   // 4 - 3
-        assertThat(p.getStock()).isEqualTo(7);   // rollup 10 - 3
+        assertThat(p.getStock()).isEqualTo(1);   // rollup = sum(variants)
         OrderItem it = order.getItems().get(0);
         assertThat(it.getVariantNameSnapshot()).isEqualTo("Size M");
         assertThat(it.getVariantId()).isEqualTo(v.getId());
@@ -160,7 +167,7 @@ class OrderServiceTest {
     @Test
     void createOrder_outOfStock_throws() {
         Product p = simpleProduct(1, 1_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 5)), null);
@@ -175,7 +182,7 @@ class OrderServiceTest {
     void createOrder_variantRequiredButMissing_throws() {
         Product p = simpleProduct(10, 1_000);
         p.getVariants().add(variant(p, 5)); // product has variants
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null); // no variant
@@ -189,7 +196,7 @@ class OrderServiceTest {
     void createOrder_variantNotBelongingToProduct_throws() {
         Product p = simpleProduct(10, 1_000);
         p.getVariants().add(variant(p, 5));
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         String foreignVariant = UUID.randomUUID().toString();
         CreateOrderCommand command = cmd(
@@ -205,7 +212,7 @@ class OrderServiceTest {
         Product p = simpleProduct(10, 1_000);
         ProductVariant v = variant(p, 1);
         p.getVariants().add(v);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, UuidUtil.toString(v.getId()), 5)), null);
@@ -228,7 +235,7 @@ class OrderServiceTest {
     void createOrder_inactiveProduct_throws() {
         Product p = simpleProduct(10, 1_000);
         p.setActive(false);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null);
@@ -243,14 +250,14 @@ class OrderServiceTest {
     @Test
     void createOrder_percentPromo_appliesPercentDiscount() {
         Product p = simpleProduct(10, 10_000); // 100.00
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("SAVE10");
         promo.setDiscountPercent(10);
         promo.setDiscountAmountMinor(0);
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("SAVE10")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE10");
@@ -268,14 +275,14 @@ class OrderServiceTest {
     @Test
     void createOrder_fixedAmount_takesPriorityOverPercent() {
         Product p = simpleProduct(10, 10_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("MIX");
         promo.setDiscountPercent(50);          // would be 5000
         promo.setDiscountAmountMinor(2_000);   // fixed wins
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("MIX")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("MIX")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "MIX");
@@ -289,13 +296,13 @@ class OrderServiceTest {
     @Test
     void createOrder_fixedAmountExceedsSubtotal_totalNeverNegative() {
         Product p = simpleProduct(10, 3_000);
-        when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         PromoCode promo = new PromoCode();
         promo.setCode("BIG");
         promo.setDiscountAmountMinor(999_999); // way more than subtotal
         promo.setActive(true);
-        when(promoCodeRepository.findByCodeAndActiveTrue("BIG")).thenReturn(Optional.of(promo));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("BIG")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "BIG");
@@ -310,8 +317,8 @@ class OrderServiceTest {
     @Test
     void createOrder_invalidPromo_throws() {
         Product p = simpleProduct(10, 1_000);
-        lenient().when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
-        when(promoCodeRepository.findByCodeAndActiveTrue("NOPE")).thenReturn(Optional.empty());
+        lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("NOPE")).thenReturn(Optional.empty());
 
         CreateOrderCommand command = cmd(
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "NOPE");
@@ -349,7 +356,7 @@ class OrderServiceTest {
         assertThat(delivered.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(delivered.getDeliveredAt()).isNotNull();
 
-        verify(notificationService, times(3)).onStatusChanged(any(Order.class));
+        verify(events, times(3)).publishEvent(any(OrderEvents.StatusChanged.class));
     }
 
     @Test
@@ -377,7 +384,7 @@ class OrderServiceTest {
         // order with one item referencing product+variant
         Order o = persistedOrder(OrderStatus.NEW);
 
-        Product p = simpleProduct(2, 1_000);
+        Product p = simpleProduct(1, 1_000);
         ProductVariant v = variant(p, 1);
         p.getVariants().add(v);
 
@@ -389,15 +396,15 @@ class OrderServiceTest {
         o.getItems().add(it);
 
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
-        when(productRepository.findByIdWithDetails(p.getId())).thenReturn(Optional.of(p));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
         Order rejected = service.reject(o.getId(), "out of stock", true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getRejectedAt()).isNotNull();
         assertThat(rejected.getRejectReason()).isEqualTo("out of stock");
-        assertThat(p.getStock()).isEqualTo(5); // 2 + 3 restored
         assertThat(v.getStock()).isEqualTo(4); // 1 + 3 restored
+        assertThat(p.getStock()).isEqualTo(4); // rollup = sum(variants)
         verify(productRepository).save(p);
     }
 
@@ -444,5 +451,98 @@ class OrderServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(result.getApprovedAt()).isNotNull();
+    }
+
+    // ---------- payment: a claim is not a confirmation ----------
+
+    @Test
+    void claimPayment_marksTheClaimButTouchesNoMoney() {
+        // This is the whole point of the split: uploading a screenshot must not zero out the
+        // cash-on-delivery amount, or a customer gets goods shipped without paying.
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order claimed = service.claimPayment(o.getId());
+
+        assertThat(claimed.isPaymentClaimed()).isTrue();
+        assertThat(claimed.getPaymentClaimedAt()).isNotNull();
+        assertThat(claimed.isPaid()).isFalse();
+        assertThat(claimed.getReceivedMinor()).isZero();
+        assertThat(OrderQueryService.codMinor(claimed)).isEqualTo(50_000);
+        verify(events).publishEvent(any(OrderEvents.PaymentClaimed.class));
+    }
+
+    @Test
+    void claimPayment_isIdempotent() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Instant first = service.claimPayment(o.getId()).getPaymentClaimedAt();
+        Instant second = service.claimPayment(o.getId()).getPaymentClaimedAt();
+
+        assertThat(second).isEqualTo(first);
+    }
+
+    @Test
+    void markPaid_recordsTheAmountAndShrinksCod() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order paid = service.markPaid(o.getId(), 10_000);
+
+        assertThat(paid.isPaid()).isTrue();
+        assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
+        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
+    }
+
+    @Test
+    void markPaid_isCappedAtTheOrderTotal() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order paid = service.markPaid(o.getId(), 999_999);
+
+        assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
+        assertThat(OrderQueryService.codMinor(paid)).isZero();
+    }
+
+    @Test
+    void markPaid_withZeroClearsThePayment() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        o.setPaid(true);
+        o.setReceivedMinor(50_000);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+
+        Order cleared = service.markPaid(o.getId(), 0);
+
+        assertThat(cleared.isPaid()).isFalse();
+        assertThat(cleared.getPaidAt()).isNull();
+        assertThat(cleared.getReceivedMinor()).isZero();
+    }
+
+    // ---------- promo discount rules ----------
+
+    @Test
+    void discountFor_capsPercentAtOneHundred() {
+        PromoCode broken = new PromoCode();
+        broken.setDiscountPercent(150); // misconfigured code
+
+        // Capped at the subtotal, so a total can never go negative and the stored discount can
+        // never exceed the order itself.
+        assertThat(OrderService.discountFor(broken, 10_000)).isEqualTo(10_000);
+    }
+
+    @Test
+    void discountFor_fixedAmountBeatsPercentAndIsCapped() {
+        PromoCode promo = new PromoCode();
+        promo.setDiscountAmountMinor(30_000);
+        promo.setDiscountPercent(10);
+
+        assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000);
+        assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
     }
 }

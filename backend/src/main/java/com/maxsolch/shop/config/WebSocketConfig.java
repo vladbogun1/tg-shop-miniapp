@@ -3,6 +3,7 @@ package com.maxsolch.shop.config;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.security.AdminTokenValidator;
 import com.maxsolch.shop.security.AuthPrincipal;
 import com.maxsolch.shop.security.JwtService;
 import com.maxsolch.shop.security.Role;
@@ -27,8 +28,13 @@ import java.util.Optional;
 
 /**
  * STOMP over WebSocket. Endpoint /ws (+SockJS), broker /topic. JWT auth in a ChannelInterceptor:
- * CONNECT reads the token from the Authorization header or ?token= query and sets a Principal;
+ * CONNECT reads the token from the STOMP {@code Authorization} header and sets a Principal;
  * SUBSCRIBE to /topic/orders/{id}/chat is authorized to the order owner (CUSTOMER) or any ADMIN.
+ *
+ * <p>The token is deliberately read from the CONNECT frame only, never from a {@code ?token=}
+ * query parameter: URLs end up in proxy access logs, browser history and Referer headers, and a
+ * leaked 30-day admin JWT there is a full compromise. STOMP frame headers work over SockJS too,
+ * so nothing is lost.
  */
 @Slf4j
 @Configuration
@@ -37,19 +43,27 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final OrderRepository orderRepository;
+    private final AdminTokenValidator adminTokenValidator;
+    private final AllowedOrigins allowedOrigins;
 
-    public WebSocketConfig(JwtService jwtService, OrderRepository orderRepository) {
+    public WebSocketConfig(JwtService jwtService,
+                           OrderRepository orderRepository,
+                           AdminTokenValidator adminTokenValidator,
+                           AllowedOrigins allowedOrigins) {
         this.jwtService = jwtService;
         this.orderRepository = orderRepository;
+        this.adminTokenValidator = adminTokenValidator;
+        this.allowedOrigins = allowedOrigins;
     }
 
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
+        // Same origin list as CORS (AllowedOrigins) — the handshake used to accept "*".
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*")
+                .setAllowedOriginPatterns(allowedOrigins.patternsArray())
                 .withSockJS();
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOrigins.patternsArray());
     }
 
     @Override
@@ -89,13 +103,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             token = token.substring("Bearer ".length()).trim();
         }
         if (token == null || token.isBlank()) {
-            token = firstHeader(accessor, "token");
-        }
-        if (token == null || token.isBlank()) {
             return null;
         }
         try {
-            return jwtService.parse(token);
+            AuthPrincipal principal = jwtService.parse(token);
+            if (!adminTokenValidator.isValid(principal)) {
+                log.debug("WS auth rejected: revoked admin token");
+                return null;
+            }
+            return principal;
         } catch (Exception e) {
             log.debug("WS auth rejected: {}", e.getMessage());
             return null;

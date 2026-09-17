@@ -17,7 +17,8 @@ services:
   # Customer Mini App built for SAME-ORIGIN (relative) URLs — everything behind one origin.
   frontend-public:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ""
         NEXT_PUBLIC_IMAGE_BASE_URL: "/img"
@@ -48,7 +49,8 @@ services:
   # Admin app built for SAME-ORIGIN (relative) URLs — for its own public gateway/tunnel.
   frontend-admin-public:
     build:
-      context: ./frontend-admin
+      context: .
+      dockerfile: frontend-admin/Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ""
         NEXT_PUBLIC_IMAGE_BASE_URL: "/img"

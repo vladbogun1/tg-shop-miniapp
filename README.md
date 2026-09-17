@@ -4,7 +4,7 @@
 
 **Интернет-магазин внутри Telegram** — каталог, корзина, пошаговый заказ, чат с админом и
 полноценная веб-админка. Переписан с нуля: Java 21 / Spring Boot + Next.js 15, дизайн в стиле
-**Liquid Glass**, self-hosted инфраструктура без облаков.
+**Neo-Brutalism**, self-hosted инфраструктура без облаков.
 
 [![CI](https://github.com/vladbogun1/tg-shop-miniapp/actions/workflows/ci.yml/badge.svg)](https://github.com/vladbogun1/tg-shop-miniapp/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-orange)
@@ -68,17 +68,21 @@ Telegram ──/start──▶ Bot (тонкий: вход + уведомлен�
 
 **Стек:** Java 21 · Spring Boot 3.4 (Security/JWT, WebSocket, Flyway, springdoc/Swagger, Actuator, Caffeine) · MySQL 8.4 · Next.js 15 + TypeScript + Tailwind v4 + TanStack Query · MinIO + imgproxy + Nginx · Docker Compose.
 
+Фронтенды — один npm workspace: общий код (деньги, даты, правила статусов, HTTP-клиент, типы API, WebSocket) живёт в `shared/` и подключается обоими приложениями как `@shop/shared`.
+
 ---
 
 ## 📁 Структура
 
 ```
 backend/        Spring Boot API (package com.maxsolch.shop)
+shared/         @shop/shared — общий код обоих фронтов (деньги, даты, статусы, API-типы, WS)
 frontend/       Next.js — Mini App покупателя
 frontend-admin/ Next.js — админка
 migration/      тулза импорта старой БД (JDBC + картинки в MinIO)
-infra/          nginx-конфиги, gateway'и, SQL-бэкфиллы, скрипты
-docs/           SPEC.md (контракт API), screenshots/
+infra/          nginx-конфиги, gateway'и, скрипты
+docs/           SPEC.md (контракт API), SECURITY.md, screenshots/
+AUDIT-FIXES.md  чек-лист работ по аудиту
 docker-compose.yml           основной локальный стек
 docker-compose.public.yml    публичный релиз (gateway + туннель для Telegram)
 ```
@@ -96,6 +100,17 @@ cp .env.example .env          # заполнить секреты: JWT_SECRET, B
 docker compose up -d --build
 ```
 
+Для локальной разработки backend запускается с `SPRING_PROFILES_ACTIVE=dev` — вне этого профиля
+приложение откажется стартовать с небезопасными настройками (см. [`docs/SECURITY.md`](docs/SECURITY.md)).
+
+Фронты без Docker (порты из `package.json`):
+
+```bash
+npm install                   # один install на весь workspace из корня
+npm run dev -w frontend       # Mini App  → http://localhost:3004
+npm run dev -w frontend-admin # админка   → http://localhost:3005
+```
+
 - Mini App: http://localhost:3000
 - Админка: http://localhost:3001 (логин/пароль из `ADMIN_LOGIN`/`ADMIN_PASSWORD`)
 - API + Swagger: http://localhost:8080/swagger-ui.html · Home: http://localhost:8080/
@@ -111,9 +126,9 @@ Mini App требует HTTPS. Для локального теста — `cloud
 
 ## ✅ Тесты и CI
 
-- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito — расчёт заказа/скидок/стока, переходы статусов, метрики, JWT, валидация initData).
-- Фронты: `npm run build` в `frontend/` и `frontend-admin/`.
-- **CI** (GitHub Actions, [`.github/workflows/ci.yml`](.github/workflows/ci.yml)): на каждый push/PR — тесты бэкенда + сборка обоих фронтов.
+- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito — расчёт заказа/скидок/стока, переходы статусов, метрики, JWT, валидация initData, санитайз HTML рассылок).
+- Фронты: `npm run lint && npm run typecheck && npm run build` из корня (один workspace).
+- **CI** (GitHub Actions, [`.github/workflows/ci.yml`](.github/workflows/ci.yml)): на каждый push/PR — тесты бэкенда + lint/typecheck/сборка обоих фронтов.
 
 ---
 
@@ -125,7 +140,9 @@ Mini App требует HTTPS. Для локального теста — `cloud
 
 ## 📦 Деплой (прод)
 
-Self-hosted на одном Linux-сервере в Docker: `docker compose up -d --build` + reverse-proxy (Caddy) с сертификатами на нужных портах, постоянные домены в `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`, `ALLOW_UNSIGNED_INIT_DATA=false`, подписанные imgproxy-URL, сильные секреты.
+Self-hosted на одном Linux-сервере в Docker: `docker compose up -d --build` + reverse-proxy (Caddy) с сертификатами на нужных портах, постоянные домены в `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`, сильные секреты.
+
+Обязательный чек-лист перед выкаткой — [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ---
 

@@ -34,6 +34,7 @@ import {
   formatDateTime,
 } from "@/lib/orders";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -214,9 +215,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       {o.paymentOptionTitle || "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <Badge tone={o.paid ? "ok" : "warn"}>
-                        {o.paid ? "Оплачен" : "Не оплачен"}
-                      </Badge>
+                      <PaymentBadge order={o} icon={false} />
                     </td>
                     <td className="px-4 py-3 text-center">
                       {o.unreadCount > 0 ? (
@@ -302,11 +301,14 @@ function SortHeader({
 }) {
   const active = sortBy === col;
   return (
-    <th className={cn("px-4 py-3", align === "right" && "text-right")}>
+    // aria-sort is a property of the column header, not of the button inside it.
+    <th
+      className={cn("px-4 py-3", align === "right" && "text-right")}
+      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+    >
       <button
         type="button"
         onClick={() => onSort(col)}
-        aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
         className={cn(
           "inline-flex items-center gap-1 transition-colors hover:text-[var(--text)]",
           align === "right" && "flex-row-reverse",

@@ -29,9 +29,19 @@ spring:
       spec: maximumSize=500,expireAfterWrite=120s
   thymeleaf:
     cache: true
+  # Uploads: the Boot defaults are 1MB per file / 10MB per request, which silently rejected any
+  # normal phone photo (the nginx gateway already allows 25m). Kept a little under the gateway
+  # limit so the rejection happens here, with a proper JSON error.
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 20MB
 
 server:
   port: 8080
+  # Behind the nginx gateway: honour X-Forwarded-For/Proto so client IPs (rate limiting, logs)
+  # and generated URLs are the real ones instead of the proxy's.
+  forward-headers-strategy: framework
 
 management:
   info:
@@ -54,6 +64,9 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  # Business timezone. Day buckets in analytics used to be cut in UTC, so for a UA shop every
+  # order placed between 00:00 and 03:00 local landed in "yesterday".
+  timezone: ${APP_TIMEZONE:Europe/Kyiv}
   image-base-url: ${IMAGE_BASE_URL:http://localhost:8082/img}
   webapp-base-url: ${WEBAPP_BASE_URL:}
   admin-base-url: ${ADMIN_BASE_URL:}

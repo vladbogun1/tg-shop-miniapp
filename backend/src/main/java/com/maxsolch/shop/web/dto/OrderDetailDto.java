@@ -32,5 +32,8 @@ public record OrderDetailDto(
         boolean paid,
         Instant paidAt,
         long prepaymentMinor,
-        long receivedMinor) {
+        long receivedMinor,
+        /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
+        boolean paymentClaimed,
+        Instant paymentClaimedAt) {
 }

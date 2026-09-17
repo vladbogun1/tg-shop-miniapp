@@ -19,10 +19,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom stays enabled: blocking it fails WCAG 1.4.4 and makes small print unreadable for
+  // anyone who needs to magnify it. The layout is already mobile-first, so zoom is not needed to
+  // use the shop — only to read it comfortably.
   viewportFit: "cover", // safe-area insets (notch)
-  themeColor: "#0c1118",
+  // Matches the light theme the app actually defaults to (it used to declare a dark colour,
+  // so Telegram tinted its chrome dark around a light page).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F1E6" },
+    { media: "(prefers-color-scheme: dark)", color: "#26262B" },
+  ],
 };
 
 export default function RootLayout({

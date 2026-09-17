@@ -24,6 +24,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import {
   customerApi,
   getAccessToken,
+  onAccessToken,
   type Message,
   type SendMessageRequest,
 } from "@/lib/api";
@@ -32,6 +33,9 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 import { connectOrderChat } from "@/lib/ws";
+
+/** Must match MessageService.DEFAULT_PAGE on the backend. */
+const PAGE_SIZE = 50;
 
 export default function OrderChatPage() {
   const router = useRouter();
@@ -43,7 +47,15 @@ export default function OrderChatPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seenIds = useRef<Set<string>>(new Set());
+  const seenIds = useRef<Set<number>>(new Set());
+  // Opening the chat from a Telegram deep link can beat the initData→JWT exchange. Tracking the
+  // token in state means the socket connects the moment it arrives, instead of retrying forever
+  // with no credentials.
+  const [token, setToken] = useState<string | null>(() => getAccessToken());
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+
+  useEffect(() => onAccessToken(setToken), []);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["me", "orders", id, "messages"],
@@ -58,12 +70,40 @@ export default function OrderChatPage() {
     enabled: !!id,
   });
 
-  // Seed state from REST history.
+  // Seed state from the newest page of history.
   useEffect(() => {
     if (!data) return;
     seenIds.current = new Set(data.map((m) => m.id));
     setMessages(data);
+    // A full page back means there is probably more history behind it.
+    setHasMore(data.length >= PAGE_SIZE);
   }, [data]);
+
+  /** Fetch the page before the oldest message currently on screen. */
+  async function loadEarlier() {
+    const oldest = messages[0];
+    if (!oldest || loadingEarlier) return;
+    setLoadingEarlier(true);
+    try {
+      const older = await customerApi.getMessages(id, oldest.id);
+      if (older.length === 0) {
+        setHasMore(false);
+        return;
+      }
+      const fresh = older.filter((m) => !seenIds.current.has(m.id));
+      fresh.forEach((m) => seenIds.current.add(m.id));
+      // Keep the scroll anchored where the user was reading instead of jumping.
+      const el = scrollRef.current;
+      const before = el?.scrollHeight ?? 0;
+      setMessages((prev) => [...fresh, ...prev]);
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop += el.scrollHeight - before;
+      });
+      setHasMore(older.length >= PAGE_SIZE);
+    } finally {
+      setLoadingEarlier(false);
+    }
+  }
 
   const appendMessage = useCallback((m: Message) => {
     if (seenIds.current.has(m.id)) return;
@@ -71,12 +111,12 @@ export default function OrderChatPage() {
     setMessages((prev) => [...prev, m]);
   }, []);
 
-  // WebSocket realtime.
+  // WebSocket realtime — (re)connects whenever the order or the token changes.
   useEffect(() => {
-    if (!id) return;
-    const conn = connectOrderChat(id, getAccessToken(), appendMessage, setConnected);
+    if (!id || !token) return;
+    const conn = connectOrderChat(id, appendMessage, setConnected);
     return () => conn.disconnect();
-  }, [id, appendMessage]);
+  }, [id, token, appendMessage]);
 
   // Mark admin messages read (on load + when new admin msg arrives).
   useEffect(() => {
@@ -89,14 +129,16 @@ export default function OrderChatPage() {
     }
   }, [id, messages]);
 
-  // Autoscroll to bottom on new messages.
+  // Autoscroll to the bottom on new messages — but not when older ones were just prepended.
   useEffect(() => {
+    if (loadingEarlier) return;
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only on new messages
   }, [messages.length]);
 
   const byId = useMemo(() => {
-    const map = new Map<string, Message>();
+    const map = new Map<number, Message>();
     messages.forEach((m) => map.set(m.id, m));
     return map;
   }, [messages]);
@@ -217,7 +259,19 @@ export default function OrderChatPage() {
         )}
 
         <div className="flex flex-col gap-1.5">
-          {items.map((it, i) =>
+          {hasMore && (
+          <div className="mb-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => void loadEarlier()}
+              disabled={loadingEarlier}
+              className="tap rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-black uppercase tracking-wide text-[var(--muted)] shadow-[3px_3px_0_var(--shadow)] disabled:opacity-60"
+            >
+              {loadingEarlier ? "Загрузка…" : "Показать более ранние"}
+            </button>
+          </div>
+        )}
+        {items.map((it, i) =>
             it.kind === "day" ? (
               <motion.div
                 key={`d-${i}`}
