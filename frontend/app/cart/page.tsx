@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
 import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
+import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { money } from "@/lib/money";
@@ -29,6 +30,7 @@ import { haptic } from "@/lib/telegram";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 export default function CartPage() {
+  const t = useT();
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const setQty = useCart((s) => s.setQty);
@@ -51,7 +53,7 @@ export default function CartPage() {
     return (
       <div className="pt-2">
         <h1 className="nb-up mb-6 text-[30px] font-black text-[var(--ink)]">
-          Корзина
+          {t("cart.title")}
         </h1>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -66,14 +68,14 @@ export default function CartPage() {
             <ShoppingCart className="h-7 w-7 text-[var(--ink)]" strokeWidth={2.75} />
           </span>
           <h2 className="nb-up text-[18px] font-black text-[var(--ink)]">
-            Корзина пуста
+            {t("cart.empty.title")}
           </h2>
           <p className="max-w-[260px] text-[13px] font-medium leading-relaxed text-[var(--muted)]">
-            Добавьте товары из каталога — и они появятся здесь.
+            {t("cart.empty.text")}
           </p>
           <Link href="/" className="mt-1">
             <Button variant="accent" icon={<ArrowRight className="h-4 w-4" strokeWidth={2.75} />}>
-              В каталог
+              {t("common.toCatalog")}
             </Button>
           </Link>
         </motion.div>
@@ -86,10 +88,10 @@ export default function CartPage() {
     <div className="pt-2">
       <div className="mb-4 flex items-baseline justify-between">
         <h1 className="nb-up text-[30px] font-black text-[var(--ink)]">
-          Корзина
+          {t("cart.title")}
         </h1>
         <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[12px] font-black text-[var(--ink)]">
-          {count} {plural(count, "товар", "товара", "товаров")}
+          {t("cart.itemCount", { n: count })}
         </span>
       </div>
 
@@ -126,13 +128,13 @@ export default function CartPage() {
                       </span>
                     )}
                     <div className="mt-1 text-[11px] font-semibold text-[var(--faint)]">
-                      {money(l.priceMinor, l.currency)} / шт
+                      {money(l.priceMinor, l.currency)} {t("common.currencyPerItem")}
                     </div>
                   </div>
 
                   <motion.button
                     type="button"
-                    aria-label="Удалить"
+                    aria-label={t("cart.remove")}
                     whileTap={{ scale: 0.88 }}
                     onClick={() => {
                       haptic();
@@ -172,17 +174,21 @@ export default function CartPage() {
 
       {/* totals card */}
       <div className="nb mt-4 p-4">
-        <Row label="Товары" value={money(subtotal, currency)} />
+        <Row label={t("cart.rowItems")} value={money(subtotal, currency)} />
         {promo.discount > 0 && (
           <div className="mt-2">
             <Row
-              label={`Скидка${promoCode.trim() ? ` · ${promoCode.trim()}` : ""}`}
+              label={
+                promoCode.trim()
+                  ? t("cart.rowDiscountWithCode", { code: promoCode.trim() })
+                  : t("cart.rowDiscount")
+              }
               value={`−${money(promo.discount, currency)}`}
             />
           </div>
         )}
         <div className="my-3 h-[2.5px] bg-[var(--line)]" />
-        <Row label="Итого" value={money(total, currency)} strong />
+        <Row label={t("cart.total")} value={money(total, currency)} strong />
       </div>
 
       {/* spacer so content never hides behind the sticky bar */}
@@ -204,7 +210,7 @@ export default function CartPage() {
         >
           <div className="min-w-0">
             <div className="nb-up text-[11px] font-black text-[var(--faint)]">
-              Итого
+              {t("cart.total")}
             </div>
             <div className="text-[20px] font-black leading-tight text-[var(--ink)]">
               {money(total, currency)}
@@ -220,20 +226,12 @@ export default function CartPage() {
               router.push("/checkout");
             }}
           >
-            Оформить
+            {t("cart.checkout")}
           </Button>
         </motion.div>
       </div>
     </div>
   );
-}
-
-function plural(n: number, one: string, few: string, many: string): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-  return many;
 }
 
 function Row({

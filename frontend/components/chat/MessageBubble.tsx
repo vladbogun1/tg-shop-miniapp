@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
 import { mediaUrl, type Message } from "@/lib/api";
 import { formatTime } from "@/lib/format";
+import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 
@@ -28,6 +29,7 @@ export function MessageBubble({
   repliedTo?: Message | null;
   onImageClick?: (url: string) => void;
 }) {
+  const t = useT();
   if (msg.type === "SYSTEM") {
     return (
       <div className="my-2 flex justify-center">
@@ -74,10 +76,11 @@ export function MessageBubble({
             }`}
           >
             <span className="block font-extrabold opacity-90">
-              {repliedTo.senderName ?? "Сообщение"}
+              {repliedTo.senderName ?? t("chat.reply.fallbackSender")}
             </span>
             <span className="line-clamp-1 opacity-75">
-              {repliedTo.text ?? (repliedTo.type === "PHOTO" ? "Фото" : "Файл")}
+              {repliedTo.text ??
+                (repliedTo.type === "PHOTO" ? t("chat.attachment.photo") : t("chat.attachment.file"))}
             </span>
           </div>
         )}
@@ -92,7 +95,7 @@ export function MessageBubble({
           >
             <Image
               src={msg.attachmentUrl}
-              alt={msg.fileName ?? "Фото"}
+              alt={msg.fileName ?? t("chat.attachment.photo")}
               // A bubble is ~260px wide; asking for the stored original here is what made chat
               // photos crawl. The lightbox asks for the big one.
               size={480}
@@ -116,7 +119,7 @@ export function MessageBubble({
             }`}
           >
             <FileText className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            <span className="truncate text-[13px] font-bold">{msg.fileName ?? "Файл"}</span>
+            <span className="truncate text-[13px] font-bold">{msg.fileName ?? t("chat.attachment.file")}</span>
           </a>
         )}
 

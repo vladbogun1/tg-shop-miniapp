@@ -28,6 +28,7 @@ import {
   type Message,
   type SendMessageRequest,
 } from "@/lib/api";
+import { useT } from "@/i18n/context";
 import { dayLabel, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
@@ -38,6 +39,7 @@ import { connectOrderChat } from "@/lib/ws";
 const PAGE_SIZE = 50;
 
 export default function OrderChatPage() {
+  const t = useT();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -184,7 +186,7 @@ export default function OrderChatPage() {
       <header className="z-10 flex items-center gap-2.5 border-b-[3px] border-[var(--line)] bg-[var(--surface)] px-2.5 py-2.5">
         <motion.button
           type="button"
-          aria-label="Назад"
+          aria-label={t("common.back")}
           whileTap={{ scale: 0.92 }}
           transition={{ duration: 0.07 }}
           onClick={() => {
@@ -206,14 +208,14 @@ export default function OrderChatPage() {
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Заказ {shortOrderId(id)}
+            {t("inbox.orderNumber", { id: shortOrderId(id) })}
           </p>
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
             <span
               className="inline-block h-2 w-2 rounded-full border-[1.5px] border-[var(--line)]"
               style={{ background: connected ? "var(--ok)" : "var(--faint)" }}
             />
-            {connected ? "В сети" : "Подключение…"}
+            {connected ? t("chat.online") : t("chat.connecting")}
           </p>
         </div>
 
@@ -242,14 +244,14 @@ export default function OrderChatPage() {
           <div className="mt-8 flex flex-col items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-6 text-center shadow-[5px_5px_0_var(--shadow)]">
             <WifiOff className="h-7 w-7 text-[var(--muted)]" strokeWidth={2.5} />
             <p className="text-[13px] font-semibold text-[var(--muted)]">
-              Не удалось загрузить переписку.
+              {t("chat.error")}
             </p>
             <button
               type="button"
               onClick={() => refetch()}
               className="tap nb-up rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
             >
-              Повторить
+              {t("common.retry")}
             </button>
           </div>
         )}
@@ -260,7 +262,7 @@ export default function OrderChatPage() {
               💬
             </div>
             <p className="max-w-[15rem] text-[13px] font-semibold text-[var(--muted)]">
-              Сообщений пока нет. Напишите магазину по этому заказу.
+              {t("chat.empty")}
             </p>
           </div>
         )}
@@ -274,7 +276,7 @@ export default function OrderChatPage() {
               disabled={loadingEarlier}
               className="tap rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-black uppercase tracking-wide text-[var(--muted)] shadow-[3px_3px_0_var(--shadow)] disabled:opacity-60"
             >
-              {loadingEarlier ? "Загрузка…" : "Показать более ранние"}
+              {loadingEarlier ? t("common.loading") : t("chat.loadEarlier")}
             </button>
           </div>
         )}
@@ -327,7 +329,7 @@ export default function OrderChatPage() {
           >
             <button
               type="button"
-              aria-label="Закрыть"
+              aria-label={t("common.close")}
               onClick={(e) => {
                 e.stopPropagation();
                 setLightbox(null);
@@ -347,7 +349,7 @@ export default function OrderChatPage() {
             >
               <Image
                 src={lightbox}
-                alt="Вложение"
+                alt={t("chat.attachmentAlt")}
                 size={1600}
                 fit
                 className="max-h-[80dvh] max-w-full rounded-[var(--r)] border-[3px] border-[var(--line)]"
@@ -374,6 +376,7 @@ function Composer({
   onSend: (req: SendMessageRequest) => Promise<void>;
   orderId: string;
 }) {
+  const t = useT();
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -390,16 +393,16 @@ function Composer({
   }, [text]);
 
   async function sendText() {
-    const t = text.trim();
-    if (!t || sending) return;
+    const body = text.trim();
+    if (!body || sending) return;
     setSending(true);
     setError(null);
     haptic();
     try {
-      await onSend({ type: "TEXT", text: t });
+      await onSend({ type: "TEXT", text: body });
       setText("");
     } catch {
-      setError("Не удалось отправить");
+      setError(t("chat.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -409,7 +412,7 @@ function Composer({
   const uploadAndSend = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) {
-        setError("Можно отправлять только изображения");
+        setError(t("chat.imagesOnly"));
         return;
       }
       setUploading(true);
@@ -426,12 +429,12 @@ function Composer({
         });
         setText("");
       } catch {
-        setError("Не удалось загрузить вложение");
+        setError(t("chat.uploadFailed"));
       } finally {
         setUploading(false);
       }
     },
-    [onSend, text]
+    [onSend, text, t]
   );
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -470,15 +473,16 @@ function Composer({
             <div className="mb-2 flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-l-[5px] border-[var(--line)] border-l-[var(--accent)] bg-[var(--surface-2)] px-2 py-1.5">
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-black uppercase tracking-wide text-[var(--accent)]">
-                  Ответ · {replyTo.senderName ?? ""}
+                  {t("chat.replyTo", { name: replyTo.senderName ?? "" })}
                 </span>
                 <span className="line-clamp-1 text-[12px] font-medium text-[var(--muted)]">
-                  {replyTo.text ?? (replyTo.type === "PHOTO" ? "Фото" : "Файл")}
+                  {replyTo.text ??
+                    (replyTo.type === "PHOTO" ? t("chat.attachment.photo") : t("chat.attachment.file"))}
                 </span>
               </span>
               <button
                 type="button"
-                aria-label="Отменить ответ"
+                aria-label={t("chat.cancelReply")}
                 onClick={onCancelReply}
                 className="tap flex h-7 w-7 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
               >
@@ -496,7 +500,7 @@ function Composer({
       <div className="flex items-end gap-2">
         <motion.button
           type="button"
-          aria-label="Прикрепить изображение"
+          aria-label={t("chat.attach")}
           disabled={uploading}
           whileTap={{ scale: 0.92 }}
           transition={{ duration: 0.07 }}
@@ -528,13 +532,13 @@ function Composer({
             }
           }}
           rows={1}
-          placeholder="Сообщение…"
+          placeholder={t("chat.placeholder")}
           className="max-h-28 min-h-[44px] flex-1 resize-none rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] font-medium text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
         />
 
         <motion.button
           type="button"
-          aria-label="Отправить"
+          aria-label={t("chat.send")}
           disabled={(!text.trim() && !uploading) || sending}
           whileTap={{ scale: 0.9 }}
           transition={{ duration: 0.07 }}

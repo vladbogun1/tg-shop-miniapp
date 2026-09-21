@@ -13,11 +13,12 @@ import { Check, X } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import {
   ORDER_STATUS_COLOR,
-  ORDER_STATUS_LABEL,
   ORDER_TIMELINE,
 } from "@/lib/format";
+import { useT } from "@/i18n/context";
 
 export function StatusTimeline({ status }: { status: OrderStatus }) {
+  const t = useT();
   if (status === "REJECTED") {
     return (
       <div
@@ -29,10 +30,10 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
         </span>
         <div className="min-w-0">
           <p className="nb-up text-[14px] font-black text-white">
-            Заказ отклонён
+            {t("timeline.rejected.title")}
           </p>
           <p className="text-[12px] font-semibold text-white/90">
-            Заказ не был принят в обработку
+            {t("timeline.rejected.text")}
           </p>
         </div>
       </div>
@@ -90,11 +91,11 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                   color: done ? "var(--ink)" : "var(--faint)",
                 }}
               >
-                {ORDER_STATUS_LABEL[s]}
+                {t(`status.${s}`)}
               </span>
               {isCurrent && (
                 <p className="nb-up text-[11px] font-black text-[var(--accent)]">
-                  Текущий статус
+                  {t("timeline.current")}
                 </p>
               )}
             </div>

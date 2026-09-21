@@ -18,6 +18,12 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
         default_batch_fetch_size: 50
+  # Тексты, которые бот пишет ПОКУПАТЕЛЮ, — на его языке (i18n/messages_*.properties).
+  # Сообщения продавцу остаются русскими литералами в коде.
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
   flyway:
     enabled: true
     baseline-on-migrate: false

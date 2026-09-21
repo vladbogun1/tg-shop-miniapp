@@ -26,19 +26,21 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Toast } from "@/components/ui/Toast";
+import { useT } from "@/i18n/context";
 import { customerApi, type Product, type ProductTag } from "@/lib/api";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 
 type SortKey = "popular" | "price_asc" | "price_desc" | "name";
 
-const SORTS: { key: SortKey; label: string; Icon: typeof Flame }[] = [
-  { key: "popular", label: "Сначала популярные", Icon: Flame },
-  { key: "price_asc", label: "Сначала дешевле", Icon: ArrowUpNarrowWide },
-  { key: "price_desc", label: "Сначала дороже", Icon: ArrowDownNarrowWide },
-  { key: "name", label: "По названию (А–Я)", Icon: ArrowDownAZ },
+const SORTS: { key: SortKey; labelKey: string; Icon: typeof Flame }[] = [
+  { key: "popular", labelKey: "catalog.sort.popular", Icon: Flame },
+  { key: "price_asc", labelKey: "catalog.sort.priceAsc", Icon: ArrowUpNarrowWide },
+  { key: "price_desc", labelKey: "catalog.sort.priceDesc", Icon: ArrowDownNarrowWide },
+  { key: "name", labelKey: "catalog.sort.name", Icon: ArrowDownAZ },
 ];
 
 function inStock(p: Product): boolean {
@@ -48,6 +50,7 @@ function inStock(p: Product): boolean {
 }
 
 export default function CatalogPage() {
+  const t = useT();
   const [selected, setSelected] = useState<Product | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -115,11 +118,12 @@ export default function CatalogPage() {
               </span>
             </h1>
             <p className="mt-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-              Выбирай и кидай в корзину
+              {t("catalog.tagline")}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <NotificationsBell />
+            <LanguageToggle />
             <ThemeToggle />
           </div>
         </header>
@@ -132,15 +136,15 @@ export default function CatalogPage() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Поиск товаров"
-                  aria-label="Поиск товаров"
+                  placeholder={t("catalog.search")}
+                  aria-label={t("catalog.search")}
                   enterKeyHint="search"
                   className="w-full min-h-0 bg-transparent text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:font-medium placeholder:text-[var(--faint)]"
                 />
                 {search && (
                   <button
                     type="button"
-                    aria-label="Очистить поиск"
+                    aria-label={t("catalog.searchClear")}
                     onClick={() => {
                       haptic();
                       setSearch("");
@@ -156,7 +160,7 @@ export default function CatalogPage() {
               <div className="relative shrink-0">
                 <button
                   type="button"
-                  aria-label="Сортировка"
+                  aria-label={t("catalog.sort")}
                   onClick={() => {
                     haptic();
                     setSortOpen((o) => !o);
@@ -173,9 +177,9 @@ export default function CatalogPage() {
                     <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
                     <div className="nb nb-lg absolute right-0 top-full z-50 mt-2 w-64 p-1.5">
                       <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
-                        Сортировка
+                        {t("catalog.sort")}
                       </p>
-                      {SORTS.map(({ key, label, Icon }) => {
+                      {SORTS.map(({ key, labelKey, Icon }) => {
                         const on = sort === key;
                         return (
                           <button
@@ -191,7 +195,7 @@ export default function CatalogPage() {
                             }`}
                           >
                             <Icon className="h-4 w-4 shrink-0" strokeWidth={2.5} />
-                            <span className="flex-1">{label}</span>
+                            <span className="flex-1">{t(labelKey)}</span>
                             {on && <Check className="h-4 w-4 shrink-0" strokeWidth={3} />}
                           </button>
                         );
@@ -205,11 +209,11 @@ export default function CatalogPage() {
             {tags.length > 0 && (
               <DragScroll className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
                 <Chip active={activeTag === null} onClick={() => { haptic(); setActiveTag(null); }}>
-                  Все
+                  {t("catalog.allTags")}
                 </Chip>
-                {tags.map((t) => (
-                  <Chip key={t.id} active={activeTag === t.id} onClick={() => { haptic(); setActiveTag(t.id); }}>
-                    {t.name}
+                {tags.map((tag) => (
+                  <Chip key={tag.id} active={activeTag === tag.id} onClick={() => { haptic(); setActiveTag(tag.id); }}>
+                    {tag.name}
                   </Chip>
                 ))}
               </DragScroll>
@@ -231,28 +235,28 @@ export default function CatalogPage() {
         {isError && (
           <EmptyState
             icon={<WifiOff className="h-9 w-9" strokeWidth={2.5} />}
-            title="Не удалось загрузить"
-            text="Сервер недоступен. Проверьте подключение и попробуйте снова."
+            title={t("catalog.error.title")}
+            text={t("catalog.error.text")}
           >
-            <NbButton onClick={() => refetch()} loading={isRefetching}>Повторить</NbButton>
+            <NbButton onClick={() => refetch()} loading={isRefetching}>{t("common.retry")}</NbButton>
           </EmptyState>
         )}
 
         {!isLoading && !isError && products.length === 0 && (
           <EmptyState
             icon={<PackageOpen className="h-9 w-9" strokeWidth={2.5} />}
-            title="Пока пусто"
-            text="Товаров пока нет. Загляните позже — скоро появятся новинки."
+            title={t("catalog.empty.title")}
+            text={t("catalog.empty.text")}
           />
         )}
 
         {!isLoading && !isError && products.length > 0 && sorted.length === 0 && (
           <EmptyState
             icon={<Search className="h-9 w-9" strokeWidth={2.5} />}
-            title="Ничего не найдено"
-            text="Попробуйте изменить запрос или выбрать другой тег."
+            title={t("catalog.noResults.title")}
+            text={t("catalog.noResults.text")}
           >
-            <NbButton onClick={() => { setSearch(""); setActiveTag(null); }}>Сбросить фильтры</NbButton>
+            <NbButton onClick={() => { setSearch(""); setActiveTag(null); }}>{t("catalog.resetFilters")}</NbButton>
           </EmptyState>
         )}
 
@@ -276,7 +280,7 @@ export default function CatalogPage() {
       <ProductView
         product={selected}
         onClose={() => setSelected(null)}
-        onAdded={() => fireToast("Добавлено в корзину")}
+        onAdded={() => fireToast(t("catalog.addedToast"))}
       />
       <Toast message={toast} />
     </div>

@@ -2,8 +2,10 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useT } from "@/i18n/context";
 
 export function ThemeToggle() {
+  const t = useT();
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label="Сменить тему"
+      aria-label={t("theme.toggle")}
       className="nb nb-press tap grid h-11 w-11 shrink-0 place-items-center text-[var(--ink)]"
       style={{ background: "var(--c3)" }}
     >

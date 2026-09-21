@@ -5,10 +5,15 @@
  * (the backend truncated, the frontends rounded), so an order with kopecks showed a different
  * total in Telegram than in the app.
  */
-export function money(minor: number | null | undefined, currency = "UAH"): string {
+export function money(
+  minor: number | null | undefined,
+  currency = "UAH",
+  locale = "ru-RU"
+): string {
   const major = Math.round((minor ?? 0) / 100);
   const symbol = currency === "UAH" ? "₴" : currency;
-  return `${major.toLocaleString("ru-RU")} ${symbol}`;
+  // Grouping differs by language (1 030 vs 1,030); the currency sign does not.
+  return `${major.toLocaleString(locale)} ${symbol}`;
 }
 
 /** Major units typed into a form (UAH) → minor units for the API. */

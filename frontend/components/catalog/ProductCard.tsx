@@ -5,10 +5,11 @@
  * Thick ink border + hard offset shadow, sharp corners, raw stock sticker, heavy
  * type. Same contract/behavior as before: tap photo/title → product view;
  * no-variant products get an inline AddToCartControl, variant products get a
- * "Выбрать" button that opens the view.
+ * a "choose" button that opens the view.
  */
 import { SlidersHorizontal } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
+import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
@@ -21,6 +22,7 @@ export function ProductCard({
   product: Product;
   onOpen: (p: Product) => void;
 }) {
+  const t = useT();
   const hasVariants = (product.variants?.length ?? 0) > 0;
   const inStock = hasVariants
     ? (product.variants ?? []).some((v) => v.stock > 0)
@@ -43,7 +45,7 @@ export function ProductCard({
               color: inStock ? "#0c2417" : "#fff",
             }}
           >
-            {inStock ? "В наличии" : "Нет"}
+            {inStock ? t("product.inStock") : t("product.outOfStockShort")}
           </span>
         </div>
 
@@ -66,7 +68,7 @@ export function ProductCard({
             className="nb-accent nb-press tap nb-up flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-[13px] disabled:opacity-50"
           >
             <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.75} />
-            {inStock ? "Выбрать" : "Нет в наличии"}
+            {inStock ? t("product.choose") : t("product.outOfStock")}
           </button>
         ) : (
           <AddToCartControl product={product} variant={null} fullWidth size="sm" />

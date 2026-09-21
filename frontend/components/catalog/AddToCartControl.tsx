@@ -8,6 +8,7 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { useT } from "@/i18n/context";
 import { lineKey, useCart } from "@/lib/cart";
 import { haptic } from "@/lib/telegram";
 import type { Product, ProductVariant } from "@/lib/api";
@@ -27,6 +28,7 @@ export function AddToCartControl({
   size?: "sm" | "md";
   onAdded?: () => void;
 }) {
+  const t = useT();
   const variantId = variant?.id ?? null;
   const key = lineKey(product.id, variantId);
 
@@ -51,7 +53,7 @@ export function AddToCartControl({
         className={`nb-flat nb-up inline-flex items-center justify-center gap-2 px-4 font-extrabold text-[var(--muted)] opacity-70 ${h} ${fullWidth ? "w-full" : ""}`}
       >
         <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.75} />
-        {needsVariant ? "Выберите вариант" : "Нет в наличии"}
+        {needsVariant ? t("addToCart.chooseVariant") : t("product.outOfStock")}
       </button>
     );
   }
@@ -84,7 +86,7 @@ export function AddToCartControl({
     >
       <button
         type="button"
-        aria-label={qty === 1 ? "Убрать из корзины" : "Уменьшить"}
+        aria-label={qty === 1 ? t("addToCart.remove") : t("qty.decrease")}
         onClick={(e) => {
           stop(e);
           haptic();
@@ -112,7 +114,7 @@ export function AddToCartControl({
 
       <button
         type="button"
-        aria-label="Увеличить"
+        aria-label={t("qty.increase")}
         disabled={atMax}
         onClick={(e) => {
           stop(e);

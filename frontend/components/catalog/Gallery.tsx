@@ -12,6 +12,7 @@
 import { motion, type PanInfo } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { haptic } from "@/lib/telegram";
 import type { ProductImage } from "@/lib/api";
@@ -23,6 +24,7 @@ export function Gallery({
   images?: ProductImage[];
   alt: string;
 }) {
+  const t = useT();
   const urls = useMemo(
     () =>
       (images ?? [])
@@ -65,7 +67,7 @@ export function Gallery({
             <div key={i} className="h-full w-full shrink-0">
               <Image
                 src={url}
-                alt={`${alt} — фото ${i + 1}`}
+                alt={t("gallery.photoAlt", { alt, n: i + 1 })}
                 size={1000}
                 priority={i === 0}
                 className="pointer-events-none h-full w-full"
@@ -98,7 +100,7 @@ export function Gallery({
                 <button
                   key={i}
                   type="button"
-                  aria-label={`Фото ${i + 1}`}
+                  aria-label={t("gallery.photoLabel", { n: i + 1 })}
                   onClick={() => go(i)}
                   className="h-1.5 rounded-full transition-all duration-300"
                   style={{
@@ -125,13 +127,14 @@ function ArrowBtn({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   return (
     <motion.button
       type="button"
       whileTap={{ scale: 0.9 }}
       disabled={disabled}
       onClick={onClick}
-      aria-label={side === "left" ? "Предыдущее фото" : "Следующее фото"}
+      aria-label={side === "left" ? t("gallery.prev") : t("gallery.next")}
       className={`nb-flat tap absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-[var(--surface)] text-[var(--ink)] transition-opacity disabled:opacity-0 ${
         side === "left" ? "left-2" : "right-2"
       }`}

@@ -34,20 +34,26 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
-const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMap"), {
-  ssr: false,
-  loading: () => (
+function MapLoading() {
+  const t = useT();
+  return (
     <div
       className="flex items-center justify-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[13px] font-extrabold uppercase tracking-wide text-[var(--faint)] shadow-[5px_5px_0_var(--shadow)]"
       style={{ height: 320 }}
     >
-      Загрузка карты…
+      {t("checkout.delivery.mapLoading")}
     </div>
-  ),
+  );
+}
+
+const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMap"), {
+  ssr: false,
+  loading: MapLoading,
 });
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -68,7 +74,12 @@ import { spring } from "@/lib/motion";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { haptic } from "@/lib/telegram";
 
-const STEPS = ["Контакты", "Доставка", "Оплата", "Готово"];
+const STEP_KEYS = [
+  "checkout.step.contacts",
+  "checkout.step.delivery",
+  "checkout.step.payment",
+  "checkout.step.done",
+];
 
 interface SuccessState {
   orderId: string;
@@ -77,6 +88,7 @@ interface SuccessState {
 }
 
 export default function CheckoutPage() {
+  const t = useT();
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
@@ -196,10 +208,10 @@ export default function CheckoutPage() {
       // leaving them on a step where the code cannot be edited.
       if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
         setPromoCode("");
-        setSubmitError(`${e.message}. Промокод убран — оформите заказ ещё раз.`);
+        setSubmitError(t("checkout.promoDropped", { message: e.message }));
       } else {
         setSubmitError(
-          e instanceof ApiError ? e.message : "Не удалось оформить заказ"
+          e instanceof ApiError ? e.message : t("checkout.failed")
         );
       }
     } finally {
@@ -230,12 +242,12 @@ export default function CheckoutPage() {
     return (
       <div className="pt-2">
         <h1 className="mb-6 text-[28px] font-black uppercase tracking-wide text-[var(--ink)]">
-          Оформление
+          {t("checkout.title")}
         </h1>
         <div className="flex flex-col items-center gap-4 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center shadow-[5px_5px_0_var(--shadow)]">
-          <p className="text-[14px] font-bold text-[var(--muted)]">Корзина пуста.</p>
+          <p className="text-[14px] font-bold text-[var(--muted)]">{t("checkout.emptyCart")}</p>
           <Link href="/">
-            <Button variant="accent">В каталог</Button>
+            <Button variant="accent">{t("common.toCatalog")}</Button>
           </Link>
         </div>
       </div>
@@ -246,7 +258,8 @@ export default function CheckoutPage() {
     return <SuccessScreen state={success} />;
   }
 
-  const primaryLabel = step < 3 ? "Далее" : `Оформить · ${money(total, currency)}`;
+  const primaryLabel =
+    step < 3 ? t("common.next") : t("checkout.submit", { total: money(total, currency) });
 
   return (
     <div className="pt-1">
@@ -255,7 +268,7 @@ export default function CheckoutPage() {
       <div className="mb-3 flex items-center gap-2.5">
         <motion.button
           type="button"
-          aria-label="Назад"
+          aria-label={t("common.back")}
           whileTap={{ scale: 0.94 }}
           onClick={back}
           className="tap -ml-1 grid h-10 w-10 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
@@ -263,7 +276,7 @@ export default function CheckoutPage() {
           <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
         </motion.button>
         <div className="min-w-0 flex-1">
-          <StepProgress steps={STEPS} current={step} />
+          <StepProgress steps={STEP_KEYS.map((k) => t(k))} current={step} />
         </div>
       </div>
 
@@ -357,7 +370,7 @@ export default function CheckoutPage() {
         >
           {step > 0 && (
             <Button variant="surface" onClick={back}>
-              Назад
+              {t("common.back")}
             </Button>
           )}
           <Button
@@ -397,28 +410,29 @@ function ContactsStep({
   onName: (v: string) => void;
   onPhone: (v: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-4">
       <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
-        Куда и кому доставить заказ — начнём с контактов.
+        {t("checkout.contacts.intro")}
       </p>
       <Input
-        label="Имя и фамилия"
+        label={t("checkout.contacts.name")}
         value={name}
         onChange={(e) => onName(e.target.value)}
         status={touched && !nameOk ? "danger" : nameOk ? "ok" : undefined}
-        hint={touched && !nameOk ? "Укажите имя" : undefined}
+        hint={touched && !nameOk ? t("checkout.contacts.nameError") : undefined}
         autoComplete="name"
       />
       <Input
-        label="Телефон"
+        label={t("checkout.contacts.phone")}
         inputMode="tel"
         value={formatPhone(phone)}
         onChange={(e) => onPhone(e.target.value)}
         status={touched && !phoneOk ? "danger" : phoneOk ? "ok" : undefined}
         hint={
           touched && !phoneOk
-            ? "Введите номер: +38 (0XX) XXX-XX-XX"
+            ? t("checkout.contacts.phoneError")
             : undefined
         }
         autoComplete="tel"
@@ -430,9 +444,9 @@ function ContactsStep({
 // ---------------------------------------------------------------------------
 // Step 2 — Delivery (2 tabs; Nova Poshta opens the full map, then a confirm card)
 // ---------------------------------------------------------------------------
-function npLabel(w: NpWarehouse): string {
-  const cat = w.category === "POSTOMAT" ? "Почтомат" : "Отделение";
-  return w.number != null ? `${cat} № ${w.number}` : cat;
+function npLabel(w: NpWarehouse, t: (key: string, params?: Record<string, string | number>) => string): string {
+  const cat = t(w.category === "POSTOMAT" ? "np.type.postomat" : "np.type.branch");
+  return w.number != null ? `${cat} ${t("np.number", { n: w.number })}` : cat;
 }
 
 function DeliveryTab({
@@ -491,6 +505,7 @@ function DeliveryStep({
   setComment: (v: string) => void;
   touched: boolean;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const showMap = delivery === "NOVA_POSHTA" && (!warehouse || editing);
 
@@ -502,15 +517,15 @@ function DeliveryStep({
           active={delivery === "NOVA_POSHTA"}
           onClick={() => setDelivery("NOVA_POSHTA")}
           icon={<Truck className="h-5 w-5" />}
-          title="Новая Почта"
-          subtitle="Отделение / почтомат"
+          title={t("checkout.delivery.np")}
+          subtitle={t("checkout.delivery.npSubtitle")}
         />
         <DeliveryTab
           active={delivery === "PICKUP"}
           onClick={() => setDelivery("PICKUP")}
           icon={<Store className="h-5 w-5" />}
-          title="Самовывоз"
-          subtitle="Из точки магазина"
+          title={t("checkout.delivery.pickup")}
+          subtitle={t("checkout.delivery.pickupSubtitle")}
         />
       </div>
 
@@ -518,7 +533,7 @@ function DeliveryStep({
         (showMap ? (
           <div className="flex flex-col gap-2">
             <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
-              Найдите отделение на карте и нажмите «Выбрать».
+              {t("checkout.delivery.mapHint")}
             </p>
             <NpWarehouseMap
               onSelect={(w) => {
@@ -528,7 +543,7 @@ function DeliveryStep({
             />
             {warehouse && (
               <Button variant="surface" onClick={() => setEditing(false)}>
-                Отмена
+                {t("common.cancel")}
               </Button>
             )}
           </div>
@@ -545,7 +560,7 @@ function DeliveryStep({
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-extrabold text-[var(--ink)]">
-                  {npLabel(warehouse)}
+                  {npLabel(warehouse, t)}
                 </div>
                 <div className="text-[12px] font-medium text-[var(--muted)]">
                   {warehouse.cityName ? `${warehouse.cityName}, ` : ""}
@@ -558,28 +573,27 @@ function DeliveryStep({
               onClick={() => setEditing(true)}
               icon={<MapPin className="h-4 w-4" strokeWidth={2.75} />}
             >
-              Изменить отделение
+              {t("checkout.delivery.change")}
             </Button>
           </motion.div>
         ) : null)}
 
       {touched && delivery === "NOVA_POSHTA" && !warehouse && !showMap && (
         <p className="px-0.5 text-[12px] font-bold text-[var(--danger)]">
-          Выберите отделение на карте.
+          {t("checkout.delivery.required")}
         </p>
       )}
 
       {delivery === "PICKUP" && (
         <div className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-[13px] font-medium leading-relaxed text-[var(--muted)] shadow-[5px_5px_0_var(--shadow)]">
-          Заберите заказ из точки магазина — мы свяжемся с вами насчёт адреса и
-          времени.
+          {t("checkout.delivery.pickupText")}
         </div>
       )}
 
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Комментарий к заказу (необязательно)"
+        placeholder={t("checkout.delivery.comment")}
         rows={3}
         className="tap mt-1 w-full resize-none rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
       />
@@ -605,6 +619,7 @@ function PaymentStep({
   onSelect: (id: string) => void;
   currency: string;
 }) {
+  const t = useT();
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
@@ -617,14 +632,14 @@ function PaymentStep({
   if (error) {
     return (
       <p className="rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--danger)] shadow-[5px_5px_0_var(--shadow)]">
-        Не удалось загрузить варианты оплаты.
+        {t("checkout.payment.error")}
       </p>
     );
   }
   if (options.length === 0) {
     return (
       <p className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--muted)] shadow-[5px_5px_0_var(--shadow)]">
-        Варианты оплаты не настроены.
+        {t("checkout.payment.none")}
       </p>
     );
   }
@@ -638,7 +653,7 @@ function PaymentStep({
           title={o.title}
           subtitle={
             o.requiresPrepayment && o.prepaymentMinor
-              ? `${o.description ?? ""}${o.description ? " · " : ""}Предоплата ${money(o.prepaymentMinor, currency)}`
+              ? `${o.description ?? ""}${o.description ? " · " : ""}${t("checkout.payment.prepay", { amount: money(o.prepaymentMinor, currency) })}`
               : o.description
           }
           icon={<CreditCard className="h-5 w-5" strokeWidth={2.5} />}
@@ -684,16 +699,17 @@ function ConfirmStep({
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
 }) {
+  const t = useT();
   const deliveryText =
     delivery === "PICKUP"
-      ? "Самовывоз"
-      : `Новая Почта · ${warehouse?.cityName ? warehouse.cityName + ", " : ""}${warehouse?.description ?? ""}`;
+      ? t("order.pickup")
+      : `${t("checkout.delivery.np")} · ${warehouse?.cityName ? warehouse.cityName + ", " : ""}${warehouse?.description ?? ""}`;
 
   return (
     <div className="flex flex-col gap-4">
       <section className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[5px_5px_0_var(--shadow)]">
         <h3 className="mb-2 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
-          Состав
+          {t("checkout.confirm.items")}
         </h3>
         {items.map((it, i) => (
           <div key={i} className="flex items-center justify-between gap-2 py-1.5">
@@ -711,14 +727,16 @@ function ConfirmStep({
         {discount > 0 && (
           <>
             <div className="flex items-center justify-between py-0.5">
-              <span className="text-[13px] font-semibold text-[var(--muted)]">Сумма</span>
+              <span className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.confirm.sum")}</span>
               <span className="text-[14px] font-bold text-[var(--muted)]">
                 {money(subtotal, currency)}
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-[13px] font-semibold text-[var(--muted)]">
-                Скидка{promoCode ? ` · ${promoCode}` : ""}
+                {promoCode
+                  ? t("checkout.confirm.discountWithCode", { code: promoCode })
+                  : t("checkout.confirm.discount")}
               </span>
               <span className="text-[14px] font-extrabold text-[var(--ok)]">
                 −{money(discount, currency)}
@@ -730,7 +748,7 @@ function ConfirmStep({
 
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Итого
+            {t("checkout.confirm.total")}
           </span>
           <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[18px] font-black text-[var(--ink)]">
             {money(total, currency)}
@@ -740,7 +758,7 @@ function ConfirmStep({
         {/* Prepay options charge part of the total now and the rest on delivery — show both. */}
         {dueNow !== total && (
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-[13px] font-bold text-[var(--ink)]">К оплате сейчас</span>
+            <span className="text-[13px] font-bold text-[var(--ink)]">{t("checkout.confirm.dueNow")}</span>
             <span className="text-[15px] font-black text-[var(--ink)]">
               {money(dueNow, currency)}
             </span>
@@ -748,22 +766,25 @@ function ConfirmStep({
         )}
         {dueNow !== total && (
           <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
-            Остаток {money(total - dueNow, currency)} — при получении.
+            {t("checkout.confirm.rest", { amount: money(total - dueNow, currency) })}
           </p>
         )}
 
         {promoCode && discount === 0 && (
           <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">
-            Промокод «{promoCode}»: {promoMessage ?? "проверяем…"}
+            {t("checkout.confirm.promoProblem", {
+              code: promoCode,
+              message: promoMessage ?? t("checkout.confirm.promoChecking"),
+            })}
           </p>
         )}
       </section>
 
       <section className="flex flex-col gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[5px_5px_0_var(--shadow)]">
-        <SummaryRow label="Получатель" value={`${name}, ${phone}`} />
-        <SummaryRow label="Доставка" value={deliveryText} />
-        <SummaryRow label="Оплата" value={payment?.title ?? "—"} />
-        {comment && <SummaryRow label="Комментарий" value={comment} />}
+        <SummaryRow label={t("order.recipient")} value={`${name}, ${phone}`} />
+        <SummaryRow label={t("order.delivery")} value={deliveryText} />
+        <SummaryRow label={t("order.payment")} value={payment?.title ?? "—"} />
+        {comment && <SummaryRow label={t("order.comment")} value={comment} />}
       </section>
     </div>
   );
@@ -784,6 +805,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 // Success screen
 // ---------------------------------------------------------------------------
 function SuccessScreen({ state }: { state: SuccessState }) {
+  const t = useT();
   const router = useRouter();
 
   const r = state.requisites;
@@ -791,15 +813,15 @@ function SuccessScreen({ state }: { state: SuccessState }) {
     () =>
       r
         ? ([
-            ["Карта", r.cardNumber],
+            [t("order.requisites.card"), r.cardNumber],
             ["IBAN", r.iban],
-            ["Получатель", r.recipient],
-            ["РНОКПП", r.edrpou],
-            ["Назначение", r.purpose],
-            ["Примечание", r.note],
+            [t("order.recipient"), r.recipient],
+            [t("order.requisites.edrpou"), r.edrpou],
+            [t("order.requisites.purpose"), r.purpose],
+            [t("order.requisites.note"), r.note],
           ].filter(([, v]) => !!v) as [string, string][])
         : [],
-    [r]
+    [r, t]
   );
 
   return (
@@ -813,10 +835,10 @@ function SuccessScreen({ state }: { state: SuccessState }) {
         <CheckCircle2 className="h-11 w-11 text-[var(--ink)]" strokeWidth={2.5} />
       </motion.div>
       <h1 className="mt-5 text-[24px] font-black uppercase tracking-wide text-[var(--ink)]">
-        Заказ оформлен!
+        {t("checkout.success.title")}
       </h1>
       <p className="mt-1 text-[14px] font-semibold text-[var(--muted)]">
-        Номер заказа{" "}
+        {t("checkout.success.orderNumber")}{" "}
         <span className="font-black text-[var(--ink)]">
           #{state.orderId.slice(0, 8)}
         </span>
@@ -825,10 +847,10 @@ function SuccessScreen({ state }: { state: SuccessState }) {
       {reqRows.length > 0 && (
         <section className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]">
           <h3 className="mb-1 text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Реквизиты · {state.paymentTitle}
+            {t("checkout.success.requisites", { payment: state.paymentTitle })}
           </h3>
           <p className="mb-3 text-[12px] font-medium text-[var(--muted)]">
-            Оплатите по реквизитам ниже. Подтверждение — в чате заказа.
+            {t("checkout.success.payByRequisites")}
           </p>
           <div className="flex flex-col gap-2">
             {reqRows.map(([label, value]) => (
@@ -846,11 +868,11 @@ function SuccessScreen({ state }: { state: SuccessState }) {
           fullWidth
           onClick={() => router.push(`/account/orders/${state.orderId}`)}
         >
-          Перейти к заказу
+          {t("checkout.success.openOrder")}
         </Button>
         <Link href="/" className="w-full">
           <Button variant="ghost" fullWidth>
-            В каталог
+            {t("common.toCatalog")}
           </Button>
         </Link>
       </div>
@@ -866,6 +888,7 @@ function SuccessScreen({ state }: { state: SuccessState }) {
  * cash-on-delivery amount on the seller's dispatch card. An admin checks the transfer and confirms.
  */
 function PaymentProof({ orderId }: { orderId: string }) {
+  const t = useT();
   const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [err, setErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -886,7 +909,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
       haptic();
       setState("done");
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Не удалось отправить скрин");
+      setErr(e instanceof ApiError ? e.message : t("order.proof.failed"));
       setState("error");
     } finally {
       if (inputRef.current) inputRef.current.value = "";
@@ -903,11 +926,11 @@ function PaymentProof({ orderId }: { orderId: string }) {
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
           <span className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-            Оплата на проверке
+            {t("order.paymentClaimed")}
           </span>
         </div>
         <p className="mt-1 text-[12px] font-bold text-[var(--ink)]">
-          Скрин перевода отправлен в чат заказа. Менеджер проверит поступление и подтвердит оплату.
+          {t("checkout.success.claimed")}
         </p>
       </motion.section>
     );
@@ -916,11 +939,10 @@ function PaymentProof({ orderId }: { orderId: string }) {
   return (
     <section className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]">
       <h3 className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-        Подтверждение перевода
+        {t("order.proof.title")}
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит
-        поступление и подтвердит оплату.
+        {t("order.proof.text")}
       </p>
       <input
         ref={inputRef}
@@ -936,13 +958,13 @@ function PaymentProof({ orderId }: { orderId: string }) {
         icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
         onClick={() => inputRef.current?.click()}
       >
-        Загрузить скрин перевода
+        {t("order.proof.upload")}
       </Button>
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
       )}
       <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--faint)]">
-        Можно оплатить позже — со страницы заказа
+        {t("checkout.success.payLater")}
       </p>
     </section>
   );
