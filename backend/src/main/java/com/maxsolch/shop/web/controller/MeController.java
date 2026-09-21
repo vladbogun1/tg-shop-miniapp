@@ -3,6 +3,7 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -109,6 +110,27 @@ public class MeController {
     public PromoPreviewDto reservePromo(@RequestParam String code,
                                         @RequestParam long subtotalMinor) {
         return promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId());
+    }
+
+    /**
+     * Remembers the language the customer chose in the app, so the bot writes to them in it.
+     *
+     * <p>Separate from the `language_code` Telegram reports, which is overwritten on every sign-in:
+     * a deliberate choice must not be undone by a device setting. An unsupported value is ignored
+     * rather than rejected — the app would have nothing useful to do with the error.
+     */
+    @PostMapping("/locale")
+    @Operation(summary = "Remember the customer's interface language")
+    public ResponseEntity<Void> setLocale(@RequestParam String locale) {
+        java.util.Locale parsed = Messages.normalize(locale);
+        if (parsed != null) {
+            long userId = SecurityUtil.currentUserId();
+            userRepository.findById(userId).ifPresent(user -> {
+                user.setLocale(parsed.getLanguage());
+                userRepository.save(user);
+            });
+        }
+        return ResponseEntity.noContent().build();
     }
 
     /** Gives a held code back when the customer clears or replaces it. */

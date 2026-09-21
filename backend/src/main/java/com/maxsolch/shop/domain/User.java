@@ -28,8 +28,16 @@ public class User {
     @Column(name = "last_name", length = 255)
     private String lastName;
 
+    /** What Telegram reports; overwritten on every sign-in. */
     @Column(name = "language_code", length = 16)
     private String languageCode;
+
+    /**
+     * What the customer picked in the app, when they picked anything. Wins over
+     * {@link #languageCode} — a deliberate choice outranks a device setting.
+     */
+    @Column(name = "locale", length = 5)
+    private String locale;
 
     @Column(name = "is_premium", nullable = false)
     private boolean premium = false;

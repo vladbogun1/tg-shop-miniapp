@@ -13,6 +13,7 @@
  * Same props as before: the list of steps and the current index.
  */
 import { motion } from "framer-motion";
+import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
 
 export function StepProgress({
@@ -22,6 +23,7 @@ export function StepProgress({
   steps: string[];
   current: number;
 }) {
+  const t = useT();
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-2">
@@ -29,7 +31,7 @@ export function StepProgress({
           {steps[current] ?? ""}
         </h1>
         <span className="shrink-0 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
-          Шаг {current + 1}/{steps.length}
+          {t("checkout.stepCounter", { current: current + 1, total: steps.length })}
         </span>
       </div>
 

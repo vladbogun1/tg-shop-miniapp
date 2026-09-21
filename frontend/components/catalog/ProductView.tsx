@@ -11,6 +11,7 @@ import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { Gallery } from "@/components/catalog/Gallery";
+import { useT } from "@/i18n/context";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
@@ -41,6 +42,7 @@ function ViewBody({
   onClose: () => void;
   onAdded?: () => void;
 }) {
+  const t = useT();
   const hasVariants = (product.variants?.length ?? 0) > 0;
   const [variant, setVariant] = useState<ProductVariant | null>(null);
   const [touchedVariant, setTouchedVariant] = useState(false);
@@ -88,7 +90,7 @@ function ViewBody({
       >
         <button
           type="button"
-          aria-label="Закрыть"
+          aria-label={t("common.close")}
           onClick={close}
           className="nb nb-press tap absolute right-4 z-20 grid h-11 w-11 place-items-center text-[var(--ink)]"
           style={{ top: "max(14px, var(--safe-top))", background: "var(--c3)" }}
@@ -116,7 +118,7 @@ function ViewBody({
               <div className="mt-5">
                 <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">
                   Вариант
-                  {needsVariant && touchedVariant && <span className="text-[var(--danger)]"> — выберите</span>}
+                  {needsVariant && touchedVariant && <span className="text-[var(--danger)]">{t("product.chooseHint")}</span>}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(product.variants ?? []).map((v) => {
@@ -136,7 +138,7 @@ function ViewBody({
                       >
                         {on && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                         {v.name}
-                        {out ? " (нет)" : ""}
+                        {out ? t("product.variantOut") : ""}
                       </button>
                     );
                   })}
@@ -186,7 +188,11 @@ function ViewBody({
               }}
             />
             <p className="mt-2 text-center text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">
-              {stock > 0 ? `В наличии: ${stock}` : hasVariants && !variant ? "Выберите вариант" : "Нет в наличии"}
+              {stock > 0
+                ? t("product.stockLeft", { n: stock })
+                : hasVariants && !variant
+                  ? t("addToCart.chooseVariant")
+                  : t("product.outOfStock")}
             </p>
           </div>
         </div>

@@ -27,11 +27,14 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
+import { LanguageSegments } from "@/components/LanguageToggle";
+import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { spring } from "@/lib/motion";
 import { haptic, useTelegram } from "@/lib/telegram";
 
 export default function AccountPage() {
+  const t = useT();
   const tg = useTelegram();
   const token = useAccessToken();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
@@ -49,7 +52,7 @@ export default function AccountPage() {
   const displayName =
     [tg.user?.firstName, tg.user?.lastName].filter(Boolean).join(" ") ||
     tg.user?.username ||
-    "Гость";
+    t("account.guest");
 
   const initials = deriveInitials(
     tg.user?.firstName,
@@ -62,10 +65,10 @@ export default function AccountPage() {
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
           <h1 className="nb-up text-[26px] font-black text-[var(--ink)]">
-            Аккаунт
+            {t("account.title")}
           </h1>
           <p className="text-[13px] font-semibold text-[var(--muted)]">
-            Профиль и история заказов
+            {t("account.subtitle")}
           </p>
         </div>
         <NotificationsBell />
@@ -99,12 +102,16 @@ export default function AccountPage() {
           )}
         </div>
         <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2.5 py-1 text-[11px] font-black text-[var(--ink)]">
-          {orders.length > 0 ? `${orders.length} зак.` : "—"}
+          {orders.length > 0 ? t("account.ordersBadge", { n: orders.length }) : "—"}
         </span>
       </motion.div>
 
+      <div className="mb-5">
+        <LanguageSegments />
+      </div>
+
       <h2 className="nb-up mb-3 text-[13px] font-black text-[var(--muted)]">
-        Мои заказы
+        {t("account.myOrders")}
       </h2>
 
       {loading && (
@@ -118,8 +125,8 @@ export default function AccountPage() {
       {isError && (
         <EmptyState
           icon={<WifiOff className="h-8 w-8" strokeWidth={2.5} />}
-          title="Не удалось загрузить"
-          text="Войдите через Telegram или проверьте подключение."
+          title={t("account.error.title")}
+          text={t("account.error.text")}
         >
           <Button
             variant="accent"
@@ -129,7 +136,7 @@ export default function AccountPage() {
               void refetch();
             }}
           >
-            Повторить
+            {t("common.retry")}
           </Button>
         </EmptyState>
       )}
@@ -137,11 +144,11 @@ export default function AccountPage() {
       {!loading && !isError && orders.length === 0 && (
         <EmptyState
           icon={<PackageOpen className="h-8 w-8" strokeWidth={2.5} />}
-          title="Заказов пока нет"
-          text="Оформите первый заказ — он появится здесь."
+          title={t("account.empty.title")}
+          text={t("account.empty.text")}
         >
           <Link href="/" onClick={() => haptic()}>
-            <Button variant="accent">В каталог</Button>
+            <Button variant="accent">{t("common.toCatalog")}</Button>
           </Link>
         </EmptyState>
       )}
@@ -158,6 +165,7 @@ export default function AccountPage() {
 }
 
 function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
+  const t = useT();
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -180,21 +188,21 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
             {order.paid ? (
               <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[10px] font-black text-[var(--accent-ink)]">
                 <Check className="h-3 w-3" strokeWidth={3} />
-                Оплачен
+                {t("payment.paid")}
               </span>
             ) : order.paymentClaimed ? (
               <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[10px] font-black text-[var(--ink)]">
                 <Clock className="h-3 w-3" strokeWidth={3} />
-                На проверке
+                {t("payment.claimed")}
               </span>
             ) : (
               <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-black text-[var(--muted)]">
-                Не оплачен
+                {t("payment.unpaid")}
               </span>
             )}
           </div>
           <p className="mt-1.5 text-[13px] font-semibold text-[var(--muted)]">
-            {formatDate(order.createdAt)} · {order.itemsCount} тов.
+            {formatDate(order.createdAt)} · {t("account.itemsCount", { n: order.itemsCount })}
           </p>
           <span className="mt-2 inline-block border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[15px] font-black text-[var(--ink)]">
             {money(order.totalMinor, order.currency)}

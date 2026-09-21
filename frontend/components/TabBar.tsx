@@ -2,7 +2,7 @@
 
 /**
  * Bottom tab-bar — NEO-BRUTALISM: thick ink frame, hard shadow, active tab gets
- * a solid accent block. Магазин / Корзина / Аккаунт. Safe-area aware, ≥44px.
+ * a solid accent block. Shop / Cart / Account. Safe-area aware, ≥44px.
  *
  * It hides itself in three cases and publishes its height as `--tabbar-h` so every page that
  * docks something to the bottom (cart summary, checkout actions, page padding) follows along
@@ -17,19 +17,21 @@ import { ShoppingBag, ShoppingCart, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { useT } from "@/i18n/context";
 import { useCartCount } from "@/lib/cart";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 const TABS = [
-  { href: "/", label: "Магазин", Icon: ShoppingBag },
-  { href: "/cart", label: "Корзина", Icon: ShoppingCart },
-  { href: "/account", label: "Аккаунт", Icon: User },
+  { href: "/", labelKey: "tabs.shop", Icon: ShoppingBag },
+  { href: "/cart", labelKey: "tabs.cart", Icon: ShoppingCart },
+  { href: "/account", labelKey: "tabs.account", Icon: User },
 ] as const;
 
 /** Bar height + its bottom margin; mirrored into `--tabbar-h` for the docked blocks. */
 const BAR_H = "84px";
 
 export function TabBar() {
+  const t = useT();
   const pathname = usePathname();
   const cartCount = useCartCount();
   const keyboardOpen = useKeyboardOpen();
@@ -48,7 +50,7 @@ export function TabBar() {
       className="nb nb-lg fixed inset-x-3 bottom-0 z-40 flex items-stretch justify-around p-1.5"
       style={{ marginBottom: "max(12px, var(--safe-bottom))" }}
     >
-      {TABS.map(({ href, label, Icon }) => {
+      {TABS.map(({ href, labelKey, Icon }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
@@ -79,7 +81,7 @@ export function TabBar() {
               className="relative z-10 text-[11px] font-bold uppercase tracking-wide"
               style={{ color: active ? "var(--accent-ink)" : "var(--ink)" }}
             >
-              {label}
+              {t(labelKey)}
             </span>
           </Link>
         );

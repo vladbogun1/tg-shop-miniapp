@@ -16,7 +16,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/context";
 import { ApiError, customerApi, type PromoPreview } from "@/lib/api";
+import { formatTime } from "@/lib/format";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
 
@@ -37,6 +39,7 @@ export function PromoField({
   /** Lifted so the cart totals show the same numbers this field reports. */
   preview: { data: PromoPreview | null; loading: boolean };
 }) {
+  const t = useT();
   const trimmed = code.trim();
   const state: "empty" | "checking" | "ok" | "bad" = !trimmed
     ? "empty"
@@ -71,8 +74,8 @@ export function PromoField({
         <input
           value={code}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
-          placeholder="Промокод"
-          aria-label="Промокод"
+          placeholder={t("promo.placeholder")}
+          aria-label={t("promo.placeholder")}
           aria-invalid={state === "bad"}
           className="tap min-h-0 w-full bg-transparent text-[15px] font-bold uppercase tracking-wide text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[var(--faint)] placeholder:normal-case placeholder:tracking-normal"
         />
@@ -86,7 +89,7 @@ export function PromoField({
         {trimmed.length > 0 && (
           <motion.button
             type="button"
-            aria-label="Убрать промокод"
+            aria-label={t("promo.clear")}
             whileTap={{ scale: 0.88 }}
             onClick={clear}
             className="tap -mr-1 grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
@@ -112,39 +115,44 @@ function PromoHint({
   subtotal: number;
   currency: string;
 }) {
+  const t = useT();
   if (state === "empty") {
     return (
       <p className="mt-1.5 px-1 text-[12px] font-medium text-[var(--faint)]">
-        Есть промокод? Введите его — скидка посчитается сразу.
+        {t("promo.hint")}
       </p>
     );
   }
   if (state === "checking") {
     return (
-      <p className="mt-1.5 px-1 text-[12px] font-medium text-[var(--muted)]">Проверяем…</p>
+      <p className="mt-1.5 px-1 text-[12px] font-medium text-[var(--muted)]">
+        {t("promo.checking")}
+      </p>
     );
   }
   if (state === "bad") {
+    // The server already answers in the customer's language; the fallback is for a dropped request.
     return (
       <p className="mt-1.5 px-1 text-[12px] font-bold text-[var(--danger)]">
-        {preview?.message ?? "Промокод не найден"}
+        {preview?.message ?? t("promo.notFound")}
       </p>
     );
   }
   const discount = preview?.discountMinor ?? 0;
   return (
     <p className="mt-1.5 px-1 text-[12px] font-bold text-[var(--ok)]">
-      Скидка {money(discount, currency)} из {money(subtotal, currency)}
-      {preview?.reservedUntil ? ` · закреплён за вами до ${hhmm(preview.reservedUntil)}` : ""}
+      {t("promo.discount", {
+        discount: money(discount, currency),
+        subtotal: money(subtotal, currency),
+      })}
+      {preview?.reservedUntil ? t("promo.heldUntil", { time: hhmm(preview.reservedUntil) }) : ""}
     </p>
   );
 }
 
 function hhmm(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? ""
-    : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return Number.isNaN(d.getTime()) ? "" : formatTime(iso);
 }
 
 /**

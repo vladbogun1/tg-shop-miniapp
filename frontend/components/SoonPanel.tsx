@@ -8,6 +8,7 @@
  */
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
 
 export function SoonPanel({
@@ -19,6 +20,7 @@ export function SoonPanel({
   icon: ReactNode;
   text: string;
 }) {
+  const t = useT();
   return (
     <div className="pt-2">
       <h1 className="nb-up mb-6 text-[26px] font-black text-[var(--ink)]">
@@ -34,7 +36,7 @@ export function SoonPanel({
           {icon}
         </span>
         <span className="nb-up -rotate-2 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-1 text-[12px] font-black text-[var(--ink)]">
-          Скоро
+          {t("soon.badge")}
         </span>
         <p className="max-w-[260px] text-[14px] font-semibold text-[var(--muted)]">
           {text}

@@ -5,6 +5,7 @@
  * min, max, size). Sharp bordered −/+ squares around the count.
  */
 import { Minus, Plus } from "lucide-react";
+import { useT } from "@/i18n/context";
 
 export function QtyStepper({
   value,
@@ -19,6 +20,7 @@ export function QtyStepper({
   max?: number;
   size?: "sm" | "md";
 }) {
+  const t = useT();
   const btn = size === "sm" ? "h-9 w-9 min-h-0 min-w-0" : "h-11 w-11";
   const num = size === "sm" ? "min-w-[30px] text-[15px]" : "min-w-[40px] text-[17px]";
 
@@ -46,11 +48,11 @@ export function QtyStepper({
 
   return (
     <div className="inline-flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] p-1">
-      <Btn label="Уменьшить" disabled={value <= min} onClick={() => onChange(value - 1)}>
+      <Btn label={t("qty.decrease")} disabled={value <= min} onClick={() => onChange(value - 1)}>
         <Minus className="h-4 w-4" strokeWidth={3} />
       </Btn>
       <span className={`text-center font-black tabular-nums text-[var(--ink)] ${num}`}>{value}</span>
-      <Btn label="Увеличить" disabled={value >= max} onClick={() => onChange(value + 1)}>
+      <Btn label={t("qty.increase")} disabled={value >= max} onClick={() => onChange(value + 1)}>
         <Plus className="h-4 w-4" strokeWidth={3} />
       </Btn>
     </div>

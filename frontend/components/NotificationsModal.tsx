@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import { useT } from "@/i18n/context";
 import { customerApi, type Conversation } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
 import { formatDate, formatTime, shortOrderId } from "@/lib/format";
@@ -28,11 +29,8 @@ function whenLabel(iso?: string | null): string {
   return d.toDateString() === today.toDateString() ? formatTime(iso) : formatDate(iso);
 }
 
-function senderPrefix(t?: string | null): string {
-  return t === "CUSTOMER" ? "Вы: " : "";
-}
-
 export function NotificationsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const router = useRouter();
   const token = useAccessToken();
   const { data, isLoading } = useQuery({
@@ -85,14 +83,14 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
               style={{ paddingTop: "max(14px, var(--safe-top))" }}
             >
               <h2 className="text-[17px] font-black uppercase tracking-wide text-[var(--ink)]">
-                Сообщения
+                {t("inbox.title")}
               </h2>
               <motion.button
                 whileTap={{ scale: 0.92 }}
                 transition={{ duration: 0.07 }}
                 onClick={onClose}
                 className="tap grid h-9 w-9 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
-                aria-label="Закрыть"
+                aria-label={t("common.close")}
               >
                 <X className="h-5 w-5" strokeWidth={2.75} />
               </motion.button>
@@ -118,7 +116,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                     <MessageCircle className="h-7 w-7" strokeWidth={2.5} />
                   </div>
                   <span className="text-[14px] font-bold uppercase tracking-wide">
-                    Нет новых сообщений
+                    {t("inbox.empty")}
                   </span>
                 </div>
               ) : (
@@ -144,7 +142,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
-                            Заказ {shortOrderId(c.orderId)}
+                            {t("inbox.orderNumber", { id: shortOrderId(c.orderId) })}
                           </span>
                           <span className="shrink-0 text-[11px] font-bold text-[var(--faint)]">
                             {whenLabel(c.lastAt)}
@@ -152,8 +150,8 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-2">
                           <span className="truncate text-[13px] font-medium text-[var(--muted)]">
-                            {senderPrefix(c.lastSenderType)}
-                            {c.lastPreview || "—"}
+                            {c.lastSenderType === "CUSTOMER" ? t("inbox.youPrefix") : ""}
+                            {c.lastPreview || t("inbox.noPreview")}
                           </span>
                           {c.unreadCount > 0 && (
                             <span className="flex h-[20px] min-w-[20px] shrink-0 items-center justify-center rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--accent)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]">

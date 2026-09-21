@@ -26,6 +26,7 @@ import { Box, Store, MapPin, X, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { useT } from "@/i18n/context";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
 
@@ -34,11 +35,11 @@ const UA_ZOOM = 6;
 
 type Cat = "all" | "branch" | "postomat" | "point";
 
-const CAT_TABS: { key: Cat; label: string }[] = [
-  { key: "all", label: "Всі" },
-  { key: "branch", label: "Відділення" },
-  { key: "postomat", label: "Поштомати" },
-  { key: "point", label: "Пункти" },
+const CAT_TABS: { key: Cat; labelKey: string }[] = [
+  { key: "all", labelKey: "np.cat.all" },
+  { key: "branch", labelKey: "np.cat.branch" },
+  { key: "postomat", labelKey: "np.cat.postomat" },
+  { key: "point", labelKey: "np.cat.point" },
 ];
 
 const CAT_COLOR: Record<string, string> = {
@@ -48,14 +49,12 @@ const CAT_COLOR: Record<string, string> = {
   OTHER: "#6b7280",
 };
 
-function catLabel(c?: NpCategory): string {
+function catLabelKey(c?: NpCategory): string {
   return c === "POSTOMAT"
-    ? "Почтомат"
-    : c === "BRANCH"
-      ? "Отделение"
-      : c === "POINT"
-        ? "Пункт"
-        : "Отделение";
+    ? "np.type.postomat"
+    : c === "POINT"
+      ? "np.type.point"
+      : "np.type.branch";
 }
 
 /** White monochrome glyph per category so the type reads at a glance (not just colour). */
@@ -158,6 +157,7 @@ export default function NpWarehouseMap({
 }: {
   onSelect: (w: NpWarehouse) => void;
 }) {
+  const t = useT();
   const [category, setCategory] = useState<Cat>("all");
   const [items, setItems] = useState<NpWarehouse[]>([]);
   const [active, setActive] = useState<NpWarehouse | null>(null);
@@ -200,14 +200,14 @@ export default function NpWarehouseMap({
     <div className="flex flex-col gap-2.5">
       {/* Category tabs (neo chips, not inputs) */}
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1.5 pl-0.5 pt-0.5">
-        {CAT_TABS.map((t) => {
-          const on = category === t.key;
+        {CAT_TABS.map((tab) => {
+          const on = category === tab.key;
           return (
             <motion.button
-              key={t.key}
+              key={tab.key}
               type="button"
               whileTap={{ scale: 0.96 }}
-              onClick={() => setCategory(t.key)}
+              onClick={() => setCategory(tab.key)}
               className="tap min-h-0 shrink-0 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
               style={{
                 background: on ? "var(--accent)" : "var(--surface)",
@@ -215,7 +215,7 @@ export default function NpWarehouseMap({
                 boxShadow: on ? "3px 3px 0 var(--shadow)" : "none",
               }}
             >
-              {t.label}
+              {t(tab.labelKey)}
             </motion.button>
           );
         })}
@@ -251,7 +251,7 @@ export default function NpWarehouseMap({
           {!active && (
             <div className="pointer-events-none absolute inset-x-0 top-2 z-[1000] flex justify-center px-2">
               <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)]">
-                Тапните по отделению на карте
+                {t("np.hint")}
               </span>
             </div>
           )}
@@ -295,8 +295,8 @@ export default function NpWarehouseMap({
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-[14px] font-extrabold text-[var(--ink)]">
-                      {catLabel(active.category)}{" "}
-                      {active.number != null ? `№ ${active.number}` : ""}
+                      {t(catLabelKey(active.category))}{" "}
+                      {active.number != null ? t("np.number", { n: active.number }) : ""}
                     </div>
                     <div className="mt-0.5 flex items-start gap-1 text-[12px] font-medium text-[var(--muted)]">
                       <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -305,7 +305,7 @@ export default function NpWarehouseMap({
                   </div>
                   <button
                     onClick={() => setActive(null)}
-                    aria-label="Закрыть"
+                    aria-label={t("common.close")}
                     className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
                   >
                     <X className="h-4 w-4" strokeWidth={3} />
@@ -317,8 +317,7 @@ export default function NpWarehouseMap({
                   onClick={() => onSelect(active)}
                   className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] py-3 text-[14px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
                 >
-                  <Check className="h-5 w-5" strokeWidth={3} /> Выбрать это
-                  отделение
+                  <Check className="h-5 w-5" strokeWidth={3} /> {t("np.confirm")}
                 </motion.button>
               </motion.div>
             )}

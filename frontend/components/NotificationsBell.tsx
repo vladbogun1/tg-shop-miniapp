@@ -11,12 +11,14 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Mail } from "lucide-react";
 import { useState } from "react";
+import { useT } from "@/i18n/context";
 import { customerApi } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/lib/telegram";
 import { NotificationsModal } from "@/components/NotificationsModal";
 
 export function NotificationsBell() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const token = useAccessToken();
   const { data } = useQuery({
@@ -46,8 +48,8 @@ export function NotificationsBell() {
               haptic();
               setOpen(true);
             }}
-            aria-label={`Новые сообщения: ${count}`}
-            title={`Новые сообщения: ${count}`}
+            aria-label={t("notifications.unread", { n: count })}
+            title={t("notifications.unread", { n: count })}
             className="tap relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
           >
             <Mail className="h-5 w-5" strokeWidth={2.5} />

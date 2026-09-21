@@ -190,6 +190,12 @@ export const customerApi = {
   /** Gives a held code back when the customer clears or replaces it. */
   releasePromo: (code: string) =>
     http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`),
+  /**
+   * Remembers which language this customer reads, so the bot writes to them in it. The app itself
+   * does not need the answer — it already knows — so a failure here is deliberately ignored.
+   */
+  setLocale: (locale: string) =>
+    http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`),
   /** Buffered interaction journal, flushed in batches — see lib/analytics. */
   sendAnalytics: (batch: { sessionId: string; events: unknown[] }) =>
     http.post<void>("/api/me/analytics", batch),

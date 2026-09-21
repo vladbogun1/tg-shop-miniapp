@@ -2,6 +2,7 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.service.OrderQueryService;
@@ -20,6 +21,7 @@ import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Best-effort Telegram notifications. Every method swallows failures (try/catch + log) so the
@@ -31,10 +33,12 @@ public class NotificationService {
 
     private final ShopBot bot;
     private final AppProperties props;
+    private final Messages messages;
 
-    public NotificationService(@Lazy ShopBot bot, AppProperties props) {
+    public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages) {
         this.bot = bot;
         this.props = props;
+        this.messages = messages;
     }
 
     private boolean enabled() {
@@ -136,14 +140,15 @@ public class NotificationService {
             return;
         }
         try {
-            String text = statusHeader(order) + "\n"
-                    + "Заказ <b>#" + shortId(order) + "</b>\n"
-                    + statusCustomerNote(order);
+            Locale locale = messages.localeOf(tgUserId);
+            String text = customerStatusHeader(order, locale) + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + statusCustomerNote(order, locale);
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order))
+                    .replyMarkup(chatButton(order, locale))
                     .build();
             bot.execute(msg);
         } catch (Exception e) {
@@ -161,22 +166,23 @@ public class NotificationService {
             return;
         }
         try {
+            Locale locale = messages.localeOf(tgUserId);
             StringBuilder t = new StringBuilder();
-            t.append("🎁 <b>Подарок к заказу</b>\n");
-            t.append("Заказ <b>#").append(shortId(order)).append("</b>\n");
-            t.append("Мы добавили вам подарок: <b>").append(esc(nz(productTitle))).append("</b>");
+            t.append(messages.get(locale, "bot.gift.title")).append('\n');
+            t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            t.append(messages.get(locale, "bot.gift.body", esc(nz(productTitle))));
             if (variantName != null && !variantName.isBlank()) {
                 t.append(" <i>(").append(esc(variantName)).append(")</i>");
             }
             if (qty > 1) {
                 t.append(" × ").append(qty);
             }
-            t.append(". Приятного пользования!");
+            t.append(messages.get(locale, "bot.gift.enjoy"));
             bot.execute(SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(t.toString())
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order))
+                    .replyMarkup(chatButton(order, locale))
                     .build());
         } catch (Exception e) {
             log.warn("notifyCustomerGift failed for order {}: {}", idStr(order), e.getMessage());
@@ -193,17 +199,19 @@ public class NotificationService {
             return;
         }
         try {
+            Locale locale = messages.localeOf(tgUserId);
             String cur = nz(order.getCurrency());
-            String text = "🏷 <b>Скидка на заказ</b>\n"
-                    + "Заказ <b>#" + shortId(order) + "</b>\n"
-                    + "Вам применена скидка "
-                    + money(order.getDiscountMinor()) + " " + cur + ".\n"
-                    + "Новая сумма к оплате: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>";
+            String text = messages.get(locale, "bot.discount.title") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, "bot.discount.applied",
+                            money(order.getDiscountMinor()) + " " + cur) + "\n"
+                    + messages.get(locale, "bot.discount.newTotal",
+                            money(order.getTotalMinor()) + " " + cur);
             bot.execute(SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order))
+                    .replyMarkup(chatButton(order, locale))
                     .build());
         } catch (Exception e) {
             log.warn("notifyCustomerDiscount failed for order {}: {}", idStr(order), e.getMessage());
@@ -220,15 +228,17 @@ public class NotificationService {
             return;
         }
         try {
+            Locale locale = messages.localeOf(tgUserId);
             String cur = nz(order.getCurrency());
-            String text = "🧾 <b>Состав заказа обновлён</b>\n"
-                    + "Заказ <b>#" + shortId(order) + "</b>\n"
-                    + "Новая сумма к оплате: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>";
+            String text = messages.get(locale, "bot.changed.title") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, "bot.changed.newTotal",
+                            money(order.getTotalMinor()) + " " + cur);
             bot.execute(SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order))
+                    .replyMarkup(chatButton(order, locale))
                     .build());
         } catch (Exception e) {
             log.warn("notifyCustomerOrderChanged failed for order {}: {}", idStr(order), e.getMessage());
@@ -246,16 +256,17 @@ public class NotificationService {
         }
         try {
             StringBuilder t = new StringBuilder();
-            t.append("💬 <b>Новое сообщение по заказу #").append(shortId(order)).append("</b>\n");
+            Locale locale = messages.localeOf(tgUserId);
+            t.append(messages.get(locale, "bot.newMessage", shortId(order))).append('\n');
             if (preview != null && !preview.isBlank()) {
                 t.append("<blockquote>").append(esc(trim(preview, 160))).append("</blockquote>\n");
             }
-            t.append("Нажмите, чтобы открыть переписку 👇");
+            t.append(messages.get(locale, "bot.newMessage.cta"));
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(t.toString())
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order))
+                    .replyMarkup(chatButton(order, locale))
                     .build();
             bot.execute(msg);
         } catch (Exception e) {
@@ -508,13 +519,13 @@ public class NotificationService {
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(open))).build();
     }
 
-    private InlineKeyboardMarkup chatButton(Order order) {
+    private InlineKeyboardMarkup chatButton(Order order, Locale locale) {
         String webapp = props.getWebappBaseUrl();
         if (!isHttps(webapp)) {
             return null;
         }
         InlineKeyboardButton btn = InlineKeyboardButton.builder()
-                .text("Открыть переписку")
+                .text(messages.get(locale, "bot.openChat"))
                 .webApp(WebAppInfo.builder().url(webapp + "?startapp=order_" + idStr(order)).build())
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
@@ -582,23 +593,36 @@ public class NotificationService {
         };
     }
 
-    /** Short customer-facing note per status (for the status DM). */
-    private String statusCustomerNote(Order order) {
+    /**
+     * Short customer-facing note per status, in the CUSTOMER's language.
+     *
+     * <p>The rejection reason itself is passed through as the admin typed it: it is a free-text
+     * explanation written by a person, and machine-mangling it would be worse than leaving it.
+     */
+    private String statusCustomerNote(Order order, Locale locale) {
         OrderStatus s = order.getStatus();
         if (s == null) {
             return "";
         }
         return switch (s) {
-            case APPROVED -> "Мы подтвердили ваш заказ и готовим его к отправке.";
+            case APPROVED -> messages.get(locale, "bot.note.APPROVED");
             case SHIPPED -> order.getTrackingNumber() != null
-                    ? "Заказ отправлен. ТТН: <code>" + esc(order.getTrackingNumber()) + "</code>"
-                    : "Заказ отправлен.";
-            case DELIVERED -> "Заказ доставлен. Спасибо за покупку! 🙌";
+                    ? messages.get(locale, "bot.note.SHIPPED.tracking", esc(order.getTrackingNumber()))
+                    : messages.get(locale, "bot.note.SHIPPED");
+            case DELIVERED -> messages.get(locale, "bot.note.DELIVERED");
             case REJECTED -> order.getRejectReason() != null
-                    ? "К сожалению, заказ отклонён. Причина: " + esc(order.getRejectReason())
-                    : "К сожалению, заказ отклонён.";
+                    ? messages.get(locale, "bot.note.REJECTED.reason", esc(order.getRejectReason()))
+                    : messages.get(locale, "bot.note.REJECTED");
             default -> "";
         };
+    }
+
+    /** The same header as the seller's card, but in the customer's language. */
+    private String customerStatusHeader(Order order, Locale locale) {
+        OrderStatus s = order.getStatus();
+        return s == null
+                ? "<b>" + messages.get(locale, "bot.order") + "</b>"
+                : messages.get(locale, "bot.status." + s.name());
     }
 
     private String deliveryLabel(Order order) {

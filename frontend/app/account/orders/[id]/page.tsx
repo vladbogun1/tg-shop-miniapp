@@ -47,10 +47,12 @@ import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { riseItem, spring, staggerContainer } from "@/lib/motion";
+import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/lib/telegram";
 
 export default function OrderDetailPage() {
+  const t = useT();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -73,7 +75,7 @@ export default function OrderDetailPage() {
       >
         <button
           type="button"
-          aria-label="Назад"
+          aria-label={t("common.back")}
           onClick={() => {
             haptic();
             router.push("/account");
@@ -83,7 +85,7 @@ export default function OrderDetailPage() {
           <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
         </button>
         <h1 className="nb-up flex-1 truncate text-[18px] font-black text-[var(--ink)]">
-          Заказ {shortOrderId(id)}
+          {t("inbox.orderNumber", { id: shortOrderId(id) })}
         </h1>
         {data && <StatusChip status={data.status} />}
       </header>
@@ -105,7 +107,7 @@ export default function OrderDetailPage() {
         >
           <WifiOff className="h-8 w-8 text-[var(--muted)]" strokeWidth={2.5} />
           <p className="text-[14px] font-semibold text-[var(--muted)]">
-            Не удалось загрузить заказ.
+            {t("order.error")}
           </p>
           <Button
             variant="accent"
@@ -115,7 +117,7 @@ export default function OrderDetailPage() {
               void refetch();
             }}
           >
-            Повторить
+            {t("common.retry")}
           </Button>
         </motion.div>
       )}
@@ -134,6 +136,7 @@ function OrderBody({
   id: string;
   onPaid: () => void;
 }) {
+  const t = useT();
   const isPickup = order.deliveryMethod === "PICKUP";
   const cancelable =
     !order.paid && (order.status === "NEW" || order.status === "APPROVED");
@@ -151,7 +154,7 @@ function OrderBody({
         <motion.section variants={riseItem} className="nb p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
-              Статус
+              {t("order.status")}
             </h3>
             <PaidBadge state={paymentState(order)} />
           </div>
@@ -160,7 +163,7 @@ function OrderBody({
           {order.status === "REJECTED" && order.rejectReason && (
             <div className="mt-3 border-[3px] border-[var(--line)] bg-[color-mix(in_srgb,var(--danger)_16%,var(--surface))] px-4 py-3">
               <p className="nb-up text-[11px] font-black text-[var(--danger)]">
-                Причина отклонения
+                {t("order.rejectReason")}
               </p>
               <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">
                 {order.rejectReason}
@@ -175,24 +178,24 @@ function OrderBody({
                 strokeWidth={2.5}
               />
               <span className="nb-up text-[11px] font-bold text-[var(--muted)]">
-                ТТН
+                {t("order.tracking")}
               </span>
               <span className="min-w-0 flex-1 truncate text-[14px] font-black text-[var(--ink)]">
                 {order.trackingNumber}
               </span>
-              <CopyButton value={order.trackingNumber} label="ТТН" />
+              <CopyButton value={order.trackingNumber} label={t("order.tracking")} />
             </div>
           )}
 
           <p className="mt-3 text-[12px] font-semibold text-[var(--faint)]">
-            Создан {formatDateTime(order.createdAt)}
+            {t("order.createdAt", { when: formatDateTime(order.createdAt) })}
           </p>
         </motion.section>
 
         {/* items + totals */}
         <motion.section variants={riseItem} className="nb p-4">
           <h3 className="nb-up mb-3 flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-            <Package className="h-4 w-4" strokeWidth={2.5} /> Состав
+            <Package className="h-4 w-4" strokeWidth={2.5} /> {t("order.items")}
           </h3>
           <div className="flex flex-col gap-3">
             {order.items.map((it, i) => (
@@ -209,7 +212,7 @@ function OrderBody({
                   <p className="line-clamp-2 text-[14px] font-bold text-[var(--ink)]">
                     {it.gift && (
                       <span className="mr-1 inline-block rounded-[var(--r)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
-                        🎁 Подарок
+                        {t("order.giftBadge")}
                       </span>
                     )}
                     {it.title}
@@ -221,7 +224,9 @@ function OrderBody({
                   )}
                   <p className="mt-0.5 text-[12px] font-medium text-[var(--faint)]">
                     {it.gift
-                      ? `Подарок${it.quantity > 1 ? ` × ${it.quantity}` : ""} · бесплатно`
+                      ? it.quantity > 1
+                        ? t("order.giftMany", { n: it.quantity })
+                        : t("order.gift")
                       : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
                   </p>
                 </div>
@@ -236,18 +241,22 @@ function OrderBody({
 
           <div className="mt-4 flex flex-col gap-2 border-t-[3px] border-[var(--line)] pt-3">
             <TotalRow
-              label="Сумма"
+              label={t("order.sum")}
               value={money(order.subtotalMinor, order.currency)}
             />
             {order.discountMinor > 0 && (
               <TotalRow
-                label={`Скидка${order.promoCode ? ` (${order.promoCode})` : ""}`}
+                label={
+                  order.promoCode
+                    ? t("order.discountWithCode", { code: order.promoCode })
+                    : t("order.discount")
+                }
                 value={`− ${money(order.discountMinor, order.currency)}`}
                 discount
               />
             )}
             <TotalRow
-              label="Итого"
+              label={t("order.total")}
               value={money(order.totalMinor, order.currency)}
               strong
             />
@@ -261,7 +270,7 @@ function OrderBody({
         >
           <InfoRow
             icon={<Receipt className="h-4 w-4" strokeWidth={2.5} />}
-            label="Получатель"
+            label={t("order.recipient")}
             value={`${order.customerName}, ${order.phone}`}
           />
           <InfoRow
@@ -272,24 +281,23 @@ function OrderBody({
                 <MapPin className="h-4 w-4" strokeWidth={2.5} />
               )
             }
-            label="Доставка"
+            label={t("order.delivery")}
             value={
               isPickup
-                ? "Самовывоз"
-                : `Новая Почта · ${order.npCityName ?? ""}${
-                    order.npWarehouseName ? `, ${order.npWarehouseName}` : ""
-                  }`
+                ? t("order.pickup")
+                : t("order.npDelivery", { city: order.npCityName ?? "" }) +
+                  (order.npWarehouseName ? `, ${order.npWarehouseName}` : "")
             }
           />
           {order.paymentOptionTitle && (
             <InfoRow
               icon={<CreditCard className="h-4 w-4" strokeWidth={2.5} />}
-              label="Оплата"
+              label={t("order.payment")}
               value={order.paymentOptionTitle}
             />
           )}
           {order.comment && (
-            <InfoRow label="Комментарий" value={order.comment} />
+            <InfoRow label={t("order.comment")} value={order.comment} />
           )}
         </motion.section>
 
@@ -297,27 +305,27 @@ function OrderBody({
         {order.requisites && hasAnyRequisite(order.requisites) && (
           <motion.section variants={riseItem} className="nb p-4">
             <h3 className="nb-up mb-3 flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-              <CreditCard className="h-4 w-4" strokeWidth={2.5} /> Реквизиты
-              оплаты
+              <CreditCard className="h-4 w-4" strokeWidth={2.5} />{" "}
+              {t("order.requisitesTitle")}
             </h3>
             <div className="flex flex-col gap-3">
               {order.requisites.cardNumber && (
-                <CopyRow label="Карта" value={order.requisites.cardNumber} />
+                <CopyRow label={t("order.requisites.card")} value={order.requisites.cardNumber} />
               )}
               {order.requisites.iban && (
                 <CopyRow label="IBAN" value={order.requisites.iban} />
               )}
               {order.requisites.recipient && (
-                <InfoRow label="Получатель" value={order.requisites.recipient} />
+                <InfoRow label={t("order.recipient")} value={order.requisites.recipient} />
               )}
               {order.requisites.edrpou && (
-                <CopyRow label="РНОКПП" value={order.requisites.edrpou} />
+                <CopyRow label={t("order.requisites.edrpou")} value={order.requisites.edrpou} />
               )}
               {order.requisites.purpose && (
-                <InfoRow label="Назначение" value={order.requisites.purpose} />
+                <InfoRow label={t("order.requisites.purpose")} value={order.requisites.purpose} />
               )}
               {order.requisites.note && (
-                <InfoRow label="Примечание" value={order.requisites.note} />
+                <InfoRow label={t("order.requisites.note")} value={order.requisites.note} />
               )}
             </div>
           </motion.section>
@@ -332,7 +340,7 @@ function OrderBody({
                 strokeWidth={2.75}
               />
               <span className="nb-up text-[14px] font-black text-[var(--accent-ink)]">
-                Оплата подтверждена
+                {t("order.paymentConfirmed")}
               </span>
             </div>
           ) : order.paymentClaimed ? (
@@ -340,11 +348,10 @@ function OrderBody({
               <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ink)]" strokeWidth={2.75} />
               <div>
                 <span className="nb-up block text-[14px] font-black text-[var(--ink)]">
-                  Оплата на проверке
+                  {t("order.paymentClaimed")}
                 </span>
                 <p className="mt-1 text-[12px] font-semibold text-[var(--ink)]">
-                  Скрин получен. Менеджер проверит поступление и подтвердит оплату — статус
-                  обновится здесь.
+                  {t("order.paymentClaimedText")}
                 </p>
               </div>
             </div>
@@ -376,7 +383,7 @@ function OrderBody({
             fullWidth
             icon={<MessageCircle className="h-4 w-4" strokeWidth={2.75} />}
           >
-            Написать в чат
+            {t("order.openChat")}
           </Button>
         </Link>
       </div>
@@ -469,6 +476,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     haptic();
@@ -484,7 +492,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
     <button
       type="button"
       onClick={onCopy}
-      aria-label={`Скопировать: ${label}`}
+      aria-label={t("order.copy", { label })}
       className="tap nb-flat nb-press flex h-9 w-9 shrink-0 items-center justify-center bg-[var(--surface)] text-[var(--ink)]"
     >
       {copied ? (
@@ -501,11 +509,12 @@ function CopyButton({ value, label }: { value: string; label: string }) {
  * claim, and showing it as «ОПЛАЧЕН» is what let an unpaid order look settled.
  */
 function PaidBadge({ state }: { state: PaymentState }) {
+  const t = useT();
   if (state === "PAID") {
     return (
       <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
         <Check className="h-3 w-3" strokeWidth={3} />
-        Оплачен
+        {t("payment.paid")}
       </span>
     );
   }
@@ -519,7 +528,7 @@ function PaidBadge({ state }: { state: PaymentState }) {
   }
   return (
     <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-black text-[var(--muted)]">
-      Не оплачен
+      {t("payment.unpaid")}
     </span>
   );
 }
@@ -538,6 +547,7 @@ function PaymentProof({
   orderId: string;
   onPaid: () => void;
 }) {
+  const t = useT();
   const [state, setState] = useState<"idle" | "uploading" | "error">("idle");
   const [err, setErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -559,7 +569,7 @@ function PaymentProof({
       setState("idle");
       onPaid();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Не удалось отправить скрин");
+      setErr(e instanceof ApiError ? e.message : t("order.proof.failed"));
       setState("error");
     } finally {
       if (inputRef.current) inputRef.current.value = "";
@@ -569,11 +579,10 @@ function PaymentProof({
   return (
     <div className="nb p-4 text-left">
       <h3 className="nb-up flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-        <Upload className="h-4 w-4" strokeWidth={2.5} /> Подтверждение перевода
+        <Upload className="h-4 w-4" strokeWidth={2.5} /> {t("order.proof.title")}
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит
-        поступление и подтвердит оплату.
+        {t("order.proof.text")}
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
       <Button
@@ -583,7 +592,7 @@ function PaymentProof({
         icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
         onClick={() => inputRef.current?.click()}
       >
-        Загрузить скрин перевода
+        {t("order.proof.upload")}
       </Button>
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
@@ -592,24 +601,35 @@ function PaymentProof({
   );
 }
 
+/**
+ * What the customer sees is translated; what the SELLER receives is always the Russian wording.
+ * The cancellation reason lands on the admin board and in a Telegram card, and a board where every
+ * third reason is in a different language is harder to scan than it is worth.
+ */
 const CANCEL_REASONS = [
-  "Проблема с оплатой / картой",
-  "Передумал(а)",
-  "Оформил(а) по ошибке",
-  "Нашёл(ла) дешевле",
-  "Другое",
-];
+  { id: "payment", ru: "Проблема с оплатой / картой" },
+  { id: "changedMind", ru: "Передумал(а)" },
+  { id: "mistake", ru: "Оформил(а) по ошибке" },
+  { id: "cheaper", ru: "Нашёл(ла) дешевле" },
+  { id: "other", ru: "Другое" },
+] as const;
+
+type CancelReasonId = (typeof CANCEL_REASONS)[number]["id"];
 
 /** Cancel an unpaid order with a reason picker (NEW/APPROVED only). */
 function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<string | null>(null);
+  const [reason, setReason] = useState<CancelReasonId | null>(null);
   const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function confirm() {
-    const finalReason = reason === "Другое" ? other.trim() : reason ?? undefined;
+    const finalReason =
+      reason === "other"
+        ? other.trim()
+        : CANCEL_REASONS.find((r) => r.id === reason)?.ru ?? undefined;
     setBusy(true);
     setErr(null);
     try {
@@ -617,7 +637,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
       await customerApi.cancelOrder(orderId, finalReason || undefined);
       onDone();
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : "Не удалось отменить заказ");
+      setErr(e instanceof ApiError ? e.message : t("cancel.failed"));
       setBusy(false);
     }
   }
@@ -633,29 +653,29 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
         className="tap nb-flat nb-press flex w-full items-center justify-center gap-2 py-3 text-[13px] font-extrabold uppercase tracking-wide text-[var(--danger)]"
         style={{ borderColor: "var(--danger)" }}
       >
-        <Ban className="h-4 w-4" strokeWidth={2.75} /> Отменить заказ
+        <Ban className="h-4 w-4" strokeWidth={2.75} /> {t("cancel.button")}
       </button>
     );
   }
 
   const confirmDisabled =
-    busy || !reason || (reason === "Другое" && !other.trim());
+    busy || !reason || (reason === "other" && !other.trim());
 
   return (
     <div className="nb p-4">
       <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
-        Причина отмены
+        {t("cancel.title")}
       </h3>
       <div className="mt-3 flex flex-col gap-2">
         {CANCEL_REASONS.map((r) => {
-          const on = reason === r;
+          const on = reason === r.id;
           return (
             <button
-              key={r}
+              key={r.id}
               type="button"
               onClick={() => {
                 haptic();
-                setReason(r);
+                setReason(r.id);
               }}
               className={`tap flex items-center gap-2.5 border-[2.5px] border-[var(--line)] px-3 py-2.5 text-left text-[13px] font-bold ${
                 on
@@ -672,16 +692,16 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
                   <Check className="h-3 w-3 text-[var(--accent)]" strokeWidth={3} />
                 )}
               </span>
-              {r}
+              {t(`cancel.reason.${r.id}`)}
             </button>
           );
         })}
       </div>
-      {reason === "Другое" && (
+      {reason === "other" && (
         <textarea
           value={other}
           onChange={(e) => setOther(e.target.value)}
-          placeholder="Опишите причину"
+          placeholder={t("cancel.otherPlaceholder")}
           rows={2}
           className="mt-2 w-full resize-none border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
         />
@@ -695,7 +715,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           onClick={() => setOpen(false)}
           className="tap nb-flat nb-press flex-1 py-2.5 text-[13px] font-extrabold uppercase text-[var(--ink)]"
         >
-          Назад
+          {t("common.back")}
         </button>
         <button
           type="button"
@@ -704,7 +724,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           className="tap nb-press flex-1 border-[3px] border-[var(--line)] py-2.5 text-[13px] font-black uppercase text-white shadow-[4px_4px_0_var(--shadow)] disabled:opacity-50"
           style={{ background: "var(--danger)" }}
         >
-          {busy ? "…" : "Отменить заказ"}
+          {busy ? "…" : t("cancel.button")}
         </button>
       </div>
     </div>
