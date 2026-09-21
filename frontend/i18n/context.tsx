@@ -76,8 +76,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setLocaleState(resolved);
   }, []);
 
-  useEffect(() => {
-    document.documentElement.lang = locale;
+  // Layout effect, not a plain one: `lang` drives hyphenation and what a screen reader announces,
+  // and both should be right before the first paint rather than a frame later.
+  // `lang` drives hyphenation and what a screen reader announces, so it is set before paint.
+  useLayoutEffect(() => {
+    document.documentElement.lang = LOCALE_TAG[locale];
   }, [locale]);
 
   // Tell the server, so the bot writes to this person in the same language the app speaks.

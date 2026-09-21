@@ -445,7 +445,13 @@ function ContactsStep({
 // Step 2 — Delivery (2 tabs; Nova Poshta opens the full map, then a confirm card)
 // ---------------------------------------------------------------------------
 function npLabel(w: NpWarehouse, t: (key: string, params?: Record<string, string | number>) => string): string {
-  const cat = t(w.category === "POSTOMAT" ? "np.type.postomat" : "np.type.branch");
+  const cat = t(
+    w.category === "POSTOMAT"
+      ? "np.type.postomat"
+      : w.category === "POINT"
+        ? "np.type.point"
+        : "np.type.branch"
+  );
   return w.number != null ? `${cat} ${t("np.number", { n: w.number })}` : cat;
 }
 

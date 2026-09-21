@@ -61,6 +61,7 @@ public class MeController {
     private final UploadValidator uploadValidator;
     private final PromoService promoService;
     private final ClientEventService clientEventService;
+    private final Messages messages;
 
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
@@ -71,7 +72,8 @@ public class MeController {
                         ImageStorageService imageStorageService,
                         UploadValidator uploadValidator,
                         PromoService promoService,
-                        ClientEventService clientEventService) {
+                        ClientEventService clientEventService,
+                        Messages messages) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.orderRepository = orderRepository;
@@ -82,6 +84,7 @@ public class MeController {
         this.uploadValidator = uploadValidator;
         this.promoService = promoService;
         this.clientEventService = clientEventService;
+        this.messages = messages;
     }
 
     /**
@@ -201,7 +204,7 @@ public class MeController {
     public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req) {
         Order order = ownedOrder(id);
         if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
-            throw new BadRequestException("payment proof (screenshot) is required");
+            throw new BadRequestException(messages.current("api.order.proofRequired"));
         }
         // Post the proof into the order chat (admins get notified via MessageService).
         messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
@@ -241,13 +244,13 @@ public class MeController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("order not found");
+            throw new NotFoundException(messages.current("api.order.notFound"));
         }
         Order order = orderRepository.findById(key)
                 .orElseThrow(() -> new NotFoundException("order not found"));
         long userId = SecurityUtil.currentUserId();
         if (order.getUserId() == null || order.getUserId() != userId) {
-            throw new ForbiddenException("not your order");
+            throw new ForbiddenException(messages.current("api.order.notYours"));
         }
         return order;
     }

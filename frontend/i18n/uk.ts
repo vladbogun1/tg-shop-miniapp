@@ -10,6 +10,11 @@ export const uk: RuDictionary = {
   "common.retry": "Повторити",
   "common.loading": "Завантаження…",
   "common.toCatalog": "До каталогу",
+  "common.offline": "Не вдалося звʼязатися із сервером",
+  "common.sessionExpired": "Сесія завершилася, відкрийте магазин знову",
+  "common.httpError": "Помилка {status}",
+  "error.title": "Щось пішло не так",
+  "error.text": "Застосунок спіткнувся. Спробуйте ще раз — якщо не допоможе, закрийте і відкрийте магазин знову.",
   "common.currencyPerItem": "/ шт",
 
   // ── час ───────────────────────────────────────────────────────────────────
@@ -52,6 +57,9 @@ export const uk: RuDictionary = {
   "product.outOfStockShort": "Немає",
   "product.outOfStock": "Немає в наявності",
   "product.choose": "Обрати",
+  "product.variantLabel": "Варіант",
+  "product.noDescription": "Опис відсутній",
+  "addToCart.add": "У кошик",
 
   // ── стрічка статусів замовлення ───────────────────────────────────────────
   "timeline.rejected.title": "Замовлення відхилено",
@@ -138,6 +146,7 @@ export const uk: RuDictionary = {
   // ── оплата ────────────────────────────────────────────────────────────────
   "payment.paid": "Оплачено",
   "payment.claimed": "На перевірці",
+  "payment.partial": "Частково оплачено",
   "payment.unpaid": "Не оплачено",
 
   // ── чат замовлення ────────────────────────────────────────────────────────

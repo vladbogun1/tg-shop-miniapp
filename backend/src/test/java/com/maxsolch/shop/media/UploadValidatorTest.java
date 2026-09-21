@@ -14,7 +14,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class UploadValidatorTest {
 
-    private final UploadValidator validator = new UploadValidator();
+    /** The wording comes from the message catalogue; these tests only care that it refuses. */
+    private final UploadValidator validator = new UploadValidator(stubMessages());
+
+    private static com.maxsolch.shop.i18n.Messages stubMessages() {
+        com.maxsolch.shop.i18n.Messages messages =
+                org.mockito.Mockito.mock(com.maxsolch.shop.i18n.Messages.class);
+        org.mockito.Mockito.lenient()
+                .when(messages.current(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(Object[].class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        return messages;
+    }
 
     private MockMultipartFile file(String name, String contentType, int bytes) {
         return new MockMultipartFile("file", name, contentType, new byte[bytes]);
@@ -31,7 +42,7 @@ class UploadValidatorTest {
         // Content type says image, extension says otherwise: this is the stored-XSS shape.
         assertThatThrownBy(() -> validator.validateImage(file("evil.html", "image/png", 128)))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("расширение");
+                .hasMessageContaining("api.upload.badExtension");
     }
 
     @Test
@@ -44,7 +55,7 @@ class UploadValidatorTest {
     void rejectsAnExecutableContentType() {
         assertThatThrownBy(() -> validator.validateImage(file("x.jpg", "application/x-msdownload", 128)))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("тип файла");
+                .hasMessageContaining("api.upload.badType");
     }
 
     @Test
@@ -58,7 +69,7 @@ class UploadValidatorTest {
         assertThatThrownBy(() -> validator.validateImage(
                 file("huge.jpg", "image/jpeg", 16 * 1024 * 1024)))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("большой");
+                .hasMessageContaining("api.upload.tooBig");
     }
 
     @Test

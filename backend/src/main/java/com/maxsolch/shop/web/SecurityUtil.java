@@ -19,6 +19,8 @@ public final class SecurityUtil {
         }
         // No principal at all means "not authenticated" (401), not "authenticated but not
         // allowed" (403) — the admin frontend distinguishes them when deciding to re-login.
+        // Plain text on purpose: this runs outside a request-scoped bean, and the apps only ever
+        // show it when a session died — the frontend replaces it with its own wording.
         throw new UnauthorizedException("not authenticated");
     }
 

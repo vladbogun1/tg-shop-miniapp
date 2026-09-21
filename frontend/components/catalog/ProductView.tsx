@@ -117,7 +117,7 @@ function ViewBody({
             {hasVariants && (
               <div className="mt-5">
                 <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                  Вариант
+                  {t("product.variantLabel")}
                   {needsVariant && touchedVariant && <span className="text-[var(--danger)]">{t("product.chooseHint")}</span>}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -165,7 +165,7 @@ function ViewBody({
               </p>
             ) : (
               <div className="flex flex-1 items-center justify-center py-8 text-center text-[13px] text-[var(--faint)]">
-                Описание отсутствует
+                {t("product.noDescription")}
               </div>
             )}
           </div>

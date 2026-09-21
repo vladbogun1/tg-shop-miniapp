@@ -71,7 +71,7 @@ export function AddToCartControl({
         className={`nb-accent nb-press nb-up inline-flex items-center justify-center gap-2 px-4 ${h} ${fullWidth ? "w-full" : ""}`}
       >
         <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.75} />
-        В корзину
+        {t("addToCart.add")}
       </button>
     );
   }

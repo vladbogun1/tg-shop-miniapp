@@ -110,8 +110,11 @@ public class SecurityConfig {
         // Idempotency-Key was missing, so with split origins (a local dev server against the API,
         // or a tunnel) the browser's preflight rejected every POST /api/orders — the order simply
         // never left the phone. Same-origin prod never sends a preflight, which is why it hid here.
+        // Accept-Language is how the apps tell the backend which language to answer in (see
+        // LocaleConfig). It is CORS-safelisted, so it would pass anyway — listed explicitly so the
+        // next person changing this list does not quietly drop it, the way Idempotency-Key was.
         cfg.setAllowedHeaders(List.of(
-                "Authorization", "Content-Type", "Accept", "Idempotency-Key",
+                "Authorization", "Content-Type", "Accept", "Accept-Language", "Idempotency-Key",
                 "ngrok-skip-browser-warning"));
         cfg.setExposedHeaders(List.of("Authorization"));
         cfg.setAllowCredentials(true);

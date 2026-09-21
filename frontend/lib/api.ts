@@ -5,6 +5,10 @@
  * customer-specific part: where the token is kept (in memory, re-obtained from Telegram initData
  * on every launch) and the typed endpoint list.
  */
+import { getActiveLocale, getActiveTag } from "@/i18n/active";
+import { en } from "@/i18n/en";
+import { ru } from "@/i18n/ru";
+import { uk } from "@/i18n/uk";
 import {
   ApiError,
   createHttpClient,
@@ -53,6 +57,18 @@ export type {
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
+/**
+ * A phrase from the active dictionary, read outside React.
+ *
+ * The HTTP client is built once at module load and cannot use a hook, but it must still speak the
+ * language currently on screen — so it reads the same module state the formatters use.
+ */
+function text(key: string): string {
+  const dict: Record<string, unknown> = { ru, uk, en }[getActiveLocale()];
+  const phrase = dict[key];
+  return typeof phrase === "string" ? phrase : key;
+}
+
 // ---- in-memory token -------------------------------------------------------
 // Deliberately not localStorage: inside Telegram the Mini App can always re-authenticate from
 // initData, so there is no reason to persist a bearer token where a script could read it.
@@ -85,6 +101,16 @@ export function getApiBase(): string {
 const http = createHttpClient({
   baseUrl: API_BASE,
   getToken: getAccessToken,
+  // Every request carries the language on screen, so the server answers in it — including the
+  // public ones. The promo check in the cart runs before sign-in, and that is exactly where a
+  // Ukrainian customer was being told "Промокод не найден".
+  getLocale: getActiveTag,
+  // The client's own wording (no signal / expired session) follows the language too.
+  messages: {
+    offline: () => text("common.offline"),
+    unauthorized: () => text("common.sessionExpired"),
+    http: (status) => text("common.httpError").replace("{status}", String(status)),
+  },
 });
 
 export const apiGet = http.get;

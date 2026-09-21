@@ -1,5 +1,6 @@
 package com.maxsolch.shop.media;
 
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.web.BadRequestException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,25 +35,31 @@ public class UploadValidator {
     private static final Set<String> DOCUMENT_TYPES = Set.of("application/pdf");
     private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf");
 
+    private final Messages messages;
+
+    public UploadValidator(Messages messages) {
+        this.messages = messages;
+    }
+
     /** Product images: pictures only. */
     public void validateImage(MultipartFile file) {
-        validate(file, IMAGE_TYPES, IMAGE_EXTENSIONS, "изображение (jpg, png, webp, gif, avif, heic)");
+        validate(file, IMAGE_TYPES, IMAGE_EXTENSIONS, messages.current("api.upload.kind.image"));
     }
 
     /** Chat attachments: pictures plus PDF receipts. */
     public void validateAttachment(MultipartFile file) {
         Set<String> types = union(IMAGE_TYPES, DOCUMENT_TYPES);
         Set<String> extensions = union(IMAGE_EXTENSIONS, DOCUMENT_EXTENSIONS);
-        validate(file, types, extensions, "изображение или PDF");
+        validate(file, types, extensions, messages.current("api.upload.kind.imageOrPdf"));
     }
 
     private void validate(MultipartFile file, Set<String> allowedTypes,
                           Set<String> allowedExtensions, String humanList) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("Файл не выбран");
+            throw new BadRequestException(messages.current("api.upload.noFile"));
         }
         if (file.getSize() > MAX_BYTES) {
-            throw new BadRequestException("Файл слишком большой — максимум 15 МБ");
+            throw new BadRequestException(messages.current("api.upload.tooBig", MAX_BYTES / 1024 / 1024));
         }
         String contentType = file.getContentType() == null
                 ? "" : file.getContentType().toLowerCase(Locale.ROOT).trim();
@@ -62,11 +69,11 @@ public class UploadValidator {
             contentType = contentType.substring(0, semicolon).trim();
         }
         if (!allowedTypes.contains(contentType)) {
-            throw new BadRequestException("Неподдерживаемый тип файла — нужно " + humanList);
+            throw new BadRequestException(messages.current("api.upload.badType", humanList));
         }
         String extension = extensionOf(file.getOriginalFilename());
         if (!allowedExtensions.contains(extension)) {
-            throw new BadRequestException("Неподдерживаемое расширение файла — нужно " + humanList);
+            throw new BadRequestException(messages.current("api.upload.badExtension", humanList));
         }
     }
 

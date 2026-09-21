@@ -107,6 +107,10 @@ export function paymentState(order: {
   return "UNPAID";
 }
 
+/**
+ * ADMIN ONLY. The customer app translates these from its own dictionary (`payment.*`) — a single
+ * shared constant cannot be Russian for the seller and Ukrainian for the buyer at the same time.
+ */
 export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   PAID: "Оплачен",
   PARTIAL: "Частично оплачен",

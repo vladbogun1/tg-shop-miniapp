@@ -19,7 +19,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,12 +41,17 @@ class PromoServiceTest {
     PromoCodeRepository promoCodeRepository;
     @Mock
     PromoReservationRepository reservationRepository;
+    @Mock
+    com.maxsolch.shop.i18n.Messages messages;
 
     PromoService service;
 
     @BeforeEach
     void setUp() {
-        service = new PromoService(promoCodeRepository, reservationRepository);
+        service = new PromoService(promoCodeRepository, reservationRepository, messages);
+        // The wording is the message catalogue's job (MessageBundlesTest); here only the decision
+        // matters, so every key resolves to itself.
+        lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private PromoCode code(String value, Integer maxUses, int usesCount) {
@@ -64,7 +71,7 @@ class PromoServiceTest {
         PromoPreviewDto result = service.preview("NOPE", SUBTOTAL, USER);
 
         assertThat(result.valid()).isFalse();
-        assertThat(result.message()).isEqualTo("Промокод не найден");
+        assertThat(result.message()).isEqualTo("api.promo.notFound");
         assertThat(result.totalMinor()).isEqualTo(SUBTOTAL);
     }
 
@@ -122,7 +129,7 @@ class PromoServiceTest {
         PromoPreviewDto result = service.reserve("LASTONE", SUBTOTAL, USER);
 
         assertThat(result.valid()).isFalse();
-        assertThat(result.message()).isEqualTo("Промокод больше не действует");
+        assertThat(result.message()).isEqualTo("api.promo.expired");
         verify(reservationRepository, never()).save(any());
     }
 

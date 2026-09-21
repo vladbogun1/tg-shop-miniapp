@@ -4,6 +4,7 @@ import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
@@ -58,6 +59,17 @@ public class Messages {
         return picked != null ? picked : (normalize(user.getLanguageCode()) != null
                 ? normalize(user.getLanguageCode())
                 : FALLBACK);
+    }
+
+    /**
+     * A phrase in the language of the request being handled.
+     *
+     * <p>This is the one to use from controllers, services and exception handlers: the locale comes
+     * from {@code Accept-Language} via {@link LocaleConfig}, so it works on the public endpoints too
+     * — and the cart checks a promo code before anyone is authenticated.
+     */
+    public String current(String key, Object... args) {
+        return get(LocaleContextHolder.getLocale(), key, args);
     }
 
     /** Looks a phrase up; a missing key returns the key itself rather than blowing up a message. */

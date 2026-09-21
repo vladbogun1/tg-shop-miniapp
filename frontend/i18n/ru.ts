@@ -22,6 +22,11 @@ export const ru = {
   "common.retry": "Повторить",
   "common.loading": "Загрузка…",
   "common.toCatalog": "В каталог",
+  "common.offline": "Не удалось связаться с сервером",
+  "common.sessionExpired": "Сессия истекла, откройте магазин заново",
+  "common.httpError": "Ошибка {status}",
+  "error.title": "Что-то пошло не так",
+  "error.text": "Приложение споткнулось. Попробуйте ещё раз — если не поможет, закройте и откройте магазин заново.",
   "common.currencyPerItem": "/ шт",
 
   // ── время ─────────────────────────────────────────────────────────────────
@@ -64,6 +69,9 @@ export const ru = {
   "product.outOfStockShort": "Нет",
   "product.outOfStock": "Нет в наличии",
   "product.choose": "Выбрать",
+  "product.variantLabel": "Вариант",
+  "product.noDescription": "Описание отсутствует",
+  "addToCart.add": "В корзину",
 
   // ── лента статусов заказа ─────────────────────────────────────────────────
   "timeline.rejected.title": "Заказ отклонён",
@@ -150,6 +158,7 @@ export const ru = {
   // ── оплата ────────────────────────────────────────────────────────────────
   "payment.paid": "Оплачен",
   "payment.claimed": "На проверке",
+  "payment.partial": "Частично оплачен",
   "payment.unpaid": "Не оплачен",
 
   // ── чат заказа ────────────────────────────────────────────────────────────

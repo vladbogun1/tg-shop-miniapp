@@ -12,8 +12,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Магазин",
-  description: "Telegram Mini App — tg-shop-v2",
+  // The brand, not a translated word: metadata is rendered on the server with no language, and
+  // Next re-asserts it on updates, so a client-side override does not stick. A brand name is the
+  // right title anyway — it reads the same in all three languages.
+  title: "MAXSOLCH",
+  description: "Telegram Mini App",
 };
 
 export const viewport: Viewport = {
@@ -60,7 +63,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className={inter.variable} suppressHydrationWarning>
+    // lang is rewritten by I18nProvider; "uk" here matches the app's own fallback so the
+    // first paint is not lying about the most common case.
+    <html lang="uk" className={inter.variable} suppressHydrationWarning>
       <head>
         {/* Apply the stored neo theme before paint (default light). */}
         <script

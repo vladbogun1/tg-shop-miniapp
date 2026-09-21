@@ -23,6 +23,32 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Wording the client produces itself, when there is no response to read one from.
+ *
+ * These used to be Russian literals, which meant a Ukrainian customer whose phone lost signal
+ * mid-checkout was told about it in Russian — and that is exactly the moment they are reading
+ * carefully. The customer app passes translated ones; the admin panel keeps the defaults.
+ */
+export interface HttpMessages {
+  /** The request never reached the server (no signal, backend down). */
+  offline: () => string;
+  /** 401/403 with no message in the body. */
+  unauthorized: () => string;
+  /** Any other failure with no message in the body; receives the status code. */
+  http: (status: number) => string;
+}
+
+/**
+ * Functions, not strings: the client is built once at module load, and the customer can change
+ * the language afterwards. Reading the wording at throw time is what keeps it in step.
+ */
+const RU_MESSAGES: HttpMessages = {
+  offline: () => "Не удалось связаться с сервером",
+  unauthorized: () => "Сессия истекла, войдите снова",
+  http: (status) => `Ошибка ${status}`,
+};
+
 export interface HttpClientOptions {
   /** Origin WITHOUT a trailing /api — request paths already start with "/api/...". */
   baseUrl: string;
@@ -30,6 +56,14 @@ export interface HttpClientOptions {
   getToken: () => string | null;
   /** Called on 401/403 so the app can drop the session and show a login screen. */
   onUnauthorized?: (status: number) => void;
+  /**
+   * Language to ask the server to answer in, as a BCP-47 tag. Sent as `Accept-Language` on every
+   * request — including the unauthenticated ones, which is the only way the promo check in the
+   * cart can answer in the right language.
+   */
+  getLocale?: () => string;
+  /** Overrides for the client's own wording; defaults are Russian (the admin panel's language). */
+  messages?: Partial<HttpMessages>;
 }
 
 export interface HttpClient {
@@ -50,7 +84,8 @@ export function normalizeBaseUrl(raw: string | undefined, fallback: string): str
 }
 
 export function createHttpClient(options: HttpClientOptions): HttpClient {
-  const { baseUrl, getToken, onUnauthorized } = options;
+  const { baseUrl, getToken, onUnauthorized, getLocale } = options;
+  const texts: HttpMessages = { ...RU_MESSAGES, ...options.messages };
 
   async function request<T>(
     path: string,
@@ -65,6 +100,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     }
     const token = getToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
+    const locale = getLocale?.();
+    if (locale) headers.set("Accept-Language", locale);
     if (extraHeaders) {
       for (const [k, v] of Object.entries(extraHeaders)) headers.set(k, v);
     }
@@ -74,16 +111,16 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       res = await fetch(`${baseUrl}${path}`, { ...init, headers });
     } catch {
       // Network error / backend offline — status 0 lets callers tell it apart from an HTTP error.
-      throw new ApiError("Не удалось связаться с сервером", 0);
+      throw new ApiError(texts.offline(), 0);
     }
 
     if (res.status === 401 || res.status === 403) {
       onUnauthorized?.(res.status);
-      const failure = await failureOf(res, "Сессия истекла, войдите снова");
+      const failure = await failureOf(res, texts.unauthorized());
       throw new ApiError(failure.message, res.status, failure.code);
     }
     if (!res.ok) {
-      const failure = await failureOf(res, `Ошибка ${res.status}`);
+      const failure = await failureOf(res, texts.http(res.status));
       throw new ApiError(failure.message, res.status, failure.code);
     }
 

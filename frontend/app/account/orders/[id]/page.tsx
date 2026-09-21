@@ -42,7 +42,7 @@ import {
   type OrderDetail,
   type PaymentRequisites,
 } from "@/lib/api";
-import { PAYMENT_STATE_LABEL, paymentState, type PaymentState } from "@shop/shared";
+import { paymentState, type PaymentState } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -522,7 +522,7 @@ function PaidBadge({ state }: { state: PaymentState }) {
     return (
       <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[11px] font-black text-[var(--ink)]">
         <Clock className="h-3 w-3" strokeWidth={3} />
-        {PAYMENT_STATE_LABEL[state]}
+        {state === "PARTIAL" ? t("payment.partial") : t("payment.claimed")}
       </span>
     );
   }

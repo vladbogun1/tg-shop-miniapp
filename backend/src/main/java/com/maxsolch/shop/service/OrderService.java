@@ -9,6 +9,7 @@ import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -54,6 +55,7 @@ public class OrderService {
     private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
     private final PromoService promoService;
+    private final Messages messages;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
@@ -61,7 +63,8 @@ public class OrderService {
                         PaymentOptionRepository paymentOptionRepository,
                         NotificationService notificationService,
                         ApplicationEventPublisher events,
-                        PromoService promoService) {
+                        PromoService promoService,
+                        Messages messages) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -69,6 +72,7 @@ public class OrderService {
         this.notificationService = notificationService;
         this.events = events;
         this.promoService = promoService;
+        this.messages = messages;
     }
 
     /**
@@ -79,7 +83,7 @@ public class OrderService {
     @Transactional
     public Order createOrder(CreateOrderCommand cmd) {
         if (cmd.items() == null || cmd.items().isEmpty()) {
-            throw new BadRequestException("order has no items");
+            throw new BadRequestException(messages.current("api.order.noItems"));
         }
 
         DeliveryMethod deliveryMethod = parseDelivery(cmd.deliveryMethod());
@@ -88,7 +92,7 @@ public class OrderService {
         Map<String, AccLine> acc = new LinkedHashMap<>();
         for (CreateOrderCommand.Line line : cmd.items()) {
             if (line.quantity() <= 0) {
-                throw new BadRequestException("quantity must be positive");
+                throw new BadRequestException(messages.current("api.order.quantityPositive"));
             }
             String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
             acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
@@ -653,7 +657,7 @@ public class OrderService {
         if (opt.isEmpty()) {
             // Russian, and tagged: this text is shown to the customer, and the app clears the
             // dead code from the cart instead of leaving them stuck on the last step.
-            throw new BadRequestException("Промокод не найден или больше не действует", PROMO_REJECTED);
+            throw new BadRequestException(messages.current("api.promo.rejected"), PROMO_REJECTED);
         }
         PromoCode promo = opt.get();
         // Remaining uses minus other customers' live holds: a code someone reserved from their cart
@@ -662,7 +666,7 @@ public class OrderService {
                 ? promoService.remainingUses(promo, tgUserId)
                 : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
         if (left <= 0) {
-            throw new BadRequestException("Промокод уже разобрали", PROMO_REJECTED);
+            throw new BadRequestException(messages.current("api.promo.taken"), PROMO_REJECTED);
         }
         return promo;
     }
