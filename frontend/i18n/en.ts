@@ -10,6 +10,11 @@ export const en: RuDictionary = {
   "common.retry": "Retry",
   "common.loading": "Loading…",
   "common.toCatalog": "Browse shop",
+  "common.offline": "Could not reach the server",
+  "common.sessionExpired": "Your session ended — reopen the shop",
+  "common.httpError": "Error {status}",
+  "error.title": "Something went wrong",
+  "error.text": "The app tripped over itself. Try again — if that does not help, close and reopen the shop.",
   "common.currencyPerItem": "each",
 
   // ── time ──────────────────────────────────────────────────────────────────
@@ -52,6 +57,9 @@ export const en: RuDictionary = {
   "product.outOfStockShort": "Out",
   "product.outOfStock": "Out of stock",
   "product.choose": "Choose",
+  "product.variantLabel": "Option",
+  "product.noDescription": "No description",
+  "addToCart.add": "Add to cart",
 
   // ── order status timeline ─────────────────────────────────────────────────
   "timeline.rejected.title": "Order rejected",
@@ -105,7 +113,7 @@ export const en: RuDictionary = {
   "catalog.error.title": "Couldn't load",
   "catalog.error.text": "The server is unavailable. Check your connection and try again.",
   "catalog.empty.title": "Nothing here yet",
-  "catalog.empty.text": "No products yet. Look in later — new arrivals are on the way.",
+  "catalog.empty.text": "No products yet. Check back later — new arrivals are on the way.",
   "catalog.noResults.title": "Nothing found",
   "catalog.noResults.text": "Try changing your search or picking another tag.",
   "catalog.resetFilters": "Reset filters",
@@ -138,6 +146,7 @@ export const en: RuDictionary = {
   // ── payment ───────────────────────────────────────────────────────────────
   "payment.paid": "Paid",
   "payment.claimed": "Being checked",
+  "payment.partial": "Partly paid",
   "payment.unpaid": "Unpaid",
 
   // ── order chat ────────────────────────────────────────────────────────────
@@ -160,7 +169,7 @@ export const en: RuDictionary = {
   "order.error": "Couldn't load the order.",
   "order.status": "Status",
   "order.rejectReason": "Reason for rejection",
-  "order.tracking": "Tracking number",
+  "order.tracking": "Tracking",
   "order.createdAt": "Created {when}",
   "order.items": "Items",
   "order.gift": "Gift · free",

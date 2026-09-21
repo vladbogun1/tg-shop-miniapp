@@ -52,6 +52,8 @@ class OrderServiceTest {
     ApplicationEventPublisher events;
     @Mock
     PromoService promoService;
+    @Mock
+    com.maxsolch.shop.i18n.Messages messages;
 
     OrderService service;
 
@@ -62,9 +64,10 @@ class OrderServiceTest {
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService);
+                promoService, messages);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
+        lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
         // orderRepository.save returns the same instance with an id assigned (PrePersist not run here).
@@ -233,7 +236,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("no items");
+                .hasMessageContaining("api.order.noItems");
     }
 
     @Test

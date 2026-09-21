@@ -29,6 +29,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Toast } from "@/components/ui/Toast";
+import { getActiveTag } from "@/i18n/active";
 import { useT } from "@/i18n/context";
 import { customerApi, type Product, type ProductTag } from "@/lib/api";
 import { staggerContainer, riseItem } from "@/lib/motion";
@@ -89,10 +90,10 @@ export default function CatalogPage() {
         case "price_desc":
           return b.priceMinor - a.priceMinor;
         case "name":
-          return a.title.localeCompare(b.title, "ru");
+          return a.title.localeCompare(b.title, getActiveTag());
         case "popular":
         default:
-          return (b.soldCount ?? 0) - (a.soldCount ?? 0) || a.title.localeCompare(b.title, "ru");
+          return (b.soldCount ?? 0) - (a.soldCount ?? 0) || a.title.localeCompare(b.title, getActiveTag());
       }
     });
   }, [products, search, activeTag, sort]);

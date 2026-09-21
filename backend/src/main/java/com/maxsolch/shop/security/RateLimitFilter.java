@@ -1,6 +1,7 @@
 package com.maxsolch.shop.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.maxsolch.shop.i18n.Messages;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,6 +37,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
+
+    private final Messages messages;
+
+    public RateLimitFilter(Messages messages) {
+        this.messages = messages;
+    }
 
     private static final int AUTH_LIMIT = 10;
     private static final int AUTH_WINDOW_MINUTES = 5;
@@ -75,7 +82,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Bucket bucket = bucketFor(path, request.getMethod());
         if (bucket != null && exceeded(bucket, ip)) {
             log.warn("Rate limit hit: {} {} from {}", request.getMethod(), path, ip);
-            reject(response, bucket.retryAfterSeconds);
+            // This filter runs inside the security chain, long before the DispatcherServlet fills
+            // LocaleContextHolder, so the language has to be read off the request by hand.
+            reject(response, bucket.retryAfterSeconds, localeOf(request));
             return;
         }
         filterChain.doFilter(request, response);
@@ -106,14 +115,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return counter != null && counter.incrementAndGet() > bucket.limit;
     }
 
-    private void reject(HttpServletResponse response, int retryAfterSeconds) throws IOException {
+    /** First supported language in Accept-Language, or the fallback. */
+    private static java.util.Locale localeOf(HttpServletRequest request) {
+        String header = request.getHeader("Accept-Language");
+        if (header != null) {
+            for (String part : header.split(",")) {
+                java.util.Locale candidate = Messages.normalize(part.split(";")[0].trim());
+                if (candidate != null) {
+                    return candidate;
+                }
+            }
+        }
+        return Messages.FALLBACK;
+    }
+
+    private void reject(HttpServletResponse response, int retryAfterSeconds, java.util.Locale locale)
+            throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(
                 "{\"status\":429,\"error\":\"Too Many Requests\","
-                        + "\"message\":\"Слишком много запросов, попробуйте позже\"}");
+                        + "\"message\":\"" + messages.get(locale, "api.error.rateLimited") + "\"}");
     }
 
     /**

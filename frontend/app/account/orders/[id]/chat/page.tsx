@@ -156,12 +156,19 @@ export default function OrderChatPage() {
   const items = useMemo(() => {
     const out: ({ kind: "day"; label: string } | { kind: "msg"; msg: Message })[] =
       [];
+    // Group by the actual DAY, not by the rendered label. The label has no year in it
+    // ("18 вересня"), so comparing labels merged the same date from different years into one
+    // group — and it broke differently in each language, which is what comparing presentation
+    // strings to drive logic always ends up doing.
     let lastDay = "";
     for (const m of messages) {
-      const d = dayLabel(m.createdAt);
-      if (d !== lastDay) {
-        out.push({ kind: "day", label: d });
-        lastDay = d;
+      const at = new Date(m.createdAt);
+      const key = Number.isNaN(at.getTime())
+        ? m.createdAt
+        : `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
+      if (key !== lastDay) {
+        out.push({ kind: "day", label: dayLabel(m.createdAt) });
+        lastDay = key;
       }
       out.push({ kind: "msg", msg: m });
     }

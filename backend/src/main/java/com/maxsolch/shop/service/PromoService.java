@@ -1,6 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.PromoReservation;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
@@ -36,11 +37,14 @@ public class PromoService {
 
     private final PromoCodeRepository promoCodeRepository;
     private final PromoReservationRepository reservationRepository;
+    private final Messages messages;
 
     public PromoService(PromoCodeRepository promoCodeRepository,
-                        PromoReservationRepository reservationRepository) {
+                        PromoReservationRepository reservationRepository,
+                        Messages messages) {
         this.promoCodeRepository = promoCodeRepository;
         this.reservationRepository = reservationRepository;
+        this.messages = messages;
     }
 
     /**
@@ -53,15 +57,15 @@ public class PromoService {
         long subtotal = Math.max(0, subtotalMinor);
         String normalized = normalize(code);
         if (normalized == null) {
-            return invalid(subtotal, "Введите промокод");
+            return invalid(subtotal, messages.current("api.promo.enter"));
         }
         Optional<PromoCode> found = promoCodeRepository.findByCodeAndActiveTrue(normalized);
         if (found.isEmpty()) {
-            return invalid(subtotal, "Промокод не найден");
+            return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
         if (remainingUses(promo, userId) <= 0) {
-            return invalid(subtotal, "Промокод больше не действует");
+            return invalid(subtotal, messages.current("api.promo.expired"));
         }
         return valid(promo, subtotal, null);
     }
@@ -75,17 +79,17 @@ public class PromoService {
         long subtotal = Math.max(0, subtotalMinor);
         String normalized = normalize(code);
         if (normalized == null) {
-            return invalid(subtotal, "Введите промокод");
+            return invalid(subtotal, messages.current("api.promo.enter"));
         }
         // The same row lock the order path takes: without it two carts can both see "one use left"
         // and both walk away thinking the code is theirs.
         Optional<PromoCode> found = promoCodeRepository.findByCodeAndActiveTrueForUpdate(normalized);
         if (found.isEmpty()) {
-            return invalid(subtotal, "Промокод не найден");
+            return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
         if (remainingUses(promo, userId) <= 0) {
-            return invalid(subtotal, "Промокод больше не действует");
+            return invalid(subtotal, messages.current("api.promo.expired"));
         }
         if (promo.getMaxUses() == null) {
             return valid(promo, subtotal, null);

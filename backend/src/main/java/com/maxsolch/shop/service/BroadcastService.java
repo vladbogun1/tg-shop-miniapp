@@ -93,6 +93,9 @@ public class BroadcastService {
         if (webapp == null || !webapp.startsWith("https://")) {
             return null; // Telegram rejects non-HTTPS web_app buttons → skip rather than fail the send
         }
+        // Deliberately NOT localized: the broadcast body is whatever the seller typed, and it is
+        // typed in Russian. A Ukrainian button under a Russian message reads worse than a Russian
+        // one. If broadcasts ever become multilingual, the body has to come first.
         String label = (buttonText == null || buttonText.isBlank()) ? "🛍 Открыть магазин" : buttonText.trim();
         InlineKeyboardButton btn = InlineKeyboardButton.builder()
                 .text(label)

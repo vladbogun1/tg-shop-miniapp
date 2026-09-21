@@ -5,6 +5,7 @@ import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
@@ -39,17 +40,20 @@ public class MessageService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ApplicationEventPublisher events;
     private final MediaSigner mediaSigner;
+    private final Messages messages;
 
     public MessageService(OrderMessageRepository messageRepository,
                           OrderRepository orderRepository,
                           SimpMessagingTemplate messagingTemplate,
                           ApplicationEventPublisher events,
-                          MediaSigner mediaSigner) {
+                          MediaSigner mediaSigner,
+                          Messages messages) {
         this.messageRepository = messageRepository;
         this.orderRepository = orderRepository;
         this.messagingTemplate = messagingTemplate;
         this.events = events;
         this.mediaSigner = mediaSigner;
+        this.messages = messages;
     }
 
     /** Default page size for the chat — roughly two screens of history. */
@@ -227,7 +231,7 @@ public class MessageService {
         MessageType type = parseType(req.type());
         if ((req.text() == null || req.text().isBlank())
                 && (req.attachmentUrl() == null || req.attachmentUrl().isBlank())) {
-            throw new BadRequestException("message requires text or attachment");
+            throw new BadRequestException(messages.current("api.chat.needsContent"));
         }
         OrderMessage m = new OrderMessage();
         m.setOrder(order);
@@ -260,7 +264,7 @@ public class MessageService {
 
     private Order order(byte[] orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("order not found"));
+                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
     }
 
     private MessageDto toDto(OrderMessage m) {

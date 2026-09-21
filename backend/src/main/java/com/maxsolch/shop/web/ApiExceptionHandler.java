@@ -36,6 +36,12 @@ import java.util.UUID;
 @RestControllerAdvice(basePackages = "com.maxsolch.shop")
 public class ApiExceptionHandler {
 
+    private final com.maxsolch.shop.i18n.Messages messages;
+
+    public ApiExceptionHandler(com.maxsolch.shop.i18n.Messages messages) {
+        this.messages = messages;
+    }
+
     @ExceptionHandler(InitDataException.class)
     public ResponseEntity<Map<String, Object>> handleInitData(InitDataException ex) {
         return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
@@ -64,7 +70,7 @@ public class ApiExceptionHandler {
     /** Thrown by @PreAuthorize / @RequiredAdmin when the role does not match. */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
-        return error(HttpStatus.FORBIDDEN, "Недостаточно прав");
+        return error(HttpStatus.FORBIDDEN, messages.current("api.error.forbidden"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -72,7 +78,7 @@ public class ApiExceptionHandler {
         String msg = ex.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-                .orElse("validation failed");
+                .orElse(messages.current("api.error.validationFailed"));
         return error(HttpStatus.BAD_REQUEST, msg);
     }
 
@@ -82,30 +88,30 @@ public class ApiExceptionHandler {
         String msg = ex.getConstraintViolations().stream()
                 .findFirst()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
-                .orElse("validation failed");
+                .orElse(messages.current("api.error.validationFailed"));
         return error(HttpStatus.BAD_REQUEST, msg);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException ex) {
-        return error(HttpStatus.BAD_REQUEST, "Некорректное тело запроса");
+        return error(HttpStatus.BAD_REQUEST, messages.current("api.error.badBody"));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(
             MissingServletRequestParameterException ex) {
-        return error(HttpStatus.BAD_REQUEST, "Отсутствует параметр: " + ex.getParameterName());
+        return error(HttpStatus.BAD_REQUEST, messages.current("api.error.missingParam", ex.getParameterName()));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(
             MethodArgumentTypeMismatchException ex) {
-        return error(HttpStatus.BAD_REQUEST, "Некорректное значение параметра: " + ex.getName());
+        return error(HttpStatus.BAD_REQUEST, messages.current("api.error.badParam", ex.getName()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
-        return error(HttpStatus.PAYLOAD_TOO_LARGE, "Файл слишком большой — максимум 15 МБ");
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, messages.current("api.upload.tooBig", 15));
     }
 
     /**
@@ -116,7 +122,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
         return error(HttpStatus.BAD_REQUEST,
-                "Не удалось сохранить: проверьте длину и корректность полей");
+                messages.current("api.error.saveFailed"));
     }
 
     /** Services that throw ResponseStatusException directly (e.g. BroadcastService 409). */
@@ -132,7 +138,7 @@ public class ApiExceptionHandler {
         String errorId = UUID.randomUUID().toString().substring(0, 8);
         log.error("Unhandled exception [{}]", errorId, ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Внутренняя ошибка сервера (код " + errorId + ")");
+                messages.current("api.error.internal", errorId));
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
