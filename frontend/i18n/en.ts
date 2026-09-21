@@ -9,8 +9,8 @@ export const en: RuDictionary = {
   "common.close": "Close",
   "common.retry": "Retry",
   "common.loading": "Loading…",
-  "common.toCatalog": "To catalogue",
-  "common.currencyPerItem": "/ ea",
+  "common.toCatalog": "Browse shop",
+  "common.currencyPerItem": "each",
 
   // ── time ──────────────────────────────────────────────────────────────────
   "time.today": "Today",
@@ -93,7 +93,7 @@ export const en: RuDictionary = {
   "promo.heldUntil": " · reserved for you until {time}",
 
   // ── catalogue ─────────────────────────────────────────────────────────────
-  "catalog.tagline": "Pick what you like, drop it in the cart",
+  "catalog.tagline": "Pick it and add to cart",
   "catalog.search": "Search products",
   "catalog.searchClear": "Clear search",
   "catalog.sort": "Sorting",
@@ -176,7 +176,7 @@ export const en: RuDictionary = {
   "order.comment": "Comment",
   "order.requisites.card": "Card",
   "order.requisites.edrpou": "Tax ID (RNOKPP)",
-  "order.requisites.purpose": "Reference",
+  "order.requisites.purpose": "Payment reference",
   "order.requisites.note": "Note",
   "order.paymentConfirmed": "Payment confirmed",
   "order.paymentClaimed": "Payment being checked",
@@ -206,10 +206,10 @@ export const en: RuDictionary = {
   "np.cat.all": "All",
   "np.cat.branch": "Branches",
   "np.cat.postomat": "Parcel lockers",
-  "np.cat.point": "Points",
+  "np.cat.point": "Pickup points",
   "np.type.branch": "Branch",
   "np.type.postomat": "Parcel locker",
-  "np.type.point": "Point",
+  "np.type.point": "Pickup point",
   "np.hint": "Tap a branch on the map",
   "np.confirm": "Choose this branch",
   "np.number": "No. {n}",
