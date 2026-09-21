@@ -21,7 +21,7 @@ export const uk: RuDictionary = {
 
   // ── статуси замовлення ────────────────────────────────────────────────────
   "status.NEW": "Новий",
-  "status.APPROVED": "Схвалений",
+  "status.APPROVED": "Підтверджений",
   "status.SHIPPED": "Відправлений",
   "status.DELIVERED": "Доставлений",
   "status.REJECTED": "Відхилений",
