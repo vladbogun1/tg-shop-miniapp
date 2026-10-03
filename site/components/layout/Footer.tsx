@@ -14,20 +14,20 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
   const year = new Date().getFullYear();
-  const linkCls = "text-[14px] font-semibold text-[var(--ink)] opacity-85 hover:opacity-100 hover:text-[var(--c3)]";
+  const linkCls = "text-[14px] font-semibold text-[var(--ink)] opacity-85 hover:opacity-100 hover:text-[var(--chrome-heading)]";
 
   return (
     <footer className="chrome relative z-10 mt-16 border-t-[3px] border-[var(--chrome-edge)]">
       <div className="container-site grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-[22px] font-black uppercase tracking-tight text-[#FFFDF6]">
+          <p className="text-[22px] font-black uppercase tracking-tight text-[var(--ink)]">
             MAX<span className="text-[var(--accent)]">SOLCH</span>
           </p>
           <p className="mt-3 max-w-xs text-[14px] font-medium opacity-80">{t("meta.description")}</p>
         </div>
 
         <nav aria-label={t("footer.shop")}>
-          <p className="nb-up mb-3 text-[12px] font-black text-[var(--c3)]">{t("footer.shop")}</p>
+          <p className="nb-up mb-3 text-[12px] font-black text-[var(--chrome-heading)]">{t("footer.shop")}</p>
           <ul className="flex flex-col gap-2">
             <li>
               <Link href={href("/catalog")} className={linkCls}>
@@ -45,7 +45,7 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
         </nav>
 
         <nav aria-label={t("footer.customers")}>
-          <p className="nb-up mb-3 text-[12px] font-black text-[var(--c3)]">{t("footer.customers")}</p>
+          <p className="nb-up mb-3 text-[12px] font-black text-[var(--chrome-heading)]">{t("footer.customers")}</p>
           <ul className="flex flex-col gap-2">
             {(
               [
@@ -69,7 +69,7 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
         </nav>
 
         <div>
-          <p className="nb-up mb-3 text-[12px] font-black text-[var(--c3)]">{t("footer.contact")}</p>
+          <p className="nb-up mb-3 text-[12px] font-black text-[var(--chrome-heading)]">{t("footer.contact")}</p>
           <a
             href={BOT_URL}
             target="_blank"

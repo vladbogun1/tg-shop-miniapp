@@ -87,11 +87,15 @@
    --------------------------------------------------------------------------- */
 .chrome {
   --bg: var(--chrome-bg);
+  /* Column headings and link hover in the footer: yellow only reads on the dark chrome;
+     on the light one it's a deep orange (≈5:1 on white). */
+  --chrome-heading: #B93A12;
   background-color: var(--bg);
   color: var(--ink);
 }
 :root[data-theme="dark"] .chrome {
   color-scheme: dark;
+  --chrome-heading: var(--c3);
   --bg: var(--chrome-bg);
   --ink: #F4F1E6;
   --surface: #2A2A30;
