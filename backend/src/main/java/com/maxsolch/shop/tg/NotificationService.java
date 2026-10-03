@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import com.maxsolch.shop.domain.DeliveryMethod;
+import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderStatus;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
@@ -537,6 +538,9 @@ public class NotificationService {
         StringBuilder sb = new StringBuilder();
         sb.append(statusHeader(order)).append('\n');
         sb.append("<b>🧾 Заказ #").append(shortId(order)).append("</b>\n");
+        if (order.getSource() == OrderSource.WEB) {
+            sb.append("🌐 Сайт\n");
+        }
         sb.append("➖➖➖➖➖➖➖➖➖➖\n");
         // customer
         sb.append("👤 ").append(esc(nz(order.getCustomerName()))).append('\n');

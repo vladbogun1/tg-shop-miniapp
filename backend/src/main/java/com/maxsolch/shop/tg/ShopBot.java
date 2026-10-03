@@ -19,9 +19,11 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Thin long-polling bot. Only handles /start and /help; all rich notifications are sent
- * out-of-band by {@link NotificationService}. Registration happens in TelegramBotConfig and
- * only when a token is configured.
+ * Thin long-polling bot. Handles /start and /help, plus the website login: {@code /start
+ * login_<nonce>} and the inline-button callbacks it produces (delegated to
+ * {@link WebLoginBotHandler}). All rich notifications are sent out-of-band by
+ * {@link NotificationService}. Registration happens in TelegramBotConfig and only when a token is
+ * configured.
  */
 @Slf4j
 @Component
@@ -30,12 +32,15 @@ public class ShopBot extends TelegramLongPollingBot {
     private final AppProperties props;
     private final AuthService authService;
     private final Messages messages;
+    private final WebLoginBotHandler webLogin;
 
-    public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages) {
+    public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages,
+                   @Lazy WebLoginBotHandler webLogin) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
         this.authService = authService;
         this.messages = messages;
+        this.webLogin = webLogin;
     }
 
     @Override
@@ -50,6 +55,10 @@ public class ShopBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         try {
+            if (update != null && update.hasCallbackQuery()) {
+                onCallback(update.getCallbackQuery());
+                return;
+            }
             if (update == null || !update.hasMessage() || !update.getMessage().hasText()) {
                 return;
             }
@@ -58,7 +67,13 @@ public class ShopBot extends TelegramLongPollingBot {
             recordUser(update.getMessage().getFrom());
             String languageCode = update.getMessage().getFrom() == null
                     ? null : update.getMessage().getFrom().getLanguageCode();
-            if (text.startsWith("/start")) {
+            String loginNonce = loginNonce(text);
+            if (loginNonce != null) {
+                // Only in a private chat: the chat id is then the person confirming the login.
+                if (update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
+                    webLogin.onStartLogin(chatId, loginNonce, localeFor(chatId, languageCode));
+                }
+            } else if (text.startsWith("/start")) {
                 sendStart(chatId, languageCode);
             } else if (text.startsWith("/help")) {
                 sendHelp(chatId, languageCode);
@@ -66,6 +81,30 @@ public class ShopBot extends TelegramLongPollingBot {
         } catch (Exception e) {
             log.warn("Bot update handling failed: {}", e.getMessage());
         }
+    }
+
+    /** {@code /start login_<nonce>} (also {@code /start@bot login_...}) → the nonce, else null. */
+    static String loginNonce(String text) {
+        if (text == null || !text.startsWith("/start")) {
+            return null;
+        }
+        int space = text.indexOf(' ');
+        if (space < 0) {
+            return null;
+        }
+        String payload = text.substring(space + 1).trim();
+        if (!payload.startsWith("login_") || payload.length() <= "login_".length()) {
+            return null;
+        }
+        return payload.substring("login_".length());
+    }
+
+    private void onCallback(org.telegram.telegrambots.meta.api.objects.CallbackQuery cq) {
+        if (cq.getFrom() == null || !WebLoginBotHandler.handles(cq.getData())) {
+            return;
+        }
+        recordUser(cq.getFrom());
+        webLogin.onCallback(cq, localeFor(cq.getFrom().getId(), cq.getFrom().getLanguageCode()));
     }
 
     private void sendStart(long chatId, String languageCode) {

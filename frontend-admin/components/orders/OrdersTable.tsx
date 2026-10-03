@@ -35,6 +35,7 @@ import {
 } from "@/lib/orders";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
+import { SourceBadge } from "@/components/orders/SourceBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -200,7 +201,10 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       {shortId(o.id)}
                     </td>
                     <td className="px-4 py-3 font-semibold text-[var(--text)]">
-                      {o.customerName || "—"}
+                      <span className="inline-flex items-center gap-2">
+                        {o.customerName || "—"}
+                        <SourceBadge source={o.source} />
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right font-black text-[var(--text)]">
                       {money(o.totalMinor, o.currency)}

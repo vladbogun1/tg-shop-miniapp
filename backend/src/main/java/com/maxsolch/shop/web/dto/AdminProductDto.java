@@ -13,5 +13,9 @@ public record AdminProductDto(
         boolean archived,
         List<ProductImageDto> images,
         List<ProductVariantDto> variants,
-        List<TagDto> tags) {
+        List<TagDto> tags,
+        String slug,
+        Long compareAtMinor,
+        String seoTitle,
+        String seoDescription) {
 }

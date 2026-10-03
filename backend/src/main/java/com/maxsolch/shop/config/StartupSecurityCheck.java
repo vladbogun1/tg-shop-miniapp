@@ -84,6 +84,22 @@ public class StartupSecurityCheck {
             }
         }
 
+        // Public site: auth cookies without Secure would travel over plain http, and an unsigned
+        // revalidation webhook lets anyone make the site rebuild pages.
+        AppProperties.Site site = props.getSite();
+        if (!dev && Boolean.FALSE.equals(site.getWebCookieSecure())) {
+            log.warn("SECURITY: WEB_COOKIE_SECURE=false вне профиля dev — cookie входа на сайт "
+                    + "уйдут по http. На проде должно быть true (или не задано).");
+        }
+        if (site.getRevalidateUrl() != null && !site.getRevalidateUrl().isBlank()
+                && (site.getRevalidateSecret() == null || site.getRevalidateSecret().isBlank())) {
+            log.warn("SECURITY: SITE_REVALIDATE_URL задан, а SITE_REVALIDATE_SECRET пуст — "
+                    + "сайт должен отклонять неподписанные запросы ревалидации.");
+        }
+        if (!dev && (site.getBaseUrl() == null || site.getBaseUrl().isBlank())) {
+            log.warn("SITE_BASE_URL не задан — запросы сайта с cookie-авторизацией будут отклоняться (403).");
+        }
+
         if (!fatal.isEmpty()) {
             String details = String.join("\n  • ", fatal);
             throw new IllegalStateException("Небезопасная конфигурация, запуск остановлен:\n  • "

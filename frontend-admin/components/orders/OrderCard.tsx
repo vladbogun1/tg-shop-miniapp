@@ -3,7 +3,7 @@
 /**
  * OrderCard — compact card shown in kanban columns / mobile list / table cards.
  * Shows: short id, customer, total, itemsCount, delivery badge, payment badge,
- * unread chat badge, time. Neo `.card` surface with `nb-press` press-into-shadow.
+ * unread chat badge, "Сайт" for website orders, time. Neo `.card` surface with `nb-press` press-into-shadow.
  */
 import { motion } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
 import { Badge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
+import { SourceBadge } from "@/components/orders/SourceBadge";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -62,6 +63,7 @@ export function OrderCard({ order, onClick, dragging }: Props) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <SourceBadge source={order.source} />
         <PaymentBadge order={order} />
         <Badge tone="neutral">
           {order.deliveryMethod === "NOVA_POSHTA" ? (

@@ -23,6 +23,7 @@ public class AppProperties {
     private Security security = new Security();
     private S3 s3 = new S3();
     private NovaPoshta novaposhta = new NovaPoshta();
+    private Site site = new Site();
 
     @Getter
     @Setter
@@ -67,6 +68,28 @@ public class AppProperties {
         private String accessKey;
         private String secretKey;
         private String bucket;
+    }
+
+    /** Public website (maxsolkh.shop root): cookies, allowed origin, ISR revalidation. */
+    @Getter
+    @Setter
+    public static class Site {
+        /** Public origin of the site, e.g. https://maxsolkh.shop. Added to the allowed origins. */
+        private String baseUrl;
+        /**
+         * {@code Secure} flag of the auth cookies. Unset = true, except under the dev profile
+         * (plain-http localhost). See {@link com.maxsolch.shop.security.WebCookies}.
+         */
+        private Boolean webCookieSecure;
+        /** e.g. http://site-public:3000/api/revalidate — blank disables revalidation calls. */
+        private String revalidateUrl;
+        private String revalidateSecret;
+        /** Lifetime of a site session (refresh cookie), days. */
+        private int sessionDays = 30;
+        /** Lifetime of the site access cookie/JWT, minutes. */
+        private int accessMinutes = 15;
+        /** How long a "log in via the bot" request stays valid, minutes. */
+        private int loginMinutes = 5;
     }
 
     @Getter

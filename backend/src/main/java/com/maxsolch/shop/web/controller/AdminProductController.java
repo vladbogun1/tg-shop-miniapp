@@ -5,6 +5,7 @@ import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
+import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.BooleanFlagRequest;
@@ -37,15 +38,25 @@ public class AdminProductController {
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
     private final AdminAuditService audit;
+    private final SiteRevalidator siteRevalidator;
 
     public AdminProductController(AdminProductService productService,
                                   ImageStorageService imageStorageService,
                                   UploadValidator uploadValidator,
-                                  AdminAuditService audit) {
+                                  AdminAuditService audit,
+                                  SiteRevalidator siteRevalidator) {
         this.productService = productService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
         this.audit = audit;
+        this.siteRevalidator = siteRevalidator;
+    }
+
+    /** Rebuild the site pages this product appears on (no-op when revalidation is off). */
+    private AdminProductDto revalidated(AdminProductDto p, String previousSlug) {
+        siteRevalidator.productChanged(p.slug(), previousSlug,
+                p.tags() == null ? List.of() : p.tags().stream().map(t -> t.slug()).toList());
+        return p;
     }
 
     @GetMapping("/products")
@@ -65,16 +76,17 @@ public class AdminProductController {
     public AdminProductDto create(@Valid @RequestBody ProductUpsertRequest req) {
         AdminProductDto created = productService.create(req);
         audit.record("PRODUCT_CREATE", "PRODUCT", created.id(), created.title());
-        return created;
+        return revalidated(created, null);
     }
 
     @PatchMapping("/products/{id}")
     @Operation(summary = "Update product")
     public AdminProductDto update(@PathVariable String id, @Valid @RequestBody ProductUpsertRequest req) {
+        String previousSlug = siteRevalidator.enabled() ? productService.get(id).slug() : null;
         AdminProductDto updated = productService.update(id, req);
         audit.record("PRODUCT_UPDATE", "PRODUCT", id,
                 updated.title() + ", price " + updated.priceMinor() + ", stock " + updated.stock());
-        return updated;
+        return revalidated(updated, previousSlug);
     }
 
     @PatchMapping("/products/{id}/active")
@@ -84,7 +96,7 @@ public class AdminProductController {
             throw new BadRequestException("active is required");
         }
         audit.record("PRODUCT_ACTIVE", "PRODUCT", id, body.active() ? "показан" : "скрыт");
-        return productService.setActive(id, body.active());
+        return revalidated(productService.setActive(id, body.active()), null);
     }
 
     @PatchMapping("/products/{id}/archived")
@@ -94,7 +106,7 @@ public class AdminProductController {
             throw new BadRequestException("archived is required");
         }
         audit.record("PRODUCT_ARCHIVE", "PRODUCT", id, body.archived() ? "в архив" : "из архива");
-        return productService.setArchived(id, body.archived());
+        return revalidated(productService.setArchived(id, body.archived()), null);
     }
 
     @PostMapping("/uploads")

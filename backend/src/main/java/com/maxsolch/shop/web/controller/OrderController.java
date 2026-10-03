@@ -2,6 +2,7 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.repository.PaymentRequisitesRepository;
@@ -78,7 +79,9 @@ public class OrderController {
                 req.npCityName(),
                 req.npWarehouseRef(),
                 req.npWarehouseName(),
-                req.paymentOptionId());
+                req.paymentOptionId(),
+                // A site token (cookie, chn=web) marks the order as placed on the website.
+                SecurityUtil.currentPrincipal().isWeb() ? OrderSource.WEB : OrderSource.MINIAPP);
         Order order = orderService.createOrder(cmd);
         String orderId = UuidUtil.toString(order.getId());
         idempotency.remember(userId, idempotencyKey, orderId);

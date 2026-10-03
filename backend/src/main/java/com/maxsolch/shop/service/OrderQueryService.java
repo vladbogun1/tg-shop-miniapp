@@ -132,7 +132,12 @@ public class OrderQueryService {
                 o.getStatus().name(),
                 o.isPaid(),
                 o.isPaymentClaimed(),
-                receivedMinor(o));
+                receivedMinor(o),
+                sourceOf(o));
+    }
+
+    private static String sourceOf(Order o) {
+        return o.getSource() == null ? "MINIAPP" : o.getSource().name();
     }
 
     /** Maps a whole page of orders, fetching the shared context once. */
@@ -190,7 +195,8 @@ public class OrderQueryService {
                 o.getPrepaymentMinor(),
                 receivedMinor(o),
                 o.isPaymentClaimed(),
-                o.getPaymentClaimedAt());
+                o.getPaymentClaimedAt(),
+                sourceOf(o));
     }
 
     /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */

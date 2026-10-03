@@ -40,9 +40,39 @@ export type {
   TimeRange,
 };
 
-/** Names the admin UI already uses for the shared shapes. */
-export type OrderCardDto = OrderCard;
-export type OrderDetailDto = OrderDetail;
+/** Where an order was placed (backend `orders.source`). */
+export type OrderSource = "MINIAPP" | "WEB" | "ADMIN";
+
+/** Names the admin UI already uses for the shared shapes (+ admin-only fields). */
+export type OrderCardDto = OrderCard & { source?: OrderSource };
+export type OrderDetailDto = OrderDetail & { source?: OrderSource };
+
+/**
+ * Product as the admin API returns it: the shared shape plus the public-site fields
+ * (URL slug, struck-through "old" price, SEO overrides). Kept here so the Mini App's shared
+ * types stay untouched.
+ */
+export type AdminProduct = Product & {
+  slug?: string;
+  compareAtMinor?: number | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+};
+
+/** Tag = a category on the public site: URL slug, menu position and visibility. */
+export type AdminTag = ProductTag & {
+  slug?: string;
+  sortOrder?: number;
+  showInMenu?: boolean;
+};
+
+export interface TagWriteRequest {
+  name: string;
+  /** Blank = generate from the name. */
+  slug?: string;
+  sortOrder?: number;
+  showInMenu?: boolean;
+}
 export type MessageDto = Message;
 export type ConversationDto = Conversation;
 export type PaymentRequisitesDto = PaymentRequisites;
@@ -209,6 +239,12 @@ export interface ProductWriteRequest {
    * saved carts and the variant reference on past orders.
    */
   variants: { id?: string; name: string; stock: number }[];
+  /** Public site. Blank slug = generate from the title; omitted fields keep their value. */
+  slug?: string;
+  /** "Старая цена" (minor units); 0 clears it. */
+  compareAtMinor?: number;
+  seoTitle?: string;
+  seoDescription?: string;
 }
 
 export interface PromoCode {
@@ -460,23 +496,23 @@ export const adminApi = {
     apiPost<void>(`/api/admin/orders/${id}/messages/read`),
 
   // ---- products ----
-  products: () => apiGet<Product[]>("/api/admin/products"),
-  productsArchived: () => apiGet<Product[]>("/api/admin/products/archived"),
+  products: () => apiGet<AdminProduct[]>("/api/admin/products"),
+  productsArchived: () => apiGet<AdminProduct[]>("/api/admin/products/archived"),
   createProduct: (body: ProductWriteRequest) =>
-    apiPost<Product>("/api/admin/products", body),
+    apiPost<AdminProduct>("/api/admin/products", body),
   updateProduct: (id: string, body: ProductWriteRequest) =>
-    apiPatch<Product>(`/api/admin/products/${id}`, body),
+    apiPatch<AdminProduct>(`/api/admin/products/${id}`, body),
   setProductActive: (id: string, active: boolean) =>
-    apiPatch<Product>(`/api/admin/products/${id}/active`, { active }),
+    apiPatch<AdminProduct>(`/api/admin/products/${id}/active`, { active }),
   setProductArchived: (id: string, archived: boolean) =>
-    apiPatch<Product>(`/api/admin/products/${id}/archived`, { archived }),
+    apiPatch<AdminProduct>(`/api/admin/products/${id}/archived`, { archived }),
   upload: (file: File) => uploadFile("/api/admin/uploads", file),
 
   // ---- tags ----
-  tags: () => apiGet<ProductTag[]>("/api/admin/tags"),
-  createTag: (name: string) => apiPost<ProductTag>("/api/admin/tags", { name }),
-  renameTag: (id: string, name: string) =>
-    apiPatch<ProductTag>(`/api/admin/tags/${id}`, { name }),
+  tags: () => apiGet<AdminTag[]>("/api/admin/tags"),
+  createTag: (body: TagWriteRequest) => apiPost<AdminTag>("/api/admin/tags", body),
+  updateTag: (id: string, body: TagWriteRequest) =>
+    apiPatch<AdminTag>(`/api/admin/tags/${id}`, body),
   deleteTag: (id: string) => apiDelete<void>(`/api/admin/tags/${id}`),
 
   // ---- promocodes ----

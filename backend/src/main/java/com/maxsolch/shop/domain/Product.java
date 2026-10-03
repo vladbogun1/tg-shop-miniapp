@@ -35,11 +35,25 @@ public class Product {
     @Column(name = "title", nullable = false, length = 255)
     private String title;
 
+    /** URL key for the public site ({@code /product/<slug>}), unique. See SlugService. */
+    @Column(name = "slug", nullable = false, length = 160)
+    private String slug;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "price_minor", nullable = false)
     private long priceMinor;
+
+    /** "Old" (struck-through) price on the site; shown only when greater than the price. */
+    @Column(name = "compare_at_minor")
+    private Long compareAtMinor;
+
+    @Column(name = "seo_title", length = 255)
+    private String seoTitle;
+
+    @Column(name = "seo_description", length = 512)
+    private String seoDescription;
 
     @Column(name = "currency", nullable = false, length = 8)
     private String currency = "UAH";

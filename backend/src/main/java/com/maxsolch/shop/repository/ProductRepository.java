@@ -46,4 +46,8 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
     List<Product> findAllArchived();
 
     boolean existsByTitle(String title);
+
+    boolean existsBySlug(String slug);
+
+    boolean existsBySlugAndIdNot(String slug, byte[] id);
 }

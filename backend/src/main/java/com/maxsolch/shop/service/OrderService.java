@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.PaymentOption;
@@ -108,6 +109,7 @@ public class OrderService {
         order.setUserId(cmd.userId());
         order.setTgUserId(cmd.tgUserId());
         order.setTgUsername(cmd.tgUsername());
+        order.setSource(cmd.source() == null ? OrderSource.MINIAPP : cmd.source());
 
         order.setDeliveryMethod(deliveryMethod);
         if (deliveryMethod == DeliveryMethod.NOVA_POSHTA) {

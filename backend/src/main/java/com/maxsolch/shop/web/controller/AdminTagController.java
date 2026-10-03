@@ -5,6 +5,8 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.service.SlugService;
+import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.TagDto;
@@ -25,6 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Tags = the site's categories. Besides the name the admin sets the URL slug (blank = generated
+ * from the name), the menu position and whether the category shows in the site menu.
+ *
+ * <p>Every mutation evicts the product caches too: the product DTOs embed their tags, so a renamed
+ * tag would otherwise show its old name/slug on product cards until the cache expired.
+ */
 @RestController
 @RequestMapping("/api/admin/tags")
 @RequiredAdmin
@@ -34,22 +43,27 @@ public class AdminTagController {
 
     private final TagRepository tagRepository;
     private final AdminAuditService audit;
+    private final SlugService slugService;
+    private final SiteRevalidator siteRevalidator;
 
-    public AdminTagController(TagRepository tagRepository, AdminAuditService audit) {
+    public AdminTagController(TagRepository tagRepository, AdminAuditService audit,
+                              SlugService slugService, SiteRevalidator siteRevalidator) {
         this.tagRepository = tagRepository;
         this.audit = audit;
+        this.slugService = slugService;
+        this.siteRevalidator = siteRevalidator;
     }
 
     @GetMapping
     @Operation(summary = "List tags")
     public List<TagDto> list() {
         return tagRepository.findAllByOrderByNameAsc().stream()
-                .map(t -> new TagDto(UuidUtil.toString(t.getId()), t.getName()))
+                .map(TagDto::of)
                 .toList();
     }
 
     @PostMapping
-    @CacheEvict(value = "tags", allEntries = true)
+    @CacheEvict(value = {"tags", "products", "productById"}, allEntries = true)
     @Operation(summary = "Create tag")
     public TagDto create(@Valid @RequestBody TagUpsertRequest req) {
         if (tagRepository.findByName(req.name().trim()).isPresent()) {
@@ -57,17 +71,32 @@ public class AdminTagController {
         }
         Tag tag = new Tag();
         tag.setName(req.name().trim());
+        applySiteFields(tag, req);
         Tag saved = tagRepository.save(tag);
-        return new TagDto(UuidUtil.toString(saved.getId()), saved.getName());
+        audit.record("TAG_CREATE", "TAG", UuidUtil.toString(saved.getId()), saved.getName());
+        siteRevalidator.categoryChanged(saved.getSlug(), null);
+        return TagDto.of(saved);
     }
 
     @PatchMapping("/{id}")
-    @CacheEvict(value = "tags", allEntries = true)
-    @Operation(summary = "Rename tag")
+    @CacheEvict(value = {"tags", "products", "productById"}, allEntries = true)
+    @Operation(summary = "Edit tag (name, slug, menu order, menu visibility)")
     public TagDto update(@PathVariable String id, @Valid @RequestBody TagUpsertRequest req) {
         Tag tag = load(id);
-        tag.setName(req.name().trim());
-        return new TagDto(UuidUtil.toString(tag.getId()), tagRepository.save(tag).getName());
+        String newName = req.name().trim();
+        if (!newName.equalsIgnoreCase(tag.getName())
+                && tagRepository.findByName(newName).isPresent()) {
+            throw new BadRequestException("tag already exists");
+        }
+        String previousSlug = tag.getSlug();
+        tag.setName(newName);
+        applySiteFields(tag, req);
+        Tag saved = tagRepository.save(tag);
+        audit.record("TAG_UPDATE", "TAG", id,
+                saved.getName() + ", slug " + saved.getSlug() + ", order " + saved.getSortOrder()
+                        + (saved.isShowInMenu() ? "" : ", скрыт из меню"));
+        siteRevalidator.categoryChanged(saved.getSlug(), previousSlug);
+        return TagDto.of(saved);
     }
 
     @DeleteMapping("/{id}")
@@ -76,8 +105,35 @@ public class AdminTagController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         Tag tag = load(id);
         audit.record("TAG_DELETE", "TAG", id, tag.getName());
+        String slug = tag.getSlug();
         tagRepository.delete(tag);
+        siteRevalidator.categoryChanged(slug, null);
         return ResponseEntity.noContent().build();
+    }
+
+    /** {@code null} = keep; blank slug = regenerate from the name; a typed slug must be free. */
+    private void applySiteFields(Tag tag, TagUpsertRequest req) {
+        if (req.slug() != null || tag.getSlug() == null) {
+            String explicit = req.slug() == null ? "" : req.slug().trim();
+            if (!explicit.isEmpty()) {
+                String normalised = SlugService.slugify(explicit);
+                if (normalised.isEmpty()) {
+                    throw new BadRequestException("slug: допустимы латиница, цифры и дефис");
+                }
+                if (!normalised.equals(tag.getSlug()) && slugService.tagSlugTaken(normalised, tag.getId())) {
+                    throw new BadRequestException("slug «" + normalised + "» уже занят другой категорией");
+                }
+                tag.setSlug(normalised);
+            } else {
+                tag.setSlug(slugService.forTag(null, tag.getName(), tag.getId()));
+            }
+        }
+        if (req.sortOrder() != null) {
+            tag.setSortOrder(req.sortOrder());
+        }
+        if (req.showInMenu() != null) {
+            tag.setShowInMenu(req.showInMenu());
+        }
     }
 
     private Tag load(String id) {

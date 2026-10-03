@@ -24,6 +24,17 @@ public class Tag {
     @Column(name = "name", nullable = false, length = 128)
     private String name;
 
+    /** URL key for the public site ({@code /catalog/<slug>}), unique. See SlugService. */
+    @Column(name = "slug", nullable = false, length = 160)
+    private String slug;
+
+    /** Position in the site's category menu (ascending, then by name). */
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder = 0;
+
+    @Column(name = "show_in_menu", nullable = false)
+    private boolean showInMenu = true;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 

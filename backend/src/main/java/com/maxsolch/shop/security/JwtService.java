@@ -49,6 +49,24 @@ public class JwtService {
     }
 
     /**
+     * Short-lived CUSTOMER token for the public site, carried in the {@code access} cookie:
+     * same format as the Mini App token plus {@code chn=web} and {@code sid} (the web session).
+     */
+    public String issueWebToken(long telegramUserId, String sessionId, long ttlMinutes) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .subject(String.valueOf(telegramUserId))
+                .claim("role", Role.CUSTOMER.name())
+                .claim("tv", 0)
+                .claim("chn", AuthPrincipal.CHANNEL_WEB)
+                .claim("sid", sessionId)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(ttlMinutes, ChronoUnit.MINUTES)))
+                .signWith(key)
+                .compact();
+    }
+
+    /**
      * Validates signature + expiry and returns the parsed principal.
      *
      * @throws io.jsonwebtoken.JwtException if the token is invalid/expired
@@ -62,6 +80,7 @@ public class JwtService {
         long telegramUserId = Long.parseLong(claims.getSubject());
         Role role = Role.valueOf(claims.get("role", String.class));
         Integer tokenVersion = claims.get("tv", Integer.class);
-        return new AuthPrincipal(telegramUserId, role, tokenVersion == null ? 0 : tokenVersion);
+        return new AuthPrincipal(telegramUserId, role, tokenVersion == null ? 0 : tokenVersion,
+                claims.get("chn", String.class), claims.get("sid", String.class));
     }
 }

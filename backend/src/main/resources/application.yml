@@ -76,6 +76,13 @@ app:
   image-base-url: ${IMAGE_BASE_URL:http://localhost:8082/img}
   webapp-base-url: ${WEBAPP_BASE_URL:}
   admin-base-url: ${ADMIN_BASE_URL:}
+  # Public website (site/). Cookies for the bot login, its origin, ISR revalidation webhook.
+  site:
+    base-url: ${SITE_BASE_URL:}
+    # Empty = Secure cookies everywhere except the dev profile (plain-http localhost).
+    web-cookie-secure: ${WEB_COOKIE_SECURE:}
+    revalidate-url: ${SITE_REVALIDATE_URL:}
+    revalidate-secret: ${SITE_REVALIDATE_SECRET:}
   telegram:
     bot-token: ${BOT_TOKEN:}
     bot-username: ${BOT_USERNAME:@ChannelCheckerBot}

@@ -17,5 +17,7 @@ public record OrderCardDto(
         /** Customer claims they paid (screenshot uploaded) but no admin confirmed it yet. */
         boolean paymentClaimed,
         /** Confirmed amount received, so the card can tell a partial payment from a full one. */
-        long receivedMinor) {
+        long receivedMinor,
+        /** MINIAPP | WEB | ADMIN — where the order was placed. */
+        String source) {
 }

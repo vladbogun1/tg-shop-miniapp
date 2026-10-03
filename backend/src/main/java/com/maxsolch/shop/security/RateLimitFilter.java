@@ -49,6 +49,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int UPLOAD_LIMIT = 30;
     private static final int PUBLIC_LIMIT = 120;
     private static final int ANALYTICS_LIMIT = 20;
+    /** Site bot-login starts: each one creates a DB row and a deep link. */
+    private static final int WEB_LOGIN_START_LIMIT = 10;
+    /** Site status polling (every ~2 s while the login dialog is open) + refresh/complete/logout. */
+    private static final int WEB_AUTH_LIMIT = 90;
 
     private final Cache<String, AtomicInteger> authAttempts = Caffeine.newBuilder()
             .maximumSize(10_000)
@@ -61,6 +65,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .build();
 
     private final Cache<String, AtomicInteger> publicReads = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build();
+
+    private final Cache<String, AtomicInteger> webLoginStarts = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build();
+
+    private final Cache<String, AtomicInteger> webAuthCalls = Caffeine.newBuilder()
             .maximumSize(50_000)
             .expireAfterWrite(Duration.ofMinutes(1))
             .build();
@@ -79,7 +93,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String ip = clientIp(request);
 
-        Bucket bucket = bucketFor(path, request.getMethod());
+        Bucket bucket = internalCatalogRead(request, path) ? null : bucketFor(path, request.getMethod());
         if (bucket != null && exceeded(bucket, ip)) {
             log.warn("Rate limit hit: {} {} from {}", request.getMethod(), path, ip);
             // This filter runs inside the security chain, long before the DispatcherServlet fills
@@ -91,6 +105,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket bucketFor(String path, String method) {
+        // The site's bot login has its own buckets: the status poll alone would exhaust the
+        // 10-per-5-minutes password bucket in twenty seconds.
+        if (path.equals("/api/auth/web/start")) {
+            return new Bucket(webLoginStarts, WEB_LOGIN_START_LIMIT, 60);
+        }
+        if (path.startsWith("/api/auth/web/") && !path.equals("/api/auth/web/dev-login")) {
+            return new Bucket(webAuthCalls, WEB_AUTH_LIMIT, 60);
+        }
         if (path.startsWith("/api/auth/")) {
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
         }
@@ -102,12 +124,30 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.endsWith("/uploads") && "POST".equalsIgnoreCase(method)) {
             return new Bucket(uploadAttempts, UPLOAD_LIMIT, 60);
         }
-        if (path.startsWith("/api/np/") || path.startsWith("/api/products")
+        if (path.startsWith("/api/np/") || path.startsWith("/api/products") || path.startsWith("/api/public/")
                 || path.equals("/api/tags") || path.equals("/api/payment-options")
                 || path.equals("/api/promo-codes/preview")) {
             return new Bucket(publicReads, PUBLIC_LIMIT, 60);
         }
         return null;
+    }
+
+    /**
+     * The site's server-side rendering reads the catalog straight from the backend over the compose
+     * network — every visitor's page render arrives from the one site container, which would hit
+     * the per-IP public limit within seconds. Such a request has no X-Forwarded-For (the gateways
+     * always add one for outside traffic) and comes from a private/loopback address.
+     */
+    private static boolean internalCatalogRead(HttpServletRequest request, String path) {
+        if (!path.startsWith("/api/public/") || request.getHeader("X-Forwarded-For") != null) {
+            return false;
+        }
+        try {
+            java.net.InetAddress addr = java.net.InetAddress.getByName(request.getRemoteAddr());
+            return addr.isLoopbackAddress() || addr.isSiteLocalAddress();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean exceeded(Bucket bucket, String ip) {

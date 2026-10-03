@@ -4,7 +4,7 @@
  * ProductModal — create/edit product as a STEPPED WIZARD (Neo-Brutalism).
  * Steps: 1) Основное (название+описание) → 2) Фото (загрузка + порядок,
  * первое = обложка) → 3) Цена и склад (цена/валюта/остаток/варианты) →
- * 4) Теги (+активность) → 5) Проверка (обзор + создать/сохранить).
+ * 4) Теги (+активность) → 5) Сайт (адрес страницы, SEO) → 6) Проверка (обзор + создать/сохранить).
  * Mobile- and desktop-friendly: numbered progress header, one concept per step,
  * Back/Next footer with per-step validation, animated step transitions.
  * API + payload are unchanged (createProduct/updateProduct, upload → imageKeys).
@@ -23,11 +23,12 @@ import {
 import {
   adminApi,
   ApiError,
-  type Product,
+  type AdminProduct,
   type ProductTag,
   type ProductVariant,
   type ProductWriteRequest,
 } from "@/lib/api";
+import { slugify } from "@/lib/slug";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
@@ -40,7 +41,7 @@ import { Toggle } from "@/components/ui/Toggle";
 
 interface Props {
   open: boolean;
-  product: Product | null; // null = create
+  product: AdminProduct | null; // null = create
   tags: ProductTag[];
   onClose: () => void;
   onSaved: () => void;
@@ -51,6 +52,7 @@ const STEPS = [
   { key: "photos", label: "Фото" },
   { key: "pricing", label: "Цена и склад" },
   { key: "tags", label: "Теги" },
+  { key: "site", label: "Сайт" },
   { key: "review", label: "Проверка" },
 ] as const;
 
@@ -80,6 +82,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Public site
+  const [slug, setSlug] = useState("");
+  const [compareAtMajor, setCompareAtMajor] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -91,6 +98,10 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
     setCurrency(product?.currency ?? "UAH");
     setStock(String(product?.stock ?? 0));
     setActive(product?.active ?? true);
+    setSlug(product?.slug ?? "");
+    setCompareAtMajor(product?.compareAtMinor ? String(toMajor(product.compareAtMinor)) : "");
+    setSeoTitle(product?.seoTitle ?? "");
+    setSeoDescription(product?.seoDescription ?? "");
     setTagIds(product?.tags?.map((t) => t.id) ?? []);
     // Keep the id: it is what tells the server "this is the same variant", so renaming one edits
     // the existing row instead of deleting it and minting a new UUID (which broke customers'
@@ -116,6 +127,9 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
     [hasVariants, variants, stock]
   );
   const priceMinor = toMinor(priceMajor);
+  const compareAtMinor = compareAtMajor.trim() ? toMinor(compareAtMajor) : 0;
+  const compareAtInvalid = compareAtMinor > 0 && compareAtMinor <= priceMinor;
+  const slugPreview = slug.trim() ? slugify(slug) : slugify(title);
 
   function toggleTag(id: string) {
     setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
@@ -149,7 +163,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   /** Per-step validity — gates the Next button (clicking the header can still jump). */
   function stepValid(i: number): boolean {
     if (i === 0) return title.trim().length > 0;
-    if (i === 2) return priceMinor > 0;
+    if (i === 2) return priceMinor > 0 && !compareAtInvalid;
     return true;
   }
 
@@ -162,7 +176,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   function next() {
     if (!stepValid(step)) {
       if (step === 0) push("Укажите название", "error");
-      else if (step === 2) push("Укажите цену больше 0", "error");
+      else if (step === 2)
+        push(
+          compareAtInvalid ? "Старая цена должна быть больше текущей" : "Укажите цену больше 0",
+          "error"
+        );
       return;
     }
     go(step + 1);
@@ -179,6 +197,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       go(2);
       return;
     }
+    if (compareAtInvalid) {
+      push("Старая цена должна быть больше текущей", "error");
+      go(2);
+      return;
+    }
     const body: ProductWriteRequest = {
       title: title.trim(),
       description: description.trim() || undefined,
@@ -191,6 +214,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       variants: variants
         .filter((v) => v.name.trim())
         .map((v) => ({ id: v.id, name: v.name.trim(), stock: Number(v.stock) || 0 })),
+      // Blank slug = the server generates one from the title (and makes it unique).
+      slug: slug.trim(),
+      compareAtMinor,
+      seoTitle: seoTitle.trim(),
+      seoDescription: seoDescription.trim(),
     };
     setSaving(true);
     try {
@@ -376,6 +404,19 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                     onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                   />
                 </div>
+                <Input
+                  label="Старая цена, ₴"
+                  inputMode="decimal"
+                  value={compareAtMajor}
+                  onChange={(e) => setCompareAtMajor(e.target.value)}
+                  placeholder="не задана"
+                  error={compareAtInvalid ? "Должна быть больше текущей цены" : undefined}
+                  hint={
+                    compareAtInvalid
+                      ? undefined
+                      : "Зачёркнутая цена на сайте. Пусто или 0 — не показывать."
+                  }
+                />
                 <div className="flex items-end gap-4">
                   <Input
                     label="Остаток"
@@ -489,10 +530,45 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
             )}
 
             {step === 4 && (
+              <div className="flex flex-col gap-4">
+                <Input
+                  label="Адрес страницы (slug)"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder={slugify(title) || "из названия"}
+                  hint={
+                    slug.trim()
+                      ? `Страница: /product/${slugPreview || "…"}`
+                      : `Пусто — сгенерируется из названия: /product/${slugPreview || "…"}`
+                  }
+                />
+                <Input
+                  label="SEO-заголовок"
+                  value={seoTitle}
+                  maxLength={255}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  placeholder={title || "по умолчанию — название"}
+                  hint="Заголовок вкладки и поисковой выдачи. Пусто — название товара."
+                />
+                <Textarea
+                  label="SEO-описание"
+                  rows={3}
+                  maxLength={512}
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                  placeholder="Пусто — начало описания товара"
+                  hint={`${seoDescription.length}/512 · сниппет в поиске и превью ссылки`}
+                />
+              </div>
+            )}
+
+            {step === 5 && (
               <Review
                 title={title}
                 description={description}
                 priceLabel={priceMinor > 0 ? money(priceMinor, currency) : "—"}
+                compareAtLabel={compareAtMinor > priceMinor ? money(compareAtMinor, currency) : null}
+                slug={slugPreview}
                 stock={effectiveStock}
                 hasVariants={hasVariants}
                 variantsCount={variants.filter((v) => v.name.trim()).length}
@@ -550,6 +626,8 @@ function Review({
   title,
   description,
   priceLabel,
+  compareAtLabel,
+  slug,
   stock,
   hasVariants,
   variantsCount,
@@ -561,6 +639,8 @@ function Review({
   title: string;
   description: string;
   priceLabel: string;
+  compareAtLabel: string | null;
+  slug: string;
   stock: number;
   hasVariants: boolean;
   variantsCount: number;
@@ -583,7 +663,14 @@ function Review({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[16px] font-extrabold text-[var(--text)]">{title || "Без названия"}</p>
-          <p className="mt-0.5 text-[15px] font-black text-[var(--accent)]">{priceLabel}</p>
+          <p className="mt-0.5 text-[15px] font-black text-[var(--accent)]">
+            {priceLabel}
+            {compareAtLabel && (
+              <span className="ml-2 text-[13px] font-bold text-[var(--text-faint)] line-through">
+                {compareAtLabel}
+              </span>
+            )}
+          </p>
           <p className="mt-1 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
             {imageKeys.length} фото · {active ? "активен" : "скрыт"}
           </p>
@@ -599,6 +686,9 @@ function Review({
       </ReviewRow>
       <ReviewRow label="Склад" step={2} onEdit={onEdit}>
         {stock} шт{hasVariants ? ` · ${variantsCount} вар.` : ""}
+      </ReviewRow>
+      <ReviewRow label="Сайт" step={4} onEdit={onEdit}>
+        <span className="break-all font-mono text-[13px]">/product/{slug || "…"}</span>
       </ReviewRow>
       <ReviewRow label="Теги" step={3} onEdit={onEdit}>
         {tags.length ? (

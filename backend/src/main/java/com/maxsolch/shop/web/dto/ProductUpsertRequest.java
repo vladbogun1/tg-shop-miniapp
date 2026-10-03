@@ -16,7 +16,14 @@ public record ProductUpsertRequest(
         Boolean active,
         @Size(max = 30) List<@Size(max = 2048) String> imageKeys,
         @Size(max = 50) List<String> tagIds,
-        @Valid @Size(max = 100) List<VariantInput> variants) {
+        @Valid @Size(max = 100) List<VariantInput> variants,
+        // ---- public site (all optional; null = keep the current value) ----
+        /** Blank = generate from the title; otherwise normalised to [a-z0-9-]. */
+        @Size(max = 160) String slug,
+        /** Struck-through "old" price; 0 or negative clears it. */
+        Long compareAtMinor,
+        @Size(max = 255) String seoTitle,
+        @Size(max = 512) String seoDescription) {
 
     /**
      * @param id existing variant id, when the client is editing a variant that already exists.

@@ -35,5 +35,7 @@ public record OrderDetailDto(
         long receivedMinor,
         /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
         boolean paymentClaimed,
-        Instant paymentClaimedAt) {
+        Instant paymentClaimedAt,
+        /** MINIAPP | WEB | ADMIN — where the order was placed. */
+        String source) {
 }

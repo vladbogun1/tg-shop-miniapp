@@ -34,13 +34,16 @@ public class AdminProductService {
     private final ProductRepository productRepository;
     private final TagRepository tagRepository;
     private final ImageStorageService imageStorageService;
+    private final SlugService slugService;
 
     public AdminProductService(ProductRepository productRepository,
                                TagRepository tagRepository,
-                               ImageStorageService imageStorageService) {
+                               ImageStorageService imageStorageService,
+                               SlugService slugService) {
         this.productRepository = productRepository;
         this.tagRepository = tagRepository;
         this.imageStorageService = imageStorageService;
+        this.slugService = slugService;
     }
 
     @Transactional(readOnly = true)
@@ -133,6 +136,42 @@ public class AdminProductService {
         if (req.active() != null) {
             p.setActive(req.active());
         }
+        applyStorefront(p, req);
+    }
+
+    /**
+     * Site-only fields. {@code null} keeps the current value (older admin builds do not send
+     * them); a blank slug means "generate from the title", a hand-typed one must be free.
+     */
+    private void applyStorefront(Product p, ProductUpsertRequest req) {
+        if (req.slug() != null || p.getSlug() == null) {
+            String explicit = req.slug() == null ? "" : req.slug().trim();
+            if (!explicit.isEmpty()) {
+                String normalised = SlugService.slugify(explicit);
+                if (normalised.isEmpty()) {
+                    throw new BadRequestException("slug: допустимы латиница, цифры и дефис");
+                }
+                if (!normalised.equals(p.getSlug()) && slugService.productSlugTaken(normalised, p.getId())) {
+                    throw new BadRequestException("slug «" + normalised + "» уже занят другим товаром");
+                }
+                p.setSlug(normalised);
+            } else {
+                p.setSlug(slugService.forProduct(null, p.getTitle(), p.getId()));
+            }
+        }
+        if (req.compareAtMinor() != null) {
+            p.setCompareAtMinor(req.compareAtMinor() > 0 ? req.compareAtMinor() : null);
+        }
+        if (req.seoTitle() != null) {
+            p.setSeoTitle(blankToNull(req.seoTitle()));
+        }
+        if (req.seoDescription() != null) {
+            p.setSeoDescription(blankToNull(req.seoDescription()));
+        }
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     /**
@@ -284,7 +323,7 @@ public class AdminProductService {
                 .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(), v.getStock(), v.getSortOrder()))
                 .toList();
         List<TagDto> tags = p.getTags().stream()
-                .map(t -> new TagDto(UuidUtil.toString(t.getId()), t.getName()))
+                .map(TagDto::of)
                 .toList();
         return new AdminProductDto(
                 UuidUtil.toString(p.getId()),
@@ -297,6 +336,10 @@ public class AdminProductService {
                 p.isArchived(),
                 images,
                 variants,
-                tags);
+                tags,
+                p.getSlug(),
+                p.getCompareAtMinor(),
+                p.getSeoTitle(),
+                p.getSeoDescription());
     }
 }

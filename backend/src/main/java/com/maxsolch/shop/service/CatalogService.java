@@ -78,7 +78,7 @@ public class CatalogService {
     @Cacheable("tags")
     public List<TagDto> listTags() {
         return tagRepository.findAllByOrderByNameAsc().stream()
-                .map(t -> new TagDto(UuidUtil.toString(t.getId()), t.getName()))
+                .map(TagDto::of)
                 .toList();
     }
 
@@ -104,10 +104,15 @@ public class CatalogService {
                 soldCounts.getOrDefault(id, 0L),
                 images,
                 variants,
-                tags);
+                tags,
+                p.getSlug(),
+                p.getCompareAtMinor(),
+                p.getSeoTitle(),
+                p.getSeoDescription(),
+                p.getCreatedAt());
     }
 
     private TagDto toTagDto(Tag t) {
-        return new TagDto(UuidUtil.toString(t.getId()), t.getName());
+        return TagDto.of(t);
     }
 }

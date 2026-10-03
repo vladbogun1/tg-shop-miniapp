@@ -3,6 +3,7 @@ package com.maxsolch.shop.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,11 +29,15 @@ public class AllowedOrigins {
             "https://*.trycloudflare.com");
 
     private final List<String> patterns;
+    private final CorsConfiguration matcher = new CorsConfiguration();
 
     public AllowedOrigins(AppProperties props, Environment environment) {
         List<String> list = new ArrayList<>();
         addIfSet(list, props.getWebappBaseUrl());
         addIfSet(list, props.getAdminBaseUrl());
+        // The public site (same-origin in prod, but the WebSocket handshake and the cookie-auth
+        // Origin check in JwtAuthFilter still compare against this list).
+        addIfSet(list, props.getSite().getBaseUrl());
 
         boolean dev = false;
         for (String profile : environment.getActiveProfiles()) {
@@ -46,10 +51,11 @@ public class AllowedOrigins {
         }
         if (list.isEmpty()) {
             // Nothing configured at all: refuse everything rather than silently allowing "*".
-            log.warn("No allowed origins configured (WEBAPP_BASE_URL / ADMIN_BASE_URL are empty) "
+            log.warn("No allowed origins configured (WEBAPP_BASE_URL / ADMIN_BASE_URL / SITE_BASE_URL are empty) "
                     + "— cross-origin browser calls will be rejected.");
         }
         this.patterns = List.copyOf(list);
+        this.matcher.setAllowedOriginPatterns(this.patterns);
         log.info("Allowed browser origins: {}", this.patterns);
     }
 
@@ -62,9 +68,28 @@ public class AllowedOrigins {
         return patterns.toArray(new String[0]);
     }
 
+    /**
+     * Does a browser {@code Origin} (scheme://host[:port]) belong to the allowed list? Wildcard
+     * patterns are matched the same way the CORS configuration matches them.
+     */
+    public boolean isAllowed(String origin) {
+        if (origin == null || origin.isBlank() || "null".equals(origin)) {
+            return false;
+        }
+        return matcher.checkOrigin(origin.trim()) != null;
+    }
+
     private static void addIfSet(List<String> target, String value) {
-        if (value != null && !value.isBlank() && !target.contains(value.trim())) {
-            target.add(value.trim());
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        // An Origin never carries a path or trailing slash, so "https://x.shop/" would never match.
+        String v = value.trim();
+        while (v.endsWith("/")) {
+            v = v.substring(0, v.length() - 1);
+        }
+        if (!target.contains(v)) {
+            target.add(v);
         }
     }
 }

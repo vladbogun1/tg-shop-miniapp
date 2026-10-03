@@ -60,6 +60,11 @@ public class Order {
     @Column(name = "status", nullable = false)
     private OrderStatus status = OrderStatus.NEW;
 
+    /** Where the order was placed: Mini App (default, everything before the site), site, admin. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false)
+    private OrderSource source = OrderSource.MINIAPP;
+
     @Column(name = "tracking_number", length = 128)
     private String trackingNumber;
 

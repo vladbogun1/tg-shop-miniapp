@@ -7,6 +7,13 @@ import com.maxsolch.shop.security.AdminTokenValidator;
 import com.maxsolch.shop.security.AuthPrincipal;
 import com.maxsolch.shop.security.JwtService;
 import com.maxsolch.shop.security.Role;
+import com.maxsolch.shop.security.WebCookies;
+import com.maxsolch.shop.security.WebSessionValidator;
+import org.springframework.http.server.ServerHttpRequest;
+import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.server.HandshakeInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -24,6 +31,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -45,15 +53,42 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final OrderRepository orderRepository;
     private final AdminTokenValidator adminTokenValidator;
     private final AllowedOrigins allowedOrigins;
+    private final WebSessionValidator webSessionValidator;
+
+    /** Session attribute holding the handshake's {@code access} cookie (site auth). */
+    static final String ACCESS_COOKIE_ATTR = "site.accessJwt";
 
     public WebSocketConfig(JwtService jwtService,
                            OrderRepository orderRepository,
                            AdminTokenValidator adminTokenValidator,
-                           AllowedOrigins allowedOrigins) {
+                           AllowedOrigins allowedOrigins,
+                           WebSessionValidator webSessionValidator) {
         this.jwtService = jwtService;
         this.orderRepository = orderRepository;
         this.adminTokenValidator = adminTokenValidator;
         this.allowedOrigins = allowedOrigins;
+        this.webSessionValidator = webSessionValidator;
+    }
+
+    /** Copies the {@code access} cookie of the HTTP handshake into the WebSocket session attributes. */
+    static final class AccessCookieHandshakeInterceptor implements HandshakeInterceptor {
+        @Override
+        public boolean beforeHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response,
+                                       @NonNull WebSocketHandler wsHandler, @NonNull Map<String, Object> attributes) {
+            if (request instanceof ServletServerHttpRequest servlet) {
+                String jwt = WebCookies.read(servlet.getServletRequest(), WebCookies.ACCESS);
+                if (jwt != null) {
+                    attributes.put(ACCESS_COOKIE_ATTR, jwt);
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public void afterHandshake(@NonNull ServerHttpRequest request, @NonNull ServerHttpResponse response,
+                                   @NonNull WebSocketHandler wsHandler, Exception exception) {
+            // nothing
+        }
     }
 
     @Override
@@ -61,9 +96,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // Same origin list as CORS (AllowedOrigins) — the handshake used to accept "*".
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(allowedOrigins.patternsArray())
+                .addInterceptors(new AccessCookieHandshakeInterceptor())
                 .withSockJS();
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns(allowedOrigins.patternsArray());
+                .setAllowedOriginPatterns(allowedOrigins.patternsArray())
+                .addInterceptors(new AccessCookieHandshakeInterceptor());
     }
 
     @Override
@@ -103,12 +140,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             token = token.substring("Bearer ".length()).trim();
         }
         if (token == null || token.isBlank()) {
+            // The public site has no token in JS (HttpOnly cookie): use the `access` cookie that
+            // came with the handshake. Cross-site handshakes are already refused by the origin
+            // check on the endpoint, so this cannot be driven from a foreign page.
+            Map<String, Object> attrs = accessor.getSessionAttributes();
+            Object fromCookie = attrs == null ? null : attrs.get(ACCESS_COOKIE_ATTR);
+            token = fromCookie instanceof String s ? s : null;
+        }
+        if (token == null || token.isBlank()) {
             return null;
         }
         try {
             AuthPrincipal principal = jwtService.parse(token);
             if (!adminTokenValidator.isValid(principal)) {
                 log.debug("WS auth rejected: revoked admin token");
+                return null;
+            }
+            if (!webSessionValidator.isValid(principal)) {
+                log.debug("WS auth rejected: site session ended");
                 return null;
             }
             return principal;

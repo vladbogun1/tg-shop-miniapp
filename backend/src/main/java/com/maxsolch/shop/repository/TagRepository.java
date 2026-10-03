@@ -11,4 +11,8 @@ public interface TagRepository extends JpaRepository<Tag, byte[]> {
     List<Tag> findAllByOrderByNameAsc();
 
     Optional<Tag> findByName(String name);
+
+    boolean existsBySlug(String slug);
+
+    boolean existsBySlugAndIdNot(String slug, byte[] id);
 }

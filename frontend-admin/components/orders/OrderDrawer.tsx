@@ -45,6 +45,7 @@ import {
 import { Image } from "@/lib/image";
 import { StatusBadge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
+import { SourceBadge } from "@/components/orders/SourceBadge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Drawer } from "@/components/ui/Drawer";
@@ -210,6 +211,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details" }: Props)
       </span>
       {order && <StatusBadge status={order.status} />}
       {order && <PaymentBadge order={order} />}
+      {order && <SourceBadge source={order.source} />}
     </div>
   );
 
