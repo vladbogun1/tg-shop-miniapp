@@ -14,3 +14,5 @@ infra
 docs
 safety-backups
 **/*.md
+# Legal texts of the website are markdown rendered at runtime — they must reach the image.
+!site/content/**/*.md
