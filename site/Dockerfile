@@ -26,7 +26,7 @@ COPY shared ./shared
 COPY site ./site
 # Canonical origin for metadata/sitemap/OG links (inlined at build time).
 ARG NEXT_PUBLIC_SITE_URL=https://maxsolkh.shop
-ARG NEXT_PUBLIC_BOT_URL=https://t.me/maxsolch_bot
+ARG NEXT_PUBLIC_BOT_URL=https://t.me/ChiSetupShop_bot
 ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_PUBLIC_BOT_URL=${NEXT_PUBLIC_BOT_URL}
 ENV NEXT_TELEMETRY_DISABLED=1

@@ -111,7 +111,7 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_SITE_URL=https://maxsolkh.shop
-            NEXT_PUBLIC_BOT_URL=https://t.me/maxsolch_bot
+            NEXT_PUBLIC_BOT_URL=https://t.me/ChiSetupShop_bot
           tags: |
             ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.tag }}
             ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.moving }}
