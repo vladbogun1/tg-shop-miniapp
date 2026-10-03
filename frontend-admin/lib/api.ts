@@ -398,6 +398,76 @@ export interface AdminTarget {
   username?: string | null;
 }
 
+// ---- content translations (docs/CONTENT-I18N.md) ---------------------------
+export type TrLocale = "uk" | "en";
+export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
+export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
+export type TrOrigin = "AI" | "MANUAL";
+
+/** One translatable field of one language (GET /api/admin/translations/export). */
+export interface TrExportItem {
+  entityType: TrEntityType;
+  entityId: string;
+  field: string;
+  /** Russian source as stored (the source of truth). */
+  source: string;
+  /** SHA-256 hex of `source` — a translation applies only while this matches. */
+  sourceHash: string;
+  status: TrStatus;
+  /** Current translation (outdated one for STALE), null for MISSING. */
+  text: string | null;
+  origin: TrOrigin | null;
+  /** Owning product of PRODUCT/VARIANT fields; null for tags and payment options. */
+  productId: string | null;
+  productTitle: string | null;
+}
+
+export interface TrImportItem {
+  entityType: string;
+  entityId: string;
+  field: string;
+  sourceHash: string;
+  text: string;
+}
+
+export interface TrRejected {
+  entityType: string | null;
+  entityId: string | null;
+  field: string | null;
+  /** INVALID_* | NOT_FOUND | NO_SOURCE | STALE | MANUAL */
+  reason: string;
+}
+
+export interface TrImportResult {
+  applied: number;
+  skippedStale: number;
+  skippedManual: number;
+  notFound: number;
+  invalid: number;
+  rejected: TrRejected[];
+}
+
+export interface TrCounts {
+  translated: number;
+  stale: number;
+  missing: number;
+}
+
+/** locale → entity type (+ "ALL") → counts. */
+export interface TrStats {
+  locales: Record<TrLocale, Record<TrEntityType | "ALL", TrCounts>>;
+}
+
+export interface TrSourceFixResult {
+  updated: number;
+  skippedStale: number;
+  notFound: number;
+  invalid: number;
+  translationsApplied: number;
+  sourceHash: string;
+  rejected: TrRejected[];
+}
+
 // ============================================================================
 // Admin API endpoints
 // ============================================================================
@@ -571,6 +641,28 @@ export const adminApi = {
   /** GET /api/admin/audit -> recent admin actions (newest first). */
   audit: (page = 0, size = 50) =>
     apiGet<AuditEntry[]>(`/api/admin/audit?page=${page}&size=${size}`),
+
+  // ---- content translations ----
+  translationsExport: (locale: TrLocale, status: "missing" | "stale" | "translated" | "all" = "all") =>
+    apiGet<TrExportItem[]>(`/api/admin/translations/export?locale=${locale}&status=${status}`),
+  translationsStats: () => apiGet<TrStats>("/api/admin/translations/stats"),
+  translationsImport: (body: {
+    locale: TrLocale;
+    origin: TrOrigin;
+    force?: boolean;
+    items: TrImportItem[];
+  }) => apiPut<TrImportResult>("/api/admin/translations/import", body),
+  /** Reset one field of one language (the Russian original is shown again). */
+  translationsReset: (locale: TrLocale, entityType: string, entityId: string, field: string) =>
+    apiDelete<{ deleted: number }>(
+      `/api/admin/translations?locale=${locale}&entityType=${entityType}&entityId=${entityId}&field=${encodeURIComponent(field)}`
+    ),
+  /** Proofreading: replace the Russian source (optimistic by sourceHash) + write uk/en of the new text. */
+  translationsSourceFix: (body: {
+    items: { entityType: string; entityId: string; field: string; sourceHash: string }[];
+    source: string;
+    translations: Partial<Record<TrLocale, string>>;
+  }) => apiPut<TrSourceFixResult>("/api/admin/translations/source-fix", body),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

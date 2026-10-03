@@ -36,6 +36,12 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
     int deleteByLocaleAndEntity(@Param("locale") String locale, @Param("type") TranslationEntityType type,
                                 @Param("entityId") byte[] entityId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from ContentTranslation t where t.id.locale = :locale and t.id.entityType = :type "
+            + "and t.id.entityId = :entityId and t.id.field = :field")
+    int deleteByLocaleAndEntityAndField(@Param("locale") String locale, @Param("type") TranslationEntityType type,
+                                        @Param("entityId") byte[] entityId, @Param("field") String field);
+
     // ---- orphans: rows whose entity no longer exists (there are no FKs, see V21) -----------------
 
     @Modifying

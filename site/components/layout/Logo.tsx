@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useI18n } from "@/i18n/context";
 
-/** Wordmark: heavy uppercase type on an accent block, the neo way. */
+/**
+ * Wordmark: heavy uppercase type on an ink plate with an accent offset shadow, the neo way.
+ * The plate and the white MAX are fixed colours (not theme tokens), so the mark looks the same in
+ * the light and the dark theme and on the dark header chrome; the border follows `--line`, which is
+ * cream on the chrome and ink on the page (burger sheet in the light theme).
+ */
 export function Logo() {
   const { t, href } = useI18n();
   return (
@@ -12,7 +17,7 @@ export function Logo() {
       aria-label={t("header.home")}
       className="group inline-flex shrink-0 items-center"
     >
-      <span className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--ink)] px-2 py-1 text-[17px] font-black uppercase leading-none tracking-tight text-[var(--bg)] shadow-[3px_3px_0_var(--accent)] transition-transform group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] sm:text-[20px]">
+      <span className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[#141414] px-2 py-1 text-[17px] font-black uppercase leading-none tracking-tight text-[#FFFDF6] shadow-[3px_3px_0_var(--accent)] transition-transform group-hover:-translate-x-[1px] group-hover:-translate-y-[1px] sm:text-[20px]">
         MAX<span className="text-[var(--accent)]">SOLCH</span>
       </span>
     </Link>

@@ -18,7 +18,7 @@ import { Check, CheckCheck, FileText } from "lucide-react";
 import type { Message } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
-import { spring } from "@/lib/motion";
+import { spring, noFadeFlash } from "@/lib/motion";
 import { useFmt } from "@/lib/use-fmt";
 
 export function MessageBubble({
@@ -51,6 +51,7 @@ export function MessageBubble({
   return (
     <motion.div
       layout="position"
+      {...noFadeFlash}
       initial={{ opacity: 0, y: 10, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={spring}

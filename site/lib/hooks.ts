@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 
 /** False during SSR and the hydration pass; true afterwards (for localStorage-backed UI). */
 export function useHydrated(): boolean {
@@ -21,14 +21,37 @@ export function useDebounced<T>(value: T, delay = 300): T {
   return v;
 }
 
-/** Locks page scroll while an overlay (drawer, sheet, lightbox) is open. */
+/**
+ * Locks page scroll while an overlay (drawer, sheet, lightbox) is open.
+ *
+ * `overflow: hidden` on <body> hides the classic (Windows/Linux desktop) scrollbar, so the page got
+ * ~15px wider and every centred block jumped sideways the moment an overlay opened — and back when
+ * it closed. That jump, seen through the fading backdrop, is half of the "flash" on the product
+ * photo viewer. The scrollbar's width is handed back to header/main/footer as padding (see
+ * `body[data-scroll-lock]` in globals.css), so the layout does not move. Nested locks are counted.
+ * Layout effect: applied in the same frame the overlay mounts, before paint.
+ */
+let lockCount = 0;
+let savedOverflow = "";
+
 export function useScrollLock(locked: boolean): void {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!locked) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const body = document.body;
+    if (lockCount === 0) {
+      const gap = window.innerWidth - document.documentElement.clientWidth;
+      savedOverflow = body.style.overflow;
+      body.style.setProperty("--scroll-lock-gap", `${Math.max(0, gap)}px`);
+      body.setAttribute("data-scroll-lock", "");
+      body.style.overflow = "hidden";
+    }
+    lockCount += 1;
     return () => {
-      document.body.style.overflow = prev;
+      lockCount -= 1;
+      if (lockCount > 0) return;
+      body.style.overflow = savedOverflow;
+      body.removeAttribute("data-scroll-lock");
+      body.style.removeProperty("--scroll-lock-gap");
     };
   }, [locked]);
 }

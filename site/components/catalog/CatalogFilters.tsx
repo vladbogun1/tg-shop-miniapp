@@ -16,6 +16,7 @@ import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
+import { noFadeFlash } from "@/lib/motion";
 
 const SORTS: CatalogSort[] = ["default", "price_asc", "price_desc", "new", "name"];
 
@@ -250,6 +251,7 @@ export function MobileFiltersButton({ children }: { children: React.ReactNode })
         {open && (
           <>
             <motion.div
+              {...noFadeFlash}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

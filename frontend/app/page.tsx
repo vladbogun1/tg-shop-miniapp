@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ProductCard } from "@/components/catalog/ProductCard";
+import { Logo } from "@/components/Logo";
 import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -113,10 +114,9 @@ export default function CatalogPage() {
       >
         <header className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[30px] font-black leading-[0.95] tracking-tight text-[var(--ink)]">
-              <span className="nb-up inline-block -rotate-1 border-[3px] border-[var(--line)] bg-[var(--accent)] px-2 py-0.5 text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)]">
-                MAXSOLCH
-              </span>
+            {/* Same wordmark as the website header — one identity across site and Telegram. */}
+            <h1 className="leading-none" aria-label="MAXSOLCH">
+              <Logo size="lg" />
             </h1>
             <p className="mt-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--muted)]">
               {t("catalog.tagline")}

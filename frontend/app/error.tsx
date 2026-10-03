@@ -8,6 +8,7 @@
  * no way back into the shop. This at least speaks the customer's language and offers the catalogue.
  */
 import { useEffect } from "react";
+import { Logo } from "@/components/Logo";
 import { useT } from "@/i18n/context";
 
 export default function Error({
@@ -25,7 +26,10 @@ export default function Error({
 
   return (
     <div className="pt-2">
-      <div className="nb-lg mt-10 flex flex-col items-center gap-4 px-6 py-14 text-center">
+      <div className="mt-6 flex justify-center">
+        <Logo size="md" />
+      </div>
+      <div className="nb-lg mt-8 flex flex-col items-center gap-4 px-6 py-14 text-center">
         <span
           className="grid h-14 w-14 -rotate-2 place-items-center border-[3px] border-[var(--line)] text-2xl shadow-[4px_4px_0_var(--shadow)]"
           style={{ background: "var(--c3)" }}

@@ -17,6 +17,7 @@ import { useCartValidation } from "@/lib/cart-validation";
 import { useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
 import { CartEmpty, CartLines } from "./CartLines";
+import { noFadeFlash } from "@/lib/motion";
 
 export function CartDrawer() {
   const { t, href } = useI18n();
@@ -43,6 +44,7 @@ export function CartDrawer() {
         <>
           <motion.div
             key="cart-backdrop"
+            {...noFadeFlash}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

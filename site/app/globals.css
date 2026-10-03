@@ -45,6 +45,10 @@
 
   /* Sticky header height — anchors and sticky sidebars offset from it. */
   --header-h: 72px;
+
+  /* Site chrome (header + footer share ONE surface in both themes, see .chrome). */
+  --chrome-bg: #141414;
+  --chrome-edge: #141414;
 }
 
 :root[data-theme="dark"] {
@@ -69,6 +73,31 @@
   --ok: #2BD489;
   --warn: #FFB627;
   --danger: #FF5747;
+
+  /* Darker than the page (#26262B) so the header and footer frame it; a cream edge keeps the neo line. */
+  --chrome-bg: #17171A;
+  --chrome-edge: #F4F1E6;
+}
+
+/* ---------------------------------------------------------------------------
+   Chrome: the header and the footer. One dark ink surface in BOTH themes, so the
+   dark theme no longer ends in a cream footer and the light theme gets a solid frame.
+   Everything inside re-reads the usual tokens, so .nb, inputs and buttons just work:
+   cream lines, dark surfaces, and offset shadows in a lifted grey that still reads
+   on near-black.
+   --------------------------------------------------------------------------- */
+.chrome {
+  color-scheme: dark;
+  --bg: var(--chrome-bg);
+  --ink: #F4F1E6;
+  --surface: #2A2A30;
+  --surface-2: #3A3A42;
+  --line: #F4F1E6;
+  --shadow: #5A5A64;
+  --muted: #BDBBB4;
+  --faint: #A3A199;
+  background-color: var(--bg);
+  color: var(--ink);
 }
 
 @theme inline {
@@ -197,6 +226,12 @@ body {
    Website additions (desktop-first, keyboard friendly)
    ============================================================================ */
 html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-h) + 16px); }
+
+/* Scroll lock (lib/hooks.ts useScrollLock): body overflow:hidden removes the classic scrollbar, which
+   used to widen the page by its width and shift everything sideways under an opening overlay (and
+   back on close). The in-flow blocks get that width back as padding, so nothing moves; their own
+   backgrounds still run to the edge, unlike padding on <body>. */
+body[data-scroll-lock] > :is(header, main, footer) { padding-right: var(--scroll-lock-gap, 0px); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 .container-site {

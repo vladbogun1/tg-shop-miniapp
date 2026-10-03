@@ -14,7 +14,10 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     @Query("select v.id, v.name from ProductVariant v where v.id in :ids")
     List<Object[]> namesByIds(@Param("ids") Collection<byte[]> ids);
 
-    /** {@code [id, name, productActive, productArchived]} of every variant — translation sources. */
-    @Query("select v.id, v.name, p.active, p.archived from ProductVariant v join v.product p")
+    /**
+     * {@code [id, name, productActive, productArchived, productId, productTitle]} of every variant —
+     * translation sources (the product is the context shown in the translation screen).
+     */
+    @Query("select v.id, v.name, p.active, p.archived, p.id, p.title from ProductVariant v join v.product p")
     List<Object[]> translationSources();
 }

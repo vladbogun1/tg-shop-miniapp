@@ -18,6 +18,7 @@ import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 import { connectOrderChat } from "@/lib/ws";
 import { MessageBubble } from "./MessageBubble";
+import { noFadeFlash } from "@/lib/motion";
 
 /** Must match MessageService.DEFAULT_PAGE on the backend. */
 const PAGE_SIZE = 50;
@@ -215,6 +216,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
             role="dialog"
             aria-modal="true"
             aria-label={t("chat.attachmentAlt")}
+            {...noFadeFlash}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

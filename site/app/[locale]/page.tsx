@@ -2,6 +2,7 @@ import { ArrowRight, CreditCard, MessageCircle, ShieldCheck, Truck } from "lucid
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
+import { HeroArt } from "@/components/home/HeroArt";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { alternates, localePath, makeT, type MessageKey } from "@/i18n";
@@ -57,10 +58,7 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
 
       {/* hero */}
       <section className="container-site pt-6 md:pt-10">
-        <div className="nb-lg relative overflow-hidden bg-[var(--surface)] p-6 sm:p-10 lg:p-14">
-          <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 hidden h-64 w-64 rotate-12 border-[3px] border-[var(--line)] bg-[var(--c3)] md:block" />
-          <div aria-hidden className="pointer-events-none absolute bottom-8 right-40 hidden h-24 w-24 -rotate-6 border-[3px] border-[var(--line)] bg-[var(--c2)] lg:block" />
-          <div aria-hidden className="pointer-events-none absolute bottom-[-30px] right-8 hidden h-40 w-40 rounded-full border-[3px] border-[var(--line)] bg-[var(--accent)] md:block" />
+        <div className="nb-lg relative overflow-hidden bg-[var(--surface)] p-6 sm:p-10 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center lg:gap-6 lg:p-14 xl:grid-cols-[minmax(0,1fr)_430px]">
           <div className="relative max-w-2xl">
             <p className="nb-up inline-block border-[2.5px] border-[var(--line)] bg-[var(--ink)] px-2 py-1 text-[12px] font-black text-[var(--bg)]">
               {t("home.hero.kicker")}
@@ -80,6 +78,8 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
               </ButtonLink>
             </div>
           </div>
+          {/* Drawn kit (decorative). Desktop only — on narrower screens the copy needs the room. */}
+          <HeroArt className="pointer-events-none relative hidden h-auto w-full select-none lg:block lg:-my-6 lg:-mr-4" />
         </div>
       </section>
 

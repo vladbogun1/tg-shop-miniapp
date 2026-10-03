@@ -2,6 +2,7 @@ package com.maxsolch.shop.translation;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -21,6 +22,8 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +39,7 @@ class TranslationAdminServiceTest {
     private static final String PRODUCT = "11111111-1111-1111-1111-111111111111";
     private static final String ARCHIVED = "66666666-6666-6666-6666-666666666666";
     private static final String TAG = "33333333-3333-3333-3333-333333333333";
+    private static final String VARIANT = "44444444-4444-4444-4444-444444444444";
     private static final String TITLE = "Ковер";
     private static final String HASH = TranslationService.sha256Hex(TITLE);
 
@@ -232,5 +236,102 @@ class TranslationAdminServiceTest {
         when(repo.deleteByLocaleAndEntity(any(), any(), any())).thenReturn(2);
         assertThat(service.delete("uk", "product", PRODUCT)).isEqualTo(2);
         verify(translationService).invalidate();
+    }
+
+    @Test
+    void deleteSingleFieldNeedsEntityAndTranslatableField() {
+        assertThatThrownBy(() -> service.delete("uk", "product", null, "title"))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.delete("uk", "product", PRODUCT, "slug"))
+                .isInstanceOf(BadRequestException.class);
+        when(repo.deleteByLocaleAndEntityAndField(any(), any(), any(), any())).thenReturn(1);
+        assertThat(service.delete("uk", "product", PRODUCT, "title")).isEqualTo(1);
+        verify(repo, never()).deleteByLocaleAndEntity(any(), any(), any());
+    }
+
+    @Test
+    void exportCarriesOwningProduct() {
+        List<Object[]> variantRows = new ArrayList<>();
+        variantRows.add(new Object[]{UuidUtil.toBytes(VARIANT), "черный", true, false,
+                UuidUtil.toBytes(PRODUCT), TITLE});
+        when(variants.translationSources()).thenReturn(variantRows);
+
+        List<ExportItem> all = service.export("en", "all", null);
+        ExportItem title = all.stream().filter(i -> i.entityType().equals("PRODUCT")).findFirst().orElseThrow();
+        assertThat(title.productId()).isEqualTo(PRODUCT);
+        ExportItem variant = all.stream().filter(i -> i.entityType().equals("VARIANT")).findFirst().orElseThrow();
+        assertThat(variant.productId()).isEqualTo(PRODUCT);
+        assertThat(variant.productTitle()).isEqualTo(TITLE);
+        ExportItem tag = all.stream().filter(i -> i.entityType().equals("TAG")).findFirst().orElseThrow();
+        assertThat(tag.productId()).isNull();
+    }
+
+    private Product product() {
+        Product p = new Product();
+        p.setId(UuidUtil.toBytes(PRODUCT));
+        p.setTitle("Ковер черрный");
+        p.setDescription("Описание");
+        return p;
+    }
+
+    @Test
+    void sourceFixReplacesSourceAndWritesTranslationsOfTheNewSource() {
+        Product p = product();
+        when(products.findById(any())).thenReturn(Optional.of(p));
+        when(repo.findByLocale("uk")).thenReturn(List.of(existing(TranslationOrigin.MANUAL)));
+        String oldHash = TranslationService.sha256Hex("Ковер черрный");
+
+        TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", oldHash)),
+                "Ковер черный", Map.of("uk", "Килимок чорний", "en", "Mouse Pad, Black")), 5L);
+
+        assertThat(r.updated()).isEqualTo(1);
+        assertThat(r.translationsApplied()).isEqualTo(2);
+        String newHash = TranslationService.sha256Hex("Ковер черный");
+        assertThat(r.sourceHash()).isEqualTo(newHash);
+        assertThat(p.getTitle()).isEqualTo("Ковер черный");
+        List<ContentTranslation> rows = saved();
+        assertThat(rows).hasSize(2).allSatisfy(t -> {
+            assertThat(t.getSourceHash()).isEqualTo(newHash);
+            assertThat(t.getOrigin()).isEqualTo(TranslationOrigin.AI);
+            assertThat(t.getUpdatedBy()).isEqualTo(5L);
+        });
+        assertThat(rows).extracting(ContentTranslation::getText)
+                .containsExactlyInAnyOrder("Килимок чорний", "Mouse Pad, Black");
+        verify(translationService).invalidate();
+    }
+
+    @Test
+    void sourceFixSkipsFieldChangedSinceExport() {
+        Product p = product();
+        when(products.findById(any())).thenReturn(Optional.of(p));
+
+        TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title",
+                        TranslationService.sha256Hex("что-то другое"))),
+                "Ковер черный", Map.of("uk", "Килимок чорний")), 5L);
+
+        assertThat(r.updated()).isZero();
+        assertThat(r.skippedStale()).isEqualTo(1);
+        assertThat(p.getTitle()).isEqualTo("Ковер черрный");
+        verify(repo, never()).saveAll(any());
+    }
+
+    @Test
+    void sourceFixValidatesInput() {
+        assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(List.of(), "x", null), 1L))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), " ", null), 1L))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), "x",
+                Map.of("ru", "x")), 1L))
+                .isInstanceOf(BadRequestException.class);
+        TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), "я".repeat(256), null), 1L);
+        assertThat(r.invalid()).isEqualTo(1);
+        assertThat(r.rejected()).extracting(TranslationDtos.Rejected::reason)
+                .containsExactly("INVALID_SOURCE_TOO_LONG");
     }
 }

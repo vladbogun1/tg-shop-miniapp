@@ -21,6 +21,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -160,6 +161,14 @@ export default function AccountPage() {
           ))}
         </div>
       )}
+
+      {/* Brand sign-off: the same wordmark as the website, quietly closing the screen. */}
+      <footer className="mt-10 flex flex-col items-center gap-2 pb-2" aria-label="MAXSOLCH">
+        <Logo size="sm" />
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--faint)]">
+          maxsolkh.shop
+        </span>
+      </footer>
     </div>
   );
 }

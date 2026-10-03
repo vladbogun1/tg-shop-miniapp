@@ -19,6 +19,7 @@ import {
   LogOut,
   Store,
   Truck,
+  Languages,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,6 +28,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { pendingCount, useTranslationStats } from "@/lib/translations";
 
 const NAV = [
   { href: "/", label: "Заказы", icon: LayoutDashboard, exact: true },
@@ -38,6 +40,7 @@ const NAV = [
   { href: "/tags", label: "Теги", icon: Tags },
   { href: "/promocodes", label: "Промокоды", icon: Ticket },
   { href: "/payment", label: "Оплата", icon: CreditCard },
+  { href: "/translations", label: "Переводы", icon: Languages, badge: "translations" as const },
 ];
 
 const TITLE: Record<string, string> = {
@@ -50,6 +53,7 @@ const TITLE: Record<string, string> = {
   "/tags": "Теги",
   "/promocodes": "Промокоды",
   "/payment": "Оплата",
+  "/translations": "Переводы",
 };
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
@@ -59,6 +63,10 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  // Fields × languages that need a translation (missing or stale), refreshed every 2 min and
+  // right after imports on the «Переводы» screen.
+  const { data: trStats } = useTranslationStats();
+  const trPending = pendingCount(trStats);
   return (
     <nav className="flex flex-col gap-1">
       {NAV.map((item) => {
@@ -90,6 +98,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               )}
             />
             <span className="relative z-10">{item.label}</span>
+            {"badge" in item && item.badge === "translations" && trPending > 0 && (
+              <span
+                aria-label={`Нужно перевести: ${trPending}`}
+                title="Полей без актуального перевода (uk + en)"
+                className="relative z-10 ml-auto flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+              >
+                {trPending > 999 ? "999+" : trPending}
+              </span>
+            )}
           </Link>
         );
       })}

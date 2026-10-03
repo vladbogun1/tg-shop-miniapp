@@ -13,7 +13,7 @@
  *  - active/archive toggles, archived view toggle, create/edit modal.
  * Only the visuals change. Same query keys (["products", archivedView], ["tags"]).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -99,6 +99,23 @@ export default function ProductsPage() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ["products"] });
   }
+
+  // Deep link "/products?edit=<id>" (from the «Переводы» screen): open that product's editor once
+  // the list is loaded, then drop the parameter so a reload does not reopen it.
+  useEffect(() => {
+    if (isLoading || typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const id = sp.get("edit");
+    if (!id) return;
+    const p = products.find((x) => x.id === id);
+    if (p) {
+      setEditing(p);
+      setModalOpen(true);
+    }
+    sp.delete("edit");
+    const qs = sp.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, [isLoading, products]);
 
   async function setActive(p: Product, active: boolean) {
     try {

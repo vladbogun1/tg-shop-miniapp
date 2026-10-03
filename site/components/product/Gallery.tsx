@@ -9,7 +9,23 @@ import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import { useEscape, useScrollLock } from "@/lib/hooks";
-import { Image } from "@/lib/image";
+import { Image, resolveImageSrc } from "@/lib/image";
+import { noFadeFlash } from "@/lib/motion";
+
+/** Lightbox photo size; warmed into the browser cache before the viewer opens. */
+const ZOOM_SIZE = 1600;
+const warmed = new Set<string>();
+
+/** Starts downloading (and decoding) the full-size photo so the viewer opens on a ready image. */
+function warmZoom(url: string | undefined): void {
+  if (!url || typeof window === "undefined") return;
+  const src = resolveImageSrc(url, ZOOM_SIZE, true);
+  if (warmed.has(src)) return;
+  warmed.add(src);
+  const img = new window.Image();
+  img.decoding = "async";
+  img.src = src;
+}
 
 export function Gallery({ images, alt }: { images: string[]; alt: string }) {
   const t = useT();
@@ -22,6 +38,9 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
     [slides.length]
   );
 
+  // Hovering/focusing the photo is a strong hint the viewer is next: fetch its size now.
+  const warm = () => warmZoom(slides[slide]);
+
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.x < -60) go(slide + 1);
     else if (info.offset.x > 60) go(slide - 1);
@@ -29,7 +48,12 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
 
   return (
     <div className="min-w-0">
-      <div className="nb relative aspect-square w-full overflow-hidden bg-[var(--surface-2)]">
+      <div
+        className="nb relative aspect-square w-full overflow-hidden bg-[var(--surface-2)]"
+        onPointerEnter={warm}
+        onPointerDown={warm}
+        onFocus={warm}
+      >
         <motion.div
           className="flex h-full"
           drag={multi ? "x" : false}
@@ -148,6 +172,15 @@ function Lightbox({
   const t = useT();
   useScrollLock(open);
   useEscape(open, onClose);
+  // While browsing in the viewer, have the neighbours ready too.
+  useEffect(() => {
+    if (!open) return;
+    warmZoom(slides[index]);
+    if (slides.length > 1) {
+      warmZoom(slides[(index + 1) % slides.length]);
+      warmZoom(slides[(index - 1 + slides.length) % slides.length]);
+    }
+  }, [open, index, slides]);
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => {
@@ -165,9 +198,11 @@ function Lightbox({
           role="dialog"
           aria-modal="true"
           aria-label={alt}
+          {...noFadeFlash}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
           onClick={onClose}
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-4"
         >
@@ -208,6 +243,7 @@ function Lightbox({
           )}
           <motion.div
             key={index}
+            {...noFadeFlash}
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="max-h-[88dvh] max-w-[min(92vw,1100px)]"
@@ -216,8 +252,9 @@ function Lightbox({
             <Image
               src={slides[index]}
               alt={t("gallery.photo", { alt, n: index + 1 })}
-              size={1600}
+              size={ZOOM_SIZE}
               fit
+              priority
               className="max-h-[88dvh] max-w-full border-[3px] border-[var(--line)]"
             />
           </motion.div>

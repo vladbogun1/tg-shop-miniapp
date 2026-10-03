@@ -42,6 +42,23 @@ export function displayName(user: AuthUser | null): string | null {
   return full || (user.username ? `@${user.username.replace(/^@/, "")}` : null);
 }
 
+/**
+ * Two letters for the header account button, from the Telegram profile: first letters of the first
+ * and last name ("Влад Богун" → "ВБ"); otherwise the first two letters of the first name or of the
+ * username. Grapheme-safe enough for names (Array.from keeps surrogate pairs together).
+ */
+export function initials(user: AuthUser | null): string | null {
+  if (!user) return null;
+  const first = Array.from((user.firstName ?? "").trim());
+  const last = Array.from((user.lastName ?? "").trim());
+  if (first.length && last.length) return (first[0] + last[0]).toUpperCase();
+  if (first.length) return first.slice(0, 2).join("").toUpperCase();
+  const nick = Array.from((user.username ?? "").replace(/^@/, "").trim());
+  if (nick.length) return nick.slice(0, 2).join("").toUpperCase();
+  if (last.length) return last.slice(0, 2).join("").toUpperCase();
+  return null;
+}
+
 export type SessionStatus = "loading" | "authed" | "guest";
 
 export const SESSION_KEY = ["session"] as const;

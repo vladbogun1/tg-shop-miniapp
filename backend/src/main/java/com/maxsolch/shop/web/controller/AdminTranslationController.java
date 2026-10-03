@@ -7,6 +7,9 @@ import com.maxsolch.shop.translation.TranslationDtos.DeleteResult;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportRequest;
 import com.maxsolch.shop.translation.TranslationDtos.ImportResult;
+import com.maxsolch.shop.translation.TranslationDtos.SourceFixRequest;
+import com.maxsolch.shop.translation.TranslationDtos.SourceFixResult;
+import com.maxsolch.shop.translation.TranslationDtos.SourceRef;
 import com.maxsolch.shop.translation.TranslationDtos.Stats;
 import com.maxsolch.shop.web.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,6 +66,18 @@ public class AdminTranslationController {
         return r;
     }
 
+    @PutMapping("/source-fix")
+    @Operation(summary = "Proofreading: replace the Russian source of fields (optimistic by sourceHash) and "
+            + "write uk/en translations of the new source in one transaction")
+    public SourceFixResult fixSource(@RequestBody SourceFixRequest body) {
+        SourceFixResult r = service.fixSource(body, SecurityUtil.currentUserId());
+        SourceRef first = body.items().get(0);
+        audit.record("TRANSLATIONS_SOURCE_FIX", first.entityType(), first.entityId(),
+                "fields " + body.items().size() + " (" + first.field() + "): updated " + r.updated()
+                        + ", stale " + r.skippedStale() + ", translations " + r.translationsApplied());
+        return r;
+    }
+
     @GetMapping("/stats")
     @Operation(summary = "translated / stale / missing per language and entity type")
     public Stats stats() {
@@ -73,10 +88,12 @@ public class AdminTranslationController {
     @Operation(summary = "Delete translations of a language, optionally of one entity type / one entity")
     public DeleteResult delete(@RequestParam String locale,
                                @RequestParam(required = false) String entityType,
-                               @RequestParam(required = false) String entityId) {
-        int deleted = service.delete(locale, entityType, entityId);
+                               @RequestParam(required = false) String entityId,
+                               @RequestParam(required = false) String field) {
+        int deleted = service.delete(locale, entityType, entityId, field);
         audit.record("TRANSLATIONS_DELETE", "TRANSLATION", entityId == null ? locale : entityId,
-                "locale " + locale + (entityType == null ? "" : ", " + entityType) + ": deleted " + deleted);
+                "locale " + locale + (entityType == null ? "" : ", " + entityType)
+                        + (field == null || field.isBlank() ? "" : "." + field) + ": deleted " + deleted);
         return new DeleteResult(deleted);
     }
 }

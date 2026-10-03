@@ -55,6 +55,7 @@ export const uk: RuDictionary = {
   "header.cart": "Кошик",
   "header.cartCount": { one: "Кошик, {n} товар", few: "Кошик, {n} товари", many: "Кошик, {n} товарів", other: "Кошик, {n} товару" },
   "header.account": "Особистий кабінет",
+  "header.accountOf": "Особистий кабінет: {name}",
   "header.login": "Увійти",
   "header.menu": "Меню",
   "header.categories": "Категорії",

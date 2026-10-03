@@ -55,6 +55,7 @@ export const en: RuDictionary = {
   "header.cart": "Cart",
   "header.cartCount": { one: "Cart, {n} item", other: "Cart, {n} items" },
   "header.account": "My account",
+  "header.accountOf": "My account: {name}",
   "header.login": "Sign in",
   "header.menu": "Menu",
   "header.categories": "Categories",

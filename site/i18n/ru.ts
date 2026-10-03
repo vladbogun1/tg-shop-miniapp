@@ -67,6 +67,7 @@ export const ru = {
   "header.cart": "Корзина",
   "header.cartCount": { one: "Корзина, {n} товар", few: "Корзина, {n} товара", many: "Корзина, {n} товаров", other: "Корзина, {n} товара" },
   "header.account": "Личный кабинет",
+  "header.accountOf": "Личный кабинет: {name}",
   "header.login": "Войти",
   "header.menu": "Меню",
   "header.categories": "Категории",

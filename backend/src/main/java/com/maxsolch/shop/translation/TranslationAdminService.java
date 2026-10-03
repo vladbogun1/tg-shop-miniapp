@@ -2,6 +2,8 @@ package com.maxsolch.shop.translation;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -13,6 +15,9 @@ import com.maxsolch.shop.translation.TranslationDtos.ImportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportRequest;
 import com.maxsolch.shop.translation.TranslationDtos.ImportResult;
 import com.maxsolch.shop.translation.TranslationDtos.Rejected;
+import com.maxsolch.shop.translation.TranslationDtos.SourceFixRequest;
+import com.maxsolch.shop.translation.TranslationDtos.SourceFixResult;
+import com.maxsolch.shop.translation.TranslationDtos.SourceRef;
 import com.maxsolch.shop.translation.TranslationDtos.Stats;
 import com.maxsolch.shop.translation.TranslationDtos.Status;
 import com.maxsolch.shop.translation.TranslationService.Key;
@@ -28,6 +33,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -48,15 +54,34 @@ public class TranslationAdminService {
     /** {@code TEXT} holds 65 535 bytes; 20 000 emoji would not fit. */
     static final int MAX_TEXT_BYTES = 65_535;
     public static final int MAX_ITEMS = 20_000;
+    /** Fields sharing one proofread source (a description reused by many products). */
+    static final int MAX_FIX_ITEMS = 2_000;
     /** Rejected keys returned to the caller; the counters stay exact beyond that. */
     static final int MAX_REJECTED_LISTED = 2_000;
 
     private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
     private static final List<String> CATALOG_CACHES = List.of("products", "productById", "tags");
 
-    /** The Russian source of one field; {@code inScope} = part of the export (live entity). */
-    record Source(String text, boolean inScope) {
+    /**
+     * The Russian source of one field; {@code inScope} = part of the export (live entity);
+     * {@code productId}/{@code productTitle} = owning product of PRODUCT/VARIANT fields, else null.
+     */
+    record Source(String text, boolean inScope, String productId, String productTitle) {
+        Source(String text, boolean inScope) {
+            this(text, inScope, null, null);
+        }
     }
+
+    /** Column sizes of the Russian sources ({@code entityType:field} -> max chars). */
+    private static final Map<String, Integer> SOURCE_MAX_CHARS = Map.of(
+            "PRODUCT:title", 255,
+            "PRODUCT:description", MAX_TEXT_CHARS,
+            "PRODUCT:seo_title", 255,
+            "PRODUCT:seo_description", 512,
+            "VARIANT:name", 128,
+            "TAG:name", 128,
+            "PAYMENT_OPTION:title", 255,
+            "PAYMENT_OPTION:description", 1024);
 
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
@@ -106,7 +131,8 @@ public class TranslationAdminService {
             }
             out.add(new ExportItem(key.type().name(), key.entityId(), key.field(), src.text(), hash, st.name(),
                     row == null ? null : row.getText(),
-                    row == null ? null : row.getOrigin().name()));
+                    row == null ? null : row.getOrigin().name(),
+                    src.productId(), src.productTitle()));
         }
         out.sort(EXPORT_ORDER);
         return out;
@@ -279,12 +305,215 @@ public class TranslationAdminService {
                 : new Rejected(item.entityType(), item.entityId(), item.field(), reason));
     }
 
+    // ------------------------------------------------------------------ source fix (proofreading)
+
+    /**
+     * Replaces the Russian source of the given fields with the proofread text and writes the uk/en
+     * translations of that NEW source in the same transaction - so the screen never leaves a field
+     * whose translation is stale the moment it is saved. Optimistic: a field is touched only when
+     * its current source still hashes to the {@code sourceHash} the admin saw (or already holds the
+     * fix). Explicit admin action, so existing MANUAL translations of these fields are overwritten
+     * (they were made for the old text anyway).
+     */
+    @Transactional
+    public SourceFixResult fixSource(SourceFixRequest req, Long adminId) {
+        if (req == null || req.items() == null || req.items().isEmpty()) {
+            throw new BadRequestException("items required");
+        }
+        if (req.items().size() > MAX_FIX_ITEMS) {
+            throw new BadRequestException("too many items (max " + MAX_FIX_ITEMS + ")");
+        }
+        String newSource = req.source();
+        if (isBlank(newSource)) {
+            throw new BadRequestException("source must not be blank");
+        }
+        Map<String, String> translations = new LinkedHashMap<>();
+        if (req.translations() != null) {
+            for (Map.Entry<String, String> e : req.translations().entrySet()) {
+                String l = requireLocale(e.getKey());
+                String text = e.getValue();
+                if (isBlank(text)) {
+                    continue;
+                }
+                if (text.length() > MAX_TEXT_CHARS
+                        || text.getBytes(StandardCharsets.UTF_8).length > MAX_TEXT_BYTES) {
+                    throw new BadRequestException("translation " + l + " is too long");
+                }
+                translations.put(l, text);
+            }
+        }
+        String newHash = TranslationService.sha256Hex(newSource);
+
+        List<Rejected> rejected = new ArrayList<>();
+        List<Key> updatedKeys = new ArrayList<>();
+        int stale = 0;
+        int notFound = 0;
+        int invalid = 0;
+        for (SourceRef ref : req.items()) {
+            ImportItem asItem = ref == null ? null
+                    : new ImportItem(ref.entityType(), ref.entityId(), ref.field(), ref.sourceHash(), newSource);
+            String problem = asItem == null ? "INVALID_ITEM" : validate(asItem);
+            TranslationEntityType type = asItem == null ? null : TranslationEntityType.parse(ref.entityType());
+            if (problem == null) {
+                Integer max = SOURCE_MAX_CHARS.get(type.name() + ":" + ref.field());
+                if (max != null && newSource.length() > max) {
+                    problem = "INVALID_SOURCE_TOO_LONG";
+                }
+            }
+            if (problem != null) {
+                invalid++;
+                reject(rejected, asItem, problem);
+                continue;
+            }
+            byte[] id = UuidUtil.toBytes(ref.entityId().trim());
+            String wantedHash = ref.sourceHash().trim().toLowerCase(Locale.ROOT);
+            String outcome = applySource(type, id, ref.field(), wantedHash, newSource, newHash);
+            switch (outcome) {
+                case "OK" -> updatedKeys.add(new Key(type, UuidUtil.toString(id), ref.field()));
+                case "STALE" -> {
+                    stale++;
+                    reject(rejected, asItem, "STALE");
+                }
+                case "NOT_FOUND" -> {
+                    notFound++;
+                    reject(rejected, asItem, "NOT_FOUND");
+                }
+                default -> {
+                    invalid++;
+                    reject(rejected, asItem, outcome);
+                }
+            }
+        }
+
+        int written = 0;
+        if (!updatedKeys.isEmpty() && !translations.isEmpty()) {
+            List<ContentTranslation> toSave = new ArrayList<>();
+            for (Map.Entry<String, String> e : translations.entrySet()) {
+                Map<Key, ContentTranslation> rows = existing(e.getKey());
+                for (Key key : updatedKeys) {
+                    ContentTranslation row = rows.get(key);
+                    if (row == null) {
+                        row = new ContentTranslation(new ContentTranslationId(key.type(),
+                                UuidUtil.toBytes(key.entityId()), key.field(), e.getKey()));
+                    }
+                    row.setText(e.getValue());
+                    row.setSourceHash(newHash);
+                    row.setOrigin(TranslationOrigin.AI);
+                    row.setUpdatedBy(adminId);
+                    toSave.add(row);
+                }
+            }
+            repository.saveAll(toSave);
+            written = toSave.size();
+        }
+        if (!updatedKeys.isEmpty()) {
+            invalidateAfterCommit();
+        }
+        return new SourceFixResult(updatedKeys.size(), stale, notFound, invalid, written, newHash, rejected);
+    }
+
+    /** OK | STALE | NOT_FOUND | INVALID_* - sets one source field when its hash still matches. */
+    private String applySource(TranslationEntityType type, byte[] id, String field, String wantedHash,
+                               String newSource, String newHash) {
+        switch (type) {
+            case PRODUCT -> {
+                Product p = productRepository.findById(id).orElse(null);
+                if (p == null) {
+                    return "NOT_FOUND";
+                }
+                String current = switch (field) {
+                    case TranslationEntityType.TITLE -> p.getTitle();
+                    case TranslationEntityType.DESCRIPTION -> p.getDescription();
+                    case TranslationEntityType.SEO_TITLE -> p.getSeoTitle();
+                    default -> p.getSeoDescription();
+                };
+                if (!matches(current, wantedHash, newHash)) {
+                    return "STALE";
+                }
+                switch (field) {
+                    case TranslationEntityType.TITLE -> p.setTitle(newSource);
+                    case TranslationEntityType.DESCRIPTION -> p.setDescription(newSource);
+                    case TranslationEntityType.SEO_TITLE -> p.setSeoTitle(newSource);
+                    default -> p.setSeoDescription(newSource);
+                }
+                return "OK";
+            }
+            case VARIANT -> {
+                ProductVariant v = variantRepository.findById(id).orElse(null);
+                if (v == null) {
+                    return "NOT_FOUND";
+                }
+                if (!matches(v.getName(), wantedHash, newHash)) {
+                    return "STALE";
+                }
+                v.setName(newSource);
+                return "OK";
+            }
+            case TAG -> {
+                Tag t = tagRepository.findById(id).orElse(null);
+                if (t == null) {
+                    return "NOT_FOUND";
+                }
+                if (!matches(t.getName(), wantedHash, newHash)) {
+                    return "STALE";
+                }
+                Tag clash = tagRepository.findByName(newSource).orElse(null);
+                if (clash != null && !Arrays.equals(clash.getId(), id)) {
+                    return "INVALID_TAG_NAME_TAKEN";
+                }
+                t.setName(newSource);
+                return "OK";
+            }
+            case PAYMENT_OPTION -> {
+                PaymentOption o = paymentOptionRepository.findById(id).orElse(null);
+                if (o == null) {
+                    return "NOT_FOUND";
+                }
+                boolean title = TranslationEntityType.TITLE.equals(field);
+                if (!matches(title ? o.getTitle() : o.getDescription(), wantedHash, newHash)) {
+                    return "STALE";
+                }
+                if (title) {
+                    o.setTitle(newSource);
+                } else {
+                    o.setDescription(newSource);
+                }
+                return "OK";
+            }
+            default -> {
+                return "INVALID_ENTITY_TYPE";
+            }
+        }
+    }
+
+    /** The field still holds what the admin saw - or already holds the fix (a repeated click). */
+    private static boolean matches(String current, String wantedHash, String newHash) {
+        if (current == null) {
+            return false;
+        }
+        String h = TranslationService.sha256Hex(current);
+        return h.equals(wantedHash) || h.equals(newHash);
+    }
+
     // ------------------------------------------------------------------ delete / orphans
 
     /** {@code entityType} optional; {@code entityId} optional and only together with entityType. */
     @Transactional
     public int delete(String locale, String entityType, String entityId) {
+        return delete(locale, entityType, entityId, null);
+    }
+
+    /**
+     * As {@link #delete(String, String, String)}; {@code field} (optional, needs entityId) resets a
+     * single field - the "reset translation" action of the admin screen.
+     */
+    @Transactional
+    public int delete(String locale, String entityType, String entityId, String field) {
         String l = requireLocale(locale);
+        boolean oneField = field != null && !field.isBlank();
+        if (oneField && (entityId == null || entityId.isBlank())) {
+            throw new BadRequestException("field requires entityType and entityId");
+        }
         TranslationEntityType type = parseTypeOrNull(entityType);
         int deleted;
         if (entityId != null && !entityId.isBlank()) {
@@ -297,7 +526,14 @@ public class TranslationAdminService {
             } catch (IllegalArgumentException e) {
                 throw new BadRequestException("invalid entityId");
             }
-            deleted = repository.deleteByLocaleAndEntity(l, type, id);
+            if (oneField) {
+                if (!type.allows(field.trim())) {
+                    throw new BadRequestException("field is not translatable for " + type.name());
+                }
+                deleted = repository.deleteByLocaleAndEntityAndField(l, type, id, field.trim());
+            } else {
+                deleted = repository.deleteByLocaleAndEntity(l, type, id);
+            }
         } else if (type != null) {
             deleted = repository.deleteByLocaleAndType(l, type);
         } else {
@@ -332,15 +568,21 @@ public class TranslationAdminService {
         for (Object[] r : productRepository.translationSources()) {
             String id = UuidUtil.toString((byte[]) r[0]);
             boolean live = Boolean.TRUE.equals(r[5]) && !Boolean.TRUE.equals(r[6]);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.TITLE, (String) r[1], live);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.DESCRIPTION, (String) r[2], live);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_TITLE, (String) r[3], live);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, (String) r[4], live);
+            String title = (String) r[1];
+            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.TITLE, title, live, id, title);
+            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.DESCRIPTION, (String) r[2], live,
+                    id, title);
+            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_TITLE, (String) r[3], live,
+                    id, title);
+            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, (String) r[4], live,
+                    id, title);
         }
         for (Object[] r : variantRepository.translationSources()) {
             boolean live = Boolean.TRUE.equals(r[2]) && !Boolean.TRUE.equals(r[3]);
+            String productId = r.length > 4 && r[4] != null ? UuidUtil.toString((byte[]) r[4]) : null;
+            String productTitle = r.length > 5 ? (String) r[5] : null;
             put(out, TranslationEntityType.VARIANT, UuidUtil.toString((byte[]) r[0]), TranslationEntityType.NAME,
-                    (String) r[1], live);
+                    (String) r[1], live, productId, productTitle);
         }
         for (Tag t : tagRepository.findAll()) {
             put(out, TranslationEntityType.TAG, UuidUtil.toString(t.getId()), TranslationEntityType.NAME,
@@ -358,6 +600,11 @@ public class TranslationAdminService {
     private static void put(Map<Key, Source> out, TranslationEntityType type, String id, String field,
                             String text, boolean inScope) {
         out.put(new Key(type, id, field), new Source(text, inScope));
+    }
+
+    private static void put(Map<Key, Source> out, TranslationEntityType type, String id, String field,
+                            String text, boolean inScope, String productId, String productTitle) {
+        out.put(new Key(type, id, field), new Source(text, inScope, productId, productTitle));
     }
 
     private Map<Key, ContentTranslation> existing(String locale) {

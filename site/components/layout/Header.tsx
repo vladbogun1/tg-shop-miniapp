@@ -1,25 +1,31 @@
 "use client";
 
 /**
- * Sticky site header, laid out like vinli.com.ua: logo · search with live suggestions · theme ·
- * language · account · cart, and under it a row with every category. On phones the search drops to
- * its own row and the categories move into a burger sheet.
+ * Sticky site header, laid out like vinli.com.ua: logo · catalogue · search with live suggestions ·
+ * language · account · cart. Header and footer share one "chrome" surface (globals.css `.chrome`) in
+ * both themes. Categories live on the home page, in the catalogue sidebar and in the burger sheet —
+ * there is no second category row any more. On phones the search drops to its own row.
+ *
+ * The theme switch moved to /account/settings; its slot is kept empty on purpose so the controls
+ * to its right stay exactly where customers learned them.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { PublicCategory } from "@shop/shared";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { useCart, useCartCount } from "@/lib/cart";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
-import { useSession } from "@/lib/session";
+import { noFadeFlash } from "@/lib/motion";
+import { displayName, initials, rememberedUser, useSession } from "@/lib/session";
+import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
-import { ThemeToggle } from "./ThemeToggle";
 
 export function Header({ categories }: { categories: PublicCategory[] }) {
   const { t, href } = useI18n();
@@ -33,7 +39,7 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
   const activeSlug = pathname.startsWith("/catalog/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
 
   return (
-    <header className="sticky top-0 z-40 border-b-[3px] border-[var(--line)] bg-[var(--bg)]">
+    <header className="chrome sticky top-0 z-40 border-b-[3px] border-[var(--chrome-edge)]">
       <a href="#main" className="skip-link nb px-3 py-2 text-[13px] font-extrabold uppercase">
         {t("header.skip")}
       </a>
@@ -50,7 +56,8 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         <Logo />
         <Link
           href={href("/catalog")}
-          className="nb nb-hover ml-2 hidden h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-black uppercase tracking-wide text-[var(--accent-ink)] xl:inline-flex"
+          aria-current={pathname === "/catalog" || activeSlug ? "page" : undefined}
+          className="nb nb-hover ml-2 hidden h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-black uppercase tracking-wide text-[var(--accent-ink)] lg:inline-flex"
           // Inline: `.nb` sets its own background and would win over a utility class.
           style={{ background: "var(--c3)" }}
         >
@@ -62,9 +69,10 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-0">
           <div className="hidden sm:block">
-            <LangSwitch />
+            <LangMenu />
           </div>
-          <ThemeToggle />
+          {/* Where the theme switch was (now in /account/settings): an empty slot of the same width. */}
+          <span aria-hidden className="hidden h-11 w-11 shrink-0 lg:block" />
           <AccountButton />
           <CartButton />
         </div>
@@ -75,55 +83,8 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         <SearchBox />
       </div>
 
-      {/* category row (desktop) */}
-      {categories.length > 0 && (
-        <nav
-          aria-label={t("header.categories")}
-          className="hidden border-t-[3px] border-[var(--line)] bg-[var(--surface)] lg:block"
-        >
-          <ul className="container-site no-scrollbar flex items-stretch gap-1 overflow-x-auto py-2">
-            <li>
-              <CategoryLink href={href("/catalog")} active={pathname === "/catalog"}>
-                {t("header.allProducts")}
-              </CategoryLink>
-            </li>
-            {categories.map((c) => (
-              <li key={c.id}>
-                <CategoryLink href={href(`/catalog/${c.slug}`)} active={activeSlug === c.slug}>
-                  {c.name}
-                </CategoryLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
-
       <MobileMenu open={menuOpen} onClose={closeMenu} categories={categories} activeSlug={activeSlug} />
     </header>
-  );
-}
-
-function CategoryLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`inline-flex h-9 items-center whitespace-nowrap rounded-[var(--r)] border-[2.5px] px-3 text-[13px] font-extrabold transition-colors ${
-        active
-          ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-          : "border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface-2)]"
-      }`}
-    >
-      {children}
-    </Link>
   );
 }
 
@@ -152,18 +113,51 @@ function CartButton() {
   );
 }
 
+/**
+ * Guest: person icon + "Sign in". Signed in: person icon + the Telegram initials ("ВБ").
+ * The session is only known in the browser (HttpOnly cookies), so SSR and the first client render
+ * show a skeleton; all three states have the same fixed width, so nothing in the header moves when
+ * the answer arrives.
+ */
+const ACCOUNT_W = "w-11 lg:w-[124px]";
+
 function AccountButton() {
   const { t, href } = useI18n();
   const { status, unread } = useSession();
+
+  if (status === "loading") {
+    return <span aria-hidden className={`shimmer block h-11 shrink-0 ${ACCOUNT_W}`} />;
+  }
+
   const authed = status === "authed";
+  // Only read after the session answered, i.e. never during SSR/hydration.
+  const user = authed ? rememberedUser() : null;
+  const letters = initials(user);
+  const name = displayName(user);
+  const label = authed ? (name ? t("header.accountOf", { name }) : t("header.account")) : t("header.login");
+
   return (
     <Link
       href={authed ? href("/account") : href("/login")}
-      aria-label={authed ? t("header.account") : t("header.login")}
-      title={authed ? t("header.account") : t("header.login")}
-      className="nb nb-hover tap relative grid h-11 w-11 shrink-0 place-items-center text-[var(--ink)]"
+      aria-label={label}
+      title={label}
+      className={`nb nb-hover tap relative flex h-11 shrink-0 items-center justify-center gap-2 text-[var(--ink)] ${ACCOUNT_W}`}
     >
-      <User className="h-5 w-5" strokeWidth={2.75} />
+      <User className={`h-5 w-5 shrink-0 ${letters ? "hidden lg:block" : ""}`} strokeWidth={2.75} />
+      {authed ? (
+        letters && (
+          <span
+            aria-hidden
+            className="grid h-7 min-w-7 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-1 text-[12px] font-black leading-none tracking-wide"
+          >
+            {letters}
+          </span>
+        )
+      ) : (
+        <span aria-hidden className="hidden text-[13px] font-black uppercase tracking-wide lg:inline">
+          {t("header.login")}
+        </span>
+      )}
       {authed && unread > 0 && (
         <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c2)] px-1 text-[11px] font-black text-white">
           {unread}
@@ -185,14 +179,18 @@ function MobileMenu({
   activeSlug: string | null;
 }) {
   const { t, href } = useI18n();
+  const hydrated = useHydrated();
   useScrollLock(open);
   useEscape(open, onClose);
-  return (
+  // Portalled out of the header: its chrome tokens (dark surface) and its stacking context stay behind.
+  if (!hydrated) return null;
+  return createPortal(
     <AnimatePresence>
       {open && (
         <>
           <motion.div
             key="backdrop"
+            {...noFadeFlash}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -263,7 +261,8 @@ function MobileMenu({
           </motion.aside>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

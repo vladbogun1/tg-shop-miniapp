@@ -16,6 +16,7 @@ import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
 import { readSuccess, type SuccessInfo } from "./success-store";
+import { noFadeFlash } from "@/lib/motion";
 
 export function SuccessView({ orderId }: { orderId: string }) {
   const { t, href, locale } = useI18n();
@@ -39,6 +40,7 @@ export function SuccessView({ orderId }: { orderId: string }) {
     <div className="container-site max-w-3xl pt-10">
       <div className="flex flex-col items-center text-center">
         <motion.div
+          {...noFadeFlash}
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 320, damping: 22 }}

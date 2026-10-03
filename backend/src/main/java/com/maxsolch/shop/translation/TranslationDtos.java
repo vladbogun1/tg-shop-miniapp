@@ -22,9 +22,12 @@ public final class TranslationDtos {
     /**
      * One translatable field. {@code text}/{@code origin} are null when {@code status = MISSING};
      * for STALE they hold the outdated translation (useful as a starting point).
+     * {@code productId}/{@code productTitle}: the product a PRODUCT or VARIANT field belongs to
+     * (link to its editor and context for variant names); null for tags and payment options.
      */
     public record ExportItem(String entityType, String entityId, String field, String source,
-                             String sourceHash, String status, String text, String origin) {
+                             String sourceHash, String status, String text, String origin,
+                             String productId, String productTitle) {
     }
 
     public record ImportItem(String entityType, String entityId, String field, String sourceHash, String text) {
@@ -54,5 +57,27 @@ public final class TranslationDtos {
     }
 
     public record DeleteResult(int deleted) {
+    }
+
+    /** One field whose Russian source is being corrected; {@code sourceHash} = hash the admin saw. */
+    public record SourceRef(String entityType, String entityId, String field, String sourceHash) {
+    }
+
+    /**
+     * Proofreading fix of the Russian source (typos found by the AI during translation) together with
+     * the translations of the NEW source, applied in one transaction so they are never stale.
+     * {@code items}: every field that holds the same source text (shared descriptions);
+     * {@code translations}: locale (uk|en) → translated text, both optional.
+     */
+    public record SourceFixRequest(List<SourceRef> items, String source, Map<String, String> translations) {
+    }
+
+    /**
+     * {@code updated}: fields whose source was replaced; {@code skippedStale}: the source changed
+     * since the admin saw it (nothing written for that field); {@code translationsApplied}: rows
+     * written (fields × locales); {@code sourceHash}: hash of the new source.
+     */
+    public record SourceFixResult(int updated, int skippedStale, int notFound, int invalid,
+                                  int translationsApplied, String sourceHash, List<Rejected> rejected) {
     }
 }

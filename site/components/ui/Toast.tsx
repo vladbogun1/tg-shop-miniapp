@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import { create } from "zustand";
+import { noFadeFlash } from "@/lib/motion";
 
 interface ToastState {
   message: string | null;
@@ -40,6 +41,7 @@ export function ToastHost() {
         {message && (
           <motion.div
             key={id}
+            {...noFadeFlash}
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
