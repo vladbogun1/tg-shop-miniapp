@@ -27,6 +27,7 @@ import type { MessageKey } from "@/i18n";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
+import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
@@ -101,7 +102,6 @@ function CheckoutForm() {
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
   const setPromoCode = useCart((s) => s.setPromoCode);
-  const clearCart = useCart((s) => s.clear);
   const subtotal = useCartSubtotal();
   const currency = lines[0]?.currency ?? "UAH";
   useCartValidation(true);
@@ -222,6 +222,9 @@ function CheckoutForm() {
       paymentOptionId: paymentId!,
     };
     try {
+      // A quantity change still in its debounce must reach the server cart BEFORE the order removes
+      // the ordered lines from it — otherwise the late write would put them back.
+      await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
       saveSuccess({
         orderId: created.orderId,
@@ -231,7 +234,7 @@ function CheckoutForm() {
         dueNowMinor: dueNow,
         currency,
       });
-      clearCart();
+      cartAfterOrder(orderable.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
       router.push(href(`/checkout/success/${created.orderId}`));
     } catch (e) {

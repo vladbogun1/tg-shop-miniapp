@@ -7,6 +7,7 @@
  *  - Auth boot: exchange initData → JWT (held in memory by lib/api).
  *  - Deep link: ?startapp=order_<id> opens that order's chat.
  *  - Interaction journal (lib/analytics): buffered locally, flushed to the backend in batches.
+ *  - Server cart sync (lib/cart-sync): the cart follows the customer to the website and back.
  *  - Language (i18n/context): resolved from the device, then Telegram, then Ukrainian.
  *
  * Everything degrades gracefully outside Telegram / with the backend offline.
@@ -17,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { I18nProvider } from "@/i18n/context";
 import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
+import { startCartSync } from "@/lib/cart-sync";
 import {
   getStartParam,
   parseOrderDeepLink,
@@ -48,6 +50,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Clicks, screen views and client errors, buffered locally and shipped in batches.
   useEffect(() => startAnalytics(), []);
+  // Server cart shared with the website; waits for the token before touching /api/me/cart.
+  useEffect(() => startCartSync(), []);
   useEffect(() => {
     track("view", pathname);
   }, [pathname]);

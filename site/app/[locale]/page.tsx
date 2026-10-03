@@ -2,6 +2,7 @@ import { ArrowRight, CreditCard, MessageCircle, ShieldCheck, Truck } from "lucid
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
+import { CategoryArt, CategoryArtDefs } from "@/components/home/CategoryArt";
 import { HeroArt } from "@/components/home/HeroArt";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
@@ -24,6 +25,8 @@ export async function generateMetadata({ params }: { params: LocaleParams }): Pr
 }
 
 const TILE_COLORS = ["var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--accent)"];
+/** Accent for each tile's illustration — always a palette colour that differs from the tile. */
+const ART_ACCENTS = ["var(--c3)", "var(--c2)", "var(--c5)", "var(--c3)", "var(--c2)"];
 
 const TRUST: { icon: typeof Truck; title: MessageKey; text: MessageKey; color: string }[] = [
   { icon: Truck, title: "home.trust.delivery.title", text: "home.trust.delivery.text", color: "var(--c3)" },
@@ -87,20 +90,27 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
       {categories.length > 0 && (
         <section className="container-site mt-14" aria-labelledby="home-cats">
           <SectionHead id="home-cats" title={t("home.categories")} more={href("/catalog")} moreLabel={t("common.showAll")} />
+          <CategoryArtDefs />
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             {categories.map((c, i) => (
               <li key={c.id}>
                 <Link
                   href={href(`/catalog/${c.slug}`)}
-                  className="nb nb-hover flex h-full min-h-[96px] flex-col justify-between p-4"
+                  className="nb nb-hover group relative isolate flex h-full min-h-[136px] flex-col justify-between overflow-hidden p-3.5 sm:min-h-[140px] sm:p-4"
                   style={{ background: TILE_COLORS[i % TILE_COLORS.length] }}
                 >
-                  <span className="text-[16px] font-black uppercase leading-tight tracking-wide text-[var(--accent-ink)]">
+                  <span className="relative z-10 text-[15px] font-black uppercase leading-tight tracking-wide text-[var(--accent-ink)] [overflow-wrap:anywhere] sm:text-[16px]">
                     {c.name}
                   </span>
-                  <span className="mt-2 text-[12px] font-bold text-[var(--accent-ink)] opacity-75">
+                  <span className="relative z-10 mt-2 max-w-[55%] text-[12px] font-bold text-[var(--accent-ink)] opacity-75">
                     {t("home.categoryCount", { n: c.productCount })}
                   </span>
+                  <CategoryArt
+                    slug={c.slug}
+                    name={c.name}
+                    accent={ART_ACCENTS[i % ART_ACCENTS.length]}
+                    className="pointer-events-none absolute bottom-1.5 right-2 h-[70px] w-[70px] transition-transform duration-200 ease-out group-hover:-translate-y-1 group-hover:-rotate-6 sm:h-[92px] sm:w-[92px] motion-reduce:transition-none motion-reduce:group-hover:transform-none"
+                  />
                 </Link>
               </li>
             ))}

@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { AuthUser } from "@shop/shared";
 import { api, isAuthFailure } from "./api";
+import { flushCart } from "./cart-sync";
 
 const USER_KEY = "site-user-v1";
 
@@ -83,13 +84,21 @@ export function useSession() {
     : query.data?.authed
       ? "authed"
       : "guest";
-  return { status, unread: query.data?.unread ?? 0, refetch: query.refetch };
+  return {
+    status,
+    /** The server answered "not signed in" (not merely unreachable). */
+    confirmedGuest: query.data?.authed === false,
+    unread: query.data?.unread ?? 0,
+    refetch: query.refetch,
+  };
 }
 
 /** Signs out on the server, forgets the greeting and drops every cached /api/me answer. */
 export function useLogout() {
   const qc = useQueryClient();
   return useCallback(async () => {
+    // A cart change still waiting for its debounce must reach the server while the cookie is valid.
+    await flushCart().catch(() => {});
     try {
       await api.logout();
     } catch {

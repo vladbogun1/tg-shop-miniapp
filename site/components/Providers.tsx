@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * App-wide client providers: TanStack Query, the language (from the route), the cart drawer and
- * the toast. Also tells the server which language this customer reads once they are signed in —
+ * App-wide client providers: TanStack Query, the language (from the route), the cart drawer, the
+ * server-cart sync of a signed-in customer and the toast. Also tells the server which language this customer reads once they are signed in —
  * the bot then writes to them in it (same as the Mini App's POST /api/me/locale).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { ToastHost } from "@/components/ui/Toast";
 import { I18nProvider } from "@/i18n/context";
 import type { Locale } from "@/i18n/locales";
 import { api } from "@/lib/api";
+import { CartSync } from "@/lib/cart-sync";
 import { useSession } from "@/lib/session";
 
 function makeClient() {
@@ -82,6 +83,7 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <ThemeSync locale={locale} />
         <InputModality />
         <LocaleSync locale={locale} />
+        <CartSync />
         {children}
         <CartDrawer />
         <ToastHost />

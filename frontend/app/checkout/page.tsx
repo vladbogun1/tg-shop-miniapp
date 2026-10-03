@@ -69,6 +69,7 @@ import {
   type PaymentRequisites,
 } from "@/lib/api";
 import { useCart, useCartSubtotal } from "@/lib/cart";
+import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
@@ -93,7 +94,6 @@ export default function CheckoutPage() {
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
   const setPromoCode = useCart((s) => s.setPromoCode);
-  const clearCart = useCart((s) => s.clear);
   const subtotal = useCartSubtotal();
   const currency = lines[0]?.currency ?? "UAH";
 
@@ -182,6 +182,9 @@ export default function CheckoutPage() {
       paymentOptionId: paymentId!,
     };
     try {
+      // A quantity change still in its debounce must reach the server cart BEFORE the order removes
+      // the ordered lines from it — otherwise the late write would put them back.
+      await flushCart();
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       // Requisites come straight back with the order; fall back to the detail fetch.
@@ -195,7 +198,7 @@ export default function CheckoutPage() {
         }
       }
       haptic();
-      clearCart();
+      cartAfterOrder(lines.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
       setSuccess({
         orderId,

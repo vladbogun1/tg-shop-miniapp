@@ -15,6 +15,7 @@ import {
   newIdempotencyKey,
   normalizeBaseUrl,
   type AuthResponse,
+  type CartLineInput,
   type Conversation,
   type Message,
   type NpCity,
@@ -26,11 +27,13 @@ import {
   type Product,
   type PromoPreview,
   type SendMessageRequest,
+  type ServerCart,
 } from "@shop/shared";
 
 export { ApiError, newIdempotencyKey };
 export type {
   AuthResponse,
+  CartLineInput,
   Conversation,
   Message,
   NpCity,
@@ -42,6 +45,7 @@ export type {
   Product,
   PromoPreview,
   SendMessageRequest,
+  ServerCart,
 };
 export type {
   DeliveryMethod,
@@ -136,6 +140,32 @@ export async function authWithTelegram(
   return res;
 }
 
+/**
+ * Last-chance cart write while the Mini App is being hidden/closed: `keepalive` lets the request
+ * outlive the page. Fire and forget.
+ */
+export function putCartOnUnload(lines: CartLineInput[]): void {
+  const token = getAccessToken();
+  if (!token) return;
+  try {
+    void fetch(`${API_BASE}/api/me/cart`, {
+      method: "PUT",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        "Accept-Language": getActiveTag(),
+      },
+      body: JSON.stringify({ lines }),
+    }).catch(() => {
+      /* the next launch re-reads the server cart */
+    });
+  } catch {
+    /* fetch unavailable */
+  }
+}
+
 // ---- request payloads -------------------------------------------------------
 
 export interface CreateOrderItem {
@@ -226,6 +256,10 @@ export const customerApi = {
   sendAnalytics: (batch: { sessionId: string; events: unknown[] }) =>
     http.post<void>("/api/me/analytics", batch),
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
+  /** Server cart shared with the website (same Telegram account) — see lib/cart-sync. */
+  getCart: () => http.get<ServerCart>("/api/me/cart"),
+  putCart: (lines: CartLineInput[]) => http.put<ServerCart>("/api/me/cart", { lines }),
+  mergeCart: (lines: CartLineInput[]) => http.post<ServerCart>("/api/me/cart/merge", { lines }),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
   /**
    * Places an order. The idempotency key makes a retry (lost response, double tap) return the

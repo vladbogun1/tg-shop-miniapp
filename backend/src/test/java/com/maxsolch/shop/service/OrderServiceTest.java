@@ -53,6 +53,8 @@ class OrderServiceTest {
     @Mock
     PromoService promoService;
     @Mock
+    CartService cartService;
+    @Mock
     com.maxsolch.shop.i18n.Messages messages;
 
     OrderService service;
@@ -64,7 +66,7 @@ class OrderServiceTest {
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, messages);
+                promoService, cartService, messages);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -168,6 +170,32 @@ class OrderServiceTest {
         OrderItem it = order.getItems().get(0);
         assertThat(it.getVariantNameSnapshot()).isEqualTo("Size M");
         assertThat(it.getVariantId()).isEqualTo(v.getId());
+    }
+
+    // ---------- server cart ----------
+
+    @Test
+    void createOrder_removesOrderedLinesFromServerCart() {
+        Product p = simpleProduct(4, 1_000);
+        ProductVariant v = variant(p, 4);
+        p.getVariants().add(v);
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        String variantUuid = UuidUtil.toString(v.getId());
+
+        service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, variantUuid, 1)), null));
+
+        verify(cartService).removeOrdered(1L, List.of(new CartRules.LineKey(productUuid, variantUuid)));
+    }
+
+    @Test
+    void createOrder_failure_leavesServerCartAlone() {
+        Product p = simpleProduct(1, 1_000);
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> service.createOrder(
+                cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 5)), null)))
+                .isInstanceOf(BadRequestException.class);
+        verify(cartService, never()).removeOrdered(org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
     // ---------- stock / variant validation ----------

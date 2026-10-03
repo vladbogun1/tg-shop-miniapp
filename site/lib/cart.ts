@@ -9,6 +9,10 @@
  * stock, because a cart can sit in a browser for weeks.
  *
  * The drawer's open/closed state lives here too, so "В корзину" anywhere can open it.
+ *
+ * Signed in, the same store is a local copy of the server cart shared with the Mini App: the
+ * actions stay synchronous and optimistic, and `lib/cart-sync.ts` writes changes back (debounced)
+ * and re-reads the server cart on sign-in and when the window regains focus.
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -42,10 +46,17 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * Who the stored lines belong to. `guest` — this browser's own cart (merged into the account on
+ * sign-in); `server` — a local copy of the signed-in customer's server cart (lib/cart-sync.ts).
+ */
+export type CartOwner = "guest" | "server";
+
 interface CartState {
   lines: CartLine[];
   promoCode: string;
   drawerOpen: boolean;
+  owner: CartOwner;
 
   add: (product: Product | StorefrontProduct, variant: ProductVariant | null, qty?: number) => void;
   setQty: (key: string, qty: number) => void;
@@ -64,6 +75,7 @@ export const useCart = create<CartState>()(
       lines: [],
       promoCode: "",
       drawerOpen: false,
+      owner: "guest",
 
       add: (product, variant, qty = 1) => {
         const variantId = variant?.id ?? null;
@@ -118,7 +130,7 @@ export const useCart = create<CartState>()(
     }),
     {
       name: "site-cart-v1",
-      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode }),
+      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode, owner: s.owner }),
     }
   )
 );

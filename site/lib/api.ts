@@ -10,6 +10,8 @@
 import {
   ApiError,
   createHttpClient,
+  type CartLineInput,
+  type ServerCart,
   newIdempotencyKey,
   type AuthUser,
   type Message,
@@ -81,6 +83,31 @@ async function authed<T>(call: () => Promise<T>): Promise<T> {
     // token a moment ago (the backend answers 401 to the stale one but keeps the session alive).
     await refreshSession();
     return call();
+  }
+}
+
+/**
+ * Last-chance cart write while the page is being hidden or closed: `keepalive` lets the request
+ * outlive the page, which a normal fetch (and the debounce timer in front of it) would not. No
+ * refresh-and-retry here — there is no page left to retry from.
+ */
+export function putCartOnUnload(lines: CartLineInput[]): void {
+  try {
+    void fetch("/api/me/cart", {
+      method: "PUT",
+      keepalive: true,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "Accept-Language": getActiveTag(),
+      },
+      body: JSON.stringify({ lines }),
+    }).catch(() => {
+      /* nothing to do: the next visit re-reads the server cart */
+    });
+  } catch {
+    /* fetch unavailable */
   }
 }
 
@@ -202,6 +229,11 @@ export const api = {
     ),
   releasePromo: (code: string) =>
     authed(() => http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`)),
+  // server-side cart (shared with the Mini App; see lib/cart-sync.ts)
+  cart: () => authed(() => http.get<ServerCart>("/api/me/cart")),
+  putCart: (lines: CartLineInput[]) => authed(() => http.put<ServerCart>("/api/me/cart", { lines })),
+  mergeCart: (lines: CartLineInput[]) =>
+    authed(() => http.post<ServerCart>("/api/me/cart/merge", { lines })),
   createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
     authed(() =>
       http.post<CreateOrderResponse>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
@@ -225,6 +257,8 @@ export const api = {
 
 export type {
   AuthUser,
+  CartLineInput,
+  ServerCart,
   Message,
   NpCity,
   NpWarehouse,

@@ -3,6 +3,10 @@
 /**
  * Cart store (zustand, persisted to localStorage).
  *
+ * Since the server cart (shared with the website, same Telegram account) this store is the local,
+ * optimistic copy of it: actions stay synchronous, `lib/cart-sync.ts` writes changes back and
+ * re-reads the server cart when the app becomes visible again.
+ *
  * Lines are keyed by `${productId}::${variantId ?? ""}` so the same product
  * with different variants are distinct lines. Quantities are clamped to the
  * captured stock at add/setQty time. Money is in minor units (÷100 via money()).
@@ -37,6 +41,11 @@ interface CartState {
   lines: CartLine[];
   /** Promo code typed by the user (validated server-side at checkout). */
   promoCode: string;
+  /**
+   * The cart that lived only on this device (before the server cart) has been merged into the
+   * server one. Until then the local lines are the customer's own and must not be overwritten.
+   */
+  migrated: boolean;
 
   add: (
     product: Product,
@@ -60,6 +69,7 @@ export const useCart = create<CartState>()(
     (set, get) => ({
       lines: [],
       promoCode: "",
+      migrated: false,
 
       add: (product, variant, qty = 1) => {
         const variantId = variant?.id ?? null;
@@ -128,7 +138,7 @@ export const useCart = create<CartState>()(
     {
       name: "tgshop-cart-v1",
       // only persist data, not the action fns
-      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode }),
+      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode, migrated: s.migrated }),
     }
   )
 );

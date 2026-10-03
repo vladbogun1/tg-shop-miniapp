@@ -56,6 +56,7 @@ public class OrderService {
     private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
     private final PromoService promoService;
+    private final CartService cartService;
     private final Messages messages;
 
     public OrderService(OrderRepository orderRepository,
@@ -65,6 +66,7 @@ public class OrderService {
                         NotificationService notificationService,
                         ApplicationEventPublisher events,
                         PromoService promoService,
+                        CartService cartService,
                         Messages messages) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -73,6 +75,7 @@ public class OrderService {
         this.notificationService = notificationService;
         this.events = events;
         this.promoService = promoService;
+        this.cartService = cartService;
         this.messages = messages;
     }
 
@@ -190,6 +193,14 @@ public class OrderService {
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
+
+        // The ordered lines leave the customer's server cart in the same transaction, so every
+        // device sees them gone at once — and a failed order leaves the cart untouched.
+        if (cmd.userId() != null) {
+            cartService.removeOrdered(cmd.userId(), saved.getItems().stream()
+                    .map(i -> CartRules.LineKey.of(i.getProductId(), i.getVariantId()))
+                    .toList());
+        }
 
         // Telegram is contacted only after this transaction commits (see
         // OrderNotificationListener): otherwise the DB connection and the stock row locks stay
