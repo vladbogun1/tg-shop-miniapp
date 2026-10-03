@@ -116,17 +116,20 @@ function CartButton() {
 /**
  * Guest: person icon + "Sign in". Signed in: person icon + the Telegram initials ("ВБ").
  * The session is only known in the browser (HttpOnly cookies), so SSR and the first client render
- * show a skeleton; all three states have the same fixed width, so nothing in the header moves when
- * the answer arrives.
+ * show a skeleton. The button hugs its content (a fixed width left the signed-in state with big
+ * empty paddings); the header's right group is right-aligned, so only the space to its left changes.
  */
-const ACCOUNT_W = "w-11 lg:w-[124px]";
+/** Hug the content (icon + «Увійти» or icon + initials) instead of one fixed width for every state. */
+const ACCOUNT_W = "w-11 lg:w-auto lg:px-3.5";
+/** The skeleton can't know which state comes next; a width between the two keeps the shift small. */
+const ACCOUNT_SKELETON_W = "w-11 lg:w-[96px]";
 
 function AccountButton() {
   const { t, href } = useI18n();
   const { status, unread } = useSession();
 
   if (status === "loading") {
-    return <span aria-hidden className={`shimmer block h-11 shrink-0 ${ACCOUNT_W}`} />;
+    return <span aria-hidden className={`shimmer block h-11 shrink-0 ${ACCOUNT_SKELETON_W}`} />;
   }
 
   const authed = status === "authed";
