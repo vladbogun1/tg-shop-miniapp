@@ -7,6 +7,8 @@ import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.SlugService;
 import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.translation.TranslationEntityType;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.TagDto;
@@ -45,13 +47,16 @@ public class AdminTagController {
     private final AdminAuditService audit;
     private final SlugService slugService;
     private final SiteRevalidator siteRevalidator;
+    private final TranslationService translationService;
 
     public AdminTagController(TagRepository tagRepository, AdminAuditService audit,
-                              SlugService slugService, SiteRevalidator siteRevalidator) {
+                              SlugService slugService, SiteRevalidator siteRevalidator,
+                              TranslationService translationService) {
         this.tagRepository = tagRepository;
         this.audit = audit;
         this.slugService = slugService;
         this.siteRevalidator = siteRevalidator;
+        this.translationService = translationService;
     }
 
     @GetMapping
@@ -107,6 +112,8 @@ public class AdminTagController {
         audit.record("TAG_DELETE", "TAG", id, tag.getName());
         String slug = tag.getSlug();
         tagRepository.delete(tag);
+        // content_translations has no FK (one table for every entity type) — clean up by hand.
+        translationService.deleteForEntities(TranslationEntityType.TAG, List.of(tag.getId()));
         siteRevalidator.categoryChanged(slug, null);
         return ResponseEntity.noContent().build();
     }

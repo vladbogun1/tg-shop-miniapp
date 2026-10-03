@@ -33,8 +33,8 @@ export default async function SearchPage({
   const t = makeT(locale);
   const state = await parseCatalogState("/search", searchParams);
   const [categories, data] = await Promise.all([
-    safe(getCategories(), []),
-    state.q ? safe(getProducts(toApiQuery(state)), null) : Promise.resolve(null),
+    safe(getCategories(locale), []),
+    state.q ? safe(getProducts(toApiQuery(state), locale), null) : Promise.resolve(null),
   ]);
 
   if (!state.q) {

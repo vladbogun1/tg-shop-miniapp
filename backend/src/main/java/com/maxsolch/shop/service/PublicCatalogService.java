@@ -2,6 +2,7 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
@@ -17,18 +18,21 @@ import java.text.Collator;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Catalog queries for the public site: filter / sort / paginate, product by slug, menu
  * categories with counts, sitemap.
  *
- * <p>Everything is computed over {@link CatalogService#listActiveProducts()} — the same Caffeine
- * cached list the Mini App reads (a couple of hundred products). Filtering that in memory is
- * cheaper than any query and, importantly, the admin's cache evictions keep both apps in step.
+ * <p>Everything is computed over {@link CatalogService#listActiveProducts(String)} — the same
+ * Caffeine cached list the Mini App reads (a couple of hundred products), one per content language.
+ * Filtering that in memory is cheaper than any query and, importantly, the admin's cache evictions
+ * keep both apps in step.
  */
 @Service
 public class PublicCatalogService {
@@ -53,21 +57,22 @@ public class PublicCatalogService {
                         Integer page, Integer size) {
     }
 
-    public ProductPage search(Query query) {
-        List<ProductDto> all = catalogService.listActiveProducts();
+    public ProductPage search(Query query, String lang) {
+        List<ProductDto> all = catalogService.listActiveProducts(lang);
 
         String category = blankToNull(query.category());
-        if (category != null && catalogService.listTags().stream().noneMatch(t -> category.equals(t.slug()))) {
+        if (category != null && catalogService.listTags(lang).stream().noneMatch(t -> category.equals(t.slug()))) {
             throw new NotFoundException("category not found");
         }
         String needle = blankToNull(query.q());
         String q = needle == null ? null : needle.toLowerCase(Locale.ROOT);
+        Set<String> matching = q == null ? null : matchingIds(q);
         boolean inStockOnly = Boolean.TRUE.equals(query.inStock());
 
         // Everything except the price cap — that selection also gives the slider its upper bound.
         List<ProductDto> base = all.stream()
                 .filter(p -> category == null || hasTag(p, category))
-                .filter(p -> q == null || matches(p, q))
+                .filter(p -> matching == null || matching.contains(p.id()))
                 .filter(p -> !inStockOnly || p.effectiveStock() > 0)
                 .toList();
         long priceMaxAvailable = base.stream().mapToLong(ProductDto::priceMinor).max().orElse(0);
@@ -87,20 +92,37 @@ public class PublicCatalogService {
         return new ProductPage(items, filtered.size(), page, size, priceMaxAvailable);
     }
 
-    public Optional<ProductDto> bySlug(String slug) {
+    /**
+     * Products whose title or description contains {@code q} in the Russian source OR in any current
+     * translation — «килимок» finds «Ковер» whatever language the page is in. Each language's list
+     * is already cached, so this is three in-memory scans.
+     */
+    private Set<String> matchingIds(String q) {
+        Set<String> ids = new HashSet<>();
+        for (String lang : ContentLocale.ALL) {
+            for (ProductDto p : catalogService.listActiveProducts(lang)) {
+                if (matches(p, q)) {
+                    ids.add(p.id());
+                }
+            }
+        }
+        return ids;
+    }
+
+    public Optional<ProductDto> bySlug(String slug, String lang) {
         if (slug == null || slug.isBlank()) {
             return Optional.empty();
         }
         String s = slug.trim().toLowerCase(Locale.ROOT);
-        return catalogService.listActiveProducts().stream()
+        return catalogService.listActiveProducts(lang).stream()
                 .filter(p -> s.equals(p.slug()))
                 .findFirst();
     }
 
     /** Menu categories ({@code showInMenu}), by sortOrder then name, with live product counts. */
-    public List<CategoryDto> categories() {
+    public List<CategoryDto> categories(String lang) {
         Map<String, Long> counts = new HashMap<>();
-        for (ProductDto p : catalogService.listActiveProducts()) {
+        for (ProductDto p : catalogService.listActiveProducts(lang)) {
             if (p.tags() == null) {
                 continue;
             }
@@ -109,7 +131,7 @@ public class PublicCatalogService {
             }
         }
         Collator collator = collator();
-        return catalogService.listTags().stream()
+        return catalogService.listTags(lang).stream()
                 .filter(TagDto::showInMenu)
                 .sorted(Comparator.comparingInt(TagDto::sortOrder)
                         .thenComparing(TagDto::name, collator))

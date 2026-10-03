@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const locale = await localeOf(params);
   const { slug } = await params;
   const t = makeT(locale);
-  const product = await safe(getProductBySlug(decodeURIComponent(slug)), null);
+  const product = await safe(getProductBySlug(decodeURIComponent(slug), locale), null);
   if (!product) return { title: t("notFound.title"), robots: { index: false } };
   const images = sortedImages(product);
   const title = product.seoTitle || product.title;
@@ -77,12 +77,12 @@ export default async function ProductPage({ params }: { params: Params }) {
   const locale = await localeOf(params);
   const { slug } = await params;
   const t = makeT(locale);
-  const product = await safe(getProductBySlug(decodeURIComponent(slug)), null);
+  const product = await safe(getProductBySlug(decodeURIComponent(slug), locale), null);
   if (!product) notFound();
 
   const category = primaryCategory(product);
   const related = category
-    ? await safe(getProducts({ category: category.slug, inStock: true, size: 9 }), null)
+    ? await safe(getProducts({ category: category.slug, inStock: true, size: 9 }, locale), null)
     : null;
   const relatedItems = (related?.items ?? []).filter((p) => p.id !== product.id).slice(0, 8);
 

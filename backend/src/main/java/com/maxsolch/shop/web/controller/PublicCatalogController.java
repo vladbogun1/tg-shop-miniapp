@@ -1,6 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.service.PublicCatalogService;
+import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductPage;
@@ -15,8 +16,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 
-/** Read-only catalog for the public website (no authentication). */
+/**
+ * Read-only catalog for the public website (no authentication). Content language: {@code ?lang=}
+ * (the site's server-side fetches send it) or Accept-Language; see ContentLocaleResolver.
+ */
 @RestController
 @RequestMapping("/api/public")
 @Tag(name = "Public site catalog", description = "Catalog for the public website: filters, slugs, sitemap")
@@ -30,8 +35,8 @@ public class PublicCatalogController {
 
     @GetMapping("/categories")
     @Operation(summary = "Menu categories (tags with showInMenu) with active product counts")
-    public List<CategoryDto> categories() {
-        return service.categories();
+    public List<CategoryDto> categories(Locale locale) {
+        return service.categories(ContentLocale.normalize(locale));
     }
 
     @GetMapping("/products")
@@ -43,14 +48,16 @@ public class PublicCatalogController {
                                 @RequestParam(required = false) Long priceMax,
                                 @RequestParam(required = false) String sort,
                                 @RequestParam(required = false) Integer page,
-                                @RequestParam(required = false) Integer size) {
-        return service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page, size));
+                                @RequestParam(required = false) Integer size,
+                                Locale locale) {
+        return service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page, size),
+                ContentLocale.normalize(locale));
     }
 
     @GetMapping("/products/by-slug/{slug}")
     @Operation(summary = "Active product by its slug, or 404")
-    public ResponseEntity<ProductDto> bySlug(@PathVariable String slug) {
-        return service.bySlug(slug)
+    public ResponseEntity<ProductDto> bySlug(@PathVariable String slug, Locale locale) {
+        return service.bySlug(slug, ContentLocale.normalize(locale))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

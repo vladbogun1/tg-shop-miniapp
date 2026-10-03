@@ -10,19 +10,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import type { Product } from "@shop/shared";
+import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "./api";
 import { stockOf, useCart } from "./cart";
 
 export function useCartValidation(enabled = true) {
   const lines = useCart((s) => s.lines);
   const patchLines = useCart((s) => s.patchLines);
+  const { locale } = useI18n();
   const ids = useMemo(
     () => Array.from(new Set(lines.map((l) => l.productId))).sort(),
     [lines]
   );
 
   const query = useQuery({
-    queryKey: ["cart-validate", ids],
+    queryKey: ["cart-validate", ids, locale],
     enabled: enabled && ids.length > 0,
     staleTime: 30_000,
     queryFn: async () => {

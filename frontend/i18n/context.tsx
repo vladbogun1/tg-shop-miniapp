@@ -22,6 +22,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken, onAccessToken, customerApi } from "@/lib/api";
 import { setActiveLocale } from "./active";
 import { ru } from "./ru";
@@ -96,6 +97,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     return onAccessToken(push);
   }, [locale]);
 
+  const queryClient = useQueryClient();
   const setLocale = useCallback((next: Locale) => {
     // Formatters read this synchronously, so it must be set before the re-render, not after.
     setActiveLocale(next);
@@ -105,7 +107,11 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* the choice still applies for this session */
     }
-  }, []);
+    // Catalog content (titles, descriptions, variants, tags, payment options) now comes back
+    // translated per Accept-Language, but the query keys carry no language: refetch on a switch so
+    // the remounted screens do not show the previous language from the cache.
+    void queryClient.invalidateQueries();
+  }, [queryClient]);
 
   const value = useMemo<I18n>(() => {
     const dict = DICTIONARIES[locale];

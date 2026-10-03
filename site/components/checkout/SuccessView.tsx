@@ -18,13 +18,13 @@ import { useFmt } from "@/lib/use-fmt";
 import { readSuccess, type SuccessInfo } from "./success-store";
 
 export function SuccessView({ orderId }: { orderId: string }) {
-  const { t, href } = useI18n();
+  const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const [info, setInfo] = useState<SuccessInfo | null>(null);
   useEffect(() => setInfo(readSuccess(orderId)), [orderId]);
 
   const order = useQuery({
-    queryKey: ["me", "orders", orderId],
+    queryKey: ["me", "orders", orderId, locale],
     queryFn: () => api.order(orderId),
   });
   const o = order.data;

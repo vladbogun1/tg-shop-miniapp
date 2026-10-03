@@ -29,7 +29,8 @@ public class LocaleConfig {
 
     @Bean
     public LocaleResolver localeResolver() {
-        AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
+        // Accept-Language, plus ?lang= on the public catalog endpoints (see ContentLocaleResolver).
+        AcceptHeaderLocaleResolver resolver = new ContentLocaleResolver();
         resolver.setSupportedLocales(List.of(
                 Locale.forLanguageTag("uk"),
                 Locale.forLanguageTag("ru"),

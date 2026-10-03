@@ -42,8 +42,8 @@ export default async function CatalogPage({
   const t = makeT(locale);
   const state = await parseCatalogState("/catalog", searchParams);
   const [categories, data] = await Promise.all([
-    safe(getCategories(), []),
-    safe(getProducts(toApiQuery(state)), null),
+    safe(getCategories(locale), []),
+    safe(getProducts(toApiQuery(state), locale), null),
   ]);
   return (
     <CatalogView

@@ -8,6 +8,8 @@ import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.translation.TranslationEntityType;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
@@ -35,15 +37,18 @@ public class AdminProductService {
     private final TagRepository tagRepository;
     private final ImageStorageService imageStorageService;
     private final SlugService slugService;
+    private final TranslationService translationService;
 
     public AdminProductService(ProductRepository productRepository,
                                TagRepository tagRepository,
                                ImageStorageService imageStorageService,
-                               SlugService slugService) {
+                               SlugService slugService,
+                               TranslationService translationService) {
         this.productRepository = productRepository;
         this.tagRepository = tagRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;
+        this.translationService = translationService;
     }
 
     @Transactional(readOnly = true)
@@ -94,8 +99,11 @@ public class AdminProductService {
         applyScalars(p, req);
         applyImages(p, req);
         applyTags(p, req);
-        applyVariants(p, req);
-        return toDto(productRepository.save(p));
+        List<byte[]> removedVariants = applyVariants(p, req);
+        AdminProductDto saved = toDto(productRepository.save(p));
+        // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
+        translationService.deleteForEntities(TranslationEntityType.VARIANT, removedVariants);
+        return saved;
     }
 
     @Caching(evict = {
@@ -244,9 +252,9 @@ public class AdminProductService {
      * one, then by name (the admin UI historically sent no ids at all), so existing rows keep their
      * identity either way; only genuinely removed variants are deleted.
      */
-    private void applyVariants(Product p, ProductUpsertRequest req) {
+    private List<byte[]> applyVariants(Product p, ProductUpsertRequest req) {
         if (req.variants() == null) {
-            return;
+            return List.of();
         }
         Map<String, ProductVariant> byId = new LinkedHashMap<>();
         Map<String, ProductVariant> byName = new LinkedHashMap<>();
@@ -289,6 +297,10 @@ public class AdminProductService {
         }
 
         // Anything not matched was removed by the admin (orphanRemoval deletes the rows).
+        List<byte[]> removed = p.getVariants().stream()
+                .filter(v -> !keep.contains(v) && v.getId() != null)
+                .map(ProductVariant::getId)
+                .toList();
         p.getVariants().removeIf(v -> !keep.contains(v));
 
         // Product stock is the rollup of variant stock whenever variants exist (OrderService
@@ -296,6 +308,7 @@ public class AdminProductService {
         if (!p.getVariants().isEmpty()) {
             p.setStock(rollup);
         }
+        return removed;
     }
 
     private static String normalized(String name) {

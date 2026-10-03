@@ -12,6 +12,8 @@ import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
+import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
@@ -41,17 +43,20 @@ public class OrderQueryService {
     private final OrderItemRepository orderItemRepository;
     private final PaymentRequisitesRepository requisitesRepository;
     private final ProductImageRepository productImageRepository;
+    private final TranslationService translationService;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              PaymentRequisitesRepository requisitesRepository,
-                             ProductImageRepository productImageRepository) {
+                             ProductImageRepository productImageRepository,
+                             TranslationService translationService) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
         this.requisitesRepository = requisitesRepository;
         this.productImageRepository = productImageRepository;
+        this.translationService = translationService;
     }
 
     /**
@@ -154,12 +159,29 @@ public class OrderQueryService {
         return orders.stream().map(o -> toSummary(o, ctx)).toList();
     }
 
+    /** Admin view: line titles are the Russian snapshots. */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o) {
+        return toDetail(o, ContentLocale.RU);
+    }
+
+    /**
+     * Customer view: a line shows the product's current translation for {@code lang} when there is
+     * one, else the snapshot. {@code order_items.title_snapshot} itself stays Russian — the seller,
+     * the dispatch list and the channel read it.
+     */
+    @Transactional(readOnly = true)
+    public OrderDetailDto toDetail(Order o, String lang) {
         List<OrderItem> orderItems = o.getItems();
         Map<String, String> thumbnails = thumbnailsFor(orderItems);
+        TranslationService.ItemNames names = ContentLocale.isTranslated(lang)
+                ? translationService.orderItemNames(
+                        orderItems.stream().map(OrderItem::getProductId).filter(java.util.Objects::nonNull).toList(),
+                        orderItems.stream().map(OrderItem::getVariantId).filter(java.util.Objects::nonNull).toList(),
+                        lang)
+                : TranslationService.ItemNames.EMPTY;
         List<OrderItemDto> items = orderItems.stream()
-                .map(it -> toItemDto(it, thumbnails))
+                .map(it -> toItemDto(it, thumbnails, names))
                 .toList();
         PaymentRequisitesDto requisites = requisitesRepository.findById(1)
                 .map(this::toRequisitesDto)
@@ -271,15 +293,17 @@ public class OrderQueryService {
         return first;
     }
 
-    private OrderItemDto toItemDto(OrderItem it, Map<String, String> thumbnails) {
+    private OrderItemDto toItemDto(OrderItem it, Map<String, String> thumbnails,
+                                   TranslationService.ItemNames names) {
         String productId = it.getProductId() == null ? null : UuidUtil.toString(it.getProductId());
+        String variantId = it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId());
         return new OrderItemDto(
                 it.getId(),
                 productId,
-                it.getTitleSnapshot(),
+                names.title(productId, it.getTitleSnapshot()),
                 it.getPriceMinorSnapshot(),
-                it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId()),
-                it.getVariantNameSnapshot(),
+                variantId,
+                names.variant(variantId, it.getVariantNameSnapshot()),
                 it.getQuantity(),
                 productId == null ? null : thumbnails.get(productId),
                 it.isGift());

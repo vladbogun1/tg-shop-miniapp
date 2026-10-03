@@ -4,6 +4,8 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.novaposhta.NovaPoshtaService;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.service.PromoService;
+import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.dto.NpCityDto;
 import com.maxsolch.shop.web.dto.NpWarehouseDto;
 import com.maxsolch.shop.web.dto.PaymentOptionDto;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api")
@@ -25,13 +28,16 @@ public class PublicController {
     private final PaymentOptionRepository paymentOptionRepository;
     private final NovaPoshtaService novaPoshtaService;
     private final PromoService promoService;
+    private final TranslationService translationService;
 
     public PublicController(PaymentOptionRepository paymentOptionRepository,
                             NovaPoshtaService novaPoshtaService,
-                            PromoService promoService) {
+                            PromoService promoService,
+                            TranslationService translationService) {
         this.paymentOptionRepository = paymentOptionRepository;
         this.novaPoshtaService = novaPoshtaService;
         this.promoService = promoService;
+        this.translationService = translationService;
     }
 
     /**
@@ -53,8 +59,9 @@ public class PublicController {
     }
 
     @GetMapping("/payment-options")
-    @Operation(summary = "List active payment options")
-    public List<PaymentOptionDto> paymentOptions() {
+    @Operation(summary = "List active payment options (title/description translated for uk/en, ?lang= wins)")
+    public List<PaymentOptionDto> paymentOptions(Locale locale) {
+        TranslationService.Overlay overlay = translationService.overlay(ContentLocale.normalize(locale));
         return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
                 .map(p -> new PaymentOptionDto(
                         UuidUtil.toString(p.getId()),
@@ -62,6 +69,7 @@ public class PublicController {
                         p.getDescription(),
                         p.isRequiresPrepayment(),
                         p.getPrepaymentMinor()))
+                .map(overlay::paymentOption)
                 .toList();
     }
 

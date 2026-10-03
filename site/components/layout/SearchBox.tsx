@@ -17,7 +17,7 @@ import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
 export function SearchBox() {
-  const { t, href } = useI18n();
+  const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
   const id = useId();
@@ -29,7 +29,8 @@ export function SearchBox() {
   const term = useDebounced(q.trim(), 250);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["suggest", term],
+    // Locale in the key: titles come back translated (Accept-Language).
+    queryKey: ["suggest", term, locale],
     enabled: term.length >= 2,
     staleTime: 60_000,
     queryFn: () => api.products({ q: term, size: 6 }),

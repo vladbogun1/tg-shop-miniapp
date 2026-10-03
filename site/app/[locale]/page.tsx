@@ -37,9 +37,9 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
   const href = (p: string) => localePath(locale, p);
 
   const [categories, hits, fresh] = await Promise.all([
-    safe(getCategories(), []),
-    safe(getProducts({ sort: "default", inStock: true, size: 8 }), null),
-    safe(getProducts({ sort: "new", inStock: true, size: 8 }), null),
+    safe(getCategories(locale), []),
+    safe(getProducts({ sort: "default", inStock: true, size: 8 }, locale), null),
+    safe(getProducts({ sort: "new", inStock: true, size: 8 }, locale), null),
   ]);
 
   return (

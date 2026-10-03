@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,4 +51,15 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, byte[] id);
+
+    /** {@code [id, title]} of the given products (translated titles of customer order lines). */
+    @Query("select p.id, p.title from Product p where p.id in :ids")
+    List<Object[]> titlesByIds(@Param("ids") Collection<byte[]> ids);
+
+    /**
+     * {@code [id, title, description, seoTitle, seoDescription, active, archived]} of every product —
+     * the Russian sources the content translations are checked against.
+     */
+    @Query("select p.id, p.title, p.description, p.seoTitle, p.seoDescription, p.active, p.archived from Product p")
+    List<Object[]> translationSources();
 }

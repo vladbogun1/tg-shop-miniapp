@@ -23,9 +23,10 @@ import { PaymentBadge } from "./PaymentBadge";
 import { StatusTimeline } from "./StatusTimeline";
 
 export function OrderDetailView({ id }: { id: string }) {
-  const { t, href } = useI18n();
+  const { t, href, locale } = useI18n();
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["me", "orders", id],
+    // Line titles are translated per language — keep one entry per locale.
+    queryKey: ["me", "orders", id, locale],
     queryFn: () => api.order(id),
   });
 

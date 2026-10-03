@@ -22,6 +22,7 @@ import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.web.dto.MessageDto;
+import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.OrderSummaryDto;
 import com.maxsolch.shop.web.dto.PromoPreviewDto;
@@ -43,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/me")
@@ -177,8 +179,8 @@ public class MeController {
 
     @GetMapping("/orders/{id}")
     @Operation(summary = "Get one of my orders")
-    public OrderDetailDto myOrder(@PathVariable String id) {
-        return orderQueryService.toDetail(ownedOrder(id));
+    public OrderDetailDto myOrder(@PathVariable String id, Locale locale) {
+        return orderQueryService.toDetail(ownedOrder(id), ContentLocale.normalize(locale));
     }
 
     @GetMapping("/orders/{id}/messages")
@@ -201,7 +203,7 @@ public class MeController {
     @PostMapping("/orders/{id}/pay")
     @Operation(summary = "Submit a transfer screenshot → posts it to the order chat and flags the "
             + "order as 'payment claimed' (an admin still has to confirm the money arrived)")
-    public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req) {
+    public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req, Locale locale) {
         Order order = ownedOrder(id);
         if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
             throw new BadRequestException(messages.current("api.order.proofRequired"));
@@ -213,15 +215,16 @@ public class MeController {
         // goods shipped without paying by uploading an arbitrary picture. Confirmation is manual:
         // PATCH /api/admin/orders/{id}/paid.
         Order claimed = orderService.claimPayment(order.getId());
-        return orderQueryService.toDetail(claimed);
+        return orderQueryService.toDetail(claimed, ContentLocale.normalize(locale));
     }
 
     @PostMapping("/orders/{id}/cancel")
     @Operation(summary = "Cancel an unpaid order (NEW/APPROVED) with an optional reason")
-    public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req) {
+    public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
+                                 Locale locale) {
         Order order = ownedOrder(id);
         Order cancelled = orderService.cancelByCustomer(order.getId(), req == null ? null : req.reason());
-        return orderQueryService.toDetail(cancelled);
+        return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
     }
 
     @PostMapping("/orders/{id}/messages/read")

@@ -73,7 +73,7 @@ export default async function LocaleLayout({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  const categories = await safe(getCategories(), []);
+  const categories = await safe(getCategories(locale), []);
 
   return (
     <html lang={LOCALE_TAG[locale]} className={inter.variable} suppressHydrationWarning>

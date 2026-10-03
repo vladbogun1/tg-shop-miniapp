@@ -95,7 +95,7 @@ export function CheckoutView() {
 }
 
 function CheckoutForm() {
-  const { t, href } = useI18n();
+  const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
   const lines = useCart((s) => s.lines);
@@ -173,7 +173,7 @@ function CheckoutForm() {
   }, [lastOrder.data]);
 
   // ---- payment --------------------------------------------------------------------------------
-  const paymentQuery = useQuery({ queryKey: ["payment-options"], queryFn: () => api.paymentOptions() });
+  const paymentQuery = useQuery({ queryKey: ["payment-options", locale], queryFn: () => api.paymentOptions() });
   const paymentOptions = useMemo(() => paymentQuery.data ?? [], [paymentQuery.data]);
   const chosen = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
