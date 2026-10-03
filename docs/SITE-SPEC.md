@@ -162,7 +162,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
   (hreflang), JSON-LD `Product` + `BreadcrumbList` на товаре, `Organization` на главной.
   До публичного запуска — `robots: noindex` через env `SITE_INDEXABLE=false`.
 - Docker: `site/Dockerfile` (standalone, сборка из корня репо `-f site/Dockerfile .`), сервис `site`
-  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf`
+  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf.template` (вход по коду `SITE_GATE_CODE` до запуска)
   (`/` → site, `/api` и `/ws` → backend, `/img` → nginx-кэш; resolver 127.0.0.11 + переменные,
   как в `gateway.conf`), `gateway-site` в `docker-compose.prod.yml` на `127.0.0.1:8092`.
 - CI: джоба `site` (typecheck + build) в `ci.yml`; образ `vladbogun1/maxsolch2-site` в `publish.yml`.

@@ -78,7 +78,7 @@ services:
     networks:
       - tgshop
 
-  # Public WEBSITE (site/) behind its own single-origin gateway (infra/gateway-site.conf):
+  # Public WEBSITE (site/) behind its own single-origin gateway (infra/gateway-site.conf.template):
   # / -> site-public, /api + /ws -> backend, /img -> image cache. The backend sends ISR
   # revalidation to http://site-public:3000/_site/revalidate (SITE_REVALIDATE_URL).
   site-public:
@@ -109,7 +109,10 @@ services:
       - imgproxy
       - nginx
     volumes:
-      - ./infra/gateway-site.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/gateway-site.conf.template:/etc/nginx/templates/default.conf.template:ro
+    environment:
+      NGINX_ENVSUBST_FILTER: SITE_GATE
+      SITE_GATE_CODE: ${SITE_GATE_CODE:-}
     ports:
       - "8092:80"
     networks:
