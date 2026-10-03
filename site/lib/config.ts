@@ -7,7 +7,9 @@
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://maxsolkh.shop").replace(/\/$/, "");
 
 /** The shop's Telegram bot (footer, contacts, login fallback). */
-export const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/maxsolch_bot";
+export const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/ChiSetupShop_bot";
+/** The owner's personal Telegram — shown on the contacts page instead of a phone number. */
+export const OWNER_TELEGRAM = "fullfocusme";
 
 /** Same-origin image entry point (gateway → nginx cache → imgproxy). Dev: rewritten to :8082. */
 export const IMAGE_BASE = "/img";

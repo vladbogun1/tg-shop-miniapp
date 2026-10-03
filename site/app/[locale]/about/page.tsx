@@ -23,8 +23,6 @@ export default async function AboutPage({ params }: { params: LocaleParams }) {
           <p className="mt-4 text-[19px] font-extrabold leading-snug text-[var(--ink)]">{t("about.lead")}</p>
           <p className="mt-4 text-[16px] font-medium leading-relaxed text-[var(--ink)]">{t("about.text1")}</p>
           <p className="mt-3 text-[16px] font-medium leading-relaxed text-[var(--ink)]">{t("about.text2")}</p>
-          {/* Founding year, team and photos are not known yet — marked, not invented. */}
-          <p className="mt-4 text-[14px] font-bold text-[var(--warn)]">{t("common.placeholder")}</p>
           <div className="mt-6">
             <ButtonLink href={localePath(locale, "/catalog")} variant="accent">
               {t("common.toCatalog")}

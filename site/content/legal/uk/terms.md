@@ -1,7 +1,7 @@
 ---
 title: Умови користування
 updated: 2026-10-03
-status: draft
+status: approved
 ---
 
 # Умови користування та публічна оферта

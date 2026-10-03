@@ -1,7 +1,7 @@
 ---
 title: Повернення та обмін
 updated: 2026-10-03
-status: draft
+status: approved
 ---
 
 # Повернення та обмін

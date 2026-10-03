@@ -1,9 +1,9 @@
-import { Clock, Mail, MapPin, MessageCircle, Phone, Send, User } from "lucide-react";
+import { AtSign, Clock, MapPin, MessageCircle, Send, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { alternates, localePath, makeT } from "@/i18n";
-import { BOT_URL, SELLER } from "@/lib/config";
+import { BOT_URL, OWNER_TELEGRAM, SELLER } from "@/lib/config";
 import { localeOf, type LocaleParams } from "@/lib/route";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
@@ -14,13 +14,20 @@ export async function generateMetadata({ params }: { params: LocaleParams }): Pr
 export default async function ContactsPage({ params }: { params: LocaleParams }) {
   const locale = await localeOf(params);
   const t = makeT(locale);
-  // Not known yet — shown as an explicit placeholder rather than invented.
-  const todo = <span className="font-bold text-[var(--warn)]">{t("common.placeholder")}</span>;
+  const ownerLink = (
+    <a
+      href={`https://t.me/${OWNER_TELEGRAM}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline decoration-2 underline-offset-2 hover:text-[var(--accent)]"
+    >
+      @{OWNER_TELEGRAM}
+    </a>
+  );
   const rows = [
-    { icon: Phone, label: t("contacts.phone"), value: todo },
-    { icon: Mail, label: t("contacts.email"), value: todo },
-    { icon: MapPin, label: t("contacts.pickup"), value: todo },
-    { icon: Clock, label: t("contacts.hours"), value: todo },
+    { icon: AtSign, label: t("contacts.owner"), value: ownerLink },
+    { icon: MapPin, label: t("contacts.pickup"), value: t("contacts.pickupValue") },
+    { icon: Clock, label: t("contacts.hours"), value: t("contacts.hoursValue") },
     { icon: User, label: t("contacts.seller"), value: <>{SELLER.name}, РНОКПП {SELLER.taxId}</> },
   ];
   return (
