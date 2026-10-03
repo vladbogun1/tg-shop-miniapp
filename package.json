@@ -1,11 +1,12 @@
 {
   "name": "tg-shop-v2",
   "private": true,
-  "description": "Monorepo root: shared library + customer Mini App + admin panel",
+  "description": "Monorepo root: shared library + customer Mini App + admin panel + public website",
   "workspaces": [
     "shared",
     "frontend",
-    "frontend-admin"
+    "frontend-admin",
+    "site"
   ],
   "scripts": {
     "build": "npm run build -w frontend && npm run build -w frontend-admin",

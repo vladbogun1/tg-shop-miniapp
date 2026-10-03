@@ -122,3 +122,20 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+
+  # Public website (site/): its own job so a site failure is visible on its own, and so the two
+  # older apps' job stays unchanged. Lint runs here too; the build needs no backend (ISR on demand).
+  site:
+    name: Site (lint · typecheck · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run lint -w site
+      - run: npm run typecheck -w site
+      - run: npm run build -w site

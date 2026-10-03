@@ -30,10 +30,15 @@ export interface ChatOptions {
   getToken: () => string | null;
   onMessage: (msg: Message) => void;
   onStatus?: (connected: boolean) => void;
+  /**
+   * The browser already carries the credentials (HttpOnly `access` cookie on the handshake — the
+   * website). No Authorization header is sent and a missing token does not stop the connection.
+   */
+  cookieAuth?: boolean;
 }
 
 export function connectOrderChat(options: ChatOptions): ChatConnection {
-  const { orderId, getToken, onMessage, onStatus } = options;
+  const { orderId, getToken, onMessage, onStatus, cookieAuth } = options;
   const origin =
     options.baseUrl || (typeof window !== "undefined" ? window.location.origin : "");
   const wsUrl = `${origin.replace(/^http/, "ws")}/ws`;
@@ -46,7 +51,7 @@ export function connectOrderChat(options: ChatOptions): ChatConnection {
     beforeConnect: () => {
       const token = getToken();
       client.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
-      if (!token) {
+      if (!token && !cookieAuth) {
         // Nothing to authenticate with yet (auth still in flight): stop, and let the caller
         // reconnect once it has one. Hammering the server with anonymous CONNECTs is pointless.
         client.deactivate();

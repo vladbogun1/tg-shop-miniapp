@@ -1,0 +1,579 @@
+"use client";
+
+/**
+ * Checkout — ONE page, two columns on desktop (vinli-style), stacked on phones.
+ *
+ * Left: recipient (prefilled from the last order) · delivery (Nova Poshta on the map + city
+ * search, or pickup) · payment options as radio cards · promo · comment.
+ * Right: sticky summary with the total and the submit button.
+ *
+ * Order creation is exactly the Mini App's (frontend/app/checkout/page.tsx): POST /api/orders with
+ * an Idempotency-Key per attempt, the promo code sent ONLY when the server has just confirmed it,
+ * and PROMO_REJECTED handled by dropping the code and asking for one more click. The difference is
+ * the session: the website is signed in with cookies, so a guest is sent to /login first.
+ */
+import { useQuery } from "@tanstack/react-query";
+import { CreditCard, Loader2, MapPin, Store, Truck } from "lucide-react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DeliveryMethod, NpWarehouse, OrderDetail } from "@shop/shared";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { RadioCard } from "@/components/ui/RadioCard";
+import { useI18n } from "@/i18n/context";
+import type { MessageKey } from "@/i18n";
+import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
+import { useCart, useCartSubtotal } from "@/lib/cart";
+import { useCartValidation } from "@/lib/cart-validation";
+import { useHydrated } from "@/lib/hooks";
+import { Image } from "@/lib/image";
+import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
+import { useSession } from "@/lib/session";
+import { useFmt } from "@/lib/use-fmt";
+import { CitySearch } from "./CitySearch";
+import type { MapFocus } from "./NpWarehouseMap";
+import { PromoField, usePromoPreview } from "./PromoField";
+import { saveSuccess } from "./success-store";
+
+function MapLoading() {
+  const { t } = useI18n();
+  return (
+    <div className="grid h-[420px] place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[13px] font-extrabold uppercase tracking-wide text-[var(--faint)]">
+      {t("checkout.mapLoading")}
+    </div>
+  );
+}
+
+const NpWarehouseMap = dynamic(() => import("./NpWarehouseMap"), { ssr: false, loading: MapLoading });
+
+function npLabel(w: NpWarehouse, t: (k: MessageKey, p?: Record<string, string | number>) => string): string {
+  const cat = t(w.category === "POSTOMAT" ? "np.type.postomat" : w.category === "POINT" ? "np.type.point" : "np.type.branch");
+  return w.number != null ? `${cat} ${t("np.number", { n: w.number })}` : cat;
+}
+
+export function CheckoutView() {
+  const { t, href } = useI18n();
+  const router = useRouter();
+  const session = useSession();
+  const hydrated = useHydrated();
+  const lines = useCart((s) => s.lines);
+
+  // Guests are sent to sign in first and come straight back here.
+  useEffect(() => {
+    if (session.status === "guest") {
+      router.replace(href(`/login?next=${encodeURIComponent(href("/checkout"))}`));
+    }
+  }, [session.status, router, href]);
+
+  if (!hydrated || session.status !== "authed") {
+    return (
+      <div className="container-site pt-10">
+        <p className="flex items-center gap-2 text-[15px] font-bold text-[var(--muted)]">
+          <Loader2 className="h-5 w-5 animate-spin" /> {t("checkout.checkingSession")}
+        </p>
+      </div>
+    );
+  }
+
+  if (lines.length === 0) {
+    return (
+      <div className="container-site pt-10">
+        <h1 className="text-[32px] font-black uppercase text-[var(--ink)]">{t("checkout.title")}</h1>
+        <div className="nb mt-6 flex flex-col items-start gap-4 p-6">
+          <p className="text-[15px] font-bold text-[var(--muted)]">{t("checkout.emptyCart")}</p>
+          <Link href={href("/catalog")} className="nb-accent nb-press tap nb-up px-5 py-3 text-[14px]">
+            {t("common.toCatalog")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return <CheckoutForm />;
+}
+
+function CheckoutForm() {
+  const { t, href } = useI18n();
+  const fmt = useFmt();
+  const router = useRouter();
+  const lines = useCart((s) => s.lines);
+  const promoCode = useCart((s) => s.promoCode);
+  const setPromoCode = useCart((s) => s.setPromoCode);
+  const clearCart = useCart((s) => s.clear);
+  const subtotal = useCartSubtotal();
+  const currency = lines[0]?.currency ?? "UAH";
+  useCartValidation(true);
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
+  const [warehouse, setWarehouse] = useState<NpWarehouse | null>(null);
+  const [warehouseFromLast, setWarehouseFromLast] = useState(false);
+  const [editingWarehouse, setEditingWarehouse] = useState(false);
+  const [focus, setFocus] = useState<MapFocus | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  const idempotencyKey = useRef(newIdempotencyKey());
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // ---- prefill from the last order -----------------------------------------------------------
+  const lastOrder = useQuery({
+    queryKey: ["me", "last-order"],
+    staleTime: Infinity,
+    queryFn: async (): Promise<OrderDetail | null> => {
+      const list = await api.orders();
+      const latest = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      return latest ? api.order(latest.id) : null;
+    },
+  });
+
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    const o = lastOrder.data;
+    if (!o || prefillDone.current) return;
+    prefillDone.current = true;
+    let used = false;
+    if (o.customerName) {
+      setName((v) => v || o.customerName);
+      used = true;
+    }
+    if (o.phone) {
+      setPhone((v) => v || o.phone);
+      used = true;
+    }
+    if (used) setPrefilled(true);
+    if (o.deliveryMethod === "PICKUP") {
+      setDelivery("PICKUP");
+      return;
+    }
+    // The order keeps only names; find the branch again so it can be submitted with its refs.
+    if (o.npCityName && o.npWarehouseName) {
+      (async () => {
+        try {
+          const cities = await api.npCities(o.npCityName!);
+          const city = cities.find((c) => c.name === o.npCityName) ?? cities[0];
+          if (!city) return;
+          const whs = await api.npWarehouses(city.ref, "");
+          const w = whs.find((x) => x.description === o.npWarehouseName);
+          if (w) {
+            setWarehouse((cur) => cur ?? { ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name });
+            setWarehouseFromLast(true);
+          }
+        } catch {
+          /* not critical: the customer picks on the map */
+        }
+      })();
+    }
+  }, [lastOrder.data]);
+
+  // ---- payment --------------------------------------------------------------------------------
+  const paymentQuery = useQuery({ queryKey: ["payment-options"], queryFn: () => api.paymentOptions() });
+  const paymentOptions = useMemo(() => paymentQuery.data ?? [], [paymentQuery.data]);
+  const chosen = paymentOptions.find((p) => p.id === paymentId) ?? null;
+
+  const promo = usePromoPreview(promoCode, subtotal);
+  const promoValid = promo.data?.valid === true;
+  const discount = promo.discount;
+  const total = Math.max(0, subtotal - discount);
+  const dueNow =
+    chosen?.requiresPrepayment && chosen.prepaymentMinor ? Math.min(chosen.prepaymentMinor, total) : total;
+  // Both payment options the shop has (prepayment + COD, full payment to the FOP account) are paid
+  // by transfer, so once one is chosen the order ends with requisites. There is no acquiring.
+  const needsRequisites = !!chosen;
+
+  // ---- validation -----------------------------------------------------------------------------
+  const nameOk = name.trim().length >= 2;
+  const phoneOk = isValidPhone(phone);
+  const deliveryOk = delivery === "PICKUP" || !!warehouse;
+  const paymentOk = !!paymentId;
+  const hasProblems = lines.some((l) => l.stock <= 0);
+  const formOk = nameOk && phoneOk && deliveryOk && paymentOk && !hasProblems && subtotal > 0;
+
+  async function submit() {
+    setTouched(true);
+    setSubmitError(null);
+    if (!formOk) {
+      setSubmitError(hasProblems ? t("cart.hasProblems") : t("checkout.fixErrors"));
+      const firstBad = !nameOk || !phoneOk ? "co-contacts" : !deliveryOk ? "co-delivery" : "co-payment";
+      document.getElementById(firstBad)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (submitting) return;
+    setSubmitting(true);
+    const orderable = lines.filter((l) => l.stock > 0);
+    const body: CreateOrderRequest = {
+      items: orderable.map((l) => ({ productId: l.productId, variantId: l.variantId ?? undefined, quantity: l.quantity })),
+      customerName: name.trim(),
+      phone: phoneE164(phone),
+      comment: comment.trim() || undefined,
+      // ONLY a code the server has just confirmed (see UI-FIXES §6).
+      promoCode: promoValid ? promoCode.trim() : undefined,
+      deliveryMethod: delivery,
+      npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,
+      npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
+      npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
+      npWarehouseName: delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
+      paymentOptionId: paymentId!,
+    };
+    try {
+      const created = await api.createOrder(body, idempotencyKey.current);
+      saveSuccess({
+        orderId: created.orderId,
+        requisites: created.requisites ?? null,
+        paymentTitle: chosen?.title ?? "",
+        totalMinor: total,
+        dueNowMinor: dueNow,
+        currency,
+      });
+      clearCart();
+      idempotencyKey.current = newIdempotencyKey();
+      router.push(href(`/checkout/success/${created.orderId}`));
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
+        setPromoCode("");
+        setSubmitError(t("checkout.promoDropped", { message: e.message }));
+      } else {
+        setSubmitError(e instanceof ApiError ? e.message : t("checkout.failed"));
+      }
+      setSubmitting(false);
+    }
+  }
+
+  const submitLabel = needsRequisites ? t("checkout.submitRequisites") : t("checkout.submit");
+  const showMap = delivery === "NOVA_POSHTA" && (!warehouse || editingWarehouse);
+
+  return (
+    <div className="container-site pt-8">
+      <h1 className="text-[30px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("checkout.title")}</h1>
+
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+        className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10"
+      >
+        <div className="flex min-w-0 flex-col gap-6">
+          {/* contacts */}
+          <Section id="co-contacts" n={1} title={t("checkout.contacts")}>
+            {prefilled && <p className="mb-3 text-[13px] font-bold text-[var(--ok)]">{t("checkout.prefilled")}</p>}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label={t("checkout.name")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                status={touched && !nameOk ? "danger" : nameOk ? "ok" : undefined}
+                hint={touched && !nameOk ? t("checkout.nameError") : undefined}
+                autoComplete="name"
+                name="name"
+                aria-invalid={touched && !nameOk}
+              />
+              <Input
+                label={t("checkout.phone")}
+                inputMode="tel"
+                value={phone ? formatPhone(phone) : ""}
+                onFocus={() => {
+                  if (!phone) setPhone("+38");
+                }}
+                onChange={(e) => setPhone(e.target.value)}
+                status={touched && !phoneOk ? "danger" : phoneOk ? "ok" : undefined}
+                hint={touched && !phoneOk ? t("checkout.phoneError") : undefined}
+                autoComplete="tel"
+                name="tel"
+                aria-invalid={touched && !phoneOk}
+              />
+            </div>
+          </Section>
+
+          {/* delivery */}
+          <Section id="co-delivery" n={2} title={t("checkout.delivery")}>
+            <div role="tablist" aria-label={t("checkout.delivery")} className="grid grid-cols-2 gap-3">
+              <DeliveryTab
+                active={delivery === "NOVA_POSHTA"}
+                onClick={() => setDelivery("NOVA_POSHTA")}
+                icon={<Truck className="h-5 w-5" strokeWidth={2.5} />}
+                title={t("checkout.np")}
+                subtitle={t("checkout.npSubtitle")}
+              />
+              <DeliveryTab
+                active={delivery === "PICKUP"}
+                onClick={() => setDelivery("PICKUP")}
+                icon={<Store className="h-5 w-5" strokeWidth={2.5} />}
+                title={t("checkout.pickup")}
+                subtitle={t("checkout.pickupSubtitle")}
+              />
+            </div>
+
+            {delivery === "NOVA_POSHTA" && (
+              <div className="mt-5 flex flex-col gap-4">
+                {warehouse && !editingWarehouse && (
+                  <div className="flex flex-col gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--accent)]">
+                      <MapPin className="h-5 w-5 text-[var(--accent-ink)]" strokeWidth={2.75} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-extrabold text-[var(--ink)]">
+                        {npLabel(warehouse, t)}
+                        {warehouseFromLast && (
+                          <span className="ml-2 inline-block border-[2px] border-[var(--line)] bg-[var(--c3)] px-1.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
+                            {t("checkout.lastWarehouse")}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[13px] font-medium text-[var(--muted)]">
+                        {warehouse.cityName ? `${warehouse.cityName}, ` : ""}
+                        {warehouse.description}
+                      </p>
+                    </div>
+                    <Button type="button" variant="surface" size="sm" onClick={() => setEditingWarehouse(true)}>
+                      {t("checkout.changeWarehouse")}
+                    </Button>
+                  </div>
+                )}
+                {showMap && (
+                  <>
+                    <CitySearch onFocus={(f) => setFocus(f)} />
+                    <p className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.mapHint")}</p>
+                    <NpWarehouseMap
+                      focus={focus}
+                      selectedRef={warehouse?.ref ?? null}
+                      onSelect={(w) => {
+                        setWarehouse(w);
+                        setWarehouseFromLast(false);
+                        setEditingWarehouse(false);
+                      }}
+                    />
+                    {warehouse && (
+                      <Button type="button" variant="surface" size="sm" onClick={() => setEditingWarehouse(false)} className="self-start">
+                        {t("common.cancel")}
+                      </Button>
+                    )}
+                  </>
+                )}
+                {touched && !warehouse && (
+                  <p className="text-[13px] font-bold text-[var(--danger)]">{t("checkout.warehouseRequired")}</p>
+                )}
+              </div>
+            )}
+            {delivery === "PICKUP" && (
+              <p className="mt-5 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-4 text-[14px] font-medium leading-relaxed text-[var(--ink)]">
+                {t("checkout.pickupText")}
+              </p>
+            )}
+          </Section>
+
+          {/* payment */}
+          <Section id="co-payment" n={3} title={t("checkout.payment")}>
+            {paymentQuery.isLoading ? (
+              <div className="flex flex-col gap-3">
+                <div className="shimmer h-20" />
+                <div className="shimmer h-20" />
+              </div>
+            ) : paymentQuery.isError ? (
+              <p className="text-[14px] font-bold text-[var(--danger)]">{t("checkout.paymentError")}</p>
+            ) : paymentOptions.length === 0 ? (
+              <p className="text-[14px] font-bold text-[var(--muted)]">{t("checkout.paymentNone")}</p>
+            ) : (
+              <div role="radiogroup" aria-label={t("checkout.payment")} className="flex flex-col gap-3">
+                {paymentOptions.map((o) => (
+                  <RadioCard
+                    key={o.id}
+                    selected={paymentId === o.id}
+                    onSelect={() => setPaymentId(o.id)}
+                    title={o.title}
+                    subtitle={
+                      o.requiresPrepayment && o.prepaymentMinor
+                        ? `${o.description ?? ""}${o.description ? " · " : ""}${t("checkout.prepay", { amount: fmt.money(o.prepaymentMinor, currency) })}`
+                        : o.description
+                    }
+                    icon={<CreditCard className="h-5 w-5" strokeWidth={2.5} />}
+                  />
+                ))}
+              </div>
+            )}
+            {touched && !paymentOk && (
+              <p className="mt-3 text-[13px] font-bold text-[var(--danger)]">{t("checkout.paymentRequired")}</p>
+            )}
+          </Section>
+
+          {/* promo + comment */}
+          <Section n={4} title={`${t("checkout.promo")} · ${t("checkout.comment")}`}>
+            <PromoField
+              code={promoCode}
+              onChange={setPromoCode}
+              subtotal={subtotal}
+              currency={currency}
+              preview={{ data: promo.data, loading: promo.loading }}
+            />
+            <label className="mt-5 block">
+              <span className="nb-up mb-1.5 block text-[12px] font-black text-[var(--faint)]">{t("checkout.comment")}</span>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={t("checkout.commentPlaceholder")}
+                rows={3}
+                maxLength={1000}
+                className="w-full resize-y rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+              />
+            </label>
+          </Section>
+        </div>
+
+        {/* summary */}
+        <aside className="min-w-0">
+          <div className="nb-lg flex flex-col gap-4 p-5 lg:sticky lg:top-[140px]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[18px] font-black uppercase tracking-wide text-[var(--ink)]">{t("checkout.summary")}</h2>
+              <Link href={href("/cart")} className="text-[12px] font-black uppercase text-[var(--muted)] hover:text-[var(--accent)]">
+                {t("checkout.edit")}
+              </Link>
+            </div>
+            <ul className="flex max-h-[300px] flex-col gap-3 overflow-y-auto pr-1">
+              {lines.map((l) => (
+                <li key={l.key} className={`flex items-center gap-3 ${l.stock <= 0 ? "opacity-50" : ""}`}>
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)]">
+                    <Image src={l.imageUrl} alt="" size={120} className="h-full w-full" />
+                    <span className="absolute bottom-0 right-0 border-l-[2px] border-t-[2px] border-[var(--line)] bg-[var(--c3)] px-1 text-[10px] font-black text-[var(--accent-ink)]">
+                      ×{l.quantity}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 text-[13px] font-bold text-[var(--ink)]">{l.title}</span>
+                    {l.variantName && <span className="block text-[12px] font-semibold text-[var(--muted)]">{l.variantName}</span>}
+                    {l.stock <= 0 && <span className="block text-[12px] font-extrabold text-[var(--danger)]">{t("cart.unavailable")}</span>}
+                  </span>
+                  <span className="shrink-0 text-[14px] font-black text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-col gap-1.5 border-t-[3px] border-[var(--line)] pt-3 text-[14px]">
+              <Row label={t("checkout.sum")} value={fmt.money(subtotal, currency)} />
+              {discount > 0 && (
+                <Row
+                  label={promoCode ? t("checkout.discountWithCode", { code: promoCode }) : t("checkout.discount")}
+                  value={`−${fmt.money(discount, currency)}`}
+                  tone="ok"
+                />
+              )}
+              <Row label={t("checkout.deliveryCost")} value={t("checkout.deliveryCostValue")} muted />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[16px] font-black uppercase tracking-wide text-[var(--ink)]">{t("checkout.total")}</span>
+              <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[22px] font-black text-[var(--accent-ink)]">
+                {fmt.money(total, currency)}
+              </span>
+            </div>
+            {chosen && dueNow !== total && (
+              <div className="-mt-1 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] p-3">
+                <Row label={t("checkout.dueNow")} value={fmt.money(dueNow, currency)} strong />
+                <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
+                  {t("checkout.rest", { amount: fmt.money(total - dueNow, currency) })}
+                </p>
+              </div>
+            )}
+            {promoCode && !promo.loading && promo.data && !promo.data.valid && (
+              <p className="text-[12px] font-bold text-[var(--danger)]">
+                {t("checkout.promoProblem", { code: promoCode, message: promo.data.message ?? t("promo.notFound") })}
+              </p>
+            )}
+            {submitError && (
+              <p role="alert" className="rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)]">
+                {submitError}
+              </p>
+            )}
+            <Button type="submit" variant="accent" size="lg" fullWidth loading={submitting}>
+              {submitLabel}
+            </Button>
+            <p className="text-center text-[12px] font-medium text-[var(--muted)]">
+              {t("checkout.agree")}{" "}
+              <Link href={href("/terms")} target="_blank" className="link-ink font-bold text-[var(--ink)]">
+                {t("checkout.agreeLink")}
+              </Link>
+            </p>
+          </div>
+        </aside>
+      </form>
+    </div>
+  );
+}
+
+function Section({ id, n, title, children }: { id?: string; n: number; title: string; children: React.ReactNode }) {
+  return (
+    <section id={id} className="nb p-5 sm:p-6" aria-labelledby={id ? `${id}-h` : undefined}>
+      <h2 id={id ? `${id}-h` : undefined} className="mb-4 flex items-center gap-3 text-[18px] font-black uppercase tracking-wide text-[var(--ink)]">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--ink)] text-[14px] text-[var(--bg)]">
+          {n}
+        </span>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function DeliveryTab({
+  active,
+  onClick,
+  icon,
+  title,
+  subtitle,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className="flex min-h-[88px] flex-col items-start gap-1.5 rounded-[var(--r)] border-[3px] border-[var(--line)] p-4 text-left transition-transform hover:-translate-y-[1px] active:translate-x-[3px] active:translate-y-[3px]"
+      style={{
+        background: active ? "var(--accent)" : "var(--surface)",
+        color: active ? "var(--accent-ink)" : "var(--ink)",
+        boxShadow: active ? "5px 5px 0 var(--shadow)" : "none",
+      }}
+    >
+      {icon}
+      <span className="text-[14px] font-extrabold uppercase leading-tight tracking-wide">{title}</span>
+      <span className="text-[12px] font-bold" style={{ color: active ? "var(--accent-ink)" : "var(--muted)" }}>
+        {subtitle}
+      </span>
+    </button>
+  );
+}
+
+function Row({
+  label,
+  value,
+  tone,
+  muted,
+  strong,
+}: {
+  label: string;
+  value: string;
+  tone?: "ok";
+  muted?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className={`font-semibold ${muted ? "text-[var(--muted)]" : "text-[var(--ink)]"} ${strong ? "font-extrabold" : ""}`}>{label}</span>
+      <span
+        className={`text-right font-extrabold ${tone === "ok" ? "text-[var(--ok)]" : muted ? "text-[var(--muted)]" : "text-[var(--ink)]"} ${strong ? "text-[16px] font-black" : ""}`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}

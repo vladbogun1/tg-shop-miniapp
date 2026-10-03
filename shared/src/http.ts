@@ -64,6 +64,11 @@ export interface HttpClientOptions {
   getLocale?: () => string;
   /** Overrides for the client's own wording; defaults are Russian (the admin panel's language). */
   messages?: Partial<HttpMessages>;
+  /**
+   * Fetch credentials mode. The website authenticates with HttpOnly cookies and passes "include";
+   * the bearer-token apps leave it unset (browser default).
+   */
+  credentials?: RequestCredentials;
 }
 
 export interface HttpClient {
@@ -84,7 +89,7 @@ export function normalizeBaseUrl(raw: string | undefined, fallback: string): str
 }
 
 export function createHttpClient(options: HttpClientOptions): HttpClient {
-  const { baseUrl, getToken, onUnauthorized, getLocale } = options;
+  const { baseUrl, getToken, onUnauthorized, getLocale, credentials } = options;
   const texts: HttpMessages = { ...RU_MESSAGES, ...options.messages };
 
   async function request<T>(
@@ -108,7 +113,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
     let res: Response;
     try {
-      res = await fetch(`${baseUrl}${path}`, { ...init, headers });
+      res = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers,
+        ...(credentials ? { credentials } : {}),
+      });
     } catch {
       // Network error / backend offline — status 0 lets callers tell it apart from an HTTP error.
       throw new ApiError(texts.offline(), 0);

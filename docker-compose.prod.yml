@@ -53,6 +53,12 @@ services:
     ports: !override
       - "127.0.0.1:8091:80"
 
+  # Public website gateway: loopback only, the TLS front for https://maxsolkh.shop proxies to it
+  # (port 443 on the host is owned by the existing edge proxy — see docs).
+  gateway-site:
+    ports: !override
+      - "127.0.0.1:8092:80"
+
   # Pin to pre-built registry images (override the build: from base/public).
   backend:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-backend:${IMAGE_TAG:-latest}
@@ -70,6 +76,10 @@ services:
 
   frontend-admin-public:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-admin:${IMAGE_TAG:-latest}
+    pull_policy: always
+
+  site-public:
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-site:${IMAGE_TAG:-latest}
     pull_policy: always
 
   caddy:

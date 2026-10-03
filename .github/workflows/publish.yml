@@ -1,6 +1,6 @@
 name: Publish images
 
-# Build & push the three prod images (backend, customer frontend, admin frontend)
+# Build & push the prod images (backend, customer frontend, admin frontend, public website)
 # to Docker Hub. Frontends are built SAME-ORIGIN (relative URLs) to match the
 # single-origin gateway prod setup (docker-compose.public.yml / .prod.yml).
 #
@@ -28,6 +28,7 @@ env:
   BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-backend
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
   ADMIN_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-admin
+  SITE_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-site
 
 jobs:
   publish:
@@ -99,5 +100,20 @@ jobs:
           tags: |
             ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.tag }}
             ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.moving }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push public website
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./site/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=https://maxsolkh.shop
+            NEXT_PUBLIC_BOT_URL=https://t.me/maxsolch_bot
+          tags: |
+            ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.moving }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

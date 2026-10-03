@@ -35,7 +35,21 @@
 все старые токены умирают.
 
 **Rate limiting.** `RateLimitFilter`: 10 попыток / 5 мин на `/api/auth/**` (по IP), 30/мин на
-загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов.
+загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов. Для входа на сайт —
+отдельно: `POST /api/auth/web/start` 10/мин, остальные `/api/auth/web/*` (опрос статуса) 90/мин.
+
+**Покупатель на сайте (maxsolkh.shop).** Вход только через бота: `start` → deep link
+`/start login_<nonce>` → в боте нужно выбрать число, показанное на сайте (защита от подсунутой
+чужой ссылки) → `complete`. В БД — только SHA-256 от nonce, `login_bind` и refresh-токена.
+Cookies `HttpOnly` + `SameSite=Lax` + `Secure` (`WEB_COOKIE_SECURE`, в `dev` выключен):
+`access` (JWT 15 мин, claim `chn=web`), `refresh` (30 дней, путь `/api/auth/web`, ротация;
+повтор старого токена позже 20 с отзывает сессию), `login_bind` (5 мин). Токен сайта
+принимается, только пока жива строка `web_sessions` (кэш 30 с) — «Завершить сессию» в боте или
+в кабинете действует сразу. Изменяющие запросы с cookie-авторизацией и все
+`/api/auth/web/complete|refresh|logout` проверяют `Origin`/`Referer` (`CookieOriginGuard`);
+без обоих заголовков — 403. `POST /api/auth/web/dev-login` существует только в профиле `dev`.
+Чек-лист прода: `SITE_BASE_URL=https://maxsolkh.shop`, `WEB_COOKIE_SECURE=true`,
+`SITE_REVALIDATE_SECRET` сгенерирован и совпадает у backend и site.
 
 ---
 

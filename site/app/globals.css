@@ -1,0 +1,265 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   NEO-BRUTALISM — public website (tokens copied from the Mini App, frontend/app/globals.css)
+   ----------------------------------------------------------------------------
+   Thick ink borders, hard offset shadows (no blur), sharp corners, raw bold
+   colors, heavy type. Light by default; dark via [data-theme="dark"].
+   ============================================================================ */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F1E6;
+  --ink: #141414;
+  --surface: #FFFFFF;
+  --surface-2: #F1EEE3;
+  --line: #141414;
+  --shadow: #141414;
+  --muted: #6E6A5E;
+  --faint: #9A968A;
+
+  --accent: #FF5A2C;   /* orange */
+  --c2: #2F6BFF;       /* blue */
+  --c3: #FFD23F;       /* yellow */
+  --c4: #16B36B;       /* green */
+  --c5: #FF73B5;       /* pink */
+  --accent-ink: #141414;
+
+  --ok: #16B36B;
+  --warn: #E8A300;
+  --danger: #E5341F;
+
+  /* Order-status hues — distinct & identical to the admin (shared identity).
+     Chips carry an ink border + dark text, so these read on light & dark. */
+  --st-new: #3F8CF5;       /* blue — new */
+  --st-approved: #9B6BFF;  /* violet — approved */
+  --st-shipped: #F5A623;   /* amber — shipped */
+  --st-delivered: #22C07D; /* green — delivered */
+  --st-rejected: #F0503C;  /* red — rejected */
+
+  --r: 3px;            /* near-sharp corners */
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Sticky header height — anchors and sticky sidebars offset from it. */
+  --header-h: 72px;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Greyer (not near-black) so the hard black offset shadows read on every block. */
+  --bg: #26262B;
+  --ink: #F4F1E6;
+  --surface: #34343B;
+  --surface-2: #2D2D33;
+  --line: #F4F1E6;
+  --shadow: #0A0A0C;
+  --muted: #AEACA6;
+  --faint: #79776F;
+
+  --accent: #FF6A3D;
+  --c2: #5B8BFF;
+  --c3: #FFD23F;
+  --c4: #2BD489;
+  --c5: #FF8AC4;
+  --accent-ink: #141414;
+
+  --ok: #2BD489;
+  --warn: #FFB627;
+  --danger: #FF5747;
+}
+
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--muted);
+  --color-ink-faint: var(--faint);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --radius-nb: var(--r);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body {
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+/* "scene" → flat ink graph-paper grid over the bg (no aurora, no blur). */
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* ---------------------------------------------------------------------------
+   Neo primitives
+   --------------------------------------------------------------------------- */
+/* In a layer so Tailwind utilities (bg-[…], hover:…) on the same element win — unlayered CSS
+   would beat every utility, which is how `nb bg-[var(--c3)]` silently stayed white. */
+@layer components {
+.nb {
+  background: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+/* Same block as .nb, only with a deeper shadow. It used to override box-shadow ALONE, so
+   `className="nb-lg"` without `nb` produced a borderless, transparent card and the page
+   showed through it (empty cart, cart summary bar, SoonPanel). Declaring the full block
+   here keeps `nb nb-lg` working and makes the standalone form correct too. */
+.nb-lg {
+  background: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 7px 7px 0 var(--shadow);
+}
+.nb-flat {
+  background: var(--surface);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+}
+.nb-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 5px 5px 0 var(--shadow);
+  font-weight: 800;
+}
+/* press = button drops into its shadow */
+.nb-press { transition: transform .07s ease, box-shadow .07s ease; }
+.nb-press:active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--shadow); }
+
+.nb-chip {
+  background: var(--surface);
+  border: 2.5px solid var(--line);
+  border-radius: var(--r);
+  font-weight: 700;
+  color: var(--ink);
+}
+.nb-chip-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.nb-up { text-transform: uppercase; letter-spacing: 0.02em; }
+}
+
+/* Bright accent fills (yellow --c3) are light in BOTH themes → text/icons on
+   them must stay dark, never follow --ink (which flips to light in dark mode). */
+.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
+
+/* Skeleton */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 3px solid var(--line);
+  border-radius: var(--r);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+.tap { min-width: 44px; min-height: 44px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+   Website additions (desktop-first, keyboard friendly)
+   ============================================================================ */
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header-h) + 16px); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.container-site {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+@media (min-width: 768px) { .container-site { padding-inline: 24px; } }
+
+/* One visible, consistent focus ring for keyboard users (mouse clicks do not show it). */
+:focus-visible {
+  outline: 3px solid var(--c2);
+  outline-offset: 2px;
+}
+
+/* Hover "lift" for interactive neo blocks on devices that can hover. */
+@media (hover: hover) {
+  .nb-hover { transition: transform .12s ease, box-shadow .12s ease; }
+  .nb-hover:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--shadow); }
+  .nb-hover:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
+}
+
+.link-ink {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+.link-ink:hover { color: var(--accent); }
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 100;
+}
+.skip-link:focus { top: 8px; }
+
+/* Rendered markdown (legal pages). */
+.prose-nb { color: var(--ink); font-size: 16px; line-height: 1.65; }
+.prose-nb h1 { font-size: 30px; font-weight: 900; text-transform: uppercase; letter-spacing: .01em; margin: 0 0 18px; line-height: 1.15; }
+.prose-nb h2 { font-size: 21px; font-weight: 900; text-transform: uppercase; letter-spacing: .02em; margin: 34px 0 12px; padding-bottom: 6px; border-bottom: 3px solid var(--line); }
+.prose-nb h3 { font-size: 17px; font-weight: 800; margin: 24px 0 8px; }
+.prose-nb p { margin: 0 0 14px; }
+.prose-nb ul, .prose-nb ol { margin: 0 0 14px; padding-left: 22px; }
+.prose-nb li { margin: 4px 0; }
+.prose-nb ul li::marker { color: var(--accent); }
+.prose-nb a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; font-weight: 700; }
+.prose-nb a:hover { color: var(--accent); }
+.prose-nb strong { font-weight: 800; }
+.prose-nb hr { border: 0; border-top: 3px solid var(--line); margin: 28px 0; }
+.prose-nb blockquote { margin: 0 0 14px; padding: 10px 14px; border-left: 5px solid var(--accent); background: var(--surface-2); }
+.prose-nb table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14px; display: block; overflow-x: auto; }
+.prose-nb th, .prose-nb td { border: 2px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+.prose-nb th { background: var(--surface-2); font-weight: 800; }
+.prose-nb code { background: var(--surface-2); padding: 1px 5px; border: 1.5px solid var(--line); font-size: .9em; }
+
+/* Leaflet controls follow the neo frame. */
+.leaflet-container { font-family: inherit; }
+
+/* Native select styled as a neo control. */
+.nb-select {
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  padding-right: 36px;
+}

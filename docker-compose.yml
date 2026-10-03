@@ -172,6 +172,12 @@ services:
       # URLs
       WEBAPP_BASE_URL: ${WEBAPP_BASE_URL}
       ADMIN_BASE_URL: ${ADMIN_BASE_URL}
+      # Public site (site/): its origin, auth-cookie Secure flag (empty = true outside dev),
+      # ISR revalidation webhook called after product/tag edits (empty URL = off).
+      SITE_BASE_URL: ${SITE_BASE_URL:-}
+      WEB_COOKIE_SECURE: ${WEB_COOKIE_SECURE:-}
+      SITE_REVALIDATE_URL: ${SITE_REVALIDATE_URL:-}
+      SITE_REVALIDATE_SECRET: ${SITE_REVALIDATE_SECRET:-}
     ports:
       - "8080:8080"
     networks:
@@ -211,6 +217,27 @@ services:
       - backend
     ports:
       - "3001:3001"
+    networks:
+      - tgshop
+
+  # Public website (site/). Same-origin in the browser: talks to the backend at runtime over
+  # INTERNAL_API_BASE; no NEXT_PUBLIC API URLs to bake in. Local port 3007 (3006 is `npm run dev -w site`).
+  site:
+    build:
+      context: .
+      dockerfile: site/Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${SITE_BASE_URL:-http://localhost:3006}
+    container_name: tgshop_v2_site
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      INTERNAL_API_BASE: http://backend:8080
+      SITE_INDEXABLE: ${SITE_INDEXABLE:-false}
+      SITE_REVALIDATE_SECRET: ${SITE_REVALIDATE_SECRET:-}
+    ports:
+      - "3007:3000"
     networks:
       - tgshop
 
