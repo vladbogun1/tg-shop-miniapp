@@ -244,7 +244,7 @@ web.push.apple.com, updates.push.services.mozilla.com.
 | URL | Что | Проверка |
 |---|---|---|
 | `https://maxsolkh.shop:666` | Клиентский Mini App | 200, `<title>Магазин</title>`, `/api/products` 200, `/img` 200 |
-| `https://maxsolkh.shop:667` | Админка | 200, `/api/auth/admin/login` 200 (admin/maxsolch2026) |
+| `https://maxsolkh.shop:667` | Админка | 200, `/api/auth/admin/login` 200 (логин/пароль — в серверном .env) |
 
 - **Образы**: arm64 (`vladbogun1/maxsolch2-{backend,frontend,admin}:latest`), тянутся, не собираются.
 - **Опубликованные host-порты v2**: только Caddy `666/667` (наружу) + служебные `3341`(mysql),
