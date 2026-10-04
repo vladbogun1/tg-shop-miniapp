@@ -5,6 +5,8 @@ import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.PromoReservation;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.dto.PromoPreviewDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,19 +34,30 @@ import java.util.Optional;
 @Service
 public class PromoService {
 
-    /** How long a limited code stays reserved for one customer without an order. */
+    /**
+     * Default of how long a limited code stays reserved for one customer without an order;
+     * the admin can change it (Настройки → {@code promo.holdMinutes}), see {@link #hold()}.
+     */
     public static final Duration HOLD = Duration.ofMinutes(30);
 
     private final PromoCodeRepository promoCodeRepository;
     private final PromoReservationRepository reservationRepository;
     private final Messages messages;
+    private final SettingsService settings;
 
     public PromoService(PromoCodeRepository promoCodeRepository,
                         PromoReservationRepository reservationRepository,
-                        Messages messages) {
+                        Messages messages,
+                        SettingsService settings) {
         this.promoCodeRepository = promoCodeRepository;
         this.reservationRepository = reservationRepository;
         this.messages = messages;
+        this.settings = settings;
+    }
+
+    /** Current hold length: the admin setting, or {@link #HOLD} when it is not set. */
+    Duration hold() {
+        return Duration.ofMinutes(settings.get(SettingsRegistry.PROMO_HOLD_MINUTES, (int) HOLD.toMinutes()));
     }
 
     /**
@@ -95,7 +108,7 @@ public class PromoService {
             return valid(promo, subtotal, null);
         }
 
-        Instant until = Instant.now().plus(HOLD);
+        Instant until = Instant.now().plus(hold());
         PromoReservation reservation = reservationRepository
                 .find(promo.getId(), userId)
                 .orElseGet(() -> {

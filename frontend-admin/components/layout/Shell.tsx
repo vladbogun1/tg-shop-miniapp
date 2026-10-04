@@ -22,6 +22,7 @@ import {
   Truck,
   Languages,
   ScrollText,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -45,6 +46,7 @@ const NAV = [
   { href: "/payment", label: "Оплата", icon: CreditCard },
   { href: "/translations", label: "Переводы", icon: Languages, badge: "translations" as const },
   { href: "/audit", label: "Журнал", icon: ScrollText },
+  { href: "/settings", label: "Настройки", icon: Settings },
 ];
 
 const TITLE: Record<string, string> = {
@@ -59,6 +61,7 @@ const TITLE: Record<string, string> = {
   "/payment": "Оплата",
   "/translations": "Переводы",
   "/audit": "Журнал",
+  "/settings": "Настройки",
 };
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
