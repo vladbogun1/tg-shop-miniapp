@@ -67,6 +67,8 @@ services:
       # NOT "dev": the startup check refuses to boot with ALLOW_UNSIGNED_INIT_DATA=true or
       # placeholder secrets outside the dev profile. That is the point.
       SPRING_PROFILES_ACTIVE: prod
+      # Shown in the admin «Настройки → Система» block.
+      APP_VERSION: ${IMAGE_TAG:-latest}
     # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).
     ports: !override []
 

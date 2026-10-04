@@ -42,6 +42,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductModal } from "@/components/products/ProductModal";
+import { useShopSetting } from "@/lib/settings";
 
 type StatusFilter = "all" | "instock" | "out" | "hidden";
 type SortKey =
@@ -445,8 +446,9 @@ interface RowProps {
 
 function StockBadge({ p }: { p: Product }) {
   const stock = effStock(p);
+  const lowQty = useShopSetting("catalog.lowStockQty", 3);
   if (p.active !== false && stock === 0) return <Badge tone="danger">Закончился</Badge>;
-  if (stock <= 3 && stock > 0) return <Badge tone="warn">Мало: {stock}</Badge>;
+  if (stock <= lowQty && stock > 0) return <Badge tone="warn">Мало: {stock}</Badge>;
   return (
     <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
       Остаток: {stock}
