@@ -344,6 +344,40 @@ public class NotificationService {
         }
     }
 
+    /**
+     * The shop's card/IBAN/recipient changed (A11). Posted to the seller's service topic so a swap
+     * made with a stolen admin token does not go unnoticed. {@code changes} are already masked.
+     */
+    public void onRequisitesChanged(String adminName, List<String> changes) {
+        if (!enabled()) {
+            return;
+        }
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId == null || chatId.isBlank()) {
+            return;
+        }
+        try {
+            StringBuilder text = new StringBuilder("⚠️ <b>Изменены реквизиты оплаты</b>\n")
+                    .append("Кто: ").append(esc(nz(adminName))).append('\n');
+            for (String c : changes) {
+                text.append("• ").append(esc(c)).append('\n');
+            }
+            text.append("<i>Если это были не вы — смените пароль админки и верните реквизиты.</i>");
+            SendMessage msg = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(text.toString())
+                    .parseMode("HTML")
+                    .build();
+            int topic = props.getTelegram().getNotifyTopicChat();
+            if (topic > 0) {
+                msg.setMessageThreadId(topic);
+            }
+            bot.execute(msg);
+        } catch (Exception e) {
+            log.warn("onRequisitesChanged failed: {}", e.getMessage());
+        }
+    }
+
     /** Order approved → post a dispatch card (what to ship + COD to collect) to the seller topic. */
     public void onApprovedDispatch(Order order) {
         if (!enabled()) {

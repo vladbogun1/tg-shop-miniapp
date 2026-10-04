@@ -56,6 +56,28 @@ public class AdminAuditService {
     }
 
     /**
+     * An admin sign-in attempt (A11 / В-3 г): {@code ADMIN_LOGIN_OK} / {@code ADMIN_LOGIN_FAIL} with
+     * the method (password / telegram) and client IP. There is no admin principal yet at that point,
+     * so the admin is passed explicitly; an unknown login is stored with admin id 0.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordLogin(boolean ok, String method, Long adminId, String login, String ip) {
+        try {
+            AdminAuditEntry entry = new AdminAuditEntry();
+            long id = adminId == null ? 0L : adminId;
+            entry.setAdminId(id);
+            entry.setAdminName(id == 0L ? null : displayName(id));
+            entry.setAction(ok ? "ADMIN_LOGIN_OK" : "ADMIN_LOGIN_FAIL");
+            entry.setEntityType("AUTH");
+            entry.setEntityId(login == null ? null : login.length() <= 64 ? login : login.substring(0, 64));
+            entry.setDetails(trim("способ: " + method + ", IP " + (ip == null ? "?" : ip)));
+            repository.save(entry);
+        } catch (Exception e) {
+            log.warn("Failed to write login audit entry: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Human-readable name of the current admin, for the audit log and as the author of chat
      * messages (which used to be signed with a hardcoded "Менеджер" no matter who wrote them).
      */

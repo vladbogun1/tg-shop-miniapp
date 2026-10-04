@@ -1,13 +1,12 @@
 package com.maxsolch.shop.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** Send one test message to a specific Telegram user id. */
+/** Send one test message. {@code telegramUserId} null = to the admin who is sending it («себе»). */
 public record BroadcastTestRequest(
         @NotBlank @Size(max = 4096) String text,
-        @NotNull Long telegramUserId,
+        Long telegramUserId,
         boolean withButton,
-        String buttonText) {
+        @Size(max = 64) String buttonText) {
 }

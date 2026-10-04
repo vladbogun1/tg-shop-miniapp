@@ -2,10 +2,12 @@ package com.maxsolch.shop.translation;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.repository.TagRepository;
@@ -81,13 +83,16 @@ public class TranslationAdminService {
             "VARIANT:name", 128,
             "TAG:name", 128,
             "PAYMENT_OPTION:title", 255,
-            "PAYMENT_OPTION:description", 1024);
+            "PAYMENT_OPTION:description", 1024,
+            "PAYMENT_REQUISITES:note", 2048,
+            "PAYMENT_REQUISITES:purpose", 255);
 
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final TagRepository tagRepository;
     private final PaymentOptionRepository paymentOptionRepository;
+    private final PaymentRequisitesRepository requisitesRepository;
     private final TranslationService translationService;
     private final CacheManager cacheManager;
 
@@ -96,6 +101,7 @@ public class TranslationAdminService {
                                    ProductVariantRepository variantRepository,
                                    TagRepository tagRepository,
                                    PaymentOptionRepository paymentOptionRepository,
+                                   PaymentRequisitesRepository requisitesRepository,
                                    TranslationService translationService,
                                    CacheManager cacheManager) {
         this.repository = repository;
@@ -103,6 +109,7 @@ public class TranslationAdminService {
         this.variantRepository = variantRepository;
         this.tagRepository = tagRepository;
         this.paymentOptionRepository = paymentOptionRepository;
+        this.requisitesRepository = requisitesRepository;
         this.translationService = translationService;
         this.cacheManager = cacheManager;
     }
@@ -480,6 +487,23 @@ public class TranslationAdminService {
                 }
                 return "OK";
             }
+            case PAYMENT_REQUISITES -> {
+                PaymentRequisites r = TranslationEntityType.REQUISITES_ID.equals(UuidUtil.toString(id))
+                        ? requisitesRepository.findById(1).orElse(null) : null;
+                if (r == null) {
+                    return "NOT_FOUND";
+                }
+                boolean note = TranslationEntityType.NOTE.equals(field);
+                if (!matches(note ? r.getNote() : r.getPurpose(), wantedHash, newHash)) {
+                    return "STALE";
+                }
+                if (note) {
+                    r.setNote(newSource);
+                } else {
+                    r.setPurpose(newSource);
+                }
+                return "OK";
+            }
             default -> {
                 return "INVALID_ENTITY_TYPE";
             }
@@ -594,6 +618,13 @@ public class TranslationAdminService {
             put(out, TranslationEntityType.PAYMENT_OPTION, id, TranslationEntityType.DESCRIPTION, p.getDescription(),
                     p.isActive());
         }
+        // The customer-facing texts of the shop requisites (card/IBAN themselves are not translated).
+        requisitesRepository.findById(1).ifPresent(r -> {
+            put(out, TranslationEntityType.PAYMENT_REQUISITES, TranslationEntityType.REQUISITES_ID,
+                    TranslationEntityType.NOTE, r.getNote(), true);
+            put(out, TranslationEntityType.PAYMENT_REQUISITES, TranslationEntityType.REQUISITES_ID,
+                    TranslationEntityType.PURPOSE, r.getPurpose(), true);
+        });
         return out;
     }
 
@@ -679,7 +710,8 @@ public class TranslationAdminService {
         }
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
-            throw new BadRequestException("entityType must be one of PRODUCT, VARIANT, TAG, PAYMENT_OPTION");
+            throw new BadRequestException(
+                    "entityType must be one of PRODUCT, VARIANT, TAG, PAYMENT_OPTION, PAYMENT_REQUISITES");
         }
         return type;
     }

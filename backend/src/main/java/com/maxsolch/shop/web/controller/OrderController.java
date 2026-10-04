@@ -10,6 +10,8 @@ import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.CreateOrderCommand;
 import com.maxsolch.shop.service.OrderIdempotencyService;
 import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CreateOrderRequest;
 import com.maxsolch.shop.web.dto.CreateOrderResponse;
@@ -35,14 +37,17 @@ public class OrderController {
     private final UserRepository userRepository;
     private final PaymentRequisitesRepository requisitesRepository;
     private final OrderIdempotencyService idempotency;
+    private final TranslationService translationService;
 
     public OrderController(OrderService orderService, UserRepository userRepository,
                            PaymentRequisitesRepository requisitesRepository,
-                           OrderIdempotencyService idempotency) {
+                           OrderIdempotencyService idempotency,
+                           TranslationService translationService) {
         this.orderService = orderService;
         this.userRepository = userRepository;
         this.requisitesRepository = requisitesRepository;
         this.idempotency = idempotency;
+        this.translationService = translationService;
     }
 
     @PostMapping
@@ -50,14 +55,15 @@ public class OrderController {
     @Operation(summary = "Place an order. Send an Idempotency-Key header to make retries safe.")
     public CreateOrderResponse create(
             @Valid @RequestBody CreateOrderRequest req,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            java.util.Locale locale) {
         long userId = SecurityUtil.currentUserId();
 
         // A retried checkout (lost response, double tap) must not become a second order with a
         // second stock deduction — return the one already created under this key.
         String existingOrderId = idempotency.previousOrderId(userId, idempotencyKey);
         if (existingOrderId != null) {
-            return new CreateOrderResponse(existingOrderId, requisitesDto());
+            return new CreateOrderResponse(existingOrderId, requisitesDto(locale));
         }
 
         // Snapshot the customer's Telegram @username (from the users row, populated at auth)
@@ -85,13 +91,17 @@ public class OrderController {
         Order order = orderService.createOrder(cmd);
         String orderId = UuidUtil.toString(order.getId());
         idempotency.remember(userId, idempotencyKey, orderId);
-        return new CreateOrderResponse(orderId, requisitesDto());
+        return new CreateOrderResponse(orderId, requisitesDto(locale));
     }
 
-    /** Shop requisites for the success screen, so it needs no second round trip. */
-    private PaymentRequisitesDto requisitesDto() {
+    /**
+     * Shop requisites for the success screen, so it needs no second round trip. The note and the
+     * transfer purpose come in the customer's language when translated (PAYMENT_REQUISITES).
+     */
+    private PaymentRequisitesDto requisitesDto(java.util.Locale locale) {
         return requisitesRepository.findById(1)
                 .map(OrderController::toReqDto)
+                .map(translationService.overlay(ContentLocale.normalize(locale))::requisites)
                 .orElse(null);
     }
 
