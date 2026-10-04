@@ -24,7 +24,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 (SELECT COUNT(o) FROM Order o WHERE o.tgUserId = u.telegramUserId),
                 (SELECT COALESCE(SUM(o2.totalMinor), 0) FROM Order o2
                     WHERE o2.tgUserId = u.telegramUserId AND o2.status <> com.maxsolch.shop.domain.OrderStatus.REJECTED),
-                u.createdAt, u.lastSeenAt)
+                u.createdAt, u.lastSeenAt, u.locale)
             FROM User u
             WHERE (:like IS NULL
                 OR LOWER(COALESCE(u.username, '')) LIKE :like
