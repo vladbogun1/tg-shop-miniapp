@@ -67,6 +67,17 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                   @Param("from") Instant from);
 
     /**
+     * Per-status count AND money total for the board columns in one query: rows of
+     * {@code [status, count, sum(totalMinor)]}. The column sum used to be added up on the client
+     * from the (capped) cards it had loaded.
+     */
+    @Query("select o.status, count(o), coalesce(sum(o.totalMinor), 0) from Order o"
+            + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES + "group by o.status")
+    List<Object[]> statsByStatus(@Param("q") String q,
+                                 @Param("idKey") byte[] idKey,
+                                 @Param("from") Instant from);
+
+    /**
      * Range-bounded analytics rows. Returns a flat projection rather than entities: the dashboard
      * polls frequently and only needs these columns, so there is no reason to hydrate orders (and,
      * previously, to lazily fetch each one's items — one extra query per order).

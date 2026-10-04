@@ -37,5 +37,13 @@ public record OrderDetailDto(
         boolean paymentClaimed,
         Instant paymentClaimedAt,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
-        String source) {
+        String source,
+        /** RejectReasonCode name, null = not specified. */
+        String rejectReasonCode,
+        /** Money given back to the customer (returns). */
+        long refundedMinor,
+        Instant returnedAt,
+        /** Nova Poshta refs — the admin's delivery editor needs them to keep the address valid. */
+        String npCityRef,
+        String npWarehouseRef) {
 }

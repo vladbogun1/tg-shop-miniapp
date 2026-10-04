@@ -218,7 +218,12 @@ public class OrderQueryService {
                 receivedMinor(o),
                 o.isPaymentClaimed(),
                 o.getPaymentClaimedAt(),
-                sourceOf(o));
+                sourceOf(o),
+                o.getRejectReasonCode(),
+                Math.max(0, o.getRefundedMinor()),
+                o.getReturnedAt(),
+                o.getNpCityRef(),
+                o.getNpWarehouseRef());
     }
 
     /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
@@ -234,9 +239,26 @@ public class OrderQueryService {
     /** All APPROVED orders mapped to dispatch rows (newest first). */
     @Transactional(readOnly = true)
     public List<DispatchOrderDto> dispatchList() {
-        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED).stream()
-                .map(this::toDispatch)
-                .toList();
+        return dispatchList(false);
+    }
+
+    /**
+     * APPROVED orders, plus — when {@code includeNew} — the NEW ones after them: NEW → SHIPPED is a
+     * legal transition, and on a shipping day the seller often sends an order without approving it
+     * first. The client marks NEW rows that still wait for a prepayment.
+     */
+    @Transactional(readOnly = true)
+    public List<DispatchOrderDto> dispatchList(boolean includeNew) {
+        List<DispatchOrderDto> rows = new ArrayList<>(
+                orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED).stream()
+                        .map(this::toDispatch)
+                        .toList());
+        if (includeNew) {
+            orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.NEW).stream()
+                    .map(this::toDispatch)
+                    .forEach(rows::add);
+        }
+        return rows;
     }
 
     @Transactional(readOnly = true)
@@ -271,7 +293,8 @@ public class OrderQueryService {
                 o.getPaymentOptionTitle(),
                 o.getTrackingNumber(),
                 o.getCreatedAt(),
-                o.getApprovedAt());
+                o.getApprovedAt(),
+                o.getStatus().name());
     }
 
     /** One query for all the line thumbnails instead of one per line. */
@@ -306,7 +329,8 @@ public class OrderQueryService {
                 names.variant(variantId, it.getVariantNameSnapshot()),
                 it.getQuantity(),
                 productId == null ? null : thumbnails.get(productId),
-                it.isGift());
+                it.isGift(),
+                it.getReturnedQty());
     }
 
     private PaymentRequisitesDto toRequisitesDto(PaymentRequisites r) {

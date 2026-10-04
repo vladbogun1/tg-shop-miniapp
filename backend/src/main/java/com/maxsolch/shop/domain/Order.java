@@ -71,6 +71,18 @@ public class Order {
     @Column(name = "reject_reason", length = 1024)
     private String rejectReason;
 
+    /** {@link RejectReasonCode} name; null = not specified (historical orders). */
+    @Column(name = "reject_reason_code", length = 32)
+    private String rejectReasonCode;
+
+    /** Money given back to the customer (returns / cancelled prepaid orders). */
+    @Column(name = "refunded_minor", nullable = false)
+    private long refundedMinor = 0;
+
+    /** When the latest return was registered. */
+    @Column(name = "returned_at")
+    private Instant returnedAt;
+
     @Column(name = "approved_at")
     private Instant approvedAt;
 

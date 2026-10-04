@@ -4,10 +4,12 @@ import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.MessageService;
+import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.TimeRange;
@@ -18,6 +20,7 @@ import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.OrderBoardDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
+import com.maxsolch.shop.web.dto.OrderAdjustmentDtos;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UpdateOrderStatusRequest;
@@ -57,17 +60,20 @@ public class AdminOrderController {
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
     private final AdminAuditService audit;
+    private final OrderAdjustmentService adjustments;
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
-                                AdminAuditService audit) {
+                                AdminAuditService audit,
+                                OrderAdjustmentService adjustments) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.audit = audit;
+        this.adjustments = adjustments;
     }
 
     /** Per-status column cap on the board so we never load all 10k orders. */
@@ -99,22 +105,29 @@ public class AdminOrderController {
     }
 
     @GetMapping("/board")
-    @Operation(summary = "Kanban board grouped by status (q + range filtered, newest first, capped)")
+    @Operation(summary = "Kanban board grouped by status (q filtered, newest first, capped). The range "
+            + "applies to the closed columns (DELIVERED / REJECTED) only; closedLimit caps those columns.")
     public OrderBoardDto board(@RequestParam(required = false) String q,
-                               @RequestParam(defaultValue = "month") String range) {
-        TimeRange timeRange = TimeRange.parse(range);
-        Instant from = timeRange.from();
+                               @RequestParam(defaultValue = "month") String range,
+                               @RequestParam(required = false) Integer closedLimit) {
+        Instant from = TimeRange.parse(range).from();
         String like = likeOrNull(q);
         byte[] idKey = idKeyOrNull(q);
-        Pageable cap = PageRequest.of(0, BOARD_COLUMN_LIMIT);
+        int closedCap = closedLimit == null
+                ? BOARD_COLUMN_LIMIT
+                : Math.min(Math.max(1, closedLimit), BOARD_COLUMN_LIMIT);
 
         // Fetch every column first, then map them together: the unread and item counts come from
         // two grouped queries for the whole board instead of two per card (5 columns x 300 cards
         // used to mean ~3000 queries on every 10-second refresh).
+        // Active orders are never hidden by the period: a parcel stuck at Nova Poshta for five
+        // weeks used to drop off the board when "Месяц" was selected.
         Map<String, List<Order>> byStatus = new LinkedHashMap<>();
         List<Order> all = new ArrayList<>();
         for (OrderStatus status : OrderStatus.values()) {
-            List<Order> orders = orderRepository.searchByStatus(status, like, idKey, from, cap);
+            boolean closed = isClosed(status);
+            List<Order> orders = orderRepository.searchByStatus(status, like, idKey,
+                    closed ? from : null, PageRequest.of(0, closed ? closedCap : BOARD_COLUMN_LIMIT));
             byStatus.put(status.name(), orders);
             all.addAll(orders);
         }
@@ -125,15 +138,35 @@ public class AdminOrderController {
         byStatus.forEach((status, orders) ->
                 columns.put(status, orders.stream().map(o -> orderQueryService.toCard(o, ctx)).toList()));
 
-        // True per-column totals in one grouped query (was one COUNT per status).
+        // True per-column totals and money sums in one grouped query per time window.
         Map<String, Long> counts = new LinkedHashMap<>();
+        Map<String, Long> sums = new LinkedHashMap<>();
         for (OrderStatus status : OrderStatus.values()) {
             counts.put(status.name(), 0L);
+            sums.put(status.name(), 0L);
         }
-        for (Object[] row : orderRepository.countsByStatus(like, idKey, from)) {
-            counts.put(((OrderStatus) row[0]).name(), ((Number) row[1]).longValue());
+        List<Object[]> allTime = orderRepository.statsByStatus(like, idKey, null);
+        List<Object[]> ranged = from == null ? allTime : orderRepository.statsByStatus(like, idKey, from);
+        putStats(allTime, false, counts, sums);
+        putStats(ranged, true, counts, sums);
+        return new OrderBoardDto(columns, counts, sums);
+    }
+
+    /** DELIVERED / REJECTED: the only columns the period and the short cap apply to. */
+    private static boolean isClosed(OrderStatus status) {
+        return status == OrderStatus.DELIVERED || status == OrderStatus.REJECTED;
+    }
+
+    private static void putStats(List<Object[]> rows, boolean closed,
+                                 Map<String, Long> counts, Map<String, Long> sums) {
+        for (Object[] row : rows) {
+            OrderStatus status = (OrderStatus) row[0];
+            if (isClosed(status) != closed) {
+                continue;
+            }
+            counts.put(status.name(), ((Number) row[1]).longValue());
+            sums.put(status.name(), row[2] == null ? 0L : ((Number) row[2]).longValue());
         }
-        return new OrderBoardDto(columns, counts);
     }
 
     @GetMapping("/by-user/{telegramUserId}")
@@ -194,9 +227,9 @@ public class AdminOrderController {
     }
 
     @GetMapping("/dispatch")
-    @Operation(summary = "Seller dispatch list — approved orders with COD (наложка) amounts")
-    public List<DispatchOrderDto> dispatch() {
-        return orderQueryService.dispatchList();
+    @Operation(summary = "Seller dispatch list — approved orders (+ NEW ones with includeNew=true) with COD amounts")
+    public List<DispatchOrderDto> dispatch(@RequestParam(defaultValue = "false") boolean includeNew) {
+        return orderQueryService.dispatchList(includeNew);
     }
 
     @PostMapping("/dispatch/broadcast")
@@ -217,14 +250,61 @@ public class AdminOrderController {
                                        @Valid @RequestBody UpdateOrderStatusRequest req) {
         OrderStatus target = parseStatus(req.status());
         boolean restock = req.restock() == null || req.restock();
+        RejectReasonCode reasonCode = parseReasonCode(req.rejectReasonCode());
+        if (target == OrderStatus.SHIPPED && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
+            throw new BadRequestException("укажите номер ТТН");
+        }
+        if (target == OrderStatus.REJECTED && reasonCode == null
+                && (req.rejectReason() == null || req.rejectReason().isBlank())) {
+            throw new BadRequestException("укажите причину отклонения");
+        }
+        if (reasonCode == RejectReasonCode.OTHER && (req.rejectReason() == null || req.rejectReason().isBlank())) {
+            throw new BadRequestException("для причины «Другое» напишите пояснение");
+        }
         Order updated = orderService.changeStatus(load(id).getId(), target,
-                req.trackingNumber(), req.rejectReason(), restock);
+                req.trackingNumber(), req.rejectReason(), reasonCode, restock);
         audit.record("ORDER_STATUS", "ORDER", id,
                 "статус → " + target.name()
                         + (req.trackingNumber() == null ? "" : ", ТТН " + req.trackingNumber())
-                        + (req.rejectReason() == null ? "" : ", причина: " + req.rejectReason())
+                        + (reasonCode == null ? "" : ", код причины " + reasonCode.name())
+                        + (req.rejectReason() == null || req.rejectReason().isBlank() ? "" : ", причина: " + req.rejectReason())
                         + (target == OrderStatus.REJECTED ? (restock ? ", сток возвращён" : ", БЕЗ возврата стока") : ""));
         return orderQueryService.toDetail(updated);
+    }
+
+    @PatchMapping("/{id}/tracking")
+    @Operation(summary = "Correct the tracking number (ТТН) of a shipped / delivered order; the customer is told")
+    public OrderDetailDto updateTracking(@PathVariable String id,
+                                         @Valid @RequestBody OrderAdjustmentDtos.UpdateTrackingRequest req) {
+        OrderAdjustmentService.Result r = adjustments.updateTracking(load(id).getId(), req.trackingNumber());
+        audit.record("ORDER_TRACKING", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
+    }
+
+    @PatchMapping("/{id}/delivery")
+    @Operation(summary = "Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged)")
+    public OrderDetailDto updateDelivery(@PathVariable String id,
+                                         @Valid @RequestBody OrderAdjustmentDtos.UpdateDeliveryRequest req) {
+        OrderAdjustmentService.Result r = adjustments.updateDelivery(load(id).getId(),
+                new OrderAdjustmentService.DeliveryPatch(req.customerName(), req.phone(),
+                        req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName()));
+        audit.record("ORDER_DELIVERY", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
+    }
+
+    @PostMapping("/{id}/return")
+    @Operation(summary = "Register a (partial) return: returned units per line, restock per line, refunded amount")
+    public OrderDetailDto registerReturn(@PathVariable String id,
+                                         @Valid @RequestBody OrderAdjustmentDtos.RegisterReturnRequest req) {
+        List<OrderAdjustmentService.ReturnLine> lines = req.lines() == null ? List.of()
+                : req.lines().stream()
+                        .map(l -> new OrderAdjustmentService.ReturnLine(l.itemId(), l.quantity(),
+                                l.restock() == null || l.restock()))
+                        .toList();
+        OrderAdjustmentService.Result r = adjustments.registerReturn(load(id).getId(), lines,
+                req.refundMinor() == null ? 0 : req.refundMinor(), req.note());
+        audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
     }
 
     @PatchMapping("/{id}/paid")
@@ -348,6 +428,14 @@ public class AdminOrderController {
             return OrderStatus.valueOf(s.trim().toUpperCase());
         } catch (Exception e) {
             throw new BadRequestException("unknown status: " + s);
+        }
+    }
+
+    private RejectReasonCode parseReasonCode(String s) {
+        try {
+            return RejectReasonCode.parseOrNull(s);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("unknown reject reason code: " + s);
         }
     }
 

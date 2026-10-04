@@ -48,4 +48,15 @@ public class OrderItem {
     /** Free gift added by an admin (price 0, but stock is still decremented). */
     @Column(name = "gift", nullable = false)
     private boolean gift = false;
+
+    /** Units of this line the customer sent back (partial or full return). */
+    @Column(name = "returned_qty", nullable = false)
+    private int returnedQty = 0;
+
+    /**
+     * Units of this line already put back on the shelf (by a return or a rejection). Restoring
+     * stock only ever adds {@code quantity - restockedQty}, so no unit can be restocked twice.
+     */
+    @Column(name = "restocked_qty", nullable = false)
+    private int restockedQty = 0;
 }

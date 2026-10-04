@@ -75,6 +75,11 @@ public class OrderNotificationListener {
     public void onEdited(OrderEvents.Edited event) {
         withOrder(event.orderId(), order -> {
             refreshDispatch(order);
+            if (event.kind() == OrderEvents.EditKind.TRACKING
+                    || event.kind() == OrderEvents.EditKind.DETAILS) {
+                // The channel card prints the ТТН and the address — re-post it with the fix.
+                notificationService.onStatusChanged(order);
+            }
             if (!event.notifyCustomer()) {
                 return;
             }
@@ -87,7 +92,8 @@ public class OrderNotificationListener {
                     }
                 }
                 case COMPOSITION -> notificationService.notifyCustomerOrderChanged(order);
-                case SILENT -> {
+                case TRACKING -> notificationService.notifyCustomerTracking(order);
+                case DETAILS, SILENT -> {
                     // dispatch card refresh only
                 }
             }
