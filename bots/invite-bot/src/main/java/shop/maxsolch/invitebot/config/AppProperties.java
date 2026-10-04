@@ -1,4 +1,4 @@
-package com.example.tgshop.config;
+package shop.maxsolch.invitebot.config;
 
 import lombok.Getter;
 import lombok.Setter;

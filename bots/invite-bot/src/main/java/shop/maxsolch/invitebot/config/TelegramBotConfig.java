@@ -1,6 +1,6 @@
-package com.example.tgshop.config;
+package shop.maxsolch.invitebot.config;
 
-import com.example.tgshop.tg.InviteBot;
+import shop.maxsolch.invitebot.tg.InviteBot;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.telegram.telegrambots.meta.TelegramBotsApi;

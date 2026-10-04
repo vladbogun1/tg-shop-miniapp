@@ -1,6 +1,6 @@
-package com.example.tgshop.tg;
+package shop.maxsolch.invitebot.tg;
 
-import com.example.tgshop.config.AppProperties;
+import shop.maxsolch.invitebot.config.AppProperties;
 import java.util.List;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
