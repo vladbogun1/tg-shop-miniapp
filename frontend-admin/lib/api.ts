@@ -229,7 +229,10 @@ export interface ProductWriteRequest {
   description?: string;
   priceMinor: number;
   currency: string;
-  stock: number;
+  /** Omitted = keep the stored stock (the admin did not touch it; orders may have moved it). */
+  stock?: number;
+  /** Stock the form was opened with; a changed `stock` over a moved value -> 409 STOCK_CONFLICT. */
+  expectedStock?: number;
   active: boolean;
   imageKeys: string[];
   tagIds: string[];
@@ -238,7 +241,7 @@ export interface ProductWriteRequest {
    * rename would delete the row and create a new one — which used to invalidate customers'
    * saved carts and the variant reference on past orders.
    */
-  variants: { id?: string; name: string; stock: number }[];
+  variants: { id?: string; name: string; stock?: number; expectedStock?: number }[];
   /** Public site. Blank slug = generate from the title; omitted fields keep their value. */
   slug?: string;
   /** "Старая цена" (minor units); 0 clears it. */

@@ -7,11 +7,16 @@
  * 4) Теги (+активность) → 5) Сайт (адрес страницы, SEO) → 6) Проверка (обзор + создать/сохранить).
  * Mobile- and desktop-friendly: numbered progress header, one concept per step,
  * Back/Next footer with per-step validation, animated step transitions.
- * API + payload are unchanged (createProduct/updateProduct, upload → imageKeys).
+ * When editing, «Сохранить» is available on every step; closing with unsaved changes asks first.
+ * Stock is sent only when the admin changed it, together with the value the form was opened with
+ * (expectedStock) — the server answers 409 STOCK_CONFLICT if orders moved it meanwhile.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -47,6 +52,36 @@ interface Props {
   onSaved: () => void;
 }
 
+/** The editable form as plain strings — the same shape is snapshotted to detect unsaved changes. */
+function initialForm(product: AdminProduct | null) {
+  return {
+    title: product?.title ?? "",
+    description: product?.description ?? "",
+    priceMajor: product ? String(toMajor(product.priceMinor)) : "",
+    stock: String(product?.stock ?? 0),
+    active: product?.active ?? true,
+    slug: product?.slug ?? "",
+    compareAtMajor: product?.compareAtMinor ? String(toMajor(product.compareAtMinor)) : "",
+    seoTitle: product?.seoTitle ?? "",
+    seoDescription: product?.seoDescription ?? "",
+    tagIds: product?.tags?.map((t) => t.id) ?? [],
+    // Keep the id: it is what tells the server "this is the same variant", so renaming one edits
+    // the existing row instead of deleting it and minting a new UUID (which broke customers'
+    // saved carts and the variant reference on past orders).
+    variants: (product?.variants?.map((v) => ({ id: v.id, name: v.name, stock: v.stock })) ??
+      []) as ProductVariant[],
+    imageKeys:
+      product?.images
+        ?.slice()
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+        .map((i) => i.url ?? "")
+        .filter(Boolean) ?? [],
+  };
+}
+
+/** Field names of content_translations whose Russian source the form can change. */
+const PRODUCT_TR_FIELDS = ["title", "description", "seo_title", "seo_description"] as const;
+
 const STEPS = [
   { key: "basics", label: "Основное" },
   { key: "photos", label: "Фото" },
@@ -73,7 +108,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priceMajor, setPriceMajor] = useState("");
-  const [currency, setCurrency] = useState("UAH");
+  // The shop sells in hryvnia only; the free-text currency field let a typo ("UHA") through.
+  const currency = "UAH";
   const [stock, setStock] = useState("0");
   const [active, setActive] = useState(true);
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -87,36 +123,104 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   const [compareAtMajor, setCompareAtMajor] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  // What the form was opened with: the dirty check compares against it, and the stock values are
+  // the `expectedStock` the server verifies (replaced with fresh numbers after a 409).
+  const [initialSnapshot, setInitialSnapshot] = useState("");
+  const baseStockRef = useRef<{ stock: number; variants: Record<string, number> }>({
+    stock: 0,
+    variants: {},
+  });
 
   useEffect(() => {
     if (!open) return;
+    const f = initialForm(product);
     setStep(0);
     setDir(1);
-    setTitle(product?.title ?? "");
-    setDescription(product?.description ?? "");
-    setPriceMajor(product ? String(toMajor(product.priceMinor)) : "");
-    setCurrency(product?.currency ?? "UAH");
-    setStock(String(product?.stock ?? 0));
-    setActive(product?.active ?? true);
-    setSlug(product?.slug ?? "");
-    setCompareAtMajor(product?.compareAtMinor ? String(toMajor(product.compareAtMinor)) : "");
-    setSeoTitle(product?.seoTitle ?? "");
-    setSeoDescription(product?.seoDescription ?? "");
-    setTagIds(product?.tags?.map((t) => t.id) ?? []);
-    // Keep the id: it is what tells the server "this is the same variant", so renaming one edits
-    // the existing row instead of deleting it and minting a new UUID (which broke customers'
-    // saved carts and the variant reference on past orders).
-    setVariants(
-      product?.variants?.map((v) => ({ id: v.id, name: v.name, stock: v.stock })) ?? []
-    );
-    setImageKeys(
-      product?.images
-        ?.slice()
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-        .map((i) => i.url ?? "")
-        .filter(Boolean) ?? []
-    );
+    setConfirmClose(false);
+    setTitle(f.title);
+    setDescription(f.description);
+    setPriceMajor(f.priceMajor);
+    setStock(f.stock);
+    setActive(f.active);
+    setSlug(f.slug);
+    setCompareAtMajor(f.compareAtMajor);
+    setSeoTitle(f.seoTitle);
+    setSeoDescription(f.seoDescription);
+    setTagIds(f.tagIds);
+    setVariants(f.variants);
+    setImageKeys(f.imageKeys);
+    setInitialSnapshot(JSON.stringify(f));
+    baseStockRef.current = {
+      stock: Number(f.stock) || 0,
+      variants: Object.fromEntries(
+        f.variants.filter((v) => v.id).map((v) => [v.id as string, Number(v.stock) || 0])
+      ),
+    };
   }, [open, product]);
+
+  // Same key order as initialForm(), so an untouched form serialises identically.
+  const snapshot = JSON.stringify({
+    title,
+    description,
+    priceMajor,
+    stock,
+    active,
+    slug,
+    compareAtMajor,
+    seoTitle,
+    seoDescription,
+    tagIds,
+    variants,
+    imageKeys,
+  });
+  const dirty = open && snapshot !== initialSnapshot;
+
+  /** Esc / × / «Отмена»: ask before throwing away a half-filled wizard. */
+  function requestClose() {
+    if (saving) return;
+    if (dirty) setConfirmClose(true);
+    else onClose();
+  }
+
+  // Translations a source edit will reset (uk/en of the changed fields go STALE on the site).
+  const { data: translated } = useQuery({
+    queryKey: ["translations", "translated-uk-en"],
+    queryFn: async () => {
+      const [uk, en] = await Promise.all([
+        adminApi.translationsExport("uk", "translated"),
+        adminApi.translationsExport("en", "translated"),
+      ]);
+      return [...uk, ...en];
+    },
+    enabled: open && !!product,
+    staleTime: 60_000,
+  });
+  const staleAfterSave = useMemo(() => {
+    if (!product || !translated) return 0;
+    const changed = new Set<string>();
+    if (title.trim() !== (product.title ?? "").trim()) changed.add("title");
+    if (description.trim() !== (product.description ?? "").trim()) changed.add("description");
+    if (seoTitle.trim() !== (product.seoTitle ?? "").trim()) changed.add("seo_title");
+    if (seoDescription.trim() !== (product.seoDescription ?? "").trim()) changed.add("seo_description");
+    const renamedVariants = new Set(
+      variants
+        .filter((v) => {
+          const before = product.variants?.find((o) => o.id && o.id === v.id);
+          return before && before.name.trim() !== v.name.trim();
+        })
+        .map((v) => v.id as string)
+    );
+    return translated.filter(
+      (t) =>
+        (t.entityType === "PRODUCT" &&
+          t.entityId === product.id &&
+          (PRODUCT_TR_FIELDS as readonly string[]).includes(t.field) &&
+          changed.has(t.field)) ||
+        (t.entityType === "VARIANT" && renamedVariants.has(t.entityId))
+    ).length;
+  }, [product, translated, title, description, seoTitle, seoDescription, variants]);
 
   const hasVariants = variants.length > 0;
   const effectiveStock = useMemo(
@@ -202,18 +306,33 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       go(2);
       return;
     }
+    // Stock goes out only when the admin changed it (A5): an untouched field must not overwrite
+    // units sold while the form was open. A changed value carries what the form was opened with.
+    const base = baseStockRef.current;
+    const stockChanged = !hasVariants && (Number(stock) || 0) !== base.stock;
     const body: ProductWriteRequest = {
       title: title.trim(),
       description: description.trim() || undefined,
       priceMinor,
       currency,
-      stock: effectiveStock,
+      ...(!product
+        ? { stock: effectiveStock }
+        : stockChanged
+          ? { stock: Number(stock) || 0, expectedStock: base.stock }
+          : {}),
       active,
       imageKeys,
       tagIds,
       variants: variants
         .filter((v) => v.name.trim())
-        .map((v) => ({ id: v.id, name: v.name.trim(), stock: Number(v.stock) || 0 })),
+        .map((v) => {
+          const n = Number(v.stock) || 0;
+          const was = v.id ? base.variants[v.id] : undefined;
+          if (!product || was === undefined) return { id: v.id, name: v.name.trim(), stock: n };
+          return n === was
+            ? { id: v.id, name: v.name.trim() }
+            : { id: v.id, name: v.name.trim(), stock: n, expectedStock: was };
+        }),
       // Blank slug = the server generates one from the title (and makes it unique).
       slug: slug.trim(),
       compareAtMinor,
@@ -228,46 +347,131 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       onSaved();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      if (e instanceof ApiError && e.code === "STOCK_CONFLICT" && product) {
+        await refreshStock(product.id, e.message);
+      } else {
+        push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      }
     } finally {
       setSaving(false);
     }
   }
 
+  /**
+   * After a 409: pull the current stock into the form (and the baseline) and let the admin decide
+   * again — the rest of their edits stay as typed.
+   */
+  async function refreshStock(id: string, message: string) {
+    try {
+      const fresh = (await adminApi.products()).find((x) => x.id === id);
+      if (!fresh) throw new Error("gone");
+      const freshVariants: Record<string, number> = Object.fromEntries(
+        (fresh.variants ?? []).filter((v) => v.id).map((v) => [v.id as string, v.stock])
+      );
+      setStock(String(fresh.stock ?? 0));
+      setVariants((prev) =>
+        prev.map((v) =>
+          v.id && freshVariants[v.id] !== undefined ? { ...v, stock: freshVariants[v.id] } : v
+        )
+      );
+      baseStockRef.current = { stock: fresh.stock ?? 0, variants: freshVariants };
+      go(2);
+      push(`${message}. В форме теперь актуальный остаток — проверьте и сохраните ещё раз.`, "error");
+    } catch {
+      push(message, "error");
+    }
+  }
+
   const isLast = step === STEPS.length - 1;
+  const slugChanged = !!product?.slug && slugPreview !== "" && slugPreview !== product.slug;
   const selectedTags = tags.filter((t) => tagIds.includes(t.id));
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={requestClose}
       size="lg"
       closeOnBackdrop={false}
       fixedHeight
       title={product ? "Редактировать товар" : "Новый товар"}
       footer={
-        <div className="flex w-full items-center justify-between gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => (step === 0 ? onClose() : go(step - 1))}
-            icon={step === 0 ? undefined : <ArrowLeft className="h-4 w-4" />}
-          >
-            {step === 0 ? "Отмена" : "Назад"}
-          </Button>
-          {isLast ? (
-            <Button variant="accent" loading={saving} onClick={save} icon={<Check className="h-4 w-4" />}>
-              {product ? "Сохранить" : "Создать товар"}
+        confirmClose ? (
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <span className="text-[13px] font-bold text-[var(--text)]">
+              Закрыть без сохранения? Изменения пропадут.
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setConfirmClose(false)}>
+                Продолжить
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setConfirmClose(false);
+                  onClose();
+                }}
+              >
+                Закрыть
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-between gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => (step === 0 ? requestClose() : go(step - 1))}
+              icon={step === 0 ? undefined : <ArrowLeft className="h-4 w-4" />}
+            >
+              {step === 0 ? "Отмена" : "Назад"}
             </Button>
-          ) : (
-            <Button variant="accent" onClick={next} icon={<ArrowRight className="h-4 w-4" />}>
-              Далее
-            </Button>
-          )}
-        </div>
+            <div className="flex items-center gap-2">
+              {/* Editing: save from any step — a price fix should not mean clicking through six. */}
+              {product && !isLast && (
+                <Button
+                  variant="surface"
+                  loading={saving}
+                  disabled={!dirty}
+                  onClick={save}
+                  icon={<Check className="h-4 w-4" />}
+                >
+                  Сохранить
+                </Button>
+              )}
+              {isLast ? (
+                <Button variant="accent" loading={saving} onClick={save} icon={<Check className="h-4 w-4" />}>
+                  {product ? "Сохранить" : "Создать товар"}
+                </Button>
+              ) : (
+                <Button variant="accent" onClick={next} icon={<ArrowRight className="h-4 w-4" />}>
+                  Далее
+                </Button>
+              )}
+            </div>
+          </div>
+        )
       }
     >
       {/* Stepper header */}
       <Stepper step={step} onJump={go} />
+
+      {staleAfterSave > 0 && (
+        <Warning>
+          Правка названия/описания сбросит переводы uk/en ({staleAfterSave}{" "}
+          {plural(staleAfterSave, "поле", "поля", "полей")}) — на сайте снова будет русский текст, пока
+          не переведёте заново в{" "}
+          <Link href="/translations" className="font-bold underline">
+            «Переводах»
+          </Link>
+          .
+        </Warning>
+      )}
+      {slugChanged && (step === 4 || step === 5) && (
+        <Warning>
+          Смена адреса страницы сломает старые ссылки:{" "}
+          <span className="font-mono">/product/{product?.slug}</span> перестанет открываться (поиск,
+          закладки, рассылки).
+        </Warning>
+      )}
 
       {/* Animated step body */}
       <div className="relative mt-5 overflow-hidden">
@@ -392,20 +596,13 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
 
             {step === 2 && (
               <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Цена"
-                    inputMode="decimal"
-                    value={priceMajor}
-                    onChange={(e) => setPriceMajor(e.target.value)}
-                    placeholder="0"
-                  />
-                  <Input
-                    label="Валюта"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                  />
-                </div>
+                <Input
+                  label="Цена, ₴"
+                  inputMode="decimal"
+                  value={priceMajor}
+                  onChange={(e) => setPriceMajor(e.target.value)}
+                  placeholder="0"
+                />
                 <Input
                   label="Старая цена, ₴"
                   inputMode="decimal"
@@ -419,20 +616,14 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                       : "Зачёркнутая цена на сайте. Пусто или 0 — не показывать."
                   }
                 />
-                <div className="flex items-end gap-4">
-                  <Input
-                    label="Остаток"
-                    inputMode="numeric"
-                    className="flex-1"
-                    value={hasVariants ? String(effectiveStock) : stock}
-                    disabled={hasVariants}
-                    hint={hasVariants ? "= сумма остатков вариантов" : undefined}
-                    onChange={(e) => setStock(e.target.value)}
-                  />
-                  <div className="pb-2.5">
-                    <Toggle checked={active} onChange={setActive} label="Активен" />
-                  </div>
-                </div>
+                <Input
+                  label="Остаток"
+                  inputMode="numeric"
+                  value={hasVariants ? String(effectiveStock) : stock}
+                  disabled={hasVariants}
+                  hint={hasVariants ? "= сумма остатков вариантов" : undefined}
+                  onChange={(e) => setStock(e.target.value)}
+                />
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
@@ -526,7 +717,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   })}
                 </div>
                 <div className="mt-2 rounded-[var(--r-md)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3">
-                  <Toggle checked={active} onChange={setActive} label="Товар активен (виден в каталоге)" />
+                  <Toggle checked={active} onChange={setActive} label="На витрине (виден в каталоге)" />
                 </div>
               </div>
             )}
@@ -740,4 +931,21 @@ function ReviewRow({
       </button>
     </div>
   );
+}
+
+function Warning({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 flex items-start gap-2 rounded-[var(--r-md)] border-2 border-[var(--warn)] bg-[var(--surface-2)] p-2.5 text-[13px] leading-snug text-[var(--text)]">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function plural(n: number, one: string, few: string, many: string): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
 }
