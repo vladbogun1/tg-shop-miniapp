@@ -30,8 +30,6 @@ public class AppProperties {
     public static class Telegram {
         private String botToken;
         private String botUsername;
-        /** Comma-separated list of telegram user ids that are admins (bootstrap/fallback). */
-        private String adminUserIds;
         private long initDataTtlSeconds = 86400;
         private boolean allowUnsignedInitData = false;
         /** Numeric chat id ("-100...") OR public channel username ("@maxsolch_chat"). */
@@ -53,6 +51,12 @@ public class AppProperties {
         /** Base64-encoded HS256 secret. */
         private String jwtSecret;
         private long jwtAccessTtlMinutes = 120;
+        /**
+         * Lifetime of an ADMIN token. Much shorter than the customer one (30 days): a leaked admin
+         * token can change payment requisites. The panel re-issues it quietly while it is in use
+         * ({@code POST /api/admin/token/refresh}), so an active admin is never logged out.
+         */
+        private long adminTokenTtlMinutes = 720;
         /** Bootstrap admin browser-login credentials (created/updated on startup if set). */
         private String adminLogin;
         private String adminPassword;

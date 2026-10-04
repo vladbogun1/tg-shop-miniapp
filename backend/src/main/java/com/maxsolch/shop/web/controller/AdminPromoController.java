@@ -3,10 +3,8 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
-import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.service.PromoAdminService;
 import com.maxsolch.shop.web.dto.PromoCodeDto;
 import com.maxsolch.shop.web.dto.PromoCodeUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,18 +30,18 @@ import java.util.List;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminPromoController {
 
-    private final PromoCodeRepository promoCodeRepository;
+    private final PromoAdminService promoAdminService;
     private final AdminAuditService audit;
 
-    public AdminPromoController(PromoCodeRepository promoCodeRepository, AdminAuditService audit) {
-        this.promoCodeRepository = promoCodeRepository;
+    public AdminPromoController(PromoAdminService promoAdminService, AdminAuditService audit) {
+        this.promoAdminService = promoAdminService;
         this.audit = audit;
     }
 
     @GetMapping
     @Operation(summary = "List promo codes")
     public List<PromoCodeDto> list() {
-        return promoCodeRepository.findAllByOrderByCreatedAtDesc().stream()
+        return promoAdminService.list().stream()
                 .map(this::toDto)
                 .toList();
     }
@@ -51,58 +49,30 @@ public class AdminPromoController {
     @PostMapping
     @Operation(summary = "Create promo code")
     public PromoCodeDto create(@Valid @RequestBody PromoCodeUpsertRequest req) {
-        if (promoCodeRepository.findByCode(req.code().trim()).isPresent()) {
-            throw new BadRequestException("promo code already exists");
-        }
-        PromoCode p = new PromoCode();
-        p.setCode(req.code().trim());
-        apply(p, req);
-        PromoCodeDto created = toDto(promoCodeRepository.save(p));
+        PromoCodeDto created = toDto(promoAdminService.create(req));
         audit.record("PROMO_CREATE", "PROMO", created.id(), created.code());
         return created;
     }
 
     @PatchMapping("/{id}")
-    @Operation(summary = "Update promo code")
+    @Operation(summary = "Update promo code (a code that was already used cannot be renamed)")
     public PromoCodeDto update(@PathVariable String id, @Valid @RequestBody PromoCodeUpsertRequest req) {
-        PromoCode p = load(id);
-        String previousCode = p.getCode();
-        p.setCode(req.code().trim());
-        apply(p, req);
-        PromoCodeDto updated = toDto(promoCodeRepository.save(p));
+        PromoAdminService.Updated result = promoAdminService.update(id, req);
+        PromoCodeDto updated = toDto(result.promo());
         audit.record("PROMO_UPDATE", "PROMO", id,
-                previousCode.equals(updated.code()) ? updated.code()
-                        : previousCode + " -> " + updated.code());
+                result.previousCode().equals(updated.code()) ? updated.code()
+                        : result.previousCode() + " -> " + updated.code());
         return updated;
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete promo code")
     public ResponseEntity<Void> delete(@PathVariable String id) {
-        PromoCode promo = load(id);
+        PromoCode promo = promoAdminService.delete(id);
+        // Journal after the delete: a 404 must not leave a deletion that never happened.
         audit.record("PROMO_DELETE", "PROMO", id,
                 promo.getCode() + ", использован " + promo.getUsesCount() + " раз");
-        promoCodeRepository.delete(promo);
         return ResponseEntity.noContent().build();
-    }
-
-    private void apply(PromoCode p, PromoCodeUpsertRequest req) {
-        p.setDiscountPercent(req.discountPercent());
-        p.setDiscountAmountMinor(req.discountAmountMinor());
-        p.setMaxUses(req.maxUses());
-        if (req.active() != null) {
-            p.setActive(req.active());
-        }
-    }
-
-    private PromoCode load(String id) {
-        byte[] key;
-        try {
-            key = UuidUtil.toBytes(id);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid id");
-        }
-        return promoCodeRepository.findById(key).orElseThrow(() -> new NotFoundException("promo code not found"));
     }
 
     private PromoCodeDto toDto(PromoCode p) {

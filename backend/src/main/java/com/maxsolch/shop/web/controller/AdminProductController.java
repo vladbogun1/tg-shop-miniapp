@@ -52,11 +52,44 @@ public class AdminProductController {
         this.siteRevalidator = siteRevalidator;
     }
 
-    /** Rebuild the site pages this product appears on (no-op when revalidation is off). */
-    private AdminProductDto revalidated(AdminProductDto p, String previousSlug) {
-        siteRevalidator.productChanged(p.slug(), previousSlug,
-                p.tags() == null ? List.of() : p.tags().stream().map(t -> t.slug()).toList());
+    /**
+     * Rebuild the site pages this product appears on (no-op when revalidation is off): its page,
+     * its categories — and, after an edit, the categories and slug it had before, or a product
+     * moved out of a category kept showing in that category's listing until ISR expiry.
+     */
+    private AdminProductDto revalidated(AdminProductDto p, AdminProductDto before) {
+        java.util.Set<String> categories = new java.util.LinkedHashSet<>(tagSlugs(p));
+        if (before != null) {
+            categories.addAll(tagSlugs(before));
+        }
+        siteRevalidator.productChanged(p.slug(), before == null ? null : before.slug(), categories);
         return p;
+    }
+
+    private static List<String> tagSlugs(AdminProductDto p) {
+        return p.tags() == null ? List.of() : p.tags().stream().map(t -> t.slug()).toList();
+    }
+
+    /** "цена 1200 → 900, сток 3 → 5" — only what changed among the money/stock/visibility fields. */
+    static String changeSummary(AdminProductDto before, AdminProductDto after) {
+        StringBuilder sb = new StringBuilder(after.title());
+        if (before == null) {
+            return sb.append(", price ").append(after.priceMinor()).append(", stock ").append(after.stock())
+                    .toString();
+        }
+        if (before.priceMinor() != after.priceMinor()) {
+            sb.append(", цена ").append(before.priceMinor()).append(" → ").append(after.priceMinor());
+        }
+        if (before.stock() != after.stock()) {
+            sb.append(", сток ").append(before.stock()).append(" → ").append(after.stock());
+        }
+        if (before.active() != after.active()) {
+            sb.append(after.active() ? ", показан" : ", скрыт");
+        }
+        if (!java.util.Objects.equals(before.title(), after.title())) {
+            sb.append(", было «").append(before.title()).append('»');
+        }
+        return sb.toString();
     }
 
     @GetMapping("/products")
@@ -82,11 +115,12 @@ public class AdminProductController {
     @PatchMapping("/products/{id}")
     @Operation(summary = "Update product")
     public AdminProductDto update(@PathVariable String id, @Valid @RequestBody ProductUpsertRequest req) {
-        String previousSlug = siteRevalidator.enabled() ? productService.get(id).slug() : null;
+        // Read before the save: the journal shows what changed, the site rebuilds the old slug and
+        // the categories the product is leaving.
+        AdminProductDto before = productService.get(id);
         AdminProductDto updated = productService.update(id, req);
-        audit.record("PRODUCT_UPDATE", "PRODUCT", id,
-                updated.title() + ", price " + updated.priceMinor() + ", stock " + updated.stock());
-        return revalidated(updated, previousSlug);
+        audit.record("PRODUCT_UPDATE", "PRODUCT", id, changeSummary(before, updated));
+        return revalidated(updated, before);
     }
 
     @PatchMapping("/products/{id}/active")
@@ -95,8 +129,10 @@ public class AdminProductController {
         if (body.active() == null) {
             throw new BadRequestException("active is required");
         }
+        AdminProductDto saved = productService.setActive(id, body.active());
+        // Journal after the fact: a 404 must not leave a "показан" entry for something that never happened.
         audit.record("PRODUCT_ACTIVE", "PRODUCT", id, body.active() ? "показан" : "скрыт");
-        return revalidated(productService.setActive(id, body.active()), null);
+        return revalidated(saved, null);
     }
 
     @PatchMapping("/products/{id}/archived")
@@ -105,8 +141,9 @@ public class AdminProductController {
         if (body.archived() == null) {
             throw new BadRequestException("archived is required");
         }
+        AdminProductDto saved = productService.setArchived(id, body.archived());
         audit.record("PRODUCT_ARCHIVE", "PRODUCT", id, body.archived() ? "в архив" : "из архива");
-        return revalidated(productService.setArchived(id, body.archived()), null);
+        return revalidated(saved, null);
     }
 
     @PostMapping("/uploads")

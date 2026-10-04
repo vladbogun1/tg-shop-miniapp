@@ -134,7 +134,7 @@ Mini App требует HTTPS. Для локального теста — `cloud
 
 ## 🔐 Конфигурация
 
-Всё — через `.env` (см. [`.env.example`](.env.example)). Ключевое: `DB_*`, `JWT_SECRET`, `ADMIN_LOGIN`/`ADMIN_PASSWORD`, `BOT_TOKEN`, `NOTIFY_CHAT_ID` + темы, `S3_*`, `IMGPROXY_*`, `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`. Деньги — в минорных единицах (копейки). Секреты в репозиторий не коммитятся (`.env` в `.gitignore`).
+Всё — через `.env` (см. [`.env.example`](.env.example)). Ключевое: `DB_*`, `JWT_SECRET`, `ADMIN_LOGIN`/`ADMIN_PASSWORD`, `BOT_TOKEN`, `NOTIFY_CHAT_ID` + темы, `S3_*`, `IMGPROXY_*`, `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`. Админы задаются таблицей `admin_users` (не `.env`): `ADMIN_LOGIN`/`ADMIN_PASSWORD` только создают/обновляют первого админа при старте; отключить — `admin_users.active = 0`, выкинуть все сессии — кнопка «Выйти на всех устройствах» в админке. Admin-токен живёт `ADMIN_TOKEN_TTL_MINUTES` (12 ч) и тихо продлевается, пока админка открыта. Деньги — в минорных единицах (копейки). Секреты в репозиторий не коммитятся (`.env` в `.gitignore`).
 
 ---
 
