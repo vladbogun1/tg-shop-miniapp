@@ -19,22 +19,22 @@ export default async function AboutPage({ params }: { params: LocaleParams }) {
       <Breadcrumbs locale={locale} items={[{ label: t("info.about") }]} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <article className="nb p-6 sm:p-10">
-          <h1 className="text-[32px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("info.about")}</h1>
-          <p className="mt-4 text-[19px] font-extrabold leading-snug text-[var(--ink)]">{t("about.lead")}</p>
-          <p className="mt-4 text-[16px] font-medium leading-relaxed text-[var(--ink)]">{t("about.text1")}</p>
-          <p className="mt-3 text-[16px] font-medium leading-relaxed text-[var(--ink)]">{t("about.text2")}</p>
+          <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("info.about")}</h1>
+          <p className="mt-4 text-[19px] font-semibold leading-snug text-[var(--ink)]">{t("about.lead")}</p>
+          <p className="mt-4 text-[16px] leading-relaxed text-[#D4D4D8]">{t("about.text1")}</p>
+          <p className="mt-3 text-[16px] leading-relaxed text-[#D4D4D8]">{t("about.text2")}</p>
           <div className="mt-6">
             <ButtonLink href={localePath(locale, "/catalog")} variant="accent">
               {t("common.toCatalog")}
             </ButtonLink>
           </div>
         </article>
-        <aside className="nb-lg h-fit bg-[var(--c3)] p-6 text-[var(--accent-ink)]">
-          <h2 className="text-[18px] font-black uppercase">{t("about.facts")}</h2>
+        <aside className="nb-lg hud-frame h-fit p-6">
+          <h2 className="flex items-center gap-3 font-display text-[18px] font-extrabold uppercase tracking-[.02em]"><span aria-hidden className="tech-mark" />{t("about.facts")}</h2>
           <ul className="mt-4 flex flex-col gap-3">
             {(["about.fact.delivery", "about.fact.payment", "about.fact.chat"] as const).map((k) => (
-              <li key={k} className="flex items-start gap-2 text-[15px] font-bold">
-                <Check className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={3} /> {t(k)}
+              <li key={k} className="flex items-start gap-2 text-[15px] font-medium text-[var(--ink)]">
+                <Check className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.25} /> {t(k)}
               </li>
             ))}
           </ul>

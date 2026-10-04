@@ -112,7 +112,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       price: (product.priceMinor / 100).toFixed(2),
       availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      seller: { "@type": "Organization", name: "MAXSOLCH" },
+      seller: { "@type": "Organization", name: "ChiSetup" },
     },
   };
 
@@ -129,15 +129,15 @@ export default async function ProductPage({ params }: { params: Params }) {
           <TrackProductView productId={product.id} />
           <ul className="mt-6 grid gap-3 sm:grid-cols-2">
             {PROMISES.map(({ icon: Icon, title, text, href }) => (
-              <li key={title} className="nb-flat flex gap-3 bg-[var(--surface)] p-3.5">
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.5} />
+              <li key={title} className="nb-flat flex gap-3 p-3.5">
+                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2} />
                 <div className="min-w-0">
                   {href ? (
-                    <a href={localePath(locale, href)} className="text-[13px] font-black uppercase tracking-wide text-[var(--ink)] hover:underline">
+                    <a href={localePath(locale, href)} className="font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)] transition-colors hover:text-[var(--accent-hi)]">
                       {t(title)}
                     </a>
                   ) : (
-                    <p className="text-[13px] font-black uppercase tracking-wide text-[var(--ink)]">{t(title)}</p>
+                    <p className="text-[13px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t(title)}</p>
                   )}
                   <p className="mt-0.5 text-[13px] font-medium leading-snug text-[var(--muted)]">{t(text)}</p>
                 </div>
@@ -148,12 +148,13 @@ export default async function ProductPage({ params }: { params: Params }) {
       </div>
 
       <section className="mt-12 max-w-3xl" aria-labelledby="pd-desc">
-        <h2 id="pd-desc" className="mb-4 text-[24px] font-black uppercase tracking-tight text-[var(--ink)]">
+        <h2 id="pd-desc" className="mb-4 flex items-center gap-3 font-display text-[22px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
+          <span aria-hidden className="tech-mark" />
           {t("product.description")}
         </h2>
         <div className="nb p-5 sm:p-7">
           {product.description ? (
-            <p className="whitespace-pre-line text-[15px] font-medium leading-relaxed text-[var(--ink)]">
+            <p className="whitespace-pre-line text-[15px] leading-relaxed text-[#D4D4D8]">
               {product.description}
             </p>
           ) : (
@@ -164,7 +165,8 @@ export default async function ProductPage({ params }: { params: Params }) {
 
       {relatedItems.length > 0 && (
         <section className="mt-14" aria-labelledby="pd-related">
-          <h2 id="pd-related" className="mb-5 text-[24px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[30px]">
+          <h2 id="pd-related" className="mb-5 flex items-center gap-3 font-display text-[22px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[28px]">
+            <span aria-hidden className="tech-mark" />
             {t("product.related")}
           </h2>
           <ProductGrid products={relatedItems.slice(0, 4)} />

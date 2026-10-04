@@ -17,7 +17,7 @@ export const uk: RuDictionary = {
   "common.showAll": "Дивитися всі",
   "common.placeholder": "[уточнюється]",
 
-  "meta.title": "MAXSOLCH — ігрова периферія",
+  "meta.title": "ChiSetup — ігрові девайси для твого сетапу",
   "meta.description":
     "Мишки, клавіатури, килимки та аксесуари. Доставка Новою Поштою по всій Україні, оплата на картку ФОП або накладеним платежем.",
 
@@ -43,14 +43,13 @@ export const uk: RuDictionary = {
   "qty.increase": "Збільшити",
 
   "header.skip": "Перейти до вмісту",
-  "header.home": "MAXSOLCH — на головну",
+  "header.home": "ChiSetup — на головну",
   "header.catalog": "Каталог",
   "header.search": "Пошук товарів",
   "header.searchSubmit": "Знайти",
   "header.searchAll": "Усі результати за «{q}»",
   "header.searchEmpty": "Нічого не знайшлося",
   "header.searchSearching": "Шукаємо…",
-  "header.theme": "Змінити тему",
   "header.lang": "Мова сайту",
   "header.cart": "Кошик",
   "header.cartCount": { one: "Кошик, {n} товар", few: "Кошик, {n} товари", many: "Кошик, {n} товарів", other: "Кошик, {n} товару" },
@@ -70,7 +69,7 @@ export const uk: RuDictionary = {
   "footer.bot": "Бот магазину в Telegram",
   "footer.botText": "Замовлення, статуси та чат із магазином — у Telegram.",
   "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
-  "footer.rights": "© {year} MAXSOLCH",
+  "footer.rights": "© {year} ChiSetup",
 
   "info.delivery": "Доставка та оплата",
   "info.returns": "Повернення та обмін",
@@ -94,7 +93,7 @@ export const uk: RuDictionary = {
   "contacts.hours": "Години роботи",
   "contacts.seller": "Продавець",
 
-  "about.lead": "MAXSOLCH — невеликий магазин ігрової периферії з України.",
+  "about.lead": "ChiSetup — невеликий магазин ігрової периферії з України.",
   "about.text1":
     "Привозимо мишки, клавіатури, килимки, кейкапи та аксесуари, які самі вважаємо вартими. Кожен товар перевіряємо перед відправкою.",
   "about.text2":
@@ -109,10 +108,17 @@ export const uk: RuDictionary = {
   "error.title": "Щось пішло не так",
   "error.text": "Сайт спіткнувся. Спробуйте ще раз — якщо не допоможе, оновіть сторінку.",
 
-  "home.hero.kicker": "Ігрова периферія",
-  "home.hero.title": "Девайси, які не підводять",
+  "home.hero.kicker": "Мишки · Клавіатури · Навушники · Аксесуари",
+  "home.hero.title": "Ігрові девайси для твого сетапу",
   "home.hero.text":
     "Мишки, клавіатури й килимки з перевіркою перед відправкою. Нова Пошта по всій Україні, чат із магазином щодо кожного замовлення.",
+  "home.hero.title.pre": "Ігрові",
+  "home.hero.title.accent": "девайси",
+  "home.hero.title.post": "для твого сетапу",
+  "brand.tagline": "Gaming gear & setup",
+  "header.nav": "Розділи сайту",
+  "header.nav.delivery": "Доставка",
+  "header.nav.contacts": "Контакти",
   "home.hero.cta": "Перейти до каталогу",
   "home.hero.cta2": "Як доставляємо",
   "home.categories": "Категорії",
@@ -314,9 +320,6 @@ export const uk: RuDictionary = {
   "account.orders.open": "Детальніше",
 
   "settings.language": "Мова сайту",
-  "settings.theme": "Тема",
-  "settings.theme.light": "Світла",
-  "settings.theme.dark": "Темна",
   "settings.sessions": "Пристрої та сеанси",
   "settings.sessions.lead": "Де виконано вхід на сайт. Незнайомий пристрій — завершіть сеанс.",
   "settings.sessions.current": "Цей пристрій",

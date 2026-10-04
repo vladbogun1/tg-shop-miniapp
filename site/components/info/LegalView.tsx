@@ -14,14 +14,14 @@ export function LegalView({ locale, title, doc }: { locale: Locale; title: strin
       <Breadcrumbs locale={locale} items={[{ label: title }]} />
       <article className="nb mx-auto max-w-3xl p-5 sm:p-10" lang={doc.contentLocale}>
         {locale !== doc.contentLocale && (
-          <p className="mb-6 flex items-start gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-2 text-[13px] font-bold text-[var(--accent-ink)]" lang={locale}>
-            <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.75} />
+          <p className="mb-6 flex items-start gap-2 rounded-[var(--r)] border border-[rgba(255,102,0,.35)] bg-[var(--accent-soft)] px-3 py-2 text-[13px] font-medium text-[var(--ink)]" lang={locale}>
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
             {t("info.ukOnly")}
           </p>
         )}
         <div className="prose-nb" dangerouslySetInnerHTML={{ __html: doc.html }} />
         {doc.updated && (
-          <p className="mt-8 border-t-[3px] border-[var(--line)] pt-3 text-[12px] font-bold text-[var(--muted)]" lang={locale}>
+          <p className="mt-8 border-t border-[var(--line)] pt-3 text-[12px] font-medium text-[var(--muted)]" lang={locale}>
             {t("info.updated", { date: fmt.date(doc.updated) })}
           </p>
         )}

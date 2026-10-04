@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * RadioCard — NEO-BRUTALISM selectable card (API unchanged: selected, onSelect,
- * title, subtitle, icon, right). Selected = accent border + hard shadow + filled
- * check box. Sharp corners, press feedback.
+ * RadioCard — selectable card (API unchanged: selected, onSelect, title, subtitle, icon, right).
+ * Selected = orange border + soft orange fill + filled check.
  */
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
@@ -29,24 +28,25 @@ export function RadioCard({
       onClick={onSelect}
       role="radio"
       aria-checked={selected}
-      className="relative flex w-full items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left transition-transform hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[3px] active:translate-y-[3px]"
-      style={{
-        boxShadow: selected ? "5px 5px 0 var(--accent)" : "5px 5px 0 var(--shadow)",
-      }}
+      className={`relative flex w-full items-center gap-3 rounded-[var(--r-card)] border p-4 text-left transition-[transform,border-color,background-color] active:scale-[.99] ${
+        selected
+          ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+          : "border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]"
+      }`}
     >
-      {icon && <span className="shrink-0 text-[var(--ink)]">{icon}</span>}
+      {icon && <span className={`shrink-0 ${selected ? "text-[var(--accent-hi)]" : "text-[var(--muted)]"}`}>{icon}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-extrabold text-[var(--ink)]">{title}</span>
+        <span className="block text-[15px] font-semibold text-[var(--ink)]">{title}</span>
         {subtitle && (
           <span className="mt-0.5 block text-[13px] font-medium text-[var(--muted)]">{subtitle}</span>
         )}
       </span>
       {right}
       <span
-        className="grid h-6 w-6 shrink-0 place-items-center rounded-[3px] border-[2.5px] border-[var(--line)]"
-        style={{ background: selected ? "var(--accent)" : "transparent" }}
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full border"
+        style={{ background: selected ? "var(--accent)" : "transparent", borderColor: selected ? "var(--accent)" : "var(--line-strong)" }}
       >
-        {selected && <Check className="h-4 w-4" strokeWidth={3.5} style={{ color: "var(--accent-ink)" }} />}
+        {selected && <Check className="h-4 w-4" strokeWidth={2.75} style={{ color: "var(--accent-ink)" }} />}
       </span>
     </button>
   );

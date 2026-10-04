@@ -39,8 +39,8 @@ export function OrderDetailView({ id }: { id: string }) {
 
   return (
     <div>
-      <Link href={href("/account")} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-black uppercase tracking-wide text-[var(--muted)] hover:text-[var(--ink)]">
-        <ArrowLeft className="h-4 w-4" strokeWidth={3} /> {t("order.back")}
+      <Link href={href("/account")} className="mb-4 inline-flex items-center gap-1.5 font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] transition-colors hover:text-[var(--accent-hi)]">
+        <ArrowLeft className="h-4 w-4" strokeWidth={2.5} /> {t("order.back")}
       </Link>
       {isLoading && (
         <div className="flex flex-col gap-4">
@@ -52,7 +52,7 @@ export function OrderDetailView({ id }: { id: string }) {
       {isError && (
         <div className="nb flex flex-col items-start gap-3 p-6">
           <WifiOff className="h-7 w-7 text-[var(--muted)]" strokeWidth={2.5} />
-          <p className="text-[15px] font-bold text-[var(--muted)]">
+          <p className="text-[15px] font-medium text-[var(--muted)]">
             {error instanceof ApiError && error.status === 404 ? t("order.notFound") : t("order.error")}
           </p>
           <Button variant="accent" size="sm" onClick={() => void refetch()}>
@@ -80,7 +80,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-[24px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[28px]">
+        <h2 className="font-display text-[24px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[28px]">
           {t("order.title", { id: shortOrderId(order.id) })}
         </h2>
         <StatusChip status={order.status} />
@@ -96,8 +96,8 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
           {isPickup ? t("order.pickup") : t("order.np")}
           {order.trackingNumber && (
             <span className="mt-2 flex items-center gap-2">
-              <span className="text-[12px] font-bold text-[var(--muted)]">{t("order.tracking")}</span>
-              <span className="min-w-0 flex-1 truncate text-[15px] font-black">{order.trackingNumber}</span>
+              <span className="text-[12px] font-medium text-[var(--muted)]">{t("order.tracking")}</span>
+              <span className="min-w-0 flex-1 truncate font-display text-[15px] font-bold tracking-[.04em] text-[var(--accent-hi)]">{order.trackingNumber}</span>
               <CopyButton value={order.trackingNumber} label={t("order.tracking")} />
             </span>
           )}
@@ -117,28 +117,28 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       </div>
 
       <section className="nb p-5">
-        <h3 className="nb-up mb-4 text-[12px] font-black text-[var(--faint)]">{t("order.status")}</h3>
+        <h3 className="eyebrow mb-4 text-[11px]">{t("order.status")}</h3>
         <StatusTimeline order={order} />
         {order.status === "REJECTED" && order.rejectReason && (
-          <div className="mt-4 border-[3px] border-[var(--line)] bg-[color-mix(in_srgb,var(--danger)_16%,var(--surface))] px-4 py-3">
-            <p className="nb-up text-[11px] font-black text-[var(--danger)]">{t("order.rejectReason")}</p>
+          <div className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] px-4 py-3">
+            <p className="nb-up text-[11px] font-semibold text-[var(--danger)]">{t("order.rejectReason")}</p>
             <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">{order.rejectReason}</p>
           </div>
         )}
       </section>
 
       <section className="nb p-5">
-        <h3 className="nb-up mb-4 text-[12px] font-black text-[var(--faint)]">{t("order.items")}</h3>
+        <h3 className="eyebrow mb-4 text-[11px]">{t("order.items")}</h3>
         <ul className="flex flex-col gap-3">
           {order.items.map((it, i) => (
             <li key={it.id ?? i} className="flex items-center gap-3">
-              <span className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)]">
+              <span className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
                 <Image src={it.imageUrl} alt={it.title} size={140} className="h-full w-full" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-[14px] font-bold text-[var(--ink)]">
+                <p className="line-clamp-2 text-[14px] font-semibold text-[var(--ink)]">
                   {it.gift && (
-                    <span className="mr-1 inline-block border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
+                    <span className="mr-1 inline-block rounded-full bg-[var(--accent-soft)] px-2 py-0.5 align-middle font-display text-[10px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)]">
                       {t("order.giftBadge")}
                     </span>
                   )}
@@ -153,26 +153,26 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                     : `${it.quantity} × ${fmt.money(it.priceMinor, it.currency ?? order.currency)}`}
                 </p>
               </div>
-              <span className="shrink-0 text-[15px] font-black text-[var(--ink)]">
+              <span className="shrink-0 font-display text-[15px] font-bold tabular-nums text-[var(--ink)]">
                 {fmt.money(it.gift ? 0 : it.priceMinor * it.quantity, it.currency ?? order.currency)}
               </span>
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex flex-col gap-1.5 border-t-[3px] border-[var(--line)] pt-3 text-[14px]">
+        <div className="mt-4 flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
           <div className="flex justify-between font-semibold text-[var(--muted)]">
             <span>{t("order.sum")}</span>
-            <span className="font-bold text-[var(--ink)]">{fmt.money(order.subtotalMinor, order.currency)}</span>
+            <span className="font-semibold text-[var(--ink)]">{fmt.money(order.subtotalMinor, order.currency)}</span>
           </div>
           {order.discountMinor > 0 && (
             <div className="flex justify-between font-semibold text-[var(--muted)]">
               <span>{order.promoCode ? t("order.discountWithCode", { code: order.promoCode }) : t("order.discount")}</span>
-              <span className="font-black text-[var(--ok)]">−{fmt.money(order.discountMinor, order.currency)}</span>
+              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(order.discountMinor, order.currency)}</span>
             </div>
           )}
           <div className="mt-1 flex items-center justify-between">
-            <span className="text-[15px] font-black uppercase text-[var(--ink)]">{t("order.total")}</span>
-            <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[18px] font-black text-[var(--accent-ink)]">
+            <span className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("order.total")}</span>
+            <span className="font-display text-[18px] font-bold tabular-nums text-[var(--accent)]">
               {fmt.money(order.totalMinor, order.currency)}
             </span>
           </div>
@@ -205,10 +205,10 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
 function Tile({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="nb p-4">
-      <p className="nb-up mb-2 flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
+      <p className="eyebrow mb-2 flex items-center gap-2 text-[11px]">
         <span className="text-[var(--accent)]">{icon}</span> {label}
       </p>
-      <div className="break-words text-[15px] font-extrabold text-[var(--ink)]">{children}</div>
+      <div className="break-words text-[15px] font-semibold text-[var(--ink)]">{children}</div>
     </div>
   );
 }
@@ -250,16 +250,16 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex min-h-11 items-center justify-center gap-2 self-start rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-4 text-[13px] font-extrabold uppercase tracking-wide text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white"
+        className="flex min-h-11 items-center justify-center gap-2 self-start rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-transparent px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--danger)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
       >
-        <Ban className="h-4 w-4" strokeWidth={2.75} /> {t("cancel.button")}
+        <Ban className="h-4 w-4" strokeWidth={2.25} /> {t("cancel.button")}
       </button>
     );
   }
 
   return (
     <section className="nb max-w-xl p-5">
-      <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">{t("cancel.title")}</h3>
+      <h3 className="eyebrow text-[11px]">{t("cancel.title")}</h3>
       <div role="radiogroup" aria-label={t("cancel.title")} className="mt-3 flex flex-col gap-2">
         {CANCEL_REASONS.map((r) => {
           const on = reason === r.id;
@@ -270,12 +270,14 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
               role="radio"
               aria-checked={on}
               onClick={() => setReason(r.id)}
-              className={`flex min-h-11 items-center gap-2.5 border-[2.5px] border-[var(--line)] px-3 text-left text-[14px] font-bold ${
-                on ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-2)]"
+              className={`flex min-h-11 items-center gap-2.5 rounded-[var(--r)] border px-3 text-left text-[14px] font-medium transition-colors ${
+                on
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]"
+                  : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[var(--line-strong)]"
               }`}
             >
-              <span className={`grid h-4 w-4 shrink-0 place-items-center border-[2px] border-[var(--line)] ${on ? "bg-[var(--accent-ink)]" : ""}`}>
-                {on && <Check className="h-3 w-3 text-[var(--accent)]" strokeWidth={3} />}
+              <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border ${on ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line-strong)]"}`}>
+                {on && <Check className="h-3 w-3 text-[var(--accent-ink)]" strokeWidth={2.75} />}
               </span>
               {t(`cancel.reason.${r.id}` as MessageKey)}
             </button>
@@ -289,10 +291,10 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           placeholder={t("cancel.otherPlaceholder")}
           aria-label={t("cancel.otherPlaceholder")}
           rows={2}
-          className="mt-2 w-full resize-none border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+          className="mt-2 w-full resize-none rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
         />
       )}
-      {err && <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>}
+      {err && <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{err}</p>}
       <div className="mt-4 flex gap-2">
         <Button type="button" variant="surface" onClick={() => setOpen(false)}>
           {t("common.back")}
@@ -301,7 +303,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           type="button"
           disabled={busy || !reason || (reason === "other" && !other.trim())}
           onClick={() => void confirm()}
-          className="min-h-[48px] flex-1 border-[3px] border-[var(--line)] px-4 text-[14px] font-black uppercase text-white shadow-[4px_4px_0_var(--shadow)] disabled:opacity-50"
+          className="min-h-[48px] flex-1 rounded-[var(--r)] px-4 font-display text-[14px] font-bold uppercase tracking-[.06em] text-white transition-[filter] hover:brightness-110 disabled:opacity-50"
           style={{ background: "var(--danger)" }}
         >
           {busy ? "…" : t("cancel.button")}

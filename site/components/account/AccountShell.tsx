@@ -31,7 +31,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   if (session.status !== "authed") {
     return (
       <div className="container-site pt-10">
-        <p className="flex items-center gap-2 text-[15px] font-bold text-[var(--muted)]">
+        <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]">
           <Loader2 className="h-5 w-5 animate-spin" /> {t("common.loading")}
         </p>
       </div>
@@ -51,8 +51,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="container-site pt-8">
-      <h1 className="text-[30px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("account.title")}</h1>
-      <p className="mt-1 text-[15px] font-bold text-[var(--muted)]">
+      <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("account.title")}</h1>
+      <p className="mt-1 text-[15px] font-medium text-[var(--muted)]">
         {name ? t("account.hello", { name }) : t("account.helloAnon")}
       </p>
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
@@ -63,13 +63,13 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href={href(h)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-[var(--r)] border-[3px] border-[var(--line)] px-3.5 text-[14px] font-extrabold ${
+                  className={`flex min-h-11 items-center gap-2.5 whitespace-nowrap rounded-[var(--r)] border px-3.5 text-[14px] font-medium transition-colors ${
                     active
-                      ? "bg-[var(--accent)] text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)]"
-                      : "bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]"
                   }`}
                 >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   {label}
                 </Link>
               </li>
@@ -78,9 +78,9 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => void onLogout()}
-                className="flex min-h-11 w-full items-center gap-2.5 whitespace-nowrap rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3.5 text-[14px] font-extrabold text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white"
+                className="flex min-h-11 w-full items-center gap-2.5 whitespace-nowrap rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] px-3.5 text-[14px] font-medium text-[var(--muted)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)]"
               >
-                <LogOut className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+                <LogOut className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                 {t("account.logout")}
               </button>
             </li>

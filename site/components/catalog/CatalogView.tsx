@@ -83,10 +83,11 @@ export function CatalogView({
       <Breadcrumbs locale={locale} items={crumbs} />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[30px] font-black uppercase leading-tight tracking-tight text-[var(--ink)] sm:text-[40px]">
+          <h1 className="flex items-center gap-3 font-display text-[28px] font-extrabold uppercase leading-tight tracking-[.02em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[38px]">
             {title}
           </h1>
-          <p className="mt-1 text-[14px] font-bold text-[var(--muted)]" aria-live="polite">
+          <p className="mt-1 flex items-center gap-2 text-[14px] font-medium text-[var(--muted)]" aria-live="polite">
+            <span aria-hidden className="tech-mark" />
             {t("catalog.count", { n: total })}
           </p>
         </div>
@@ -103,14 +104,14 @@ export function CatalogView({
 
         <div className="min-w-0 flex-1">
           {!data ? (
-            <div className="nb p-8 text-center text-[15px] font-bold text-[var(--muted)]">{t("catalog.error")}</div>
+            <div className="nb p-8 text-center text-[15px] font-medium text-[var(--muted)]">{t("catalog.error")}</div>
           ) : data.items.length === 0 ? (
-            <div className="nb flex flex-col items-center gap-3 px-6 py-14 text-center">
-              <PackageSearch className="h-10 w-10 text-[var(--muted)]" strokeWidth={2.25} />
-              <p className="text-[18px] font-black uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
+            <div className="nb hud-frame flex flex-col items-center gap-3 px-6 py-14 text-center">
+              <PackageSearch className="h-10 w-10 text-[var(--accent)]" strokeWidth={1.75} />
+              <p className="text-[18px] font-display font-extrabold uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
               <p className="max-w-sm text-[14px] font-medium text-[var(--muted)]">{t("catalog.empty.text")}</p>
               {filtered && (
-                <Link href={href(catalogHref({ ...state, inStock: false, priceMax: undefined, page: 1 }))} className="link-ink mt-2 text-[14px] font-extrabold">
+                <Link href={href(catalogHref({ ...state, inStock: false, priceMax: undefined, page: 1 }))} className="link-ink mt-2 text-[14px] font-semibold">
                   {t("catalog.reset")}
                 </Link>
               )}
@@ -133,18 +134,18 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
   const cur = state.page;
   const nums = pageWindow(cur, pages);
   const cell =
-    "grid h-11 min-w-11 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] px-3 text-[14px] font-black";
+    "grid h-11 min-w-11 place-items-center rounded-[var(--r)] border px-3 font-display text-[14px] font-bold tabular-nums transition-colors";
   return (
     <nav aria-label={t("catalog.pagination")} className="mt-10 flex flex-wrap items-center justify-center gap-2">
       {cur > 1 ? (
-        <Link href={href(cur - 1)} rel="prev" className={`${cell} bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] hover:bg-[var(--surface-2)]`}>
-          <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+        <Link href={href(cur - 1)} rel="prev" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
+          <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
           <span className="sr-only">{t("catalog.prev")}</span>
         </Link>
       ) : null}
       {nums.map((n, i) =>
         n === null ? (
-          <span key={`gap-${i}`} className="px-1 font-black text-[var(--muted)]">
+          <span key={`gap-${i}`} className="px-1 font-display font-extrabold text-[var(--muted)]">
             …
           </span>
         ) : (
@@ -155,8 +156,8 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
             aria-label={t("catalog.page", { n })}
             className={`${cell} ${
               n === cur
-                ? "bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]"
-                : "bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--ink)]"
             }`}
           >
             {n}
@@ -164,9 +165,9 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
         )
       )}
       {cur < pages ? (
-        <Link href={href(cur + 1)} rel="next" className={`${cell} bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] hover:bg-[var(--surface-2)]`}>
+        <Link href={href(cur + 1)} rel="next" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
           <span className="sr-only">{t("catalog.next")}</span>
-          <ChevronRight className="h-4 w-4" strokeWidth={3} />
+          <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
         </Link>
       ) : null}
     </nav>

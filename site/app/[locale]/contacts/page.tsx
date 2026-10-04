@@ -19,7 +19,7 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
       href={`https://t.me/${OWNER_TELEGRAM}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline decoration-2 underline-offset-2 hover:text-[var(--accent)]"
+      className="link-ink"
     >
       @{OWNER_TELEGRAM}
     </a>
@@ -33,28 +33,28 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
   return (
     <div className="container-site pt-6">
       <Breadcrumbs locale={locale} items={[{ label: t("info.contacts") }]} />
-      <h1 className="text-[32px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("info.contacts")}</h1>
-      <p className="mt-2 max-w-2xl text-[16px] font-semibold text-[var(--muted)]">{t("contacts.lead")}</p>
+      <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("info.contacts")}</h1>
+      <p className="mt-2 max-w-2xl text-[16px] leading-relaxed text-[var(--muted)]">{t("contacts.lead")}</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <section className="nb-lg flex flex-col gap-4 bg-[var(--c2)] p-6 text-white">
-          <Send className="h-8 w-8" strokeWidth={2.5} />
-          <h2 className="text-[22px] font-black uppercase">{t("contacts.telegram")}</h2>
-          <p className="text-[15px] font-semibold opacity-90">{t("contacts.telegramText")}</p>
+        <section className="nb-lg hud-frame flex flex-col gap-4 p-6">
+          <Send className="h-8 w-8 text-[var(--accent)]" strokeWidth={2} />
+          <h2 className="font-display text-[22px] font-extrabold uppercase tracking-[.02em]">{t("contacts.telegram")}</h2>
+          <p className="text-[15px] leading-relaxed text-[var(--muted)]">{t("contacts.telegramText")}</p>
           <a
             href={BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center gap-2 self-start rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-5 text-[14px] font-black uppercase tracking-wide text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] hover:-translate-y-[1px]"
+            className="chamfer inline-flex min-h-12 items-center gap-2 self-start bg-[var(--accent)] px-5 font-display text-[14px] font-bold uppercase tracking-[.06em] text-[var(--accent-ink)] transition-colors hover:bg-[var(--accent-hi)]"
           >
             {BOT_URL.replace("https://", "")}
           </a>
-          <div className="mt-2 border-t-[2px] border-white/40 pt-4">
-            <p className="flex items-center gap-2 text-[15px] font-black uppercase">
-              <MessageCircle className="h-5 w-5" strokeWidth={2.5} /> {t("contacts.orderChat")}
+          <div className="mt-2 border-t border-[var(--line)] pt-4">
+            <p className="flex items-center gap-2 font-display text-[15px] font-bold uppercase tracking-[.06em]">
+              <MessageCircle className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} /> {t("contacts.orderChat")}
             </p>
-            <p className="mt-1 text-[14px] font-semibold opacity-90">
+            <p className="mt-1 text-[14px] text-[var(--muted)]">
               {t("contacts.orderChatText")}{" "}
-              <Link href={localePath(locale, "/account")} className="underline decoration-2 underline-offset-2">
+              <Link href={localePath(locale, "/account")} className="link-ink text-[var(--ink)]">
                 {t("header.account")}
               </Link>
             </p>
@@ -66,8 +66,8 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
               <div key={label} className="flex gap-3">
                 <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.5} />
                 <div>
-                  <dt className="nb-up text-[11px] font-black text-[var(--faint)]">{label}</dt>
-                  <dd className="text-[15px] font-semibold text-[var(--ink)]">{value}</dd>
+                  <dt className="eyebrow text-[11px]">{label}</dt>
+                  <dd className="text-[15px] font-medium text-[var(--ink)]">{value}</dd>
                 </div>
               </div>
             ))}

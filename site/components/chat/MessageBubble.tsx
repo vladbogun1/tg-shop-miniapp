@@ -4,11 +4,11 @@
  * Copied from the Mini App (frontend/components/chat/MessageBubble.tsx); only the imports changed
  * (site i18n/formatters; media links are same-origin, so they are used as they are).
  *
- * NEO-BRUTALISM chat bubble (design doc §6.3).
- * - outgoing (CUSTOMER): accent fill + ink border aligned right, read ticks
+ * Chat bubble (DESIGN-V3 §6).
+ * - outgoing (CUSTOMER): soft orange fill with a 2px orange left edge, aligned right, read ticks
  *   (✓ pending / ✓✓ read by `readAt`).
- * - incoming (ADMIN): surface + ink border aligned left with sender name.
- * - SYSTEM: centered bordered pill.
+ * - incoming (ADMIN): --surface-2 aligned left with sender name.
+ * - SYSTEM: centered pill.
  * PHOTO messages render the image (via `Image`) and open a lightbox on tap.
  * Reply quote, file row, time via `formatTime` preserved from the original.
  * Sharp corners, thick borders, hard offset shadow.
@@ -37,7 +37,7 @@ export function MessageBubble({
   if (msg.type === "SYSTEM") {
     return (
       <div className="my-2 flex justify-center">
-        <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
+        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
           {msg.text}
         </span>
       </div>
@@ -58,29 +58,29 @@ export function MessageBubble({
       className={`flex ${outgoing ? "justify-end" : "justify-start"}`}
     >
       <div
-        className={`relative max-w-[85%] sm:max-w-[70%] overflow-hidden rounded-[var(--r)] border-[3px] border-[var(--line)] shadow-[4px_4px_0_var(--shadow)] ${
+        className={`relative max-w-[85%] sm:max-w-[70%] overflow-hidden rounded-[var(--r-card)] border ${
           photoOnly ? "p-1" : "px-3 py-2"
         } ${
           outgoing
-            ? "bg-[var(--accent)] text-[var(--accent-ink)]"
-            : "bg-[var(--surface)] text-[var(--ink)]"
+            ? "border-[rgba(255,102,0,.28)] border-l-2 border-l-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]"
+            : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
         }`}
       >
         {!outgoing && msg.senderName && (
-          <p className="mb-0.5 text-[12px] font-black uppercase tracking-wide text-[var(--accent)]">
+          <p className="mb-0.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)]">
             {msg.senderName}
           </p>
         )}
 
         {repliedTo && (
           <div
-            className={`mb-1.5 rounded-[var(--r)] border-l-[3px] px-2 py-1 text-[12px] ${
+            className={`mb-1.5 rounded-[var(--r)] border-l px-2 py-1 text-[12px] ${
               outgoing
-                ? "border-[var(--accent-ink)] bg-[color-mix(in_srgb,var(--accent-ink)_14%,transparent)]"
-                : "border-[var(--accent)] bg-[var(--surface-2)]"
+                ? "border-[var(--accent)] bg-[rgba(0,0,0,.25)]"
+                : "border-[var(--accent)] bg-[var(--surface-3)]"
             }`}
           >
-            <span className="block font-extrabold opacity-90">
+            <span className="block font-semibold opacity-90">
               {repliedTo.senderName ?? t("chat.reply.fallbackSender")}
             </span>
             <span className="line-clamp-1 opacity-75">
@@ -94,7 +94,7 @@ export function MessageBubble({
           <button
             type="button"
             onClick={() => onImageClick?.(msg.attachmentUrl!)}
-            className={`block w-full overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)] ${
+            className={`block w-full overflow-hidden rounded-[var(--r)] border border-[var(--line)] ${
               photoOnly ? "" : "mb-1"
             }`}
           >
@@ -117,36 +117,36 @@ export function MessageBubble({
             href={msg.attachmentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-2 py-1.5 ${
+            className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] px-2 py-1.5 ${
               outgoing
-                ? "bg-[color-mix(in_srgb,var(--accent-ink)_12%,transparent)]"
-                : "bg-[var(--surface-2)]"
+                ? "bg-[rgba(0,0,0,.25)]"
+                : "bg-[var(--surface-3)]"
             }`}
           >
             <FileText className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            <span className="truncate text-[13px] font-bold">{msg.fileName ?? t("chat.attachment.file")}</span>
+            <span className="truncate text-[13px] font-semibold">{msg.fileName ?? t("chat.attachment.file")}</span>
           </a>
         )}
 
         {msg.text && (
-          <p className="whitespace-pre-wrap break-words text-[14px] font-medium leading-snug">
+          <p className="whitespace-pre-wrap break-words text-[14px] leading-snug">
             {msg.text}
           </p>
         )}
 
         <div
-          className={`flex items-center justify-end gap-1 text-[10px] font-bold ${
+          className={`flex items-center justify-end gap-1 text-[10px] font-semibold ${
             photoOnly
-              ? "absolute bottom-2 right-2 rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--surface)] px-1.5 py-0.5 text-[var(--ink)]"
-              : `mt-0.5 ${outgoing ? "opacity-80" : "text-[var(--faint)]"}`
+              ? "absolute bottom-2 right-2 rounded-full bg-[rgba(14,14,16,.8)] px-1.5 py-0.5 text-[var(--ink)]"
+              : `mt-0.5 ${outgoing ? "text-[var(--muted)]" : "text-[var(--faint)]"}`
           }`}
         >
           <span>{fmt.time(msg.createdAt)}</span>
           {outgoing &&
             (msg.readAt ? (
-              <CheckCheck className="h-3.5 w-3.5" strokeWidth={3} />
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={2.5} />
             ) : (
-              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
             ))}
         </div>
       </div>

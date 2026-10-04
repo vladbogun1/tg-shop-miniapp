@@ -13,9 +13,8 @@
  * "Выбрать"). Only the category tabs (Всі/Відділення/Поштомати/Пункти) filter.
  * No API key / account needed (OSM tiles). Loaded client-only (next/dynamic).
  *
- * NEO-BRUTALISM redesign: the surrounding chrome (category chips, map frame,
- * detail sheet) is restyled to the neo system (thick ink borders, hard offset
- * shadows, sharp corners, heavy type). ALL map logic — Leaflet, markercluster,
+ * v3 (DESIGN-V3 §6): the surrounding chrome (category chips, map frame, detail
+ * sheet) follows the dark ChiSetup system; pins and clusters are brand orange. ALL map logic — Leaflet, markercluster,
  * bbox fetching (customerApi.getNpWarehousesBbox), category filtering,
  * pin-by-category, the detail sheet and "Выбрать" confirm — is unchanged. iOS
  * scroll handling preserved (scrollWheelZoom + isolated frame). Leaflet tiles
@@ -49,11 +48,12 @@ const CAT_TABS: { key: Cat; labelKey: MessageKey }[] = [
   { key: "point", labelKey: "np.cat.point" },
 ];
 
+/** v3: every pin is brand orange (DESIGN-V3 §6) — the white glyph tells the types apart. */
 const CAT_COLOR: Record<string, string> = {
-  BRANCH: "#e0322f",
-  POSTOMAT: "#16a34a",
-  POINT: "#0891b2",
-  OTHER: "#6b7280",
+  BRANCH: "#FF6600",
+  POSTOMAT: "#FF6600",
+  POINT: "#FF6600",
+  OTHER: "#A1A1AA",
 };
 
 function catLabelKey(c?: NpCategory): MessageKey {
@@ -66,7 +66,7 @@ function catLabelKey(c?: NpCategory): MessageKey {
 
 /** White monochrome glyph per category so the type reads at a glance (not just colour). */
 function glyphSvg(category: string | undefined, g: number): string {
-  const open = `<svg viewBox="0 0 24 24" width="${g}" height="${g}" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">`;
+  const open = `<svg viewBox="0 0 24 24" width="${g}" height="${g}" fill="none" stroke="#0E0E10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">`;
   const body =
     category === "POSTOMAT"
       ? '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M4 9h16M4 15h16M12 3v18"/>' // locker grid
@@ -74,7 +74,7 @@ function glyphSvg(category: string | undefined, g: number): string {
         ? '<path d="M4 9.5 5.2 4h13.6L20 9.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/>' // storefront
         : category === "POINT"
           ? '<path d="M5 8 6.5 4h11L19 8"/><path d="M5 8v12h14V8"/><path d="M4 13h5l1 2h4l1-2h5"/>' // pickup box
-          : '<circle cx="12" cy="12" r="3.5" fill="#fff" stroke="none"/>';
+          : '<circle cx="12" cy="12" r="3.5" fill="#0E0E10" stroke="none"/>';
   return open + body + "</svg>";
 }
 
@@ -86,8 +86,8 @@ function pinIcon(category: string | undefined, active: boolean): L.DivIcon {
     className: "np-pin",
     html: `<div style="position:relative;width:${size}px;height:${size}px;">
       <div style="position:absolute;inset:0;border-radius:50% 50% 50% 0;background:${color};
-        transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45);
-        ${active ? "outline:3px solid var(--accent,#5ac8fa);outline-offset:1px;" : ""}"></div>
+        transform:rotate(-45deg);border:2px solid #0E0E10;box-shadow:0 2px 8px rgba(0,0,0,.5)${active ? ",0 0 16px rgba(255,102,0,.9)" : ""};
+        ${active ? "outline:2px solid #fff;outline-offset:1px;" : ""}"></div>
       <div style="position:absolute;left:0;top:0;width:${size}px;height:${Math.round(size * 0.78)}px;
         display:flex;align-items:center;justify-content:center;">${glyphSvg(category, g)}</div>
     </div>`,
@@ -231,7 +231,7 @@ export default function NpWarehouseMap({
 
   return (
     <div className="flex flex-col gap-2.5">
-      {/* Category tabs (neo chips, not inputs) */}
+      {/* Category tabs (chips, not inputs) */}
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1.5 pl-0.5 pt-0.5">
         {CAT_TABS.map((tab) => {
           const on = category === tab.key;
@@ -241,12 +241,9 @@ export default function NpWarehouseMap({
               type="button"
               whileTap={{ scale: 0.96 }}
               onClick={() => setCategory(tab.key)}
-              className="tap min-h-0 shrink-0 rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-wide transition-transform active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-              style={{
-                background: on ? "var(--accent)" : "var(--surface)",
-                color: on ? "var(--accent-ink)" : "var(--ink)",
-                boxShadow: on ? "3px 3px 0 var(--shadow)" : "none",
-              }}
+              className={`nb-chip tap min-h-0 shrink-0 px-3.5 py-1.5 text-[12px] uppercase tracking-[.06em] transition-colors ${
+                on ? "nb-chip-active" : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
             >
               {t(tab.labelKey)}
             </motion.button>
@@ -254,12 +251,12 @@ export default function NpWarehouseMap({
         })}
       </div>
 
-      {/* Map frame — thick ink border, hard offset shadow, isolated stacking (iOS) */}
+      {/* Map frame — hairline border, 12px radius, isolated stacking (iOS). Tiles stay light. */}
       <div
-        className="relative isolate overflow-hidden rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-1 shadow-[5px_5px_0_var(--shadow)]"
+        className="relative isolate overflow-hidden rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] p-1"
         style={{ height: "min(520px, 62vh)", minHeight: 320 }}
       >
-        <div className="relative h-full w-full overflow-hidden rounded-[1px]">
+        <div className="relative h-full w-full overflow-hidden rounded-[8px]">
           <MapContainer
             center={UA_CENTER}
             zoom={UA_ZOOM}
@@ -282,7 +279,7 @@ export default function NpWarehouseMap({
           {/* Hint pill (top), hidden once a pin is open */}
           {!active && (
             <div className="pointer-events-none absolute inset-x-0 top-2 z-[1000] flex justify-center px-2">
-              <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)]">
+              <span className="rounded-full border border-[var(--line-strong)] bg-[rgba(14,14,16,.88)] px-3 py-1.5 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--ink)] backdrop-blur-sm">
                 {t("np.hint")}
               </span>
             </div>
@@ -307,23 +304,20 @@ export default function NpWarehouseMap({
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="fixed inset-x-3 bottom-4 z-[1200] mx-auto max-w-[456px] rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[7px_7px_0_var(--shadow)]"
+                className="fixed inset-x-3 bottom-4 z-[1200] mx-auto max-w-[456px] rounded-2xl border border-[var(--line-strong)] bg-[var(--surface)] p-3 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
               >
                 <div className="flex items-start gap-3">
                   <span
-                    className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-white"
-                    style={{
-                      background: CAT_COLOR[active.category ?? "OTHER"],
-                    }}
+                    className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                   >
                     {active.category === "POSTOMAT" ? (
-                      <Box className="h-4 w-4" strokeWidth={2.75} />
+                      <Box className="h-4 w-4" strokeWidth={2.25} />
                     ) : (
-                      <Store className="h-4 w-4" strokeWidth={2.75} />
+                      <Store className="h-4 w-4" strokeWidth={2.25} />
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-extrabold text-[var(--ink)]">
+                    <div className="text-[14px] font-semibold text-[var(--ink)]">
                       {t(catLabelKey(active.category))}{" "}
                       {active.number != null ? t("np.number", { n: active.number }) : ""}
                     </div>
@@ -335,9 +329,9 @@ export default function NpWarehouseMap({
                   <button
                     onClick={() => setActive(null)}
                     aria-label={t("common.close")}
-                    className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
+                    className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:scale-[.96]"
                   >
-                    <X className="h-4 w-4" strokeWidth={3} />
+                    <X className="h-4 w-4" strokeWidth={2.5} />
                   </button>
                 </div>
                 <motion.button
@@ -347,9 +341,9 @@ export default function NpWarehouseMap({
                     onSelect(active);
                     setActive(null);
                   }}
-                  className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] py-3 text-[14px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] transition-transform active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+                  className="chamfer tap mt-3 flex w-full items-center justify-center gap-2 bg-[var(--accent)] py-3 font-display text-[14px] font-bold uppercase tracking-[.06em] text-[var(--accent-ink)] transition-transform active:scale-[.98]"
                 >
-                  <Check className="h-5 w-5" strokeWidth={3} /> {t("np.confirm")}
+                  <Check className="h-5 w-5" strokeWidth={2.5} /> {t("np.confirm")}
                 </motion.button>
               </motion.div>
             )}

@@ -19,7 +19,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { api, isAuthFailure, type PromoPreview } from "@/lib/api";
@@ -61,7 +61,7 @@ export function PromoField({
   return (
     <div>
       <div
-        className="flex items-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-2.5"
+        className="flex items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 py-2.5 transition-colors focus-within:border-[var(--accent)]"
         style={
           state === "bad"
             ? { borderColor: "var(--danger)" }
@@ -70,23 +70,21 @@ export function PromoField({
               : undefined
         }
       >
-        <span className="text-[16px]" aria-hidden>
-          🎟️
-        </span>
+        <Ticket className="h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.25} aria-hidden />
         <input
           value={code}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
           placeholder={t("promo.placeholder")}
           aria-label={t("promo.placeholder")}
           aria-invalid={state === "bad"}
-          className="min-h-[36px] w-full bg-transparent text-[15px] font-bold uppercase tracking-wide text-[var(--ink)] outline-none placeholder:font-semibold placeholder:text-[var(--faint)] placeholder:normal-case placeholder:tracking-normal"
+          className="min-h-[36px] w-full bg-transparent font-display text-[15px] font-semibold uppercase tracking-[.08em] text-[var(--ink)] outline-none placeholder:font-sans placeholder:font-normal placeholder:text-[var(--faint)] placeholder:normal-case placeholder:tracking-normal"
         />
 
         {state === "checking" && (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" strokeWidth={2.75} />
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" strokeWidth={2.25} />
         )}
         {state === "ok" && (
-          <Check className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={3} />
+          <Check className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
         )}
         {trimmed.length > 0 && (
           <motion.button
@@ -94,9 +92,9 @@ export function PromoField({
             aria-label={t("promo.clear")}
             whileTap={{ scale: 0.88 }}
             onClick={clear}
-            className="-mr-1 grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
+            className="-mr-1 grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-3)] text-[var(--ink)] transition-transform active:scale-[.96]"
           >
-            <X className="h-4 w-4" strokeWidth={3} />
+            <X className="h-4 w-4" strokeWidth={2.5} />
           </motion.button>
         )}
       </div>
@@ -136,14 +134,14 @@ function PromoHint({
   if (state === "bad") {
     // The server already answers in the customer's language; the fallback is for a dropped request.
     return (
-      <p className="mt-1.5 px-1 text-[12px] font-bold text-[var(--danger)]">
+      <p className="mt-1.5 px-1 text-[12px] font-semibold text-[var(--danger)]">
         {preview?.message ?? t("promo.notFound")}
       </p>
     );
   }
   const discount = preview?.discountMinor ?? 0;
   return (
-    <p className="mt-1.5 px-1 text-[12px] font-bold text-[var(--ok)]">
+    <p className="mt-1.5 px-1 text-[12px] font-semibold text-[var(--ok)]">
       {t("promo.discount", {
         discount: fmt.money(discount, currency),
         subtotal: fmt.money(subtotal, currency),

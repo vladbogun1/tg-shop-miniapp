@@ -1,25 +1,27 @@
 /**
- * Small category illustrations for the home «Categories» tiles, drawn in the same neo-brutalist
- * language as HeroArt: flat fills, thick ink outlines, one hard offset shadow, slight tilt.
+ * Small category illustrations for the home «Categories» tiles, drawn in the same v3 language as
+ * HeroArt: graphite fills, thin steel outlines, a soft orange halo, slight tilt.
  *
- * Every drawing uses paper / key-grey / ink plus ONE accent passed in by the tile, so the art reads
- * on any tile colour (the caller picks an accent that differs from the tile). Ink and paper are
- * literal colours on purpose: tiles are bright in both themes, so the art must not flip in dark mode.
+ * Every drawing uses graphite / key-grey / near-black plus ONE accent passed in by the tile
+ * (brand orange on the home page).
  *
  * Categories are tags the owner creates in the admin, so the art is chosen by fuzzy slug/name
  * matching and anything unknown gets a neutral parcel box instead of breaking.
  */
 
-const INK = "#141414";
-const PAPER = "#FFFDF6";
-const KEY = "#E9E5D8";
-const GLASS = "#DDF1FF";
+/** Dark details. */
+const INK = "#09090B";
+/** Steel outline, readable on the graphite tile. */
+const STROKE = "#6A6A73";
+const PAPER = "#2C2C32";
+const KEY = "#1E1E23";
+const GLASS = "#23272E";
 
 const SHADOW_ID = "cat-nb-shadow";
 
 const line = {
-  stroke: INK,
-  strokeWidth: 3,
+  stroke: STROKE,
+  strokeWidth: 2.2,
   strokeLinejoin: "round",
   strokeLinecap: "round",
 } as const;
@@ -31,13 +33,15 @@ export function CategoryArtDefs() {
   return (
     <svg width="0" height="0" aria-hidden focusable="false" style={{ position: "absolute" }}>
       <defs>
-        <filter id={SHADOW_ID} x="-20%" y="-20%" width="150%" height="150%" colorInterpolationFilters="sRGB">
-          <feOffset in="SourceAlpha" dx="4" dy="4" result="off" />
-          <feFlood floodColor={INK} />
-          <feComposite in2="off" operator="in" result="shadow" />
+        {/* Soft orange halo + depth: the art sits on a dark tile like a lit object. */}
+        <filter id={SHADOW_ID} x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="sRGB">
+          <feDropShadow dx="0" dy="6" stdDeviation="5" floodColor="#000" floodOpacity=".65" result="d" />
+          <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
+          <feFlood floodColor="#FF6600" floodOpacity=".22" />
+          <feComposite in2="blur" operator="in" result="glow" />
           <feMerge>
-            <feMergeNode in="shadow" />
-            <feMergeNode in="SourceGraphic" />
+            <feMergeNode in="glow" />
+            <feMergeNode in="d" />
           </feMerge>
         </filter>
       </defs>
@@ -71,7 +75,7 @@ function MiniKeyboard({ x, y, a, hi = [] }: { x: number; y: number; a: string; h
           height={7}
           rx={1.5}
           fill={hi.includes(`${r}-${c}`) ? a : KEY}
-          stroke={INK}
+          stroke={STROKE}
           strokeWidth={1.6}
         />
       );
@@ -81,7 +85,7 @@ function MiniKeyboard({ x, y, a, hi = [] }: { x: number; y: number; a: string; h
     <>
       <rect x={x} y={y} width={86} height={38} rx={5} fill={PAPER} {...line} />
       {caps}
-      <rect x={x + 27} y={y + 5 + 3 * 9 - 0.5} width={31} height={4.5} rx={1.5} fill={a} stroke={INK} strokeWidth={1.6} />
+      <rect x={x + 27} y={y + 5 + 3 * 9 - 0.5} width={31} height={4.5} rx={1.5} fill={a} stroke={STROKE} strokeWidth={1.6} />
     </>
   );
 }
@@ -122,7 +126,7 @@ const ART: Record<string, Art> = {
   // USB-C cable between two plugs
   cable: (a) => (
     <g transform="rotate(-6 50 50)">
-      <path d="M26 34 C26 66 58 40 60 62 C61 74 64 78 70 78" fill="none" stroke={INK} strokeWidth={10} strokeLinecap="round" />
+      <path d="M26 34 C26 66 58 40 60 62 C61 74 64 78 70 78" fill="none" stroke={STROKE} strokeWidth={10} strokeLinecap="round" />
       <path d="M26 34 C26 66 58 40 60 62 C61 74 64 78 70 78" fill="none" stroke={a} strokeWidth={4.5} strokeLinecap="round" />
       <g {...line}>
         <rect x={20} y={6} width={12} height={9} rx={2} fill={KEY} strokeWidth={2.4} />
@@ -140,8 +144,8 @@ const ART: Record<string, Art> = {
     const cap = (x: number, y: number, label: string, fill: string) => (
       <g key={label}>
         <rect x={x} y={y} width={28} height={28} rx={5} fill={fill === PAPER ? KEY : fill} {...line} />
-        <rect x={x + 4} y={y + 2.5} width={20} height={18} rx={3.5} fill={fill === PAPER ? PAPER : fill} stroke={INK} strokeWidth={2.2} />
-        <text x={x + 14} y={y + 16} textAnchor="middle" fontSize={11} fontWeight={900} fill={INK} fontFamily="inherit">
+        <rect x={x + 4} y={y + 2.5} width={20} height={18} rx={3.5} fill={fill === PAPER ? PAPER : fill} stroke={STROKE} strokeWidth={2.2} />
+        <text x={x + 14} y={y + 16} textAnchor="middle" fontSize={11} fontWeight={800} fill={fill === PAPER ? "#E4E4E7" : INK} fontFamily="inherit">
           {label}
         </text>
       </g>
@@ -263,8 +267,8 @@ const ART: Record<string, Art> = {
     <g>
       <g transform="rotate(-8 50 54)" {...line}>
         <rect x={8} y={24} width={84} height={58} rx={6} fill={GLASS} />
-        <path d="M30 28 L16 78 M44 28 L30 78" stroke={PAPER} strokeWidth={5} />
-        <path d="M74 28 L66 56" stroke={PAPER} strokeWidth={4} />
+        <path d="M30 28 L16 78 M44 28 L30 78" stroke="rgba(255,255,255,.28)" strokeWidth={5} />
+        <path d="M74 28 L66 56" stroke="rgba(255,255,255,.28)" strokeWidth={4} />
         <rect x={8} y={24} width={84} height={58} rx={6} fill="none" />
       </g>
       <Sparkle x={80} y={22} s={1.1} fill={a} />
@@ -277,7 +281,7 @@ const ART: Record<string, Art> = {
     <g transform="rotate(-4 50 55)" {...line}>
       <rect x={24} y={10} width={52} height={34} rx={3} fill={INK} />
       <rect x={28} y={14} width={44} height={26} rx={1.5} fill={a} strokeWidth={2} />
-      <path d="M34 34 L46 22 M42 36 L56 22" stroke={PAPER} strokeWidth={2.4} />
+      <path d="M34 34 L46 22 M42 36 L56 22" stroke="rgba(255,255,255,.28)" strokeWidth={2.4} />
       <rect x={46} y={44} width={8} height={8} fill={INK} />
       <rect x={4} y={52} width={92} height={10} rx={2.5} fill={PAPER} />
       <path d="M10 62 L10 90 M90 62 L90 90" strokeWidth={6} />

@@ -17,12 +17,12 @@ export function LangSwitch() {
   const router = useRouter();
   return (
     <nav aria-label={t("header.lang")}>
-      <ul className="flex items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)]">
-        {LOCALES.map((l, i) => {
+      <ul className="flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
+        {LOCALES.map((l) => {
           const target = localePath(l, pathname);
           const active = l === locale;
           return (
-            <li key={l} className={i > 0 ? "border-l-[2.5px] border-[var(--line)]" : ""}>
+            <li key={l}>
               <Link
                 href={target}
                 hrefLang={l}
@@ -34,10 +34,10 @@ export function LangSwitch() {
                   e.preventDefault();
                   router.push(target + window.location.search);
                 }}
-                className={`grid h-[38px] min-w-[40px] place-items-center px-2 text-[12px] font-black tracking-wide transition-colors ${
+                className={`grid h-[34px] min-w-[42px] place-items-center rounded-full border px-2 font-display text-[12px] font-bold tracking-[.08em] transition-colors ${
                   active
-                    ? "bg-[var(--ink)] text-[var(--bg)]"
-                    : "text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-transparent text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
                 }`}
               >
                 {LOCALE_SHORT[l]}

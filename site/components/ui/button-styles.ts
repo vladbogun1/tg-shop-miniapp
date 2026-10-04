@@ -2,23 +2,27 @@
 export type ButtonSize = "sm" | "md" | "lg";
 export type ButtonVariant = "surface" | "accent" | "ink" | "ghost";
 
-
 export const BUTTON_BASE =
-  "tap relative inline-flex items-center justify-center gap-2 select-none rounded-[var(--r)] font-extrabold uppercase tracking-wide transition-transform disabled:opacity-50 disabled:pointer-events-none";
+  "tap relative inline-flex items-center justify-center gap-2 select-none rounded-[var(--r)] font-display font-bold uppercase tracking-[.06em] transition-[transform,background-color,border-color,color,filter] duration-150 active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none";
 
 export const BUTTON_SIZES: Record<ButtonSize, string> = {
   sm: "min-h-[40px] px-3.5 py-2 text-[13px]",
   md: "min-h-[48px] px-5 py-3 text-[14px]",
-  lg: "min-h-[56px] px-6 py-3.5 text-[16px]",
+  lg: "min-h-[56px] px-7 py-3.5 text-[15px]",
 };
 
+/**
+ * accent = the main CTA: orange, dark text, chamfered corners (clip-path); a glow needs a wrapper
+ * (box-shadow would be clipped). surface = neutral graphite. ink = outlined secondary with an orange
+ * hover. ghost = bare text.
+ */
 export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   surface:
-    "border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[5px_5px_0_var(--shadow)] hover:bg-[var(--surface-2)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
+    "border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)]",
   accent:
-    "border-[3px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[5px_5px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
+    "chamfer bg-[var(--accent)] text-[var(--accent-ink)] hover:bg-[var(--accent-hi)] active:bg-[var(--accent-lo)]",
   ink:
-    "border-[3px] border-[var(--line)] bg-[var(--ink)] text-[var(--bg)] shadow-[4px_4px_0_var(--accent)] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[5px_5px_0_var(--accent)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
+    "border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)] hover:bg-[rgba(255,102,0,.2)] hover:text-[var(--ink)]",
   ghost: "text-[var(--muted)] hover:text-[var(--ink)] bg-transparent",
 };
 

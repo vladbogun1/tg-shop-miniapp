@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * QtyStepper — NEO-BRUTALISM quantity control (API unchanged: value, onChange,
- * min, max, size). Sharp bordered −/+ squares around the count.
+ * QtyStepper — quantity control (API unchanged: value, onChange, min, max, size).
+ * Graphite −/+ buttons around the count.
  */
 import { Minus, Plus } from "lucide-react";
 import { useT } from "@/i18n/context";
@@ -40,20 +40,20 @@ export function QtyStepper({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`grid place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-30 ${btn}`}
+      className={`grid place-items-center rounded-[var(--r)] bg-[var(--surface-2)] text-[var(--ink)] transition-[transform,background-color,color] hover:bg-[var(--surface-3)] hover:text-[var(--accent-hi)] active:scale-[.94] disabled:opacity-30 disabled:hover:bg-[var(--surface-2)] disabled:hover:text-[var(--ink)] ${btn}`}
     >
       {children}
     </button>
   );
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] p-1">
+    <div className="inline-flex items-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface)] p-1">
       <Btn label={t("qty.decrease")} disabled={value <= min} onClick={() => onChange(value - 1)}>
-        <Minus className="h-4 w-4" strokeWidth={3} />
+        <Minus className="h-4 w-4" strokeWidth={2.5} />
       </Btn>
-      <span className={`text-center font-black tabular-nums text-[var(--ink)] ${num}`}>{value}</span>
+      <span className={`text-center font-display font-bold tabular-nums text-[var(--ink)] ${num}`}>{value}</span>
       <Btn label={t("qty.increase")} disabled={value >= max} onClick={() => onChange(value + 1)}>
-        <Plus className="h-4 w-4" strokeWidth={3} />
+        <Plus className="h-4 w-4" strokeWidth={2.5} />
       </Btn>
     </div>
   );

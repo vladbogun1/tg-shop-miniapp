@@ -32,9 +32,9 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
       }}
       aria-label={t("common.copy", { label })}
       title={copied ? t("common.copied") : t("common.copy", { label })}
-      className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--c3)] hover:text-[var(--accent-ink)]"
+      className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
     >
-      {copied ? <Check className="h-4 w-4 text-[var(--ok)]" strokeWidth={3} /> : <Copy className="h-4 w-4" strokeWidth={2.5} />}
+      {copied ? <Check className="h-4 w-4 text-[var(--ok)]" strokeWidth={2.5} /> : <Copy className="h-4 w-4" strokeWidth={2.5} />}
     </button>
   );
 }
@@ -62,15 +62,15 @@ export function RequisitesCard({
 
   return (
     <section className="nb p-5">
-      <h2 className="flex items-center gap-2 text-[16px] font-black uppercase tracking-wide text-[var(--ink)]">
-        <CreditCard className="h-5 w-5 text-[var(--accent)]" strokeWidth={2.5} />
+      <h2 className="flex items-center gap-2 text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">
+        <CreditCard className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} />
         {title ?? t("order.requisitesTitle")}
       </h2>
       {lead && <p className="mt-1 text-[13px] font-medium text-[var(--muted)]">{lead}</p>}
       {amount && (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-3 py-2 text-[var(--accent-ink)]">
-          <span className="text-[12px] font-black uppercase">{t("success.amount")}</span>
-          <span className="flex items-center gap-2 text-[20px] font-black">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-2">
+          <span className="font-display text-[12px] font-semibold uppercase tracking-[.1em] text-[var(--ink)]">{t("success.amount")}</span>
+          <span className="flex items-center gap-2 font-display text-[22px] font-bold tabular-nums text-[var(--accent)]">
             {amount}
           </span>
         </div>
@@ -79,11 +79,11 @@ export function RequisitesCard({
         {rows.map((r) => (
           <li
             key={r.label}
-            className="flex items-center gap-3 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-2"
+            className="flex items-center gap-3 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2"
           >
             <div className="min-w-0 flex-1">
-              <p className="nb-up text-[10px] font-black text-[var(--faint)]">{r.label}</p>
-              <p className="break-all text-[15px] font-bold text-[var(--ink)]">{r.value}</p>
+              <p className="eyebrow text-[11px]">{r.label}</p>
+              <p className="break-all font-display text-[15px] font-semibold tracking-[.02em] text-[var(--ink)]">{r.value}</p>
             </div>
             {r.copy && <CopyButton value={r.value} label={r.label} />}
           </li>
@@ -127,8 +127,8 @@ export function PaymentProof({ orderId, onDone }: { orderId: string; onDone?: ()
 
   return (
     <section className="nb p-5">
-      <h2 className="flex items-center gap-2 text-[16px] font-black uppercase tracking-wide text-[var(--ink)]">
-        <Upload className="h-5 w-5 text-[var(--accent)]" strokeWidth={2.5} /> {t("order.proof.title")}
+      <h2 className="flex items-center gap-2 text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">
+        <Upload className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} /> {t("order.proof.title")}
       </h2>
       <p className="mb-4 mt-1 text-[13px] font-medium text-[var(--muted)]">{t("order.proof.text")}</p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
@@ -137,12 +137,12 @@ export function PaymentProof({ orderId, onDone }: { orderId: string; onDone?: ()
         variant="accent"
         fullWidth
         loading={state === "uploading"}
-        icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
+        icon={<Upload className="h-4 w-4" strokeWidth={2.25} />}
         onClick={() => inputRef.current?.click()}
       >
         {t("order.proof.upload")}
       </Button>
-      {err && <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>}
+      {err && <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{err}</p>}
     </section>
   );
 }
@@ -150,11 +150,11 @@ export function PaymentProof({ orderId, onDone }: { orderId: string; onDone?: ()
 export function PaymentClaimed() {
   const t = useT();
   return (
-    <section className="nb flex items-start gap-3 bg-[var(--c3)] p-5">
-      <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-ink)]" strokeWidth={2.75} />
+    <section className="nb flex items-start gap-3 border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,var(--surface))] p-5">
+      <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2} />
       <div>
-        <p className="text-[15px] font-black uppercase text-[var(--accent-ink)]">{t("order.paymentClaimed")}</p>
-        <p className="mt-1 text-[13px] font-semibold text-[var(--accent-ink)]">{t("order.paymentClaimedText")}</p>
+        <p className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--warn)]">{t("order.paymentClaimed")}</p>
+        <p className="mt-1 text-[13px] text-[var(--ink)]">{t("order.paymentClaimedText")}</p>
       </div>
     </section>
   );
@@ -163,9 +163,9 @@ export function PaymentClaimed() {
 export function PaymentConfirmed() {
   const t = useT();
   return (
-    <section className="nb flex items-center gap-3 bg-[var(--c4)] p-5">
-      <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--accent-ink)]" strokeWidth={2.75} />
-      <p className="text-[15px] font-black uppercase text-[var(--accent-ink)]">{t("order.paymentConfirmed")}</p>
+    <section className="nb flex items-center gap-3 border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_10%,var(--surface))] p-5">
+      <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2} />
+      <p className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ok)]">{t("order.paymentConfirmed")}</p>
     </section>
   );
 }

@@ -9,22 +9,22 @@ export function PaymentBadge({ state }: { state: PaymentState }) {
   const t = useT();
   if (state === "PAID") {
     return (
-      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
-        <Check className="h-3 w-3" strokeWidth={3} />
+      <span className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[.06em] bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] text-[var(--ok)]">
+        <Check className="h-3 w-3" strokeWidth={2.5} />
         {t("payment.paid")}
       </span>
     );
   }
   if (state === "PARTIAL" || state === "CLAIMED") {
     return (
-      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
-        <Clock className="h-3 w-3" strokeWidth={3} />
+      <span className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[.06em] bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] text-[var(--warn)]">
+        <Clock className="h-3 w-3" strokeWidth={2.5} />
         {state === "PARTIAL" ? t("payment.partial") : t("payment.claimed")}
       </span>
     );
   }
   return (
-    <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-black text-[var(--muted)]">
+    <span className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[.06em] bg-[var(--surface-3)] text-[var(--muted)]">
       {t("payment.unpaid")}
     </span>
   );

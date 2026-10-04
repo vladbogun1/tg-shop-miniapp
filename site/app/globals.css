@@ -1,44 +1,59 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   NEO-BRUTALISM — public website (tokens copied from the Mini App, frontend/app/globals.css)
+   ChiSetup v3 — public website (docs/DESIGN-V3.md is the contract)
    ----------------------------------------------------------------------------
-   Thick ink borders, hard offset shadows (no blur), sharp corners, raw bold
-   colors, heavy type. Light by default; dark via [data-theme="dark"].
+   ONE dark theme: graphite surfaces, hairline borders, soft depth, a single
+   orange accent with a glow, chamfered CTAs and HUD "bracket" frames.
+   Exo 2 (--font-display) for headings, buttons, prices, labels; Inter for text.
+   Class names (.nb, .nb-accent, .nb-chip …) are kept from v2 so components keep working.
    ============================================================================ */
 
-:root,
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #F4F1E6;
-  --ink: #141414;
-  --surface: #FFFFFF;
-  --surface-2: #F1EEE3;
-  --line: #141414;
-  --shadow: #141414;
-  --muted: #6E6A5E;
-  --faint: #9A968A;
+:root {
+  color-scheme: dark;
 
-  --accent: #FF5A2C;   /* orange */
-  --c2: #2F6BFF;       /* blue */
-  --c3: #FFD23F;       /* yellow */
-  --c4: #16B36B;       /* green */
-  --c5: #FF73B5;       /* pink */
-  --accent-ink: #141414;
+  /* Surfaces: from the page up to raised layers */
+  --bg: #0E0E10;
+  --surface: #1A1A1A;
+  --surface-2: #222222;
+  --surface-3: #2A2A2D;
+  --line: rgba(255, 255, 255, .08);
+  --line-strong: rgba(255, 255, 255, .16);
+  --shadow: rgba(0, 0, 0, .55);
 
-  --ok: #16B36B;
-  --warn: #E8A300;
-  --danger: #E5341F;
+  /* Text */
+  --ink: #FFFFFF;
+  --muted: #A1A1AA;
+  --faint: #6B6B73;
 
-  /* Order-status hues — distinct & identical to the admin (shared identity).
-     Chips carry an ink border + dark text, so these read on light & dark. */
-  --st-new: #3F8CF5;       /* blue — new */
-  --st-approved: #9B6BFF;  /* violet — approved */
-  --st-shipped: #F5A623;   /* amber — shipped */
-  --st-delivered: #22C07D; /* green — delivered */
-  --st-rejected: #F0503C;  /* red — rejected */
+  /* Brand */
+  --accent: #FF6600;
+  --accent-hi: #FF8533;
+  --accent-lo: #E65C00;
+  --accent-ink: #0E0E10;      /* text on orange is dark (6.3:1); white on #FF6600 is 2.9:1 */
+  --accent-soft: rgba(255, 102, 0, .12);
+  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
 
-  --r: 3px;            /* near-sharp corners */
+  /* Former multicolour accents collapse into the brand */
+  --c2: #A1A1AA;
+  --c3: #FF8533;
+  --c4: #22C55E;
+  --c5: #FF6600;
+
+  --ok: #22C55E;
+  --warn: #F59E0B;
+  --danger: #EF4444;
+
+  /* Order statuses: functional, identical to the admin */
+  --st-new: #3F8CF5;
+  --st-approved: #9B6BFF;
+  --st-shipped: #F5A623;
+  --st-delivered: #22C07D;
+  --st-rejected: #F0503C;
+
+  --r: 6px;          /* controls */
+  --r-card: 12px;    /* cards, sheets */
+  --chamfer: 10px;   /* cut corner of CTAs and HUD frames */
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -46,67 +61,19 @@
   /* Sticky header height — anchors and sticky sidebars offset from it. */
   --header-h: 72px;
 
-  /* Site chrome (header + footer share ONE surface in both themes, see .chrome). */
-  --chrome-bg: var(--surface);
-  --chrome-edge: #141414;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  /* Greyer (not near-black) so the hard black offset shadows read on every block. */
-  --bg: #26262B;
-  --ink: #F4F1E6;
-  --surface: #34343B;
-  --surface-2: #2D2D33;
-  --line: #F4F1E6;
-  --shadow: #0A0A0C;
-  --muted: #AEACA6;
-  --faint: #79776F;
-
-  --accent: #FF6A3D;
-  --c2: #5B8BFF;
-  --c3: #FFD23F;
-  --c4: #2BD489;
-  --c5: #FF8AC4;
-  --accent-ink: #141414;
-
-  --ok: #2BD489;
-  --warn: #FFB627;
-  --danger: #FF5747;
-
-  /* Darker than the page (#26262B) so the header and footer frame it; a cream edge keeps the neo line. */
-  --chrome-bg: #17171A;
-  --chrome-edge: #F4F1E6;
+  --font-display: var(--font-exo), "Exo 2", var(--font-inter), system-ui, sans-serif;
+  --font-body: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
 }
 
 /* ---------------------------------------------------------------------------
-   Chrome: the header and the footer share ONE surface in each theme.
-   Light: the plain light surface with the ink edge — calm, not an accent block (owner's call).
-   Dark: a near-black surface a step darker than the page, cream lines; everything inside
-   re-reads the usual tokens, so .nb, inputs and buttons just work.
+   Chrome: header and footer. Header = translucent page colour + blur + hairline
+   (the blur lives on the header itself, see Header.tsx); footer = a solid step darker.
    --------------------------------------------------------------------------- */
 .chrome {
-  --bg: var(--chrome-bg);
-  /* Column headings and link hover in the footer: yellow only reads on the dark chrome;
-     on the light one it's a deep orange (≈5:1 on white). */
-  --chrome-heading: #B93A12;
-  background-color: var(--bg);
+  background-color: rgba(14, 14, 16, .85);
   color: var(--ink);
 }
-:root[data-theme="dark"] .chrome {
-  color-scheme: dark;
-  --chrome-heading: var(--c3);
-  --bg: var(--chrome-bg);
-  --ink: #F4F1E6;
-  --surface: #2A2A30;
-  --surface-2: #3A3A42;
-  --line: #F4F1E6;
-  --shadow: #5A5A64;
-  --muted: #BDBBB4;
-  --faint: #A3A199;
-  background-color: var(--bg);
-  color: var(--ink);
-}
+footer.chrome { background-color: #0A0A0C; }
 
 @theme inline {
   --color-accent: var(--accent);
@@ -118,94 +85,192 @@
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --radius-nb: var(--r);
+  --font-display: var(--font-exo), "Exo 2", system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; min-height: 100%; }
+html { background: var(--bg); }
 body {
   color: var(--ink);
   background: var(--bg);
-  font-family: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
-/* "scene" → flat ink graph-paper grid over the bg (no aurora, no blur). */
+/* Headings default to the display face; components still set size/weight. */
+@layer base {
+  h1, h2, h3 { font-family: var(--font-display); }
+}
+
+/* "scene": graphite page + a faint HUD grid fading towards the centre + two diagonal orange
+   "neon" streaks in the top-left and bottom-right corners + a soft orange haze under the header.
+   Static on purpose (no animated fixed layers — iOS lesson). */
 .scene {
   position: fixed;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
   background-color: var(--bg);
   background-image:
-    linear-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
-  background-size: 26px 26px;
+    radial-gradient(ellipse 60% 38% at 50% -6%, rgba(255, 102, 0, .10), transparent 70%);
+}
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, #000 75%);
+  mask-image: radial-gradient(ellipse at center, transparent 20%, #000 75%);
+}
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .35;
+  background-image:
+    linear-gradient(135deg, transparent 0 calc(12% - 1px), rgba(255, 102, 0, .9) 12%, transparent calc(12% + 2px)),
+    linear-gradient(135deg, transparent 0 calc(16% - 1px), rgba(255, 102, 0, .45) 16%, transparent calc(16% + 1px)),
+    linear-gradient(135deg, transparent 0 calc(88% - 2px), rgba(255, 102, 0, .9) 88%, transparent calc(88% + 1px)),
+    linear-gradient(135deg, transparent 0 calc(84% - 1px), rgba(255, 102, 0, .45) 84%, transparent calc(84% + 1px));
+  -webkit-mask-image:
+    radial-gradient(circle at 0 0, #000 0, transparent 34%),
+    radial-gradient(circle at 100% 100%, #000 0, transparent 34%);
+  mask-image:
+    radial-gradient(circle at 0 0, #000 0, transparent 34%),
+    radial-gradient(circle at 100% 100%, #000 0, transparent 34%);
 }
 
 /* ---------------------------------------------------------------------------
-   Neo primitives
+   Primitives
    --------------------------------------------------------------------------- */
-/* In a layer so Tailwind utilities (bg-[…], hover:…) on the same element win — unlayered CSS
-   would beat every utility, which is how `nb bg-[var(--c3)]` silently stayed white. */
+/* In a layer so Tailwind utilities (bg-[…], hover:…) on the same element win. */
 @layer components {
 .nb {
   background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: 5px 5px 0 var(--shadow);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: 0 8px 24px -12px var(--shadow);
 }
-/* Same block as .nb, only with a deeper shadow. It used to override box-shadow ALONE, so
-   `className="nb-lg"` without `nb` produced a borderless, transparent card and the page
-   showed through it (empty cart, cart summary bar, SoonPanel). Declaring the full block
-   here keeps `nb nb-lg` working and makes the standalone form correct too. */
 .nb-lg {
   background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: 7px 7px 0 var(--shadow);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: 0 18px 44px -18px var(--shadow);
+  transition: background-color .15s ease;
 }
 .nb-flat {
   background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
 }
 .nb-accent {
   background: var(--accent);
   color: var(--accent-ink);
-  border: 3px solid var(--line);
+  border: 0;
   border-radius: var(--r);
-  box-shadow: 5px 5px 0 var(--shadow);
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-weight: 700;
+  clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
 }
-/* press = button drops into its shadow */
-.nb-press { transition: transform .07s ease, box-shadow .07s ease; }
-.nb-press:active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--shadow); }
+.nb-accent:hover { background: var(--accent-hi); }
+.nb-accent:active { background: var(--accent-lo); }
+
+.nb-press { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, filter .12s ease; }
+.nb-press:active { transform: scale(.98); }
 
 .nb-chip {
-  background: var(--surface);
-  border: 2.5px solid var(--line);
-  border-radius: var(--r);
-  font-weight: 700;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 600;
   color: var(--ink);
 }
 .nb-chip-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-hi);
+}
+
+.nb-up { text-transform: uppercase; letter-spacing: .06em; font-family: var(--font-display); }
+
+/* Eyebrow / label: like «GAMING GEAR & SETUP» on the brandboard. */
+.eyebrow {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .28em;
+  color: var(--muted);
+}
+
+/* Cut corners — main CTAs and the CS plate. box-shadow gets clipped, use drop-shadow on a wrapper. */
+.chamfer {
+  clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+}
+.cta-glow { transition: filter .15s ease; }
+.cta-glow:hover { filter: drop-shadow(0 0 14px rgba(255, 102, 0, .45)); }
+
+/* HUD bracket frame: top-left corner white, bottom-right orange, both chamfered. */
+.hud-frame { position: relative; isolation: isolate; }
+.hud-frame::before,
+.hud-frame::after {
+  content: "";
+  position: absolute;
+  width: 44px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 1;
+}
+.hud-frame::before {
+  top: -1px;
+  left: -1px;
+  background: rgba(255, 255, 255, .85);
+  clip-path: polygon(0 100%, 0 12px, 12px 0, 100% 0, 100% 2px, 13px 2px, 2px 13px, 2px 100%);
+}
+.hud-frame::after {
+  right: -1px;
+  bottom: -1px;
   background: var(--accent);
-  color: var(--accent-ink);
+  clip-path: polygon(100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 calc(100% - 2px), calc(100% - 13px) calc(100% - 2px), calc(100% - 2px) calc(100% - 13px), calc(100% - 2px) 0);
+  filter: drop-shadow(0 0 6px rgba(255, 102, 0, .7));
 }
 
-.nb-up { text-transform: uppercase; letter-spacing: 0.02em; }
+/* Tech marks: a short orange dash + a row of dots, as on the banner. */
+.tech-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
-
-/* Bright accent fills (yellow --c3) are light in BOTH themes → text/icons on
-   them must stay dark, never follow --ink (which flips to light in dark mode). */
-.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
+.tech-mark::before {
+  content: "";
+  width: 24px;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(255, 102, 0, .6);
+}
+.tech-mark::after {
+  content: "";
+  width: 22px;
+  height: 2px;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, .35) 1px, transparent 1.2px);
+  background-size: 6px 2px;
+}
+}
 
 /* Skeleton */
+@layer components {
 .shimmer {
   position: relative;
   overflow: hidden;
   background: var(--surface-2);
-  border: 3px solid var(--line);
   border-radius: var(--r);
 }
 .shimmer::after {
@@ -213,8 +278,9 @@ body {
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent);
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent);
   animation: shimmer 1.4s infinite;
+}
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
@@ -252,23 +318,44 @@ body[data-scroll-lock] > :is(header, main, footer) { padding-right: var(--scroll
 
 /* One visible, consistent focus ring for keyboard users (mouse clicks do not show it). */
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* Hover "lift" for interactive neo blocks on devices that can hover. */
+/* Hover lift for interactive cards on devices that can hover: light border, 2px up,
+   and (cards with .nb-hover) a 2px orange line along the bottom. */
+@layer components {
+.nb-hover { position: relative; }
 @media (hover: hover) {
-  .nb-hover { transition: transform .12s ease, box-shadow .12s ease; }
-  .nb-hover:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--shadow); }
-  .nb-hover:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--shadow); }
+  .nb-hover { transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .nb-hover:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 16px 36px -16px var(--shadow); }
+  .nb-hover:active { transform: scale(.99); }
+  .nb-hover::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 10px rgba(255, 102, 0, .6);
+    opacity: 0;
+    transform: scaleX(.4);
+    transition: opacity .15s ease, transform .2s ease;
+    pointer-events: none;
+  }
+  .nb-hover:hover::after { opacity: 1; transform: scaleX(1); }
+}
 }
 
 .link-ink {
   text-decoration: underline;
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  text-decoration-color: var(--line-strong);
 }
-.link-ink:hover { color: var(--accent); }
+.link-ink:hover { color: var(--accent-hi); text-decoration-color: currentColor; }
 
 .skip-link {
   position: absolute;
@@ -278,36 +365,63 @@ body[data-scroll-lock] > :is(header, main, footer) { padding-right: var(--scroll
 }
 .skip-link:focus { top: 8px; }
 
-/* Rendered markdown (legal pages). */
-.prose-nb { color: var(--ink); font-size: 16px; line-height: 1.65; }
-.prose-nb h1 { font-size: 30px; font-weight: 900; text-transform: uppercase; letter-spacing: .01em; margin: 0 0 18px; line-height: 1.15; }
-.prose-nb h2 { font-size: 21px; font-weight: 900; text-transform: uppercase; letter-spacing: .02em; margin: 34px 0 12px; padding-bottom: 6px; border-bottom: 3px solid var(--line); }
-.prose-nb h3 { font-size: 17px; font-weight: 800; margin: 24px 0 8px; }
+/* Rendered markdown (legal pages): Inter body, Exo 2 headings. */
+.prose-nb { color: #D4D4D8; font-size: 16px; line-height: 1.7; }
+.prose-nb h1 { font-family: var(--font-display); color: var(--ink); font-size: 30px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; margin: 0 0 18px; line-height: 1.15; }
+.prose-nb h2 { font-family: var(--font-display); color: var(--ink); font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.prose-nb h3 { font-family: var(--font-display); color: var(--ink); font-size: 17px; font-weight: 700; margin: 24px 0 8px; }
 .prose-nb p { margin: 0 0 14px; }
 .prose-nb ul, .prose-nb ol { margin: 0 0 14px; padding-left: 22px; }
+.prose-nb ul { list-style: disc; }
+.prose-nb ol { list-style: decimal; }
 .prose-nb li { margin: 4px 0; }
 .prose-nb ul li::marker { color: var(--accent); }
-.prose-nb a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; font-weight: 700; }
+.prose-nb a { color: var(--accent-hi); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; font-weight: 600; }
 .prose-nb a:hover { color: var(--accent); }
-.prose-nb strong { font-weight: 800; }
-.prose-nb hr { border: 0; border-top: 3px solid var(--line); margin: 28px 0; }
-.prose-nb blockquote { margin: 0 0 14px; padding: 10px 14px; border-left: 5px solid var(--accent); background: var(--surface-2); }
+.prose-nb strong { font-weight: 700; color: var(--ink); }
+.prose-nb hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.prose-nb blockquote { margin: 0 0 14px; padding: 10px 14px; border-left: 2px solid var(--accent); background: var(--surface-2); border-radius: 0 var(--r) var(--r) 0; }
 .prose-nb table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14px; display: block; overflow-x: auto; }
-.prose-nb th, .prose-nb td { border: 2px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
-.prose-nb th { background: var(--surface-2); font-weight: 800; }
-.prose-nb code { background: var(--surface-2); padding: 1px 5px; border: 1.5px solid var(--line); font-size: .9em; }
+.prose-nb th, .prose-nb td { border: 1px solid var(--line-strong); padding: 6px 10px; text-align: left; vertical-align: top; }
+.prose-nb th { background: var(--surface-2); font-weight: 700; color: var(--ink); }
+.prose-nb code { background: var(--surface-2); padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; font-size: .9em; }
 
-/* Leaflet controls follow the neo frame. */
+/* Leaflet: tiles stay light (no invert); frame and controls follow the dark UI. */
 .leaflet-container { font-family: inherit; }
+.leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+.leaflet-bar { border: 1px solid var(--line-strong) !important; box-shadow: 0 6px 18px -8px var(--shadow) !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); box-shadow: 0 12px 30px -12px #000; }
+.leaflet-popup-content-wrapper { border-radius: var(--r-card); }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.leaflet-control-attribution { background: rgba(14, 14, 16, .75) !important; color: var(--muted) !important; }
+.leaflet-control-attribution a { color: var(--muted) !important; }
 
-/* Native select styled as a neo control. */
+/* Native select styled as a dark control. */
 .nb-select {
   appearance: none;
-  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
   padding-right: 36px;
+  color: var(--ink);
 }
+.nb-select option { background: var(--surface); color: var(--ink); }
 
 /* Rings only while navigating by keyboard (see InputModality in Providers): clicks and taps never
    leave a ring, including on text fields, whose wrappers show their own focus state. */
 html[data-input="pointer"] :focus-visible { outline: none; }
 input:focus-visible, textarea:focus-visible { outline: none; }
+
+::selection { background: rgba(255, 102, 0, .35); color: #fff; }
+
+/* NP map clusters: brand orange instead of markercluster's green/yellow/orange ramp. */
+.leaflet-container .marker-cluster-small,
+.leaflet-container .marker-cluster-medium,
+.leaflet-container .marker-cluster-large { background-color: rgba(255, 102, 0, .32); }
+.leaflet-container .marker-cluster-small div,
+.leaflet-container .marker-cluster-medium div,
+.leaflet-container .marker-cluster-large div {
+  background-color: #FF6600;
+  color: #0E0E10;
+  font-family: var(--font-display);
+  font-weight: 700;
+  box-shadow: 0 0 0 2px #0E0E10, 0 0 14px rgba(255, 102, 0, .7);
+}

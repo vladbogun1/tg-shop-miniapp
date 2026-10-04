@@ -1,6 +1,6 @@
 "use client";
 
-/** Neo toast (bordered card, hard shadow). `toast("…")` from anywhere; one host in Providers. */
+/** Toast (graphite card, hairline, soft depth). `toast("…")` from anywhere; one host in Providers. */
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
@@ -46,12 +46,12 @@ export function ToastHost() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="flex max-w-[92vw] items-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[14px] font-extrabold uppercase tracking-wide text-[var(--ink)] shadow-[5px_5px_0_var(--shadow)]"
+            className="flex max-w-[92vw] items-center gap-2.5 rounded-2xl border border-[var(--line-strong)] bg-[var(--surface)] px-4 py-3 text-[14px] font-semibold text-[var(--ink)] shadow-[0_18px_40px_-14px_rgba(0,0,0,.8)]"
           >
             {kind === "ok" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ok)]" strokeWidth={2.75} />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ok)]" strokeWidth={2.25} />
             ) : (
-              <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger)]" strokeWidth={2.75} />
+              <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger)]" strokeWidth={2.25} />
             )}
             {message}
           </motion.div>

@@ -137,13 +137,13 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
   return (
     <section id="chat" className="nb flex flex-col overflow-hidden" aria-labelledby="chat-title">
-      <header className="flex items-center justify-between gap-3 border-b-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3">
-        <h2 id="chat-title" className="text-[16px] font-black uppercase tracking-wide text-[var(--ink)]">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+        <h2 id="chat-title" className="text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">
           {t("order.chat")}
         </h2>
-        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]" aria-live="polite">
+        <p className="flex items-center gap-1.5 text-[11px] font-display font-bold uppercase tracking-wide text-[var(--muted)]" aria-live="polite">
           <span
-            className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-[var(--line)]"
+            className="inline-block h-2 w-2 rounded-full"
             style={{ background: connected ? "var(--ok)" : "var(--faint)" }}
           />
           {connected ? t("chat.online") : t("chat.connecting")}
@@ -152,7 +152,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
       <div
         ref={scrollRef}
-        className="h-[min(520px,60vh)] overflow-y-auto overscroll-contain bg-[var(--bg)] px-3 py-3"
+        className="h-[min(520px,60vh)] overflow-y-auto overscroll-contain bg-[#121214] px-3 py-3"
         role="log"
         aria-live="polite"
       >
@@ -182,7 +182,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
                 type="button"
                 onClick={() => void loadEarlier()}
                 disabled={loadingEarlier}
-                className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-black uppercase tracking-wide text-[var(--muted)] shadow-[3px_3px_0_var(--shadow)] hover:text-[var(--ink)] disabled:opacity-60"
+                className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60"
               >
                 {loadingEarlier ? t("common.loading") : t("chat.loadEarlier")}
               </button>
@@ -191,7 +191,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
           {items.map((it) =>
             it.kind === "day" ? (
               <div key={`d-${it.key}`} className="my-2 flex justify-center">
-                <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
                   {it.label}
                 </span>
               </div>
@@ -221,19 +221,19 @@ export function OrderChat({ orderId }: { orderId: string }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeLightbox}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(8,8,10,.94)] p-4 backdrop-blur-[6px]"
           >
             <button
               type="button"
               autoFocus
               aria-label={t("common.close")}
               onClick={closeLightbox}
-              className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)]"
+              className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)]"
             >
-              <X className="h-6 w-6" strokeWidth={3} />
+              <X className="h-6 w-6" strokeWidth={2.5} />
             </button>
             <div onClick={(e) => e.stopPropagation()} className="max-w-[min(92vw,1100px)]">
-              <Image src={lightbox} alt={t("chat.attachmentAlt")} size={1600} fit className="max-h-[86dvh] max-w-full border-[3px] border-[var(--line)]" />
+              <Image src={lightbox} alt={t("chat.attachmentAlt")} size={1600} fit className="max-h-[86dvh] max-w-full rounded-[var(--r-card)] border border-[var(--line)]" />
             </div>
           </motion.div>
         )}
@@ -295,8 +295,8 @@ function Composer({ onSend }: { onSend: (req: SendMessageRequest) => Promise<voi
   );
 
   return (
-    <div className="border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-3 py-3">
-      {error && <p className="mb-1.5 px-1 text-[12px] font-bold text-[var(--danger)]">{error}</p>}
+    <div className="border-t border-[var(--line)] bg-[var(--surface)] px-3 py-3">
+      {error && <p className="mb-1.5 px-1 text-[12px] font-semibold text-[var(--danger)]">{error}</p>}
       <div className="flex items-end gap-2">
         <button
           type="button"
@@ -304,9 +304,9 @@ function Composer({ onSend }: { onSend: (req: SendMessageRequest) => Promise<voi
           title={t("chat.attach")}
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] hover:bg-[var(--surface-2)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--muted)] transition-colors hover:text-[var(--ink)] active:scale-[.96] disabled:opacity-40"
         >
-          <ImagePlus className={`h-5 w-5 ${uploading ? "animate-pulse" : ""}`} strokeWidth={2.5} />
+          <ImagePlus className={`h-5 w-5 ${uploading ? "animate-pulse" : ""}`} strokeWidth={2} />
         </button>
         <input
           ref={fileRef}
@@ -339,7 +339,7 @@ function Composer({ onSend }: { onSend: (req: SendMessageRequest) => Promise<voi
           rows={1}
           aria-label={t("chat.placeholder")}
           placeholder={t("chat.placeholder")}
-          className="max-h-[140px] min-h-[44px] flex-1 resize-none rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] font-medium text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+          className="max-h-[140px] min-h-[44px] flex-1 resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
         />
         <button
           type="button"
@@ -347,9 +347,9 @@ function Composer({ onSend }: { onSend: (req: SendMessageRequest) => Promise<voi
           title={t("chat.send")}
           disabled={!text.trim() || sending}
           onClick={() => void sendText()}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40 disabled:shadow-none"
+          className="chamfer grid h-11 w-11 shrink-0 place-items-center bg-[var(--accent)] text-[var(--accent-ink)] transition-colors [--chamfer:7px] hover:bg-[var(--accent-hi)] active:scale-[.96] disabled:opacity-40"
         >
-          <Send className="h-5 w-5" strokeWidth={2.5} />
+          <Send className="h-5 w-5" strokeWidth={2.25} />
         </button>
       </div>
     </div>

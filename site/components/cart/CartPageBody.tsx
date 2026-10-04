@@ -22,10 +22,10 @@ export function CartPageBody() {
 
   return (
     <div className="container-site pt-8">
-      <h1 className="text-[32px] font-black uppercase tracking-tight text-[var(--ink)]">
+      <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[36px]">
         {t("cart.title")}
         {hydrated && count > 0 && (
-          <span className="ml-3 text-[16px] font-bold text-[var(--muted)]">{t("cart.count", { n: count })}</span>
+          <span className="ml-3 text-[16px] font-medium text-[var(--muted)]">{t("cart.count", { n: count })}</span>
         )}
       </h1>
       {!hydrated ? (
@@ -37,15 +37,15 @@ export function CartPageBody() {
       ) : (
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <CartLines />
-          <aside className="nb h-fit p-5 lg:sticky lg:top-[140px]">
+          <aside className="nb hud-frame h-fit p-5 lg:sticky lg:top-[140px]">
             <div className="flex items-center justify-between">
-              <span className="text-[15px] font-black uppercase text-[var(--ink)]">{t("cart.total")}</span>
-              <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[22px] font-black text-[var(--accent-ink)]">
+              <span className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("cart.total")}</span>
+              <span className="font-display text-[22px] font-bold tabular-nums text-[var(--accent)]">
                 {fmt.money(subtotal)}
               </span>
             </div>
             <p className="mt-2 text-[12px] font-medium text-[var(--muted)]">{t("cart.deliveryNote")}</p>
-            {hasProblems && <p className="mt-2 text-[12px] font-extrabold text-[var(--danger)]">{t("cart.hasProblems")}</p>}
+            {hasProblems && <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{t("cart.hasProblems")}</p>}
             <Link
               href={href("/checkout")}
               aria-disabled={hasProblems}

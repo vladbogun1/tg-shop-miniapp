@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Neo-Brutalism button: thick ink border and a hard offset shadow the button "drops into"
- * on press. Variants: surface (neutral) | accent (primary) | ink (inverted) | ghost (bare text).
- * Copied from the Mini App and given desktop hover states.
+ * ChiSetup button: graphite surface, chamfered orange accent CTA, slight scale on press.
+ * Variants: surface (neutral) | accent (primary) | ink (orange outline) | ghost (bare text).
  */
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -44,7 +43,7 @@ export function Button({
       className={`${base} ${sizes[size]} ${variants[variant]} ${fullWidth ? "w-full" : ""} ${className ?? ""}`}
       {...rest}
     >
-      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={2.75} /> : icon}
+      {loading ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={2.25} /> : icon}
       <span className="truncate">{children}</span>
     </motion.button>
   );

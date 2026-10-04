@@ -59,11 +59,11 @@ export function CitySearch({ onFocus }: { onFocus: (f: MapFocus, city: NpCity) =
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="nb-up mb-1.5 block text-[12px] font-black text-[var(--faint)]">
+      <label htmlFor={id} className="eyebrow mb-1.5 block text-[11px]">
         {t("checkout.city")}
       </label>
-      <div className="flex h-12 items-center gap-2 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3 focus-within:border-[var(--accent)]">
-        <MapPin className="h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.75} />
+      <div className="flex h-12 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
+        <MapPin className="h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.25} />
         <input
           id={id}
           value={q}
@@ -93,7 +93,7 @@ export function CitySearch({ onFocus }: { onFocus: (f: MapFocus, city: NpCity) =
           aria-controls={`${id}-list`}
           aria-autocomplete="list"
           autoComplete="off"
-          className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
         />
         {(isFetching || busy) && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" />}
       </div>
@@ -101,10 +101,10 @@ export function CitySearch({ onFocus }: { onFocus: (f: MapFocus, city: NpCity) =
         <ul
           id={`${id}-list`}
           role="listbox"
-          className="absolute inset-x-0 top-full z-[1100] mt-1.5 max-h-72 overflow-y-auto rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[5px_5px_0_var(--shadow)]"
+          className="absolute inset-x-0 top-full z-[1100] mt-1.5 max-h-72 overflow-y-auto rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] py-1 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
         >
           {items.length === 0 && !isFetching && (
-            <li className="px-3 py-2.5 text-[13px] font-bold text-[var(--muted)]">{t("checkout.cityNone")}</li>
+            <li className="px-3 py-2.5 text-[13px] font-medium text-[var(--muted)]">{t("checkout.cityNone")}</li>
           )}
           {items.map((c, i) => (
             <li key={c.ref} role="option" aria-selected={i === active}>
@@ -116,7 +116,7 @@ export function CitySearch({ onFocus }: { onFocus: (f: MapFocus, city: NpCity) =
                   i === active ? "bg-[var(--surface-2)]" : ""
                 }`}
               >
-                <span className="text-[14px] font-bold text-[var(--ink)]">{c.name}</span>
+                <span className="text-[14px] font-medium text-[var(--ink)]">{c.name}</span>
                 {c.area && <span className="text-[12px] font-medium text-[var(--muted)]">{c.area}</span>}
               </button>
             </li>

@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Catalog tile — the Mini App's neo card, made for a desktop grid: the whole picture/title is a
- * real link (open in new tab works), hover lifts the card and zooms the photo, old price and the
- * discount sticker come from `compareAtMinor`.
+ * Catalog tile (DESIGN-V3 §6): graphite card, photo on --surface-2, Inter title, Exo 2 price. The
+ * whole picture/title is a real link (open in new tab works); hover lifts the card, lightens the
+ * border, draws the orange bottom line and zooms the photo. Out of stock: desaturated photo.
  */
 import { ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
   return (
     <article className="nb nb-hover group flex h-full flex-col overflow-hidden">
       <Link href={url} className="flex flex-1 flex-col" aria-label={product.title}>
-        <div className="relative aspect-square w-full overflow-hidden border-b-[3px] border-[var(--line)] bg-[var(--surface-2)]">
+        <div className={`relative aspect-square w-full overflow-hidden bg-[var(--surface-2)] ${inStock ? "" : "[&_img]:grayscale-[.85] [&_img]:opacity-60"}`}>
           <Image
             src={image?.url}
             alt={product.title}
@@ -40,46 +40,45 @@ export function ProductCard({ product, priority = false }: { product: Storefront
             imgClassName="group-hover:scale-[1.04]"
           />
           <span
-            className="absolute left-2 top-2 -rotate-2 border-[2px] border-[var(--line)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide"
-            style={{
-              background: inStock ? "var(--c4)" : "var(--danger)",
-              color: inStock ? "#0c2417" : "#fff",
-            }}
+            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.78)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] backdrop-blur-sm ${
+              inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
+            }`}
           >
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
             {inStock ? t("product.inStock") : t("product.outOfStock")}
           </span>
           {off > 0 && (
-            <span className="absolute right-2 top-2 rotate-2 border-[2px] border-[var(--line)] bg-[var(--c5)] px-1.5 py-0.5 text-[12px] font-black text-[var(--accent-ink)]">
+            <span className="absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 font-display text-[12px] font-bold text-[var(--accent-ink)]">
               {t("product.discount", { n: off })}
             </span>
           )}
         </div>
-        <div className="flex flex-1 flex-col gap-2 px-3 pt-3">
-          <h3 className="line-clamp-2 min-h-[2.7em] text-[14px] font-bold leading-snug text-[var(--ink)] group-hover:underline group-hover:decoration-2 group-hover:underline-offset-2">
+        <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:px-4 sm:pt-4">
+          <h3 className="line-clamp-2 min-h-[2.7em] font-sans text-[14px] font-semibold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-hi)]">
             {product.title}
           </h3>
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[16px] font-black text-[var(--accent-ink)]">
+            <span className="font-display text-[18px] font-bold tabular-nums text-[var(--ink)]">
               {fmt.money(product.priceMinor, product.currency)}
             </span>
             {off > 0 && (
-              <s className="text-[13px] font-bold text-[var(--muted)]">
+              <s className="font-display text-[13px] font-medium tabular-nums text-[var(--faint)]">
                 {fmt.money(product.compareAtMinor, product.currency)}
               </s>
             )}
           </div>
         </div>
       </Link>
-      <div className="p-3">
+      <div className="p-3 sm:p-4">
         {hasVariants || !inStock ? (
           <Link
             href={url}
             aria-disabled={!inStock}
-            className={`nb-flat tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 px-3 text-[13px] font-extrabold text-[var(--ink)] hover:bg-[var(--surface-2)] ${
-              inStock ? "" : "opacity-60"
+            className={`tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] sm:text-[13px] ${
+              inStock ? "" : "text-[var(--muted)] opacity-70"
             }`}
           >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.25} />
             {inStock ? t("product.choose") : t("product.outOfStock")}
           </Link>
         ) : (
@@ -90,9 +89,9 @@ export function ProductCard({ product, priority = false }: { product: Storefront
               trackAddToCart(product.id, null, 1);
               toast(t("product.added"));
             }}
-            className="nb-accent nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 px-3 text-[13px] hover:brightness-105"
+            className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-3 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
           >
-            <ShoppingBag className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+            <ShoppingBag className="h-4 w-4 shrink-0" strokeWidth={2.25} />
             {t("product.addToCart")}
           </button>
         )}
@@ -103,7 +102,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
 
 export function ProductGrid({ products, priorityCount = 0 }: { products: StorefrontProduct[]; priorityCount?: number }) {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
+    <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
       {products.map((p, i) => (
         <li key={p.id}>
           <ProductCard product={p} priority={i < priorityCount} />

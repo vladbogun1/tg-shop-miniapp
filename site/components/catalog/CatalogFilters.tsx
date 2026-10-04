@@ -44,7 +44,7 @@ export function CatalogSortSelect({ value }: { value: CatalogSort }) {
   const { set, pending } = useQueryNav();
   return (
     <div className="flex flex-1 items-center gap-2 sm:flex-none">
-      <label htmlFor={id} className="nb-up hidden text-[12px] font-black text-[var(--muted)] sm:block">
+      <label htmlFor={id} className="eyebrow hidden text-[11px] sm:block">
         {t("catalog.sort")}
       </label>
       <select
@@ -52,7 +52,7 @@ export function CatalogSortSelect({ value }: { value: CatalogSort }) {
         value={value}
         aria-busy={pending}
         onChange={(e) => set({ sort: e.target.value === "default" ? null : e.target.value })}
-        className="nb-select h-11 w-full min-w-0 rounded-[var(--r)] border-[3px] border-[var(--line)] pl-3 text-[14px] font-bold text-[var(--ink)] sm:w-[230px]"
+        className="nb-select h-11 w-full min-w-0 rounded-[var(--r)] border border-[var(--line-strong)] pl-3 text-[14px] font-medium text-[var(--ink)] focus:border-[var(--accent)] sm:w-[230px]"
       >
         {SORTS.map((s) => (
           <option key={s} value={s}>
@@ -98,7 +98,7 @@ export function CatalogFilters({
     <div className="flex flex-col gap-5">
       {showCategories && (
         <section className="nb p-4">
-          <h2 className="nb-up mb-3 text-[12px] font-black text-[var(--faint)]">{t("catalog.categories")}</h2>
+          <h2 className="eyebrow mb-3 flex items-center gap-2 text-[11px]"><span aria-hidden className="h-[2px] w-3 bg-[var(--accent)]" />{t("catalog.categories")}</h2>
           <ul className="flex flex-col gap-1">
             <li>
               <FilterLink href={hrefs.all} active={!activeCategory}>
@@ -117,8 +117,8 @@ export function CatalogFilters({
       )}
 
       <section className="nb flex flex-col gap-4 p-4">
-        <h2 className="nb-up text-[12px] font-black text-[var(--faint)]">{t("catalog.filters")}</h2>
-        <label className="flex cursor-pointer items-center gap-3 text-[14px] font-bold text-[var(--ink)]">
+        <h2 className="eyebrow flex items-center gap-2 text-[11px]"><span aria-hidden className="h-[2px] w-3 bg-[var(--accent)]" />{t("catalog.filters")}</h2>
+        <label className="flex cursor-pointer items-center gap-3 text-[14px] font-medium text-[var(--ink)]">
           <input
             type="checkbox"
             checked={inStock}
@@ -127,10 +127,10 @@ export function CatalogFilters({
           />
           <span
             aria-hidden
-            className="grid h-6 w-6 shrink-0 place-items-center rounded-[3px] border-[2.5px] border-[var(--line)] peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-[var(--c2)]"
-            style={{ background: inStock ? "var(--accent)" : "var(--surface)" }}
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-[5px] border peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--accent)]"
+            style={{ background: inStock ? "var(--accent)" : "var(--surface-2)", borderColor: inStock ? "var(--accent)" : "var(--line-strong)" }}
           >
-            {inStock && <Check className="h-4 w-4 text-[var(--accent-ink)]" strokeWidth={3.5} />}
+            {inStock && <Check className="h-3.5 w-3.5 text-[var(--accent-ink)]" strokeWidth={2.5} />}
           </span>
           {t("catalog.inStock")}
         </label>
@@ -142,7 +142,7 @@ export function CatalogFilters({
           }}
           className="flex flex-col gap-2"
         >
-          <label htmlFor={priceId} className="text-[13px] font-extrabold text-[var(--ink)]">
+          <label htmlFor={priceId} className="text-[13px] font-semibold text-[var(--ink)]">
             {t("catalog.priceMax")}
           </label>
           <input
@@ -168,24 +168,24 @@ export function CatalogFilters({
               value={price}
               placeholder={String(ceiling)}
               onChange={(e) => setPrice(e.target.value)}
-              className="h-10 w-full min-w-0 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 text-[14px] font-bold text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+              className="h-10 w-full min-w-0 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 font-display text-[14px] font-semibold tabular-nums text-[var(--ink)] outline-none focus:border-[var(--accent)]"
             />
             <button
               type="submit"
-              className="h-10 shrink-0 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--ink)] px-3 text-[12px] font-black uppercase text-[var(--bg)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+              className="h-10 shrink-0 rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)] px-3 font-display text-[12px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
             >
               {t("catalog.apply")}
             </button>
           </div>
           {priceMax ? (
-            <p className="text-[12px] font-bold text-[var(--muted)]">
+            <p className="text-[12px] font-medium text-[var(--muted)]">
               {t("catalog.priceUpTo", { amount: fmt.money(priceMax) })}
             </p>
           ) : null}
         </form>
 
         {(inStock || !!priceMax) && (
-          <Link href={hrefs.reset} className="link-ink text-[13px] font-extrabold text-[var(--ink)]">
+          <Link href={hrefs.reset} className="link-ink text-[13px] font-semibold text-[var(--muted)]">
             {t("catalog.reset")}
           </Link>
         )}
@@ -209,14 +209,14 @@ function FilterLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-9 items-center justify-between gap-2 rounded-[var(--r)] border-[2.5px] px-2.5 py-1 text-[14px] font-bold ${
+      className={`flex min-h-9 items-center justify-between gap-2 rounded-[var(--r)] border px-2.5 py-1 text-[14px] font-medium transition-colors ${
         active
-          ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-          : "border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface-2)]"
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : "border-transparent text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
       }`}
     >
       <span className="min-w-0 truncate">{children}</span>
-      {count !== undefined && <span className="shrink-0 text-[12px] opacity-70">{count}</span>}
+      {count !== undefined && <span className="shrink-0 font-display text-[12px] tabular-nums opacity-70">{count}</span>}
     </Link>
   );
 }
@@ -242,9 +242,9 @@ export function MobileFiltersButton({ children }: { children: React.ReactNode })
         type="button"
         onClick={() => setOpen(true)}
         aria-expanded={open}
-        className="nb nb-press tap flex h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-black uppercase tracking-wide text-[var(--ink)] lg:hidden"
+        className="nb-press tap flex h-11 shrink-0 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)] lg:hidden"
       >
-        <SlidersHorizontal className="h-4 w-4" strokeWidth={2.75} />
+        <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} />
         {t("catalog.filters")}
       </button>
       <AnimatePresence>
@@ -256,7 +256,7 @@ export function MobileFiltersButton({ children }: { children: React.ReactNode })
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={close}
-              className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[6px] lg:hidden"
               aria-hidden
             />
             <motion.div
@@ -270,17 +270,17 @@ export function MobileFiltersButton({ children }: { children: React.ReactNode })
               onClickCapture={(e) => {
                 if ((e.target as HTMLElement).closest("a")) setOpen(false);
               }}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] overflow-y-auto rounded-t-[var(--r)] border-t-[3px] border-[var(--line)] bg-[var(--bg)] p-4 lg:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] overflow-y-auto rounded-t-2xl border-t border-[var(--line-strong)] bg-[var(--surface)] p-4 lg:hidden"
             >
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-[18px] font-black uppercase text-[var(--ink)]">{t("catalog.showFilters")}</p>
+                <p className="text-[18px] font-display font-extrabold uppercase text-[var(--ink)]">{t("catalog.showFilters")}</p>
                 <button
                   type="button"
                   onClick={close}
                   aria-label={t("common.close")}
-                  className="nb-flat tap grid h-11 w-11 place-items-center text-[var(--ink)]"
+                  className="tap grid h-11 w-11 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
                 >
-                  <X className="h-5 w-5" strokeWidth={3} />
+                  <X className="h-5 w-5" strokeWidth={2.25} />
                 </button>
               </div>
               {children}

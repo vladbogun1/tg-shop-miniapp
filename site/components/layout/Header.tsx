@@ -1,13 +1,10 @@
 "use client";
 
 /**
- * Sticky site header, laid out like vinli.com.ua: logo · catalogue · search with live suggestions ·
- * language · account · cart. Header and footer share one "chrome" surface (globals.css `.chrome`) in
- * both themes. Categories live on the home page, in the catalogue sidebar and in the burger sheet —
- * there is no second category row any more. On phones the search drops to its own row.
- *
- * The theme switch moved to /account/settings; its slot is kept empty on purpose so the controls
- * to its right stay exactly where customers learned them.
+ * Sticky site header (DESIGN-V3 §6): translucent page colour + blur + hairline. Logo · section nav
+ * (Exo 2) · search with live suggestions · language · account · cart. Categories live on the home
+ * page, in the catalogue sidebar and in the burger sheet. On phones the search drops to its own row.
+ * One dark theme — there is no theme switch any more.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
@@ -39,8 +36,8 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
   const activeSlug = pathname.startsWith("/catalog/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
 
   return (
-    <header className="chrome sticky top-0 z-40 border-b-[3px] border-[var(--chrome-edge)]">
-      <a href="#main" className="skip-link nb px-3 py-2 text-[13px] font-extrabold uppercase">
+    <header className="chrome sticky top-0 z-40 border-b border-[var(--line)] backdrop-blur-[12px] backdrop-saturate-150">
+      <a href="#main" className="skip-link nb px-3 py-2 font-display text-[13px] font-bold uppercase">
         {t("header.skip")}
       </a>
       <div className="container-site flex h-[var(--header-h)] items-center gap-2 md:gap-3">
@@ -49,21 +46,23 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
           onClick={() => setMenuOpen(true)}
           aria-label={t("header.menu")}
           aria-expanded={menuOpen}
-          className="nb-flat tap grid h-11 w-11 shrink-0 place-items-center text-[var(--ink)] lg:hidden"
+          className="tap grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)] lg:hidden"
         >
-          <Menu className="h-5 w-5" strokeWidth={2.75} />
+          <Menu className="h-5 w-5" strokeWidth={2.25} />
         </button>
         <Logo />
-        <Link
-          href={href("/catalog")}
-          aria-current={pathname === "/catalog" || activeSlug ? "page" : undefined}
-          className="nb nb-hover ml-2 hidden h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-black uppercase tracking-wide text-[var(--accent-ink)] lg:inline-flex"
-          // Inline: `.nb` sets its own background and would win over a utility class.
-          style={{ background: "var(--c3)" }}
-        >
-          <LayoutGrid className="h-4 w-4" strokeWidth={2.75} />
-          {t("header.catalog")}
-        </Link>
+        <nav aria-label={t("header.nav")} className="ml-3 hidden shrink-0 items-center gap-1 lg:flex">
+          <NavLink href={href("/catalog")} active={pathname === "/catalog" || !!activeSlug}>
+            <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
+            {t("header.catalog")}
+          </NavLink>
+          <NavLink href={href("/delivery")} active={pathname === "/delivery"} className="hidden xl:inline-flex">
+            {t("header.nav.delivery")}
+          </NavLink>
+          <NavLink href={href("/contacts")} active={pathname === "/contacts"} className="hidden xl:inline-flex">
+            {t("header.nav.contacts")}
+          </NavLink>
+        </nav>
         <div className="mx-1 hidden min-w-0 flex-1 md:block">
           <SearchBox />
         </div>
@@ -71,8 +70,6 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
           <div className="hidden sm:block">
             <LangMenu />
           </div>
-          {/* Where the theme switch was (now in /account/settings): an empty slot of the same width. */}
-          <span aria-hidden className="hidden h-11 w-11 shrink-0 lg:block" />
           <AccountButton />
           <CartButton />
         </div>
@@ -99,13 +96,12 @@ function CartButton() {
       type="button"
       onClick={open}
       aria-label={shown > 0 ? t("header.cartCount", { n: shown }) : t("header.cart")}
-      className="nb nb-hover tap relative grid h-11 w-11 shrink-0 place-items-center text-[var(--accent-ink)] xl:w-auto xl:grid-flow-col xl:gap-2 xl:px-4"
-      style={{ background: "var(--accent)" }}
+      className="tap relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)] xl:w-auto xl:grid-flow-col xl:gap-2 xl:px-4"
     >
-      <ShoppingBag className="h-5 w-5" strokeWidth={2.75} />
-      <span className="hidden text-[13px] font-black uppercase tracking-wide xl:inline">{t("header.cart")}</span>
+      <ShoppingBag className="h-5 w-5" strokeWidth={2.25} />
+      <span className="hidden font-display text-[13px] font-semibold uppercase tracking-[.08em] xl:inline">{t("header.cart")}</span>
       {shown > 0 && (
-        <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-1 text-[11px] font-black text-[var(--accent-ink)]">
+        <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-ink)] shadow-[0_0_10px_rgba(255,102,0,.6)]">
           {shown}
         </span>
       )}
@@ -144,25 +140,25 @@ function AccountButton() {
       href={authed ? href("/account") : href("/login")}
       aria-label={label}
       title={label}
-      className={`nb nb-hover tap relative flex h-11 shrink-0 items-center justify-center gap-2 text-[var(--ink)] ${ACCOUNT_W}`}
+      className={`tap relative flex h-11 shrink-0 items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)] ${ACCOUNT_W}`}
     >
-      <User className={`h-5 w-5 shrink-0 ${letters ? "hidden lg:block" : ""}`} strokeWidth={2.75} />
+      <User className={`h-5 w-5 shrink-0 ${letters ? "hidden lg:block" : ""}`} strokeWidth={2.25} />
       {authed ? (
         letters && (
           <span
             aria-hidden
-            className="grid h-7 min-w-7 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-1 text-[12px] font-black leading-none tracking-wide"
+            className="grid h-7 min-w-7 place-items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1 font-display text-[12px] font-bold leading-none tracking-wide text-[var(--accent-hi)]"
           >
             {letters}
           </span>
         )
       ) : (
-        <span aria-hidden className="hidden text-[13px] font-black uppercase tracking-wide lg:inline">
+        <span aria-hidden className="hidden font-display text-[13px] font-semibold uppercase tracking-[.08em] lg:inline">
           {t("header.login")}
         </span>
       )}
       {authed && unread > 0 && (
-        <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c2)] px-1 text-[11px] font-black text-white">
+        <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-ink)]">
           {unread}
         </span>
       )}
@@ -198,7 +194,7 @@ function MobileMenu({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[6px] lg:hidden"
             aria-hidden
           />
           <motion.aside
@@ -210,21 +206,21 @@ function MobileMenu({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", stiffness: 340, damping: 36 }}
-            className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[360px] flex-col border-r-[3px] border-[var(--line)] bg-[var(--bg)] lg:hidden"
+            className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[360px] flex-col border-r border-[var(--line-strong)] bg-[var(--surface)] lg:hidden"
           >
-            <div className="flex items-center justify-between border-b-[3px] border-[var(--line)] px-4 py-3">
+            <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
               <Logo />
               <button
                 type="button"
                 onClick={onClose}
                 aria-label={t("common.close")}
-                className="nb-flat tap grid h-11 w-11 place-items-center text-[var(--ink)]"
+                className="tap grid h-11 w-11 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
               >
-                <X className="h-5 w-5" strokeWidth={3} />
+                <X className="h-5 w-5" strokeWidth={2.25} />
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-4 py-4" aria-label={t("header.categories")}>
-              <p className="nb-up mb-2 text-[11px] font-black text-[var(--faint)]">{t("header.categories")}</p>
+              <p className="eyebrow mb-2 text-[11px]">{t("header.categories")}</p>
               <ul className="flex flex-col gap-1.5">
                 <li>
                   <MenuLink href={href("/catalog")} active={false}>
@@ -239,7 +235,7 @@ function MobileMenu({
                   </li>
                 ))}
               </ul>
-              <p className="nb-up mb-2 mt-6 text-[11px] font-black text-[var(--faint)]">{t("footer.customers")}</p>
+              <p className="eyebrow mb-2 mt-6 text-[11px]">{t("footer.customers")}</p>
               <ul className="flex flex-col gap-1.5">
                 {(
                   [
@@ -258,7 +254,7 @@ function MobileMenu({
                 ))}
               </ul>
             </nav>
-            <div className="border-t-[3px] border-[var(--line)] px-4 py-3">
+            <div className="border-t border-[var(--line)] px-4 py-3">
               <LangSwitch />
             </div>
           </motion.aside>
@@ -274,11 +270,41 @@ function MenuLink({ href, active, children }: { href: string; active: boolean; c
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] px-3 text-[14px] font-extrabold ${
-        active ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface)] text-[var(--ink)]"
+      className={`flex min-h-11 items-center rounded-[var(--r)] border px-3 text-[14px] font-medium transition-colors ${
+        active
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : "border-transparent text-[var(--ink)] hover:bg-[var(--surface-2)]"
       }`}
     >
       {children}
+    </Link>
+  );
+}
+
+/** Header section link: Exo 2 caps; the current section gets an orange underline with a glow. */
+function NavLink({
+  href,
+  active,
+  className = "",
+  children,
+}: {
+  href: string;
+  active: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`relative inline-flex h-11 items-center gap-2 rounded-[var(--r)] px-3 font-display text-[13px] font-semibold uppercase tracking-[.1em] transition-colors ${
+        active ? "text-[var(--ink)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
+      } ${className}`}
+    >
+      {children}
+      {active && (
+        <span aria-hidden className="absolute inset-x-3 bottom-1 h-[2px] rounded-full bg-[var(--accent)] shadow-[0_0_8px_rgba(255,102,0,.7)]" />
+      )}
     </Link>
   );
 }

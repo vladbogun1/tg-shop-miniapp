@@ -42,7 +42,7 @@ import { saveSuccess } from "./success-store";
 function MapLoading() {
   const { t } = useI18n();
   return (
-    <div className="grid h-[420px] place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[13px] font-extrabold uppercase tracking-wide text-[var(--faint)]">
+    <div className="shimmer grid h-[420px] place-items-center rounded-[var(--r-card)] font-display text-[13px] font-semibold uppercase tracking-[.1em] text-[var(--faint)]">
       {t("checkout.mapLoading")}
     </div>
   );
@@ -81,7 +81,7 @@ export function CheckoutView() {
   if (!hydrated || session.status !== "authed") {
     return (
       <div className="container-site pt-10">
-        <p className="flex items-center gap-2 text-[15px] font-bold text-[var(--muted)]">
+        <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]">
           <Loader2 className="h-5 w-5 animate-spin" /> {t("checkout.checkingSession")}
         </p>
       </div>
@@ -91,9 +91,9 @@ export function CheckoutView() {
   if (lines.length === 0) {
     return (
       <div className="container-site pt-10">
-        <h1 className="text-[32px] font-black uppercase text-[var(--ink)]">{t("checkout.title")}</h1>
-        <div className="nb mt-6 flex flex-col items-start gap-4 p-6">
-          <p className="text-[15px] font-bold text-[var(--muted)]">{t("checkout.emptyCart")}</p>
+        <h1 className="font-display text-[32px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">{t("checkout.title")}</h1>
+        <div className="nb hud-frame mt-6 flex flex-col items-start gap-4 p-6">
+          <p className="text-[15px] font-medium text-[var(--muted)]">{t("checkout.emptyCart")}</p>
           <Link href={href("/catalog")} className="nb-accent nb-press tap nb-up px-5 py-3 text-[14px]">
             {t("common.toCatalog")}
           </Link>
@@ -264,7 +264,7 @@ function CheckoutForm() {
 
   return (
     <div className="container-site pt-8">
-      <h1 className="text-[30px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("checkout.title")}</h1>
+      <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("checkout.title")}</h1>
 
       <form
         noValidate
@@ -277,7 +277,7 @@ function CheckoutForm() {
         <div className="flex min-w-0 flex-col gap-6">
           {/* contacts */}
           <Section id="co-contacts" n={1} title={t("checkout.contacts")}>
-            {prefilled && <p className="mb-3 text-[13px] font-bold text-[var(--ok)]">{t("checkout.prefilled")}</p>}
+            {prefilled && <p className="mb-3 text-[13px] font-medium text-[var(--ok)]">{t("checkout.prefilled")}</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label={t("checkout.name")}
@@ -328,15 +328,15 @@ function CheckoutForm() {
             {delivery === "NOVA_POSHTA" && (
               <div className="mt-5 flex flex-col gap-4">
                 {warehouse && !editingWarehouse && (
-                  <div className="flex flex-col gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--accent)]">
-                      <MapPin className="h-5 w-5 text-[var(--accent-ink)]" strokeWidth={2.75} />
+                  <div className="flex flex-col gap-3 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">
+                      <MapPin className="h-5 w-5 text-[var(--accent-hi)]" strokeWidth={2} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-extrabold text-[var(--ink)]">
+                      <p className="text-[15px] font-semibold text-[var(--ink)]">
                         {npLabel(warehouse, t)}
                         {warehouseFromLast && (
-                          <span className="ml-2 inline-block border-[2px] border-[var(--line)] bg-[var(--c3)] px-1.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
+                          <span className="ml-2 inline-block rounded-full bg-[var(--surface-3)] px-2 py-0.5 align-middle font-display text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
                             {t("checkout.lastWarehouse")}
                           </span>
                         )}
@@ -372,12 +372,12 @@ function CheckoutForm() {
                   </>
                 )}
                 {touched && !warehouse && (
-                  <p className="text-[13px] font-bold text-[var(--danger)]">{t("checkout.warehouseRequired")}</p>
+                  <p className="text-[13px] font-medium text-[var(--danger)]">{t("checkout.warehouseRequired")}</p>
                 )}
               </div>
             )}
             {delivery === "PICKUP" && (
-              <p className="mt-5 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-4 text-[14px] font-medium leading-relaxed text-[var(--ink)]">
+              <p className="mt-5 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-4 text-[14px] font-medium leading-relaxed text-[var(--ink)]">
                 {t("checkout.pickupText")}
               </p>
             )}
@@ -391,9 +391,9 @@ function CheckoutForm() {
                 <div className="shimmer h-20" />
               </div>
             ) : paymentQuery.isError ? (
-              <p className="text-[14px] font-bold text-[var(--danger)]">{t("checkout.paymentError")}</p>
+              <p className="text-[14px] font-medium text-[var(--danger)]">{t("checkout.paymentError")}</p>
             ) : paymentOptions.length === 0 ? (
-              <p className="text-[14px] font-bold text-[var(--muted)]">{t("checkout.paymentNone")}</p>
+              <p className="text-[14px] font-medium text-[var(--muted)]">{t("checkout.paymentNone")}</p>
             ) : (
               <div role="radiogroup" aria-label={t("checkout.payment")} className="flex flex-col gap-3">
                 {paymentOptions.map((o) => (
@@ -413,7 +413,7 @@ function CheckoutForm() {
               </div>
             )}
             {touched && !paymentOk && (
-              <p className="mt-3 text-[13px] font-bold text-[var(--danger)]">{t("checkout.paymentRequired")}</p>
+              <p className="mt-3 text-[13px] font-medium text-[var(--danger)]">{t("checkout.paymentRequired")}</p>
             )}
           </Section>
 
@@ -427,14 +427,14 @@ function CheckoutForm() {
               preview={{ data: promo.data, loading: promo.loading }}
             />
             <label className="mt-5 block">
-              <span className="nb-up mb-1.5 block text-[12px] font-black text-[var(--faint)]">{t("checkout.comment")}</span>
+              <span className="eyebrow mb-1.5 block text-[11px]">{t("checkout.comment")}</span>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder={t("checkout.commentPlaceholder")}
                 rows={3}
                 maxLength={1000}
-                className="w-full resize-y rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+                className="w-full resize-y rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 py-3 text-[15px] text-[var(--ink)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </label>
           </Section>
@@ -442,32 +442,32 @@ function CheckoutForm() {
 
         {/* summary */}
         <aside className="min-w-0">
-          <div className="nb-lg flex flex-col gap-4 p-5 lg:sticky lg:top-[140px]">
+          <div className="nb-lg hud-frame flex flex-col gap-4 p-5 lg:sticky lg:top-[140px]">
             <div className="flex items-center justify-between">
-              <h2 className="text-[18px] font-black uppercase tracking-wide text-[var(--ink)]">{t("checkout.summary")}</h2>
-              <Link href={href("/cart")} className="text-[12px] font-black uppercase text-[var(--muted)] hover:text-[var(--accent)]">
+              <h2 className="text-[18px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("checkout.summary")}</h2>
+              <Link href={href("/cart")} className="font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] transition-colors hover:text-[var(--accent-hi)]">
                 {t("checkout.edit")}
               </Link>
             </div>
             <ul className="flex max-h-[300px] flex-col gap-3 overflow-y-auto pr-1">
               {lines.map((l) => (
                 <li key={l.key} className={`flex items-center gap-3 ${l.stock <= 0 ? "opacity-50" : ""}`}>
-                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)]">
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
                     <Image src={l.imageUrl} alt="" size={120} className="h-full w-full" />
-                    <span className="absolute bottom-0 right-0 border-l-[2px] border-t-[2px] border-[var(--line)] bg-[var(--c3)] px-1 text-[10px] font-black text-[var(--accent-ink)]">
+                    <span className="absolute bottom-0 right-0 rounded-tl-[var(--r)] bg-[rgba(14,14,16,.85)] px-1.5 font-display text-[10px] font-bold text-[var(--ink)]">
                       ×{l.quantity}
                     </span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 text-[13px] font-bold text-[var(--ink)]">{l.title}</span>
+                    <span className="line-clamp-2 text-[13px] font-medium text-[var(--ink)]">{l.title}</span>
                     {l.variantName && <span className="block text-[12px] font-semibold text-[var(--muted)]">{l.variantName}</span>}
-                    {l.stock <= 0 && <span className="block text-[12px] font-extrabold text-[var(--danger)]">{t("cart.unavailable")}</span>}
+                    {l.stock <= 0 && <span className="block text-[12px] font-semibold text-[var(--danger)]">{t("cart.unavailable")}</span>}
                   </span>
-                  <span className="shrink-0 text-[14px] font-black text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
+                  <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
                 </li>
               ))}
             </ul>
-            <div className="flex flex-col gap-1.5 border-t-[3px] border-[var(--line)] pt-3 text-[14px]">
+            <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
               <Row label={t("checkout.sum")} value={fmt.money(subtotal, currency)} />
               {discount > 0 && (
                 <Row
@@ -479,13 +479,13 @@ function CheckoutForm() {
               <Row label={t("checkout.deliveryCost")} value={t("checkout.deliveryCostValue")} muted />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[16px] font-black uppercase tracking-wide text-[var(--ink)]">{t("checkout.total")}</span>
-              <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[22px] font-black text-[var(--accent-ink)]">
+              <span className="text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("checkout.total")}</span>
+              <span className="font-display text-[22px] font-bold tabular-nums text-[var(--accent)]">
                 {fmt.money(total, currency)}
               </span>
             </div>
             {chosen && dueNow !== total && (
-              <div className="-mt-1 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] p-3">
+              <div className="-mt-1 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-3">
                 <Row label={t("checkout.dueNow")} value={fmt.money(dueNow, currency)} strong />
                 <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
                   {t("checkout.rest", { amount: fmt.money(total - dueNow, currency) })}
@@ -493,12 +493,12 @@ function CheckoutForm() {
               </div>
             )}
             {promoCode && !promo.loading && promo.data && !promo.data.valid && (
-              <p className="text-[12px] font-bold text-[var(--danger)]">
+              <p className="text-[12px] font-medium text-[var(--danger)]">
                 {t("checkout.promoProblem", { code: promoCode, message: promo.data.message ?? t("promo.notFound") })}
               </p>
             )}
             {submitError && (
-              <p role="alert" className="rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)]">
+              <p role="alert" className="rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-[13px] font-medium text-[var(--danger)]">
                 {submitError}
               </p>
             )}
@@ -507,7 +507,7 @@ function CheckoutForm() {
             </Button>
             <p className="text-center text-[12px] font-medium text-[var(--muted)]">
               {t("checkout.agree")}{" "}
-              <Link href={href("/terms")} target="_blank" className="link-ink font-bold text-[var(--ink)]">
+              <Link href={href("/terms")} target="_blank" className="link-ink font-semibold text-[var(--ink)]">
                 {t("checkout.agreeLink")}
               </Link>
             </p>
@@ -521,8 +521,8 @@ function CheckoutForm() {
 function Section({ id, n, title, children }: { id?: string; n: number; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="nb p-5 sm:p-6" aria-labelledby={id ? `${id}-h` : undefined}>
-      <h2 id={id ? `${id}-h` : undefined} className="mb-4 flex items-center gap-3 text-[18px] font-black uppercase tracking-wide text-[var(--ink)]">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--ink)] text-[14px] text-[var(--bg)]">
+      <h2 id={id ? `${id}-h` : undefined} className="mb-4 flex items-center gap-3 text-[18px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">
+        <span className="chamfer grid h-8 w-8 shrink-0 place-items-center bg-[var(--accent-soft)] text-[14px] text-[var(--accent-hi)] [--chamfer:6px]">
           {n}
         </span>
         {title}
@@ -551,16 +551,15 @@ function DeliveryTab({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className="flex min-h-[88px] flex-col items-start gap-1.5 rounded-[var(--r)] border-[3px] border-[var(--line)] p-4 text-left transition-transform hover:-translate-y-[1px] active:translate-x-[3px] active:translate-y-[3px]"
-      style={{
-        background: active ? "var(--accent)" : "var(--surface)",
-        color: active ? "var(--accent-ink)" : "var(--ink)",
-        boxShadow: active ? "5px 5px 0 var(--shadow)" : "none",
-      }}
+      className={`flex min-h-[88px] flex-col items-start gap-1.5 rounded-[var(--r-card)] border p-4 text-left transition-[transform,border-color,background-color] active:scale-[.99] ${
+        active
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[var(--line-strong)]"
+      }`}
     >
       {icon}
-      <span className="text-[14px] font-extrabold uppercase leading-tight tracking-wide">{title}</span>
-      <span className="text-[12px] font-bold" style={{ color: active ? "var(--accent-ink)" : "var(--muted)" }}>
+      <span className="font-display text-[14px] font-bold uppercase leading-tight tracking-[.06em]">{title}</span>
+      <span className="text-[12px] font-medium" style={{ color: active ? "var(--ink)" : "var(--muted)" }}>
         {subtitle}
       </span>
     </button>
@@ -582,9 +581,9 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className={`font-semibold ${muted ? "text-[var(--muted)]" : "text-[var(--ink)]"} ${strong ? "font-extrabold" : ""}`}>{label}</span>
+      <span className={`font-medium ${muted ? "text-[var(--muted)]" : "text-[var(--ink)]"}`}>{label}</span>
       <span
-        className={`text-right font-extrabold ${tone === "ok" ? "text-[var(--ok)]" : muted ? "text-[var(--muted)]" : "text-[var(--ink)]"} ${strong ? "text-[16px] font-black" : ""}`}
+        className={`text-right font-display font-semibold tabular-nums ${tone === "ok" ? "text-[var(--ok)]" : muted ? "text-[var(--muted)]" : "text-[var(--ink)]"} ${strong ? "text-[16px] font-bold" : ""}`}
       >
         {value}
       </span>

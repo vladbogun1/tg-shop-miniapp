@@ -15,13 +15,13 @@ export function Breadcrumbs({ locale, items }: { locale: Locale; items: Crumb[] 
   const all: Crumb[] = [{ label: t("breadcrumbs.home"), path: "/" }, ...items];
   return (
     <nav aria-label={t("breadcrumbs.label")} className="mb-5">
-      <ol className="flex flex-wrap items-center gap-1 text-[13px] font-bold text-[var(--muted)]">
+      <ol className="flex flex-wrap items-center gap-1 text-[13px] font-medium text-[var(--muted)]">
         {all.map((c, i) => {
           const last = i === all.length - 1;
           return (
             <li key={i} className="flex min-w-0 items-center gap-1">
               {c.path && !last ? (
-                <Link href={localePath(locale, c.path)} className="hover:text-[var(--ink)] hover:underline">
+                <Link href={localePath(locale, c.path)} className="transition-colors hover:text-[var(--accent-hi)]">
                   {c.label}
                 </Link>
               ) : (
@@ -29,7 +29,7 @@ export function Breadcrumbs({ locale, items }: { locale: Locale; items: Crumb[] 
                   {c.label}
                 </span>
               )}
-              {!last && <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={3} aria-hidden />}
+              {!last && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--faint)]" strokeWidth={2.5} aria-hidden />}
             </li>
           );
         })}

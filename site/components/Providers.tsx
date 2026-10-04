@@ -6,7 +6,7 @@
  * the bot then writes to them in it (same as the Mini App's POST /api/me/locale).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastHost } from "@/components/ui/Toast";
@@ -32,25 +32,6 @@ function LocaleSync({ locale }: { locale: Locale }) {
       /* a preference that failed to sync is not worth bothering anyone about */
     });
   }, [status, locale]);
-  return null;
-}
-
-/**
- * The stored theme lives on <html data-theme>. Switching the language moves to another instance of
- * the root layout, and Next swaps <html> on the client WITHOUT re-running the inline theme script in
- * <head> — the attribute vanished and a dark-theme reader was dropped to light. Re-apply it before
- * paint whenever the locale (i.e. the <html> element) changes.
- */
-function ThemeSync({ locale }: { locale: Locale }) {
-  useLayoutEffect(() => {
-    let theme = "light";
-    try {
-      if (localStorage.getItem("neo-theme") === "dark") theme = "dark";
-    } catch {
-      /* private mode: light */
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [locale]);
   return null;
 }
 
@@ -81,7 +62,6 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
   return (
     <QueryClientProvider client={client}>
       <I18nProvider locale={locale}>
-        <ThemeSync locale={locale} />
         <InputModality />
         <LocaleSync locale={locale} />
         <CartSync />

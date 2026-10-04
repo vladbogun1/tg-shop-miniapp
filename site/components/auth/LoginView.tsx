@@ -19,6 +19,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WebLoginStart, WebLoginStatus } from "@shop/shared";
+import { LogoFull } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";
@@ -139,13 +140,14 @@ export function LoginView() {
 
   return (
     <div className="container-site max-w-4xl pt-8 md:pt-12">
-      <h1 className="text-[30px] font-black uppercase tracking-tight text-[var(--ink)] sm:text-[40px]">{t("login.title")}</h1>
-      <p className="mt-2 max-w-2xl text-[15px] font-semibold text-[var(--muted)]">{t("login.lead")}</p>
+      <LogoFull size={40} className="mb-6" />
+      <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[40px]">{t("login.title")}</h1>
+      <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[var(--muted)]">{t("login.lead")}</p>
 
       {session.status === "authed" ? (
         <div className="nb mt-8 flex flex-col items-start gap-4 p-6">
-          <p className="flex items-center gap-2 text-[16px] font-extrabold text-[var(--ink)]">
-            <CheckCircle2 className="h-5 w-5 text-[var(--ok)]" strokeWidth={2.75} /> {t("login.already")}
+          <p className="flex items-center gap-2 text-[16px] font-semibold text-[var(--ink)]">
+            <CheckCircle2 className="h-5 w-5 text-[var(--ok)]" strokeWidth={2.25} /> {t("login.already")}
           </p>
           <ButtonLink href={href("/account")} variant="accent">
             {t("login.toAccount")}
@@ -156,8 +158,8 @@ export function LoginView() {
           <div className="min-w-0">
             <ol className="flex flex-col gap-3">
               {(["login.step1", "login.step2", "login.step3"] as const).map((k, i) => (
-                <li key={k} className="flex items-center gap-3 text-[15px] font-bold text-[var(--ink)]">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] text-[14px] font-black text-[var(--accent-ink)]">
+                <li key={k} className="flex items-center gap-3 text-[15px] font-medium text-[var(--ink)]">
+                  <span className="chamfer grid h-8 w-8 shrink-0 place-items-center bg-[var(--accent-soft)] font-display text-[14px] font-bold text-[var(--accent-hi)] [--chamfer:6px]">
                     {i + 1}
                   </span>
                   {t(k)}
@@ -167,7 +169,7 @@ export function LoginView() {
 
             <div className="mt-7" aria-live="polite">
               {phase.kind === "starting" && (
-                <p className="flex items-center gap-2 text-[15px] font-bold text-[var(--muted)]">
+                <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]">
                   <Loader2 className="h-5 w-5 animate-spin" /> {t("common.loading")}
                 </p>
               )}
@@ -176,12 +178,12 @@ export function LoginView() {
                 <div className="flex flex-col gap-5">
                   <div className="flex flex-wrap items-center gap-5">
                     <div
-                      className="grid h-[120px] w-[150px] place-items-center rounded-[var(--r)] border-[4px] border-[var(--line)] bg-[var(--accent)] text-[72px] font-black leading-none tracking-tight text-[var(--accent-ink)] shadow-[7px_7px_0_var(--shadow)]"
+                      className="hud-frame grid h-[120px] w-[150px] place-items-center rounded-[var(--r-card)] border border-[var(--accent)] bg-[var(--accent-soft)] font-display text-[72px] font-extrabold leading-none tracking-[.02em] text-[var(--accent)] shadow-[0_0_32px_-6px_rgba(255,102,0,.5)] [text-shadow:0_0_18px_rgba(255,102,0,.45)]"
                       aria-label={`${t("login.code")}: ${phase.start.matchCode}`}
                     >
                       {phase.start.matchCode}
                     </div>
-                    <p className="max-w-[220px] text-[18px] font-black uppercase leading-tight text-[var(--ink)]">
+                    <p className="max-w-[220px] font-display text-[18px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)]">
                       {t("login.code")}
                     </p>
                   </div>
@@ -189,11 +191,11 @@ export function LoginView() {
                     href={phase.start.deepLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-[60px] w-full items-center justify-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c2)] px-6 text-[18px] font-black uppercase tracking-wide text-white shadow-[5px_5px_0_var(--shadow)] transition-transform hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[5px] active:translate-y-[5px] active:shadow-none sm:w-auto"
+                    className="chamfer inline-flex min-h-[60px] w-full items-center sm:self-start justify-center gap-3 bg-[var(--accent)] px-7 font-display text-[17px] font-bold uppercase tracking-[.06em] text-[var(--accent-ink)] transition-[background-color,transform] hover:bg-[var(--accent-hi)] active:scale-[.98] active:bg-[var(--accent-lo)] sm:w-auto"
                   >
-                    <Send className="h-6 w-6" strokeWidth={2.5} /> {t("login.open")}
+                    <Send className="h-5 w-5" strokeWidth={2.25} /> {t("login.open")}
                   </a>
-                  <p className="flex items-center gap-2 text-[14px] font-bold text-[var(--muted)]">
+                  <p className="flex items-center gap-2 text-[14px] font-medium text-[var(--muted)]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     {confirming ? t("login.confirmed") : t("login.waiting")}
                   </p>
@@ -202,8 +204,8 @@ export function LoginView() {
 
               {phase.kind === "ended" && (
                 <div className="flex flex-col items-start gap-4">
-                  <p className="flex items-start gap-2 text-[15px] font-extrabold text-[var(--danger)]">
-                    <XCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2.75} />
+                  <p className="flex items-start gap-2 text-[15px] font-semibold text-[var(--danger)]">
+                    <XCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2.25} />
                     {phase.message ??
                       t(
                         phase.reason === "REJECTED"
@@ -217,7 +219,7 @@ export function LoginView() {
                                 : "login.failed"
                       )}
                   </p>
-                  <Button variant="accent" icon={<RotateCcw className="h-4 w-4" strokeWidth={2.75} />} onClick={() => void start()}>
+                  <Button variant="accent" icon={<RotateCcw className="h-4 w-4" strokeWidth={2.25} />} onClick={() => void start()}>
                     {t("login.restart")}
                   </Button>
                 </div>
@@ -227,10 +229,10 @@ export function LoginView() {
 
           {phase.kind === "pending" && (
             <div className="hidden flex-col items-center gap-3 md:flex">
-              <div className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-white p-3 shadow-[5px_5px_0_var(--shadow)]">
+              <div className="rounded-[var(--r-card)] border border-[var(--line-strong)] bg-white p-3">
                 <QRCodeSVG value={phase.start.deepLink} size={196} level="M" marginSize={0} />
               </div>
-              <p className="flex max-w-[220px] items-center gap-1.5 text-center text-[12px] font-bold text-[var(--muted)]">
+              <p className="flex max-w-[220px] items-center gap-1.5 text-center text-[12px] font-medium text-[var(--muted)]">
                 <Smartphone className="h-4 w-4 shrink-0" /> {t("login.qr")}
               </p>
             </div>
@@ -238,7 +240,7 @@ export function LoginView() {
         </div>
       )}
 
-      <p className="mt-6 max-w-2xl text-[13px] font-medium text-[var(--muted)]">{t("login.why")}</p>
+      <p className="mt-6 max-w-2xl text-[13px] text-[var(--faint)]">{t("login.why")}</p>
 
       {process.env.NODE_ENV === "development" && session.status !== "authed" && <DevLogin onDone={finish} />}
     </div>
@@ -252,7 +254,7 @@ function DevLogin({ onDone }: { onDone: (user: Parameters<typeof rememberUser>[0
   const [err, setErr] = useState<string | null>(null);
   return (
     <form
-      className="mt-10 max-w-md rounded-[var(--r)] border-[3px] border-dashed border-[var(--warn)] bg-[var(--surface)] p-4"
+      className="mt-10 max-w-md rounded-[var(--r)] border border-dashed border-[var(--warn)] bg-[var(--surface)] p-4"
       onSubmit={async (e) => {
         e.preventDefault();
         const n = Number(id);
@@ -268,18 +270,18 @@ function DevLogin({ onDone }: { onDone: (user: Parameters<typeof rememberUser>[0
         }
       }}
     >
-      <p className="nb-up text-[12px] font-black text-[var(--warn)]">{t("login.dev.title")}</p>
-      <label className="mt-3 block text-[13px] font-bold text-[var(--ink)]">
+      <p className="nb-up text-[12px] font-bold text-[var(--warn)]">{t("login.dev.title")}</p>
+      <label className="mt-3 block text-[13px] font-semibold text-[var(--ink)]">
         {t("login.dev.userId")}
         <input
           value={id}
           onChange={(e) => setId(e.target.value.replace(/\D/g, ""))}
           inputMode="numeric"
           name="telegramUserId"
-          className="mt-1 h-11 w-full rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 text-[15px] font-bold text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+          className="mt-1 h-11 w-full rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[15px] text-[var(--ink)] outline-none focus:border-[var(--accent)]"
         />
       </label>
-      {err && <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>}
+      {err && <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{err}</p>}
       <Button type="submit" variant="surface" size="sm" loading={busy} className="mt-3">
         {t("login.dev.submit")}
       </Button>

@@ -6,7 +6,7 @@ import { localeOf, type LocaleParams } from "@/lib/route";
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);
   return {
-    title: { default: makeT(locale)("account.title"), template: "%s · MAXSOLCH" },
+    title: { default: makeT(locale)("account.title"), template: "%s · ChiSetup" },
     robots: { index: false, follow: false },
   };
 }

@@ -90,9 +90,9 @@ export function SearchBox() {
           e.preventDefault();
           goSearch();
         }}
-        className="flex h-11 items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] focus-within:shadow-[4px_4px_0_var(--shadow)]"
+        className="flex h-11 items-center overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]"
       >
-        <Search className="ml-3 h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.75} aria-hidden />
+        <Search className="ml-3 h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.25} aria-hidden />
         <input
           ref={inputRef}
           type="search"
@@ -110,7 +110,7 @@ export function SearchBox() {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={showList && active >= 0 ? `${id}-opt-${active}` : undefined}
-          className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] [&::-webkit-search-cancel-button]:hidden"
+          className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-[15px] font-normal text-[var(--ink)] outline-none placeholder:text-[var(--faint)] [&::-webkit-search-cancel-button]:hidden"
         />
         {q && (
           <button
@@ -122,12 +122,12 @@ export function SearchBox() {
             aria-label={t("common.close")}
             className="grid h-8 w-8 shrink-0 place-items-center text-[var(--muted)] hover:text-[var(--ink)]"
           >
-            <X className="h-4 w-4" strokeWidth={3} />
+            <X className="h-4 w-4" strokeWidth={2.25} />
           </button>
         )}
         <button
           type="submit"
-          className="h-full shrink-0 border-l-[3px] border-[var(--line)] bg-[var(--ink)] px-4 text-[12px] font-black uppercase tracking-wide text-[var(--bg)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+          className="h-full shrink-0 border-l border-[var(--line)] bg-[var(--surface-2)] px-4 font-display text-[12px] font-semibold uppercase tracking-[.1em] text-[var(--muted)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
         >
           {t("header.searchSubmit")}
         </button>
@@ -138,15 +138,15 @@ export function SearchBox() {
           id={listId}
           role="listbox"
           aria-label={t("header.search")}
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 max-h-[70vh] overflow-y-auto rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[6px_6px_0_var(--shadow)]"
+          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 max-h-[70vh] overflow-y-auto rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] py-1 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
         >
           {isFetching && items.length === 0 && (
-            <li className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold text-[var(--muted)]">
+            <li className="flex items-center gap-2 px-4 py-3 text-[13px] font-medium text-[var(--muted)]">
               <Loader2 className="h-4 w-4 animate-spin" /> {t("header.searchSearching")}
             </li>
           )}
           {!isFetching && items.length === 0 && (
-            <li className="px-4 py-3 text-[13px] font-bold text-[var(--muted)]">{t("header.searchEmpty")}</li>
+            <li className="px-4 py-3 text-[13px] font-medium text-[var(--muted)]">{t("header.searchEmpty")}</li>
           )}
           {items.map((p, i) => (
             <li
@@ -162,11 +162,11 @@ export function SearchBox() {
                 className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-2)]"
                 tabIndex={-1}
               >
-                <span className="h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] border-[2px] border-[var(--line)]">
+                <span className="h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
                   <Image src={p.images?.[0]?.url} alt="" size={120} className="h-full w-full" />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-[var(--ink)]">{p.title}</span>
-                <span className="shrink-0 text-[14px] font-black text-[var(--ink)]">{fmt.money(p.priceMinor, p.currency)}</span>
+                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--ink)]">{p.title}</span>
+                <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(p.priceMinor, p.currency)}</span>
               </Link>
             </li>
           ))}
@@ -174,13 +174,13 @@ export function SearchBox() {
             id={`${id}-opt-${items.length}`}
             role="option"
             aria-selected={active === items.length}
-            className={`border-t-[3px] border-[var(--line)] ${active === items.length ? "bg-[var(--surface-2)]" : ""}`}
+            className={`border-t border-[var(--line)] ${active === items.length ? "bg-[var(--surface-2)]" : ""}`}
           >
             <button
               type="button"
               tabIndex={-1}
               onClick={goSearch}
-              className="w-full px-4 py-3 text-left text-[13px] font-black uppercase tracking-wide text-[var(--accent)] hover:bg-[var(--surface-2)]"
+              className="w-full px-4 py-3 text-left font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)] hover:bg-[var(--surface-2)]"
             >
               {t("header.searchAll", { q: q.trim() })}
             </button>

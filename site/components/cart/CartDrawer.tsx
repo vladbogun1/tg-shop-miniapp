@@ -49,7 +49,7 @@ export function CartDrawer() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={close}
-            className="fixed inset-0 z-[60] bg-black/50"
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-[6px]"
             aria-hidden
           />
           <motion.aside
@@ -61,13 +61,13 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 340, damping: 36 }}
-            className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[460px] flex-col border-l-[3px] border-[var(--line)] bg-[var(--bg)]"
+            className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[460px] flex-col border-l border-[var(--line-strong)] bg-[var(--bg)] shadow-[-24px_0_60px_-20px_rgba(0,0,0,.8)]"
           >
-            <header className="flex items-center justify-between gap-3 border-b-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3">
-              <h2 id="cart-drawer-title" className="text-[20px] font-black uppercase tracking-tight text-[var(--ink)]">
+            <header className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+              <h2 id="cart-drawer-title" className="text-[20px] font-display font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
                 {t("cart.title")}
                 {count > 0 && (
-                  <span className="ml-2 text-[14px] font-bold text-[var(--muted)]">{t("cart.count", { n: count })}</span>
+                  <span className="ml-2 text-[14px] font-medium text-[var(--muted)]">{t("cart.count", { n: count })}</span>
                 )}
               </h2>
               <div className="flex items-center gap-2">
@@ -77,9 +77,9 @@ export function CartDrawer() {
                   autoFocus
                   onClick={close}
                   aria-label={t("common.close")}
-                  className="nb-flat tap grid h-11 w-11 place-items-center text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                  className="tap grid h-11 w-11 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)]"
                 >
-                  <X className="h-5 w-5" strokeWidth={3} />
+                  <X className="h-5 w-5" strokeWidth={2.5} />
                 </button>
               </div>
             </header>
@@ -89,19 +89,19 @@ export function CartDrawer() {
             </div>
 
             {lines.length > 0 && (
-              <footer className="border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-4">
+              <footer className="border-t border-[var(--line)] bg-[var(--surface)] px-4 py-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">{t("cart.total")}</span>
-                  <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[20px] font-black text-[var(--accent-ink)]">
+                  <span className="text-[15px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("cart.total")}</span>
+                  <span className="font-display text-[20px] font-bold tabular-nums text-[var(--accent)]">
                     {fmt.money(subtotal)}
                   </span>
                 </div>
                 <p className="mt-1.5 text-[12px] font-medium text-[var(--muted)]">{t("cart.deliveryNote")}</p>
                 {hasProblems && (
-                  <p className="mt-2 text-[12px] font-extrabold text-[var(--danger)]">{t("cart.hasProblems")}</p>
+                  <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{t("cart.hasProblems")}</p>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button type="button" onClick={close} className={buttonClass("surface", "md", true)}>
+                  <button type="button" onClick={close} className={`${buttonClass("surface", "md", true)} !px-3 !text-[13px] !tracking-[.03em]`}>
                     <span className="truncate">{t("cart.continue")}</span>
                   </button>
                   <Link
@@ -111,7 +111,7 @@ export function CartDrawer() {
                       if (hasProblems || subtotal === 0) e.preventDefault();
                       else close();
                     }}
-                    className={`${buttonClass("accent", "md", true)} ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
+                    className={`${buttonClass("accent", "md", true)} !px-3 !text-[13px] !tracking-[.03em] ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
                   >
                     <span className="truncate">{t("cart.checkout")}</span>
                   </Link>

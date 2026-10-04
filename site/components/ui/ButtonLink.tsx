@@ -2,7 +2,7 @@ import Link, { type LinkProps } from "next/link";
 import type { ReactNode } from "react";
 import { buttonClass } from "./button-styles";
 
-/** A link that looks like a neo button (server-component friendly). */
+/** A link that looks like a button (server-component friendly). */
 export function ButtonLink({
   href,
   children,

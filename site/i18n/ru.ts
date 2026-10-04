@@ -28,7 +28,7 @@ export const ru = {
   "common.showAll": "Смотреть все",
   "common.placeholder": "[уточняется]",
 
-  "meta.title": "MAXSOLCH — игровая периферия",
+  "meta.title": "ChiSetup — игровые девайсы для твоего сетапа",
   "meta.description":
     "Мышки, клавиатуры, коврики и аксессуары. Доставка Новой Почтой по всей Украине, оплата на карту ФОП или наложенным платежом.",
 
@@ -55,14 +55,13 @@ export const ru = {
 
   // ── header / navigation ───────────────────────────────────────────────────
   "header.skip": "Перейти к содержимому",
-  "header.home": "MAXSOLCH — на главную",
+  "header.home": "ChiSetup — на главную",
   "header.catalog": "Каталог",
   "header.search": "Поиск товаров",
   "header.searchSubmit": "Найти",
   "header.searchAll": "Все результаты по «{q}»",
   "header.searchEmpty": "Ничего не нашлось",
   "header.searchSearching": "Ищем…",
-  "header.theme": "Сменить тему",
   "header.lang": "Язык сайта",
   "header.cart": "Корзина",
   "header.cartCount": { one: "Корзина, {n} товар", few: "Корзина, {n} товара", many: "Корзина, {n} товаров", other: "Корзина, {n} товара" },
@@ -83,7 +82,7 @@ export const ru = {
   "footer.bot": "Бот магазина в Telegram",
   "footer.botText": "Заказы, статусы и чат с магазином — в Telegram.",
   "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
-  "footer.rights": "© {year} MAXSOLCH",
+  "footer.rights": "© {year} ChiSetup",
 
   // ── info pages ────────────────────────────────────────────────────────────
   "info.delivery": "Доставка и оплата",
@@ -108,7 +107,7 @@ export const ru = {
   "contacts.hours": "Часы работы",
   "contacts.seller": "Продавец",
 
-  "about.lead": "MAXSOLCH — небольшой магазин игровой периферии из Украины.",
+  "about.lead": "ChiSetup — небольшой магазин игровой периферии из Украины.",
   "about.text1":
     "Привозим мышки, клавиатуры, коврики, кейкапы и аксессуары, которые сами считаем стоящими. Каждый товар проверяем перед отправкой.",
   "about.text2":
@@ -125,10 +124,17 @@ export const ru = {
   "error.text": "Сайт споткнулся. Попробуйте ещё раз — если не поможет, обновите страницу.",
 
   // ── home ──────────────────────────────────────────────────────────────────
-  "home.hero.kicker": "Игровая периферия",
-  "home.hero.title": "Девайсы, которые не подводят",
+  "home.hero.kicker": "Мышки · Клавиатуры · Наушники · Аксессуары",
+  "home.hero.title": "Игровые девайсы для твоего сетапа",
   "home.hero.text":
     "Мышки, клавиатуры и коврики с проверкой перед отправкой. Новая Почта по всей Украине, чат с магазином по каждому заказу.",
+  "home.hero.title.pre": "Игровые",
+  "home.hero.title.accent": "девайсы",
+  "home.hero.title.post": "для твоего сетапа",
+  "brand.tagline": "Gaming gear & setup",
+  "header.nav": "Разделы сайта",
+  "header.nav.delivery": "Доставка",
+  "header.nav.contacts": "Контакты",
   "home.hero.cta": "Перейти в каталог",
   "home.hero.cta2": "Как доставляем",
   "home.categories": "Категории",
@@ -337,9 +343,6 @@ export const ru = {
   "account.orders.open": "Подробнее",
 
   "settings.language": "Язык сайта",
-  "settings.theme": "Тема",
-  "settings.theme.light": "Светлая",
-  "settings.theme.dark": "Тёмная",
   "settings.sessions": "Устройства и сеансы",
   "settings.sessions.lead": "Где выполнен вход на сайт. Незнакомое устройство — завершите сеанс.",
   "settings.sessions.current": "Это устройство",

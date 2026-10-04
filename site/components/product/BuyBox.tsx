@@ -59,31 +59,31 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
 
   return (
     <div>
-      <h1 className="text-[26px] font-black leading-tight tracking-tight text-[var(--ink)] sm:text-[32px]">
+      <h1 className="font-display text-[26px] font-bold leading-tight tracking-[.01em] text-[var(--ink)] sm:text-[32px]">
         {product.title}
       </h1>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className="border-[3px] border-[var(--line)] bg-[var(--c3)] px-3 py-1 text-[28px] font-black leading-none text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)]">
+        <span className="font-display text-[34px] font-bold leading-none tabular-nums text-[var(--accent)] [text-shadow:0_0_24px_rgba(255,102,0,.35)]">
           {fmt.money(product.priceMinor, product.currency)}
         </span>
         {off > 0 && (
           <>
-            <s className="text-[18px] font-bold text-[var(--muted)]">{fmt.money(product.compareAtMinor, product.currency)}</s>
-            <span className="rotate-2 border-[2.5px] border-[var(--line)] bg-[var(--c5)] px-2 py-0.5 text-[15px] font-black text-[var(--accent-ink)]">
+            <s className="font-display text-[18px] font-medium tabular-nums text-[var(--faint)]">{fmt.money(product.compareAtMinor, product.currency)}</s>
+            <span className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-0.5 font-display text-[14px] font-bold text-[var(--accent-hi)]">
               {t("product.discount", { n: off })}
             </span>
           </>
         )}
       </div>
 
-      <p className="mt-4 flex items-center gap-2 text-[14px] font-extrabold" aria-live="polite">
+      <p className="mt-4 flex items-center gap-2 text-[14px] font-semibold" aria-live="polite">
         <span
           aria-hidden
-          className="inline-block h-3 w-3 rounded-full border-[2px] border-[var(--line)]"
-          style={{ background: inStock ? "var(--ok)" : "var(--danger)" }}
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ background: inStock ? "var(--ok)" : "var(--faint)", boxShadow: inStock ? "0 0 8px var(--ok)" : undefined }}
         />
-        <span style={{ color: inStock ? "var(--ink)" : "var(--danger)" }}>
+        <span style={{ color: inStock ? "var(--ink)" : "var(--muted)" }}>
           {!inStock
             ? t("product.outOfStock")
             : stock > 0 && stock <= 3
@@ -94,7 +94,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
 
       {hasVariants && (
         <fieldset className="mt-6">
-          <legend className="nb-up mb-2.5 text-[12px] font-black text-[var(--faint)]">
+          <legend className="eyebrow mb-2.5 text-[11px]">
             {t("product.variant")}
             {needVariant && inStock ? ` — ${t("product.chooseVariant")}` : ""}
           </legend>
@@ -114,13 +114,13 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
                     setQty(1);
                   }}
                   title={out ? t("product.variantOut") : undefined}
-                  className={`tap inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--r)] border-[3px] border-[var(--line)] px-3.5 text-[14px] font-extrabold transition-transform ${
+                  className={`tap inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-4 font-display text-[14px] font-semibold transition-colors ${
                     on
-                      ? "bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]"
-                      : "bg-[var(--surface)] text-[var(--ink)] hover:-translate-y-[1px] hover:bg-[var(--surface-2)]"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                      : "border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.3)]"
                   } disabled:cursor-not-allowed disabled:line-through disabled:opacity-45`}
                 >
-                  {on && <Check className="h-4 w-4" strokeWidth={3.5} />}
+                  {on && <Check className="h-4 w-4" strokeWidth={2.25} />}
                   {v.name}
                 </button>
               );
@@ -131,11 +131,11 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-3">
-          <span className="nb-up text-[12px] font-black text-[var(--faint)]">{t("qty.label")}</span>
+          <span className="eyebrow text-[11px]">{t("qty.label")}</span>
           <QtyStepper value={qty} onChange={setQty} min={1} max={Math.max(1, stock)} />
         </div>
         {inCart > 0 && (
-          <span className="text-[13px] font-bold text-[var(--muted)]">{t("product.inCart", { n: inCart })}</span>
+          <span className="text-[13px] font-medium text-[var(--muted)]">{t("product.inCart", { n: inCart })}</span>
         )}
       </div>
 
@@ -144,7 +144,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
           variant="accent"
           size="lg"
           disabled={!canBuy}
-          icon={<ShoppingBag className="h-5 w-5" strokeWidth={2.75} />}
+          icon={<ShoppingBag className="h-5 w-5" strokeWidth={2.25} />}
           onClick={() => {
             if (addToCart()) {
               toast(t("product.added"));
@@ -158,7 +158,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
           variant="ink"
           size="lg"
           disabled={!canBuy}
-          icon={<Zap className="h-5 w-5" strokeWidth={2.75} />}
+          icon={<Zap className="h-5 w-5" strokeWidth={2.25} />}
           onClick={() => {
             if (addToCart()) router.push(href("/checkout"));
           }}

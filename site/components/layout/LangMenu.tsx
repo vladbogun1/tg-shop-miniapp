@@ -152,14 +152,14 @@ export function LangMenu() {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={`${t("header.lang")}: ${LOCALE_NAME[locale]}`}
-        className={`nb nb-hover tap flex h-11 shrink-0 items-center justify-center gap-1 px-2.5 text-[13px] font-black tracking-wide text-[var(--ink)] transition-colors hover:bg-[var(--surface-2)] ${
-          open ? "bg-[var(--surface-2)]" : ""
+        className={`tap flex h-11 shrink-0 items-center justify-center gap-1 rounded-[var(--r)] border px-2.5 font-display text-[13px] font-semibold tracking-[.08em] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)] ${
+          open ? "border-[var(--line-strong)] bg-[var(--surface-2)]" : "border-[var(--line)] bg-[var(--surface)]"
         }`}
       >
         <span lang={locale}>{LOCALE_SHORT[locale]}</span>
         <ChevronDown
-          className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-          strokeWidth={3}
+          className={`h-4 w-4 text-[var(--muted)] transition-transform ${open ? "rotate-180" : ""}`}
+          strokeWidth={2.25}
           aria-hidden
         />
       </button>
@@ -174,7 +174,7 @@ export function LangMenu() {
             aria-label={t("header.lang")}
             onKeyDown={onMenuKey}
             style={{ top: pos.top, right: pos.right }}
-            className="chrome fixed z-[60] min-w-[184px] rounded-[var(--r)] border-[3px] border-[var(--line)] p-1.5 shadow-[5px_5px_0_var(--accent)]"
+            className="fixed z-[60] min-w-[184px] rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] p-1.5 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
           >
             {LOCALES.map((l, i) => {
               const target = localePath(l, pathname);
@@ -192,15 +192,15 @@ export function LangMenu() {
                     aria-checked={active}
                     tabIndex={-1}
                     onClick={(e) => choose(e, l, target)}
-                    className={`flex min-h-11 items-center gap-3 rounded-[var(--r)] px-3 text-[14px] font-extrabold ${
+                    className={`flex min-h-11 items-center gap-3 rounded-[var(--r)] px-3 text-[14px] font-medium ${
                       active
-                        ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                        ? "bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                         : "text-[var(--ink)] hover:bg-[var(--surface-2)] focus:bg-[var(--surface-2)]"
                     }`}
                   >
-                    <span className="w-6 text-[11px] font-black tracking-wide opacity-70">{LOCALE_SHORT[l]}</span>
+                    <span className="w-6 font-display text-[11px] font-bold tracking-[.08em] opacity-70">{LOCALE_SHORT[l]}</span>
                     <span className="flex-1">{LOCALE_NAME[l]}</span>
-                    {active && <Check className="h-4 w-4" strokeWidth={3} aria-hidden />}
+                    {active && <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
                   </Link>
                 </li>
               );

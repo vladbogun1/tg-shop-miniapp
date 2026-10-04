@@ -31,11 +31,11 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
 
   return (
     <li
-      className={`flex gap-3 rounded-[var(--r)] border-[3px] bg-[var(--surface)] p-3 ${
-        unavailable ? "border-[var(--danger)]" : "border-[var(--line)]"
+      className={`flex gap-3 rounded-[var(--r-card)] border bg-[var(--surface)] p-3 ${
+        unavailable ? "border-[color-mix(in_srgb,var(--danger)_55%,transparent)]" : "border-[var(--line)]"
       }`}
     >
-      <Link href={productHref} onClick={onNavigate} className={`${size} shrink-0 overflow-hidden rounded-[var(--r)] border-[2.5px] border-[var(--line)]`}>
+      <Link href={productHref} onClick={onNavigate} className={`${size} shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]`}>
         <Image src={line.imageUrl} alt={line.title} size={200} className="h-full w-full" />
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -43,7 +43,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
           <Link
             href={productHref}
             onClick={onNavigate}
-            className="line-clamp-2 min-w-0 flex-1 text-[14px] font-bold leading-snug text-[var(--ink)] hover:underline"
+            className="line-clamp-2 min-w-0 flex-1 text-[14px] font-semibold leading-snug text-[var(--ink)] transition-colors hover:text-[var(--accent-hi)]"
           >
             {line.title}
           </Link>
@@ -51,20 +51,20 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
             type="button"
             onClick={() => remove(line.key)}
             aria-label={t("cart.remove", { title: line.title })}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-[var(--muted)] hover:bg-[var(--danger)] hover:text-white"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] text-[var(--muted)] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)]"
           >
             <Trash2 className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
-        {line.variantName && <p className="text-[12px] font-bold text-[var(--muted)]">{line.variantName}</p>}
+        {line.variantName && <p className="text-[12px] font-medium text-[var(--muted)]">{line.variantName}</p>}
         {unavailable ? (
-          <p className="flex items-center gap-1 text-[12px] font-extrabold text-[var(--danger)]">
-            <AlertTriangle className="h-3.5 w-3.5" strokeWidth={3} /> {t("cart.unavailable")}
+          <p className="flex items-center gap-1 text-[12px] font-semibold text-[var(--danger)]">
+            <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.5} /> {t("cart.unavailable")}
           </p>
         ) : (
           line.previousPriceMinor != null &&
           line.previousPriceMinor !== line.priceMinor && (
-            <p className="text-[12px] font-bold text-[var(--warn)]">
+            <p className="text-[12px] font-semibold text-[var(--warn)]">
               {t("cart.priceChanged", { old: fmt.money(line.previousPriceMinor, line.currency) })}
             </p>
           )
@@ -81,7 +81,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
           ) : (
             <span />
           )}
-          <span className="text-[16px] font-black text-[var(--ink)]">
+          <span className="font-display text-[16px] font-bold tabular-nums text-[var(--ink)]">
             {fmt.money(line.priceMinor * line.quantity, line.currency)}
           </span>
         </div>
@@ -93,11 +93,11 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
 export function CartEmpty({ onNavigate }: { onNavigate?: () => void }) {
   const { t, href } = useI18n();
   return (
-    <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c3)] shadow-[4px_4px_0_var(--shadow)]">
-        <ShoppingBag className="h-8 w-8 text-[var(--accent-ink)]" strokeWidth={2.5} />
+    <div className="hud-frame m-1 flex flex-col items-center gap-3 px-4 py-12 text-center">
+      <span className="chamfer grid h-16 w-16 place-items-center bg-[var(--surface-2)]">
+        <ShoppingBag className="h-8 w-8 text-[var(--accent)]" strokeWidth={1.75} />
       </span>
-      <p className="text-[18px] font-black uppercase text-[var(--ink)]">{t("cart.empty.title")}</p>
+      <p className="font-display text-[18px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">{t("cart.empty.title")}</p>
       <p className="max-w-xs text-[14px] font-medium text-[var(--muted)]">{t("cart.empty.text")}</p>
       <Link
         href={href("/catalog")}

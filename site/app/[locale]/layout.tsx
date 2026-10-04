@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Exo_2, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
@@ -16,6 +16,15 @@ const inter = Inter({
   display: "swap",
 });
 
+/** Display face (DESIGN-V3 §3): headings, buttons, prices, labels; italic 800 for the wordmark. */
+const exo = Exo_2({
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-exo",
+  display: "swap",
+});
+
 /**
  * Nothing is prerendered at build time — the build has no backend to talk to. Every page is
  * rendered on its first request and then cached (ISR), see REVALIDATE_SECONDS.
@@ -27,10 +36,8 @@ export function generateStaticParams() {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F4F1E6" },
-    { media: "(prefers-color-scheme: dark)", color: "#26262B" },
-  ],
+  themeColor: "#0E0E10",
+  colorScheme: "dark",
 };
 
 export async function generateMetadata({
@@ -44,13 +51,13 @@ export async function generateMetadata({
   const indexable = process.env.SITE_INDEXABLE === "true";
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: t("meta.title"), template: "%s · MAXSOLCH" },
+    title: { default: t("meta.title"), template: "%s · ChiSetup" },
     description: t("meta.description"),
-    applicationName: "MAXSOLCH",
+    applicationName: "ChiSetup",
     alternates: alternates("/", locale),
     openGraph: {
       type: "website",
-      siteName: "MAXSOLCH",
+      siteName: "ChiSetup",
       locale: LOCALE_TAG[locale].replace("-", "_"),
       title: t("meta.title"),
       description: t("meta.description"),
@@ -58,10 +65,6 @@ export async function generateMetadata({
     robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
   };
 }
-
-/** Applies the stored theme before the first paint (light by default), like the Mini App. */
-const THEME_SCRIPT =
-  "(function(){try{var t=localStorage.getItem('neo-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();";
 
 export default async function LocaleLayout({
   children,
@@ -76,10 +79,7 @@ export default async function LocaleLayout({
   const categories = await safe(getCategories(locale), []);
 
   return (
-    <html lang={LOCALE_TAG[locale]} className={inter.variable} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
+    <html lang={LOCALE_TAG[locale]} className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
         <div className="scene" aria-hidden />
         <Providers locale={locale}>

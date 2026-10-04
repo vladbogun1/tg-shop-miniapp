@@ -40,8 +40,8 @@ export default async function SearchPage({
   if (!state.q) {
     return (
       <div className="container-site pt-10">
-        <h1 className="text-[32px] font-black uppercase text-[var(--ink)]">{t("search.title")}</h1>
-        <p className="nb mt-6 p-6 text-[15px] font-bold text-[var(--muted)]">{t("search.prompt")}</p>
+        <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("search.title")}</h1>
+        <p className="nb mt-6 p-6 text-[15px] font-medium text-[var(--muted)]">{t("search.prompt")}</p>
       </div>
     );
   }

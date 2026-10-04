@@ -17,7 +17,7 @@ export const en: RuDictionary = {
   "common.showAll": "See all",
   "common.placeholder": "[to be confirmed]",
 
-  "meta.title": "MAXSOLCH — gaming peripherals",
+  "meta.title": "ChiSetup — gaming gear for your setup",
   "meta.description":
     "Mice, keyboards, mouse pads and accessories. Nova Poshta delivery across Ukraine, pay by card transfer or cash on delivery.",
 
@@ -43,14 +43,13 @@ export const en: RuDictionary = {
   "qty.increase": "Increase",
 
   "header.skip": "Skip to content",
-  "header.home": "MAXSOLCH — home",
+  "header.home": "ChiSetup — home",
   "header.catalog": "Catalogue",
   "header.search": "Search products",
   "header.searchSubmit": "Search",
   "header.searchAll": "All results for “{q}”",
   "header.searchEmpty": "Nothing found",
   "header.searchSearching": "Searching…",
-  "header.theme": "Toggle theme",
   "header.lang": "Site language",
   "header.cart": "Cart",
   "header.cartCount": { one: "Cart, {n} item", other: "Cart, {n} items" },
@@ -70,7 +69,7 @@ export const en: RuDictionary = {
   "footer.bot": "Shop bot on Telegram",
   "footer.botText": "Orders, statuses and chat with the shop — on Telegram.",
   "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
-  "footer.rights": "© {year} MAXSOLCH",
+  "footer.rights": "© {year} ChiSetup",
 
   "info.delivery": "Delivery & payment",
   "info.returns": "Returns & exchange",
@@ -94,7 +93,7 @@ export const en: RuDictionary = {
   "contacts.hours": "Opening hours",
   "contacts.seller": "Seller",
 
-  "about.lead": "MAXSOLCH is a small gaming peripherals shop from Ukraine.",
+  "about.lead": "ChiSetup is a small gaming peripherals shop from Ukraine.",
   "about.text1":
     "We bring in mice, keyboards, mouse pads, keycaps and accessories we consider worth it ourselves. Every item is checked before it ships.",
   "about.text2":
@@ -109,10 +108,17 @@ export const en: RuDictionary = {
   "error.title": "Something went wrong",
   "error.text": "The site tripped up. Try again — if that does not help, reload the page.",
 
-  "home.hero.kicker": "Gaming peripherals",
-  "home.hero.title": "Gear that doesn't let you down",
+  "home.hero.kicker": "Mice · Keyboards · Headsets · Accessories",
+  "home.hero.title": "Gaming gear for your setup",
   "home.hero.text":
     "Mice, keyboards and mouse pads, checked before shipping. Nova Poshta across Ukraine and a chat with the shop for every order.",
+  "home.hero.title.pre": "Gaming",
+  "home.hero.title.accent": "gear",
+  "home.hero.title.post": "for your setup",
+  "brand.tagline": "Gaming gear & setup",
+  "header.nav": "Site sections",
+  "header.nav.delivery": "Delivery",
+  "header.nav.contacts": "Contacts",
   "home.hero.cta": "Browse catalogue",
   "home.hero.cta2": "How we deliver",
   "home.categories": "Categories",
@@ -314,9 +320,6 @@ export const en: RuDictionary = {
   "account.orders.open": "Details",
 
   "settings.language": "Site language",
-  "settings.theme": "Theme",
-  "settings.theme.light": "Light",
-  "settings.theme.dark": "Dark",
   "settings.sessions": "Devices & sessions",
   "settings.sessions.lead": "Where you are signed in to the site. Don't recognise a device — end that session.",
   "settings.sessions.current": "This device",
