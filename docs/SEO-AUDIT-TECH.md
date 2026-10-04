@@ -134,3 +134,35 @@ curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" https://maxsolkh.shop/c
 curl -s "https://chisetup.com.ua/api/public/categories?lang=uk"
 curl -s "https://chisetup.com.ua/api/public/products?size=60&page=0&lang=uk"
 ```
+
+---
+
+## 5. Статус правок (ветка `seo-fixes`, 2026-10-05)
+
+Условие владельца: сайт визуально не меняется. До и после сняты скриншоты (главная, категория, пустая категория, товар uk/ru, контакты; 1440 px и 375 px), они совпадают попиксельно. Число картинок, которые грузятся на первом экране, не изменилось.
+
+| # | Статус | Что сделано / почему нет |
+|---|---|---|
+| 1 | ✅ | `htmlLimitedBots: /.*/`: title/canonical/hreflang/robots/OG в `<head>` для любого UA |
+| 2 | ✅ частично | пустые категории: `noindex, follow`, из sitemap убраны (бэкенд + страховка на сайте). В меню остаются (это видимое изменение): снять `showInMenu` в админке |
+| 3 | ✅ фолбэк | title/description категорий по шаблону со словарём `CATEGORY_SEO` (`site/lib/seo.ts`), с числом товаров и ценой «від». H1 и видимые тексты не трогали. **Нужны колонки** `tags.seo_title / seo_description / h1 / intro` + переводы (миграция не делалась) |
+| 4 | ✅ фолбэк | title товара `{название} — {тип}, купити в Україні` (тип не дублируется, если он уже в названии); description = начало описания + цена + доставка. `seoTitle/seoDescription` из админки по-прежнему главнее |
+| 5 | ✅ частично | brand: строка «Бренд: …» из описания или известный бренд в названии, иначе `brand` не выводится. `shippingDetails` (без `shippingRate`: тариф НП платит покупатель), `hasMerchantReturnPolicy` (14 дней; для «Уцінки» NotPermitted), seller → `OnlineStore @id`. **Нужно поле** `products.brand` и артикул (sku сейчас = id) |
+| 6 | ✅ | `<noscript><img>` для фото вне экрана (браузер с JS его не грузит) |
+| 7 | ✅ | `pageMeta()`: полный openGraph (url, site_name, locale, alternate, image) + twitter `summary_large_image` на всех страницах; `/og-image.png` 1200×630; OG-картинка товара в JPEG |
+| 8 | ✅ | свои description для каталога, контактов, доставки, возврата, гарантии, privacy, terms, about |
+| 9 | ✅ частично | `OnlineStore` (+logo, contactPoint = Telegram @fullfocusme, Харків/UA, return policy) + `WebSite` с `SearchAction`. Телефона и e-mail на сайте нет, их не выдумывали |
+| 10 | ✅ | uk-префикс переписывается в `next.config.ts` (`beforeFiles`), middleware только редиректит → uk-страницы снова ISR (`s-maxage=60`, `x-nextjs-cache: HIT`) |
+| 11 | ✅ | `?page=N` индексируется, canonical/hreflang на себя, в title «сторінка N»; фильтры и сортировка остаются noindex |
+| 12 | ✅ | `<url>` на каждую локаль + x-default; lastmod категории = самый свежий её товар, главной и каталога = самый свежий товар |
+| 13 | ✅ | ru/en юридические страницы: canonical → uk, в hreflang только uk + x-default, в sitemap только uk |
+| 14 | ✅ | карточкам передаётся облегчённый объект (`site/lib/card.ts`): без описаний, тегов и лишних фото |
+| 15, 16 | ❌ | прелоадер и начертания шрифтов: это видимые изменения, они запрещены |
+| 17 | ❌ | brotli/AVIF: это edge Caddy на сервере, его нет в репозитории |
+| 18 | ✅ | `proxy_hide_header` в `infra/gateway-site.conf.template` (одна копия CSP/XFO/nosniff/Referrer) и в `infra/nginx/nginx.conf` для `/img` (один Cache-Control) |
+| 19 | ✅ | 404: свой локализованный title, один `noindex` (layout больше не шлёт `index, follow`) |
+| 20 | ✅ | Mini App: `robots.txt Disallow: /`, `<meta robots noindex>`, `X-Robots-Tag` (frontend/) |
+| 21 | ✅ частично | `/product/…` и `/catalog/…` с заглавными → 301 на нижний регистр (middleware) + страховочный redirect на странице товара. `http://www` в 2 хопа: это edge Caddy, его нет в репо |
+| 22 | ✅ | robots.txt: служебные пути × все локали |
+| 23, 24, 26 | ❌ | данные, админка, отзывы: это не код сайта |
+| 25 | ❌ | разметка описания `<ul>/<dl>` меняет вид |
