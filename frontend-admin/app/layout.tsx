@@ -12,7 +12,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "MAXSOLCH — админка",
-  description: "tg-shop admin panel (Neo-Brutalism)",
+  description: "Админка магазина MAX/SOLCH: заказы, отправка, товары, оплата, клиенты",
 };
 
 export const viewport: Viewport = {
