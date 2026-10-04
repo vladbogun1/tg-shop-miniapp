@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { backdropVariants, modalVariants } from "@/lib/motion";
@@ -14,6 +14,8 @@ export function Modal({
   children,
   footer,
   size = "md",
+  closeOnBackdrop = true,
+  fixedHeight = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,7 +23,14 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   size?: "sm" | "md" | "lg";
+  /** false for forms: a stray click outside must not throw away what was typed. */
+  closeOnBackdrop?: boolean;
+  /** Same height on every step of a wizard, so the footer buttons don't jump under the cursor. */
+  fixedHeight?: boolean;
 }) {
+  // Close only when the press also STARTED on the backdrop — a text selection dragged out of an
+  // input and released over the backdrop is not a click outside.
+  const pressedOnBackdrop = useRef(false);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -46,7 +55,11 @@ export function Modal({
             initial="initial"
             animate="animate"
             exit="exit"
-            onClick={onClose}
+            onMouseDown={(e) => (pressedOnBackdrop.current = e.target === e.currentTarget)}
+            onClick={() => {
+              if (closeOnBackdrop && pressedOnBackdrop.current) onClose();
+              pressedOnBackdrop.current = false;
+            }}
             className="absolute inset-0 bg-black/50"
           />
           <motion.div
@@ -56,6 +69,7 @@ export function Modal({
             exit="exit"
             className={cn(
               "panel card-sheen relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden",
+              fixedHeight && "h-[min(90vh,680px)]",
               width
             )}
           >

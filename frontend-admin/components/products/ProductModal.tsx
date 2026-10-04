@@ -242,6 +242,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       open={open}
       onClose={onClose}
       size="lg"
+      closeOnBackdrop={false}
+      fixedHeight
       title={product ? "Редактировать товар" : "Новый товар"}
       footer={
         <div className="flex w-full items-center justify-between gap-2">
