@@ -8,21 +8,29 @@
 export {
   allowedTargets,
   canTransition,
+  codMinor,
   formatDateTime,
+  isNovaPoshtaTtn,
   ORDER_STATUS_COLOR as STATUS_VAR,
   PAYMENT_STATE_LABEL,
   paymentState,
+  REJECT_REASON_LABEL,
+  STATUS_ACTION_LABEL,
   STATUS_COLUMN_LABEL as STATUS_LABEL,
   STATUS_EMOJI,
   STATUS_ORDER,
   shortOrderId as shortId,
   timeAgo,
   type PaymentState,
+  type RejectReasonCode,
 } from "@shop/shared";
 
-import type { DeliveryMethod } from "@shop/shared";
+import type { DeliveryMethod, OrderStatus } from "@shop/shared";
 
 export const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
   NOVA_POSHTA: "Нова Пошта",
   PICKUP: "Самовывоз",
 };
+
+/** Closed columns: the period filter and the short "20 + ещё" list apply only to them. */
+export const CLOSED_STATUSES: OrderStatus[] = ["DELIVERED", "REJECTED"];

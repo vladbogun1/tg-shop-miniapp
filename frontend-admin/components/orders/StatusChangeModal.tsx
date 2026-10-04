@@ -1,109 +1,220 @@
 "use client";
 
 /**
- * StatusChangeModal — prompts for the extra field a transition needs:
- *  - SHIPPED -> tracking number (ТТН, required)
- *  - REJECTED -> reject reason (required)
- * Other transitions resolve immediately (no modal needed).
+ * StatusChangeModal — asks for what a transition needs before it is applied:
+ *  - SHIPPED   → tracking number (ТТН, required; Nova Poshta format is checked as a hint)
+ *  - REJECTED  → reason from the fixed list (+ optional text; required for "Другое") and restock
+ *  - DELIVERED → an explicit confirmation: it also marks the order fully paid and notifies the customer
+ *
+ * The form belongs to ONE order: every open resets it (a ТТН typed for order A and cancelled used
+ * to pre-fill order B), and it is cleared only after the server accepted the change — a failed
+ * request keeps what was typed. Without an order the confirm button is disabled and says why.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OrderStatus } from "@/lib/api";
-import { STATUS_EMOJI, STATUS_LABEL } from "@/lib/orders";
-import { Modal } from "@/components/ui/Modal";
+import {
+  isNovaPoshtaTtn,
+  REJECT_REASON_LABEL,
+  STATUS_EMOJI,
+  STATUS_LABEL,
+  type RejectReasonCode,
+} from "@/lib/orders";
+import type { StatusChangeBody } from "@/lib/orders-api";
+import { money } from "@/lib/money";
+import { cn } from "@/lib/cn";
+import { Modal, ModalCancel } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 
-export interface StatusChangePayload {
-  status: OrderStatus;
-  trackingNumber?: string;
-  rejectReason?: string;
-  /** REJECTED only: return items to stock (skip when goods aren't sellable). */
-  restock?: boolean;
+export type StatusChangePayload = StatusChangeBody;
+
+/** What the modal needs to know about the order it acts on. */
+export interface StatusTargetOrder {
+  id: string;
+  /** "#5bf865c4 · Иван" — shown in the title so the admin sees which order this is. */
+  label?: string;
+  totalMinor?: number;
+  currency?: string;
+  /** Units that would go back to stock on REJECTED + restock. */
+  restockUnits?: number;
+  deliveryMethod?: "NOVA_POSHTA" | "PICKUP";
 }
 
 interface Props {
   open: boolean;
   target: OrderStatus | null;
+  order: StatusTargetOrder | null;
   onClose: () => void;
-  onConfirm: (payload: StatusChangePayload) => void;
+  /** Resolves true when the server accepted the change (the modal is then closed by the caller). */
+  onConfirm: (payload: StatusChangePayload) => Promise<boolean> | boolean | void;
   loading?: boolean;
 }
 
-export function StatusChangeModal({ open, target, onClose, onConfirm, loading }: Props) {
+const REASONS = Object.keys(REJECT_REASON_LABEL) as RejectReasonCode[];
+
+export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading }: Props) {
   const [ttn, setTtn] = useState("");
   const [reason, setReason] = useState("");
+  const [code, setCode] = useState<RejectReasonCode | null>(null);
   const [restock, setRestock] = useState(true);
+
+  // A fresh form for every open, target and order.
+  const orderId = order?.id ?? null;
+  useEffect(() => {
+    if (!open) return;
+    setTtn("");
+    setReason("");
+    setCode(null);
+    setRestock(true);
+  }, [open, target, orderId]);
 
   if (!target) return null;
   const needsTtn = target === "SHIPPED";
   const needsReason = target === "REJECTED";
+  const isDelivered = target === "DELIVERED";
 
-  function submit() {
-    if (!target) return;
-    if (needsTtn && !ttn.trim()) return;
-    if (needsReason && !reason.trim()) return;
-    onConfirm({
+  const ttnClean = ttn.replace(/\s+/g, "");
+  const ttnLooksWrong = needsTtn && ttnClean.length > 0 && !isNovaPoshtaTtn(ttnClean);
+  const reasonMissing = needsReason && (!code || (code === "OTHER" && !reason.trim()));
+  const invalid = !order || (needsTtn && !ttnClean) || reasonMissing;
+  const dirty = !!ttn.trim() || !!reason.trim() || code !== null;
+
+  async function submit() {
+    if (!target || invalid) return;
+    await onConfirm({
       status: target,
-      trackingNumber: needsTtn ? ttn.trim() : undefined,
-      rejectReason: needsReason ? reason.trim() : undefined,
+      trackingNumber: needsTtn ? ttnClean : undefined,
+      rejectReasonCode: needsReason && code ? code : undefined,
+      rejectReason: needsReason && reason.trim() ? reason.trim() : undefined,
       restock: needsReason ? restock : undefined,
     });
-    setTtn("");
-    setReason("");
-    setRestock(true);
+    // Nothing is cleared here: on success the caller closes the modal (the next open resets the
+    // form), on failure the admin keeps what they typed.
   }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`${STATUS_EMOJI[target]} ${STATUS_LABEL[target]}`}
+      closeOnBackdrop={false}
+      dirty={dirty}
+      size="sm"
+      title={
+        <span>
+          {STATUS_EMOJI[target]} {STATUS_LABEL[target]}
+          {order?.label && (
+            <span className="ml-2 font-mono text-[13px] font-bold normal-case text-[var(--text-muted)]">
+              {order.label}
+            </span>
+          )}
+        </span>
+      }
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>
-            Отмена
-          </Button>
+          <ModalCancel />
           <Button
             variant={needsReason ? "danger" : "accent"}
             loading={loading}
             onClick={submit}
-            disabled={(needsTtn && !ttn.trim()) || (needsReason && !reason.trim())}
+            disabled={invalid}
           >
-            Подтвердить
+            {!order ? "Заказ не выбран" : "Подтвердить"}
           </Button>
         </>
       }
     >
-      {needsTtn && (
-        <Input
-          label="Номер ТТН (обязательно)"
-          value={ttn}
-          onChange={(e) => setTtn(e.target.value)}
-        />
+      {!order && (
+        <p className="mb-3 rounded-[var(--r-sm)] border-2 border-[var(--danger)] p-2.5 text-[13px] font-semibold text-[var(--danger)]">
+          Карточка заказа закрыта — откройте заказ заново.
+        </p>
       )}
+
+      {needsTtn && (
+        <div className="flex flex-col gap-2">
+          <Input
+            label="Номер ТТН (обязательно)"
+            value={ttn}
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            placeholder="20450000000000"
+            onChange={(e) => setTtn(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+            hint={
+              ttnLooksWrong
+                ? undefined
+                : "Нова Пошта: 14 цифр, начинается с 20 или 59. Клиент получит номер в боте."
+            }
+            error={ttnLooksWrong ? "Не похоже на ТТН Новой Почты (14 цифр, начало 20/59). Проверьте номер." : undefined}
+          />
+        </div>
+      )}
+
       {needsReason && (
         <div className="flex flex-col gap-3">
+          <div>
+            <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              Причина (обязательно)
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {REASONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setCode(r)}
+                  className={cn(
+                    "rounded-[var(--r-sm)] border-2 px-2.5 py-2 text-left text-[12.5px] font-bold leading-tight transition-colors",
+                    code === r
+                      ? "border-[var(--line)] bg-[var(--danger)] text-[var(--accent-ink)] shadow-[var(--shadow-1)]"
+                      : "border-[var(--border-2)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]"
+                  )}
+                >
+                  {REJECT_REASON_LABEL[r]}
+                </button>
+              ))}
+            </div>
+          </div>
           <Textarea
-            label="Причина отклонения / отмены (обязательно)"
-            rows={3}
+            label={code === "OTHER" ? "Пояснение (обязательно)" : "Пояснение (по желанию)"}
+            rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            hint="Текст увидит клиент в уведомлении об отклонении."
           />
           <div className="rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] p-3">
             <Toggle
               checked={restock}
               onChange={setRestock}
-              label="Вернуть товар на склад (+1 к остатку)"
+              label={
+                order?.restockUnits != null
+                  ? `Вернуть товары на склад (${order.restockUnits} шт.)`
+                  : "Вернуть товары на склад"
+              }
             />
             <p className="mt-1.5 text-[12px] text-[var(--text-muted)]">
-              Выключите, если товар вернулся не в товарном виде и продавать его снова нельзя.
+              Возвращается всё количество по всем позициям заказа. Выключите, если товар вернулся не в
+              товарном виде. Частичный возврат — кнопка «Возврат» в карточке заказа.
             </p>
           </div>
         </div>
       )}
-      {!needsTtn && !needsReason && (
+
+      {isDelivered && (
+        <p className="text-[14px] text-[var(--text-muted)]">
+          Заказ будет отмечен доставленным и <b className="text-[var(--text)]">полностью оплаченным</b>
+          {order?.totalMinor != null && (
+            <>
+              {" "}
+              (получено {money(order.totalMinor, order.currency)})
+            </>
+          )}
+          . Клиент получит уведомление. Отменить потом можно только через «Отклонить».
+        </p>
+      )}
+
+      {!needsTtn && !needsReason && !isDelivered && (
         <p className="text-[14px] text-[var(--text-muted)]">
           Перевести заказ в статус «{STATUS_LABEL[target]}»?
         </p>

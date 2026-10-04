@@ -5,7 +5,7 @@
  * OR a manual amount/percent. Live-previews the new total. Warns if the order is
  * already (partially) paid, since a discount then implies an overpayment/refund.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Percent, Tag, X } from "lucide-react";
 import { adminApi, ApiError, type OrderDetailDto } from "@/lib/api";
@@ -39,16 +39,35 @@ export function DiscountModal({
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // A fresh form for every open / order — values used to carry over from the previous order.
+  const orderId = order?.id ?? null;
+  useEffect(() => {
+    if (!open) return;
+    setMode("promo");
+    setPromoCode("");
+    setKind("amount");
+    setVal("");
+    setNotify(true);
+  }, [open, orderId]);
+
   const { data: promos = [] } = useQuery({
     queryKey: ["promocodes"],
     queryFn: () => adminApi.promocodes(),
     enabled: open,
   });
-  const activePromos = promos.filter((p) => p.active);
+  // Exhausted codes are not offered (the server would refuse them anyway). The backend field is
+  // `usesCount`; `usedCount` is the old frontend name, read too until lib/api.ts is renamed.
+  const activePromos = promos.filter((p) => {
+    if (!p.active) return false;
+    const used = (p as { usesCount?: number | null }).usesCount ?? p.usedCount ?? 0;
+    return p.maxUses == null || used < p.maxUses;
+  });
 
   const subtotal = order?.subtotalMinor ?? 0;
   const cur = order?.currency ?? "UAH";
-  const num = parseFloat(val.replace(",", ".")) || 0;
+  // Percent is whole numbers only — the server applies an integer, so a 7.5 % preview used to
+  // differ from the 8 % actually applied.
+  const num = kind === "percent" ? parseInt(val, 10) || 0 : parseFloat(val.replace(",", ".")) || 0;
 
   const discount = useMemo(() => {
     if (mode === "promo") {
@@ -76,7 +95,7 @@ export function DiscountModal({
           ? { promoCode, notifyCustomer: notify }
           : kind === "amount"
             ? { amountMinor: Math.round(num * 100), notifyCustomer: notify }
-            : { percent: Math.round(num), notifyCustomer: notify };
+            : { percent: Math.min(100, num), notifyCustomer: notify };
       await adminApi.applyOrderDiscount(order.id, body);
       push(clear ? "Скидка снята" : "Скидка применена", "ok");
       onDone();
@@ -95,6 +114,8 @@ export function DiscountModal({
       open={open}
       onClose={onClose}
       size="md"
+      closeOnBackdrop={false}
+      dirty={val.trim() !== "" || !!promoCode}
       title="🏷 Скидка на заказ"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
@@ -161,15 +182,23 @@ export function DiscountModal({
               <ModeBtn active={kind === "amount"} onClick={() => setKind("amount")}>
                 Сумма ₴
               </ModeBtn>
-              <ModeBtn active={kind === "percent"} onClick={() => setKind("percent")}>
+              <ModeBtn
+                active={kind === "percent"}
+                onClick={() => {
+                  setKind("percent");
+                  setVal((v) => v.replace(/[.,].*$/, "").replace(/\D/g, ""));
+                }}
+              >
                 Процент %
               </ModeBtn>
             </div>
             <Input
-              label={kind === "amount" ? `Скидка, ${cur}` : "Скидка, %"}
-              inputMode="decimal"
+              label={kind === "amount" ? `Скидка, ${cur}` : "Скидка, % (целое число)"}
+              inputMode={kind === "amount" ? "decimal" : "numeric"}
               value={val}
-              onChange={(e) => setVal(e.target.value)}
+              onChange={(e) =>
+                setVal(kind === "percent" ? e.target.value.replace(/\D/g, "").slice(0, 3) : e.target.value)
+              }
               placeholder="0"
             />
           </div>

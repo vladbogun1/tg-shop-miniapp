@@ -1,0 +1,473 @@
+"use client";
+
+/**
+ * "Детали" tab of the order card: customer, items, money, delivery, requisites, timeline.
+ * Everything the admin types into the Nova Poshta form has a copy button; the phone is a `tel:` link.
+ */
+import { useState } from "react";
+import {
+  Phone,
+  User,
+  Truck,
+  Store,
+  CreditCard,
+  Ban,
+  Trash2,
+  ExternalLink,
+  Plus,
+  Percent,
+  Pencil,
+  ChevronDown,
+  Undo2,
+  Wallet,
+} from "lucide-react";
+import type { OrderStatus } from "@/lib/api";
+import type { AdminOrderDetail } from "@/lib/orders-api";
+import { money } from "@/lib/money";
+import {
+  codMinor,
+  DELIVERY_LABEL,
+  formatDateTime,
+  REJECT_REASON_LABEL,
+  STATUS_LABEL,
+  STATUS_VAR,
+} from "@/lib/orders";
+import { Image } from "@/lib/image";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
+import { CopyButton } from "./CopyButton";
+
+export interface DetailHandlers {
+  busyKey: string | null;
+  onChangeQty: (id: number, qty: number) => void;
+  onRemoveItem: (id: number, title: string) => void;
+  onAddItem: () => void;
+  onDiscount: () => void;
+  onEditDelivery: () => void;
+  onEditTracking: () => void;
+  onOpenCustomer?: () => void;
+  onReturn?: () => void;
+}
+
+export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
+  const editable = order.status === "NEW" || order.status === "APPROVED";
+  const deliveryEditable = editable || order.status === "SHIPPED";
+  const isNp = order.deliveryMethod === "NOVA_POSHTA";
+  const address = [order.npCityName, order.npWarehouseName].filter(Boolean).join(", ");
+  const cod = codMinor(order);
+  const refunded = order.refundedMinor ?? 0;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Customer */}
+      <Section
+        title="Клиент"
+        action={
+          deliveryEditable ? (
+            <SectionAction icon={<Pencil className="h-3.5 w-3.5" />} onClick={h.onEditDelivery}>
+              Изменить
+            </SectionAction>
+          ) : undefined
+        }
+      >
+        <div className="flex flex-col gap-2">
+          <Row icon={<User className="h-4 w-4" />}>
+            {h.onOpenCustomer ? (
+              <button
+                type="button"
+                onClick={h.onOpenCustomer}
+                className="min-w-0 truncate text-left font-semibold text-[var(--accent)] hover:underline"
+                title="Профиль клиента и другие его заказы"
+              >
+                {order.customerName}
+              </button>
+            ) : (
+              <span className="min-w-0 truncate">{order.customerName}</span>
+            )}
+            <CopyButton value={order.customerName} label="Скопировать ФИО" className="ml-auto" />
+          </Row>
+          <Row icon={<Phone className="h-4 w-4" />}>
+            <a href={`tel:${order.phone}`} className="font-mono font-semibold text-[var(--text)] hover:underline">
+              {order.phone}
+            </a>
+            <CopyButton value={order.phone} label="Скопировать телефон" className="ml-auto" />
+          </Row>
+          {order.tgUsername ? (
+            <a
+              href={`https://t.me/${order.tgUsername.replace(/^@/, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />@{order.tgUsername.replace(/^@/, "")}
+            </a>
+          ) : order.tgUserId ? (
+            <a
+              href={`tg://user?id=${order.tgUserId}`}
+              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Открыть в Telegram (без @username)
+            </a>
+          ) : null}
+          {order.comment && (
+            <p className="mt-1 whitespace-pre-wrap rounded-[var(--r-sm)] bg-[var(--surface-2)] p-2 text-[13px] text-[var(--text-muted)]">
+              💬 {order.comment}
+            </p>
+          )}
+        </div>
+      </Section>
+
+      {/* Delivery + money — what is needed to ship, right under the customer */}
+      <Section title="Доставка и оплата">
+        <div className="flex flex-col gap-2">
+          <Row icon={isNp ? <Truck className="h-4 w-4" /> : <Store className="h-4 w-4" />}>
+            <span className="min-w-0">
+              <b>{DELIVERY_LABEL[order.deliveryMethod]}</b>
+              {address && <span className="text-[var(--text-muted)]"> · {address}</span>}
+            </span>
+            {address && <CopyButton value={address} label="Скопировать адрес" className="ml-auto" />}
+          </Row>
+          {order.paymentOptionTitle && (
+            <Row icon={<CreditCard className="h-4 w-4" />}>
+              <span className="min-w-0">{order.paymentOptionTitle}</span>
+            </Row>
+          )}
+          <Row icon={<Wallet className="h-4 w-4" />}>
+            <span className="min-w-0">
+              Получено <b>{money(order.receivedMinor, order.currency)}</b>
+              {isNp && (
+                <>
+                  {" · "}Наложка{" "}
+                  <b className={cod > 0 ? "text-[var(--danger)]" : "text-[var(--ok)]"}>
+                    {money(cod, order.currency)}
+                  </b>
+                </>
+              )}
+              {refunded > 0 && (
+                <>
+                  {" · "}Возвращено <b>{money(refunded, order.currency)}</b>
+                </>
+              )}
+            </span>
+          </Row>
+          {order.trackingNumber ? (
+            <Row icon={<Truck className="h-4 w-4" />}>
+              <span>
+                ТТН: <span className="font-mono font-bold">{order.trackingNumber}</span>
+              </span>
+              <span className="ml-auto flex items-center gap-1.5">
+                <CopyButton value={order.trackingNumber} label="Скопировать ТТН" />
+                {(order.status === "SHIPPED" || order.status === "DELIVERED") && (
+                  <button
+                    type="button"
+                    onClick={h.onEditTracking}
+                    title="Изменить ТТН"
+                    aria-label="Изменить ТТН"
+                    className="nb-press grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </span>
+            </Row>
+          ) : (
+            (order.status === "SHIPPED" || order.status === "DELIVERED") && (
+              <button
+                type="button"
+                onClick={h.onEditTracking}
+                className="self-start text-[13px] font-bold text-[var(--accent)] hover:underline"
+              >
+                + Указать ТТН
+              </button>
+            )
+          )}
+        </div>
+      </Section>
+
+      {/* Items */}
+      <Section title="Состав">
+        <div className="flex flex-col gap-3">
+          {order.items.map((it, i) => (
+            <div key={it.id ?? i} className="flex items-start gap-3">
+              <Image
+                src={it.imageUrl ?? undefined}
+                alt={it.title}
+                size={96}
+                className="h-12 w-12 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  {it.gift && (
+                    <span className="shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)]">
+                      🎁 Подарок
+                    </span>
+                  )}
+                  <span className="truncate text-[14px] text-[var(--text)]">{it.title}</span>
+                </div>
+                {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
+                {(it.returnedQty ?? 0) > 0 && (
+                  <div className="text-[12px] font-bold text-[var(--warn)]">↩ возвращено {it.returnedQty} шт.</div>
+                )}
+                {editable && it.id != null ? (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <QtyBtn
+                      onClick={() => h.onChangeQty(it.id!, it.quantity - 1)}
+                      disabled={!!h.busyKey || it.quantity <= 1}
+                    >
+                      −
+                    </QtyBtn>
+                    <span className="w-7 text-center text-[13px] font-black text-[var(--text)]">{it.quantity}</span>
+                    <QtyBtn onClick={() => h.onChangeQty(it.id!, it.quantity + 1)} disabled={!!h.busyKey}>
+                      +
+                    </QtyBtn>
+                    <button
+                      type="button"
+                      onClick={() => h.onRemoveItem(it.id!, it.title)}
+                      disabled={!!h.busyKey}
+                      className="nb-press ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)] disabled:opacity-40"
+                      aria-label="Убрать позицию"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-0.5 text-[12px] text-[var(--text-faint)]">×{it.quantity}</div>
+                )}
+              </div>
+              <div className="shrink-0 text-right text-[13px]">
+                <div className="font-semibold text-[var(--text)]">
+                  {it.gift ? "0 ₴" : money(it.priceMinor * it.quantity, order.currency)}
+                </div>
+                {!it.gift && it.quantity > 1 && (
+                  <div className="text-[11px] text-[var(--text-faint)]">{money(it.priceMinor, order.currency)}/шт</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 space-y-1 border-t-2 border-[var(--border)] pt-3 text-[13px]">
+          <div className="flex justify-between text-[var(--text-muted)]">
+            <span>Сумма</span>
+            <span>{money(order.subtotalMinor, order.currency)}</span>
+          </div>
+          {order.discountMinor > 0 && (
+            <div className="flex justify-between font-semibold text-[var(--ok)]">
+              <span>Скидка{order.promoCode ? ` (${order.promoCode})` : ""}</span>
+              <span>−{money(order.discountMinor, order.currency)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-[16px] font-black text-[var(--text)]">
+            <span>Итого</span>
+            <span>{money(order.totalMinor, order.currency)}</span>
+          </div>
+        </div>
+        {(editable || h.onReturn) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {editable && (
+              <>
+                <Button size="sm" variant="surface" icon={<Plus className="h-4 w-4" />} onClick={h.onAddItem}>
+                  Добавить товар
+                </Button>
+                <Button size="sm" variant="surface" icon={<Percent className="h-4 w-4" />} onClick={h.onDiscount}>
+                  {order.discountMinor > 0 ? "Изменить скидку" : "Скидка"}
+                </Button>
+              </>
+            )}
+            {h.onReturn && (
+              <Button size="sm" variant="surface" icon={<Undo2 className="h-4 w-4" />} onClick={h.onReturn}>
+                Возврат
+              </Button>
+            )}
+          </div>
+        )}
+      </Section>
+
+      {/* The shop's own requisites — one line, expandable (they used to take a third of the card). */}
+      {order.requisites && hasRequisites(order.requisites) && <Requisites r={order.requisites} />}
+
+      {/* Timeline */}
+      <Section title="Таймлайн">
+        {order.status === "REJECTED" && (order.rejectReasonCode || order.rejectReason) && (
+          <div className="mb-3 flex items-start gap-2 rounded-[var(--r-sm)] border-2 border-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] p-2.5">
+            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+            <p className="text-[13px] font-semibold text-[var(--danger)]">
+              <span className="font-bold uppercase tracking-wide opacity-80">Причина:</span>{" "}
+              {order.rejectReasonCode ? REJECT_REASON_LABEL[order.rejectReasonCode] : null}
+              {order.rejectReasonCode && order.rejectReason ? " — " : null}
+              {order.rejectReason}
+            </p>
+          </div>
+        )}
+        <Timeline order={order} />
+        {order.returnedAt && (
+          <p className="mt-3 text-[12px] font-bold text-[var(--text-muted)]">
+            ↩ Возврат оформлен {formatDateTime(order.returnedAt)}
+          </p>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function Requisites({ r }: { r: NonNullable<AdminOrderDetail["requisites"]> }) {
+  const [open, setOpen] = useState(false);
+  const card = r.cardNumber?.replace(/\s+/g, "");
+  const short = card ? `карта …${card.slice(-4)}` : r.iban ? `IBAN …${r.iban.slice(-4)}` : "показать";
+  return (
+    <section className="card px-4 py-2.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span className="text-[12px] font-black uppercase tracking-wide text-[var(--text-faint)]">
+          Реквизиты магазина: <span className="normal-case text-[var(--text-muted)]">{short}</span>
+        </span>
+        <ChevronDown className={cn("h-4 w-4 text-[var(--text-faint)] transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mt-2.5 flex flex-col gap-1.5 text-[13px]">
+          {r.cardNumber && <ReqRow label="Карта" value={r.cardNumber} mono />}
+          {r.iban && <ReqRow label="IBAN" value={r.iban} mono />}
+          {r.recipient && <ReqRow label="Получатель" value={r.recipient} />}
+          {r.edrpou && <ReqRow label="ЕДРПОУ" value={r.edrpou} mono />}
+          {r.purpose && <ReqRow label="Назначение" value={r.purpose} />}
+          {r.note && <ReqRow label="Примечание" value={r.note} />}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Row({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-[14px] text-[var(--text)]">
+      <span className="shrink-0 text-[var(--text-muted)]">{icon}</span>
+      {children}
+    </div>
+  );
+}
+
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="card p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="text-[12px] font-black uppercase tracking-wide text-[var(--text-faint)]">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function SectionAction({
+  icon,
+  onClick,
+  children,
+}: {
+  icon: React.ReactNode;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline"
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function QtyBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="nb-press grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-black leading-none text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] disabled:opacity-40"
+    >
+      {children}
+    </button>
+  );
+}
+
+function hasRequisites(r: NonNullable<AdminOrderDetail["requisites"]>): boolean {
+  return Boolean(r.cardNumber || r.iban || r.recipient || r.edrpou || r.purpose || r.note);
+}
+
+function ReqRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-[var(--text-faint)]">{label}</span>
+      <span className={cn("text-right text-[var(--text)]", mono && "font-mono")}>{value}</span>
+    </div>
+  );
+}
+
+function Timeline({ order }: { order: AdminOrderDetail }) {
+  // Linear progress NEW -> APPROVED -> SHIPPED -> DELIVERED; REJECTED branches.
+  const linear: OrderStatus[] = ["NEW", "APPROVED", "SHIPPED", "DELIVERED"];
+  const rejected = order.status === "REJECTED";
+  const reachedIdx = rejected ? 0 : linear.indexOf(order.status);
+
+  const tsFor = (s: OrderStatus): string | null | undefined => {
+    switch (s) {
+      case "NEW":
+        return order.createdAt;
+      case "APPROVED":
+        return order.approvedAt;
+      case "SHIPPED":
+        return order.shippedAt;
+      case "DELIVERED":
+        return order.deliveredAt;
+      case "REJECTED":
+        return order.rejectedAt;
+    }
+  };
+
+  return (
+    <ol className="flex flex-col gap-3">
+      {linear.map((s, i) => {
+        const done = i <= reachedIdx;
+        const ts = tsFor(s);
+        return (
+          <li key={s} className="flex items-center gap-3">
+            <span
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] text-[12px] font-black"
+              style={{
+                background: done ? STATUS_VAR[s] : "var(--surface-3)",
+                color: done ? "var(--accent-ink)" : "var(--text-faint)",
+              }}
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span
+              className={
+                done ? "text-[14px] font-semibold text-[var(--text)]" : "text-[14px] text-[var(--text-faint)]"
+              }
+            >
+              {STATUS_LABEL[s]}
+            </span>
+            {ts && <span className="ml-auto text-[11px] text-[var(--text-faint)]">{formatDateTime(ts)}</span>}
+          </li>
+        );
+      })}
+      {rejected && (
+        <li className="flex items-center gap-3">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] text-[12px] font-black text-[var(--accent-ink)]">
+            ✕
+          </span>
+          <span className="text-[14px] font-semibold text-[var(--danger)]">{STATUS_LABEL.REJECTED}</span>
+          {order.rejectedAt && (
+            <span className="ml-auto text-[11px] text-[var(--text-faint)]">{formatDateTime(order.rejectedAt)}</span>
+          )}
+        </li>
+      )}
+    </ol>
+  );
+}

@@ -24,14 +24,58 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   REJECTED: "Отклонён",
 };
 
-/** Labels as the admin board's columns (plural). */
+/**
+ * Labels the admin uses everywhere — columns, badges, timeline, toasts. One word per status, all
+ * singular, and the same word the customer sees ("Отправлен", not a mix of "Выслан"/"Отправка"/
+ * "Новые"/"Одобрены" as before).
+ */
 export const STATUS_COLUMN_LABEL: Record<OrderStatus, string> = {
-  NEW: "Новые",
-  APPROVED: "Одобрены",
-  SHIPPED: "Выслан",
+  NEW: "Новый",
+  APPROVED: "Одобрен",
+  SHIPPED: "Отправлен",
   DELIVERED: "Доставлен",
   REJECTED: "Отклонён",
 };
+
+/** Admin action verbs per target status (buttons, the "Переместить в…" sheet). */
+export const STATUS_ACTION_LABEL: Record<OrderStatus, string> = {
+  NEW: "В новые",
+  APPROVED: "Одобрить",
+  SHIPPED: "Отправить (ТТН)",
+  DELIVERED: "Доставлен",
+  REJECTED: "Отклонить",
+};
+
+/** Reasons for a rejection — the backend's RejectReasonCode. */
+export type RejectReasonCode =
+  | "NO_RESPONSE"
+  | "CHANGED_MIND"
+  | "OUT_OF_STOCK"
+  | "DUPLICATE"
+  | "NOT_PAID"
+  | "REFUSED_AT_POST"
+  | "RETURNED"
+  | "OTHER";
+
+/** ADMIN ONLY (Russian): labels for the reject reason picker and the order card. */
+export const REJECT_REASON_LABEL: Record<RejectReasonCode, string> = {
+  NO_RESPONSE: "Не выходит на связь",
+  CHANGED_MIND: "Передумал / отменил",
+  OUT_OF_STOCK: "Нет в наличии",
+  DUPLICATE: "Дубль заказа",
+  NOT_PAID: "Не оплатил",
+  REFUSED_AT_POST: "Отказ на почте",
+  RETURNED: "Возврат после получения",
+  OTHER: "Другое",
+};
+
+/**
+ * Nova Poshta express waybill: 14 digits starting with 20 or 59 (spaces allowed while typing).
+ * A hint, not a hard rule — the admin may still save something else after a warning.
+ */
+export function isNovaPoshtaTtn(value: string): boolean {
+  return /^(20|59)\d{12}$/.test(value.replace(/\s+/g, ""));
+}
 
 export const STATUS_EMOJI: Record<OrderStatus, string> = {
   NEW: "🆕",

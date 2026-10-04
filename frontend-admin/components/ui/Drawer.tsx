@@ -2,14 +2,16 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { backdropVariants, drawerVariants } from "@/lib/motion";
+import { useOverlayLayer } from "@/lib/overlay-stack";
 
 /**
  * Right-side drawer. `zClass` lets callers stack drawers (e.g. order drawer over
- * a user profile drawer) by passing a higher z-index utility.
+ * a user profile drawer) by passing a higher z-index utility. Esc closes it only when it is the
+ * topmost overlay — a modal opened from inside the drawer gets the key first.
  */
 export function Drawer({
   open,
@@ -28,12 +30,7 @@ export function Drawer({
   width?: string;
   zClass?: string;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useOverlayLayer(open, onClose);
 
   if (typeof document === "undefined") return null;
 
@@ -50,6 +47,8 @@ export function Drawer({
             className="absolute inset-0 bg-black/50"
           />
           <motion.aside
+            role="dialog"
+            aria-modal="true"
             variants={drawerVariants}
             initial="initial"
             animate="animate"
@@ -59,10 +58,17 @@ export function Drawer({
               width
             )}
           >
-            <div className="flex items-center justify-between gap-3 border-b-[3px] border-[var(--line)] px-5 py-4">
-              {header ?? <div className="text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">{title}</div>}
+            {/* min-w-0 on the header slot + shrink-0 on × : long badges wrap instead of pushing the
+                close button off a phone screen. */}
+            <div className="flex items-start justify-between gap-3 border-b-[3px] border-[var(--line)] px-4 py-3 sm:px-5 sm:py-4">
+              <div className="min-w-0 flex-1">
+                {header ?? (
+                  <div className="text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">{title}</div>
+                )}
+              </div>
               <button
                 onClick={onClose}
+                aria-label="Закрыть"
                 className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)]"
               >
                 <X className="h-5 w-5" />

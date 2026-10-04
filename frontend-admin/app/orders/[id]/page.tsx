@@ -23,6 +23,7 @@ export default function OrderDeepLinkPage() {
       <OrderDrawer
         orderId={id}
         initialTab={initialTab}
+        closeNavigates
         onClose={() => router.push("/")}
       />
     </div>
