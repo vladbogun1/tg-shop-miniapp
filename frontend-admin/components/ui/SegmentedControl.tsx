@@ -27,7 +27,9 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-1",
+        // max-w-full + own horizontal scroll: on a phone a wide control scrolls inside itself
+        // instead of pushing the whole page sideways (B9).
+        "thin-scroll inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-1",
         className
       )}
     >
@@ -39,7 +41,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative rounded-[var(--r-sm)] font-bold uppercase tracking-wide transition-colors",
+              "relative shrink-0 rounded-[var(--r-sm)] font-bold uppercase tracking-wide transition-colors",
               size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3.5 py-1.5 text-[12px]",
               active ? "text-[var(--accent-ink)]" : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}

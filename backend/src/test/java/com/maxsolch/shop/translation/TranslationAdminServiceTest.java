@@ -78,7 +78,8 @@ class TranslationAdminServiceTest {
         when(payments.findAll()).thenReturn(List.of(inactive));
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
-        service = new TranslationAdminService(repo, products, variants, tags, payments, translationService,
+        service = new TranslationAdminService(repo, products, variants, tags, payments,
+                mock(com.maxsolch.shop.repository.PaymentRequisitesRepository.class), translationService,
                 cacheManager);
     }
 

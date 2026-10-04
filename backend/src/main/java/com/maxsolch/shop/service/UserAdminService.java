@@ -77,7 +77,7 @@ public class UserAdminService {
                 + "(SELECT COUNT(*) FROM orders o WHERE o.tg_user_id = u.telegram_user_id) AS ordersCount, "
                 + "(SELECT COALESCE(SUM(o.total_minor), 0) FROM orders o "
                 + "   WHERE o.tg_user_id = u.telegram_user_id AND o.status <> 'REJECTED') AS totalSpentMinor, "
-                + "u.created_at, u.last_seen_at "
+                + "u.created_at, u.last_seen_at, u.locale "
                 + "FROM users u "
                 + "WHERE (:hasQ = FALSE OR ("
                 + "   LOWER(COALESCE(u.username, '')) LIKE :like "
@@ -112,7 +112,8 @@ public class UserAdminService {
                 asLong(r[7]),
                 asLong(r[8]),
                 asInstant(r[9]),
-                asInstant(r[10]));
+                asInstant(r[10]),
+                asString(r[11]));
     }
 
     private static long asLong(Object o) {

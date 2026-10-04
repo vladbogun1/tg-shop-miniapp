@@ -23,7 +23,7 @@ import { Select } from "@/components/ui/Select";
 import { InlineText, IssueList, KindBadge, ProductLink, SourceText, StatusChip } from "@/components/translations/shared";
 
 type StatusFilter = "all" | "missing" | "stale" | "translated";
-type TypeFilter = "" | "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
+type TypeFilter = "" | "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "PAYMENT_REQUISITES";
 const PAGE = 40;
 
 export function TranslationList({ ws }: { ws: WorkSet }) {
@@ -136,6 +136,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
             { value: "VARIANT", label: "Варианты" },
             { value: "TAG", label: "Категории" },
             { value: "PAYMENT_OPTION", label: "Оплата" },
+            { value: "PAYMENT_REQUISITES", label: "Реквизиты" },
           ]}
         />
         <div className="min-w-[220px] flex-1">

@@ -11,13 +11,23 @@ public enum TranslationEntityType {
             TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION)),
     VARIANT(List.of(TranslationEntityType.NAME)),
     TAG(List.of(TranslationEntityType.NAME)),
-    PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION));
+    PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION)),
+    /**
+     * The single shop requisites row (customer-facing note and transfer purpose). Its id is the
+     * fixed {@link #REQUISITES_ID} — {@code payment_requisites} has an int key, not a UUID.
+     */
+    PAYMENT_REQUISITES(List.of(TranslationEntityType.NOTE, TranslationEntityType.PURPOSE));
+
+    /** entity_id of the PAYMENT_REQUISITES rows (payment_requisites.id = 1). */
+    public static final String REQUISITES_ID = "00000000-0000-0000-0000-000000000001";
 
     public static final String TITLE = "title";
     public static final String DESCRIPTION = "description";
     public static final String SEO_TITLE = "seo_title";
     public static final String SEO_DESCRIPTION = "seo_description";
     public static final String NAME = "name";
+    public static final String NOTE = "note";
+    public static final String PURPOSE = "purpose";
 
     private final List<String> fields;
 

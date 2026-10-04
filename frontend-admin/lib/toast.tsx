@@ -14,14 +14,21 @@ import {
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 type ToastKind = "ok" | "error" | "info";
+/** Optional button in the toast, e.g. «Отменить» right after a reversible action. */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: number;
   kind: ToastKind;
   text: string;
+  action?: ToastAction;
 }
 
 interface Ctx {
-  push: (text: string, kind?: ToastKind) => void;
+  push: (text: string, kind?: ToastKind, action?: ToastAction) => void;
 }
 const ToastCtx = createContext<Ctx>({ push: () => {} });
 
@@ -45,10 +52,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (text: string, kind: ToastKind = "info") => {
+    (text: string, kind: ToastKind = "info", action?: ToastAction) => {
       const id = idSeq++;
-      setToasts((t) => [...t, { id, kind, text }]);
-      setTimeout(() => remove(id), 3800);
+      setToasts((t) => [...t, { id, kind, text, action }]);
+      // An undo toast stays a little longer: the admin needs time to notice the mistake.
+      setTimeout(() => remove(id), action ? 6000 : 3800);
     },
     [remove]
   );
@@ -70,6 +78,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             >
               {ICON[t.kind]}
               <span className="text-[14px] leading-snug text-[var(--text)]">{t.text}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    t.action?.onClick();
+                    remove(t.id);
+                  }}
+                  className="shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:bg-[var(--surface-2)]"
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 onClick={() => remove(t.id)}
                 className="ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"

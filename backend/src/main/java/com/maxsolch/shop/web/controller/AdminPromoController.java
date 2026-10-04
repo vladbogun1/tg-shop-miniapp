@@ -3,8 +3,12 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.repository.PromoReservationRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.PromoAdminService;
+import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.PromoCodeDto;
 import com.maxsolch.shop.web.dto.PromoCodeUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +26,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/admin/promocodes")
@@ -31,18 +38,41 @@ import java.util.List;
 public class AdminPromoController {
 
     private final PromoAdminService promoAdminService;
+    private final PromoCodeRepository promoCodeRepository;
+    private final PromoReservationRepository reservationRepository;
     private final AdminAuditService audit;
 
-    public AdminPromoController(PromoAdminService promoAdminService, AdminAuditService audit) {
+    public AdminPromoController(PromoAdminService promoAdminService,
+                                PromoCodeRepository promoCodeRepository,
+                                PromoReservationRepository reservationRepository,
+                                AdminAuditService audit) {
         this.promoAdminService = promoAdminService;
+        this.promoCodeRepository = promoCodeRepository;
+        this.reservationRepository = reservationRepository;
         this.audit = audit;
     }
 
     @GetMapping
-    @Operation(summary = "List promo codes")
+    @Operation(summary = "List promo codes (with live reservations)")
     public List<PromoCodeDto> list() {
+        Map<String, Long> reserved = new HashMap<>();
+        for (Object[] r : reservationRepository.liveCounts(Instant.now())) {
+            reserved.put(UuidUtil.toString((byte[]) r[0]), ((Number) r[1]).longValue());
+        }
         return promoAdminService.list().stream()
-                .map(this::toDto)
+                .map(p -> toDto(p, reserved.getOrDefault(UuidUtil.toString(p.getId()), 0L)))
+                .toList();
+    }
+
+    @GetMapping("/{id}/orders")
+    @Operation(summary = "Orders placed with this code, newest first (max 100)")
+    public List<PromoCodeDto.PromoOrderDto> orders(@PathVariable String id) {
+        PromoCode promo = load(id);
+        return promoCodeRepository.ordersWithCode(promo.getCode(),
+                        org.springframework.data.domain.PageRequest.of(0, 100)).stream()
+                .map(o -> new PromoCodeDto.PromoOrderDto(UuidUtil.toString(o.getId()),
+                        o.getStatus() == null ? null : o.getStatus().name(),
+                        o.getCustomerName(), o.getTotalMinor(), o.getDiscountMinor(), o.getCreatedAt()))
                 .toList();
     }
 
@@ -75,7 +105,21 @@ public class AdminPromoController {
         return ResponseEntity.noContent().build();
     }
 
+    private PromoCode load(String id) {
+        byte[] key;
+        try {
+            key = UuidUtil.toBytes(id);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("invalid id");
+        }
+        return promoCodeRepository.findById(key).orElseThrow(() -> new NotFoundException("promo code not found"));
+    }
+
     private PromoCodeDto toDto(PromoCode p) {
+        return toDto(p, 0L);
+    }
+
+    private PromoCodeDto toDto(PromoCode p, long reserved) {
         return new PromoCodeDto(
                 UuidUtil.toString(p.getId()),
                 p.getCode(),
@@ -83,6 +127,7 @@ public class AdminPromoController {
                 p.getDiscountAmountMinor(),
                 p.getMaxUses(),
                 p.getUsesCount(),
-                p.isActive());
+                p.isActive(),
+                reserved);
     }
 }

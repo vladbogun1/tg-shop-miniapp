@@ -14,5 +14,7 @@ public record UserCardDto(
         long ordersCount,
         long totalSpentMinor,
         Instant createdAt,
-        Instant lastSeenAt) {
+        Instant lastSeenAt,
+        /** uk | ru | en chosen in the shop (users.locale, V17); null = never chose. */
+        String locale) {
 }

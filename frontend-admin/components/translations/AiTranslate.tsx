@@ -62,7 +62,7 @@ function Step({ n, title, children, aside }: { n: number; title: string; childre
           {n}
         </span>
         <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">{title}</h2>
-        {aside && <div className="ml-auto flex flex-wrap items-center gap-2">{aside}</div>}
+        {aside && <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-2">{aside}</div>}
       </div>
       {children}
     </section>

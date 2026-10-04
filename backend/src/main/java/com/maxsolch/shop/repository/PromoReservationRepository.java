@@ -32,6 +32,10 @@ public interface PromoReservationRepository extends JpaRepository<PromoReservati
                      @Param("userId") long userId,
                      @Param("now") Instant now);
 
+    /** {@code [promoCodeId, live holds]} — the «резерв N» column of the admin promo list (Р11). */
+    @Query("select r.promoCodeId, count(r) from PromoReservation r where r.expiresAt > :now group by r.promoCodeId")
+    java.util.List<Object[]> liveCounts(@Param("now") Instant now);
+
     @Modifying
     @Query("delete from PromoReservation r where r.expiresAt <= :now")
     int deleteExpired(@Param("now") Instant now);

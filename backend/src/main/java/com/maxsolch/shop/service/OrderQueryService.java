@@ -11,6 +11,7 @@ import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentRequisitesRepository;
+import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationService;
@@ -44,19 +45,22 @@ public class OrderQueryService {
     private final PaymentRequisitesRepository requisitesRepository;
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
+    private final UserRepository userRepository;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              PaymentRequisitesRepository requisitesRepository,
                              ProductImageRepository productImageRepository,
-                             TranslationService translationService) {
+                             TranslationService translationService,
+                             UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
         this.requisitesRepository = requisitesRepository;
         this.productImageRepository = productImageRepository;
         this.translationService = translationService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -185,7 +189,11 @@ public class OrderQueryService {
                 .toList();
         PaymentRequisitesDto requisites = requisitesRepository.findById(1)
                 .map(this::toRequisitesDto)
+                .map(translationService.overlay(lang)::requisites) // ru (admin) = no-op
                 .orElse(null);
+        // The language the customer chose in the shop (users.locale): the admin answers in it.
+        Long customerId = o.getUserId() != null ? o.getUserId() : o.getTgUserId();
+        String customerLocale = customerId == null ? null : userRepository.localeOf(customerId).orElse(null);
         return new OrderDetailDto(
                 UuidUtil.toString(o.getId()),
                 o.getStatus().name(),
@@ -218,7 +226,8 @@ public class OrderQueryService {
                 receivedMinor(o),
                 o.isPaymentClaimed(),
                 o.getPaymentClaimedAt(),
-                sourceOf(o));
+                sourceOf(o),
+                customerLocale);
     }
 
     /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */

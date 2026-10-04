@@ -37,5 +37,7 @@ public record OrderDetailDto(
         boolean paymentClaimed,
         Instant paymentClaimedAt,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
-        String source) {
+        String source,
+        /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
+        String customerLocale) {
 }

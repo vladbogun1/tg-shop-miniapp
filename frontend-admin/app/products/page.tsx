@@ -1,19 +1,18 @@
 "use client";
 
 /**
- * Products (route "/products") — Neo-Brutalism restyle.
+ * Products (route "/products").
  *
- * Preserves 100% of the original functionality:
- *  - search by title, tag filter, status SegmentedControl chips with counts
+ *  - search by title, tag filter, status chips with counts
  *    (Все / В наличии / Закончились (видны) / Скрытые),
  *  - smart default sort (active-but-out-of-stock surfaced first) + manual sorts,
- *  - list view (DEFAULT) ⇄ cards view toggle,
+ *  - list view (DEFAULT) ⇄ cards view toggle; the whole row opens the editor,
  *  - effective stock = sum of variant stocks else product.stock,
  *  - red highlight + "Закончился" badge for active items with effective stock 0,
- *  - active/archive toggles, archived view toggle, create/edit modal.
- * Only the visuals change. Same query keys (["products", archivedView], ["tags"]).
+ *  - «на витрине» toggle and archive, both with an «Отменить» toast; on phones the row actions
+ *    live in a «⋯» menu so the title gets two full lines.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -25,6 +24,7 @@ import {
   LayoutGrid,
   Search,
   PackageSearch,
+  MoreHorizontal,
 } from "lucide-react";
 import { adminApi, ApiError, type Product } from "@/lib/api";
 import { money } from "@/lib/money";
@@ -117,18 +117,30 @@ export default function ProductsPage() {
     window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
   }, [isLoading, products]);
 
-  async function setActive(p: Product, active: boolean) {
+  // Both are one tap away from a mis-tap on a phone, so each confirms with an «Отменить» toast.
+  async function setActive(p: Product, active: boolean, undo = true) {
     try {
       await adminApi.setProductActive(p.id, active);
       refresh();
+      if (undo) {
+        push(
+          active ? `«${p.title}» снова на витрине` : `«${p.title}» скрыт с витрины`,
+          "ok",
+          { label: "Отменить", onClick: () => setActive(p, !active, false) }
+        );
+      }
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка", "error");
     }
   }
-  async function setArchived(p: Product, archived: boolean) {
+  async function setArchived(p: Product, archived: boolean, undo = true) {
     try {
       await adminApi.setProductArchived(p.id, archived);
-      push(archived ? "В архиве" : "Восстановлен", "ok");
+      push(
+        archived ? `«${p.title}» в архиве` : `«${p.title}» восстановлен`,
+        "ok",
+        undo ? { label: "Отменить", onClick: () => setArchived(p, !archived, false) } : undefined
+      );
       refresh();
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка", "error");
@@ -262,7 +274,7 @@ export default function ProductsPage() {
           <div className="min-w-[220px] flex-1">
             <Input
               label="Поиск по названию"
-              placeholder="Например, кроссовки…"
+              placeholder="Например, клавиатура…"
               icon={<Search className="h-4 w-4" />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -318,11 +330,15 @@ export default function ProductsPage() {
         </div>
 
         {!archivedView && (
-          <SegmentedControl<StatusFilter>
-            options={statusOptions}
-            value={status}
-            onChange={setStatus}
-          />
+          // Four chips with counts are wider than a phone: scroll them, not the page.
+          <div className="thin-scroll -mx-1 max-w-full overflow-x-auto px-1 pb-1">
+            <SegmentedControl<StatusFilter>
+              options={statusOptions}
+              value={status}
+              onChange={setStatus}
+              className="whitespace-nowrap"
+            />
+          </div>
         )}
       </div>
 
@@ -478,14 +494,61 @@ function IconBtn({
   );
 }
 
+/** Phone-only «⋯» menu for the row actions (edit / archive). */
+function RowMenu({ onEdit, onArchive }: { onEdit: () => void; onArchive: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const item =
+    "block w-full px-3 py-2.5 text-left text-[13px] font-bold uppercase tracking-wide hover:bg-[var(--surface-hover)]";
+  return (
+    <div ref={ref} className="relative">
+      <IconBtn label="Действия" onClick={() => setOpen((v) => !v)}>
+        <MoreHorizontal className="h-4 w-4" />
+      </IconBtn>
+      {open && (
+        <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[4px_4px_0_var(--shadow)]">
+          <button type="button" className={item} onClick={() => (setOpen(false), onEdit())}>
+            Редактировать
+          </button>
+          <button
+            type="button"
+            className={cn(item, "text-[var(--danger)]")}
+            onClick={() => (setOpen(false), onArchive())}
+          >
+            В архив
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) {
   const danger = p.active !== false && effStock(p) === 0 && !archivedView;
   return (
     <motion.div
       variants={riseItem}
       {...hoverLift}
+      role={archivedView ? undefined : "button"}
+      tabIndex={archivedView ? undefined : 0}
+      onClick={archivedView ? undefined : onEdit}
+      onKeyDown={(e) => {
+        if (!archivedView && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
       className={cn(
-        "card flex items-center gap-3.5 p-3",
+        "card flex items-center gap-3 p-3 sm:gap-3.5",
+        !archivedView && "cursor-pointer",
         danger && "border-[var(--danger)]"
       )}
     >
@@ -496,8 +559,8 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
         className="h-14 w-14 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
       />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className="truncate text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+        <div className="flex items-start gap-2">
+          <h3 className="line-clamp-2 min-w-0 break-words text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)] sm:line-clamp-1">
             {p.title}
           </h3>
           {!p.active && !archivedView && <Badge tone="warn">скрыт</Badge>}
@@ -513,16 +576,27 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      {/* Controls must not also trigger the row's «open editor» click. */}
+      <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {!archivedView ? (
           <>
-            <Toggle checked={!!p.active} onChange={onActive} />
-            <IconBtn label="Редактировать" onClick={onEdit}>
-              <Pencil className="h-4 w-4" />
-            </IconBtn>
-            <IconBtn label="В архив" onClick={() => onArchive(true)} danger>
-              <Archive className="h-4 w-4" />
-            </IconBtn>
+            <div className="flex flex-col items-center gap-0.5" title="Показывать на сайте и в Mini App">
+              <Toggle checked={!!p.active} onChange={onActive} />
+              <span className="text-[9px] font-extrabold uppercase tracking-wide text-[var(--text-faint)]">
+                на витрине
+              </span>
+            </div>
+            <div className="hidden items-center gap-2 sm:flex">
+              <IconBtn label="Редактировать" onClick={onEdit}>
+                <Pencil className="h-4 w-4" />
+              </IconBtn>
+              <IconBtn label="В архив" onClick={() => onArchive(true)} danger>
+                <Archive className="h-4 w-4" />
+              </IconBtn>
+            </div>
+            <div className="sm:hidden">
+              <RowMenu onEdit={onEdit} onArchive={() => onArchive(true)} />
+            </div>
           </>
         ) : (
           <Button
@@ -581,7 +655,7 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
         <div className="mt-3.5 flex items-center justify-between gap-2 border-t-2 border-[var(--line)] pt-3.5">
           {!archivedView ? (
             <>
-              <Toggle checked={!!p.active} onChange={onActive} />
+              <Toggle checked={!!p.active} onChange={onActive} label="на витрине" />
               <div className="flex gap-2">
                 <IconBtn label="Редактировать" onClick={onEdit}>
                   <Pencil className="h-4 w-4" />

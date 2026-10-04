@@ -45,7 +45,8 @@ export type OrderSource = "MINIAPP" | "WEB" | "ADMIN";
 
 /** Names the admin UI already uses for the shared shapes (+ admin-only fields). */
 export type OrderCardDto = OrderCard & { source?: OrderSource };
-export type OrderDetailDto = OrderDetail & { source?: OrderSource };
+/** `customerLocale`: uk/ru/en chosen by the customer in the shop (users.locale) — answer in it. */
+export type OrderDetailDto = OrderDetail & { source?: OrderSource; customerLocale?: string | null };
 
 /**
  * Product as the admin API returns it: the shared shape plus the public-site fields
@@ -295,7 +296,10 @@ export interface ProductWriteRequest {
   description?: string;
   priceMinor: number;
   currency: string;
-  stock: number;
+  /** Omitted = keep the stored stock (the admin did not touch it; orders may have moved it). */
+  stock?: number;
+  /** Stock the form was opened with; a changed `stock` over a moved value -> 409 STOCK_CONFLICT. */
+  expectedStock?: number;
   active: boolean;
   imageKeys: string[];
   tagIds: string[];
@@ -304,7 +308,7 @@ export interface ProductWriteRequest {
    * rename would delete the row and create a new one — which used to invalidate customers'
    * saved carts and the variant reference on past orders.
    */
-  variants: { id?: string; name: string; stock: number }[];
+  variants: { id?: string; name: string; stock?: number; expectedStock?: number }[];
   /** Public site. Blank slug = generate from the title; omitted fields keep their value. */
   slug?: string;
   /** "Старая цена" (minor units); 0 clears it. */
@@ -468,7 +472,7 @@ export interface AdminTarget {
 
 // ---- content translations (docs/CONTENT-I18N.md) ---------------------------
 export type TrLocale = "uk" | "en";
-export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
+export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "PAYMENT_REQUISITES";
 export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
 export type TrOrigin = "AI" | "MANUAL";
 

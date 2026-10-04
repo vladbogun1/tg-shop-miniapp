@@ -38,4 +38,12 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
     Optional<PromoCode> findByIdForUpdate(@Param("id") byte[] id);
 
     List<PromoCode> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * Orders placed with a code, newest first (the «Промокоды» page shows where a code went). Lives
+     * here rather than in OrderRepository: it is a promo question, and JPQL can read any entity.
+     */
+    @Query("select o from Order o where o.promoCode = :code order by o.createdAt desc")
+    List<com.maxsolch.shop.domain.Order> ordersWithCode(@Param("code") String code,
+                                                       org.springframework.data.domain.Pageable pageable);
 }
