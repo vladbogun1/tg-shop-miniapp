@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * StatusTimeline — NEO-BRUTALISM vertical timeline of the order lifecycle
- * (NEW → APPROVED → SHIPPED → DELIVERED). Steps are bordered ink tiles filled
- * with the per-status accent once done; the CURRENT step is highlighted with a
- * hard offset shadow + pulse. REJECTED is a distinct danger block.
+ * StatusTimeline — ChiSetup vertical timeline of the order lifecycle
+ * (NEW → APPROVED → SHIPPED → DELIVERED). Done steps are tinted with their status colour; the
+ * CURRENT step glows softly and pulses. REJECTED is a distinct danger-tinted block.
  *
  * Uses ORDER_TIMELINE / ORDER_STATUS_LABEL / ORDER_STATUS_COLOR from lib/format.
  */
@@ -22,17 +21,20 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
   if (status === "REJECTED") {
     return (
       <div
-        className="flex items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] p-4 shadow-[5px_5px_0_var(--shadow)]"
-        style={{ background: "var(--danger)" }}
+        className="flex items-center gap-3 rounded-[var(--r-card)] border p-4"
+        style={{
+          background: "color-mix(in srgb, var(--danger) 12%, var(--surface))",
+          borderColor: "color-mix(in srgb, var(--danger) 45%, transparent)",
+        }}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--danger)] text-white">
           <X className="h-4 w-4" strokeWidth={3} />
         </span>
         <div className="min-w-0">
-          <p className="nb-up text-[14px] font-black text-white">
+          <p className="nb-up text-[14px] font-bold text-[var(--danger)]">
             {t("timeline.rejected.title")}
           </p>
-          <p className="text-[12px] font-semibold text-white/90">
+          <p className="text-[12px] text-[var(--ink)]/80">
             {t("timeline.rejected.text")}
           </p>
         </div>
@@ -61,32 +63,30 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                     ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
                     : { type: "spring", stiffness: 400, damping: 28 }
                 }
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] text-[12px] font-black"
+                className="font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-[12px] font-bold"
                 style={{
-                  background: done ? stepColor : "var(--surface-2)",
-                  color: done ? "var(--accent-ink)" : "var(--faint)",
-                  boxShadow: isCurrent
-                    ? "3px 3px 0 var(--shadow)"
-                    : "none",
+                  background: done ? `color-mix(in srgb, ${stepColor} 18%, transparent)` : "var(--surface-2)",
+                  borderColor: done ? stepColor : "var(--line)",
+                  color: done ? stepColor : "var(--faint)",
+                  boxShadow: isCurrent ? `0 0 14px -2px ${stepColor}` : "none",
                 }}
               >
                 {done ? <Check className="h-4 w-4" strokeWidth={3} /> : i + 1}
               </motion.span>
               {!isLast && (
                 <span
-                  className="my-1 w-[3px] flex-1"
+                  className="my-1 w-[2px] flex-1 rounded-full"
                   style={{
                     minHeight: 22,
-                    background:
-                      i < currentIdx ? stepColor : "var(--line)",
-                    opacity: i < currentIdx ? 1 : 0.4,
+                    background: i < currentIdx ? stepColor : "var(--line-strong)",
+                    opacity: i < currentIdx ? 0.7 : 1,
                   }}
                 />
               )}
             </div>
             <div className="pb-4 pt-1">
               <span
-                className="text-[14px] font-extrabold"
+                className="font-display text-[14px] font-semibold"
                 style={{
                   color: done ? "var(--ink)" : "var(--faint)",
                 }}
@@ -94,7 +94,7 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                 {t(`status.${s}`)}
               </span>
               {isCurrent && (
-                <p className="nb-up text-[11px] font-black text-[var(--accent)]">
+                <p className="nb-up text-[11px] font-semibold text-[var(--accent)]">
                   {t("timeline.current")}
                 </p>
               )}

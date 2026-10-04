@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * CHECKOUT STEPPER — NEO-BRUTALISM restyle.
+ * CHECKOUT STEPPER — ChiSetup restyle.
  *   1. Контакты  — name + masked phone (lib/phone)
  *   2. Доставка  — NOVA_POSHTA (warehouse picked on the MAP) | PICKUP
  *   3. Оплата    — pick a payment option (RadioCard, from getPaymentOptions)
  *   4. Подтверждение — summary → POST /api/orders → success screen + requisites
  *
- * Neo-brutalist chrome: thick ink borders, hard offset shadows, sharp corners,
- * heavy uppercase type. A neo StepProgress at the top and a STICKY neo bottom
- * bar driving "Назад / Далее / Оформить заказ" above the TabBar. The success
+ * ChiSetup chrome: graphite cards with hairline borders, Exo 2 headings, one orange CTA.
+ * A compact StepProgress at the top and a FIXED bottom bar driving
+ * "Назад / Далее / Оформить заказ" above the TabBar. The success
  * screen still shows the returned requisites and clears the cart as before.
  *
  * Behaviour is unchanged: same API calls (customerApi.getPaymentOptions /
@@ -44,7 +44,7 @@ function MapLoading() {
   const t = useT();
   return (
     <div
-      className="flex items-center justify-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[13px] font-extrabold uppercase tracking-wide text-[var(--faint)] shadow-[5px_5px_0_var(--shadow)]"
+      className="flex items-center justify-center rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] text-[13px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)] shadow-[0_8px_24px_-12px_var(--shadow)]"
       style={{ height: 320 }}
     >
       {t("checkout.delivery.mapLoading")}
@@ -254,10 +254,10 @@ export default function CheckoutPage() {
   if (emptyCart) {
     return (
       <div className="pt-2">
-        <h1 className="mb-6 text-[28px] font-black uppercase tracking-wide text-[var(--ink)]">
+        <h1 className="mb-6 text-[28px] font-extrabold font-display uppercase tracking-[0.02em] text-[var(--ink)]">
           {t("checkout.title")}
         </h1>
-        <div className="flex flex-col items-center gap-4 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center shadow-[5px_5px_0_var(--shadow)]">
+        <div className="flex flex-col items-center gap-4 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-16 text-center shadow-[0_8px_24px_-12px_var(--shadow)]">
           <p className="text-[14px] font-bold text-[var(--muted)]">{t("checkout.emptyCart")}</p>
           <Link href="/">
             <Button variant="accent">{t("common.toCatalog")}</Button>
@@ -284,9 +284,9 @@ export default function CheckoutPage() {
           aria-label={t("common.back")}
           whileTap={{ scale: 0.94 }}
           onClick={back}
-          className="tap -ml-1 grid h-10 w-10 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+          className="tap -ml-1 grid h-10 w-10 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
         >
-          <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
+          <ArrowLeft className="h-5 w-5" strokeWidth={2.5} />
         </motion.button>
         <div className="min-w-0 flex-1">
           <StepProgress steps={STEP_KEYS.map((k) => t(k))} current={step} />
@@ -360,7 +360,7 @@ export default function CheckoutPage() {
       </AnimatePresence>
 
       {submitError && (
-        <p className="mt-4 rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)] shadow-[4px_4px_0_var(--shadow)]">
+        <p className="mt-4 rounded-[var(--r-card)] border border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)] shadow-[0_8px_24px_-12px_var(--shadow)]">
           {submitError}
         </p>
       )}
@@ -379,7 +379,7 @@ export default function CheckoutPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={spring}
-          className="pointer-events-auto mx-4 flex items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[5px_5px_0_var(--shadow)]"
+          className="pointer-events-auto mx-4 flex items-center gap-3 rounded-[16px] border border-[var(--line-strong)] bg-[rgba(26,26,26,.94)] p-3 shadow-[0_18px_40px_-12px_rgba(0,0,0,.8)] backdrop-blur-[12px]"
         >
           {step > 0 && (
             <Button variant="surface" onClick={back}>
@@ -426,7 +426,7 @@ function ContactsStep({
   const t = useT();
   return (
     <div className="flex flex-col gap-4">
-      <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
+      <p className="px-0.5 text-[13px] text-[var(--muted)]">
         {t("checkout.contacts.intro")}
       </p>
       <Input
@@ -486,21 +486,21 @@ function DeliveryTab({
       type="button"
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="tap flex min-h-0 flex-col items-start gap-1.5 rounded-[var(--r)] border-[3px] border-[var(--line)] p-4 text-left transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+      className="tap flex min-h-0 flex-col items-start gap-1.5 rounded-[var(--r-card)] border p-4 text-left transition-[border-color,background-color,box-shadow] duration-150"
       style={{
-        background: active ? "var(--accent)" : "var(--surface)",
-        color: active ? "var(--accent-ink)" : "var(--ink)",
-        boxShadow: active ? "5px 5px 0 var(--shadow)" : "none",
+        background: active
+          ? "linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--surface)"
+          : "var(--surface)",
+        borderColor: active ? "var(--accent)" : "var(--line)",
+        color: "var(--ink)",
+        boxShadow: active ? "0 0 22px -6px rgba(255,102,0,.45)" : "none",
       }}
     >
-      <span>{icon}</span>
-      <span className="text-[14px] font-extrabold uppercase leading-tight tracking-wide">
+      <span style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{icon}</span>
+      <span className="font-display text-[14px] font-bold uppercase leading-tight tracking-[0.06em]">
         {title}
       </span>
-      <span
-        className="text-[11px] font-bold"
-        style={{ color: active ? "var(--accent-ink)" : "var(--muted)" }}
-      >
+      <span className="text-[11px] font-medium" style={{ color: "var(--muted)" }}>
         {subtitle}
       </span>
     </motion.button>
@@ -551,7 +551,7 @@ function DeliveryStep({
       {delivery === "NOVA_POSHTA" &&
         (showMap ? (
           <div className="flex flex-col gap-2">
-            <p className="px-0.5 text-[13px] font-semibold text-[var(--muted)]">
+            <p className="px-0.5 text-[13px] text-[var(--muted)]">
               {t("checkout.delivery.mapHint")}
             </p>
             <NpWarehouseMap
@@ -571,14 +571,14 @@ function DeliveryStep({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={spring}
-            className="flex flex-col gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[5px_5px_0_var(--shadow)]"
+            className="flex flex-col gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]"
           >
             <div className="flex items-start gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--accent)]">
-                <MapPin className="h-5 w-5 text-[var(--accent-ink)]" strokeWidth={2.75} />
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">
+                <MapPin className="h-5 w-5 text-[var(--accent)]" strokeWidth={2.25} />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-extrabold text-[var(--ink)]">
+                <div className="font-display text-[15px] font-bold text-[var(--ink)]">
                   {npLabel(warehouse, t)}
                 </div>
                 <div className="text-[12px] font-medium text-[var(--muted)]">
@@ -590,7 +590,7 @@ function DeliveryStep({
             <Button
               variant="surface"
               onClick={() => setEditing(true)}
-              icon={<MapPin className="h-4 w-4" strokeWidth={2.75} />}
+              icon={<MapPin className="h-4 w-4" strokeWidth={2.5} />}
             >
               {t("checkout.delivery.change")}
             </Button>
@@ -604,7 +604,7 @@ function DeliveryStep({
       )}
 
       {delivery === "PICKUP" && (
-        <div className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-[13px] font-medium leading-relaxed text-[var(--muted)] shadow-[5px_5px_0_var(--shadow)]">
+        <div className="rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 text-[13px] font-medium leading-relaxed text-[var(--muted)] shadow-[0_8px_24px_-12px_var(--shadow)]">
           {t("checkout.delivery.pickupText")}
         </div>
       )}
@@ -614,7 +614,7 @@ function DeliveryStep({
         onChange={(e) => setComment(e.target.value)}
         placeholder={t("checkout.delivery.comment")}
         rows={3}
-        className="tap mt-1 w-full resize-none rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+        className="tap mt-1 w-full resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-4 py-3 text-[15px] font-medium text-[var(--ink)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
       />
     </div>
   );
@@ -650,14 +650,14 @@ function PaymentStep({
   }
   if (error) {
     return (
-      <p className="rounded-[var(--r)] border-[3px] border-[var(--danger)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--danger)] shadow-[5px_5px_0_var(--shadow)]">
+      <p className="rounded-[var(--r-card)] border border-[var(--danger)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--danger)] shadow-[0_8px_24px_-12px_var(--shadow)]">
         {t("checkout.payment.error")}
       </p>
     );
   }
   if (options.length === 0) {
     return (
-      <p className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--muted)] shadow-[5px_5px_0_var(--shadow)]">
+      <p className="rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-6 text-center text-[13px] font-bold text-[var(--muted)] shadow-[0_8px_24px_-12px_var(--shadow)]">
         {t("checkout.payment.none")}
       </p>
     );
@@ -726,8 +726,8 @@ function ConfirmStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[5px_5px_0_var(--shadow)]">
-        <h3 className="mb-2 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
+      <section className="hud-frame rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]">
+        <h3 className="eyebrow mb-2 !text-[10px] !tracking-[0.2em]">
           {t("checkout.confirm.items")}
         </h3>
         {items.map((it, i) => (
@@ -736,12 +736,12 @@ function ConfirmStep({
               {it.title}
               <span className="text-[var(--faint)]"> × {it.qty}</span>
             </span>
-            <span className="text-[14px] font-extrabold text-[var(--ink)]">
+            <span className="font-display text-[14px] font-semibold tabular-nums text-[var(--ink)]">
               {money(it.amount, it.currency)}
             </span>
           </div>
         ))}
-        <div className="my-3 h-[2.5px] bg-[var(--line)]" />
+        <div className="my-3 h-px bg-[var(--line)]" />
 
         {discount > 0 && (
           <>
@@ -757,19 +757,19 @@ function ConfirmStep({
                   ? t("checkout.confirm.discountWithCode", { code: promoCode })
                   : t("checkout.confirm.discount")}
               </span>
-              <span className="text-[14px] font-extrabold text-[var(--ok)]">
+              <span className="font-display text-[14px] font-bold tabular-nums text-[var(--ok)]">
                 −{money(discount, currency)}
               </span>
             </div>
-            <div className="my-2 h-[2px] bg-[var(--line)]" />
+            <div className="my-2 h-px bg-[var(--line)]" />
           </>
         )}
 
         <div className="flex items-center justify-between">
-          <span className="text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
+          <span className="text-[15px] font-bold font-display uppercase tracking-[0.08em] text-[var(--ink)]">
             {t("checkout.confirm.total")}
           </span>
-          <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[18px] font-black text-[var(--ink)]">
+          <span className="font-display text-[20px] font-bold tabular-nums text-[var(--accent)]">
             {money(total, currency)}
           </span>
         </div>
@@ -778,7 +778,7 @@ function ConfirmStep({
         {dueNow !== total && (
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[13px] font-bold text-[var(--ink)]">{t("checkout.confirm.dueNow")}</span>
-            <span className="text-[15px] font-black text-[var(--ink)]">
+            <span className="font-display text-[15px] font-bold tabular-nums text-[var(--ink)]">
               {money(dueNow, currency)}
             </span>
           </div>
@@ -799,7 +799,7 @@ function ConfirmStep({
         )}
       </section>
 
-      <section className="flex flex-col gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[5px_5px_0_var(--shadow)]">
+      <section className="flex flex-col gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]">
         <SummaryRow label={t("order.recipient")} value={`${name}, ${phone}`} />
         <SummaryRow label={t("order.delivery")} value={deliveryText} />
         <SummaryRow label={t("order.payment")} value={payment?.title ?? "—"} />
@@ -812,10 +812,10 @@ function ConfirmStep({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-black uppercase tracking-wide text-[var(--faint)]">
+      <span className="font-display text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
         {label}
       </span>
-      <span className="text-[14px] font-semibold text-[var(--ink)]">{value}</span>
+      <span className="text-[14px] font-medium text-[var(--ink)]">{value}</span>
     </div>
   );
 }
@@ -845,27 +845,29 @@ function SuccessScreen({ state }: { state: SuccessState }) {
 
   return (
     <div className="flex flex-col items-center pt-8 text-center">
+      <div className="hud-frame flex w-full flex-col items-center rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-8">
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 320, damping: 22 }}
-        className="grid h-20 w-20 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c4)] shadow-[5px_5px_0_var(--shadow)]"
+        className="grid h-20 w-20 place-items-center rounded-full border border-[var(--ok)] bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] shadow-[0_0_28px_-4px_rgba(34,197,94,.5)]"
       >
-        <CheckCircle2 className="h-11 w-11 text-[var(--ink)]" strokeWidth={2.5} />
+        <CheckCircle2 className="h-10 w-10 text-[var(--ok)]" strokeWidth={2.25} />
       </motion.div>
-      <h1 className="mt-5 text-[24px] font-black uppercase tracking-wide text-[var(--ink)]">
+      <h1 className="font-display mt-5 text-[24px] font-extrabold uppercase tracking-[0.02em] text-[var(--ink)]">
         {t("checkout.success.title")}
       </h1>
-      <p className="mt-1 text-[14px] font-semibold text-[var(--muted)]">
+      <p className="mt-1 text-[14px] text-[var(--muted)]">
         {t("checkout.success.orderNumber")}{" "}
-        <span className="font-black text-[var(--ink)]">
+        <span className="font-display font-bold text-[var(--accent)]">
           #{state.orderId.slice(0, 8)}
         </span>
       </p>
+      </div>
 
       {reqRows.length > 0 && (
-        <section className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]">
-          <h3 className="mb-1 text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
+        <section className="mt-6 w-full rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[0_8px_24px_-12px_var(--shadow)]">
+          <h3 className="mb-1 text-[14px] font-bold font-display uppercase tracking-[0.08em] text-[var(--ink)]">
             {t("checkout.success.requisites", { payment: state.paymentTitle })}
           </h3>
           <p className="mb-3 text-[12px] font-medium text-[var(--muted)]">
@@ -940,15 +942,15 @@ function PaymentProof({ orderId }: { orderId: string }) {
       <motion.section
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c4)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]"
+        className="mt-6 w-full rounded-[var(--r-card)] border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_12%,var(--surface))] p-4 text-left"
       >
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
-          <span className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
+          <Clock className="h-5 w-5 text-[var(--ok)]" strokeWidth={2.25} />
+          <span className="font-display text-[14px] font-bold uppercase tracking-[0.06em] text-[var(--ok)]">
             {t("order.paymentClaimed")}
           </span>
         </div>
-        <p className="mt-1 text-[12px] font-bold text-[var(--ink)]">
+        <p className="mt-1 text-[12px] font-medium text-[var(--ink)]">
           {t("checkout.success.claimed")}
         </p>
       </motion.section>
@@ -956,8 +958,8 @@ function PaymentProof({ orderId }: { orderId: string }) {
   }
 
   return (
-    <section className="mt-6 w-full rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[5px_5px_0_var(--shadow)]">
-      <h3 className="text-[14px] font-black uppercase tracking-wide text-[var(--ink)]">
+    <section className="mt-6 w-full rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[0_8px_24px_-12px_var(--shadow)]">
+      <h3 className="text-[14px] font-bold font-display uppercase tracking-[0.08em] text-[var(--ink)]">
         {t("order.proof.title")}
       </h3>
       <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
@@ -974,7 +976,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
         variant="accent"
         fullWidth
         loading={state === "uploading"}
-        icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
+        icon={<Upload className="h-4 w-4" strokeWidth={2.5} />}
         onClick={() => inputRef.current?.click()}
       >
         {t("order.proof.upload")}
@@ -982,7 +984,7 @@ function PaymentProof({ orderId }: { orderId: string }) {
       {err && (
         <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
       )}
-      <p className="mt-2 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--faint)]">
+      <p className="mt-2 text-center text-[11px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)]">
         {t("checkout.success.payLater")}
       </p>
     </section>
@@ -1004,21 +1006,21 @@ function CopyRow({ label, value }: { label: string; value: string }) {
           () => {}
         );
       }}
-      className="tap flex items-center justify-between gap-2 rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-left transition-transform active:translate-x-[2px] active:translate-y-[2px]"
+      className="tap flex items-center justify-between gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-left transition-transform active:scale-[.98]"
     >
       <span className="min-w-0">
-        <span className="block text-[10px] font-black uppercase tracking-wide text-[var(--faint)]">
+        <span className="block text-[10px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)]">
           {label}
         </span>
-        <span className="block break-all text-[14px] font-bold text-[var(--ink)]">
+        <span className="block break-all text-[14px] font-semibold text-[var(--ink)]">
           {value}
         </span>
       </span>
-      <span className="shrink-0 text-[var(--ink)]">
+      <span className="shrink-0 text-[var(--muted)]">
         {copied ? (
-          <CheckCircle2 className="h-4 w-4 text-[var(--ok)]" strokeWidth={2.75} />
+          <CheckCircle2 className="h-4 w-4 text-[var(--ok)]" strokeWidth={2.5} />
         ) : (
-          <Copy className="h-4 w-4" strokeWidth={2.75} />
+          <Copy className="h-4 w-4" strokeWidth={2.5} />
         )}
       </span>
     </button>

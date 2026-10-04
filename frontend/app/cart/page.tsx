@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * CART — NEO-BRUTALISM restyle.
+ * CART — ChiSetup (v3).
  *
- * Bold bordered line-item cards (thumbnail · title · variant · unit price ·
+ * Graphite line-item cards (thumbnail · title · variant · unit price ·
  * QtyStepper · remove), live subtotal, a promo-code field kept in the cart
  * store, and a STICKY bottom summary bar (total + prominent "Оформить") sitting
  * above the TabBar within thumb reach. Empty-cart state with a CTA back to the
@@ -52,29 +52,26 @@ export default function CartPage() {
   if (empty) {
     return (
       <div className="pt-2">
-        <h1 className="nb-up mb-6 text-[30px] font-black text-[var(--ink)]">
+        <h1 className="nb-up mb-6 text-[28px] font-extrabold text-[var(--ink)]">
           {t("cart.title")}
         </h1>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={spring}
-          className="nb-lg mt-6 flex flex-col items-center gap-4 px-6 py-16 text-center"
+          className="nb-lg hud-frame mt-6 flex flex-col items-center gap-4 px-6 py-16 text-center"
         >
-          <span
-            className="grid h-16 w-16 -rotate-2 place-items-center border-[3px] border-[var(--line)] shadow-[4px_4px_0_var(--shadow)]"
-            style={{ background: "var(--c3)" }}
-          >
-            <ShoppingCart className="h-7 w-7 text-[var(--ink)]" strokeWidth={2.75} />
+          <span className="grid h-16 w-16 place-items-center rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface-2)]">
+            <ShoppingCart className="h-7 w-7 text-[var(--accent)]" strokeWidth={2.25} />
           </span>
-          <h2 className="nb-up text-[18px] font-black text-[var(--ink)]">
+          <h2 className="nb-up text-[18px] font-extrabold text-[var(--ink)]">
             {t("cart.empty.title")}
           </h2>
-          <p className="max-w-[260px] text-[13px] font-medium leading-relaxed text-[var(--muted)]">
+          <p className="max-w-[260px] text-[13px] leading-relaxed text-[var(--muted)]">
             {t("cart.empty.text")}
           </p>
           <Link href="/" className="mt-1">
-            <Button variant="accent" icon={<ArrowRight className="h-4 w-4" strokeWidth={2.75} />}>
+            <Button variant="accent" icon={<ArrowRight className="h-4 w-4" strokeWidth={2.5} />}>
               {t("common.toCatalog")}
             </Button>
           </Link>
@@ -86,11 +83,11 @@ export default function CartPage() {
   // ---- filled cart ---------------------------------------------------------
   return (
     <div className="pt-2">
-      <div className="mb-4 flex items-baseline justify-between">
-        <h1 className="nb-up text-[30px] font-black text-[var(--ink)]">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="nb-up text-[28px] font-extrabold text-[var(--ink)]">
           {t("cart.title")}
         </h1>
-        <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[12px] font-black text-[var(--ink)]">
+        <span className="nb-up rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)]">
           {t("cart.itemCount", { n: count })}
         </span>
       </div>
@@ -107,7 +104,7 @@ export default function CartPage() {
               exit={{ opacity: 0, x: -28, transition: { duration: 0.18 } }}
               className="nb flex gap-3 p-3"
             >
-              <div className="h-[88px] w-[88px] shrink-0 overflow-hidden border-[2.5px] border-[var(--line)]">
+              <div className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
                 <Image
                   src={l.imageUrl}
                   alt={l.title}
@@ -119,15 +116,15 @@ export default function CartPage() {
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <h3 className="line-clamp-2 text-[14px] font-bold leading-snug text-[var(--ink)]">
+                    <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">
                       {l.title}
                     </h3>
                     {l.variantName && (
-                      <span className="nb-up mt-1 inline-flex border-[2px] border-[var(--line)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-black text-[var(--ink)]">
+                      <span className="font-display mt-1 inline-flex rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-semibold text-[var(--muted)]">
                         {l.variantName}
                       </span>
                     )}
-                    <div className="mt-1 text-[11px] font-semibold text-[var(--faint)]">
+                    <div className="mt-1 text-[11px] font-medium text-[var(--faint)]">
                       {money(l.priceMinor, l.currency)} {t("common.currencyPerItem")}
                     </div>
                   </div>
@@ -140,9 +137,9 @@ export default function CartPage() {
                       haptic();
                       remove(l.key);
                     }}
-                    className="tap -mr-1 -mt-1 grid h-9 w-9 min-h-0 min-w-0 place-items-center border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-transform active:translate-x-[2px] active:translate-y-[2px]"
+                    className="tap -mr-1 -mt-1 grid h-9 w-9 min-h-0 min-w-0 place-items-center rounded-[var(--r)] text-[var(--faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--danger)]"
                   >
-                    <Trash2 className="h-4 w-4" strokeWidth={2.75} />
+                    <Trash2 className="h-4 w-4" strokeWidth={2.25} />
                   </motion.button>
                 </div>
 
@@ -154,7 +151,7 @@ export default function CartPage() {
                     max={l.stock}
                     onChange={(n) => setQty(l.key, n)}
                   />
-                  <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[15px] font-black text-[var(--ink)]">
+                  <span className="font-display text-[16px] font-bold tabular-nums text-[var(--ink)]">
                     {money(l.priceMinor * l.quantity, l.currency)}
                   </span>
                 </div>
@@ -173,7 +170,7 @@ export default function CartPage() {
       />
 
       {/* totals card */}
-      <div className="nb mt-4 p-4">
+      <div className="nb hud-frame mt-5 p-4">
         <Row label={t("cart.rowItems")} value={money(subtotal, currency)} />
         {promo.discount > 0 && (
           <div className="mt-2">
@@ -187,7 +184,7 @@ export default function CartPage() {
             />
           </div>
         )}
-        <div className="my-3 h-[2.5px] bg-[var(--line)]" />
+        <div className="my-3 h-px bg-[var(--line)]" />
         <Row label={t("cart.total")} value={money(total, currency)} strong />
       </div>
 
@@ -206,13 +203,13 @@ export default function CartPage() {
           animate={{ opacity: keyboardOpen ? 0 : 1, y: keyboardOpen ? 24 : 0 }}
           style={{ pointerEvents: keyboardOpen ? "none" : "auto" }}
           transition={spring}
-          className="nb-lg mx-4 flex items-center gap-3 p-3 pl-4"
+          className="nb-lg mx-4 flex items-center gap-3 rounded-[16px] border-[var(--line-strong)] p-3 pl-4"
         >
           <div className="min-w-0">
-            <div className="nb-up text-[11px] font-black text-[var(--faint)]">
+            <div className="eyebrow !text-[10px] !tracking-[0.2em]">
               {t("cart.total")}
             </div>
-            <div className="text-[20px] font-black leading-tight text-[var(--ink)]">
+            <div className="font-display whitespace-nowrap text-[20px] font-bold tabular-nums leading-tight text-[var(--accent)]">
               {money(total, currency)}
             </div>
           </div>
@@ -220,7 +217,7 @@ export default function CartPage() {
             variant="accent"
             fullWidth
             className="flex-1"
-            icon={<ArrowRight className="h-4 w-4" strokeWidth={2.75} />}
+            icon={<ArrowRight className="h-4 w-4" strokeWidth={2.5} />}
             onClick={() => {
               haptic();
               router.push("/checkout");
@@ -248,8 +245,8 @@ function Row({
       <span
         className={
           strong
-            ? "nb-up text-[15px] font-black text-[var(--ink)]"
-            : "text-[14px] font-semibold text-[var(--muted)]"
+            ? "nb-up text-[15px] font-bold text-[var(--ink)]"
+            : "text-[14px] text-[var(--muted)]"
         }
       >
         {label}
@@ -257,8 +254,8 @@ function Row({
       <span
         className={
           strong
-            ? "border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[16px] font-black text-[var(--ink)]"
-            : "text-[14px] font-bold text-[var(--ink)]"
+            ? "font-display text-[20px] font-bold tabular-nums text-[var(--accent)]"
+            : "font-display text-[14px] font-semibold tabular-nums text-[var(--ink)]"
         }
       >
         {value}

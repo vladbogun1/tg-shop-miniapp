@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductView — FULLSCREEN product detail overlay (NEO-BRUTALISM).
+ * ProductView — FULLSCREEN product detail overlay (ChiSetup).
  * Same behavior as before: gallery on top, scrollable copy, STICKY bottom action
  * bar within thumb reach; body-scroll lock; Esc / ✕ / backdrop closes; variant
  * gating + AddToCartControl + onAdded toast all unchanged. Only the look changes.
@@ -83,7 +83,7 @@ function ViewBody({
         exit="exit"
         onClick={close}
         className="absolute inset-0"
-        style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
       />
 
       <motion.div
@@ -98,10 +98,10 @@ function ViewBody({
           type="button"
           aria-label={t("common.close")}
           onClick={close}
-          className="nb nb-press tap absolute right-4 z-20 grid h-11 w-11 place-items-center text-[var(--ink)]"
-          style={{ top: "max(14px, var(--safe-top))", background: "var(--c3)" }}
+          className="nb-press tap absolute right-4 z-20 grid h-11 w-11 place-items-center rounded-full border border-[var(--line-strong)] text-[var(--ink)] backdrop-blur-[6px]"
+          style={{ top: "max(14px, var(--safe-top))", background: "rgba(14,14,16,.72)" }}
         >
-          <X className="h-5 w-5" strokeWidth={3} />
+          <X className="h-5 w-5" strokeWidth={2.5} />
         </button>
 
         <div
@@ -114,15 +114,15 @@ function ViewBody({
             </div>
 
             <div className="mt-4">
-              <h2 className="text-[24px] font-black leading-tight text-[var(--ink)]">{product.title}</h2>
-              <span className="mt-2 inline-block border-[3px] border-[var(--line)] bg-[var(--c3)] px-2.5 py-1 text-[20px] font-black text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)]">
+              <h2 className="font-display text-[22px] font-bold leading-tight text-[var(--ink)]">{product.title}</h2>
+              <span className="font-display mt-2 inline-block text-[26px] font-bold tabular-nums leading-none text-[var(--accent)]">
                 {money(product.priceMinor, product.currency)}
               </span>
             </div>
 
             {hasVariants && (
               <div className="mt-5">
-                <p className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                <p className="eyebrow mb-2.5 !tracking-[0.2em]">
                   {t("product.variantLabel")}
                   {needsVariant && touchedVariant && <span className="text-[var(--danger)]">{t("product.chooseHint")}</span>}
                 </p>
@@ -142,7 +142,7 @@ function ViewBody({
                         }}
                         className={`nb-chip nb-press inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] disabled:opacity-40 ${on ? "nb-chip-active" : ""}`}
                       >
-                        {on && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                        {on && <Check className="h-3.5 w-3.5" strokeWidth={2.75} />}
                         {v.name}
                         {out ? t("product.variantOut") : ""}
                       </button>
@@ -157,7 +157,7 @@ function ViewBody({
                 {product.tags!.map((t) => (
                   <span
                     key={t.id}
-                    className="nb-flat px-2.5 py-1 text-[12px] font-bold text-[var(--ink)]"
+                    className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--muted)]"
                   >
                     #{t.name}
                   </span>
@@ -166,7 +166,7 @@ function ViewBody({
             )}
 
             {product.description ? (
-              <p className="mt-4 whitespace-pre-line text-[14px] font-medium leading-relaxed text-[var(--muted)]">
+              <p className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-[#C9C9CF]">
                 {product.description}
               </p>
             ) : (
@@ -179,8 +179,8 @@ function ViewBody({
 
         {/* sticky bottom action bar */}
         <div
-          className="absolute inset-x-0 bottom-0 z-10 border-t-[3px] border-[var(--line)] px-4 pt-3"
-          style={{ paddingBottom: "calc(84px + var(--safe-bottom))", background: "var(--bg)" }}
+          className="absolute inset-x-0 bottom-0 z-10 border-t border-[var(--line)] px-4 pt-3 backdrop-blur-[12px]"
+          style={{ paddingBottom: "calc(84px + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
         >
           <div className="mx-auto w-full max-w-[480px]">
             <AddToCartControl
@@ -193,7 +193,7 @@ function ViewBody({
                 onAdded?.();
               }}
             />
-            <p className="mt-2 text-center text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">
+            <p className="mt-2 text-center text-[12px] font-medium text-[var(--muted)]">
               {stock > 0
                 ? t("product.stockLeft", { n: stock })
                 : hasVariants && !variant

@@ -38,11 +38,11 @@ export function resolveImageSrc(value: string, size = 600, fit = false): string 
 export { imgproxyUrl } from "@shop/shared";
 
 /**
- * Neutral 1×1 placeholder. Uses a mid-grey that reads acceptably on both the light (default) and
- * dark themes — it used to be a hardcoded dark navy, which flashed on every image in light mode.
+ * Neutral 1×1 placeholder in the graphite of `--surface-2`, so a loading photo blends into the
+ * dark ChiSetup card instead of flashing a light tile.
  */
 const BLUR =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23b9b9b4'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23222222'/%3E%3C/svg%3E";
 
 export function Image({
   imageKey,

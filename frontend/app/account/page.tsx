@@ -5,8 +5,7 @@
  * GET /api/me/orders → order cards (status chip, total, date, items,
  * unread badge). Tap → order detail. Loading skeletons + error/empty states.
  *
- * NEO-BRUTALISM restyle: thick ink borders, hard offset shadows, sharp corners,
- * heavy uppercase type. Behaviour, query keys (["me","orders"]) and routes are
+ * ChiSetup (v3): graphite cards, Exo 2 headings, tinted status/payment pills. Behaviour, query keys (["me","orders"]) and routes are
  * unchanged. Order cards animate in DIRECTLY (initial/animate + delay i*0.05),
  * not via variant propagation (see NEO.md framer-motion caveat).
  */
@@ -65,17 +64,17 @@ export default function AccountPage() {
     <div className="pt-2">
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
-          <h1 className="nb-up text-[26px] font-black text-[var(--ink)]">
+          <h1 className="nb-up text-[26px] font-extrabold text-[var(--ink)]">
             {t("account.title")}
           </h1>
-          <p className="text-[13px] font-semibold text-[var(--muted)]">
+          <p className="text-[13px] text-[var(--muted)]">
             {t("account.subtitle")}
           </p>
         </div>
         <NotificationsBell />
       </header>
 
-      {/* neo profile header */}
+      {/* profile header */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
@@ -83,26 +82,26 @@ export default function AccountPage() {
         className="nb mb-6 flex items-center gap-4 p-4"
       >
         <span
-          className="flex h-14 w-14 shrink-0 items-center justify-center border-[3px] border-[var(--line)] bg-[var(--accent)] text-[20px] font-black text-[var(--accent-ink)]"
+          className="font-display flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--r-card)] border border-[var(--accent)] bg-[var(--accent-soft)] text-[20px] font-extrabold text-[var(--accent)] shadow-[0_0_18px_-4px_rgba(255,102,0,.5)]"
           aria-hidden
         >
           {initials}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[17px] font-extrabold text-[var(--ink)]">
+          <p className="font-display truncate text-[17px] font-bold text-[var(--ink)]">
             {displayName}
           </p>
           {tg.user?.username ? (
-            <p className="truncate text-[13px] font-semibold text-[var(--muted)]">
+            <p className="truncate text-[13px] text-[var(--muted)]">
               @{tg.user.username}
             </p>
           ) : (
-            <p className="truncate text-[13px] font-semibold text-[var(--faint)]">
+            <p className="truncate text-[13px] text-[var(--faint)]">
               Telegram Mini App
             </p>
           )}
         </div>
-        <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2.5 py-1 text-[11px] font-black text-[var(--ink)]">
+        <span className="nb-up shrink-0 rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)]">
           {orders.length > 0 ? t("account.ordersBadge", { n: orders.length }) : "—"}
         </span>
       </motion.div>
@@ -111,14 +110,14 @@ export default function AccountPage() {
         <LanguageSegments />
       </div>
 
-      <h2 className="nb-up mb-3 text-[13px] font-black text-[var(--muted)]">
+      <h2 className="eyebrow mb-3 px-0.5">
         {t("account.myOrders")}
       </h2>
 
       {loading && (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="shimmer h-[104px] rounded-[var(--r)]" />
+            <div key={i} className="shimmer h-[104px] rounded-[var(--r-card)]" />
           ))}
         </div>
       )}
@@ -163,9 +162,9 @@ export default function AccountPage() {
       )}
 
       {/* Brand sign-off: the same wordmark as the website, quietly closing the screen. */}
-      <footer className="mt-10 flex flex-col items-center gap-2 pb-2" aria-label="MAXSOLCH">
-        <Logo size="sm" />
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--faint)]">
+      <footer className="mt-10 flex flex-col items-center gap-2 pb-2" aria-label="ChiSetup">
+        <Logo size="sm" variant="full" />
+        <span className="mt-1 text-[11px] font-medium tracking-[0.04em] text-[var(--faint)]">
           maxsolkh.shop
         </span>
       </footer>
@@ -188,43 +187,43 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[15px] font-black text-[var(--ink)]">
+            <span className="font-display text-[15px] font-bold text-[var(--ink)]">
               {shortOrderId(order.id)}
             </span>
             <StatusChip status={order.status} />
             {/* A screenshot the customer sent is "на проверке", not "оплачен" — only an admin
                 confirming the transfer flips it to paid. */}
             {order.paid ? (
-              <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[10px] font-black text-[var(--accent-ink)]">
+              <span className="nb-up flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ok)]">
                 <Check className="h-3 w-3" strokeWidth={3} />
                 {t("payment.paid")}
               </span>
             ) : order.paymentClaimed ? (
-              <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[10px] font-black text-[var(--ink)]">
+              <span className="nb-up flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--warn)]">
                 <Clock className="h-3 w-3" strokeWidth={3} />
                 {t("payment.claimed")}
               </span>
             ) : (
-              <span className="nb-up border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-black text-[var(--muted)]">
+              <span className="nb-up rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
                 {t("payment.unpaid")}
               </span>
             )}
           </div>
-          <p className="mt-1.5 text-[13px] font-semibold text-[var(--muted)]">
+          <p className="mt-1.5 text-[13px] text-[var(--muted)]">
             {formatDate(order.createdAt)} · {t("account.itemsCount", { n: order.itemsCount })}
           </p>
-          <span className="mt-2 inline-block border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[15px] font-black text-[var(--ink)]">
+          <span className="font-display mt-1.5 inline-block text-[17px] font-bold tabular-nums text-[var(--ink)]">
             {money(order.totalMinor, order.currency)}
           </span>
         </div>
         <div className="flex flex-col items-end gap-2">
           {order.unreadCount > 0 && (
-            <span className="nb-up flex items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--accent)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
+            <span className="font-display flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent-ink)] shadow-[0_0_10px_rgba(255,102,0,.5)]">
               <MessageCircle className="h-3 w-3" strokeWidth={2.75} />
               {order.unreadCount > 99 ? "99+" : order.unreadCount}
             </span>
           )}
-          <ChevronRight className="h-5 w-5 text-[var(--ink)]" strokeWidth={2.75} />
+          <ChevronRight className="h-5 w-5 text-[var(--faint)]" strokeWidth={2.25} />
         </div>
       </Link>
     </motion.div>
@@ -247,13 +246,13 @@ function EmptyState({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={spring}
-      className="nb mt-2 flex flex-col items-center gap-3 px-6 py-12 text-center"
+      className="nb hud-frame mt-2 flex flex-col items-center gap-3 px-6 py-12 text-center"
     >
-      <span className="flex h-16 w-16 items-center justify-center border-[3px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+      <span className="flex h-16 w-16 items-center justify-center rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--accent)]">
         {icon}
       </span>
-      <h3 className="nb-up text-[17px] font-black text-[var(--ink)]">{title}</h3>
-      <p className="max-w-[260px] text-[13px] font-semibold text-[var(--muted)]">
+      <h3 className="nb-up text-[17px] font-extrabold text-[var(--ink)]">{title}</h3>
+      <p className="max-w-[260px] text-[13px] text-[var(--muted)]">
         {text}
       </p>
       {children}

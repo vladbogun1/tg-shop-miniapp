@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * ProductCard — NEO-BRUTALISM tile.
- * Thick ink border + hard offset shadow, sharp corners, raw stock sticker, heavy
- * type. Same contract/behavior as before: tap photo/title → product view;
+ * ProductCard — ChiSetup tile (DESIGN-V3 §6): graphite card, photo on --surface-2, Inter 600
+ * title in two lines, Exo 2 price, orange chamfered CTA; out of stock = desaturated photo.
+ * Same contract/behavior as before: tap photo/title → product view;
  * no-variant products get an inline AddToCartControl, variant products get a
  * a "choose" button that opens the view.
  */
@@ -34,32 +34,39 @@ export function ProductCard({
   };
 
   return (
-    <div className="nb flex h-full w-full flex-col overflow-hidden">
+    <div className="nb group relative flex h-full w-full flex-col overflow-hidden transition-[border-color,transform] duration-200 hover:border-[var(--line-strong)] md:hover:-translate-y-0.5">
       <button type="button" onClick={open} className="nb-press flex flex-col text-left">
-        <div className="relative aspect-square w-full overflow-hidden border-b-[3px] border-[var(--line)]">
-          <Image src={product.images?.[0]?.url} alt={product.title} size={600} className="h-full w-full" />
+        <div className="relative aspect-square w-full overflow-hidden bg-[var(--surface-2)]">
+          <Image
+            src={product.images?.[0]?.url}
+            alt={product.title}
+            size={600}
+            className={`h-full w-full ${inStock ? "" : "opacity-60 grayscale-[.85]"}`}
+          />
           <span
-            className="absolute left-2 top-2 -rotate-2 border-[2px] border-[var(--line)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide"
-            style={{
-              background: inStock ? "var(--c4)" : "var(--danger)",
-              color: inStock ? "#0c2417" : "#fff",
-            }}
+            className="font-display absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[rgba(14,14,16,.78)] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] backdrop-blur-[4px]"
+            style={{ color: inStock ? "var(--ok)" : "var(--muted)" }}
           >
+            <span
+              aria-hidden
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ background: inStock ? "var(--ok)" : "var(--faint)" }}
+            />
             {inStock ? t("product.inStock") : t("product.outOfStockShort")}
           </span>
         </div>
 
-        <div className="flex flex-col gap-1.5 px-2.5 pt-2.5">
-          <h3 className="line-clamp-2 min-h-[2.6em] text-[13.5px] font-bold leading-snug text-[var(--ink)]">
+        <div className="flex flex-col gap-1.5 px-3 pt-2.5">
+          <h3 className="line-clamp-2 min-h-[2.6em] text-[13.5px] font-semibold leading-snug text-[var(--ink)]">
             {product.title}
           </h3>
-          <span className="self-start border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[15px] font-black text-[var(--ink)]">
+          <span className="font-display text-[17px] font-bold tabular-nums leading-none text-[var(--ink)]">
             {money(product.priceMinor, product.currency)}
           </span>
         </div>
       </button>
 
-      <div className="mt-auto p-2.5 pt-2.5">
+      <div className="mt-auto p-2.5 pt-3">
         {hasVariants ? (
           <button
             type="button"
@@ -67,13 +74,18 @@ export function ProductCard({
             disabled={!inStock}
             className="nb-accent nb-press tap nb-up flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-[13px] disabled:opacity-50"
           >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.5} />
             {inStock ? t("product.choose") : t("product.outOfStock")}
           </button>
         ) : (
           <AddToCartControl product={product} variant={null} fullWidth size="sm" />
         )}
       </div>
+      {/* desktop hover: orange strip along the bottom edge */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-[var(--accent)] opacity-0 transition-opacity duration-200 md:group-hover:opacity-100"
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ORDER CHAT (design doc §6) — NEO-BRUTALISM redesign.
+ * ORDER CHAT (design doc §6) — ChiSetup (v3).
  * A full-screen, Telegram-style chat for a single order.
  *  - GET  /api/me/orders/{id}/messages           (history)
  *  - GET  /api/me/orders/{id}                     (order status for the header)
@@ -11,12 +11,12 @@
  *  - WS   /topic/orders/{id}/chat                 (realtime append)
  *
  * Own fixed full-screen layout (the TabBar hides on /chat), safe-area aware:
- * sticky neo top bar + scrollable message list (day separators) + sticky neo
+ * sticky top bar + scrollable message list (day separators) + sticky
  * composer (text + attach image + paste-to-send + send) above the keyboard.
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ImagePlus, Send, WifiOff, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, MessageCircle, Send, WifiOff, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -189,8 +189,8 @@ export default function OrderChatPage() {
       className="scene fixed inset-0 z-30 mx-auto flex max-w-[480px] flex-col bg-[var(--bg)]"
       style={{ paddingTop: "var(--safe-top)" }}
     >
-      {/* sticky neo top bar */}
-      <header className="z-10 flex items-center gap-2.5 border-b-[3px] border-[var(--line)] bg-[var(--surface)] px-2.5 py-2.5">
+      {/* sticky top bar */}
+      <header className="z-10 flex items-center gap-2.5 border-b border-[var(--line)] px-2.5 py-2.5 backdrop-blur-[12px]" style={{ background: "rgba(26,26,26,.92)" }}>
         <motion.button
           type="button"
           aria-label={t("common.back")}
@@ -200,27 +200,30 @@ export default function OrderChatPage() {
             haptic();
             router.push(`/account/orders/${id}`);
           }}
-          className="tap flex shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+          className="tap flex shrink-0 items-center justify-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
         >
-          <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
+          <ArrowLeft className="h-5 w-5" strokeWidth={2.5} />
         </motion.button>
 
         {/* order avatar tile */}
         <div
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--c3)] text-[13px] font-black text-[var(--ink)]"
+          className="font-display grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] text-[13px] font-bold text-[var(--accent)]"
           aria-hidden
         >
           {id.slice(0, 2).toUpperCase()}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-black uppercase tracking-wide text-[var(--ink)]">
+          <p className="font-display truncate text-[15px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">
             {t("inbox.orderNumber", { id: shortOrderId(id) })}
           </p>
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
+          <p className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--muted)]">
             <span
-              className="inline-block h-2 w-2 rounded-full border-[1.5px] border-[var(--line)]"
-              style={{ background: connected ? "var(--ok)" : "var(--faint)" }}
+              className="inline-block h-2 w-2 rounded-full"
+              style={{
+                background: connected ? "var(--ok)" : "var(--faint)",
+                boxShadow: connected ? "0 0 6px var(--ok)" : "none",
+              }}
             />
             {connected ? t("chat.online") : t("chat.connecting")}
           </p>
@@ -239,7 +242,7 @@ export default function OrderChatPage() {
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className={`shimmer h-12 rounded-[var(--r)] ${
+                className={`shimmer h-12 rounded-[var(--r-card)] ${
                   i % 2 ? "w-1/2 self-end" : "w-2/3"
                 }`}
               />
@@ -248,15 +251,15 @@ export default function OrderChatPage() {
         )}
 
         {isError && (
-          <div className="mt-8 flex flex-col items-center gap-3 rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-6 text-center shadow-[5px_5px_0_var(--shadow)]">
-            <WifiOff className="h-7 w-7 text-[var(--muted)]" strokeWidth={2.5} />
-            <p className="text-[13px] font-semibold text-[var(--muted)]">
+          <div className="nb hud-frame mt-8 flex flex-col items-center gap-3 p-6 text-center">
+            <WifiOff className="h-7 w-7 text-[var(--accent)]" strokeWidth={2.25} />
+            <p className="text-[13px] text-[var(--muted)]">
               {t("chat.error")}
             </p>
             <button
               type="button"
               onClick={() => refetch()}
-              className="tap nb-up rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--accent)] px-4 py-2 text-[13px] font-extrabold text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+              className="nb-accent nb-press tap nb-up px-5 py-2 text-[13px]"
             >
               {t("common.retry")}
             </button>
@@ -265,10 +268,10 @@ export default function OrderChatPage() {
 
         {!loading && !isError && messages.length === 0 && (
           <div className="mt-12 flex flex-col items-center gap-3 text-center">
-            <div className="grid h-14 w-14 place-items-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--c3)] text-2xl shadow-[4px_4px_0_var(--shadow)]">
-              💬
+            <div className="grid h-14 w-14 place-items-center rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--accent)]">
+              <MessageCircle className="h-6 w-6" strokeWidth={2.25} />
             </div>
-            <p className="max-w-[15rem] text-[13px] font-semibold text-[var(--muted)]">
+            <p className="max-w-[15rem] text-[13px] text-[var(--muted)]">
               {t("chat.empty")}
             </p>
           </div>
@@ -281,7 +284,7 @@ export default function OrderChatPage() {
               type="button"
               onClick={() => void loadEarlier()}
               disabled={loadingEarlier}
-              className="tap rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-[12px] font-black uppercase tracking-wide text-[var(--muted)] shadow-[3px_3px_0_var(--shadow)] disabled:opacity-60"
+              className="font-display tap rounded-full border border-[var(--line)] bg-[var(--surface)] px-3.5 py-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)] disabled:opacity-60"
             >
               {loadingEarlier ? t("common.loading") : t("chat.loadEarlier")}
             </button>
@@ -296,7 +299,7 @@ export default function OrderChatPage() {
                 transition={spring}
                 className="my-2 flex justify-center"
               >
-                <span className="rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                <span className="font-display rounded-full bg-[rgba(34,34,34,.85)] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
                   {it.label}
                 </span>
               </motion.div>
@@ -341,10 +344,10 @@ export default function OrderChatPage() {
                 e.stopPropagation();
                 setLightbox(null);
               }}
-              className="tap absolute right-4 z-20 flex h-11 w-11 items-center justify-center rounded-[var(--r)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+              className="tap absolute right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[rgba(26,26,26,.85)] text-[var(--ink)]"
               style={{ top: "calc(16px + var(--safe-top))" }}
             >
-              <X className="h-6 w-6" strokeWidth={2.75} />
+              <X className="h-6 w-6" strokeWidth={2.25} />
             </button>
             <motion.div
               initial={{ scale: 0.94, opacity: 0 }}
@@ -359,7 +362,7 @@ export default function OrderChatPage() {
                 alt={t("chat.attachmentAlt")}
                 size={1600}
                 fit
-                className="max-h-[80dvh] max-w-full rounded-[var(--r)] border-[3px] border-[var(--line)]"
+                className="max-h-[80dvh] max-w-full rounded-[var(--r-card)]"
               />
             </motion.div>
           </motion.div>
@@ -465,7 +468,7 @@ function Composer({
 
   return (
     <div
-      className="z-10 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-3 pt-2.5"
+      className="z-10 border-t border-[var(--line)] bg-[var(--surface)] px-3 pt-2.5"
       style={{ paddingBottom: "calc(10px + var(--safe-bottom))" }}
     >
       <AnimatePresence>
@@ -477,12 +480,12 @@ function Composer({
             transition={spring}
             className="overflow-hidden"
           >
-            <div className="mb-2 flex items-center gap-2 rounded-[var(--r)] border-[2.5px] border-l-[5px] border-[var(--line)] border-l-[var(--accent)] bg-[var(--surface-2)] px-2 py-1.5">
+            <div className="mb-2 flex items-center gap-2 rounded-[var(--r)] border-l-2 border-[var(--accent)] bg-[var(--surface-2)] px-2.5 py-1.5">
               <span className="min-w-0 flex-1">
-                <span className="block text-[12px] font-black uppercase tracking-wide text-[var(--accent)]">
+                <span className="font-display block text-[12px] font-semibold text-[var(--accent)]">
                   {t("chat.replyTo", { name: replyTo.senderName ?? "" })}
                 </span>
-                <span className="line-clamp-1 text-[12px] font-medium text-[var(--muted)]">
+                <span className="line-clamp-1 text-[12px] text-[var(--muted)]">
                   {replyTo.text ??
                     (replyTo.type === "PHOTO" ? t("chat.attachment.photo") : t("chat.attachment.file"))}
                 </span>
@@ -491,7 +494,7 @@ function Composer({
                 type="button"
                 aria-label={t("chat.cancelReply")}
                 onClick={onCancelReply}
-                className="tap flex h-7 w-7 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--surface)] text-[var(--muted)]"
+                className="tap flex h-7 w-7 min-h-0 min-w-0 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-[var(--muted)]"
               >
                 <X className="h-4 w-4" strokeWidth={2.75} />
               </button>
@@ -512,7 +515,7 @@ function Composer({
           whileTap={{ scale: 0.92 }}
           transition={{ duration: 0.07 }}
           onClick={() => fileRef.current?.click()}
-          className="tap flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[3px_3px_0_var(--shadow)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40"
+          className="tap flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--muted)] disabled:opacity-40"
         >
           <ImagePlus
             className={`h-5 w-5 ${uploading ? "animate-pulse" : ""}`}
@@ -540,7 +543,7 @@ function Composer({
           }}
           rows={1}
           placeholder={t("chat.placeholder")}
-          className="max-h-28 min-h-[44px] flex-1 resize-none rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] font-medium text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
+          className="max-h-28 min-h-[44px] flex-1 resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] text-[var(--ink)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
         />
 
         <motion.button
@@ -551,7 +554,7 @@ function Composer({
           transition={{ duration: 0.07 }}
           onClick={sendText}
           data-order={orderId}
-          className="tap flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)] transition-transform active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-40 disabled:shadow-none"
+          className="tap flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[var(--r)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_0_16px_-2px_rgba(255,102,0,.55)] transition-[opacity,box-shadow] disabled:opacity-40 disabled:shadow-none"
         >
           <Send className="h-5 w-5" strokeWidth={2.5} />
         </motion.button>

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SHOP catalog — NEO-BRUTALISM.
+ * SHOP catalog — ChiSetup (v3).
  * Data/logic unchanged (queryKey ["products"], search + tag filter, tap →
  * ProductView). Sorting: out-of-stock always sink to the bottom; default orders
  * by bestseller (soldCount). A sort menu sits next to search. Tag row supports
@@ -28,7 +28,6 @@ import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Toast } from "@/components/ui/Toast";
 import { getActiveTag } from "@/i18n/active";
 import { useT } from "@/i18n/context";
@@ -109,38 +108,37 @@ export default function CatalogPage() {
     <div className="min-h-full" style={{ marginTop: "calc(-1 * max(16px, var(--safe-top)))" }}>
       {/* ── STICKY HEADER ──────────────────────────────────────────────── */}
       <div
-        className="sticky z-30 -mx-4 border-b-[3px] border-[var(--line)] px-4 pb-3"
-        style={{ top: 0, paddingTop: "max(12px, var(--safe-top))", background: "var(--bg)" }}
+        className="sticky z-30 -mx-4 border-b border-[var(--line)] px-4 pb-3 backdrop-blur-[12px]"
+        style={{ top: 0, paddingTop: "max(12px, var(--safe-top))", background: "rgba(14,14,16,.86)" }}
       >
-        <header className="flex items-end justify-between gap-3">
+        <header className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             {/* Same wordmark as the website header — one identity across site and Telegram. */}
-            <h1 className="leading-none" aria-label="MAXSOLCH">
+            <h1 className="leading-none" aria-label="ChiSetup">
               <Logo size="lg" />
             </h1>
-            <p className="mt-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            <p className="mt-1.5 truncate text-[12px] font-medium text-[var(--muted)]">
               {t("catalog.tagline")}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <NotificationsBell />
             <LanguageToggle />
-            <ThemeToggle />
           </div>
         </header>
 
         {showControls && (
           <>
             <div className="mt-3 flex items-stretch gap-2">
-              <div className="nb-flat flex flex-1 items-center gap-2.5 px-3.5 py-3">
-                <Search className="h-[18px] w-[18px] shrink-0 text-[var(--ink)]" strokeWidth={2.75} />
+              <div className="flex flex-1 items-center gap-2.5 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
+                <Search className="h-[18px] w-[18px] shrink-0 text-[var(--muted)]" strokeWidth={2.25} />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t("catalog.search")}
                   aria-label={t("catalog.search")}
                   enterKeyHint="search"
-                  className="w-full min-h-0 bg-transparent text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:font-medium placeholder:text-[var(--faint)]"
+                  className="w-full min-h-0 bg-transparent text-[15px] font-medium text-[var(--ink)] outline-none placeholder:font-normal placeholder:text-[var(--faint)]"
                 />
                 {search && (
                   <button
@@ -150,9 +148,9 @@ export default function CatalogPage() {
                       haptic();
                       setSearch("");
                     }}
-                    className="-mr-1 grid h-7 w-7 shrink-0 place-items-center border-[2.5px] border-[var(--line)] bg-[var(--c3)] text-[var(--ink)]"
+                    className="-mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--surface-3)] text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
                   >
-                    <X className="h-4 w-4" strokeWidth={3} />
+                    <X className="h-4 w-4" strokeWidth={2.5} />
                   </button>
                 )}
               </div>
@@ -166,18 +164,20 @@ export default function CatalogPage() {
                     haptic();
                     setSortOpen((o) => !o);
                   }}
-                  className={`nb-flat nb-press tap grid h-full w-[52px] place-items-center ${
-                    sort !== "popular" ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "text-[var(--ink)]"
+                  className={`nb-press tap grid h-full w-[52px] place-items-center rounded-[var(--r)] border ${
+                    sort !== "popular"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                      : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
                   }`}
                 >
-                  <ArrowDownUp className="h-5 w-5" strokeWidth={2.75} />
+                  <ArrowDownUp className="h-5 w-5" strokeWidth={2.25} />
                 </button>
 
                 {sortOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
-                    <div className="nb nb-lg absolute right-0 top-full z-50 mt-2 w-64 p-1.5">
-                      <p className="px-2.5 pb-1.5 pt-1 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
+                    <div className="nb-lg absolute right-0 top-full z-50 mt-2 w-64 border-[var(--line-strong)] p-1.5">
+                      <p className="eyebrow px-2.5 pb-1.5 pt-1.5 !text-[10px]">
                         {t("catalog.sort")}
                       </p>
                       {SORTS.map(({ key, labelKey, Icon }) => {
@@ -191,13 +191,13 @@ export default function CatalogPage() {
                               setSort(key);
                               setSortOpen(false);
                             }}
-                            className={`flex w-full items-center gap-2.5 rounded-[var(--r)] px-3 py-2.5 text-left text-[14px] font-bold ${
-                              on ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                            className={`font-display flex w-full items-center gap-2.5 rounded-[var(--r)] px-3 py-2.5 text-left text-[14px] font-semibold ${
+                              on ? "bg-[var(--accent-soft)] text-[var(--accent-hi)]" : "text-[var(--ink)] hover:bg-[var(--surface-2)]"
                             }`}
                           >
-                            <Icon className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+                            <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                             <span className="flex-1">{t(labelKey)}</span>
-                            {on && <Check className="h-4 w-4 shrink-0" strokeWidth={3} />}
+                            {on && <Check className="h-4 w-4 shrink-0" strokeWidth={2.75} />}
                           </button>
                         );
                       })}
@@ -373,7 +373,7 @@ function NbButton({ children, onClick, loading }: { children: ReactNode; onClick
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="nb-accent nb-press tap nb-up px-5 py-3 text-[14px] disabled:opacity-60"
+      className="nb-accent nb-press tap nb-up px-6 py-3 text-[14px] disabled:opacity-60"
     >
       {loading ? "…" : children}
     </button>
@@ -396,13 +396,13 @@ function EmptyState({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="nb nb-lg mx-auto mt-10 flex max-w-[340px] flex-col items-center gap-3 px-6 py-10 text-center"
+      className="nb hud-frame mx-auto mt-10 flex max-w-[340px] flex-col items-center gap-3 px-6 py-10 text-center"
     >
-      <span className="grid h-16 w-16 place-items-center border-[3px] border-[var(--line)] bg-[var(--c3)] text-[var(--ink)]">
+      <span className="grid h-16 w-16 place-items-center rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--accent)]">
         {icon}
       </span>
-      <h2 className="nb-up text-[18px] font-black text-[var(--ink)]">{title}</h2>
-      <p className="max-w-[260px] text-[13px] font-medium text-[var(--muted)]">{text}</p>
+      <h2 className="nb-up text-[18px] font-extrabold text-[var(--ink)]">{title}</h2>
+      <p className="max-w-[260px] text-[13px] text-[var(--muted)]">{text}</p>
       {children}
     </motion.div>
   );

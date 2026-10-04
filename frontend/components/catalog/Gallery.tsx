@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Gallery — product image carousel for the fullscreen product view (Neo-Brutalism).
+ * Gallery — product image carousel for the fullscreen product view (ChiSetup).
  *
  * - Pointer-drag swipe (framer-motion) to move between slides.
  * - ‹ › arrow buttons overlaid on the sides (disabled at first/last).
@@ -52,8 +52,8 @@ export function Gallery({
   };
 
   return (
-    <div className="nb relative aspect-square w-full overflow-hidden p-1">
-      <div className="relative h-full w-full overflow-hidden rounded-[calc(var(--r-lg)-4px)]">
+    <div className="relative aspect-square w-full overflow-hidden bg-[var(--surface-2)]">
+      <div className="relative h-full w-full overflow-hidden">
         <motion.div
           className="flex h-full"
           drag={multi ? "x" : false}
@@ -90,7 +90,7 @@ export function Gallery({
             />
 
             {/* counter pill */}
-            <div className="nb-flat absolute right-2.5 top-2.5 bg-[var(--surface)] px-2.5 py-1 text-[11px] font-black text-[var(--ink)]">
+            <div className="font-display absolute left-2.5 top-2.5 rounded-full bg-[rgba(14,14,16,.78)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[var(--ink)] backdrop-blur-[4px]">
               {slide + 1} / {slides.length}
             </div>
 
@@ -105,8 +105,8 @@ export function Gallery({
                   className="h-1.5 rounded-full transition-all duration-300"
                   style={{
                     width: i === slide ? 20 : 6,
-                    background:
-                      i === slide ? "var(--grad-accent)" : "rgba(255,255,255,.5)",
+                    background: i === slide ? "var(--accent)" : "rgba(255,255,255,.45)",
+                    boxShadow: i === slide ? "0 0 8px rgba(255,102,0,.6)" : undefined,
                   }}
                 />
               ))}
@@ -135,7 +135,7 @@ function ArrowBtn({
       disabled={disabled}
       onClick={onClick}
       aria-label={side === "left" ? t("gallery.prev") : t("gallery.next")}
-      className={`nb-flat tap absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center bg-[var(--surface)] text-[var(--ink)] transition-opacity disabled:opacity-0 ${
+      className={`tap absolute top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--line-strong)] bg-[rgba(14,14,16,.7)] text-[var(--ink)] backdrop-blur-[4px] transition-opacity disabled:opacity-0 ${
         side === "left" ? "left-2" : "right-2"
       }`}
     >

@@ -39,23 +39,11 @@ const DEFAULT_STATE: TgState = {
 };
 
 /**
- * The Neo-Brutalism look is a FIXED brand theme: light by default, dark via the in-app
- * ThemeToggle (persisted in localStorage). Telegram's themeParams deliberately do NOT drive it —
- * otherwise a customer with a dark Telegram client would get a dark shop. This only reports which
- * scheme is in effect; `data-theme` is owned by the layout's pre-paint script and the toggle.
- *
- * (The previous version took a `themeParams` argument it never read, and its result was chained
- * through `??` operators that could never fire.)
+ * The ChiSetup look (v3) is ONE fixed dark brand theme. Telegram's themeParams deliberately do
+ * NOT drive it, and there is no in-app toggle any more, so this always reports "dark".
  */
 function currentScheme(): "dark" | "light" {
-  try {
-    if (typeof window !== "undefined" && window.localStorage.getItem("neo-theme") === "dark") {
-      return "dark";
-    }
-  } catch {
-    /* storage blocked (private mode) — fall through to the default */
-  }
-  return "light";
+  return "dark";
 }
 
 /**
@@ -117,6 +105,15 @@ export function useTelegram(): TgState {
 
       try { wa.ready?.(); } catch { /* noop */ }
       try { wa.expand?.(); } catch { /* noop */ }
+      // Tint Telegram's own header/background to the page colour so the chrome blends in.
+      try {
+        const c = wa as unknown as {
+          setHeaderColor?: (color: string) => void;
+          setBackgroundColor?: (color: string) => void;
+        };
+        c.setHeaderColor?.("#0E0E10");
+        c.setBackgroundColor?.("#0E0E10");
+      } catch { /* noop — older clients */ }
 
       // Fullscreen Mini App: request fullscreen on EVERY entry point (menu button,
       // inline web_app buttons, /start) — but ONLY on phones. On desktop/web

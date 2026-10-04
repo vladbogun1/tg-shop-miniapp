@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Input — NEO-BRUTALISM field (API unchanged: label floating, status, hint).
- * Thick ink border; accent border on focus; danger/ok on validation. Sharp corners.
+ * Input — ChiSetup field (API unchanged: label floating, status, hint).
+ * --surface-2, 1px hairline; focus = orange border + soft orange ring; danger/ok on validation.
  */
 import { useId, useState, type InputHTMLAttributes } from "react";
 
@@ -39,14 +39,17 @@ export function Input({
   return (
     <div className={`relative ${className ?? ""}`}>
       <div
-        className="relative flex items-center rounded-[var(--r)] bg-[var(--surface)] px-4 transition-colors"
-        style={{ border: `3px solid ${borderColor}` }}
+        className="relative flex items-center rounded-[var(--r)] bg-[var(--surface-2)] px-4 transition-[border-color,box-shadow]"
+        style={{
+          border: `1px solid ${borderColor}`,
+          boxShadow: focused && !status ? "0 0 0 3px var(--accent-soft)" : undefined,
+        }}
       >
         <label
           htmlFor={id}
-          className={`pointer-events-none absolute left-4 origin-left font-bold transition-all duration-150 ${
+          className={`pointer-events-none absolute left-4 origin-left transition-all duration-150 ${
             floated
-              ? "top-1.5 text-[11px] uppercase tracking-wide text-[var(--muted)]"
+              ? "font-display top-1.5 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]"
               : "top-1/2 -translate-y-1/2 text-[15px] text-[var(--faint)]"
           }`}
         >
@@ -63,13 +66,13 @@ export function Input({
             setFocused(false);
             onBlur?.(e);
           }}
-          className="tap w-full bg-transparent pb-2 pt-6 text-[15px] font-semibold text-[var(--ink)] outline-none placeholder:text-transparent"
+          className="tap w-full bg-transparent pb-2 pt-6 text-[15px] font-medium text-[var(--ink)] outline-none placeholder:text-transparent"
           {...rest}
         />
       </div>
       {hint && (
         <p
-          className={`mt-1 px-1 text-[12px] font-semibold ${
+          className={`mt-1 px-1 text-[12px] font-medium ${
             status === "danger" ? "text-[var(--danger)]" : "text-[var(--faint)]"
           }`}
         >

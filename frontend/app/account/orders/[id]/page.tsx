@@ -5,7 +5,7 @@
  * status timeline, tracking, requisites. Open-chat CTA «Написать в чат».
  * GET /api/me/orders/{id} (queryKey ["me","orders",id]).
  *
- * NEO-BRUTALISM restyle: a sticky ink-bordered header (back + title + status),
+ * ChiSetup (v3): a sticky translucent header (back + title + status),
  * stacked `.nb` sections (status + StatusTimeline, items with thumbnails,
  * totals, delivery, payment + tracking, reject banner, copyable requisites) and
  * a prominent sticky bottom "Написать в чат" button within thumb reach.
@@ -68,10 +68,10 @@ export default function OrderDetailPage() {
 
   return (
     <div className="pt-2">
-      {/* sticky ink header */}
+      {/* sticky header */}
       <header
-        className="sticky z-20 -mx-4 mb-4 flex items-center gap-2 border-b-[3px] border-[var(--line)] bg-[var(--bg)] px-4 py-3"
-        style={{ top: "var(--safe-top)" }}
+        className="sticky z-20 -mx-4 mb-4 flex items-center gap-2 border-b border-[var(--line)] px-4 py-3 backdrop-blur-[12px]"
+        style={{ top: "var(--safe-top)", background: "rgba(14,14,16,.86)" }}
       >
         <button
           type="button"
@@ -80,11 +80,11 @@ export default function OrderDetailPage() {
             haptic();
             router.push("/account");
           }}
-          className="tap nb-flat nb-press -ml-1 flex h-10 w-10 shrink-0 items-center justify-center bg-[var(--surface)] text-[var(--ink)]"
+          className="tap nb-press -ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
         >
-          <ArrowLeft className="h-5 w-5" strokeWidth={2.75} />
+          <ArrowLeft className="h-5 w-5" strokeWidth={2.5} />
         </button>
-        <h1 className="nb-up flex-1 truncate text-[18px] font-black text-[var(--ink)]">
+        <h1 className="nb-up flex-1 truncate text-[18px] font-extrabold text-[var(--ink)]">
           {t("inbox.orderNumber", { id: shortOrderId(id) })}
         </h1>
         {data && <StatusChip status={data.status} />}
@@ -93,7 +93,7 @@ export default function OrderDetailPage() {
       {(isLoading || !token) && (
         <div className="flex flex-col gap-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="shimmer h-32 rounded-[var(--r)]" />
+            <div key={i} className="shimmer h-32 rounded-[var(--r-card)]" />
           ))}
         </div>
       )}
@@ -103,10 +103,10 @@ export default function OrderDetailPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={spring}
-          className="nb flex flex-col items-center gap-3 px-6 py-12 text-center"
+          className="nb hud-frame flex flex-col items-center gap-3 px-6 py-12 text-center"
         >
-          <WifiOff className="h-8 w-8 text-[var(--muted)]" strokeWidth={2.5} />
-          <p className="text-[14px] font-semibold text-[var(--muted)]">
+          <WifiOff className="h-8 w-8 text-[var(--accent)]" strokeWidth={2.25} />
+          <p className="text-[14px] text-[var(--muted)]">
             {t("order.error")}
           </p>
           <Button
@@ -153,7 +153,7 @@ function OrderBody({
         {/* status + timeline */}
         <motion.section variants={riseItem} className="nb p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
+            <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
               {t("order.status")}
             </h3>
             <PaidBadge state={paymentState(order)} />
@@ -161,46 +161,46 @@ function OrderBody({
           <StatusTimeline status={order.status} />
 
           {order.status === "REJECTED" && order.rejectReason && (
-            <div className="mt-3 border-[3px] border-[var(--line)] bg-[color-mix(in_srgb,var(--danger)_16%,var(--surface))] px-4 py-3">
-              <p className="nb-up text-[11px] font-black text-[var(--danger)]">
+            <div className="mt-3 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,var(--surface))] px-4 py-3">
+              <p className="nb-up text-[11px] font-bold text-[var(--danger)]">
                 {t("order.rejectReason")}
               </p>
-              <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">
+              <p className="mt-1 text-[14px] text-[var(--ink)]">
                 {order.rejectReason}
               </p>
             </div>
           )}
 
           {order.trackingNumber && (
-            <div className="mt-3 flex items-center gap-2 border-[3px] border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5">
+            <div className="mt-3 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5">
               <Truck
                 className="h-4 w-4 shrink-0 text-[var(--accent)]"
                 strokeWidth={2.5}
               />
-              <span className="nb-up text-[11px] font-bold text-[var(--muted)]">
+              <span className="nb-up text-[11px] font-semibold text-[var(--muted)]">
                 {t("order.tracking")}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[14px] font-black text-[var(--ink)]">
+              <span className="font-display min-w-0 flex-1 truncate text-[14px] font-bold tabular-nums text-[var(--ink)]">
                 {order.trackingNumber}
               </span>
               <CopyButton value={order.trackingNumber} label={t("order.tracking")} />
             </div>
           )}
 
-          <p className="mt-3 text-[12px] font-semibold text-[var(--faint)]">
+          <p className="mt-3 text-[12px] text-[var(--faint)]">
             {t("order.createdAt", { when: formatDateTime(order.createdAt) })}
           </p>
         </motion.section>
 
         {/* items + totals */}
         <motion.section variants={riseItem} className="nb p-4">
-          <h3 className="nb-up mb-3 flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-            <Package className="h-4 w-4" strokeWidth={2.5} /> {t("order.items")}
+          <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em] mb-3">
+            <Package className="h-4 w-4" strokeWidth={2.25} /> {t("order.items")}
           </h3>
           <div className="flex flex-col gap-3">
             {order.items.map((it, i) => (
               <div key={it.id ?? i} className="flex items-center gap-3">
-                <div className="h-16 w-16 shrink-0 overflow-hidden border-[2.5px] border-[var(--line)]">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
                   <Image
                     src={it.imageUrl}
                     alt={it.title}
@@ -209,16 +209,16 @@ function OrderBody({
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-[14px] font-bold text-[var(--ink)]">
+                  <p className="line-clamp-2 text-[14px] font-semibold text-[var(--ink)]">
                     {it.gift && (
-                      <span className="mr-1 inline-block rounded-[var(--r)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-black uppercase text-[var(--accent-ink)]">
+                      <span className="font-display mr-1 inline-block rounded-full bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
                         {t("order.giftBadge")}
                       </span>
                     )}
                     {it.title}
                   </p>
                   {it.variantName && (
-                    <p className="text-[12px] font-semibold text-[var(--muted)]">
+                    <p className="text-[12px] text-[var(--muted)]">
                       {it.variantName}
                     </p>
                   )}
@@ -230,7 +230,7 @@ function OrderBody({
                       : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
                   </p>
                 </div>
-                <span className="shrink-0 text-[14px] font-black text-[var(--ink)]">
+                <span className="font-display shrink-0 text-[14px] font-bold tabular-nums text-[var(--ink)]">
                   {it.gift
                     ? "0 ₴"
                     : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
@@ -239,7 +239,7 @@ function OrderBody({
             ))}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2 border-t-[3px] border-[var(--line)] pt-3">
+          <div className="mt-4 flex flex-col gap-2 border-t border-[var(--line)] pt-3">
             <TotalRow
               label={t("order.sum")}
               value={money(order.subtotalMinor, order.currency)}
@@ -304,8 +304,8 @@ function OrderBody({
         {/* requisites */}
         {order.requisites && hasAnyRequisite(order.requisites) && (
           <motion.section variants={riseItem} className="nb p-4">
-            <h3 className="nb-up mb-3 flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-              <CreditCard className="h-4 w-4" strokeWidth={2.5} />{" "}
+            <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em] mb-3">
+              <CreditCard className="h-4 w-4" strokeWidth={2.25} />{" "}
               {t("order.requisitesTitle")}
             </h3>
             <div className="flex flex-col gap-3">
@@ -334,23 +334,23 @@ function OrderBody({
         {/* payment: confirmed / awaiting confirmation / upload a receipt */}
         <motion.section variants={riseItem}>
           {order.paid ? (
-            <div className="nb flex items-center gap-2 bg-[var(--c4)] p-4">
+            <div className="nb flex items-center gap-2 border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_12%,var(--surface))] p-4">
               <CheckCircle2
-                className="h-5 w-5 shrink-0 text-[var(--accent-ink)]"
-                strokeWidth={2.75}
+                className="h-5 w-5 shrink-0 text-[var(--ok)]"
+                strokeWidth={2.25}
               />
-              <span className="nb-up text-[14px] font-black text-[var(--accent-ink)]">
+              <span className="nb-up text-[14px] font-bold text-[var(--ok)]">
                 {t("order.paymentConfirmed")}
               </span>
             </div>
           ) : order.paymentClaimed ? (
-            <div className="nb flex items-start gap-2 bg-[var(--c3)] p-4">
-              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ink)]" strokeWidth={2.75} />
+            <div className="nb flex items-start gap-2 border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,var(--surface))] p-4">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2.25} />
               <div>
-                <span className="nb-up block text-[14px] font-black text-[var(--ink)]">
+                <span className="nb-up block text-[14px] font-bold text-[var(--warn)]">
                   {t("order.paymentClaimed")}
                 </span>
-                <p className="mt-1 text-[12px] font-semibold text-[var(--ink)]">
+                <p className="mt-1 text-[12px] text-[var(--ink)]">
                   {t("order.paymentClaimedText")}
                 </p>
               </div>
@@ -371,7 +371,7 @@ function OrderBody({
       {/* sticky chat CTA — within thumb reach, above the TabBar */}
       <div
         className="fixed inset-x-0 z-30 mx-auto max-w-[480px] px-4"
-        style={{ bottom: "calc(84px + var(--safe-bottom))" }}
+        style={{ bottom: "calc(var(--tabbar-h) + var(--safe-bottom))" }}
       >
         <Link
           href={`/account/orders/${id}/chat`}
@@ -381,7 +381,7 @@ function OrderBody({
           <Button
             variant="accent"
             fullWidth
-            icon={<MessageCircle className="h-4 w-4" strokeWidth={2.75} />}
+            icon={<MessageCircle className="h-4 w-4" strokeWidth={2.5} />}
           >
             {t("order.openChat")}
           </Button>
@@ -407,22 +407,22 @@ function TotalRow({
       <span
         className={
           strong
-            ? "nb-up text-[14px] font-black text-[var(--ink)]"
-            : "text-[13px] font-semibold text-[var(--muted)]"
+            ? "nb-up text-[14px] font-bold text-[var(--ink)]"
+            : "text-[13px] text-[var(--muted)]"
         }
       >
         {label}
       </span>
       {strong ? (
-        <span className="border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[16px] font-black text-[var(--ink)]">
+        <span className="font-display text-[19px] font-bold tabular-nums text-[var(--accent)]">
           {value}
         </span>
       ) : (
         <span
           className={
             discount
-              ? "text-[13px] font-black text-[var(--ok)]"
-              : "text-[13px] font-bold text-[var(--ink)]"
+              ? "font-display text-[13px] font-bold tabular-nums text-[var(--ok)]"
+              : "font-display text-[13px] font-semibold tabular-nums text-[var(--ink)]"
           }
         >
           {value}
@@ -447,10 +447,10 @@ function InfoRow({
         <span className="mt-0.5 shrink-0 text-[var(--accent)]">{icon}</span>
       )}
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="nb-up text-[11px] font-bold text-[var(--faint)]">
+        <span className="font-display text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
           {label}
         </span>
-        <span className="break-words text-[14px] font-semibold text-[var(--ink)]">
+        <span className="break-words text-[14px] text-[var(--ink)]">
           {value}
         </span>
       </div>
@@ -463,10 +463,10 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="nb-up text-[11px] font-bold text-[var(--faint)]">
+        <span className="font-display text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
           {label}
         </span>
-        <span className="break-words text-[14px] font-black text-[var(--ink)]">
+        <span className="font-display break-words text-[15px] font-semibold tracking-[0.02em] text-[var(--ink)]">
           {value}
         </span>
       </div>
@@ -493,7 +493,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       type="button"
       onClick={onCopy}
       aria-label={t("order.copy", { label })}
-      className="tap nb-flat nb-press flex h-9 w-9 shrink-0 items-center justify-center bg-[var(--surface)] text-[var(--ink)]"
+      className="tap nb-press flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
     >
       {copied ? (
         <Check className="h-4 w-4 text-[var(--ok)]" strokeWidth={2.75} />
@@ -512,7 +512,7 @@ function PaidBadge({ state }: { state: PaymentState }) {
   const t = useT();
   if (state === "PAID") {
     return (
-      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c4)] px-2 py-0.5 text-[11px] font-black text-[var(--accent-ink)]">
+      <span className="nb-up flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--ok)]">
         <Check className="h-3 w-3" strokeWidth={3} />
         {t("payment.paid")}
       </span>
@@ -520,14 +520,14 @@ function PaidBadge({ state }: { state: PaymentState }) {
   }
   if (state === "PARTIAL" || state === "CLAIMED") {
     return (
-      <span className="nb-up flex shrink-0 items-center gap-1 border-[2.5px] border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[11px] font-black text-[var(--ink)]">
+      <span className="nb-up flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--warn)]">
         <Clock className="h-3 w-3" strokeWidth={3} />
         {state === "PARTIAL" ? t("payment.partial") : t("payment.claimed")}
       </span>
     );
   }
   return (
-    <span className="nb-up shrink-0 border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-black text-[var(--muted)]">
+    <span className="nb-up shrink-0 rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--muted)]">
       {t("payment.unpaid")}
     </span>
   );
@@ -578,10 +578,10 @@ function PaymentProof({
 
   return (
     <div className="nb p-4 text-left">
-      <h3 className="nb-up flex items-center gap-2 text-[12px] font-black text-[var(--faint)]">
-        <Upload className="h-4 w-4" strokeWidth={2.5} /> {t("order.proof.title")}
+      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
+        <Upload className="h-4 w-4" strokeWidth={2.25} /> {t("order.proof.title")}
       </h3>
-      <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
+      <p className="mt-1.5 mb-3 text-[12px] text-[var(--muted)]">
         {t("order.proof.text")}
       </p>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
@@ -589,7 +589,7 @@ function PaymentProof({
         variant="accent"
         fullWidth
         loading={state === "uploading"}
-        icon={<Upload className="h-4 w-4" strokeWidth={2.75} />}
+        icon={<Upload className="h-4 w-4" strokeWidth={2.5} />}
         onClick={() => inputRef.current?.click()}
       >
         {t("order.proof.upload")}
@@ -650,10 +650,9 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           haptic();
           setOpen(true);
         }}
-        className="tap nb-flat nb-press flex w-full items-center justify-center gap-2 py-3 text-[13px] font-extrabold uppercase tracking-wide text-[var(--danger)]"
-        style={{ borderColor: "var(--danger)" }}
+        className="font-display tap nb-press flex w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-transparent py-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--danger)]"
       >
-        <Ban className="h-4 w-4" strokeWidth={2.75} /> {t("cancel.button")}
+        <Ban className="h-4 w-4" strokeWidth={2.25} /> {t("cancel.button")}
       </button>
     );
   }
@@ -663,7 +662,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
 
   return (
     <div className="nb p-4">
-      <h3 className="nb-up text-[12px] font-black text-[var(--faint)]">
+      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
         {t("cancel.title")}
       </h3>
       <div className="mt-3 flex flex-col gap-2">
@@ -677,19 +676,19 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
                 haptic();
                 setReason(r.id);
               }}
-              className={`tap flex items-center gap-2.5 border-[2.5px] border-[var(--line)] px-3 py-2.5 text-left text-[13px] font-bold ${
+              className={`tap flex items-center gap-2.5 rounded-[var(--r)] border px-3 py-2.5 text-left text-[13px] font-medium ${
                 on
-                  ? "bg-[var(--accent)] text-[var(--accent-ink)]"
-                  : "bg-[var(--surface)] text-[var(--ink)]"
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]"
+                  : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
               }`}
             >
               <span
-                className={`grid h-4 w-4 shrink-0 place-items-center border-[2px] border-[var(--line)] ${
-                  on ? "bg-[var(--accent-ink)]" : ""
+                className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border-[1.5px] ${
+                  on ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line-strong)]"
                 }`}
               >
                 {on && (
-                  <Check className="h-3 w-3 text-[var(--accent)]" strokeWidth={3} />
+                  <Check className="h-2.5 w-2.5 text-[var(--accent-ink)]" strokeWidth={4} />
                 )}
               </span>
               {t(`cancel.reason.${r.id}`)}
@@ -703,7 +702,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           onChange={(e) => setOther(e.target.value)}
           placeholder={t("cancel.otherPlaceholder")}
           rows={2}
-          className="mt-2 w-full resize-none border-[2.5px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)]"
+          className="mt-2 w-full resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
         />
       )}
       {err && (
@@ -713,7 +712,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="tap nb-flat nb-press flex-1 py-2.5 text-[13px] font-extrabold uppercase text-[var(--ink)]"
+          className="font-display tap nb-press flex-1 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] py-2.5 text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink)]"
         >
           {t("common.back")}
         </button>
@@ -721,7 +720,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           type="button"
           disabled={confirmDisabled}
           onClick={confirm}
-          className="tap nb-press flex-1 border-[3px] border-[var(--line)] py-2.5 text-[13px] font-black uppercase text-white shadow-[4px_4px_0_var(--shadow)] disabled:opacity-50"
+          className="font-display tap nb-press flex-1 rounded-[var(--r)] py-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-white disabled:opacity-50"
           style={{ background: "var(--danger)" }}
         >
           {busy ? "…" : t("cancel.button")}

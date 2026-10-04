@@ -1,13 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Exo_2, Inter } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import { TabBar } from "@/components/TabBar";
 import "./globals.css";
 
+// Body text and fields.
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-inter",
+  variable: "--font-body",
+  display: "swap",
+});
+
+// Display face (DESIGN-V3 §3): headings, buttons, prices, tabs, chips. No 900 in Exo 2 — 800 is
+// the heaviest; italic 800 is only for the ChiSetup wordmark (faces are fetched on use only).
+const exo = Exo_2({
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -15,8 +26,8 @@ export const metadata: Metadata = {
   // The brand, not a translated word: metadata is rendered on the server with no language, and
   // Next re-asserts it on updates, so a client-side override does not stick. A brand name is the
   // right title anyway — it reads the same in all three languages.
-  title: "MAXSOLCH",
-  description: "Telegram Mini App",
+  title: "ChiSetup",
+  description: "ChiSetup — ігрові девайси для твого сетапу",
 };
 
 export const viewport: Viewport = {
@@ -26,12 +37,8 @@ export const viewport: Viewport = {
   // anyone who needs to magnify it. The layout is already mobile-first, so zoom is not needed to
   // use the shop — only to read it comfortably.
   viewportFit: "cover", // safe-area insets (notch)
-  // Matches the light theme the app actually defaults to (it used to declare a dark colour,
-  // so Telegram tinted its chrome dark around a light page).
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F4F1E6" },
-    { media: "(prefers-color-scheme: dark)", color: "#26262B" },
-  ],
+  // One dark theme (v3): Telegram tints its chrome with this around the page.
+  themeColor: "#0E0E10",
 };
 
 // DEV ONLY — see the comment at the injection site in <head> below.
@@ -65,15 +72,8 @@ export default function RootLayout({
   return (
     // lang is rewritten by I18nProvider; "uk" here matches the app's own fallback so the
     // first paint is not lying about the most common case.
-    <html lang="uk" className={inter.variable} suppressHydrationWarning>
+    <html lang="uk" className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
       <head>
-        {/* Apply the stored neo theme before paint (default light). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "(function(){try{var t=localStorage.getItem('neo-theme');document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');}catch(e){document.documentElement.setAttribute('data-theme','light');}})();",
-          }}
-        />
         {/* DEV ONLY. Outside Telegram there is no window.Telegram.WebApp, so the Mini App stays
             unauthenticated and half the screens cannot be opened — which made UI defects
             impossible to reproduce locally or in Playwright. ?tgstub=<telegramUserId> installs a
@@ -109,7 +109,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/* Zhivoy gradientnyy "scene" background za steklom (design doc §8.2) */}
+        {/* Static ChiSetup backdrop: graphite + HUD grid + orange corner strips (DESIGN-V3 §4). */}
         <div className="scene" aria-hidden />
         <Providers>
           {/* Tsentrirovannyy container, max-width ~480px (design doc §8bis.1).

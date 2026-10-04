@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * AddToCartControl — "add → −qty+" morph control (NEO-BRUTALISM).
+ * AddToCartControl — "add → −qty+" morph control (ChiSetup).
  * Cart logic is UNCHANGED (add / inc / dec, keyed by productId::variantId,
  * minus-at-1 removes the line, + clamps to stock, stopPropagation in cards).
- * Only the styling is neo: sharp corners, thick borders, hard shadow, press.
+ * Only the styling changed: chamfered orange CTA, quiet graphite stepper, soft press.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
@@ -51,9 +51,9 @@ export function AddToCartControl({
         type="button"
         disabled
         onClick={stop}
-        className={`nb-flat nb-up inline-flex items-center justify-center gap-2 px-4 font-extrabold text-[var(--muted)] opacity-70 ${h} ${fullWidth ? "w-full" : ""}`}
+        className={`nb-up inline-flex items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-4 font-semibold text-[var(--faint)] ${h} ${fullWidth ? "w-full" : ""}`}
       >
-        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         {needsVariant ? t("addToCart.chooseVariant") : t("product.outOfStock")}
       </button>
     );
@@ -72,7 +72,7 @@ export function AddToCartControl({
         }}
         className={`nb-accent nb-press nb-up inline-flex items-center justify-center gap-2 px-4 ${h} ${fullWidth ? "w-full" : ""}`}
       >
-        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.5} />
         {t("addToCart.add")}
       </button>
     );
@@ -84,7 +84,7 @@ export function AddToCartControl({
   return (
     <div
       onClick={stop}
-      className={`nb-flat inline-flex items-center justify-between p-1 ${fullWidth ? "w-full" : ""}`}
+      className={`inline-flex items-center justify-between rounded-[calc(var(--r)+4px)] border border-[var(--line)] bg-[var(--surface-2)] p-1 ${fullWidth ? "w-full" : ""}`}
     >
       <button
         type="button"
@@ -94,12 +94,12 @@ export function AddToCartControl({
           haptic();
           dec(key);
         }}
-        className={`nb-press grid place-items-center border-[2.5px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] ${btnDim}`}
+        className={`nb-press grid place-items-center rounded-[var(--r)] bg-[var(--surface-3)] text-[var(--ink)] ${btnDim}`}
       >
-        <Minus className="h-4 w-4" strokeWidth={3} />
+        <Minus className="h-4 w-4" strokeWidth={2.5} />
       </button>
 
-      <span className={`relative text-center font-black tabular-nums text-[var(--ink)] ${numDim}`}>
+      <span className={`font-display relative text-center font-bold tabular-nums text-[var(--ink)] ${numDim}`}>
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={qty}
@@ -123,10 +123,10 @@ export function AddToCartControl({
           haptic();
           inc(key);
         }}
-        className={`nb-press grid place-items-center border-[2.5px] border-[var(--line)] text-[var(--accent-ink)] transition-opacity disabled:opacity-30 ${btnDim}`}
+        className={`nb-press grid place-items-center rounded-[var(--r)] text-[var(--accent-ink)] transition-opacity disabled:opacity-30 ${btnDim}`}
         style={{ background: "var(--accent)" }}
       >
-        <Plus className="h-4 w-4" strokeWidth={3} />
+        <Plus className="h-4 w-4" strokeWidth={2.75} />
       </button>
     </div>
   );

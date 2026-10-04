@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * NotificationsBell — NEO-BRUTALISM envelope button for the headers.
+ * NotificationsBell — ChiSetup envelope button for the headers.
  * Polls GET /api/me/unread-count (~20s). HIDDEN entirely when nothing is unread;
  * when there are unread messages it shows the envelope + count badge and opens
  * the NotificationsModal (conversations inbox) on tap. Query key + polling and
@@ -50,15 +50,15 @@ export function NotificationsBell() {
             }}
             aria-label={t("notifications.unread", { n: count })}
             title={t("notifications.unread", { n: count })}
-            className="tap relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r)] border-[2.5px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none"
+            className="tap relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
           >
-            <Mail className="h-5 w-5" strokeWidth={2.5} />
+            <Mail className="h-5 w-5" strokeWidth={2.25} />
             <motion.span
               key={count}
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 600, damping: 24 }}
-              className="absolute -right-1.5 -top-1.5 flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r)] border-[2px] border-[var(--line)] bg-[var(--accent)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+              className="font-display absolute -right-1.5 -top-1.5 flex h-[20px] min-w-[20px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] shadow-[0_0_10px_rgba(255,102,0,.55)] ring-2 ring-[var(--bg)]"
               aria-hidden
             >
               {count > 99 ? "99+" : count}

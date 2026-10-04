@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Language switch — a compact chip in the catalog header, next to the theme toggle.
+ * Language switch — a compact chip in the catalog header.
  *
  * Two design decisions worth keeping:
  *
@@ -44,10 +44,9 @@ export function LanguageToggle() {
           setOpen(true);
         }}
         aria-label={t("lang.switch")}
-        className="nb nb-press tap grid h-11 w-11 shrink-0 place-items-center text-[var(--ink)]"
-        style={{ background: "var(--surface)" }}
+        className="nb-press tap grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[var(--line-strong)]"
       >
-        <span className="text-[13px] font-black leading-none">{LOCALE_SHORT[locale]}</span>
+        <span className="font-display text-[13px] font-bold leading-none tracking-[0.04em]">{LOCALE_SHORT[locale]}</span>
       </button>
 
       {mounted &&
@@ -60,7 +59,7 @@ export function LanguageToggle() {
                 animate="animate"
                 exit="exit"
                 onClick={() => setOpen(false)}
-                className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/50"
+                className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/60 backdrop-blur-[6px]"
               >
                 <motion.div
                   variants={sheetVariants}
@@ -68,11 +67,11 @@ export function LanguageToggle() {
                   animate="animate"
                   exit="exit"
                   onClick={(e) => e.stopPropagation()}
-                  className="nb-lg mx-3 mb-3 w-full max-w-[456px] p-3"
+                  className="nb-lg mx-3 mb-3 w-full max-w-[456px] rounded-[16px] border-[var(--line-strong)] p-3"
                   style={{ marginBottom: "calc(12px + var(--safe-bottom))" }}
                 >
-                  <h2 className="nb-up mb-3 flex items-center gap-2 px-1 text-[12px] font-black text-[var(--faint)]">
-                    <Globe className="h-4 w-4" strokeWidth={2.75} />
+                  <h2 className="eyebrow mb-3 flex items-center gap-2 px-1 pt-1">
+                    <Globe className="h-4 w-4" strokeWidth={2.25} />
                     {t("lang.title")}
                   </h2>
 
@@ -85,17 +84,17 @@ export function LanguageToggle() {
                           type="button"
                           onClick={() => choose(code)}
                           lang={code}
-                          className={`tap flex items-center gap-3 border-[2.5px] border-[var(--line)] px-3 py-3 text-left text-[15px] font-bold transition-transform active:translate-x-[2px] active:translate-y-[2px] ${
+                          className={`tap flex items-center gap-3 rounded-[var(--r)] border px-3 py-3 text-left text-[15px] font-semibold transition-[transform,background-color,border-color] active:scale-[.98] ${
                             on
-                              ? "bg-[var(--accent)] text-[var(--accent-ink)]"
-                              : "bg-[var(--surface)] text-[var(--ink)]"
+                              ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                              : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
                           }`}
                         >
-                          <span className="w-8 shrink-0 text-[12px] font-black opacity-70">
+                          <span className="font-display w-8 shrink-0 text-[12px] font-bold opacity-70">
                             {LOCALE_SHORT[code]}
                           </span>
                           <span className="flex-1">{LOCALE_NAME[code]}</span>
-                          {on && <Check className="h-5 w-5 shrink-0" strokeWidth={3} />}
+                          {on && <Check className="h-5 w-5 shrink-0" strokeWidth={2.5} />}
                         </button>
                       );
                     })}
@@ -121,8 +120,8 @@ export function LanguageSegments() {
 
   return (
     <div className="nb p-3">
-      <h2 className="nb-up mb-2.5 flex items-center gap-2 px-0.5 text-[12px] font-black text-[var(--faint)]">
-        <Globe className="h-4 w-4" strokeWidth={2.75} />
+      <h2 className="eyebrow mb-2.5 flex items-center gap-2 px-0.5">
+        <Globe className="h-4 w-4" strokeWidth={2.25} />
         {t("lang.title")}
       </h2>
       <div className="flex gap-2">
@@ -137,10 +136,10 @@ export function LanguageSegments() {
                 haptic();
                 if (code !== locale) setLocale(code);
               }}
-              className={`tap min-h-0 flex-1 border-[2.5px] border-[var(--line)] px-2 py-2 text-[13px] font-extrabold transition-transform active:translate-x-[2px] active:translate-y-[2px] ${
+              className={`font-display tap min-h-0 flex-1 rounded-[var(--r)] border px-2 py-2 text-[13px] font-semibold transition-[transform,background-color,border-color] active:scale-[.98] ${
                 on
-                  ? "bg-[var(--accent)] text-[var(--accent-ink)]"
-                  : "bg-[var(--surface)] text-[var(--ink)]"
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                  : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
               }`}
             >
               {LOCALE_NAME[code]}

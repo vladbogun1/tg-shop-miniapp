@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * StepProgress — compact NEO-BRUTALISM step indicator for the checkout header.
+ * StepProgress — compact ChiSetup step indicator for the checkout header.
  *
  * It used to be a full-width bordered card with 32px numbered chips, a connecting rail and a
  * caption under every step. Together with the separate title row it ate roughly a sixth of a
@@ -27,10 +27,10 @@ export function StepProgress({
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between gap-2">
-        <h1 className="truncate text-[17px] font-black uppercase leading-tight tracking-wide text-[var(--ink)]">
+        <h1 className="font-display truncate text-[17px] font-extrabold uppercase leading-tight tracking-[0.04em] text-[var(--ink)]">
           {steps[current] ?? ""}
         </h1>
-        <span className="shrink-0 text-[11px] font-black uppercase tracking-wide text-[var(--faint)]">
+        <span className="font-display shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)] tabular-nums">
           {t("checkout.stepCounter", { current: current + 1, total: steps.length })}
         </span>
       </div>
@@ -40,9 +40,10 @@ export function StepProgress({
           <motion.span
             key={label}
             aria-hidden
-            className="h-[7px] flex-1 border-[2px] border-[var(--line)]"
+            className="h-[3px] flex-1 rounded-full"
+            style={{ boxShadow: i === current ? "0 0 8px rgba(255,102,0,.6)" : "none" }}
             initial={false}
-            animate={{ backgroundColor: i <= current ? "var(--accent)" : "var(--surface)" }}
+            animate={{ backgroundColor: i <= current ? "#FF6600" : "#2A2A2D" }}
             transition={spring}
           />
         ))}

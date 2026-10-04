@@ -1,44 +1,58 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   NEO-BRUTALISM — customer Mini App
+   ChiSetup — Gaming Gear & Setup (v3). Customer Mini App.
    ----------------------------------------------------------------------------
-   Thick ink borders, hard offset shadows (no blur), sharp corners, raw bold
-   colors, heavy type. Light by default; dark via [data-theme="dark"].
+   One dark theme: graphite surfaces, hairline borders, a single orange accent
+   with a soft glow, chamfered CTAs and HUD "bracket" frames. Contract:
+   docs/DESIGN-V3.md (§2 tokens, §3 type, §4 scene/HUD, §5 primitives).
    ============================================================================ */
 
-:root,
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #F4F1E6;
-  --ink: #141414;
-  --surface: #FFFFFF;
-  --surface-2: #F1EEE3;
-  --line: #141414;
-  --shadow: #141414;
-  --muted: #6E6A5E;
-  --faint: #9A968A;
+:root {
+  color-scheme: dark;
 
-  --accent: #FF5A2C;   /* orange */
-  --c2: #2F6BFF;       /* blue */
-  --c3: #FFD23F;       /* yellow */
-  --c4: #16B36B;       /* green */
-  --c5: #FF73B5;       /* pink */
-  --accent-ink: #141414;
+  /* Surfaces: page → raised layers */
+  --bg: #0E0E10;
+  --surface: #1A1A1A;
+  --surface-2: #222222;
+  --surface-3: #2A2A2D;
+  --line: rgba(255, 255, 255, .08);
+  --line-strong: rgba(255, 255, 255, .16);
+  --shadow: rgba(0, 0, 0, .55);
 
-  --ok: #16B36B;
-  --warn: #E8A300;
-  --danger: #E5341F;
+  /* Text */
+  --ink: #FFFFFF;
+  --muted: #A1A1AA;
+  --faint: #6B6B73;
 
-  /* Order-status hues — distinct & identical to the admin (shared identity).
-     Chips carry an ink border + dark text, so these read on light & dark. */
-  --st-new: #3F8CF5;       /* blue — new */
-  --st-approved: #9B6BFF;  /* violet — approved */
-  --st-shipped: #F5A623;   /* amber — shipped */
-  --st-delivered: #22C07D; /* green — delivered */
-  --st-rejected: #F0503C;  /* red — rejected */
+  /* Brand */
+  --accent: #FF6600;
+  --accent-hi: #FF8533;
+  --accent-lo: #E65C00;
+  --accent-ink: #0E0E10;   /* text on orange is always dark: white on #FF6600 is only 2.9:1 */
+  --accent-soft: rgba(255, 102, 0, .12);
+  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
 
-  --r: 3px;            /* near-sharp corners */
+  /* Former multicolour accents collapse into the brand */
+  --c2: #A1A1AA;
+  --c3: #FF8533;
+  --c4: #22C55E;
+  --c5: #FF6600;
+
+  --ok: #22C55E;
+  --warn: #F59E0B;
+  --danger: #EF4444;
+
+  /* Order-status hues — functional, identical to the admin */
+  --st-new: #3F8CF5;
+  --st-approved: #9B6BFF;
+  --st-shipped: #F5A623;
+  --st-delivered: #22C07D;
+  --st-rejected: #F0503C;
+
+  --r: 6px;         /* controls */
+  --r-card: 12px;   /* cards, sheets */
+  --chamfer: 10px;  /* cut corner on CTAs and HUD frames */
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -46,30 +60,6 @@
   /* Height the bottom tab-bar occupies. TabBar rewrites it (0px when it hides itself), and
      every bottom-docked block reads it instead of repeating a magic 84px. */
   --tabbar-h: 84px;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  /* Greyer (not near-black) so the hard black offset shadows read on every block. */
-  --bg: #26262B;
-  --ink: #F4F1E6;
-  --surface: #34343B;
-  --surface-2: #2D2D33;
-  --line: #F4F1E6;
-  --shadow: #0A0A0C;
-  --muted: #AEACA6;
-  --faint: #79776F;
-
-  --accent: #FF6A3D;
-  --c2: #5B8BFF;
-  --c3: #FFD23F;
-  --c4: #2BD489;
-  --c5: #FF8AC4;
-  --accent-ink: #141414;
-
-  --ok: #2BD489;
-  --warn: #FFB627;
-  --danger: #FF5747;
 }
 
 @theme inline {
@@ -82,6 +72,13 @@
   --color-warn: var(--warn);
   --color-danger: var(--danger);
   --radius-nb: var(--r);
+  --radius-card: var(--r-card);
+}
+
+/* Exo 2 (display): headings, buttons, prices, tabs, chips, labels. `--font-display` is set by
+   next/font on <html>; Inter (`--font-body`) stays for running text and fields. */
+@utility font-display {
+  font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -89,93 +86,192 @@ html, body { margin: 0; padding: 0; min-height: 100%; }
 body {
   color: var(--ink);
   background: var(--bg);
-  font-family: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-family: var(--font-body), "Helvetica Neue", Arial, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
-/* "scene" → flat ink graph-paper grid over the bg (no aurora, no blur). */
+::selection { background: rgba(255, 102, 0, .35); color: #fff; }
+
+/* In @layer base so `outline-none` on fields (whose wrapper shows the focus ring) still wins. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* "scene": near-black graphite + a faint HUD grid that fades out towards the centre, two
+   orange diagonal "neon" strips in the corners and a soft orange spot under the header.
+   Static on purpose — animated fixed layers stutter in the iOS webview. */
 .scene {
   position: fixed;
   inset: 0;
   z-index: 0;
   background-color: var(--bg);
   background-image:
-    linear-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
-  background-size: 26px 26px;
-}
-
-/* ---------------------------------------------------------------------------
-   Neo primitives
-   --------------------------------------------------------------------------- */
-.nb {
-  background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: 5px 5px 0 var(--shadow);
-}
-/* Same block as .nb, only with a deeper shadow. It used to override box-shadow ALONE, so
-   `className="nb-lg"` without `nb` produced a borderless, transparent card and the page
-   showed through it (empty cart, cart summary bar, SoonPanel). Declaring the full block
-   here keeps `nb nb-lg` working and makes the standalone form correct too. */
-.nb-lg {
-  background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: 7px 7px 0 var(--shadow);
-}
-.nb-flat {
-  background: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-}
-.nb-accent {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: 5px 5px 0 var(--shadow);
-  font-weight: 800;
-}
-/* press = button drops into its shadow */
-.nb-press { transition: transform .07s ease, box-shadow .07s ease; }
-.nb-press:active { transform: translate(5px, 5px); box-shadow: 0 0 0 var(--shadow); }
-
-.nb-chip {
-  background: var(--surface);
-  border: 2.5px solid var(--line);
-  border-radius: var(--r);
-  font-weight: 700;
-  color: var(--ink);
-}
-.nb-chip-active {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.nb-up { text-transform: uppercase; letter-spacing: 0.02em; }
-
-/* Bright accent fills (yellow --c3) are light in BOTH themes → text/icons on
-   them must stay dark, never follow --ink (which flips to light in dark mode). */
-.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
-
-/* Skeleton */
-.shimmer {
-  position: relative;
+    radial-gradient(ellipse 70% 38% at 50% -6%, rgba(255, 102, 0, .10), transparent 70%);
   overflow: hidden;
-  background: var(--surface-2);
-  border: 3px solid var(--line);
-  border-radius: var(--r);
 }
-.shimmer::after {
+.scene::before {
   content: "";
   position: absolute;
   inset: 0;
-  transform: translateX(-100%);
-  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent);
-  animation: shimmer 1.4s infinite;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
+  mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
 }
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .35;
+  background-image:
+    /* bottom-right strips */
+    linear-gradient(135deg,
+      transparent 91%,
+      rgba(255, 102, 0, 0) 91%, rgba(255, 102, 0, .9) 91.35%, rgba(255, 102, 0, 0) 91.7%,
+      transparent 93.6%,
+      rgba(255, 102, 0, 0) 93.6%, rgba(255, 102, 0, .55) 93.8%, rgba(255, 102, 0, 0) 94%,
+      transparent 94%),
+    /* top-left strips */
+    linear-gradient(135deg,
+      transparent 6%,
+      rgba(255, 102, 0, 0) 6%, rgba(255, 102, 0, .55) 6.2%, rgba(255, 102, 0, 0) 6.4%,
+      transparent 8.3%,
+      rgba(255, 102, 0, 0) 8.3%, rgba(255, 102, 0, .9) 8.65%, rgba(255, 102, 0, 0) 9%,
+      transparent 9%);
+}
+
+/* ---------------------------------------------------------------------------
+   Primitives. In @layer components so a Tailwind utility on the same element wins
+   (`nb rounded-full`, `nb bg-…` do what they say).
+   --------------------------------------------------------------------------- */
+@layer components {
+  .nb {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    box-shadow: 0 8px 24px -12px var(--shadow);
+  }
+  /* A full block on its own as well (`nb-lg` without `nb` must not be transparent). */
+  .nb-lg {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    box-shadow: 0 18px 40px -16px var(--shadow), 0 2px 6px -2px rgba(0, 0, 0, .4);
+  }
+  .nb-flat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+  }
+  /* Primary CTA: solid orange, dark text, chamfered corners. A clip-path clips box-shadow, so
+     the "glow" here is a brighter fill rather than a halo. */
+  .nb-accent {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 0;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 700;
+    clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+  }
+  @media (hover: hover) {
+    .nb-accent:hover:not(:disabled) { background: var(--accent-hi); }
+  }
+  .nb-accent:active:not(:disabled) { background: var(--accent-lo); }
+
+  .nb-press { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease; }
+  .nb-press:active:not(:disabled) { transform: scale(.98); }
+
+  .nb-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .nb-chip-active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-hi);
+  }
+
+  .nb-up {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+  }
+
+  /* Eyebrow / meta label: "GAMING GEAR & SETUP" style. */
+  .eyebrow {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .28em;
+    color: var(--muted);
+  }
+
+  .chamfer {
+    clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+  }
+
+  /* HUD "brackets" like the ones around the logo: white top-left, orange bottom-right, both
+     with a cut corner. The host must not clip overflow (the brackets sit on its border). */
+  .hud-frame { position: relative; }
+  .hud-frame::before,
+  .hud-frame::after {
+    content: "";
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    pointer-events: none;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+  .hud-frame::before {
+    top: -3px;
+    left: -3px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M1.5 26V9.5L9.5 1.5H26' fill='none' stroke='%23FFFFFF' stroke-width='2.5'/%3E%3C/svg%3E");
+  }
+  .hud-frame::after {
+    right: -3px;
+    bottom: -3px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M24.5 0V16.5L16.5 24.5H0' fill='none' stroke='%23FF6600' stroke-width='2.5'/%3E%3C/svg%3E");
+    filter: drop-shadow(0 0 6px rgba(255, 102, 0, .6));
+  }
+
+  /* Skeleton */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-2);
+    border: 0;
+    border-radius: var(--r);
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+/* Light-orange fills (--c3) stay light → text/icons on them must be dark, never --ink (white). */
+.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
+
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
 .tap { min-width: 44px; min-height: 44px; }
@@ -189,3 +285,33 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Nova Poshta map (Leaflet): tiles stay light, chrome goes dark, clusters orange.
+   `.np-map` raises specificity over leaflet.markercluster's own CSS, which loads later.
+   --------------------------------------------------------------------------- */
+.np-map .leaflet-container { background: #2A2A2D; font-family: var(--font-body), system-ui, sans-serif; }
+.np-map .marker-cluster-small,
+.np-map .marker-cluster-medium,
+.np-map .marker-cluster-large { background-color: rgba(255, 102, 0, .28); }
+.np-map .marker-cluster-small div,
+.np-map .marker-cluster-medium div,
+.np-map .marker-cluster-large div {
+  background-color: #FF6600;
+  color: #0E0E10;
+  box-shadow: 0 0 12px rgba(255, 102, 0, .6);
+}
+.np-map .marker-cluster span {
+  font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+  font-weight: 700;
+}
+.np-map .leaflet-bar { border: 1px solid var(--line-strong); box-shadow: 0 6px 18px -6px rgba(0, 0, 0, .6); }
+.np-map .leaflet-bar a,
+.np-map .leaflet-bar a:hover {
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom-color: var(--line);
+}
+.np-map .leaflet-bar a.leaflet-disabled { background: var(--surface-2); color: var(--faint); }
+.np-map .leaflet-control-attribution { background: rgba(14, 14, 16, .7); color: var(--muted); }
+.np-map .leaflet-control-attribution a { color: var(--accent-hi); }

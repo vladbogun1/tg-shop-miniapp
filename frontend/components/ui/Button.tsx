@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Neo-Brutalism button: thick ink border and a hard offset shadow the button "drops into"
- * on press. Variants: surface (neutral) | accent (primary) | ghost (bare text).
+ * ChiSetup button (v3): Exo 2 caps label, hairline border, soft scale on press.
+ * Variants: surface (neutral) | accent (primary, chamfered orange) | ghost (bare text).
  */
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -20,7 +20,7 @@ interface Props extends Omit<HTMLMotionProps<"button">, "ref"> {
 }
 
 const base =
-  "tap relative inline-flex items-center justify-center gap-2 select-none rounded-[var(--r)] font-extrabold uppercase tracking-wide transition-transform disabled:opacity-50 disabled:pointer-events-none";
+  "tap font-display relative inline-flex items-center justify-center gap-2 select-none rounded-[var(--r)] font-bold uppercase tracking-[0.06em] transition-[transform,background-color,border-color] duration-150 active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none";
 
 const sizes: Record<"sm" | "md", string> = {
   sm: "min-h-[42px] px-3.5 py-2 text-[13px]",
@@ -29,9 +29,8 @@ const sizes: Record<"sm" | "md", string> = {
 
 const variants: Record<Variant, string> = {
   surface:
-    "border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
-  accent:
-    "border-[3px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none",
+    "border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.24)] active:bg-[var(--surface-3)]",
+  accent: "nb-accent",
   ghost: "text-[var(--muted)] hover:text-[var(--ink)] bg-transparent",
 };
 
