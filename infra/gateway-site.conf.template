@@ -103,6 +103,12 @@ server {
         }
         set $up_site site-public;
         proxy_pass http://$up_site:3000$request_uri;
+        # Next sends the same security headers (site/next.config.ts, kept for `next start` without
+        # this gateway); the server-level add_header above is the one copy clients should get.
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header Referrer-Policy;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
