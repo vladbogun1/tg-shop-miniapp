@@ -1,14 +1,15 @@
+# Invite bot, deployed from a released image (no build on the server).
+# INVITE_BOT_TAG in .env pins the release (e.g. 1.0.0); see README.md for release/rollback.
+#
+# Keep the service name `app` and container_name as they are: then `docker compose up -d`
+# replaces the running container instead of starting a second one. Two pollers with the
+# same BOT_TOKEN make Telegram answer 409 Conflict.
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch-invite-bot:${INVITE_BOT_TAG:-latest}
     container_name: telegram-maxsolch-invite-bot
     restart: unless-stopped
+    # BOT_TOKEN, BOT_USERNAME, LANDING_IMAGE_URL and the optional INVITE_* overrides.
+    env_file: .env
     environment:
       TZ: ${TZ:-Europe/Warsaw}
-      BOT_TOKEN: ${BOT_TOKEN}
-      BOT_USERNAME: ${BOT_USERNAME:-InviteLandingBot}
-      LANDING_IMAGE_URL: ${LANDING_IMAGE_URL:-https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80}
-    ports:
-      - "8077:8080"

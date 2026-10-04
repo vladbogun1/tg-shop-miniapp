@@ -16,5 +16,5 @@ ENV TZ=Europe/Warsaw
 
 COPY --from=build /app/target/app.jar /app/app.jar
 
-EXPOSE 8080
+# No EXPOSE: the bot uses long polling and has no HTTP server.
 ENTRYPOINT ["java","-jar","/app/app.jar"]
