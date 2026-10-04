@@ -126,7 +126,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-w-0 pb-28">
+    <div className="min-w-0">
       <PageHeader
         title="Настройки"
         subtitle="Параметры магазина, которые можно менять без деплоя. Токены, пароли и адреса сервисов здесь не показываются — они в .env на сервере."
@@ -181,14 +181,16 @@ export default function SettingsPage() {
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
             // Above the phone tab bar (--bottom-nav), which already covers the home-indicator inset.
-            style={{ bottom: "var(--bottom-nav)" }}
-            className="fixed inset-x-0 z-[55] border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:left-[260px] lg:px-7 lg:pb-[max(12px,env(safe-area-inset-bottom))]"
+            // Sticky inside the content column (not fixed to the viewport), so it follows the sidebar
+            // width whether it is expanded or collapsed to the rail.
+            style={{ bottom: "calc(var(--bottom-nav) + 12px)" }}
+            className="elevated sticky z-[55] mt-6 px-4 py-3"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0 text-[13px] font-bold text-[var(--text)]">
+              <div className="min-w-0 text-[13px] font-semibold text-[var(--text)]">
                 Несохранённых изменений: {dirtyItems.length}
                 {invalid && (
-                  <span className="block text-[12px] font-semibold text-[var(--danger)]">
+                  <span className="block text-[12px] font-semibold text-[var(--danger-ink)]">
                     Исправьте поля с ошибками
                   </span>
                 )}

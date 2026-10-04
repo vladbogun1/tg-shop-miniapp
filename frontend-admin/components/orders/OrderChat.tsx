@@ -4,8 +4,8 @@
  * OrderChat — embedded admin-side chat.
  *  - GET /api/admin/orders/{id}/messages on open (latest page, "Загрузить ранее" pages back with
  *    before=), mark read — also for customer messages arriving while the chat is open.
- *  - Neo bubbles with hard edges (ADMIN outgoing = accent fill/dark text,
- *    CUSTOMER incoming = surface + ink border, SYSTEM = centered).
+ *  - v3 bubbles (DESIGN-V3 §6): ADMIN outgoing = --accent-soft + 2px orange bar on the left,
+ *    CUSTOMER incoming = --surface-2 + hairline, SYSTEM = centered neutral chip.
  *  - Realtime via STOMP /topic/orders/{id}/chat.
  *  - Attachment upload via /api/admin/uploads -> attachmentUrl.
  *  - Send hits POST .../messages (backend pings customer bot).
@@ -44,7 +44,7 @@ function Bubble({
   if (m.senderType === "SYSTEM") {
     return (
       <div className="my-1 flex justify-center">
-        <span className="rounded-[var(--r-sm)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] px-2.5 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+        <span className="font-display max-w-[90%] rounded-full bg-[var(--surface-3)] px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
           {m.text}
         </span>
       </div>
@@ -60,17 +60,17 @@ function Bubble({
     >
       <div
         className={cn(
-          "max-w-[78%] rounded-[var(--r-md)] border-2 border-[var(--line)] px-3 py-2 text-[14px] shadow-[var(--shadow-1)]",
+          "max-w-[78%] px-3 py-2 text-[14px] text-[var(--text)]",
           mine
-            ? "bg-[var(--accent)] text-[var(--accent-ink)]"
-            : "bg-[var(--surface)] text-[var(--text)]"
+            ? "rounded-[var(--r-sm)] rounded-tl-[2px] rounded-bl-[2px] border-l-2 border-[var(--accent)] bg-[var(--accent-soft)]"
+            : "rounded-[var(--r-lg)] rounded-tl-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)]"
         )}
       >
         {m.attachmentUrl && m.type === "PHOTO" && (
           <button
             type="button"
             onClick={() => onOpenImage(resolveImageFull(m.attachmentUrl!))}
-            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+            className="group relative mb-1 block cursor-zoom-in overflow-hidden rounded-[var(--r-sm)] border border-[var(--line)]"
             title="Открыть полностью"
           >
             <img
@@ -85,7 +85,7 @@ function Bubble({
             href={resolveImageSrc(m.attachmentUrl)}
             target="_blank"
             rel="noreferrer"
-            className="mb-1 flex items-center gap-1.5 underline"
+            className="mb-1 flex items-center gap-1.5 text-[var(--accent-hi)] underline"
           >
             <FileText className="h-4 w-4" />
             {m.fileName ?? "файл"}
@@ -94,14 +94,13 @@ function Bubble({
         {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
         <div
           className={cn(
-            "mt-1 flex items-center justify-end gap-1 text-[10px]",
-            mine ? "text-[var(--accent-ink)]/70" : "text-[var(--text-faint)]"
+            "tabular mt-1 flex items-center justify-end gap-1 text-[10px] text-[var(--text-faint)]"
           )}
         >
           <span>{timeOf(m.createdAt)}</span>
           {mine &&
             (m.readAt ? (
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-3.5 w-3.5 text-[var(--accent-hi)]" />
             ) : (
               <Check className="h-3.5 w-3.5" />
             ))}
@@ -316,7 +315,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
           </div>
         )}
         {messages.length === 0 && (
-          <div className="my-auto text-center text-[13px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+          <div className="font-display my-auto text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
             Сообщений пока нет
           </div>
         )}
@@ -332,14 +331,14 @@ export function OrderChat({ orderId }: { orderId: string }) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="nb-press grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-50"
+          className="nb-press grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] disabled:opacity-50"
           aria-label="Прикрепить"
         >
           <Paperclip className="h-5 w-5" />
         </button>
         <button
           onClick={() => setTemplatesOpen(true)}
-          className="nb-press grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
+          className="nb-press grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
           aria-label="Шаблоны ответов"
           title="Шаблоны ответов"
         >
@@ -362,14 +361,14 @@ export function OrderChat({ orderId }: { orderId: string }) {
           placeholder={
             coarse ? "Сообщение клиенту…" : "Сообщение клиенту… (Shift+Enter — новая строка, можно вставить фото)"
           }
-          className="thin-scroll max-h-32 min-w-0 flex-1 resize-none rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-[14px] text-[var(--text)] outline-none transition-all placeholder:text-[var(--text-faint)] focus:shadow-[var(--ring-accent)]"
+          className="thin-scroll max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-[11px] text-[14px] leading-5 text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:truncate placeholder:text-[13px] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
         />
         <Button
           variant="accent"
           onClick={send}
           loading={sending}
           aria-label="Отправить"
-          className="h-11 w-11 shrink-0 rounded-[var(--r-md)] p-0"
+          className="!h-11 !w-11 shrink-0 !rounded-[var(--r-md)] !p-0"
           icon={<Send className="h-5 w-5" />}
         />
       </div>

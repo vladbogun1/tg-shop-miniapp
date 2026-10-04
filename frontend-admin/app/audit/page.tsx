@@ -143,31 +143,31 @@ export default function AuditPage() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="card thin-scroll hidden overflow-x-auto p-0 md:block">
-              <table className="w-full min-w-[760px] text-left text-[13px]">
+            <div className="card thin-scroll hidden overflow-hidden overflow-x-auto p-0 md:block">
+              <table className="data-table min-w-[760px]">
                 <thead>
-                  <tr className="border-b-[3px] border-[var(--line)] text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">
-                    <th className="px-3 py-2.5">Когда</th>
-                    <th className="px-3 py-2.5">Кто</th>
-                    <th className="px-3 py-2.5">Действие</th>
-                    <th className="px-3 py-2.5">Объект</th>
-                    <th className="px-3 py-2.5">Подробности</th>
+                  <tr>
+                    <th>Когда</th>
+                    <th>Кто</th>
+                    <th>Действие</th>
+                    <th>Объект</th>
+                    <th>Подробности</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((e) => (
-                    <tr key={e.id} className="border-b-2 border-[var(--border-2)] align-top last:border-b-0">
-                      <td className="whitespace-nowrap px-3 py-2.5 text-[var(--text-muted)]">
+                    <tr key={e.id} className="[&>td]:align-top">
+                      <td className="tabular whitespace-nowrap text-[var(--text-muted)]">
                         {formatDateTime(e.createdAt)}
                       </td>
-                      <td className="px-3 py-2.5 font-bold text-[var(--text)]">{who(e)}</td>
-                      <td className="px-3 py-2.5">
+                      <td className="font-semibold">{who(e)}</td>
+                      <td>
                         <ActionBadge code={e.action} />
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td>
                         <EntityCell e={e} />
                       </td>
-                      <td className="max-w-[420px] break-words px-3 py-2.5 text-[var(--text)]">{e.details || "—"}</td>
+                      <td className="max-w-[420px] break-words">{e.details || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -180,9 +180,9 @@ export default function AuditPage() {
                 <div key={e.id} className="card p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <ActionBadge code={e.action} />
-                    <span className="text-[12px] text-[var(--text-muted)]">{formatDateTime(e.createdAt)}</span>
+                    <span className="tabular text-[12px] text-[var(--text-muted)]">{formatDateTime(e.createdAt)}</span>
                   </div>
-                  <div className="mt-1.5 text-[13px] font-bold text-[var(--text)]">{who(e)}</div>
+                  <div className="mt-1.5 text-[13px] font-semibold text-[var(--text)]">{who(e)}</div>
                   {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text)]">{e.details}</p>}
                   <div className="mt-1.5">
                     <EntityCell e={e} />
@@ -192,7 +192,7 @@ export default function AuditPage() {
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+              <span className="field-label tabular !text-[var(--text-faint)]">
                 Показано: {rows.length}
               </span>
               {logQ.hasNextPage && (
@@ -230,10 +230,10 @@ function EntityCell({ e }: { e: AuditEntry }) {
   const id = e.entityId ? (e.entityId.length > 12 ? `#${e.entityId.slice(0, 8)}` : e.entityId) : null;
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--text-muted)]")}>
-      <span className="font-bold uppercase tracking-wide">{auditEntityLabel(e.entityType)}</span>
+      <span className="font-display text-[11px] font-semibold uppercase tracking-[0.06em]">{auditEntityLabel(e.entityType)}</span>
       {id &&
         (href ? (
-          <Link href={href} className="hit inline-flex items-center gap-0.5 font-mono text-[var(--accent)] hover:underline">
+          <Link href={href} className="hit inline-flex items-center gap-0.5 font-mono text-[var(--accent-hi)] hover:underline">
             {id}
             <ExternalLink className="h-3 w-3" />
           </Link>

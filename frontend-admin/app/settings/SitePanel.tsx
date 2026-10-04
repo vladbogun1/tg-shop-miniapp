@@ -60,7 +60,7 @@ export function SitePanel() {
     <section id="site" ref={rootRef} className="panel min-w-0 scroll-mt-[88px] p-5">
       <PanelHeader icon={Globe} title="Сайт" description="maxsolkh.shop обновляет страницы сам; кнопка — если нужно сразу." />
       <Button
-        variant="accent"
+        variant="surface"
         className="w-full"
         loading={revalidate.isPending}
         icon={<RefreshCw className="h-4 w-4" />}
@@ -125,7 +125,7 @@ function RevalidateStatusView({
         {ok === true && <Badge tone="ok">Успешно</Badge>}
         {ok === false && <Badge tone="danger">Ошибка</Badge>}
       </div>
-      {err && <p className="break-words text-[12px] text-[var(--danger)]">{err}</p>}
+      {err && <p className="break-words text-[12px] text-[var(--danger-ink)]">{err}</p>}
     </div>
   );
 }

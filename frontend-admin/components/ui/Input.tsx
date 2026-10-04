@@ -35,7 +35,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           id={inputId}
           className={cn(
-            "min-w-0 flex-1 bg-transparent px-3 py-2 text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]",
+            // h-[38px] + 1px border = 40px, the height of Select, Autocomplete and md Buttons it sits next to.
+            "h-[38px] min-w-0 flex-1 bg-transparent px-3 py-0 text-[14px] pointer-coarse:h-[42px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]",
             !!icon && "pl-2.5",
             className
           )}

@@ -41,13 +41,13 @@ export function OrderHistory({ orderId }: { orderId: string }) {
           {q.data.map((e) => (
             <li key={e.id} className="card p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <span className="text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+                <span className="section-title">
                   {ACTION_LABEL[e.action] ?? e.action}
                 </span>
-                <span className="text-[11px] text-[var(--text-faint)]">{formatDateTime(e.createdAt)}</span>
+                <span className="tabular text-[11px] text-[var(--text-faint)]">{formatDateTime(e.createdAt)}</span>
               </div>
               {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text-muted)]">{e.details}</p>}
-              <p className="mt-1 text-[11px] font-bold text-[var(--text-faint)]">{e.adminName ?? `#${e.adminId}`}</p>
+              <p className="mt-1.5 text-[11.5px] font-medium text-[var(--text-faint)]">{e.adminName ?? `#${e.adminId}`}</p>
             </li>
           ))}
         </ol>

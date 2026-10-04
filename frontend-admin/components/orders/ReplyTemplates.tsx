@@ -56,7 +56,7 @@ export function TemplatePicker({
         onClose={onClose}
         title={
           <span className="flex items-center gap-2">
-            <Zap className="h-4 w-4" /> Шаблоны ответов
+            <Zap className="h-4 w-4 text-[var(--accent-hi)]" /> Шаблоны ответов
           </span>
         }
         footer={
@@ -78,11 +78,11 @@ export function TemplatePicker({
                     onPick(t.text);
                     onClose();
                   }}
-                  className="nb-press rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface)] p-3 text-left transition-colors hover:bg-[var(--surface-2)]"
+                  className="card-2 nb-press px-3.5 py-3 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-black uppercase tracking-wide text-[var(--text)]">{t.title}</span>
-                    <span className="rounded-[var(--r-sm)] border border-[var(--border-2)] px-1.5 text-[10px] font-bold uppercase text-[var(--text-faint)]">
+                    <span className="min-w-0 truncate text-[13.5px] font-semibold text-[var(--text)]">{t.title}</span>
+                    <span className="chip-tint shrink-0 !bg-[var(--surface-3)] !px-2 !text-[10px]">
                       {LOCALE_LABEL[t.locale] ?? t.locale}
                     </span>
                   </div>
@@ -165,11 +165,11 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
         <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch}>
           <div className="flex flex-col gap-2">
             {(q.data ?? []).map((t) => (
-              <div key={t.id} className="flex items-start gap-2 rounded-[var(--r-md)] border-2 border-[var(--border-2)] p-3">
+              <div key={t.id} className="card-2 flex items-start gap-2 px-3.5 py-3">
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-black uppercase tracking-wide text-[var(--text)]">{t.title}</div>
+                  <div className="text-[13.5px] font-semibold text-[var(--text)]">{t.title}</div>
                   <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-[12px] text-[var(--text-muted)]">{t.bodyRu}</p>
-                  <div className="mt-1 flex gap-1.5 text-[10px] font-bold uppercase text-[var(--text-faint)]">
+                  <div className="font-display mt-1.5 flex gap-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">
                     <span>рус ✓</span>
                     <span className={cn(!t.bodyUk && "line-through opacity-60")}>укр</span>
                     <span className={cn(!t.bodyEn && "line-through opacity-60")}>eng</span>
@@ -179,7 +179,7 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
                   type="button"
                   aria-label="Изменить"
                   onClick={() => setEditing(t)}
-                  className="nb-press grid h-8 w-8 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)]"
+                  className="nb-press grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
@@ -187,7 +187,7 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
                   type="button"
                   aria-label="Удалить"
                   onClick={() => remove(t)}
-                  className="nb-press grid h-8 w-8 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]"
+                  className="nb-press grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)]"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -280,10 +280,8 @@ function TemplateEditor({
               type="button"
               onClick={() => setLang(l)}
               className={cn(
-                "rounded-[var(--r-sm)] border-2 px-3 py-1.5 text-[12px] font-black uppercase",
-                lang === l
-                  ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                  : "border-[var(--border-2)] text-[var(--text-muted)]"
+                "nb-chip nb-press h-8 px-3.5 text-[12px] uppercase tracking-[0.06em]",
+                lang === l ? "nb-chip-active" : "text-[var(--text-muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]"
               )}
             >
               {LOCALE_LABEL[l]}
@@ -311,7 +309,7 @@ function TemplateEditor({
               type="button"
               title={p.hint}
               onClick={() => setValue(value + p.key)}
-              className="rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-2)] px-2 py-1 font-mono text-[11.5px] text-[var(--text)] hover:bg-[var(--surface-3)]"
+              className="nb-press rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] px-2 py-1 font-mono text-[11.5px] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--accent-hi)]"
             >
               {p.key}
             </button>

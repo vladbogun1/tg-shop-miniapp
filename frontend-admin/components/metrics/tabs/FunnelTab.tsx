@@ -80,7 +80,7 @@ function FunnelBody({ f, channelWasAll, channel }: { f: Funnel; channelWasAll: b
               <tbody>
                 {f.lowConversion.map((r) => (
                   <tr key={r.productId}>
-                    <td className="font-bold">{r.title}</td>
+                    <td className="font-semibold">{r.title}</td>
                     <td className="r" title={`${num(r.views)} просмотров`}>
                       {num(r.viewers)} чел.
                     </td>
@@ -89,7 +89,7 @@ function FunnelBody({ f, channelWasAll, channel }: { f: Funnel; channelWasAll: b
                     <td className="r">{pct(r.conversionPct)}</td>
                     <td className="r">{r.live ? num(r.stock) : <StatusChip tone="muted">○ скрыт</StatusChip>}</td>
                     <td className="r">
-                      <Link href={editHref(r.productId)} className="text-[12px] font-bold text-[var(--accent)] hover:underline">
+                      <Link href={editHref(r.productId)} className="text-[12px] font-semibold text-[var(--accent-hi)] hover:underline">
                         Открыть
                       </Link>
                     </td>

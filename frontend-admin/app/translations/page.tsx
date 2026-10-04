@@ -74,15 +74,15 @@ export default function TranslationsPage() {
             return (
               <motion.div key={l} variants={riseItem} className="card p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-[12px] font-black uppercase tracking-wide text-[var(--text-muted)]">
+                  <div className="field-label">
                     {l.toUpperCase()} · {LANG_NAME[l]}
                   </div>
-                  <div className="text-[22px] font-black leading-none text-[var(--text)]">{pct}%</div>
+                  <div className="kpi-num text-[22px]">{pct}%</div>
                 </div>
-                <div className="mt-3 h-3 overflow-hidden rounded-[2px] border-2 border-[var(--line)] bg-[var(--surface-2)]">
-                  <div className="h-full bg-[var(--ok)]" style={{ width: `${pct}%` }} />
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
+                  <div className="h-full rounded-full bg-[var(--ok)]" style={{ width: `${pct}%` }} />
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] font-semibold text-[var(--text-muted)]">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 tabular text-[12px] font-medium text-[var(--text-muted)]">
                   <span>переведено {c.translated}</span>
                   <span className={c.stale ? "text-[var(--text)]" : undefined}>устарело {c.stale}</span>
                   <span className={c.missing ? "text-[var(--text)]" : undefined}>нет {c.missing}</span>
@@ -91,9 +91,9 @@ export default function TranslationsPage() {
             );
           })}
           <motion.div variants={riseItem} className="card flex flex-col justify-between p-4">
-            <div className="text-[12px] font-black uppercase tracking-wide text-[var(--text-muted)]">Нужно перевести</div>
-            <div className="mt-2 text-[30px] font-black leading-none text-[var(--text)]">{pending}</div>
-            <div className="mt-2 text-[12px] font-semibold text-[var(--text-muted)]">
+            <div className="field-label">Нужно перевести</div>
+            <div className="kpi-num mt-2 text-[30px]">{pending}</div>
+            <div className="mt-2 tabular text-[12px] font-medium text-[var(--text-muted)]">
               полей × языков{ws ? ` · ${todoStrings} уникальных строк` : ""}
             </div>
           </motion.div>

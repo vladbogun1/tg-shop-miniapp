@@ -73,7 +73,7 @@ export default function DispatchPage() {
               Обновить
             </Button>
             <Button
-              variant="accent"
+              variant="outline"
               loading={broadcasting}
               icon={<Send className="h-4 w-4" />}
               onClick={broadcast}
@@ -95,7 +95,7 @@ export default function DispatchPage() {
         ) : (
           <div className="flex flex-col gap-6">
             {approved.length > 0 && (
-              <section className="flex flex-col gap-4">
+              <section className="flex flex-col gap-3">
                 <SectionTitle>Одобрены · {approved.length}</SectionTitle>
                 {approved.map((o) => (
                   <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} />
@@ -103,7 +103,7 @@ export default function DispatchPage() {
               </section>
             )}
             {fresh.length > 0 && (
-              <section className="flex flex-col gap-4">
+              <section className="flex flex-col gap-3">
                 <SectionTitle>Новые — можно отправить сразу · {fresh.length}</SectionTitle>
                 {fresh.map((o) => (
                   <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} />
@@ -126,7 +126,7 @@ export default function DispatchPage() {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-[13px] font-black uppercase tracking-wide text-[var(--text-muted)]">{children}</h2>;
+  return <h2 className="section-title !text-[var(--text-muted)]">{children}</h2>;
 }
 
 /** NEW order that requires a prepayment which has not been confirmed yet. */
@@ -141,25 +141,25 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
   return (
     <div className="panel flex flex-col gap-4 p-4 sm:p-5">
       {/* Header row — click opens the order */}
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-2 border-[var(--line)] pb-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[var(--line)] pb-3.5">
         <button
           type="button"
           onClick={onOpen}
           className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-left pointer-coarse:min-h-11"
           title="Открыть заказ"
         >
-          <span className="inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[13px] font-extrabold text-[var(--text)]">
-            <Hash className="h-3.5 w-3.5" />
+          <span className="font-display tabular inline-flex h-7 items-center gap-1 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] pl-1.5 pr-2.5 text-[14px] font-bold tracking-[0.02em] text-[var(--ink)]">
+            <Hash className="h-3.5 w-3.5 text-[var(--text-faint)]" />
             {o.shortId}
           </span>
           {o.status === "NEW" && <Badge tone="info">Новый</Badge>}
-          <span className="text-[13px] font-bold text-[var(--accent)] underline-offset-2 hover:underline pointer-coarse:py-2">открыть заказ →</span>
+          <span className="text-[13px] font-semibold text-[var(--accent-hi)] underline-offset-2 hover:underline pointer-coarse:py-2">открыть заказ →</span>
         </button>
         <PaymentBadge order={o} icon={false} />
       </div>
 
       {waitPay && (
-        <div className="flex items-start gap-2 rounded-[var(--r-sm)] border-2 border-[var(--warn)] p-2.5 text-[13px] font-semibold text-[var(--text)]">
+        <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--text)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
           Ждём предоплату {money(o.prepaymentMinor, o.currency)} — не отправляйте, пока она не подтверждена.
         </div>
@@ -187,19 +187,19 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
 
       {/* Items */}
       <div>
-        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">Товары</div>
+        <div className="field-label mb-1.5">Товары</div>
         <ul className="flex flex-col gap-1">
           {o.items.map((it, idx) => (
             <li key={idx} className="text-[14px] font-medium text-[var(--text)]">
               <span className="text-[var(--accent)]">•</span> {it.title}
-              {it.variantName ? ` (${it.variantName})` : ""} <span className="font-extrabold">× {it.quantity}</span>
+              {it.variantName ? ` (${it.variantName})` : ""} <span className="tabular font-semibold text-[var(--accent-hi)]">× {it.quantity}</span>
             </li>
           ))}
         </ul>
       </div>
 
       {/* Money block */}
-      <div className="flex flex-col gap-1 border-t-2 border-[var(--line)] pt-3.5 text-[13px]">
+      <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-3.5 text-[13px]">
         <MoneyRow label="Сумма заказа" value={money(o.totalMinor, o.currency)} />
         {o.paymentOptionTitle && <MoneyRow label="Оплата" value={o.paymentOptionTitle} />}
         {o.receivedMinor > 0 && (
@@ -231,16 +231,16 @@ function CopyField({
   noCopy?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-[var(--r-sm)] border-2 border-[var(--border-2)] bg-[var(--surface)] px-2.5 py-2">
+    <div className="card-2 flex min-w-0 items-center gap-2.5 px-3 py-2">
       <span className="shrink-0 text-[var(--text-muted)]">{icon}</span>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-faint)]">{label}</div>
+        <div className="font-display text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">{label}</div>
         {href ? (
-          <a href={href} className={cn("block truncate text-[14px] font-extrabold text-[var(--text)] hover:underline pointer-coarse:py-2.5", mono && "font-mono")}>
+          <a href={href} className={cn("block truncate text-[14px] font-semibold text-[var(--text)] hover:underline pointer-coarse:-my-2 pointer-coarse:py-2", mono && "tabular")}>
             {value}
           </a>
         ) : (
-          <div className={cn("truncate text-[14px] font-extrabold text-[var(--text)]", mono && "font-mono")} title={value}>
+          <div className={cn("truncate text-[14px] font-semibold text-[var(--text)]", mono && "tabular")} title={value}>
             {value}
           </div>
         )}
@@ -253,8 +253,8 @@ function CopyField({
 function MoneyRow({ label, value, tone }: { label: string; value: string; tone?: "ok" }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="font-bold uppercase tracking-wide text-[var(--text-muted)]">{label}</span>
-      <span className={cn("font-extrabold", tone === "ok" ? "text-[var(--ok)]" : "text-[var(--text)]")}>{value}</span>
+      <span className="font-display text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">{label}</span>
+      <span className={cn("tabular text-right font-semibold", tone === "ok" ? "text-[var(--ok)]" : "text-[var(--text)]")}>{value}</span>
     </div>
   );
 }
@@ -289,7 +289,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t-2 border-[var(--line)] pt-3.5 sm:flex-row sm:items-start">
+    <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-3.5 sm:flex-row sm:items-start">
       <div className="min-w-0 flex-1">
         <Input
           aria-label="Номер ТТН"
@@ -303,7 +303,8 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
         />
       </div>
       <Button
-        variant="accent"
+        // Orange only once it can be pressed: a list of cards must not be a wall of orange buttons.
+        variant={!clean || waitPay ? "surface" : "accent"}
         loading={saving}
         disabled={!clean || waitPay}
         icon={<Send className="h-4 w-4" />}
@@ -317,51 +318,44 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
 }
 
 /**
- * The most prominent thing on the card. Bright fill + DARK text (--accent-ink)
- * for contrast in both themes, thick ink border, hard shadow.
+ * The most prominent thing on the card: a tinted panel in the state colour (ok / warn / danger at
+ * 10%, hairline at 40%) with the amount in big Exo 2 in that colour — no solid fill under text.
  */
 function CodCallout({ o }: { o: AdminDispatchOrder }) {
-  const base =
-    "rounded-[var(--r-md)] border-[3px] border-[var(--line)] px-4 py-3.5 shadow-[5px_5px_0_var(--shadow)] text-[var(--accent-ink)]";
+  const tone = o.codMinor === 0 ? "var(--ok)" : o.receivedMinor > 0 ? "var(--warn)" : "var(--danger)";
+  const ink = o.codMinor === 0 ? "var(--ok)" : o.receivedMinor > 0 ? "var(--warn)" : "var(--danger-ink)";
+  const style = {
+    background: `color-mix(in srgb, ${tone} 10%, transparent)`,
+    borderColor: `color-mix(in srgb, ${tone} 40%, transparent)`,
+  } as React.CSSProperties;
+  const base = "rounded-[var(--r-md)] border px-4 py-3.5";
+  const big = "font-display tabular text-[20px] font-extrabold uppercase leading-tight tracking-[0.02em] sm:text-[24px]";
+  const sub = "font-display mt-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]";
 
   // Paid in full — no COD.
   if (o.codMinor === 0) {
     return (
-      <div className={`${base} bg-[var(--ok)]`}>
-        <div className="text-[20px] font-black uppercase leading-tight tracking-wide sm:text-[24px]">Наложка: 0</div>
-        <div className="mt-0.5 text-[13px] font-bold uppercase tracking-wide opacity-80">Оплачено, без наложки</div>
+      <div className={base} style={style}>
+        <div className={big} style={{ color: ink }}>Наложка: 0</div>
+        <div className={sub}>Оплачено, без наложки</div>
       </div>
     );
   }
 
-  // Partial prepayment — COD = total − received.
-  if (o.receivedMinor > 0) {
-    return (
-      <div className={`${base} bg-[var(--warn)]`}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-[20px] font-black uppercase leading-tight tracking-wide sm:text-[26px]">
-            Наложка: {money(o.codMinor, o.currency)}
-          </div>
-          <CopyButton value={String(Math.round(o.codMinor / 100))} label="Скопировать сумму наложки" />
-        </div>
-        <div className="mt-0.5 text-[12px] font-bold uppercase tracking-wide opacity-80">
-          (сумма {money(o.totalMinor, o.currency)} − получено {money(o.receivedMinor, o.currency)})
-        </div>
-      </div>
-    );
-  }
-
-  // Unpaid — full COD.
   return (
-    <div className={`${base} bg-[var(--danger)]`}>
+    <div className={base} style={style}>
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[20px] font-black uppercase leading-tight tracking-wide sm:text-[26px]">
+        <div className={big} style={{ color: ink }}>
           Наложка: {money(o.codMinor, o.currency)}
         </div>
         <CopyButton value={String(Math.round(o.codMinor / 100))} label="Скопировать сумму наложки" />
       </div>
-      <div className="mt-0.5 text-[13px] font-bold uppercase tracking-wide opacity-80">
-        {o.paymentClaimed && !o.paid ? "Оплата заявлена, но не подтверждена" : "Не оплачено"}
+      <div className={sub}>
+        {o.receivedMinor > 0
+          ? `(сумма ${money(o.totalMinor, o.currency)} − получено ${money(o.receivedMinor, o.currency)})`
+          : o.paymentClaimed && !o.paid
+            ? "Оплата заявлена, но не подтверждена"
+            : "Не оплачено"}
       </div>
     </div>
   );

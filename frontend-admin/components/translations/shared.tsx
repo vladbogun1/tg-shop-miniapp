@@ -3,7 +3,7 @@
 /** Small pieces shared by the «Переводы» screen. */
 import { Check, Copy, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { TrStatus } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import type { DiffPart, Issue } from "@/lib/translation-check";
@@ -37,7 +37,7 @@ export function CopyButton({
 }: {
   text: string;
   label?: string;
-  variant?: "accent" | "outline";
+  variant?: "accent" | "outline" | "surface";
   onCopied?: () => void;
   /** Persistent "already copied" mark (parts the admin has taken). */
   copied?: boolean;
@@ -62,26 +62,25 @@ export function CopyButton({
 
 export function KindBadge({ kindKey }: { kindKey: string }) {
   return (
-    <span className="inline-flex items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-3)] px-1.5 py-px text-[10px] font-black uppercase tracking-wide text-[var(--text-muted)]">
+    <span className="chip-tint !bg-[var(--surface-3)] !px-2 !text-[10px] !leading-[16px]">
       {KIND_SHORT[kindKey] ?? kindKey}
     </span>
   );
 }
 
-const STATUS_STYLE: Record<TrStatus, { label: string; cls: string }> = {
-  TRANSLATED: { label: "готово", cls: "bg-[var(--ok)] text-[var(--accent-ink)]" },
-  STALE: { label: "устарел", cls: "bg-[var(--warn)] text-[var(--accent-ink)]" },
-  MISSING: { label: "нет", cls: "bg-[var(--surface-3)] text-[var(--text-muted)]" },
+/** Tinted chips (16% of the hue + text in it), like every status chip in v3. */
+const STATUS_STYLE: Record<TrStatus, { label: string; color: string; cls?: string }> = {
+  TRANSLATED: { label: "готово", color: "var(--ok)" },
+  STALE: { label: "устарел", color: "var(--warn)" },
+  MISSING: { label: "нет", color: "var(--text-muted)", cls: "!bg-[var(--surface-3)]" },
 };
 
 export function StatusChip({ lang, status }: { lang: string; status: TrStatus }) {
   const s = STATUS_STYLE[status];
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-1.5 py-px text-[10px] font-black uppercase tracking-wide",
-        s.cls
-      )}
+      className={cn("chip-tint !gap-1 !px-2 !text-[10px] !leading-[16px]", s.cls)}
+      style={{ "--chip": s.color } as CSSProperties}
     >
       {lang} · {s.label}
     </span>
@@ -93,7 +92,7 @@ export function ProductLink({ productId, title }: { productId: string; title?: s
     <Link
       href={`/products?edit=${productId}`}
       target="_blank"
-      className="inline-flex min-w-0 items-center gap-1 text-[12px] font-semibold text-[var(--text-muted)] underline decoration-dotted underline-offset-2 hover:text-[var(--accent)]"
+      className="inline-flex min-w-0 items-center gap-1 text-[12px] font-semibold text-[var(--text-muted)] underline decoration-dotted underline-offset-2 hover:text-[var(--accent-hi)]"
       title="Открыть товар в редакторе (новая вкладка)"
     >
       <span className="truncate">{title || "товар"}</span>
@@ -111,7 +110,7 @@ export function IssueList({ issues }: { issues: Issue[] }) {
           key={k}
           className={cn(
             "text-[12px] font-semibold leading-snug",
-            i.level === "error" ? "text-[var(--danger)]" : "text-[color-mix(in_srgb,var(--warn)_80%,var(--text))]"
+            i.level === "error" ? "text-[var(--danger-ink)]" : "text-[color-mix(in_srgb,var(--warn)_80%,var(--text))]"
           )}
         >
           {i.level === "error" ? "✕ " : "! "}
@@ -131,14 +130,14 @@ export function Diff({ parts }: { parts: DiffPart[] }) {
         ) : p.type === "del" ? (
           <del
             key={i}
-            className="rounded-[2px] bg-[color-mix(in_srgb,var(--danger)_22%,transparent)] text-[var(--text)] decoration-[var(--danger)] decoration-2"
+            className="rounded-[var(--r-sm)] bg-[color-mix(in_srgb,var(--danger)_22%,transparent)] text-[var(--text)] decoration-[var(--danger)] decoration-2"
           >
             {p.text}
           </del>
         ) : (
           <ins
             key={i}
-            className="rounded-[2px] bg-[color-mix(in_srgb,var(--ok)_28%,transparent)] font-semibold text-[var(--text)] no-underline"
+            className="rounded-[var(--r-sm)] bg-[color-mix(in_srgb,var(--ok)_28%,transparent)] font-semibold text-[var(--text)] no-underline"
           >
             {p.text}
           </ins>
@@ -168,7 +167,7 @@ export function InlineText({
       rows={rows}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "thin-scroll w-full resize-y rounded-[var(--r-md)] border-[2px] bg-[var(--surface)] px-2.5 py-2 text-[13px] leading-relaxed text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]",
+        "thin-scroll w-full resize-y rounded-[var(--r-md)] border bg-[var(--surface-2)] px-2.5 py-2 text-[13px] leading-relaxed text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]",
         invalid ? "border-[var(--danger)]" : "border-[var(--line)]"
       )}
     />
@@ -192,7 +191,7 @@ export function SourceText({ text, clamp = true }: { text: string; clamp?: boole
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="mt-1 text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)] hover:text-[var(--accent)]"
+          className="mt-1 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] hover:text-[var(--accent-hi)]"
         >
           {open ? "Свернуть" : "Показать полностью"}
         </button>

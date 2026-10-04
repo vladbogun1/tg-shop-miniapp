@@ -32,9 +32,9 @@ function OperationsBody({ o }: { o: Operations }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {o.speed.map((s) => (
             <div key={s.key} className="card-2 p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{s.label}</div>
+              <div className="field-label !text-[11px]">{s.label}</div>
               <div className="mt-1.5 flex items-baseline gap-2">
-                <span className="text-[22px] font-extrabold text-[var(--text)] mx-num">{duration(s.medianHours)}</span>
+                <span className="kpi-num text-[22px]">{duration(s.medianHours)}</span>
                 <span className="text-[12px] text-[var(--text-muted)] mx-num">p90 {duration(s.p90Hours)}</span>
               </div>
               <div className="mt-1 text-[11px] text-[var(--text-faint)]">
@@ -160,7 +160,7 @@ function ViolationPanel({ title, rows, sinceLabel, empty }: { title: string; row
               {rows.map((v) => (
                 <tr key={v.orderId}>
                   <td>
-                    <div className="font-bold mx-num">#{shortId(v.orderId)}</div>
+                    <div className="font-semibold mx-num">#{shortId(v.orderId)}</div>
                     <div className="text-[11px] text-[var(--text-faint)]">{v.customerName ?? ""}</div>
                   </td>
                   <td className="mx-num">{dateTime(v.since)}</td>

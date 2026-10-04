@@ -20,7 +20,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CenterSpinner } from "@/components/ui/Spinner";
-import { staggerContainer, riseItem, hoverLift } from "@/lib/motion";
+import { staggerContainer, riseItem } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 
 interface EditState {
@@ -135,7 +135,7 @@ export default function TagsPage() {
         title="Теги"
         subtitle="Метки товаров и категории меню сайта"
         actions={
-          <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+          <Button variant={creating ? "surface" : "accent"} icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
             Новый тег
           </Button>
         }
@@ -152,10 +152,12 @@ export default function TagsPage() {
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="card mb-5 flex items-end gap-2 p-4">
+            <div className="card mb-5 p-4">
+              <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
               <Input
                 label="Название тега"
-                className="flex-1"
+                
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -164,14 +166,21 @@ export default function TagsPage() {
                   if (e.key === "Escape") setCreating(false);
                 }}
                 placeholder="например, Новинки"
-                hint={newName.trim() ? `Адрес на сайте: /catalog/${slugify(newName) || "…"}` : undefined}
               />
+              </div>
               <Button variant="accent" loading={busy} icon={<Check className="h-4 w-4" />} onClick={create}>
                 Добавить
               </Button>
               <Button variant="ghost" size="icon" onClick={() => setCreating(false)} aria-label="Отмена">
                 <X className="h-4 w-4" />
               </Button>
+              </div>
+              {/* Hint under the whole row, so the buttons stay level with the field (not with the hint). */}
+              {newName.trim() && (
+                <div className="mt-1.5 truncate text-[12px] text-[var(--text-faint)]">
+                  Адрес на сайте: /catalog/{slugify(newName) || "…"}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -206,15 +215,14 @@ export default function TagsPage() {
                   layout
                   variants={riseItem}
                   exit="exit"
-                  {...hoverLift}
-                  className="card group relative flex items-center gap-2 px-4 py-3"
+                  className="card card-hover group relative flex items-center gap-3 px-4 py-3"
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] text-[13px] font-black text-[var(--accent-ink)]">
+                  <span className="accent-tint font-display tabular grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] text-[13px] font-bold">
                     {t.sortOrder ? t.sortOrder : <TagIcon className="h-4 w-4" />}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-[14px] font-bold text-[var(--text)]">{t.name}</span>
+                      <span className="truncate text-[14px] font-semibold text-[var(--text)]">{t.name}</span>
                       {hidden && (
                         <Badge tone="neutral" className="shrink-0 px-1.5">
                           <EyeOff className="h-3 w-3" /> не в меню
@@ -238,7 +246,7 @@ export default function TagsPage() {
                     <button
                       onClick={() => setPendingDelete(t)}
                       aria-label="Удалить"
-                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger)] pointer-coarse:h-11 pointer-coarse:w-11"
+                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger-ink)] pointer-coarse:h-11 pointer-coarse:w-11"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -302,7 +310,7 @@ export default function TagsPage() {
               onChange={(e) => setEditing({ ...editing, sortOrder: e.target.value.replace(/[^\d-]/g, "") })}
               hint="Меньше — левее/выше. При равных — по алфавиту."
             />
-            <div className="rounded-[var(--r-md)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+            <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3">
               <Toggle
                 checked={editing.showInMenu}
                 onChange={(v) => setEditing({ ...editing, showInMenu: v })}

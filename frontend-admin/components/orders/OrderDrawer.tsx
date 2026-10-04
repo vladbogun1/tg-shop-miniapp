@@ -322,8 +322,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         : "Отметить оплаченным";
 
   const header = (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-      <span className="font-mono text-[15px] font-black text-[var(--text)]">
+    <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 pointer-coarse:min-h-11">
+      <span className="font-display tabular mr-0.5 text-[17px] font-bold leading-none tracking-[0.02em] text-[var(--ink)]">
         {order ? shortId(order.id) : "Заказ"}
       </span>
       {order && <StatusBadge status={order.status} />}
@@ -334,6 +334,20 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
 
   const restockUnits = order?.items.reduce((s, it) => s + it.quantity - (it.returnedQty ?? 0), 0);
 
+  // A paid-claim waiting for review is the most urgent thing on a NEW order: make it the main button.
+  const mobilePrimaryIsPay = !!order && !order.paid && order.paymentClaimed && order.status === "NEW";
+  // ONE solid-orange action per view (v3): the next happy-path step, or the payment when it is the
+  // most urgent thing (claim to review) or nothing else is left to do; the rest are surface/danger.
+  const accentKey: string | undefined = !order
+    ? undefined
+    : mobilePrimaryIsPay
+      ? "pay"
+      : primary
+        ? primary
+        : !order.paid
+          ? "pay"
+          : undefined;
+
   // ---- action bar ----
   const statusButton = (target: OrderStatus, opts: { primary?: boolean; full?: boolean } = {}) => {
     const t = target as Exclude<OrderStatus, "NEW">;
@@ -342,7 +356,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       <Button
         key={target}
         size={opts.primary ? "md" : "sm"}
-        variant={target === "REJECTED" ? "danger" : opts.primary || target !== "DELIVERED" ? "accent" : "surface"}
+        variant={target === "REJECTED" ? "danger" : opts.primary || accentKey === target ? "accent" : "surface"}
         loading={busyKey === `status:${target}`}
         disabled={!!busyKey && busyKey !== `status:${target}`}
         icon={<Icon className="h-4 w-4" />}
@@ -358,7 +372,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     order && (
       <Button
         size={full ? "md" : "sm"}
-        variant={order.paid ? "surface" : "accent"}
+        variant={full || accentKey === "pay" ? "accent" : "surface"}
         loading={busyKey === "pay"}
         disabled={!!busyKey && busyKey !== "pay"}
         className={cn(full && "flex-1")}
@@ -406,15 +420,13 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       ]
     : [];
 
-  // A paid-claim waiting for review is the most urgent thing on a NEW order: make it the main button.
-  const mobilePrimaryIsPay = !!order && !order.paid && order.paymentClaimed && order.status === "NEW";
-
   return (
     <>
-      <Drawer open={!!orderId} onClose={close} header={header} width="max-w-xl" zClass="z-[120]">
+      <Drawer open={!!orderId} onClose={close} header={header} width="max-w-[680px]" zClass="z-[120]">
         <div className="flex h-full min-h-0 flex-col">
-          {/* Tabs */}
-          <div className="flex gap-2 border-b-[3px] border-[var(--border)] px-3 py-2.5">
+          {/* Tabs — SegmentedControl look: --bg-2 track, active = orange tint + orange hairline */}
+          <div className="shrink-0 border-b border-[var(--line)] px-4 py-2.5 sm:px-5">
+          <div className="flex gap-0.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] p-[3px] sm:inline-flex">
             {(
               [
                 ["details", "Детали", FileText],
@@ -426,20 +438,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-[var(--r-sm)] border-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide transition-colors pointer-coarse:min-h-11",
+                  "font-display hit flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[var(--r-sm)] border px-3 text-[12px] font-semibold uppercase tracking-[0.06em] transition-colors sm:flex-none pointer-coarse:h-10",
                   tab === t
-                    ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-1)]"
-                    : "border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                    ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
                 )}
               >
-                <Icon className="h-3.5 w-3.5" /> {label}
-                {t === "chat" && unread > 0 && (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black text-[var(--accent-ink)]">
-                    {unread}
-                  </span>
-                )}
+                <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
+                {t === "chat" && unread > 0 && <span className="count-badge count-badge--danger">{unread}</span>}
               </button>
             ))}
+          </div>
           </div>
 
           {tab === "details" && (
@@ -476,7 +485,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
               {/* Action bar */}
               {order &&
                 (isDesktop ? (
-                  <div className="flex flex-wrap items-center gap-2 border-t-[3px] border-[var(--border)] px-5 py-4">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-5 py-3.5">
                     {payButton()}
                     {targets.map((t) => statusButton(t))}
                     {isTerminal && (
@@ -495,7 +504,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                   </div>
                 ) : (
                   <div
-                    className="flex items-center gap-2 border-t-[3px] border-[var(--border)] px-4 py-3"
+                    className="flex shrink-0 items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-4 pt-3"
                     style={{ paddingBottom: "calc(12px + var(--safe-bottom, 0px))" }}
                   >
                     {mobilePrimaryIsPay

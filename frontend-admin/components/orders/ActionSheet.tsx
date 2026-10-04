@@ -39,7 +39,7 @@ export function ActionSheet({
             initial="initial"
             animate="animate"
             exit="exit"
-            className="absolute inset-0 bg-black/55"
+            className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
             onClick={onClose}
           />
           <motion.div
@@ -49,12 +49,12 @@ export function ActionSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 360, damping: 32 }}
-            className="elevated relative z-10 w-full border-x-0 border-b-0 p-5"
+            className="elevated relative z-10 w-full rounded-t-[var(--r-xl)] rounded-b-none border-x-0 border-b-0 px-4 pt-3"
             style={{ paddingBottom: "calc(20px + var(--safe-bottom, 0px))" }}
           >
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[var(--border-strong)]" />
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--line-strong)]" />
             {title && (
-              <h3 className="mb-3 text-[15px] font-black uppercase tracking-wide text-[var(--text)]">{title}</h3>
+              <h3 className="font-display mb-3 truncate text-[15px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</h3>
             )}
             <div className="flex flex-col gap-2">
               {actions.map((a) => (

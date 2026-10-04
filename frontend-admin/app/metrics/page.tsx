@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import "@/components/metrics/metrics.css";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { PeriodParams, PeriodToken } from "@/components/metrics/api";
 import { CHANNEL_OPTIONS, PERIOD_OPTIONS, todayIso, useMetricsPeriod } from "@/components/metrics/period";
@@ -86,7 +87,7 @@ function PeriodPicker({ params, onChange }: { params: PeriodParams; onChange: (p
   }
 
   const input =
-    "h-9 rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface)] px-2 text-[13px] font-bold text-[var(--text)]";
+    "h-8 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-2.5 text-[13px] text-[var(--text)] outline-none transition-[border-color,box-shadow] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)] pointer-coarse:h-9";
 
   return (
     <div className="flex flex-col gap-2">
@@ -107,14 +108,15 @@ function PeriodPicker({ params, onChange }: { params: PeriodParams; onChange: (p
           <input type="date" className={input} value={from} max={to || todayIso()} onChange={(e) => setFrom(e.target.value)} />
           <span>по</span>
           <input type="date" className={input} value={to} min={from || undefined} max={todayIso()} onChange={(e) => setTo(e.target.value)} />
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="accent"
             disabled={!from || !to}
             onClick={() => onChange({ ...params, period: "custom", from, to })}
-            className="nb-press h-9 rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--accent)] px-3 text-[12px] font-extrabold uppercase text-[var(--accent-ink)] disabled:opacity-50"
           >
             Показать
-          </button>
+          </Button>
         </div>
       )}
     </div>

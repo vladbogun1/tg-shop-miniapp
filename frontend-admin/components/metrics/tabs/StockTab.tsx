@@ -121,7 +121,7 @@ function StockBody({
                 {reorderRows.visible.map((r) => (
                   <tr key={r.productId + (r.variantId ?? "")}>
                     <td>
-                      <div className="font-bold">{r.title}</div>
+                      <div className="font-semibold">{r.title}</div>
                       {r.variantName && <div className="text-[11px] text-[var(--text-muted)]">вариант: {r.variantName}</div>}
                     </td>
                     <td className="r">{num(r.stock)}</td>
@@ -132,12 +132,12 @@ function StockBody({
                     <td>
                       <UrgencyChip row={r} />
                     </td>
-                    <td className="r font-extrabold">{r.recommendQty > 0 ? `${num(r.recommendQty)} шт.` : "—"}</td>
+                    <td className="r font-semibold">{r.recommendQty > 0 ? `${num(r.recommendQty)} шт.` : "—"}</td>
                     <td className="r text-[var(--text-muted)]">
                       {num(r.views30)} просм. · {num(r.cartAdds30)} в корз.
                     </td>
                     <td className="r">
-                      <Link href={editHref(r.productId)} className="inline-flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline">
+                      <Link href={editHref(r.productId)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline">
                         <Pencil className="h-3.5 w-3.5" /> Остаток
                       </Link>
                     </td>
@@ -179,7 +179,7 @@ function StockBody({
               <tbody>
                 {demandRows.visible.map((d) => (
                   <tr key={d.productId}>
-                    <td className="font-bold">{d.title}</td>
+                    <td className="font-semibold">{d.title}</td>
                     <td>{d.live ? <StatusChip tone="warn">◐ нет на складе</StatusChip> : <StatusChip tone="muted">○ скрыт</StatusChip>}</td>
                     <td className="r" title={`${num(d.views30)} просмотров`}>
                       {num(d.viewers30)} чел.
@@ -188,7 +188,7 @@ function StockBody({
                     <td className="r">{num(d.sold90)}</td>
                     <td className="r">{d.lastSoldDaysAgo == null ? "—" : `${num(d.lastSoldDaysAgo)} дн назад`}</td>
                     <td className="r">
-                      <Link href={editHref(d.productId)} className="text-[12px] font-bold text-[var(--accent)] hover:underline">
+                      <Link href={editHref(d.productId)} className="text-[12px] font-semibold text-[var(--accent-hi)] hover:underline">
                         Открыть
                       </Link>
                     </td>
@@ -239,7 +239,7 @@ function StockBody({
                   {top.map((t) => (
                     <tr key={t.productId}>
                       <td>
-                        <Link href={editHref(t.productId)} className="font-bold hover:underline">
+                        <Link href={editHref(t.productId)} className="font-semibold hover:underline">
                           {t.title}
                         </Link>
                         {!t.live && <span className="ml-1 text-[11px] text-[var(--text-faint)]">(скрыт)</span>}
@@ -247,7 +247,7 @@ function StockBody({
                       <td>
                         <InlineBar value={topBy === "revenue" ? t.revenueMinor : t.units} max={topMax} />
                       </td>
-                      <td className="r font-extrabold">{topBy === "revenue" ? uahShort(t.revenueMinor) : num(t.units)}</td>
+                      <td className="r font-semibold">{topBy === "revenue" ? uahShort(t.revenueMinor) : num(t.units)}</td>
                       <td className="r text-[var(--text-muted)]">{topBy === "revenue" ? num(t.units) : uahShort(t.revenueMinor)}</td>
                       <td className="r">{num(t.stock)}</td>
                     </tr>
@@ -273,7 +273,7 @@ function StockBody({
               <tbody>
                 {s.categories.map((c) => (
                   <tr key={c.name}>
-                    <td className="font-bold">{c.name}</td>
+                    <td className="font-semibold">{c.name}</td>
                     <td className="r">{num(c.products)}</td>
                     <td className="r">{num(c.units)}</td>
                     <td className="r">{uahShort(c.valueMinor)}</td>
@@ -313,12 +313,12 @@ function StockBody({
               <tbody>
                 {forgottenRows.visible.map((f) => (
                   <tr key={f.productId}>
-                    <td className="font-bold">{f.title}</td>
+                    <td className="font-semibold">{f.title}</td>
                     <td className="text-[var(--text-muted)]">{f.archived ? "в архиве" : "скрыт"}</td>
                     <td className="r">{num(f.stock)}</td>
                     <td className="r">{uah(f.valueMinor)}</td>
                     <td className="r">
-                      <Link href={editHref(f.productId)} className="text-[12px] font-bold text-[var(--accent)] hover:underline">
+                      <Link href={editHref(f.productId)} className="text-[12px] font-semibold text-[var(--accent-hi)] hover:underline">
                         Открыть
                       </Link>
                     </td>
@@ -362,8 +362,9 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
               key={b.days}
               type="button"
               onClick={() => setDeadDays(b.days)}
-              className={`rounded-[var(--r-sm)] border-[2px] border-[var(--line)] px-2.5 py-1 text-left text-[12px] font-bold ${
-                b.days === deadDays ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface-2)] text-[var(--text)]"
+              aria-pressed={b.days === deadDays}
+              className={`nb-chip nb-press mx-num px-3 py-1 text-left text-[12px] transition-colors ${
+                b.days === deadDays ? "nb-chip-active" : "text-[var(--text-muted)] hover:border-[var(--border-2)] hover:text-[var(--text)]"
               }`}
             >
               {b.days}+ дн · {num(b.products)} · {uahShort(b.valueMinor)}
@@ -393,18 +394,18 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
               {deadRows.visible.map((d) => (
                 <tr key={d.productId}>
                   <td>
-                    <div className="font-bold">{d.title}</div>
+                    <div className="font-semibold">{d.title}</div>
                     {d.tags.length > 0 && <div className="text-[11px] text-[var(--text-faint)]">{d.tags.join(", ")}</div>}
                   </td>
                   <td className="r">{num(d.stock)}</td>
-                  <td className="r font-extrabold">{uah(d.valueMinor)}</td>
+                  <td className="r font-semibold">{uah(d.valueMinor)}</td>
                   <td className="r">{d.neverSold ? `ни разу (${num(d.daysWithoutSale)} дн)` : `${num(d.daysWithoutSale)} дн`}</td>
                   <td className="r">{d.views30 == null ? "—" : num(d.views30)}</td>
                   <td className="r">{d.cartAdds30 == null ? "—" : num(d.cartAdds30)}</td>
                   <td className="r whitespace-nowrap">
                     <Link
                       href={editHref(d.productId)}
-                      className="mr-2 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline"
+                      className="mr-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline"
                       title="Открыть товар: поставить старую цену (скидку) или перенести в «Уценку»"
                     >
                       <PackageX className="h-3.5 w-3.5" /> Скидка
@@ -415,7 +416,7 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                           type="button"
                           disabled={hide.isPending}
                           onClick={() => hide.mutate(d.productId)}
-                          className="rounded-[2px] border-2 border-[var(--line)] bg-[var(--danger)] px-1.5 text-[12px] font-bold text-[var(--accent-ink)]"
+                          className="rounded-[var(--r-sm)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] px-1.5 py-0.5 text-[12px] font-semibold text-[var(--danger-ink)] hover:bg-[color-mix(in_srgb,var(--danger)_24%,transparent)]"
                         >
                           Скрыть?
                         </button>
@@ -427,7 +428,7 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                       <button
                         type="button"
                         onClick={() => setConfirm(d.productId)}
-                        className="inline-flex items-center gap-1 text-[12px] font-bold text-[var(--text-muted)] hover:text-[var(--text)]"
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)]"
                       >
                         <EyeOff className="h-3.5 w-3.5" /> Скрыть
                       </button>

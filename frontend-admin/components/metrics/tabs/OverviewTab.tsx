@@ -176,7 +176,7 @@ function OverviewBody({
               <tbody>
                 {o.channels.map((c) => (
                   <tr key={c.source}>
-                    <td className="font-bold">{SOURCE_LABEL[c.source] ?? c.source}</td>
+                    <td className="font-semibold">{SOURCE_LABEL[c.source] ?? c.source}</td>
                     <td className="r">{num(c.orders)}</td>
                     <td className="r">{uahShort(c.soldMinor)}</td>
                     <td className="r">{uah(c.aovMinor)}</td>
@@ -208,7 +208,7 @@ function OverviewBody({
               value={uah(o.giveaways.giftValueMinor)}
               sub={`${num(o.giveaways.giftUnits)} шт.`}
             />
-            <div className="border-t-2 border-[var(--line)] pt-2">
+            <div className="border-t border-[var(--line)] pt-2">
               <Row label="Итого отдано" value={uah(o.giveaways.discountMinor + o.giveaways.giftValueMinor)} />
             </div>
           </div>
@@ -222,10 +222,10 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
   return (
     <div className="flex items-start justify-between gap-3">
       <div>
-        <div className="font-bold text-[var(--text)]">{label}</div>
+        <div className="font-semibold text-[var(--text)]">{label}</div>
         {sub && <div className="text-[11px] text-[var(--text-faint)]">{sub}</div>}
       </div>
-      <div className="shrink-0 font-extrabold text-[var(--text)] mx-num">{value}</div>
+      <div className="font-display shrink-0 font-bold text-[var(--text)] mx-num">{value}</div>
     </div>
   );
 }
@@ -257,10 +257,10 @@ function ForecastPanel({ forecast, error }: { forecast?: Forecast; error: boolea
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-3">
           <div className="card-2 p-3">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+            <div className="flex items-center gap-1.5 field-label !text-[11px]">
               <CalendarClock className="h-3.5 w-3.5" /> {monthLabel(m.month, true)} целиком
             </div>
-            <div className="mt-1 text-[24px] font-extrabold leading-none text-[var(--text)] mx-num">≈ {uahShort(m.totalMinor)}</div>
+            <div className="mt-1 kpi-num text-[24px]">≈ {uahShort(m.totalMinor)}</div>
             <div className="mt-1 text-[12px] text-[var(--text-muted)] mx-num">
               вероятно {uahShort(m.lowMinor)} – {uahShort(m.highMinor)}
             </div>
@@ -270,13 +270,13 @@ function ForecastPanel({ forecast, error }: { forecast?: Forecast; error: boolea
             </div>
           </div>
           <div className="card-2 p-3">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Следующие 30 дней</div>
-            <div className="mt-1 text-[24px] font-extrabold leading-none text-[var(--text)] mx-num">≈ {uahShort(forecast.next30.totalMinor)}</div>
+            <div className="field-label !text-[11px]">Следующие 30 дней</div>
+            <div className="mt-1 kpi-num text-[24px]">≈ {uahShort(forecast.next30.totalMinor)}</div>
             <div className="mt-1 text-[12px] text-[var(--text-muted)] mx-num">
               вероятно {uahShort(forecast.next30.lowMinor)} – {uahShort(forecast.next30.highMinor)}
             </div>
           </div>
-          <button type="button" onClick={() => setOpen((v) => !v)} className="hit self-start text-[12px] font-bold text-[var(--accent)] underline-offset-2 hover:underline">
+          <button type="button" onClick={() => setOpen((v) => !v)} className="hit self-start text-[12px] font-semibold text-[var(--accent-hi)] underline-offset-2 hover:underline">
             {open ? "Скрыть, как считается" : "Как считается и насколько точно"}
           </button>
         </div>

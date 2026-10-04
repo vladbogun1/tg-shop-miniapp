@@ -105,16 +105,16 @@ export function ReturnModal({
           </p>
         ) : (
           <div className="flex flex-col gap-2.5">
-            <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Что вернули</div>
+            <div className="field-label">Что вернули</div>
             {order.items.map((it, i) => {
               if (it.id == null) return null;
               const left = it.quantity - (it.returnedQty ?? 0);
               const l = lines[it.id] ?? { qty: 0, restock: true };
               return (
-                <div key={it.id ?? i} className="rounded-[var(--r-md)] border-2 border-[var(--border-2)] p-2.5">
+                <div key={it.id ?? i} className="card-2 px-3 py-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-[13.5px] font-bold text-[var(--text)]">
+                      <div className="truncate text-[13.5px] font-semibold text-[var(--text)]">
                         {it.gift && "🎁 "}
                         {it.title}
                       </div>
@@ -127,7 +127,7 @@ export function ReturnModal({
                       <StepBtn disabled={l.qty <= 0} onClick={() => setLine(it.id!, { qty: l.qty - 1 })}>
                         −
                       </StepBtn>
-                      <span className="w-6 text-center text-[14px] font-black text-[var(--text)]">{l.qty}</span>
+                      <span className="tabular w-6 text-center text-[14px] font-semibold text-[var(--text)]">{l.qty}</span>
                       <StepBtn disabled={l.qty >= left} onClick={() => setLine(it.id!, { qty: l.qty + 1 })}>
                         +
                       </StepBtn>
@@ -165,7 +165,7 @@ export function ReturnModal({
             <button
               type="button"
               onClick={() => setRefund(String(Math.min(returnedValue, refundable) / 100))}
-              className={cn("self-start text-[12px] font-bold text-[var(--accent)] hover:underline")}
+              className={cn("self-start text-[12.5px] font-semibold text-[var(--accent-hi)] hover:underline")}
             >
               Подставить стоимость возвращённого: {money(Math.min(returnedValue, refundable), cur)}
             </button>
@@ -191,7 +191,7 @@ function StepBtn({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="nb-press grid h-8 w-8 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-black leading-none text-[var(--text)] disabled:opacity-40"
+      className="nb-press grid h-8 w-8 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[16px] font-semibold leading-none text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] disabled:opacity-40"
     >
       {children}
     </button>

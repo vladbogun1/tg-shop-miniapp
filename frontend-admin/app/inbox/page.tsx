@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { InboxRow } from "@/components/inbox/InboxRow";
@@ -62,16 +62,25 @@ const GROUP_ICON: Record<InboxType, LucideIcon> = {
   SITE_ERROR: Globe,
 };
 
-/** Icon tile colour per group: money and people first, information last. */
+/** Group hue (icon tile tint, icon, count): money and people first, information last. */
 const GROUP_TONE: Record<InboxType, string> = {
-  PAYMENT: "bg-[var(--ok)]",
-  CHAT: "bg-[var(--accent)]",
-  NEW_STALE: "bg-[var(--st-new)]",
-  APPROVED_STALE: "bg-[var(--st-approved)]",
-  RETURN: "bg-[var(--st-rejected)]",
-  LOW_STOCK: "bg-[var(--c3)]",
-  SITE_ERROR: "bg-[var(--surface-3)]",
+  PAYMENT: "var(--ok)",
+  CHAT: "var(--accent-hi)",
+  NEW_STALE: "var(--st-new)",
+  APPROVED_STALE: "var(--st-approved)",
+  RETURN: "var(--st-rejected)",
+  LOW_STOCK: "var(--warn)",
+  SITE_ERROR: "var(--text-muted)",
 };
+
+/** Tinted tile in a group hue (v3: colour at 14% + hairline at 30%, icon in the colour). */
+function toneTile(tone: string): CSSProperties {
+  return {
+    color: tone,
+    background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+    borderColor: `color-mix(in srgb, ${tone} 30%, transparent)`,
+  };
+}
 
 /** Rows shown per group before «Показать ещё». */
 const COLLAPSED = 5;
@@ -221,7 +230,7 @@ export default function InboxPage() {
       return (
         <Link
           href="/metrics?tab=stock"
-          className="focusable inline-flex h-9 items-center gap-1 rounded-[var(--r-sm)] px-2 text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+          className="focusable font-display inline-flex h-8 items-center gap-1.5 rounded-[var(--r-sm)] px-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-9"
         >
           Что дозаказать <ArrowRight className="h-4 w-4" />
         </Link>
@@ -231,7 +240,7 @@ export default function InboxPage() {
       return (
         <Link
           href="/settings#site"
-          className="focusable inline-flex h-9 items-center gap-1 rounded-[var(--r-sm)] px-2 text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+          className="focusable font-display inline-flex h-8 items-center gap-1.5 rounded-[var(--r-sm)] px-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-9"
         >
           Настройки → Сайт <ArrowRight className="h-4 w-4" />
         </Link>
@@ -287,13 +296,11 @@ export default function InboxPage() {
                   <a
                     key={g.id}
                     href={`#inbox-${g.id}`}
-                    className="nb-press focusable inline-flex h-10 shrink-0 items-center gap-2 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3 text-[12px] font-bold uppercase tracking-wide text-[var(--text)] shadow-[3px_3px_0_var(--shadow)]"
+                    className="nb-chip nb-press focusable inline-flex h-9 shrink-0 items-center gap-2 pl-3 pr-2 text-[11.5px] uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-4 w-4 shrink-0" style={{ color: GROUP_TONE[g.id] }} />
                     {g.title}
-                    <span className="rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[11px] font-black text-[var(--accent-ink)]">
-                      {g.count}
-                    </span>
+                    <span className="count-badge count-badge--muted">{g.count}</span>
                   </a>
                 );
               })}
@@ -316,7 +323,7 @@ export default function InboxPage() {
             </div>
 
             {snoozedTotal > 0 && (
-              <p className="mt-6 text-center text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+              <p className="font-display mt-6 text-center text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
                 Отложено: {snoozedTotal} — вернутся сами
               </p>
             )}
@@ -371,21 +378,25 @@ function GroupSection({
     >
       <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
         <div
-          className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[3px] border-[var(--line)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]",
-            GROUP_TONE[group.id]
-          )}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border"
+          style={toneTile(GROUP_TONE[group.id])}
         >
           <Icon className="h-[18px] w-[18px]" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="flex items-center gap-2 text-[16px] font-black uppercase tracking-wide text-[var(--text)]">
+          <h2 className="font-display flex items-center gap-2 text-[15px] font-bold uppercase leading-tight tracking-[0.04em] text-[var(--ink)]">
             {group.title}
-            <span className="rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] px-1.5 text-[12px] font-black">
+            <span
+              className="count-badge"
+              style={{
+                background: `color-mix(in srgb, ${GROUP_TONE[group.id]} 18%, transparent)`,
+                color: GROUP_TONE[group.id],
+              }}
+            >
               {group.count}
             </span>
           </h2>
-          <p className="text-[12px] leading-snug text-[var(--text-muted)]">
+          <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">
             {group.hint}
             {group.snoozed > 0 && <span className="text-[var(--text-faint)]"> · отложено: {group.snoozed}</span>}
           </p>
@@ -414,7 +425,7 @@ function GroupSection({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="focusable mt-3 h-11 w-full rounded-[var(--r-md)] border-[3px] border-dashed border-[var(--line)] text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+          className="focusable nb-press font-display mt-3 h-10 w-full rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
         >
           {expanded ? "Свернуть" : `Показать ещё ${hidden}`}
         </button>

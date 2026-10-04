@@ -89,7 +89,7 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
               <tbody>
                 {c.cohorts.map((row) => (
                   <tr key={row.month}>
-                    <td className="font-bold">{monthLabel(row.month)}</td>
+                    <td className="font-semibold">{monthLabel(row.month)}</td>
                     <td className="r">{num(row.buyers)}</td>
                     {row.returnedPct.map((v, i) => (
                       <td key={i} className="r">
@@ -97,7 +97,7 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
                           <span className="text-[var(--text-faint)]">·</span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="inline-block h-3 w-3 rounded-[2px] border border-[var(--line)]" style={{ background: cohortBg(v) }} />
+                            <span className="inline-block h-3 w-3 rounded-[var(--r-sm)] border border-[var(--line)]" style={{ background: cohortBg(v) }} />
                             {pct(v)}
                           </span>
                         )}
@@ -130,7 +130,7 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
             <tbody>
               {c.signups.map((s) => (
                 <tr key={s.weekStart}>
-                  <td className="font-bold">{bucketLabel(s.weekStart, "WEEK")}</td>
+                  <td className="font-semibold">{bucketLabel(s.weekStart, "WEEK")}</td>
                   <td className="r">{num(s.newUsers)}</td>
                   <td>
                     <InlineBar value={s.newUsers} max={maxSignup} />
@@ -165,11 +165,11 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
                   {c.topCustomers.map((t) => (
                     <tr key={String(t.telegramUserId)}>
                       <td>
-                        <div className="font-bold">{t.name ?? "—"}</div>
+                        <div className="font-semibold">{t.name ?? "—"}</div>
                         {t.username && <div className="text-[11px] text-[var(--text-faint)]">@{t.username}</div>}
                       </td>
                       <td className="r">{num(t.orders)}</td>
-                      <td className="r font-extrabold">{uah(t.receivedMinor)}</td>
+                      <td className="r font-semibold">{uah(t.receivedMinor)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -197,7 +197,7 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
                 <tbody>
                   {c.promoCodes.map((p) => (
                     <tr key={p.code}>
-                      <td className="font-bold">{p.code}</td>
+                      <td className="font-semibold">{p.code}</td>
                       <td className="r">{num(p.orders)}</td>
                       <td className="r">{uah(p.discountMinor)}</td>
                       <td className="r">{uahShort(p.soldMinor)}</td>

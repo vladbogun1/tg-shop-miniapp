@@ -142,13 +142,13 @@ export function ItemPicker({
                   }}
                   disabled={eff <= 0}
                   className={cn(
-                    "flex items-center gap-3 rounded-[var(--r-sm)] border-2 border-[var(--border-2)] bg-[var(--surface)] p-2 text-left transition-colors hover:border-[var(--accent)]",
+                    "card-2 flex shrink-0 items-center gap-3 p-2 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]",
                     eff <= 0 && "opacity-40"
                   )}
                 >
-                  <Image src={p.images?.[0]?.url} alt={p.title} size={96} className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)]" />
+                  <Image src={p.images?.[0]?.url} alt={p.title} size={96} className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]" />
                   <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[var(--text)]">{p.title}</span>
-                  <span className="shrink-0 text-[12px] font-bold text-[var(--text-faint)]">{eff} шт</span>
+                  <span className="tabular shrink-0 pr-1 text-[12px] font-medium text-[var(--text-faint)]">{eff} шт</span>
                 </button>
               );
             })}
@@ -160,23 +160,23 @@ export function ItemPicker({
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <Image src={selected.images?.[0]?.url} alt={selected.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]" />
+            <Image src={selected.images?.[0]?.url} alt={selected.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]" />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-extrabold text-[var(--text)]">{selected.title}</div>
+              <div className="truncate text-[15px] font-semibold text-[var(--text)]">{selected.title}</div>
               <div className="text-[12px] text-[var(--text-faint)]">
                 {gift
                   ? `Цена ${money(selected.priceMinor, selected.currency)} → в подарок 0 ₴`
                   : `Цена ${money(selected.priceMinor, selected.currency)} × ${qty} = ${money(selected.priceMinor * qty, selected.currency)}`}
               </div>
             </div>
-            <button type="button" onClick={reset} className="text-[12px] font-bold uppercase tracking-wide text-[var(--accent)] hover:underline">
+            <button type="button" onClick={reset} className="font-display hit shrink-0 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline">
               Другой
             </button>
           </div>
 
           {hasVariants && (
             <div>
-              <label className="mb-1.5 block text-[12px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">Вариант</label>
+              <label className="field-label mb-1.5 block">Вариант</label>
               <div className="flex flex-wrap gap-2">
                 {selected.variants!.map((v) => (
                   <button
@@ -188,10 +188,10 @@ export function ItemPicker({
                       setQty(1);
                     }}
                     className={cn(
-                      "rounded-[var(--r-sm)] border-2 px-3 py-1.5 text-[13px] font-bold transition-colors",
+                      "nb-chip nb-press h-8 px-3.5 text-[12.5px] transition-colors",
                       variant?.name === v.name
-                        ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                        : "border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)]",
+                        ? "nb-chip-active"
+                        : "text-[var(--text-muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]",
                       (v.stock ?? 0) <= 0 && "opacity-40"
                     )}
                   >
@@ -212,11 +212,11 @@ export function ItemPicker({
               onBlur={() => qty < 1 && setQty(1)}
             />
             {qty > available && (
-              <span className="pb-2.5 text-[12px] font-bold text-[var(--danger)]">Не хватает на складе</span>
+              <span className="pb-3 text-[12px] font-semibold text-[var(--danger-ink)]">Не хватает на складе</span>
             )}
           </div>
 
-          <div className="rounded-[var(--r-md)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+          <div className="card-2 px-3.5 py-3">
             <Toggle checked={gift} onChange={setGift} label="🎁 Подарок (бесплатно)" />
             <p className="mt-1 text-[12px] text-[var(--text-faint)]">
               {gift ? "Позиция добавится за 0 ₴ (итог не изменится)." : "Обычная платная позиция — итог заказа увеличится."}

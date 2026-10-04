@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProductModal — create/edit product as a STEPPED WIZARD (Neo-Brutalism).
+ * ProductModal — create/edit product as a STEPPED WIZARD (ChiSetup v3).
  * Steps: 1) Основное (название+описание) → 2) Фото (загрузка + порядок,
  * первое = обложка) → 3) Цена и склад (цена/валюта/остаток/варианты) →
  * 4) Теги (+активность) → 5) Сайт (адрес страницы, SEO) → 6) Проверка (обзор + создать/сохранить).
@@ -397,7 +397,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       footer={
         confirmClose ? (
           <div className="flex w-full flex-wrap items-center justify-between gap-2">
-            <span className="text-[13px] font-bold text-[var(--text)]">
+            <span className="text-[13px] font-semibold text-[var(--text)]">
               Закрыть без сохранения? Изменения пропадут.
             </span>
             <div className="flex gap-2">
@@ -459,7 +459,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
           Правка названия/описания сбросит переводы uk/en ({staleAfterSave}{" "}
           {plural(staleAfterSave, "поле", "поля", "полей")}) — на сайте снова будет русский текст, пока
           не переведёте заново в{" "}
-          <Link href="/translations" className="font-bold underline">
+          <Link href="/translations" className="font-semibold text-[var(--accent-hi)] hover:underline">
             «Переводах»
           </Link>
           .
@@ -474,7 +474,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       )}
 
       {/* Animated step body */}
-      <div className="relative mt-5 overflow-hidden">
+      {/* -m-1 p-1: room for the 3px focus ring inside the clip used by the slide animation. */}
+      <div className="relative -m-1 mt-4 overflow-hidden p-1">
         <AnimatePresence mode="wait" custom={dir} initial={false}>
           <motion.div
             key={step}
@@ -518,13 +519,15 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   }}
                   onClick={() => fileRef.current?.click()}
                   className={cn(
-                    "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[var(--r-md)] border-[3px] border-dashed px-4 py-8 text-center text-[13px] font-bold uppercase tracking-wide transition-colors",
+                    "font-display flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[var(--r-lg)] border px-4 py-7 text-center text-[12.5px] font-semibold uppercase tracking-[0.06em] transition-colors",
                     dragOver
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                      : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:border-[var(--accent)]"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                      : "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text-muted)] hover:border-[var(--border-2)] hover:text-[var(--text)]"
                   )}
                 >
-                  <UploadCloud className="h-6 w-6" />
+                  <span className="accent-tint grid h-11 w-11 place-items-center rounded-[var(--r-md)]">
+                    <UploadCloud className="h-5 w-5" />
+                  </span>
                   {uploading ? "Загрузка…" : "Перетащите фото или нажмите для загрузки"}
                   <input
                     ref={fileRef}
@@ -541,37 +544,40 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   </p>
                 ) : (
                   <>
-                    <p className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+                    <p className="field-label !text-[11px] !text-[var(--text-faint)]">
                       {imageKeys.length} фото · первое = обложка
                     </p>
                     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                       {imageKeys.map((key, i) => (
-                        <div key={key + i} className="group relative">
-                          <Image
-                            src={key}
-                            alt=""
-                            size={200}
-                            className="aspect-square w-full rounded-[var(--r-sm)] border-2 border-[var(--line)]"
-                          />
+                        // One clipping frame (r-lg): the photo, the overlays and the arrow strip all live inside
+                        // it, so nothing pokes past the rounded corners. Overlays sit 6px in with r-md (12 − 6).
+                        <div
+                          key={key + i}
+                          className={cn(
+                            "group relative overflow-hidden rounded-[var(--r-lg)] border",
+                            i === 0 ? "border-[rgba(255,102,0,.45)]" : "border-[var(--line)]"
+                          )}
+                        >
+                          <Image src={key} alt="" size={200} className="aspect-square w-full" />
                           {i === 0 && (
-                            <span className="absolute left-1 top-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)]">
+                            <span className="font-display absolute left-1.5 top-1.5 rounded-[var(--r-md)] border border-[rgba(255,102,0,.45)] bg-[rgba(14,14,16,.8)] px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-[14px] tracking-[0.06em] text-[var(--accent-hi)] backdrop-blur-sm">
                               обложка
                             </span>
                           )}
                           <button
                             type="button"
                             onClick={() => setImageKeys((prev) => prev.filter((_, j) => j !== i))}
-                            className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] text-[var(--accent-ink)] shadow-[2px_2px_0_var(--shadow)]"
+                            className="hit absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[rgba(14,14,16,.8)] text-[var(--text)] backdrop-blur-sm transition-colors hover:border-[color-mix(in_srgb,var(--danger)_55%,transparent)] hover:text-[var(--danger-ink)]"
                             aria-label="Удалить"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
-                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/55 px-1 py-1">
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 border-t border-[var(--line)] bg-[rgba(14,14,16,.72)] px-1 py-0.5 backdrop-blur-sm">
                             <button
                               type="button"
                               onClick={() => moveImage(i, i - 1)}
                               disabled={i === 0}
-                              className="grid h-6 w-6 place-items-center rounded text-white disabled:opacity-30"
+                              className="grid h-6 w-6 place-items-center rounded-[var(--r-sm)] text-[var(--text)] transition-colors hover:bg-white/10 disabled:opacity-30"
                               aria-label="Левее"
                             >
                               <ArrowLeft className="h-4 w-4" />
@@ -580,7 +586,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                               type="button"
                               onClick={() => moveImage(i, i + 1)}
                               disabled={i === imageKeys.length - 1}
-                              className="grid h-6 w-6 place-items-center rounded text-white disabled:opacity-30"
+                              className="grid h-6 w-6 place-items-center rounded-[var(--r-sm)] text-[var(--text)] transition-colors hover:bg-white/10 disabled:opacity-30"
                               aria-label="Правее"
                             >
                               <ArrowRight className="h-4 w-4" />
@@ -627,13 +633,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <label className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
-                      Варианты
-                    </label>
+                    <label className="field-label">Варианты</label>
                     <button
                       type="button"
                       onClick={() => setVariants((v) => [...v, { name: "", stock: 0 }])}
-                      className="flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] transition-colors hover:text-[var(--accent-2)]"
+                      className="hit font-display flex items-center gap-1 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] transition-colors hover:underline"
                     >
                       <Plus className="h-3.5 w-3.5" /> Добавить
                     </button>
@@ -645,6 +649,11 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2">
+                      <div aria-hidden className="field-label flex gap-2 !text-[10.5px] !text-[var(--text-faint)]">
+                        <span className="min-w-0 flex-1 pl-0.5">Название</span>
+                        <span className="w-20 pl-0.5">Остаток</span>
+                        <span className="w-10 shrink-0" />
+                      </div>
                       {variants.map((v, i) => (
                         <div key={i} className="flex items-center gap-2">
                           <input
@@ -655,7 +664,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                                 prev.map((p, j) => (j === i ? { ...p, name: e.target.value } : p))
                               )
                             }
-                            className="focusable min-w-0 flex-1 rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)]"
+                            className="h-10 min-w-0 flex-1 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[14px] text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
                           />
                           <input
                             value={v.stock}
@@ -668,12 +677,12 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                                 )
                               )
                             }
-                            className="focusable w-20 rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--text)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-[var(--accent)]"
+                            className="tabular h-10 w-20 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[14px] text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
                           />
                           <button
                             type="button"
                             onClick={() => setVariants((prev) => prev.filter((_, j) => j !== i))}
-                            className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]"
+                            className="nb-press focusable grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)]"
                             aria-label="Удалить вариант"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -688,9 +697,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
 
             {step === 3 && (
               <div className="flex flex-col gap-4">
-                <label className="block text-[12px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
-                  Теги
-                </label>
+                <label className="field-label block">Теги</label>
                 <div className="flex flex-wrap gap-2">
                   {tags.length === 0 && (
                     <span className="text-[13px] text-[var(--text-faint)]">
@@ -704,19 +711,21 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                         key={t.id}
                         type="button"
                         onClick={() => toggleTag(t.id)}
+                        aria-pressed={on}
                         className={cn(
-                          "nb-press rounded-[var(--r-sm)] border-2 border-[var(--line)] px-3 py-1.5 text-[13px] font-bold uppercase tracking-wide transition-colors",
+                          "nb-chip nb-press inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] transition-colors",
                           on
-                            ? "bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]"
-                            : "bg-[var(--surface-2)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+                            ? "nb-chip-active"
+                            : "text-[var(--text-muted)] hover:border-[var(--border-2)] hover:text-[var(--text)]"
                         )}
                       >
+                        {on && <Check className="h-3.5 w-3.5" />}
                         {t.name}
                       </button>
                     );
                   })}
                 </div>
-                <div className="mt-2 rounded-[var(--r-md)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+                <div className="mt-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3">
                   <Toggle checked={active} onChange={setActive} label="На витрине (виден в каталоге)" />
                 </div>
               </div>
@@ -787,27 +796,33 @@ function Stepper({ step, onJump }: { step: number; onJump: (i: number) => void }
     <div className="w-full">
       <div className="flex items-center gap-1.5">
         {STEPS.map((s, i) => (
+          // A taller tap area around a thin 4px bar: passed = dim orange, current = orange with glow.
           <button
             key={s.key}
             type="button"
             onClick={() => onJump(i)}
             aria-label={`Шаг ${i + 1}: ${s.label}`}
-            className={cn(
-              "h-2.5 flex-1 rounded-full border-2 border-[var(--line)] transition-colors",
-              i < step
-                ? "bg-[var(--ok)]"
-                : i === step
-                  ? "bg-[var(--accent)]"
-                  : "bg-[var(--surface-2)]"
-            )}
-          />
+            aria-current={i === step ? "step" : undefined}
+            className="focusable group flex h-4 flex-1 items-center rounded-full"
+          >
+            <span
+              className={cn(
+                "h-1 w-full rounded-full transition-[background-color,box-shadow] duration-200",
+                i < step
+                  ? "bg-[rgba(255,102,0,.45)] group-hover:bg-[rgba(255,102,0,.6)]"
+                  : i === step
+                    ? "bg-[var(--accent)] shadow-[var(--glow-sm)]"
+                    : "bg-[var(--surface-3)] group-hover:bg-[var(--border-2)]"
+              )}
+            />
+          </button>
         ))}
       </div>
-      <div className="mt-2.5 flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate text-[15px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+      <div className="mt-2 flex items-baseline justify-between gap-2">
+        <span className="section-title min-w-0 truncate !text-[15px] text-[var(--ink)]">
           {step + 1}. {STEPS[step].label}
         </span>
-        <span className="shrink-0 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+        <span className="font-display tabular shrink-0 text-[12px] font-semibold tracking-[0.06em] text-[var(--text-faint)]">
           {step + 1}/{STEPS.length}
         </span>
       </div>
@@ -845,26 +860,26 @@ function Review({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-3">
-        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)]">
+        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]">
           {imageKeys[0] ? (
             <Image src={imageKeys[0]} alt="" size={200} className="aspect-square w-full" />
           ) : (
-            <div className="grid h-full w-full place-items-center text-[var(--text-faint)]">
+            <div className="grid h-full w-full place-items-center text-[12px] text-[var(--text-faint)]">
               нет фото
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[16px] font-extrabold text-[var(--text)]">{title || "Без названия"}</p>
-          <p className="mt-0.5 text-[15px] font-black text-[var(--accent)]">
+          <p className="text-[16px] font-semibold leading-snug text-[var(--ink)]">{title || "Без названия"}</p>
+          <p className="font-display tabular mt-1 text-[16px] font-bold text-[var(--accent-hi)]">
             {priceLabel}
             {compareAtLabel && (
-              <span className="ml-2 text-[13px] font-bold text-[var(--text-faint)] line-through">
+              <span className="ml-2 text-[13px] font-semibold text-[var(--text-faint)] line-through">
                 {compareAtLabel}
               </span>
             )}
           </p>
-          <p className="mt-1 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+          <p className="field-label mt-1.5 !text-[11px] !text-[var(--text-faint)]">
             {imageKeys.length} фото · {active ? "активен" : "скрыт"}
           </p>
         </div>
@@ -889,7 +904,7 @@ function Review({
             {tags.map((t) => (
               <span
                 key={t.id}
-                className="rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[11px] font-bold uppercase"
+                className="chip-tint !bg-[var(--surface-3)] text-[var(--text)]"
               >
                 {t.name}
               </span>
@@ -915,9 +930,9 @@ function ReviewRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-t-2 border-[var(--border-2)] pt-2.5">
+    <div className="flex items-start justify-between gap-3 border-t border-[var(--line)] pt-2.5">
       <div className="min-w-0">
-        <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--text-faint)]">
+        <div className="field-label !text-[11px] !text-[var(--text-faint)]">
           {label}
         </div>
         <div className="mt-0.5 text-[14px] text-[var(--text)]">{children}</div>
@@ -925,7 +940,7 @@ function ReviewRow({
       <button
         type="button"
         onClick={() => onEdit(step)}
-        className="shrink-0 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:underline"
+        className="hit font-display shrink-0 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline"
       >
         Изменить
       </button>
@@ -935,7 +950,7 @@ function ReviewRow({
 
 function Warning({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 flex items-start gap-2 rounded-[var(--r-md)] border-2 border-[var(--warn)] bg-[var(--surface-2)] p-2.5 text-[13px] leading-snug text-[var(--text)]">
+    <div className="mt-4 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-2.5 text-[13px] leading-snug text-[var(--text)]">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
       <span>{children}</span>
     </div>

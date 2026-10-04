@@ -11,7 +11,7 @@ import { ArrowRightLeft, Inbox } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminBoard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
-import { STATUS_ORDER, STATUS_LABEL, STATUS_EMOJI, STATUS_ACTION_LABEL, allowedTargets } from "@/lib/orders";
+import { STATUS_ORDER, STATUS_LABEL, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets } from "@/lib/orders";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { OrderCard } from "./OrderCard";
@@ -37,7 +37,7 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
 
   const segOptions = STATUS_ORDER.map((s) => ({
     value: s,
-    label: `${STATUS_EMOJI[s]} ${STATUS_LABEL[s]}`,
+    label: STATUS_LABEL[s],
     count: board.counts?.[s] ?? board.columns[s]?.length ?? 0,
   }));
 
@@ -48,14 +48,14 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
         <SegmentedControl options={segOptions} value={active} onChange={onActiveChange} />
       </div>
       {sum != null && count > 0 && (
-        <div className="mb-2 text-[12px] font-bold text-[var(--text-muted)]">
+        <div className="tabular mb-2 px-0.5 text-[12px] font-semibold text-[var(--text-muted)]">
           {count} шт. · {money(sum, "UAH")}
         </div>
       )}
 
       <div className="flex flex-col gap-2">
         {orders.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-[var(--r-md)] border-2 border-dashed border-[var(--border-2)] px-3 py-10 text-center text-[13px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+          <div className="font-display flex flex-col items-center gap-2 rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] px-3 py-10 text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
             <Inbox className="h-6 w-6 opacity-60" />
             Пусто
           </div>
@@ -72,7 +72,7 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
                       e.stopPropagation();
                       setMoveFor({ id: o.id, from: o.status, label: o.customerName });
                     }}
-                    className="nb-press hit -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
+                    className="nb-press hit -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
                     aria-label="Переместить"
                   >
                     <ArrowRightLeft className="h-4 w-4" />
@@ -97,7 +97,14 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
           moveFor
             ? allowedTargets(moveFor.from).map((t) => ({
                 key: t,
-                label: `${STATUS_EMOJI[t]} ${STATUS_ACTION_LABEL[t]}`,
+                label: STATUS_ACTION_LABEL[t],
+                icon: (
+                  <span
+                    aria-hidden
+                    className="mx-1 block h-2 w-2 rounded-full"
+                    style={{ background: STATUS_VAR[t] }}
+                  />
+                ),
                 danger: t === "REJECTED",
                 onSelect: () => onMove(moveFor.id, moveFor.from, t),
               }))

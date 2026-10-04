@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * UserProfileDrawer (Neo-Brutalism) — right drawer with a user's profile + ALL
+ * UserProfileDrawer (ChiSetup v3) — right drawer with a user's profile + ALL
  * their orders (GET /api/admin/orders/by-user/{tgId}).
  *
  * Decoupling: clicking an order row calls `onOpenOrder` — the page opens the OrderDrawer ON TOP of
@@ -33,7 +33,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { staggerContainer, riseItem, spring } from "@/lib/motion";
+import { staggerContainer, riseItem } from "@/lib/motion";
 
 interface Props {
   user: UserCardDto | null;
@@ -76,21 +76,21 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
 
   const header = user ? (
     <div className="flex min-w-0 items-center gap-3">
-      <div className="accent-fill grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-sm)] text-[14px] font-extrabold text-[var(--accent-ink)]">
+      <div className="accent-tint font-display grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] text-[14px] font-bold">
         {initials(user)}
       </div>
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="font-display truncate text-[17px] font-bold leading-tight text-[var(--ink)]">
             {displayName(user)}
           </span>
           {user.premium && (
-            <Badge tone="warn">
+            <Badge tone="warn" className="shrink-0">
               <Crown className="h-3 w-3" /> premium
             </Badge>
           )}
           {user.botBlocked && (
-            <Badge tone="danger">
+            <Badge tone="danger" className="shrink-0">
               <Ban className="h-3 w-3" /> заблокировал
             </Badge>
           )}
@@ -112,7 +112,7 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
             href={telegramHref(user)}
             target="_blank"
             rel="noreferrer"
-            className="focusable card-2 nb-press inline-flex w-fit items-center gap-2 px-3.5 py-2 text-[13px] font-extrabold uppercase tracking-wide text-[var(--text)] shadow-[4px_4px_0_var(--shadow)]"
+            className="focusable nb-press font-display inline-flex h-10 w-fit items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] px-4 text-[12.5px] font-bold uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
           >
             <Send className="h-4 w-4 text-[var(--accent)]" />
             Открыть в Telegram
@@ -121,18 +121,18 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             <div className="card p-4">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              <div className="field-label flex items-center gap-1.5 !text-[11px]">
                 <ShoppingBag className="h-3.5 w-3.5" /> Заказов
               </div>
-              <div className="mt-1.5 text-[22px] font-extrabold text-[var(--text)]">
+              <div className="kpi-num mt-2 text-[24px]">
                 {user.ordersCount}
               </div>
             </div>
             <div className="card p-4">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              <div className="field-label flex items-center gap-1.5 !text-[11px]">
                 <Wallet className="h-3.5 w-3.5" /> Потрачено
               </div>
-              <div className="mt-1.5 text-[22px] font-extrabold text-[var(--text)]">
+              <div className="kpi-num mt-2 text-[24px]">
                 {money(user.totalSpentMinor)}
               </div>
             </div>
@@ -145,12 +145,10 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
 
           {/* Orders */}
           <div>
-            <div className="mb-2.5 flex items-center gap-2">
-              <span className="h-4 w-1.5 bg-[var(--accent)]" />
-              <span className="text-[13px] font-extrabold uppercase tracking-wide text-[var(--text)]">
-                Заказы
-              </span>
-            </div>
+            <h3 className="section-title mb-2.5 flex items-center gap-2">
+              <span aria-hidden className="h-3.5 w-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
+              Заказы
+            </h3>
             {isLoading ? (
               <div className="flex flex-col gap-2.5">
                 {Array.from({ length: 4 }).map((_, i) => (
@@ -193,17 +191,16 @@ function OrderRow({
     <motion.button
       type="button"
       variants={riseItem}
-      whileHover={{ y: -2, transition: spring }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="card nb-press group flex w-full items-center gap-3 p-3.5 text-left"
+      className="card card-hover nb-press group flex w-full items-center gap-3 p-3.5 text-left"
     >
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)]">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)]">
         <Package className="h-[18px] w-[18px]" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-[13px] font-extrabold text-[var(--text)]">
+          <span className="truncate font-mono text-[13px] font-semibold text-[var(--text)]">
             {shortId(order.id)}
           </span>
           <StatusBadge status={order.status} />
@@ -214,11 +211,11 @@ function OrderRow({
         </div>
       </div>
       <div className="shrink-0 text-right">
-        <div className="text-[14px] font-extrabold text-[var(--text)]">
+        <div className="font-display tabular text-[14px] font-bold text-[var(--text)]">
           {money(order.totalMinor, order.currency)}
         </div>
         {order.unreadCount > 0 && (
-          <div className="mt-1 inline-flex items-center justify-center rounded-full border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[11px] font-bold text-[var(--accent-ink)]">
+          <div className="count-badge mt-1">
             {order.unreadCount}
           </div>
         )}

@@ -44,7 +44,7 @@ export function SettingField({
           error={error ?? undefined}
           rightSlot={
             item.unit ? (
-              <span className="text-[12px] font-bold uppercase text-[var(--text-faint)]">{item.unit}</span>
+              <span className="font-display text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{item.unit}</span>
             ) : undefined
           }
         />
@@ -58,7 +58,7 @@ export function SettingField({
           placeholder="Пусто — стандартный текст"
           onChange={(e) => onChange(e.target.value)}
         />
-        <div className={cn("mt-1 flex justify-between gap-2 text-[12px]", error ? "text-[var(--danger)]" : "text-[var(--text-faint)]")}>
+        <div className={cn("mt-1 flex justify-between gap-2 text-[12px]", error ? "text-[var(--danger-ink)]" : "text-[var(--text-faint)]")}>
           <span>{error}</span>
           {item.maxLength != null && (
             <span>
@@ -82,12 +82,12 @@ export function SettingField({
     <div
       className={cn(
         "card-2 flex min-w-0 flex-col gap-3 rounded-[var(--r-md)] p-4 transition-colors",
-        dirty && "outline outline-[3px] outline-offset-[-3px] outline-[var(--accent)]"
+        dirty && "border-[rgba(255,102,0,.45)] shadow-[inset_2px_0_0_var(--accent)]"
       )}
     >
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-extrabold text-[var(--text)]">{labelOverride ?? item.label}</div>
+          <div className="text-[14px] font-semibold text-[var(--text)]">{labelOverride ?? item.label}</div>
           <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">{item.description}</p>
         </div>
         {dirty && <Badge tone="accent">Не сохранено</Badge>}
@@ -110,7 +110,7 @@ export function SettingField({
           <button
             type="button"
             onClick={onReset}
-            className="focusable inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 font-bold uppercase tracking-wide text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+            className="focusable inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Сбросить

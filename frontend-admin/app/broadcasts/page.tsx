@@ -325,7 +325,7 @@ export default function BroadcastsPage() {
         {/* Compose */}
         <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+            <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
               <MessageSquareText className="h-4 w-4 text-[var(--accent)]" />
               Сообщение
             </div>
@@ -375,8 +375,8 @@ export default function BroadcastsPage() {
             </p>
             <span
               className={cn(
-                "shrink-0 text-[12px] font-bold tabular-nums",
-                text.length > MAX_LEN ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
+                "shrink-0 text-[12px] font-semibold tabular-nums",
+                text.length > MAX_LEN ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
               )}
             >
               {text.length} / {MAX_LEN}
@@ -384,16 +384,16 @@ export default function BroadcastsPage() {
           </div>
 
           {problems.length > 0 && Object.values(texts).some((t) => t.trim()) && (
-            <ul className="flex flex-col gap-1 rounded-[var(--r-sm)] border-2 border-[var(--danger)] bg-[var(--surface-2)] px-3 py-2">
+            <ul className="flex flex-col gap-1 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2">
               {problems.map((p) => (
-                <li key={p} className="text-[12px] font-bold text-[var(--danger)]">
+                <li key={p} className="text-[12px] font-semibold text-[var(--danger-ink)]">
                   {p}
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="mt-1 flex flex-col gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent-soft)] p-4">
+          <div className="mt-1 flex flex-col gap-3 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-4">
             <Toggle checked={withButton} onChange={setWithButton} label="Кнопка «Открыть магазин» под сообщением" />
             {withButton && (
               <Input
@@ -409,17 +409,17 @@ export default function BroadcastsPage() {
 
         {/* Preview */}
         <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
-          <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+          <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <Eye className="h-4 w-4 text-[var(--accent)]" />
             Предпросмотр
             {editing !== "main" && (
-              <span className="text-[11px] font-bold normal-case text-[var(--text-faint)]">
+              <span className="font-[family-name:var(--font-body)] text-[11.5px] font-medium normal-case tracking-normal text-[var(--text-faint)]">
                 — {LANG_LABEL[editing]}
                 {!text.trim() && texts.main.trim() ? " (будет основной текст)" : ""}
               </span>
             )}
           </div>
-          <div className="rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[#0e1621] p-4">
+          <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[#0e1621] p-4">
             <div className="max-w-[85%] rounded-[14px] rounded-tl-[4px] bg-[#17212b] p-3 shadow-[var(--shadow-2)]">
               {previewSource.trim() ? (
                 <div
@@ -443,16 +443,16 @@ export default function BroadcastsPage() {
 
       {/* Test send */}
       <motion.div variants={riseItem} className="card mt-4 flex flex-col gap-3 p-5">
-        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+        <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <FlaskConical className="h-4 w-4 text-[var(--accent)]" />
           Тестовая отправка
-          <span className="text-[11px] font-bold normal-case text-[var(--text-faint)]">
+          <span className="font-[family-name:var(--font-body)] text-[11.5px] font-medium normal-case tracking-normal text-[var(--text-faint)]">
             — уходит текст открытой вкладки ({TEXT_TABS.find((t) => t.value === editing)?.label})
           </span>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <Button
-            variant="accent"
+            variant="surface"
             loading={testing === "me"}
             onClick={() => sendTest(true)}
             icon={<UserRound className="h-4 w-4" />}
@@ -482,6 +482,7 @@ export default function BroadcastsPage() {
           <div className="min-w-[140px] flex-1">
             <Input
               label="или Telegram ID"
+              
               value={manualId}
               inputMode="numeric"
               onChange={(e) => {
@@ -503,7 +504,7 @@ export default function BroadcastsPage() {
 
       {/* Broadcast */}
       <motion.div variants={riseItem} className="card mt-4 flex flex-col gap-3 p-5">
-        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+        <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <Users className="h-4 w-4 text-[var(--accent)]" />
           Рассылка
         </div>
@@ -526,6 +527,7 @@ export default function BroadcastsPage() {
           </div>
           <Button
             variant="accent"
+            chamfer
             loading={starting}
             disabled={running || audienceCount === 0 || !ok}
             onClick={requestBroadcast}
@@ -551,14 +553,14 @@ export default function BroadcastsPage() {
 
       {/* History */}
       <motion.div variants={riseItem} className="card mt-4 flex min-w-0 flex-col gap-3 p-5">
-        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+        <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <History className="h-4 w-4 text-[var(--accent)]" />
           Прошлые рассылки
         </div>
         {historyQ.isError ? (
-          <p className="text-[13px] text-[var(--danger)]">
+          <p className="text-[13px] text-[var(--danger-ink)]">
             Не удалось загрузить историю.{" "}
-            <button type="button" className="font-bold underline" onClick={() => historyQ.refetch()}>
+            <button type="button" className="font-semibold text-[var(--accent-hi)] hover:underline" onClick={() => historyQ.refetch()}>
               Повторить
             </button>
           </p>
@@ -594,7 +596,7 @@ export default function BroadcastsPage() {
       >
         <p className="text-[14px] leading-relaxed text-[var(--text)]">
           Разослать сообщение аудитории{" "}
-          <span className="font-semibold text-[var(--accent)]">«{AUDIENCE_LABEL[audience]}»</span>
+          <span className="font-semibold text-[var(--accent-hi)]">«{AUDIENCE_LABEL[audience]}»</span>
           {lang ? (
             <>
               {" "}
@@ -620,7 +622,7 @@ function HistoryRow({ h, onReuse }: { h: BroadcastHistoryItem; onReuse: () => vo
   return (
     <div className="card-2 flex min-w-0 flex-col gap-1.5 rounded-[var(--r-md)] p-3">
       <div className="flex flex-wrap items-center gap-2 text-[12px]">
-        <span className="font-bold text-[var(--text)]">{formatDateTime(h.startedAt)}</span>
+        <span className="tabular font-semibold text-[var(--text)]">{formatDateTime(h.startedAt)}</span>
         {h.status === "RUNNING" ? (
           <Badge tone="info">идёт</Badge>
         ) : h.status === "INTERRUPTED" ? (
@@ -639,14 +641,14 @@ function HistoryRow({ h, onReuse }: { h: BroadcastHistoryItem; onReuse: () => vo
       <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
         <span className="flex flex-wrap gap-3">
           <span className="text-[var(--ok)]">✓ {h.sent}</span>
-          <span className="text-[var(--danger)]">✕ {h.failed}</span>
+          <span className="text-[var(--danger-ink)]">✕ {h.failed}</span>
           <span className="text-[var(--warn)]">⊘ {h.blocked}</span>
           <span className="text-[var(--text-muted)]">из {h.total}</span>
         </span>
         <button
           type="button"
           onClick={onReuse}
-          className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:underline"
+          className="hit font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline"
         >
           В черновик
         </button>
@@ -664,7 +666,7 @@ function FmtBtn({ icon, onClick, title }: { icon: ReactNode; onClick: () => void
       onClick={onClick}
       whileTap={{ scale: 0.92 }}
       transition={spring}
-      className="focusable nb-press hit grid h-9 w-9 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+      className="focusable nb-press hit grid h-9 w-9 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
     >
       {icon}
     </motion.button>
@@ -694,16 +696,16 @@ function BroadcastProgress({
       className="card-2 mt-1 flex flex-col gap-2 rounded-[var(--r-md)] p-4"
     >
       <div className="flex items-center justify-between text-[13px]">
-        <span className="font-bold uppercase tracking-wide text-[var(--text)]">
+        <span className="section-title">
           {running ? "Идёт рассылка…" : "Рассылка завершена"}
         </span>
-        <span className="font-bold text-[var(--text-muted)]">
+        <span className="tabular font-semibold text-[var(--text-muted)]">
           {done} / {total} ({pct}%)
         </span>
       </div>
-      <div className="h-3.5 overflow-hidden rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-3)]">
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
         <motion.div
-          className="h-full bg-[var(--accent)]"
+          className="h-full rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]"
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 120, damping: 24 }}
@@ -711,7 +713,7 @@ function BroadcastProgress({
       </div>
       <div className="flex flex-wrap gap-4 text-[12px]">
         <span className="text-[var(--ok)]">✓ Доставлено: {sent}</span>
-        <span className="text-[var(--danger)]">✕ Ошибок: {failed}</span>
+        <span className="text-[var(--danger-ink)]">✕ Ошибок: {failed}</span>
         <span className="text-[var(--warn)]">⊘ Заблокировали: {blocked}</span>
       </div>
     </motion.div>

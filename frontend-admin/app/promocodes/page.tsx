@@ -27,7 +27,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
-import { staggerContainer, riseItem, hoverLift } from "@/lib/motion";
+import { staggerContainer, riseItem } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 import type { OrderStatus } from "@/lib/api";
 
@@ -202,7 +202,7 @@ export default function PromocodesPage() {
       >
         <div className="flex flex-col gap-4">
           {editingUses > 0 && (
-            <div className="flex items-start gap-2 rounded-[var(--r-md)] border-2 border-[var(--warn)] bg-[var(--surface-2)] p-2.5 text-[13px] leading-snug text-[var(--text)]">
+            <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-2.5 text-[13px] leading-snug text-[var(--text)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
               <span>
                 Код уже применили {editingUses} раз. Скидка в этих заказах не изменится — правка коснётся только
@@ -220,7 +220,7 @@ export default function PromocodesPage() {
             icon={<Ticket className="h-4 w-4" />}
           />
           <div className="flex flex-col gap-2">
-            <span className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
+            <span className="field-label">
               Тип скидки
             </span>
             <SegmentedControl<Mode>
@@ -289,7 +289,7 @@ export default function PromocodesPage() {
               key={confirming?.id ?? "none"}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="font-mono font-bold text-[var(--text)]"
+              className="font-mono font-semibold text-[var(--text)]"
             >
               {confirming?.code}
             </motion.span>
@@ -331,15 +331,15 @@ function PromoRow({
   });
 
   return (
-    <motion.div variants={riseItem} {...hoverLift} className="card flex flex-col gap-3 px-4 py-3.5">
+    <motion.div variants={riseItem} className="card card-hover flex flex-col gap-3 px-4 py-3.5">
       <div className="flex items-center gap-4">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+        <div className="accent-tint grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)]">
           <Ticket className="h-5 w-5" />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[15px] font-black tracking-wide text-[var(--text)]">{p.code}</span>
+            <span className="font-mono text-[15px] font-semibold tracking-wide text-[var(--ink)]">{p.code}</span>
             <Badge tone={p.active ? "ok" : "neutral"} dot>
               {p.active ? "активен" : "выключен"}
             </Badge>
@@ -372,7 +372,7 @@ function PromoRow({
             variant="ghost"
             size="icon"
             aria-label="Удалить"
-            className="hover:text-[var(--danger)]"
+            className="hover:text-[var(--danger-ink)]"
             onClick={onDelete}
           >
             <Trash2 className="h-4 w-4" />
@@ -385,7 +385,7 @@ function PromoRow({
           <button
             type="button"
             onClick={() => setShowOrders((v) => !v)}
-            className="hit inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)]"
+            className="hit inline-flex items-center gap-1 font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline"
           >
             Заказы с кодом
             <ChevronDown className={showOrders ? "h-3.5 w-3.5 rotate-180" : "h-3.5 w-3.5"} />
@@ -395,7 +395,7 @@ function PromoRow({
               {ordersQ.isLoading ? (
                 <span className="text-[12px] text-[var(--text-faint)]">Загружаем…</span>
               ) : ordersQ.isError ? (
-                <span className="text-[12px] text-[var(--danger)]">Не удалось загрузить заказы</span>
+                <span className="text-[12px] text-[var(--danger-ink)]">Не удалось загрузить заказы</span>
               ) : (ordersQ.data ?? []).length === 0 ? (
                 <span className="text-[12px] text-[var(--text-faint)]">
                   Заказов с этим кодом нет (возможно, их удалили или код переименовали).
@@ -408,10 +408,10 @@ function PromoRow({
                     onClick={() => onOpenOrder(o.id)}
                     className="card-2 flex flex-wrap items-center gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[12.5px] hover:bg-[var(--surface-hover)]"
                   >
-                    <span className="font-mono font-bold text-[var(--text)]">{shortId(o.id)}</span>
+                    <span className="font-mono font-semibold text-[var(--text)]">{shortId(o.id)}</span>
                     <StatusBadge status={o.status as OrderStatus} />
                     <span className="min-w-0 flex-1 truncate text-[var(--text-muted)]">{o.customerName ?? "—"}</span>
-                    <span className="font-bold text-[var(--text)]">{money(o.totalMinor)}</span>
+                    <span className="tabular font-semibold text-[var(--text)]">{money(o.totalMinor)}</span>
                     <span className="text-[var(--ok)]">−{money(o.discountMinor)}</span>
                     <span className="text-[var(--text-faint)]">{formatDateTime(o.createdAt)}</span>
                   </button>

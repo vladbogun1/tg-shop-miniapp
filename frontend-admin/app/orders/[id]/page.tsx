@@ -17,7 +17,7 @@ export default function OrderDeepLinkPage() {
 
   return (
     <div>
-      <p className="text-[13px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+      <p className="field-label">
         Заказ открыт в панели.
       </p>
       <OrderDrawer

@@ -58,10 +58,10 @@ function Step({ n, title, children, aside }: { n: number; title: string; childre
   return (
     <section className="card mb-5 p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border-[3px] border-[var(--line)] bg-[var(--accent)] text-[14px] font-black text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]">
+        <span className="accent-tint font-display tabular grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-md)] text-[14px] font-bold">
           {n}
         </span>
-        <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">{title}</h2>
+        <h2 className="section-title !text-[15px] text-[var(--ink)]">{title}</h2>
         {aside && <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center gap-2">{aside}</div>}
       </div>
       {children}
@@ -102,6 +102,8 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
     const split = splitIntoParts(strings);
     return split.map((p, i) => ({ ids: p.map((x) => x.id), text: buildPrompt(p, i + 1, split.length), chars: p.reduce((n, x) => n + x.ru.length, 0) }));
   }, [chosen]);
+  // The one orange button of step 1: the next part still to copy (the rest are graphite).
+  const nextPart = parts.findIndex((_, i) => !copied.has(i));
 
   // ---- 2. answer ----------------------------------------------------------
   const [answer, setAnswer] = useState("");
@@ -294,7 +296,7 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
           <div className="text-[13px] font-semibold text-[var(--text-faint)]">По этому фильтру переводить нечего.</div>
         ) : parts.length === 1 ? (
           <div className="flex flex-wrap items-center gap-2">
-            <CopyButton text={parts[0].text} copied={copied.has(0)} onCopied={() => setCopied(new Set(copied).add(0))} />
+            <CopyButton variant={copied.has(0) || answer.trim() ? "surface" : "accent"} text={parts[0].text} copied={copied.has(0)} onCopied={() => setCopied(new Set(copied).add(0))} />
             <Button variant="ghost" size="sm" onClick={() => setPreview(preview === 0 ? null : 0)} iconRight={<ChevronDown className={cn("h-4 w-4 transition-transform", preview === 0 && "rotate-180")} />}>
               Показать текст
             </Button>
@@ -306,12 +308,12 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
               <div
                 key={i}
                 className={cn(
-                  "flex flex-col gap-2 rounded-[var(--r-md)] border-[3px] border-[var(--line)] p-3",
-                  copied.has(i) ? "bg-[color-mix(in_srgb,var(--ok)_14%,var(--surface))]" : "bg-[var(--surface-2)]"
+                  "flex flex-col gap-2 rounded-[var(--r-md)] border border-[var(--line)] p-3",
+                  copied.has(i) ? "border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface-2))]" : "bg-[var(--surface-2)]"
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+                  <span className="section-title">
                     Часть {i + 1} из {parts.length}
                   </span>
                   {copied.has(i) && <Badge tone="ok">скопирована</Badge>}
@@ -320,7 +322,7 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
                   {p.ids.length} строк · {p.chars.toLocaleString("ru")} симв. оригинала
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                  <CopyButton text={p.text} copied={copied.has(i)} onCopied={() => setCopied(new Set(copied).add(i))} label={`Скопировать часть ${i + 1}`} />
+                  <CopyButton variant={i === nextPart ? "accent" : "surface"} text={p.text} copied={copied.has(i)} onCopied={() => setCopied(new Set(copied).add(i))} label={`Скопировать часть ${i + 1}`} />
                   <Button variant="ghost" size="sm" onClick={() => setPreview(preview === i ? null : i)}>
                     {preview === i ? "Скрыть" : "Текст"}
                   </Button>
@@ -335,7 +337,7 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="thin-scroll mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-3 font-mono text-[12px] leading-relaxed text-[var(--text)]"
+              className="thin-scroll mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 font-mono text-[12px] leading-relaxed text-[var(--text)]"
             >
               {parts[preview].text}
             </motion.pre>
@@ -357,10 +359,10 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
           rows={7}
           spellCheck={false}
           placeholder={'Вставьте сюда ответ целиком — блок ```json { "t…": { "ru": …, "uk": …, "en": … } } ```.\nМожно вставить ответы на несколько частей подряд.'}
-          className="thin-scroll w-full resize-y rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
+          className="thin-scroll w-full resize-y rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button variant="accent" icon={<Wand2 className="h-4 w-4" />} onClick={() => check()} disabled={!answer.trim()}>
+          <Button variant={rows || !answer.trim() ? "surface" : "accent"} icon={<Wand2 className="h-4 w-4" />} onClick={() => check()} disabled={!answer.trim()}>
             Проверить ответ
           </Button>
           <Button
@@ -398,16 +400,16 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
         {(parseErrors.length > 0 || notes.length > 0 || unknown.length > 0 || invalid.length > 0 || missing.length > 0) && (
           <div className="mt-3 flex flex-col gap-1.5 text-[13px] font-semibold">
             {parseErrors.map((e, i) => (
-              <div key={i} className="text-[var(--danger)]">✕ {e}</div>
+              <div key={i} className="text-[var(--danger-ink)]">✕ {e}</div>
             ))}
             {unknown.length > 0 && (
-              <div className="text-[var(--danger)]">
+              <div className="text-[var(--danger-ink)]">
                 ✕ Неизвестные id ({unknown.length}) — исключены (оригинал изменился или ИИ исказил id):{" "}
                 <span className="font-mono">{unknown.slice(0, 12).join(", ")}{unknown.length > 12 ? "…" : ""}</span>
               </div>
             )}
             {invalid.map((x) => (
-              <div key={x.id} className="text-[var(--danger)]">
+              <div key={x.id} className="text-[var(--danger-ink)]">
                 ✕ <span className="font-mono">{x.id}</span>: {x.problems.join("; ")} — исключено
               </div>
             ))}
@@ -480,8 +482,11 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
             </>
           )}
 
-          <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-wrap items-center gap-3 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 sm:-mx-5 sm:px-5">
-            <Button variant="accent" size="lg" icon={<Send className="h-4 w-4" />} loading={sending} disabled={sendable.length === 0} onClick={send}>
+          <div
+            style={{ bottom: "var(--bottom-nav)" }}
+            className="sticky z-10 -mx-4 mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--line)] bg-[var(--surface)] px-4 py-3 sm:-mx-5 sm:px-5"
+          >
+            <Button variant="accent" chamfer size="lg" icon={<Send className="h-4 w-4" />} loading={sending} disabled={sendable.length === 0} onClick={send}>
               Отправить в базу ({sendable.length})
             </Button>
             <div className="min-w-[220px]">
@@ -528,11 +533,11 @@ function ReviewCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] pl-2",
-        selected && !disabled && "shadow-[4px_4px_0_var(--shadow)]"
+        "relative overflow-hidden rounded-[var(--r-md)] border bg-[var(--surface-2)] pl-[2px] transition-colors",
+        selected && !disabled ? "border-[rgba(255,102,0,.45)]" : "border-[var(--line)]"
       )}
     >
-      <span className="absolute inset-y-0 left-0 w-2" style={{ backgroundColor: stripe }} aria-hidden />
+      <span className="absolute inset-y-0 left-0 w-[2px]" style={{ backgroundColor: stripe }} aria-hidden />
       <div className="p-3">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <label className={cn("flex items-center gap-2", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
@@ -543,7 +548,7 @@ function ReviewCard({
               disabled={disabled}
               onChange={(e) => onSelect(e.target.checked)}
             />
-            <span className="font-mono text-[12px] font-bold text-[var(--text-muted)]">{row.id}</span>
+            <span className="font-mono text-[12px] font-semibold text-[var(--text-muted)]">{row.id}</span>
           </label>
           <KindBadge kindKey={s.kindKey} />
           {s.fields.length > 1 && <Badge tone="info">×{s.fields.length} полей</Badge>}
@@ -563,15 +568,15 @@ function ReviewCard({
 
         <div className="grid gap-3 lg:grid-cols-3">
           <div>
-            <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">RU · оригинал</div>
-            <div className="rounded-[var(--r-md)] border-2 border-dashed border-[var(--border-2)] bg-[var(--surface-2)] px-2.5 py-2">
+            <div className="field-label mb-1 !text-[11px] !text-[var(--text-faint)]">RU · оригинал</div>
+            <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] px-2.5 py-2">
               <SourceText text={s.source} />
             </div>
             <IssueList issues={byLang("ru")} />
           </div>
           {(["uk", "en"] as const).map((l) => (
             <div key={l}>
-              <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">
+              <div className="field-label mb-1 !text-[11px] !text-[var(--text-faint)]">
                 {l === "uk" ? "UK · українська" : "EN · english"}
               </div>
               <InlineText
@@ -586,15 +591,15 @@ function ReviewCard({
         </div>
 
         {row.ruChanged && (
-          <div className="mt-3 rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[color-mix(in_srgb,var(--c3)_18%,var(--surface))] p-2.5">
+          <div className="mt-3 rounded-[var(--r-md)] border border-[rgba(255,102,0,.28)] bg-[var(--accent-soft)] p-2.5">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[var(--text)]" />
-              <span className="text-[12px] font-black uppercase tracking-wide text-[var(--text)]">
+              <Sparkles className="h-4 w-4 text-[var(--accent-hi)]" />
+              <span className="font-display text-[12px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)]">
                 Предложенная правка оригинала
               </span>
               <label
                 className={cn(
-                  "ml-auto flex items-center gap-2 text-[12px] font-bold",
+                  "ml-auto flex items-center gap-2 text-[12px] font-semibold",
                   row.ruIssues.length ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                 )}
                 title={
@@ -632,16 +637,16 @@ function SummaryView({ summary }: { summary: SendSummary }) {
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-4 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-3 text-[13px]"
+      className="mt-4 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[13px]"
     >
-      <div className="mb-2 text-[12px] font-black uppercase tracking-wide text-[var(--text)]">Итог отправки</div>
+      <div className="section-title mb-2 !text-[12px]">Итог отправки</div>
       <div className="flex flex-wrap gap-2">
         {LOCALES.map((l) => {
           const r = summary.import[l];
           if (!r) return null;
           return (
             <div key={l} className="flex flex-wrap items-center gap-1.5">
-              <span className="font-black uppercase">{l}:</span>
+              <span className="font-display font-bold uppercase">{l}:</span>
               <Badge tone="ok">сохранено {r.applied}</Badge>
               {r.skippedStale > 0 && <Badge tone="warn">устарело {r.skippedStale}</Badge>}
               {r.skippedManual > 0 && <Badge tone="warn">ручные {r.skippedManual}</Badge>}
@@ -651,17 +656,17 @@ function SummaryView({ summary }: { summary: SendSummary }) {
         })}
         {summary.fixes.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-black uppercase">ru:</span>
+            <span className="font-display font-bold uppercase">ru:</span>
             <Badge tone="ok">исправлено полей {summary.fixes.reduce((n, f) => n + (f.result?.updated ?? 0), 0)}</Badge>
             <Badge tone="ok">переводов {summary.fixes.reduce((n, f) => n + (f.result?.translationsApplied ?? 0), 0)}</Badge>
           </div>
         )}
       </div>
       {summary.importErrors.map((e, i) => (
-        <div key={i} className="mt-2 font-semibold text-[var(--danger)]">✕ {e}</div>
+        <div key={i} className="mt-2 font-semibold text-[var(--danger-ink)]">✕ {e}</div>
       ))}
       {summary.fixes.filter((f) => f.error).map((f) => (
-        <div key={f.id} className="mt-2 font-semibold text-[var(--danger)]">✕ правка {f.id}: {f.error}</div>
+        <div key={f.id} className="mt-2 font-semibold text-[var(--danger-ink)]">✕ правка {f.id}: {f.error}</div>
       ))}
       {rejected.length > 0 && (
         <details className="mt-2">

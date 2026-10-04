@@ -15,7 +15,7 @@ import type { OrderStatus } from "@/lib/api";
 import {
   isNovaPoshtaTtn,
   REJECT_REASON_LABEL,
-  STATUS_EMOJI,
+  STATUS_VAR,
   STATUS_LABEL,
   type RejectReasonCode,
 } from "@/lib/orders";
@@ -102,10 +102,17 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
       dirty={dirty}
       size="sm"
       title={
-        <span>
-          {STATUS_EMOJI[target]} {STATUS_LABEL[target]}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="inline-flex items-center gap-2">
+            <span
+              aria-hidden
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: STATUS_VAR[target], boxShadow: `0 0 8px color-mix(in srgb, ${STATUS_VAR[target]} 55%, transparent)` }}
+            />
+            {STATUS_LABEL[target]}
+          </span>
           {order?.label && (
-            <span className="ml-2 font-mono text-[13px] font-bold normal-case text-[var(--text-muted)]">
+            <span className="min-w-0 truncate text-[13px] font-medium normal-case tracking-normal text-[var(--text-muted)] [font-family:var(--font-body)]">
               {order.label}
             </span>
           )}
@@ -126,7 +133,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
       }
     >
       {!order && (
-        <p className="mb-3 rounded-[var(--r-sm)] border-2 border-[var(--danger)] p-2.5 text-[13px] font-semibold text-[var(--danger)]">
+        <p className="mb-3 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--danger-ink)]">
           Карточка заказа закрыта — откройте заказ заново.
         </p>
       )}
@@ -155,7 +162,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
       {needsReason && (
         <div className="flex flex-col gap-3">
           <div>
-            <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+            <div className="field-label mb-1.5">
               Причина (обязательно)
             </div>
             <div className="grid grid-cols-2 gap-1.5">
@@ -165,10 +172,10 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
                   type="button"
                   onClick={() => setCode(r)}
                   className={cn(
-                    "rounded-[var(--r-sm)] border-2 px-2.5 py-2 text-left text-[12.5px] font-bold leading-tight transition-colors",
+                    "nb-press min-h-10 rounded-[var(--r-md)] border px-3 py-2 text-left text-[12.5px] font-medium leading-tight transition-colors",
                     code === r
-                      ? "border-[var(--line)] bg-[var(--danger)] text-[var(--accent-ink)] shadow-[var(--shadow-1)]"
-                      : "border-[var(--border-2)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]"
+                      ? "border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] text-[var(--danger-ink)]"
+                      : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:border-[var(--line-strong)]"
                   )}
                 >
                   {REJECT_REASON_LABEL[r]}
@@ -183,7 +190,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
             onChange={(e) => setReason(e.target.value)}
             hint="Текст увидит клиент в уведомлении об отклонении."
           />
-          <div className="rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] p-3">
+          <div className="card-2 px-3.5 py-3">
             <Toggle
               checked={restock}
               onChange={setRestock}

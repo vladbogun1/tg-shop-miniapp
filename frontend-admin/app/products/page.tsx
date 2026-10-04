@@ -30,7 +30,7 @@ import { adminApi, ApiError, type Product } from "@/lib/api";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import { staggerContainer, riseItem, hoverLift } from "@/lib/motion";
+import { staggerContainer, riseItem } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -238,6 +238,7 @@ export default function ProductsPage() {
         actions={
           <>
             <SegmentedControl<"active" | "archived">
+              className="h-10 pointer-coarse:h-11"
               options={[
                 { value: "active", label: "Активные" },
                 { value: "archived", label: "Архив" },
@@ -275,6 +276,7 @@ export default function ProductsPage() {
           <div className="min-w-[220px] flex-1">
             <Input
               label="Поиск по названию"
+              
               placeholder="Например, клавиатура…"
               icon={<Search className="h-4 w-4" />}
               value={search}
@@ -298,17 +300,19 @@ export default function ProductsPage() {
               options={SORT_OPTIONS}
             />
           </div>
-          <div className="flex items-center gap-2 pb-0.5">
-            <div className="inline-flex items-center gap-1 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-1 shadow-[4px_4px_0_var(--shadow)]">
+          {/* Same height as the fields beside it (40 / 44 on touch), segmented-control look. */}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex h-10 items-center gap-0.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] p-[3px] pointer-coarse:h-11">
               <button
                 type="button"
                 onClick={() => setView("list")}
                 aria-label="Список"
+                aria-pressed={view === "list"}
                 className={cn(
-                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors pointer-coarse:h-10 pointer-coarse:w-11",
+                  "grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
                   view === "list"
-                    ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                    ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
                 )}
               >
                 <ListIcon className="h-4 w-4" />
@@ -317,11 +321,12 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => setView("cards")}
                 aria-label="Карточки"
+                aria-pressed={view === "cards"}
                 className={cn(
-                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors pointer-coarse:h-10 pointer-coarse:w-11",
+                  "grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
                   view === "cards"
-                    ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                    ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
                 )}
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -450,21 +455,16 @@ function StockBadge({ p }: { p: Product }) {
   if (p.active !== false && stock === 0) return <Badge tone="danger">Закончился</Badge>;
   if (stock <= lowQty && stock > 0) return <Badge tone="warn">Мало: {stock}</Badge>;
   return (
-    <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+    <span className="tabular text-[12px] text-[var(--text-muted)]">
       Остаток: {stock}
     </span>
   );
 }
 
-/** Yellow neo price tag — dark text forced globally on --c3 fills. */
+/** Price: Exo 2 700 tabular in white, like the shop's price (no filled tag in v3). */
 function PriceTag({ p, className }: { p: Product; className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-2 py-0.5 text-[13px] font-extrabold text-[var(--accent-ink)]",
-        className
-      )}
-    >
+    <span className={cn("font-display tabular inline-flex items-center text-[14px] font-bold text-[var(--ink)]", className)}>
       {money(p.priceMinor, p.currency)}
     </span>
   );
@@ -487,8 +487,10 @@ function IconBtn({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "nb-press grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors pointer-coarse:h-11 pointer-coarse:w-11",
-        danger ? "hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]" : "hover:bg-[var(--surface-hover)]"
+        "nb-press focusable grid h-9 w-9 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors pointer-coarse:h-11 pointer-coarse:w-11",
+        danger
+          ? "hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)]"
+          : "hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
       )}
     >
       {children}
@@ -509,20 +511,20 @@ function RowMenu({ onEdit, onArchive }: { onEdit: () => void; onArchive: () => v
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
   const item =
-    "block w-full px-3 py-2.5 text-left text-[13px] font-bold uppercase tracking-wide hover:bg-[var(--surface-hover)]";
+    "block w-full rounded-[var(--r-sm)] px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors hover:bg-[var(--surface-hover)]";
   return (
     <div ref={ref} className="relative">
       <IconBtn label="Действия" onClick={() => setOpen((v) => !v)}>
         <MoreHorizontal className="h-4 w-4" />
       </IconBtn>
       {open && (
-        <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[4px_4px_0_var(--shadow)]">
+        <div className="elevated absolute right-0 top-11 z-20 w-44 overflow-hidden p-1 pointer-coarse:top-12">
           <button type="button" className={item} onClick={() => (setOpen(false), onEdit())}>
             Редактировать
           </button>
           <button
             type="button"
-            className={cn(item, "text-[var(--danger)]")}
+            className={cn(item, "text-[var(--danger-ink)]")}
             onClick={() => (setOpen(false), onArchive())}
           >
             В архив
@@ -538,7 +540,6 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
   return (
     <motion.div
       variants={riseItem}
-      {...hoverLift}
       role={archivedView ? undefined : "button"}
       tabIndex={archivedView ? undefined : 0}
       onClick={archivedView ? undefined : onEdit}
@@ -550,19 +551,19 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
       }}
       className={cn(
         "card flex items-center gap-3 p-3 sm:gap-3.5",
-        !archivedView && "cursor-pointer",
-        danger && "border-[var(--danger)]"
+        !archivedView && "card-hover cursor-pointer",
+        danger && "border-[color-mix(in_srgb,var(--danger)_45%,transparent)]"
       )}
     >
       <Image
         src={p.images?.[0]?.url}
         alt={p.title}
         size={120}
-        className="h-14 w-14 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+        className="h-14 w-14 shrink-0 rounded-[var(--r-md)] border border-[var(--line)]"
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <h3 className="line-clamp-2 min-w-0 break-words text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)] sm:line-clamp-1">
+          <h3 className="line-clamp-2 min-w-0 break-words text-[14px] font-semibold leading-snug text-[var(--text)] sm:line-clamp-1">
             {p.title}
           </h3>
           {!p.active && !archivedView && <Badge tone="warn">скрыт</Badge>}
@@ -571,10 +572,10 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
           <PriceTag p={p} />
           <StockBadge p={p} />
           {p.variants && p.variants.length > 0 && (
-            <span className="font-bold uppercase tracking-wide">{p.variants.length} вар.</span>
+            <span className="tabular">{p.variants.length} вар.</span>
           )}
           {(p.soldCount ?? 0) > 0 && (
-            <span className="font-bold uppercase tracking-wide">продано {p.soldCount}</span>
+            <span className="tabular">продано {p.soldCount}</span>
           )}
         </div>
       </div>
@@ -584,7 +585,7 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
           <>
             <div className="flex flex-col items-center gap-0.5" title="Показывать на сайте и в Mini App">
               <Toggle checked={!!p.active} onChange={onActive} />
-              <span className="text-[9px] font-extrabold uppercase tracking-wide text-[var(--text-faint)]">
+              <span className="font-display text-[9.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">
                 на витрине
               </span>
             </div>
@@ -620,13 +621,12 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
   return (
     <motion.div
       variants={riseItem}
-      {...hoverLift}
       className={cn(
-        "card flex flex-col overflow-hidden p-0",
-        danger && "border-[var(--danger)]"
+        "card card-hover flex flex-col overflow-hidden p-0",
+        danger && "border-[color-mix(in_srgb,var(--danger)_45%,transparent)]"
       )}
     >
-      <div className="relative border-b-[3px] border-[var(--line)]">
+      <div className="relative border-b border-[var(--line)]">
         <Image src={p.images?.[0]?.url} alt={p.title} size={400} className="aspect-square w-full" />
         {!p.active && !archivedView && (
           <div className="absolute left-2 top-2">
@@ -635,7 +635,7 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
         )}
       </div>
       <div className="flex flex-1 flex-col p-3.5">
-        <h3 className="line-clamp-2 text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+        <h3 className="line-clamp-2 text-[14px] font-semibold leading-snug text-[var(--text)]">
           {p.title}
         </h3>
         <div className="mt-2">
@@ -644,17 +644,17 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           <StockBadge p={p} />
           {p.variants && p.variants.length > 0 ? (
-            <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+            <span className="tabular text-[12px] text-[var(--text-muted)]">
               {p.variants.length} вар.
             </span>
           ) : null}
           {(p.soldCount ?? 0) > 0 && (
-            <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+            <span className="tabular text-[12px] text-[var(--text-muted)]">
               продано {p.soldCount}
             </span>
           )}
         </div>
-        <div className="mt-3.5 flex items-center justify-between gap-2 border-t-2 border-[var(--line)] pt-3.5">
+        <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3.5">
           {!archivedView ? (
             <>
               <Toggle checked={!!p.active} onChange={onActive} label="на витрине" />
@@ -686,17 +686,9 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
 
 function StatTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="card flex flex-col gap-1 p-3.5">
-      <span className="text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">
-        {label}
-      </span>
-      <span
-        className={
-          accent
-            ? "text-[20px] font-black text-[var(--accent)]"
-            : "text-[20px] font-black text-[var(--text)]"
-        }
-      >
+    <div className="card flex flex-col gap-2 p-3.5">
+      <span className="field-label !text-[11px]">{label}</span>
+      <span className={cn("kpi-num truncate text-[20px]", accent && "!text-[var(--accent-hi)]")}>
         {value}
       </span>
     </div>

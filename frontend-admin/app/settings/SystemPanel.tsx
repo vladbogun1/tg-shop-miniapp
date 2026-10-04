@@ -41,7 +41,7 @@ export function SystemPanel() {
                 <span className="block text-[12px] text-[var(--text-faint)]">{s.npLastSyncSummary}</span>
               )}
               {errorIsLatest && (
-                <span className="mt-1 block break-words text-[12px] text-[var(--danger)]">
+                <span className="mt-1 block break-words text-[12px] text-[var(--danger-ink)]">
                   Ошибка {lastError}: {s.npLastError ?? "неизвестно"}
                 </span>
               )}
@@ -56,8 +56,8 @@ export function SystemPanel() {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="min-w-0 border-b-2 border-dashed border-[var(--line)] pb-3 last:border-b-0 last:pb-0">
-      <dt className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">{label}</dt>
+    <div className="min-w-0 border-b border-[var(--line)] pb-3 last:border-b-0 last:pb-0">
+      <dt className="field-label !text-[11px] !text-[var(--text-faint)]">{label}</dt>
       <dd className="mt-0.5 min-w-0 break-words text-[var(--text)]">{children}</dd>
     </div>
   );

@@ -116,7 +116,7 @@ export function DiscountModal({
     >
       <div className="flex flex-col gap-4">
         {order.receivedMinor > 0 && (
-          <div className="rounded-[var(--r-sm)] border-2 border-[var(--warn)] bg-[var(--surface-2)] p-2.5 text-[12px] font-semibold text-[var(--text)]">
+          <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[12.5px] font-medium text-[var(--text)]">
             ⚠ По заказу уже получено {money(order.receivedMinor, cur)} — скидка сделает сумму ниже
             оплаченной (переплата/возврат).
           </div>
@@ -143,14 +143,14 @@ export function DiscountModal({
                 type="button"
                 onClick={() => setPromoCode(p.code)}
                 className={cn(
-                  "flex items-center justify-between rounded-[var(--r-sm)] border-2 px-3 py-2 text-left transition-colors",
+                  "flex shrink-0 items-center justify-between rounded-[var(--r-md)] border px-3 py-2 text-left transition-colors",
                   promoCode === p.code
-                    ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                    : "border-[var(--border-2)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--accent)]"
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:border-[var(--line-strong)]"
                 )}
               >
-                <span className="font-mono font-extrabold uppercase">{p.code}</span>
-                <span className="text-[13px] font-bold">
+                <span className="font-display font-bold uppercase tracking-[0.04em]">{p.code}</span>
+                <span className="tabular text-[13px] font-semibold">
                   {(p.discountAmountMinor ?? 0) > 0
                     ? `−${money(p.discountAmountMinor!, cur)}`
                     : `−${p.discountPercent ?? 0}%`}
@@ -179,11 +179,11 @@ export function DiscountModal({
         )}
 
         {/* preview */}
-        <div className="space-y-1 rounded-[var(--r-sm)] border-2 border-[var(--border-2)] bg-[var(--surface-2)] p-3 text-[13px]">
+        <div className="card-2 tabular space-y-1 px-3.5 py-3 text-[13px]">
           <Row label="Сумма товаров" value={money(subtotal, cur)} />
-          <Row label="Скидка" value={`−${money(discount, cur)}`} accent />
-          <div className="flex justify-between pt-1 text-[15px] font-black text-[var(--text)]">
-            <span>Итого</span>
+          <Row label="Скидка" value={`−${money(discount, cur)}`} accent={discount > 0} />
+          <div className="font-display flex items-baseline justify-between border-t border-[var(--line)] pt-1.5 text-[15px] font-bold text-[var(--ink)]">
+            <span className="text-[13px] uppercase tracking-[0.06em]">Итого</span>
             <span>{money(newTotal, cur)}</span>
           </div>
         </div>
@@ -210,10 +210,10 @@ function ModeBtn({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex flex-1 items-center justify-center gap-1.5 rounded-[var(--r-sm)] border-2 px-3 py-2 text-[13px] font-bold uppercase tracking-wide transition-colors",
+        "font-display nb-press flex h-10 flex-1 items-center justify-center gap-1.5 rounded-[var(--r-md)] border px-3 text-[12.5px] font-semibold uppercase tracking-[0.06em] transition-colors",
         active
-          ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[3px_3px_0_var(--shadow)]"
-          : "border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]"
       )}
     >
       {icon}

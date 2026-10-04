@@ -147,9 +147,9 @@ export function OrdersTable({ search, range, onOpen }: Props) {
               isFetching && "opacity-70"
             )}
           >
-            <table className="w-full min-w-[860px] border-collapse text-[13px]">
-              <thead className="sticky top-0 z-10 bg-[var(--surface-2)]">
-                <tr className="border-b-[3px] border-[var(--line)] text-left text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">
+            <table className="data-table min-w-[860px] [&_td]:px-2.5 [&_th]:px-2.5 [&_td:first-child]:pl-4 [&_th:first-child]:pl-4 [&_td:last-child]:pr-4 [&_th:last-child]:pr-4">
+              <thead className="sticky top-0 z-10">
+                <tr>
                   <SortHeader
                     col="createdAt"
                     label="Дата"
@@ -157,7 +157,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <th className="px-4 py-3">Заказ</th>
+                  <th>Заказ</th>
                   <SortHeader
                     col="customerName"
                     label="Клиент"
@@ -180,11 +180,11 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <th className="px-4 py-3">Доставка</th>
-                  <th className="px-4 py-3">Оплата</th>
-                  <th className="px-4 py-3 text-center">Платёж</th>
-                  <th className="px-4 py-3 text-center">Чат</th>
-                  <th className="px-4 py-3 text-right">Действие</th>
+                  <th>Доставка</th>
+                  <th>Оплата</th>
+                  <th className="!text-center">Платёж</th>
+                  <th className="!text-center">Чат</th>
+                  <th className="r">Действие</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,36 +192,37 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                   <tr
                     key={o.id}
                     onClick={() => onOpen(o.id)}
-                    className="cursor-pointer border-b-2 border-[var(--border-2)] transition-colors last:border-0 hover:bg-[var(--surface-2)]"
+                    className="cursor-pointer"
                   >
-                    <td className="whitespace-nowrap px-4 py-3 text-[var(--text-faint)]">
+                    <td className="tabular whitespace-nowrap !text-[var(--text-faint)]">
                       {formatDateTime(o.createdAt)}
                     </td>
-                    <td className="px-4 py-3 font-mono font-bold text-[var(--text-muted)]">
+                    <td className="font-display tabular whitespace-nowrap font-semibold tracking-[0.02em] !text-[var(--text-muted)]">
                       {shortId(o.id)}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-[var(--text)]">
-                      <span className="inline-flex items-center gap-2">
-                        {o.customerName || "—"}
+                    <td className="font-semibold">
+                      {/* The name never breaks; the «Сайт» chip drops under it when the column is tight. */}
+                      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="whitespace-nowrap">{o.customerName || "—"}</span>
                         <SourceBadge source={o.source} />
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-black text-[var(--text)]">
+                    <td className="r font-display whitespace-nowrap font-bold !text-[var(--ink)]">
                       {money(o.totalMinor, o.currency)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <StatusBadge status={o.status} />
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
+                    <td className="whitespace-nowrap !text-[var(--text-muted)]">
                       {DELIVERY_LABEL[o.deliveryMethod]}
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
+                    <td className="!text-[var(--text-muted)]">
                       {o.paymentOptionTitle || "—"}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="text-center">
                       <PaymentBadge order={o} icon={false} />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="text-center">
                       {o.unreadCount > 0 ? (
                         <Badge tone="danger">
                           <MessageCircle className="h-3 w-3" />
@@ -231,13 +232,13 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                         <span className="text-[var(--text-faint)]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="r">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpen(o.id);
                         }}
-                        className="nb-press inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[12px] font-black uppercase tracking-wide text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
+                        className="nb-press font-display inline-flex h-7 items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-2)] px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         Открыть
@@ -247,7 +248,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12">
+                    <td colSpan={10} className="!px-4 !py-12">
                       <EmptyState
                         icon={PackageSearch}
                         title="Заказы не найдены"
@@ -269,7 +270,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 icon={<ChevronLeft className="h-4 w-4" />}
               />
-              <span className="text-[13px] text-[var(--text-muted)]">
+              <span className="tabular min-w-12 text-center text-[13px] text-[var(--text-muted)]">
                 Стр. {page + 1}
               </span>
               <Button
@@ -307,16 +308,17 @@ function SortHeader({
   return (
     // aria-sort is a property of the column header, not of the button inside it.
     <th
-      className={cn("px-4 py-3", align === "right" && "text-right")}
+      className={cn(align === "right" && "r")}
       aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
     >
       <button
         type="button"
         onClick={() => onSort(col)}
         className={cn(
-          "inline-flex items-center gap-1 transition-colors hover:text-[var(--text)]",
+          // Preflight resets text-transform on <button>: re-inherit the header's caps/tracking.
+          "inline-flex items-baseline gap-1 uppercase tracking-[inherit] transition-colors hover:text-[var(--text)]",
           align === "right" && "flex-row-reverse",
-          active && "text-[var(--accent)]"
+          active && "text-[var(--accent-hi)]"
         )}
       >
         {label}

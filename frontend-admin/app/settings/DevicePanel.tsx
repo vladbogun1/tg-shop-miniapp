@@ -46,13 +46,13 @@ const PERMISSION_LABEL: Record<PushPermission, string> = {
 
 function Row({ label, value, tone }: { label: string; value: ReactNode; tone?: "ok" | "warn" | "muted" }) {
   return (
-    <div className="flex min-h-9 items-center justify-between gap-3 border-b-2 border-dashed border-[var(--surface-3)] py-1.5 last:border-b-0">
+    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--line)] py-1.5 last:border-b-0">
       <span className="text-[13px] text-[var(--text-muted)]">{label}</span>
       <span
         className={cn(
-          "text-right text-[13px] font-bold",
+          "text-right text-[13px] font-semibold",
           tone === "ok" && "text-[var(--ok)]",
-          tone === "warn" && "text-[var(--danger)]",
+          tone === "warn" && "text-[var(--danger-ink)]",
           (!tone || tone === "muted") && "text-[var(--text)]"
         )}
       >
@@ -66,9 +66,9 @@ function Note({ icon, children, warn }: { icon: ReactNode; children: ReactNode; 
   return (
     <div
       className={cn(
-        "flex gap-2.5 rounded-[var(--r-md)] border-2 p-3 text-[13px] leading-relaxed",
+        "flex gap-2.5 rounded-[var(--r-md)] border p-3 text-[13px] leading-relaxed",
         warn
-          ? "border-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--text)]"
+          ? "border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--text)]"
           : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)]"
       )}
     >
@@ -166,7 +166,7 @@ export function DevicePanel() {
           </Note>
         ) : pwa.canInstall ? (
           <Button
-            variant="accent"
+            variant="surface"
             icon={<Download className="h-4 w-4" />}
             onClick={() => void promptInstall()}
             className="w-full sm:w-auto sm:self-start"
@@ -176,7 +176,7 @@ export function DevicePanel() {
         ) : isIosSafari() ? (
           <Note icon={<SquarePlus className="h-4 w-4" />}>
             <b className="text-[var(--text)]">Установить на iPhone:</b> нажмите{" "}
-            <span className="inline-flex translate-y-[2px] items-center gap-1 font-bold text-[var(--text)]">
+            <span className="inline-flex translate-y-[2px] items-center gap-1 font-semibold text-[var(--text)]">
               <Share className="h-4 w-4" aria-hidden />
               «Поделиться»
             </span>{" "}
@@ -202,8 +202,8 @@ export function DevicePanel() {
       </div>
 
       {/* ---- push ---- */}
-      <div className="mt-5 border-t-[3px] border-[var(--line)] pt-4">
-        <h3 className="mb-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">Уведомления на этом устройстве</h3>
+      <div className="mt-5 border-t border-[var(--line)] pt-4">
+        <h3 className="section-title mb-2">Уведомления на этом устройстве</h3>
         <p className="mb-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
           Новый заказ, «я оплатил», сообщение клиента в чате, сбой обновления сайта. Нажатие открывает заказ, чат или «Внимание».
         </p>
@@ -230,12 +230,12 @@ export function DevicePanel() {
 
         <div className="flex flex-col gap-3">
           {!serverOn && !configQ.isLoading && (
-            <Note icon={<TriangleAlert className="h-4 w-4 text-[var(--danger)]" />} warn>
+            <Note icon={<TriangleAlert className="h-4 w-4 text-[var(--danger-ink)]" />} warn>
               На сервере не заданы VAPID-ключи (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT) — push выключен.
             </Note>
           )}
           {iosTooOld && (
-            <Note icon={<TriangleAlert className="h-4 w-4 text-[var(--danger)]" />} warn>
+            <Note icon={<TriangleAlert className="h-4 w-4 text-[var(--danger-ink)]" />} warn>
               Для уведомлений нужна iOS 16.4 или новее. Обновите iPhone в «Настройки → Основные → Обновление ПО».
             </Note>
           )}
@@ -254,7 +254,7 @@ export function DevicePanel() {
             </Note>
           )}
           {permission === "denied" && !iosNeedsInstall && (
-            <Note icon={<BellOff className="h-4 w-4 text-[var(--danger)]" />} warn>
+            <Note icon={<BellOff className="h-4 w-4 text-[var(--danger-ink)]" />} warn>
               Уведомления запрещены для этого сайта.{" "}
               {ios
                 ? "Включите их: Настройки iPhone → Уведомления → ChiSetup Admin."
@@ -262,7 +262,7 @@ export function DevicePanel() {
             </Note>
           )}
 
-          <div className={cn("rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-3", !canToggle && "opacity-60")}>
+          <div className={cn("rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3", !canToggle && "opacity-60")}>
             <Toggle
               checked={!!subscribed}
               disabled={!canToggle || busy !== null}

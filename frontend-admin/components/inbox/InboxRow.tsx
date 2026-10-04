@@ -19,7 +19,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ActionSheet, type SheetAction } from "@/components/orders/ActionSheet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +39,12 @@ const PRIMARY: Record<InboxType, { label: string; icon: LucideIcon }> = {
 };
 
 const ORDER_STATUSES = new Set(["NEW", "APPROVED", "SHIPPED", "DELIVERED", "REJECTED"]);
+
+/**
+ * The row's main action: orange TINT (accent-soft + orange hairline + orange text), not solid —
+ * a list of rows would otherwise be a column of solid-orange buttons (v3: one solid CTA per view).
+ */
+const SOFT_ACCENT = "!border-[rgba(255,102,0,.45)] !bg-[var(--accent-soft)] !text-[var(--accent-hi)] hover:!border-[var(--accent)] hover:!bg-[var(--accent-soft-2)]";
 
 export function InboxRow({
   item,
@@ -98,11 +104,10 @@ export function InboxRow({
     >
       <div
         className={cn(
-          "flex flex-col gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 lg:flex-row lg:items-center lg:gap-4 lg:p-3.5",
-          // Overdue: a red stripe inside the card (a thicker border would squeeze the buttons on a phone).
-          item.overdue
-            ? "shadow-[inset_6px_0_0_var(--danger),4px_4px_0_var(--shadow)] lg:pl-5"
-            : "shadow-[4px_4px_0_var(--shadow)]"
+          "card card-hover flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:gap-4 lg:p-3.5",
+          // Overdue: a 2px red stripe inside the card + a reddish hairline.
+          item.overdue &&
+            "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] pl-4 shadow-[inset_2px_0_0_var(--danger),var(--shadow-1)] lg:pl-5"
         )}
       >
         {/* What + which + how long. Clicking it does the main action, like the button. */}
@@ -113,19 +118,19 @@ export function InboxRow({
         >
           <div className="flex flex-wrap items-center gap-1.5">
             {item.shortId && (
-              <span className="rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--text)]">
+              <span className="font-display tabular inline-flex h-[22px] items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] px-1.5 text-[12px] font-semibold tracking-[0.02em] text-[var(--text)]">
                 #{item.shortId}
               </span>
             )}
             {item.status && ORDER_STATUSES.has(item.status) && <StatusBadge status={item.status as OrderStatus} />}
             {item.since && <WaitChip minutes={item.waitMinutes} overdue={item.overdue} />}
             {item.unread != null && item.unread > 0 && (
-              <span className="flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--accent)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]">
+              <span className="count-badge" title="Непрочитанные сообщения">
                 {item.unread > 99 ? "99+" : item.unread}
               </span>
             )}
           </div>
-          <div className="mt-1.5 truncate text-[15px] font-extrabold text-[var(--text)]">{item.title}</div>
+          <div className="mt-1.5 truncate text-[15px] font-semibold text-[var(--text)]">{item.title}</div>
           {item.subtitle && (
             <div className="mt-0.5 line-clamp-2 break-words text-[13px] leading-snug text-[var(--text-muted)]">
               {item.subtitle}
@@ -133,7 +138,7 @@ export function InboxRow({
           )}
           {item.amountMinor != null && (
             <div className="mt-1 text-[13px] text-[var(--text-muted)]">
-              <b className="font-black text-[var(--text)]">{money(item.amountMinor)}</b>
+              <b className="font-display tabular font-bold text-[var(--ink)]">{money(item.amountMinor)}</b>
               {item.amountNote && <span> · {item.amountNote}</span>}
             </div>
           )}
@@ -143,8 +148,9 @@ export function InboxRow({
         {isDesktop ? (
           <div className="flex shrink-0 items-center gap-2">
             <Button
-              variant="accent"
+              variant="surface"
               size="md"
+              className={SOFT_ACCENT}
               loading={busy}
               icon={<PrimaryIcon className="h-4 w-4" />}
               onClick={() => onPrimary(item)}
@@ -161,9 +167,9 @@ export function InboxRow({
         ) : (
           <div className="flex items-stretch gap-2">
             <Button
-              variant="accent"
+              variant="surface"
               size="lg"
-              className="min-w-0 flex-1"
+              className={cn("min-w-0 flex-1", SOFT_ACCENT)}
               loading={busy}
               icon={<PrimaryIcon className="h-4 w-4" />}
               onClick={() => onPrimary(item)}
@@ -174,7 +180,7 @@ export function InboxRow({
               <Button
                 variant="outline"
                 size="lg"
-                className="w-12 px-0"
+                className="w-12 shrink-0 px-0"
                 aria-label="Разобрано"
                 title="Разобрано"
                 icon={<Check className="h-5 w-5" />}
@@ -184,7 +190,7 @@ export function InboxRow({
             <Button
               variant="outline"
               size="lg"
-              className="w-12 px-0"
+              className="w-12 shrink-0 px-0"
               aria-label="Отложить"
               title="Отложить"
               icon={<MoreHorizontal className="h-5 w-5" />}
@@ -202,9 +208,10 @@ function WaitChip({ minutes, overdue }: { minutes: number; overdue: boolean }) {
   return (
     <span
       title="Сколько ждёт"
+      style={{ "--chip": overdue ? "#F87171" : "var(--text-muted)" } as CSSProperties}
       className={cn(
-        "inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-1.5 py-0.5 text-[11px] font-bold",
-        overdue ? "bg-[var(--danger)] text-[var(--accent-ink)]" : "bg-[var(--surface-2)] text-[var(--text-muted)]"
+        "chip-tint !h-[22px] !gap-1 !px-2 !text-[10.5px]",
+        !overdue && "!bg-[var(--surface-3)]"
       )}
     >
       <Clock className="h-3 w-3" />
@@ -255,7 +262,7 @@ function SnoozeMenu({ onPick }: { onPick: (p: SnoozePreset) => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute right-0 top-[calc(100%+6px)] z-20 flex w-48 flex-col overflow-hidden rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[4px_4px_0_var(--shadow)]"
+            className="elevated absolute right-0 top-[calc(100%+6px)] z-20 flex w-48 flex-col overflow-hidden !rounded-[var(--r-md)] p-1"
           >
             {SNOOZE_OPTIONS.map((o) => (
               <button
@@ -266,7 +273,7 @@ function SnoozeMenu({ onPick }: { onPick: (p: SnoozePreset) => void }) {
                   setOpen(false);
                   onPick(o.value);
                 }}
-                className="px-3.5 py-2.5 text-left text-[13px] font-bold text-[var(--text)] transition-colors hover:bg-[var(--surface-2)] focus-visible:bg-[var(--surface-2)] focus-visible:outline-none"
+                className="rounded-[var(--r-sm)] px-3 py-2 text-left text-[13px] font-medium text-[var(--text)] transition-colors hover:bg-[var(--surface-hover)] focus-visible:bg-[var(--surface-hover)] focus-visible:outline-none"
               >
                 {o.label}
               </button>

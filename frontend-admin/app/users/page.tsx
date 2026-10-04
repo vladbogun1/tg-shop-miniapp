@@ -106,7 +106,7 @@ function LangCell({ u }: { u: UserCard }) {
   return (
     <span
       title={l.fromTelegram ? "Язык не выбран в магазине — показан язык Telegram" : "Язык, выбранный в магазине"}
-      className={l.fromTelegram ? "text-[var(--text-faint)]" : "font-bold text-[var(--text)]"}
+      className={l.fromTelegram ? "text-[var(--text-faint)]" : "font-semibold text-[var(--text)]"}
     >
       {l.label}
       {l.fromTelegram && <sup className="ml-0.5 text-[9px]">TG</sup>}
@@ -236,7 +236,7 @@ function UserMetrics({ range }: { range: TimeRange }) {
           label="Premium"
           rawValue={m.premiumUsers}
           icon={Crown}
-          accent="var(--c3)"
+          accent="var(--warn)"
         />
       </motion.div>
 
@@ -326,16 +326,13 @@ function UserMetrics({ range }: { range: TimeRange }) {
             />
             <YAxis type="category" dataKey="name" {...axisProps} width={140} />
             <Tooltip
-              cursor={{ fill: "rgba(124,108,255,0.08)" }}
+              cursor={{ fill: CHART_COLORS.cursor }}
               content={
                 <ChartTooltip valueFormatter={(v) => moneyShort(v, currency)} />
               }
             />
-            <Bar dataKey="spent" name="Потрачено" radius={[0, 6, 6, 0]} maxBarSize={24}>
-              {topCustomers.map((_, i) => (
-                <Cell key={i} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} />
-              ))}
-            </Bar>
+            {/* One series = one colour (DESIGN-V3 §8): the ranking is the bar length, not its hue. */}
+            <Bar dataKey="spent" name="Потрачено" fill={CHART_COLORS.accent} radius={[0, 4, 4, 0]} maxBarSize={22} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -359,14 +356,12 @@ function ChartCard({
       animate="animate"
       className="panel p-5"
     >
-      <div className="mb-4 flex items-center gap-2">
-        <span className="h-4 w-1.5 bg-[var(--accent)]" />
-        <span className="text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
-          {title}
-        </span>
-      </div>
+      <h3 className="section-title mb-4 flex items-center gap-2">
+        <span aria-hidden className="h-3.5 w-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
+        {title}
+      </h3>
       {empty ? (
-        <div className="grid h-[240px] place-items-center text-[13px] font-semibold uppercase tracking-wide text-[var(--text-faint)]">
+        <div className="grid h-[240px] place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] font-display text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
           Нет данных
         </div>
       ) : (
@@ -422,18 +417,22 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
   return (
     <div className="panel overflow-hidden">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 border-b-[3px] border-[var(--line)] p-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--line)] p-4">
         <div className="min-w-[200px] flex-1">
           <Input
+            
             placeholder="Поиск: имя, @username, ID"
             icon={<Search className="h-4 w-4" />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        {/* A filter toggle, not an action: active = orange tint (no solid fill). */}
         <Button
-          variant={blockedOnly ? "accent" : "surface"}
+          variant="surface"
           size="md"
+          aria-pressed={blockedOnly}
+          className={blockedOnly ? "!border-[var(--accent)] !bg-[var(--accent-soft)] !text-[var(--accent-hi)]" : undefined}
           icon={<UserX className="h-4 w-4" />}
           onClick={() => setBlockedOnly((b) => !b)}
         >
@@ -464,14 +463,14 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
 
       {/* Desktop table */}
       <div className="thin-scroll hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse text-[13px]">
-          <thead className="sticky top-0 z-10 bg-[var(--surface-2)] [&_th]:border-b-[3px] [&_th]:border-[var(--line)]">
-            <tr className="text-left text-[11px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
-              <th className="px-4 py-3">Пользователь</th>
-              <th className="px-4 py-3">Язык</th>
+        <table className="data-table [&_td:first-child]:pl-4 [&_th:first-child]:pl-4">
+          <thead>
+            <tr>
+              <th>Пользователь</th>
+              <th>Язык</th>
               <SortableTh label="Заказы" col="ordersCount" {...{ sortBy, sortDir, toggleSort }} />
               <SortableTh label="Потрачено" col="totalSpentMinor" {...{ sortBy, sortDir, toggleSort }} />
-              <th className="px-4 py-3">Статус</th>
+              <th>Статус</th>
               <SortableTh label="Регистрация" col="createdAt" {...{ sortBy, sortDir, toggleSort }} />
               <SortableTh label="Был(а)" col="lastSeenAt" {...{ sortBy, sortDir, toggleSort }} />
             </tr>
@@ -484,8 +483,8 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
           >
             {isLoading
               ? Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-t-2 border-[var(--border)]">
-                    <td colSpan={7} className="px-4 py-3">
+                  <tr key={i}>
+                    <td colSpan={7}>
                       <Skeleton className="h-6 w-full rounded-[var(--r-sm)]" />
                     </td>
                   </tr>
@@ -495,20 +494,20 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
                     key={u.telegramUserId}
                     variants={riseItem}
                     onClick={() => onOpenUser(u)}
-                    className="cursor-pointer border-t-2 border-[var(--border)] transition-colors hover:bg-[var(--surface-2)]"
+                    className="cursor-pointer"
                   >
-                    <td className="px-4 py-3">
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className="accent-fill grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] text-[12px] font-extrabold text-[var(--accent-ink)]">
+                        <div className="accent-tint font-display grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] text-[12px] font-bold">
                           {initials(u)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate font-bold text-[var(--text)]">
+                            <span className="truncate font-semibold text-[var(--text)]">
                               {displayName(u)}
                             </span>
                             {u.premium && (
-                              <Crown className="h-3.5 w-3.5 shrink-0 text-[var(--c3)]" />
+                              <Crown className="h-3.5 w-3.5 shrink-0 text-[var(--warn)]" />
                             )}
                           </div>
                           <div className="truncate text-[11px] text-[var(--text-faint)]">
@@ -517,14 +516,14 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <LangCell u={u} />
                     </td>
-                    <td className="px-4 py-3 font-semibold text-[var(--text-muted)]">{u.ordersCount}</td>
-                    <td className="px-4 py-3 font-bold text-[var(--text)]">
+                    <td className="tabular text-[var(--text-muted)]">{u.ordersCount}</td>
+                    <td className="tabular font-semibold">
                       {money(u.totalSpentMinor)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {u.botBlocked ? (
                         <Badge tone="danger" dot>
                           заблокировал
@@ -535,10 +534,10 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
                         </Badge>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
+                    <td className="tabular whitespace-nowrap text-[var(--text-muted)]">
                       {u.createdAt ? formatDateTime(u.createdAt) : "—"}
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
+                    <td className="whitespace-nowrap text-[var(--text-muted)]">
                       {u.lastSeenAt ? timeAgo(u.lastSeenAt) : "—"}
                     </td>
                   </motion.tr>
@@ -562,15 +561,15 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
             variants={riseItem}
             whileTap={{ scale: 0.99 }}
             onClick={() => onOpenUser(u)}
-            className="card nb-press flex w-full flex-col gap-2 p-3.5 text-left"
+            className="card card-hover nb-press flex w-full flex-col gap-2 p-3.5 text-left"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2.5">
-                <div className="accent-fill grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] text-[12px] font-extrabold text-[var(--accent-ink)]">
+                <div className="accent-tint font-display grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] text-[12px] font-bold">
                   {initials(u)}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate font-bold text-[var(--text)]">
+                  <div className="truncate font-semibold text-[var(--text)]">
                     {displayName(u)}
                   </div>
                   <div className="truncate text-[11px] text-[var(--text-faint)]">
@@ -591,10 +590,10 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
             <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
               <span>{u.ordersCount} зак.</span>
               <LangCell u={u} />
-              <span className="font-bold text-[var(--text)]">
+              <span className="tabular font-semibold text-[var(--text)]">
                 {money(u.totalSpentMinor)}
               </span>
-              {u.premium && <Crown className="h-3.5 w-3.5 text-[var(--c3)]" />}
+              {u.premium && <Crown className="h-3.5 w-3.5 text-[var(--warn)]" />}
               <span className="ml-auto">
                 {u.createdAt ? formatDateTime(u.createdAt) : ""}
               </span>
@@ -614,8 +613,8 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
       )}
 
       {/* Pagination */}
-      <div className="flex items-center justify-end gap-2 border-t-[3px] border-[var(--line)] p-4">
-        <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">
+      <div className="flex items-center justify-end gap-2 border-t border-[var(--line)] p-4">
+        <span className="field-label tabular mr-1 !text-[11px] !text-[var(--text-faint)]">
           Стр. {page + 1}
           {isFetching ? " · …" : ""}
         </span>
@@ -664,12 +663,12 @@ function SortableTh({
 }) {
   const active = sortBy === col;
   return (
-    <th className="px-4 py-3">
+    <th aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
       <button
         type="button"
         onClick={() => toggleSort(col)}
-        className={`flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-[var(--text)] ${
-          active ? "text-[var(--accent)]" : ""
+        className={`flex items-center gap-1 uppercase tracking-[inherit] transition-colors hover:text-[var(--text)] ${
+          active ? "text-[var(--accent-hi)]" : ""
         }`}
       >
         {label}

@@ -111,6 +111,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <SegmentedControl<StatusFilter>
+          className="h-10 pointer-coarse:h-11"
           value={status}
           onChange={(v) => {
             setStatus(v);
@@ -141,6 +142,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
         />
         <div className="min-w-[220px] flex-1">
           <Input
+            
             icon={<Search className="h-4 w-4" />}
             placeholder="Поиск по ru / uk / en / товару"
             value={q}
@@ -171,7 +173,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
             </div>
             <div className="grid gap-3 lg:grid-cols-3">
               <div>
-                <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-[var(--text-faint)]">RU · оригинал</div>
+                <div className="field-label mb-1 !text-[11px] !text-[var(--text-faint)]">RU · оригинал</div>
                 <SourceText text={f.source} />
               </div>
               {LOCALES.map((l) => {
@@ -181,7 +183,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
                   <div key={l} className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-1.5">
                       <StatusChip lang={l} status={f.status[l]} />
-                      {f.origin[l] === "MANUAL" && <Badge tone="info" className="px-1.5 py-px text-[10px]">ручной</Badge>}
+                      {f.origin[l] === "MANUAL" && <Badge tone="info" className="px-2 text-[10px] leading-[16px]">ручной</Badge>}
                       {!isEditing && (
                         <span className="ml-auto flex items-center gap-0.5">
                           <button
@@ -199,7 +201,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
                               aria-label={`Сбросить ${l}`}
                               title="Сбросить перевод"
                               onClick={() => setResetting({ f, locale: l })}
-                              className="grid h-7 w-7 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger)]"
+                              className="grid h-7 w-7 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger-ink)]"
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
                             </button>

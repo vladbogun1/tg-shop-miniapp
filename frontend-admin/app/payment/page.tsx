@@ -230,14 +230,14 @@ export default function PaymentPage() {
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+                <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
                   <Wallet className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">
+                  <h2 className="section-title !text-[15px] text-[var(--ink)]">
                     Варианты оплаты
                   </h2>
-                  <p className="text-[12px] text-[var(--text-muted)]">
+                  <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">
                     Покупатель выбирает один из них. Порядок — как в оформлении.
                   </p>
                 </div>
@@ -280,8 +280,9 @@ export default function PaymentPage() {
                         !o.active && "opacity-70"
                       )}
                     >
-                      <div className="flex items-start gap-2">
-                        <div className="flex shrink-0 flex-col gap-1 pt-[22px]">
+                      {/* items-end: the ↑↓ pair and the bin sit level with the field, not with its label. */}
+                      <div className="flex items-end gap-2">
+                        <div className="flex shrink-0 flex-col gap-1">
                           <OrderBtn label="Выше" disabled={i === 0} onClick={() => move(o.key, -1)}>
                             <ArrowUp className="h-3.5 w-3.5" />
                           </OrderBtn>
@@ -304,7 +305,7 @@ export default function PaymentPage() {
                         <button
                           type="button"
                           onClick={() => (o.id ? setToDelete(o) : setOptions((p) => p.filter((x) => x.key !== o.key)))}
-                          className="focusable mt-[26px] grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--danger)]"
+                          className="focusable grid h-[38px] w-10 shrink-0 place-items-center rounded-[var(--r-md)] text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)] pointer-coarse:h-[42px]"
                           aria-label="Удалить"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -334,7 +335,7 @@ export default function PaymentPage() {
                           />
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-[var(--border-2)] pt-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
                         <Toggle
                           checked={o.active}
                           onChange={(v) => patchOption(o.key, { active: v })}
@@ -348,7 +349,7 @@ export default function PaymentPage() {
               </div>
             )}
             {activeCount === 0 && options.length > 0 && (
-              <p className="mt-3 text-[13px] font-bold text-[var(--danger)]">
+              <p className="mt-3 text-[13px] font-semibold text-[var(--danger-ink)]">
                 Все способы выключены — оформить заказ будет нельзя.
               </p>
             )}
@@ -362,11 +363,11 @@ export default function PaymentPage() {
             className="panel min-w-0 p-5"
           >
             <div className="mb-4 flex min-w-0 items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+              <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
                 <ReceiptText className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">Реквизиты</h2>
+                <h2 className="section-title !text-[15px] text-[var(--ink)]">Реквизиты</h2>
                 <p className="text-[12px] text-[var(--text-muted)]">
                   Отображаются покупателю для оплаты заказа. Каждая смена карты/IBAN пишется в журнал и
                   приходит уведомлением в Telegram.
@@ -424,7 +425,7 @@ export default function PaymentPage() {
               <Languages className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 Назначение и примечание покупатель видит на своём языке — переводы uk/en в{" "}
-                <Link href="/translations" className="hit font-bold underline">
+                <Link href="/translations" className="hit font-semibold text-[var(--accent-hi)] hover:underline">
                   «Переводах»
                 </Link>
                 . Правка русского текста сбрасывает перевод, пока его не обновят.
@@ -433,11 +434,11 @@ export default function PaymentPage() {
 
             {/* Live preview — matches what the customer sees */}
             <div className="mt-4 min-w-0">
-              <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+              <div className="field-label mb-2">
                 Превью (как у клиента)
               </div>
               <div className="card-2 min-w-0 rounded-[var(--r-md)] p-4">
-                <div className="mb-3 flex items-center gap-2 text-[14px] font-bold text-[var(--text)]">
+                <div className="mb-3 flex items-center gap-2 font-display text-[14px] font-bold text-[var(--ink)]">
                   <CreditCard className="h-4 w-4 text-[var(--accent)]" />
                   Реквизиты для оплаты
                 </div>
@@ -465,12 +466,12 @@ export default function PaymentPage() {
         </div>
 
         {/* One save for the whole page, pinned so it is reachable on a phone. */}
-        <div style={{ bottom: "var(--bottom-nav)" }} className="sticky z-20 -mx-4 mt-6 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:-mx-7 lg:px-7">
+        <div style={{ bottom: "calc(var(--bottom-nav) + 12px)" }} className="elevated sticky z-20 mt-6 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className={cn(
-                "text-[13px] font-bold",
-                blocker && dirty ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
+                "text-[13px] font-semibold",
+                blocker && dirty ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
               )}
             >
               {dirty ? (blocker ?? "Есть несохранённые изменения") : "Все изменения сохранены"}
@@ -538,7 +539,7 @@ function OrderBtn({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-[18px] w-7 place-items-center rounded-[var(--r-sm)] border-2 pointer-coarse:h-8 pointer-coarse:w-10 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-30"
+      className="grid h-[17px] w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] disabled:opacity-30 pointer-coarse:h-8 pointer-coarse:w-10"
     >
       {children}
     </button>
@@ -548,7 +549,7 @@ function OrderBtn({
 function ReqRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
+      <div className="field-label !text-[10.5px] !text-[var(--text-faint)]">{label}</div>
       <div className={`break-words text-[14px] text-[var(--text)] ${mono ? "font-mono tracking-wide" : ""}`}>
         {value}
       </div>

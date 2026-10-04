@@ -12,12 +12,12 @@ export function PanelHeader({
 }) {
   return (
     <div className="mb-4 flex min-w-0 items-center gap-3">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]">
+      <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
         <Icon className="h-5 w-5" />
       </span>
       <div className="min-w-0">
-        <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">{title}</h2>
-        {description && <p className="text-[12px] text-[var(--text-muted)]">{description}</p>}
+        <h2 className="section-title !text-[15px] text-[var(--ink)]">{title}</h2>
+        {description && <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">{description}</p>}
       </div>
     </div>
   );

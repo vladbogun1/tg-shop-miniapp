@@ -238,6 +238,7 @@ export default function BoardPage() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Поиск: имя, телефон, товар, ТТН, №…"
               icon={<Search className="h-4 w-4" />}
+              // 38 + 2px border = 40 (44 on touch): the same height as the buttons and segments beside it.
             />
           </div>
           <div className="lg:hidden">{refreshButton}</div>
@@ -245,14 +246,14 @@ export default function BoardPage() {
         {showRange && (
           <div className="thin-scroll flex max-w-full items-center gap-2 overflow-x-auto">
             {view === "board" && (
-              <span className="hidden shrink-0 text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)] xl:inline">
+              <span className="field-label hidden shrink-0 !text-[11px] !text-[var(--text-faint)] xl:inline">
                 Период для «Доставлен / Отклонён»:
               </span>
             )}
-            <SegmentedControl options={RANGE_OPTIONS} value={range} onChange={setRange} />
+            <SegmentedControl options={RANGE_OPTIONS} value={range} onChange={setRange} className="h-10 shrink-0 pointer-coarse:h-11" />
           </div>
         )}
-        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} />
+        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} className="h-10 shrink-0 pointer-coarse:h-11" />
       </div>
 
       {view === "table" ? (
@@ -262,7 +263,7 @@ export default function BoardPage() {
           <TodayStrip />
           {claimedOnly && (
             <div className="mb-3 flex items-center gap-2">
-              <span className="text-[13px] font-bold text-[var(--text)]">Показаны только заказы, где ждут подтверждения оплаты</span>
+              <span className="text-[13px] font-semibold text-[var(--text)]">Показаны только заказы, где ждут подтверждения оплаты</span>
               <Button variant="ghost" icon={<X className="h-4 w-4" />} onClick={clearClaimed}>
                 Сбросить
               </Button>

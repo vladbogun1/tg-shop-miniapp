@@ -76,7 +76,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               <button
                 type="button"
                 onClick={h.onOpenCustomer}
-                className="min-w-0 truncate text-left font-semibold text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
+                className="min-w-0 truncate text-left font-semibold text-[var(--accent-hi)] hover:underline pointer-coarse:py-2.5"
                 title="Профиль клиента и другие его заказы"
               >
                 {order.customerName}
@@ -87,7 +87,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <CopyButton value={order.customerName} label="Скопировать ФИО" className="ml-auto" />
           </Row>
           <Row icon={<Phone className="h-4 w-4" />}>
-            <a href={`tel:${order.phone}`} className="hit font-mono font-semibold text-[var(--text)] hover:underline">
+            <a href={`tel:${order.phone}`} className="hit tabular font-semibold text-[var(--text)] hover:underline">
               {order.phone}
             </a>
             <CopyButton value={order.phone} label="Скопировать телефон" className="ml-auto" />
@@ -97,21 +97,21 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               href={`https://t.me/${order.tgUsername.replace(/^@/, "")}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
+              className="flex items-center gap-2 text-[14px] text-[var(--accent-hi)] hover:underline pointer-coarse:py-2.5"
             >
               <ExternalLink className="h-4 w-4" />@{order.tgUsername.replace(/^@/, "")}
             </a>
           ) : order.tgUserId ? (
             <a
               href={`tg://user?id=${order.tgUserId}`}
-              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
+              className="flex items-center gap-2 text-[14px] text-[var(--accent-hi)] hover:underline pointer-coarse:py-2.5"
             >
               <ExternalLink className="h-4 w-4" />
               Открыть в Telegram (без @username)
             </a>
           ) : null}
           {order.comment && (
-            <p className="mt-1 whitespace-pre-wrap rounded-[var(--r-sm)] bg-[var(--surface-2)] p-2 text-[13px] text-[var(--text-muted)]">
+            <p className="card-2 mt-1 whitespace-pre-wrap px-3 py-2 text-[13px] text-[var(--text-muted)]">
               💬 {order.comment}
             </p>
           )}
@@ -123,7 +123,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         <div className="flex flex-col gap-2">
           <Row icon={isNp ? <Truck className="h-4 w-4" /> : <Store className="h-4 w-4" />}>
             <span className="min-w-0">
-              <b>{DELIVERY_LABEL[order.deliveryMethod]}</b>
+              <b className="font-semibold">{DELIVERY_LABEL[order.deliveryMethod]}</b>
               {address && <span className="text-[var(--text-muted)]"> · {address}</span>}
             </span>
             {address && <CopyButton value={address} label="Скопировать адрес" className="ml-auto" />}
@@ -135,18 +135,18 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           )}
           <Row icon={<Wallet className="h-4 w-4" />}>
             <span className="min-w-0">
-              Получено <b>{money(order.receivedMinor, order.currency)}</b>
+              Получено <b className="font-semibold">{money(order.receivedMinor, order.currency)}</b>
               {isNp && (
                 <>
                   {" · "}Наложка{" "}
-                  <b className={cod > 0 ? "text-[var(--danger)]" : "text-[var(--ok)]"}>
+                  <b className={cn("font-semibold", cod > 0 ? "text-[var(--danger-ink)]" : "text-[var(--ok)]")}>
                     {money(cod, order.currency)}
                   </b>
                 </>
               )}
               {refunded > 0 && (
                 <>
-                  {" · "}Возвращено <b>{money(refunded, order.currency)}</b>
+                  {" · "}Возвращено <b className="font-semibold">{money(refunded, order.currency)}</b>
                 </>
               )}
             </span>
@@ -154,7 +154,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           {order.trackingNumber ? (
             <Row icon={<Truck className="h-4 w-4" />}>
               <span>
-                ТТН: <span className="font-mono font-bold">{order.trackingNumber}</span>
+                ТТН: <span className="tabular font-semibold">{order.trackingNumber}</span>
               </span>
               <span className="ml-auto flex items-center gap-1.5">
                 <CopyButton value={order.trackingNumber} label="Скопировать ТТН" />
@@ -164,7 +164,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                     onClick={h.onEditTracking}
                     title="Изменить ТТН"
                     aria-label="Изменить ТТН"
-                    className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                    className="nb-press hit grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -176,7 +176,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               <button
                 type="button"
                 onClick={h.onEditTracking}
-                className="self-start text-[13px] font-bold text-[var(--accent)] hover:underline"
+                className="self-start text-[13px] font-semibold text-[var(--accent-hi)] hover:underline"
               >
                 + Указать ТТН
               </button>
@@ -194,12 +194,12 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 src={it.imageUrl ?? undefined}
                 alt={it.title}
                 size={96}
-                className="h-12 w-12 shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)]"
+                className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   {it.gift && (
-                    <span className="shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)]">
+                    <span className="chip-tint shrink-0 !px-2 !text-[10px]" style={{ "--chip": "var(--accent-hi)" } as React.CSSProperties}>
                       🎁 Подарок
                     </span>
                   )}
@@ -207,7 +207,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 </div>
                 {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
                 {(it.returnedQty ?? 0) > 0 && (
-                  <div className="text-[12px] font-bold text-[var(--warn)]">↩ возвращено {it.returnedQty} шт.</div>
+                  <div className="text-[12px] font-semibold text-[var(--warn)]">↩ возвращено {it.returnedQty} шт.</div>
                 )}
                 {editable && it.id != null ? (
                   <div className="mt-1.5 flex items-center gap-1.5">
@@ -217,7 +217,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                     >
                       −
                     </QtyBtn>
-                    <span className="w-7 text-center text-[13px] font-black text-[var(--text)]">{it.quantity}</span>
+                    <span className="tabular w-7 text-center text-[13px] font-semibold text-[var(--text)]">{it.quantity}</span>
                     <QtyBtn onClick={() => h.onChangeQty(it.id!, it.quantity + 1)} disabled={!!h.busyKey}>
                       +
                     </QtyBtn>
@@ -225,7 +225,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                       type="button"
                       onClick={() => h.onRemoveItem(it.id!, it.title)}
                       disabled={!!h.busyKey}
-                      className="nb-press hit ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)] disabled:opacity-40"
+                      className="nb-press hit ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-40"
                       aria-label="Убрать позицию"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 )}
               </div>
               <div className="shrink-0 text-right text-[13px]">
-                <div className="font-semibold text-[var(--text)]">
+                <div className="tabular font-semibold text-[var(--text)]">
                   {it.gift ? "0 ₴" : money(it.priceMinor * it.quantity, order.currency)}
                 </div>
                 {!it.gift && it.quantity > 1 && (
@@ -246,7 +246,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             </div>
           ))}
         </div>
-        <div className="mt-4 space-y-1 border-t-2 border-[var(--border)] pt-3 text-[13px]">
+        <div className="tabular mt-4 space-y-1 border-t border-[var(--line)] pt-3 text-[13px]">
           <div className="flex justify-between text-[var(--text-muted)]">
             <span>Сумма</span>
             <span>{money(order.subtotalMinor, order.currency)}</span>
@@ -257,8 +257,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               <span>−{money(order.discountMinor, order.currency)}</span>
             </div>
           )}
-          <div className="flex justify-between text-[16px] font-black text-[var(--text)]">
-            <span>Итого</span>
+          <div className="font-display flex items-baseline justify-between pt-0.5 text-[16px] font-bold text-[var(--ink)]">
+            <span className="text-[13px] uppercase tracking-[0.06em]">Итого</span>
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
         </div>
@@ -289,10 +289,10 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
       {/* Timeline */}
       <Section title="Таймлайн">
         {order.status === "REJECTED" && (order.rejectReasonCode || order.rejectReason) && (
-          <div className="mb-3 flex items-start gap-2 rounded-[var(--r-sm)] border-2 border-[var(--danger)] bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] p-2.5">
-            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
-            <p className="text-[13px] font-semibold text-[var(--danger)]">
-              <span className="font-bold uppercase tracking-wide opacity-80">Причина:</span>{" "}
+          <div className="mb-3 flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2.5">
+            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger-ink)]" />
+            <p className="text-[13px] font-medium text-[var(--danger-ink)]">
+              <span className="font-display font-semibold uppercase tracking-[0.06em] opacity-80">Причина:</span>{" "}
               {order.rejectReasonCode ? REJECT_REASON_LABEL[order.rejectReasonCode] : null}
               {order.rejectReasonCode && order.rejectReason ? " — " : null}
               {order.rejectReason}
@@ -301,7 +301,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         )}
         <Timeline order={order} />
         {order.returnedAt && (
-          <p className="mt-3 text-[12px] font-bold text-[var(--text-muted)]">
+          <p className="mt-3 text-[12px] font-semibold text-[var(--text-muted)]">
             ↩ Возврат оформлен {formatDateTime(order.returnedAt)}
           </p>
         )}
@@ -322,8 +322,9 @@ function Requisites({ r }: { r: NonNullable<AdminOrderDetail["requisites"]> }) {
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 text-left pointer-coarse:min-h-10"
       >
-        <span className="text-[12px] font-black uppercase tracking-wide text-[var(--text-faint)]">
-          Реквизиты магазина: <span className="normal-case text-[var(--text-muted)]">{short}</span>
+        <span className="section-title !text-[12px] !text-[var(--text-muted)]">
+          Реквизиты магазина:{" "}
+          <span className="text-[13px] font-normal normal-case tracking-normal text-[var(--text)] [font-family:var(--font-body)]">{short}</span>
         </span>
         <ChevronDown className={cn("h-4 w-4 text-[var(--text-faint)] transition-transform", open && "rotate-180")} />
       </button>
@@ -353,8 +354,8 @@ function Row({ icon, children }: { icon: React.ReactNode; children: React.ReactN
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="card p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-[12px] font-black uppercase tracking-wide text-[var(--text-faint)]">{title}</h3>
+      <div className="mb-3 flex min-h-7 items-center justify-between gap-2">
+        <h3 className="section-title !text-[12px] !text-[var(--text-muted)]">{title}</h3>
         {action}
       </div>
       {children}
@@ -375,7 +376,7 @@ function SectionAction({
     <button
       type="button"
       onClick={onClick}
-      className="hit flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline"
+      className="hit flex items-center gap-1 text-[12.5px] font-semibold text-[var(--accent-hi)] hover:underline"
     >
       {icon}
       {children}
@@ -389,7 +390,7 @@ function QtyBtn({ onClick, disabled, children }: { onClick: () => void; disabled
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-black leading-none text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] disabled:opacity-40"
+      className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-semibold leading-none text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] disabled:opacity-40"
     >
       {children}
     </button>
@@ -404,7 +405,7 @@ function ReqRow({ label, value, mono }: { label: string; value: string; mono?: b
   return (
     <div className="flex items-start justify-between gap-3">
       <span className="text-[var(--text-faint)]">{label}</span>
-      <span className={cn("text-right text-[var(--text)]", mono && "font-mono")}>{value}</span>
+      <span className={cn("text-right text-[var(--text)]", mono && "tabular")}>{value}</span>
     </div>
   );
 }
@@ -438,10 +439,11 @@ function Timeline({ order }: { order: AdminOrderDetail }) {
         return (
           <li key={s} className="flex items-center gap-3">
             <span
-              className="grid h-6 w-6 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] text-[12px] font-black"
+              className="font-display grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11px] font-bold"
               style={{
-                background: done ? STATUS_VAR[s] : "var(--surface-3)",
-                color: done ? "var(--accent-ink)" : "var(--text-faint)",
+                background: done ? `color-mix(in srgb, ${STATUS_VAR[s]} 16%, transparent)` : "var(--surface-2)",
+                borderColor: done ? `color-mix(in srgb, ${STATUS_VAR[s]} 45%, transparent)` : "var(--line)",
+                color: done ? STATUS_VAR[s] : "var(--text-faint)",
               }}
             >
               {done ? "✓" : i + 1}
@@ -453,16 +455,16 @@ function Timeline({ order }: { order: AdminOrderDetail }) {
             >
               {STATUS_LABEL[s]}
             </span>
-            {ts && <span className="ml-auto text-[11px] text-[var(--text-faint)]">{formatDateTime(ts)}</span>}
+            {ts && <span className="tabular ml-auto text-[11px] text-[var(--text-faint)]">{formatDateTime(ts)}</span>}
           </li>
         );
       })}
       {rejected && (
         <li className="flex items-center gap-3">
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] text-[12px] font-black text-[var(--accent-ink)]">
+          <span className="font-display grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] text-[11px] font-bold text-[var(--danger-ink)]">
             ✕
           </span>
-          <span className="text-[14px] font-semibold text-[var(--danger)]">{STATUS_LABEL.REJECTED}</span>
+          <span className="text-[14px] font-semibold text-[var(--danger-ink)]">{STATUS_LABEL.REJECTED}</span>
           {order.rejectedAt && (
             <span className="ml-auto text-[11px] text-[var(--text-faint)]">{formatDateTime(order.rejectedAt)}</span>
           )}

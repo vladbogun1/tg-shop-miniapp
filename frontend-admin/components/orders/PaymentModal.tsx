@@ -103,12 +103,25 @@ export function PaymentModal({
         }}
         aria-pressed={mode === m}
         className={cn(
-          "flex w-full items-center justify-between rounded-[var(--r-md)] border-[2.5px] px-3.5 py-3 text-left transition-colors",
-          mode === m ? "border-[var(--accent)] bg-[var(--surface-2)]" : "border-[var(--border-2)] bg-[var(--surface)]"
+          "nb-press flex min-h-12 w-full items-center justify-between gap-3 rounded-[var(--r-md)] border px-3.5 py-2.5 text-left transition-colors",
+          mode === m
+            ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+            : "border-[var(--line)] bg-[var(--surface-2)] hover:border-[var(--line-strong)]"
         )}
       >
-        <span className="text-[14px] font-bold text-[var(--text)]">{label}</span>
-        {sub && <span className="text-[14px] font-black text-[var(--text)]">{sub}</span>}
+        <span className="flex items-center gap-2.5 text-[14px] font-semibold text-[var(--text)]">
+          <span
+            aria-hidden
+            className={cn(
+              "grid h-4 w-4 shrink-0 place-items-center rounded-full border",
+              mode === m ? "border-[var(--accent)]" : "border-[var(--line-strong)]"
+            )}
+          >
+            {mode === m && <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />}
+          </span>
+          {label}
+        </span>
+        {sub && <span className={cn("font-display tabular text-[15px] font-bold", mode === m ? "text-[var(--accent-hi)]" : "text-[var(--text)]")}>{sub}</span>}
       </button>
     );
   }
@@ -147,7 +160,7 @@ export function PaymentModal({
       >
         <div className="flex flex-col gap-2.5">
           {claimPending && (
-            <p className="rounded-[var(--r-sm)] border-2 border-[var(--warn)] p-2.5 text-[13px] font-semibold text-[var(--text)]">
+            <p className="rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--text)]">
               Клиент сообщил об оплате. Проверьте поступление на счёт и выберите, сколько пришло.
             </p>
           )}
@@ -171,20 +184,20 @@ export function PaymentModal({
             />
           )}
           {confirmFull ? (
-            <p className="rounded-[var(--r-sm)] border-2 border-[var(--danger)] p-2.5 text-[13px] font-bold text-[var(--text)]">
+            <p className="rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2.5 text-[13px] font-semibold text-[var(--danger-ink)]">
               Точно получена вся сумма {money(order.totalMinor, cur)}? Наложка станет 0 — посылка уйдёт без
               наложки.
             </p>
           ) : (
             valid && (
               <p className="text-[12px] text-[var(--text-muted)]">
-                Наложка после сохранения: <b className="text-[var(--text)]">{money(codAfter, cur)}</b>
+                Наложка после сохранения: <b className="tabular font-semibold text-[var(--text)]">{money(codAfter, cur)}</b>
               </p>
             )
           )}
           {order.receivedMinor > 0 && (
             <p className="text-[12px] text-[var(--text-muted)]">
-              Сейчас получено: <b className="text-[var(--text)]">{money(order.receivedMinor, cur)}</b>
+              Сейчас получено: <b className="tabular font-semibold text-[var(--text)]">{money(order.receivedMinor, cur)}</b>
             </p>
           )}
         </div>
