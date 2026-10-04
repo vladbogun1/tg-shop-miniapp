@@ -61,6 +61,8 @@ export default function DispatchPage() {
       <PageHeader
         title="Отправка"
         subtitle="Что отправлять, куда и сколько брать наложкой"
+        // On a phone the title is already in the shell header: keep only the buttons.
+        className="max-lg:mb-3 max-lg:[&_h1]:hidden max-lg:[&_p]:hidden"
         actions={
           <>
             <Button

@@ -67,7 +67,9 @@ export function OrderCard({ order, onClick, dragging, headerAction }: Props) {
       </div>
 
       <div className="mt-2 flex min-w-0 items-center gap-1.5">
-        <PaymentBadge order={order} />
+        <span className="shrink-0 whitespace-nowrap">
+          <PaymentBadge order={order} />
+        </span>
         {order.paymentOptionTitle && (
           <span className="min-w-0 truncate text-[11px] text-[var(--text-faint)]">{order.paymentOptionTitle}</span>
         )}

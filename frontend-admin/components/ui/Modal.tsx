@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { backdropVariants, modalVariants } from "@/lib/motion";
@@ -75,6 +75,10 @@ export function Modal({
   }, [dirty, onClose]);
 
   useOverlayLayer(open, requestClose);
+  // A pending "close without saving?" must not reappear on the next open.
+  useEffect(() => {
+    if (!open) setAskClose(false);
+  }, [open]);
 
   const width = size === "sm" ? "max-w-md" : size === "lg" ? "max-w-3xl" : "max-w-xl";
 
