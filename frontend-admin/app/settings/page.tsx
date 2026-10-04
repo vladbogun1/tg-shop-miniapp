@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
+  BellRing,
   Bot,
   Boxes,
   Save,
@@ -46,6 +47,7 @@ const GROUP_ICON: Record<string, LucideIcon> = {
   notifications: Bell,
   bot: Bot,
   novaposhta: Truck,
+  inbox: BellRing,
 };
 
 const BOT_TEXT_PREFIX = "bot.startText.";
@@ -108,6 +110,8 @@ export default function SettingsPage() {
     try {
       const fresh = await settingsApi.save(values);
       qc.setQueryData(SETTINGS_QUERY_KEY, fresh);
+      // Thresholds of «Внимание» may have changed.
+      qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
       qc.invalidateQueries({ queryKey: ["settings-system"] });
       push(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`, "ok");
     } catch (e) {

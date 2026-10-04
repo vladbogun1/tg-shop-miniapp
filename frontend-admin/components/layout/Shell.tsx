@@ -23,6 +23,7 @@ import {
   Languages,
   ScrollText,
   Settings,
+  BellRing,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -31,10 +32,12 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useInbox } from "@/lib/inbox";
 import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 
 const NAV = [
+  { href: "/inbox", label: "Внимание", icon: BellRing, badge: "inbox" as const },
   { href: "/", label: "Заказы", icon: LayoutDashboard, exact: true },
   { href: "/dispatch", label: "Отправка", icon: Truck },
   { href: "/metrics", label: "Метрики", icon: BarChart3 },
@@ -50,6 +53,7 @@ const NAV = [
 ];
 
 const TITLE: Record<string, string> = {
+  "/inbox": "Внимание",
   "/": "Заказы",
   "/dispatch": "Отправка",
   "/metrics": "Метрики",
@@ -75,6 +79,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   // right after imports on the «Переводы» screen.
   const { data: trStats } = useTranslationStats();
   const trPending = pendingCount(trStats);
+  // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
+  const { data: inbox } = useInbox();
+  const inboxTotal = inbox?.total ?? 0;
   return (
     <nav className="flex flex-col gap-1">
       {NAV.map((item) => {
@@ -106,6 +113,14 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               )}
             />
             <span className="relative z-10">{item.label}</span>
+            {"badge" in item && item.badge === "inbox" && inboxTotal > 0 && (
+              <span
+                aria-label={`Требует внимания: ${inboxTotal}`}
+                className="relative z-10 ml-auto flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+              >
+                {inboxTotal > 99 ? "99+" : inboxTotal}
+              </span>
+            )}
             {"badge" in item && item.badge === "translations" && trPending > 0 && (
               <span
                 aria-label={`Нужно перевести: ${trPending}`}

@@ -58,6 +58,8 @@ interface Props {
   orderId: string | null;
   onClose: () => void;
   initialTab?: "details" | "chat";
+  /** Open a dialog right away once the order has loaded («Внимание»: «Проверить оплату»). */
+  initialAction?: "payment";
   /** `onClose` navigates to another page (the /orders/{id} deep link) — see useBackToClose. */
   closeNavigates?: boolean;
 }
@@ -79,7 +81,7 @@ const PRIMARY_TARGET: Partial<Record<OrderStatus, OrderStatus>> = {
 /** Transitions that open a modal (extra input or an explicit confirmation). */
 const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 
-export function OrderDrawer({ orderId, onClose, initialTab = "details", closeNavigates }: Props) {
+export function OrderDrawer({ orderId, onClose, initialTab = "details", initialAction, closeNavigates }: Props) {
   const qc = useQueryClient();
   const { push } = useToast();
   const isDesktop = useIsDesktop();
@@ -117,6 +119,18 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", closeNav
   });
   const order: AdminOrderDetail | undefined = orderQ.data;
 
+  // initialAction: remember which order it was asked for, open the dialog once that order is loaded.
+  const [autoPaymentFor, setAutoPaymentFor] = useState<string | null>(null);
+  useEffect(() => {
+    setAutoPaymentFor(orderId && initialAction === "payment" ? orderId : null);
+  }, [orderId, initialAction]);
+  useEffect(() => {
+    if (autoPaymentFor && order && autoPaymentFor === orderId) {
+      setPayOpen(true);
+      setAutoPaymentFor(null);
+    }
+  }, [autoPaymentFor, order, orderId]);
+
   // Unread customer messages for the "Чат" tab badge (the chat itself shares this cache entry).
   const messagesQ = useQuery({
     queryKey: ["messages", orderId],
@@ -136,6 +150,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", closeNav
     qc.invalidateQueries({ queryKey: ["board"] });
     qc.invalidateQueries({ queryKey: ["orders-table"] });
     qc.invalidateQueries({ queryKey: ["dispatch"] });
+    qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
   }, [qc, orderId]);
 
   /** Runs one action with its own spinner; returns true on success. */

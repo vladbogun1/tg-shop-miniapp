@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { Globe, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +22,13 @@ function isMissing(e: unknown): boolean {
  */
 export function SitePanel() {
   const { push } = useToast();
+  const qc = useQueryClient();
+  const rootRef = useRef<HTMLElement>(null);
+
+  // «Внимание» links here as /settings#site; the panel mounts only after the settings load.
+  useEffect(() => {
+    if (window.location.hash === "#site") rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
   const statusQ = useQuery({
     queryKey: ["site-revalidate-status"],
     queryFn: settingsApi.revalidateStatus,
@@ -32,7 +40,10 @@ export function SitePanel() {
     mutationFn: settingsApi.revalidateSite,
     onSuccess: () => {
       push("Сайт обновляется — страницы пересоберутся в течение минуты", "ok");
-      setTimeout(() => statusQ.refetch(), 3_000);
+      setTimeout(() => {
+        statusQ.refetch();
+        qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
+      }, 3_000);
     },
     onError: (e) =>
       push(
@@ -46,7 +57,7 @@ export function SitePanel() {
   });
 
   return (
-    <section className="panel min-w-0 p-5">
+    <section id="site" ref={rootRef} className="panel min-w-0 scroll-mt-[88px] p-5">
       <PanelHeader icon={Globe} title="Сайт" description="maxsolkh.shop обновляет страницы сам; кнопка — если нужно сразу." />
       <Button
         variant="accent"
@@ -82,12 +93,29 @@ function RevalidateStatusView({
     );
   }
   if (!status) return null;
-  if (status.configured === false) {
+  if (status.configured === false || status.enabled === false) {
     return <span className="text-[var(--text-faint)]">Обновление сайта не настроено на сервере (SITE_REVALIDATE_URL).</span>;
   }
-  const at = formatDateTime(status.lastAt ?? status.lastRunAt);
-  const ok = status.ok ?? status.success;
-  const err = status.error ?? (ok === false ? status.message : null);
+  let at: string | null | undefined;
+  let ok: boolean | null | undefined;
+  let err: string | null | undefined;
+  if ("lastSuccessAt" in status || "lastErrorAt" in status) {
+    // Backend shape: the newer of the last success / last error is the current state.
+    const okAt = status.lastSuccessAt ? Date.parse(status.lastSuccessAt) : 0;
+    const errAt = status.lastErrorAt ? Date.parse(status.lastErrorAt) : 0;
+    if (errAt > okAt) {
+      at = formatDateTime(status.lastErrorAt);
+      ok = false;
+      err = status.lastError || "Ошибка без описания";
+    } else if (okAt > 0) {
+      at = formatDateTime(status.lastSuccessAt);
+      ok = true;
+    }
+  } else {
+    at = formatDateTime(status.lastAt ?? status.lastRunAt);
+    ok = status.ok ?? status.success;
+    err = status.error ?? (ok === false ? status.message : null);
+  }
   if (!at) return <span className="text-[var(--text-faint)]">Сайт ещё не обновлялся с момента запуска сервера.</span>;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">

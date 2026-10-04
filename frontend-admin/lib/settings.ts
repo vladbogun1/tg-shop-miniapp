@@ -56,6 +56,11 @@ export interface SystemInfo {
  * Field names are read tolerantly until that endpoint is merged.
  */
 export interface RevalidateStatus {
+  /** Backend shape (SiteRevalidator.Status): false = SITE_REVALIDATE_URL not set. */
+  enabled?: boolean;
+  lastSuccessAt?: string | null;
+  lastErrorAt?: string | null;
+  lastError?: string | null;
   configured?: boolean;
   lastAt?: string | null;
   lastRunAt?: string | null;

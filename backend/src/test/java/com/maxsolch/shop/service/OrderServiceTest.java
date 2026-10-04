@@ -576,6 +576,32 @@ class OrderServiceTest {
     }
 
     @Test
+    void claimPayment_repeatedLaterIsANewClaim() {
+        // The claim time is the version of the «Внимание» row: a new claim must resurface it.
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setPaymentClaimed(true);
+        Instant old = Instant.now().minus(java.time.Duration.ofHours(2));
+        o.setPaymentClaimedAt(old);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        Instant again = service.claimPayment(o.getId()).getPaymentClaimedAt();
+
+        assertThat(again).isAfter(old);
+    }
+
+    @Test
+    void claimPayment_onAPaidOrderKeepsTheOriginalClaimTime() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setPaymentClaimed(true);
+        o.setPaid(true);
+        Instant old = Instant.now().minus(java.time.Duration.ofHours(2));
+        o.setPaymentClaimedAt(old);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        assertThat(service.claimPayment(o.getId()).getPaymentClaimedAt()).isEqualTo(old);
+    }
+
+    @Test
     void markPaid_recordsTheAmountAndShrinksCod() {
         Order o = persistedOrder(OrderStatus.APPROVED);
         o.setTotalMinor(50_000);

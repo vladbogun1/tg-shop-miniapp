@@ -31,6 +31,10 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   TRANSLATIONS_IMPORT: "Импорт переводов",
   TRANSLATIONS_DELETE: "Сброс переводов",
   TRANSLATIONS_SOURCE_FIX: "Правка текста + переводы",
+  SETTINGS_UPDATE: "Настройки изменены",
+  SITE_REVALIDATE: "Обновление сайта",
+  INBOX_DISMISS: "«Внимание»: разобрано",
+  INBOX_RESTORE: "«Внимание»: возвращено",
 };
 
 export const AUDIT_ENTITY_LABEL: Record<string, string> = {
@@ -42,6 +46,8 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   BROADCAST: "Рассылка",
   AUTH: "Вход",
   TRANSLATION: "Переводы",
+  SETTINGS: "Настройки",
+  SITE: "Сайт",
 };
 
 /** Actions worth a red/amber marker in the log (money, deletions, failed logins). */
