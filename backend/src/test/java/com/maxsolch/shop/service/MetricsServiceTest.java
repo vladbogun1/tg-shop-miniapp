@@ -83,20 +83,38 @@ class MetricsServiceTest {
     }
 
     @Test
-    void revenueCountsOnlyDeliveredOrders() {
+    void revenueIsSold_everyOrderThatWasNotRejected() {
+        // E1: counting only DELIVERED hid everything still in transit at the end of the range.
         when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
                 row(OrderStatus.DELIVERED, 10_000, DeliveryMethod.PICKUP),
-                row(OrderStatus.DELIVERED, 5_000, DeliveryMethod.NOVA_POSHTA),
-                row(OrderStatus.NEW, 99_999, DeliveryMethod.PICKUP),      // not delivered
-                row(OrderStatus.SHIPPED, 88_888, DeliveryMethod.PICKUP)   // not delivered
+                row(OrderStatus.SHIPPED, 5_000, DeliveryMethod.NOVA_POSHTA),
+                row(OrderStatus.NEW, 3_000, DeliveryMethod.PICKUP),
+                row(OrderStatus.REJECTED, 99_999, DeliveryMethod.PICKUP)
         ));
 
         MetricsDto dto = metricsService.compute(TimeRange.MONTH);
 
         assertThat(dto.totalOrders()).isEqualTo(4);
-        assertThat(dto.deliveredOrders()).isEqualTo(2);
-        assertThat(dto.revenueMinor()).isEqualTo(15_000); // only delivered totals
-        assertThat(dto.avgOrderValueMinor()).isEqualTo(7_500); // 15000/2
+        assertThat(dto.deliveredOrders()).isEqualTo(1);
+        assertThat(dto.revenueMinor()).isEqualTo(18_000);
+        assertThat(dto.avgOrderValueMinor()).isEqualTo(6_000); // 18000 / 3 not rejected
+        assertThat(dto.revenueByDay()).singleElement()
+                .satisfies(d -> assertThat(d.revenueMinor()).isEqualTo(18_000));
+    }
+
+    @Test
+    void paymentOptionsWithoutATitleGetAnUnspecifiedBucket() {
+        // E7: 762 historic orders have no payment option; they used to vanish from the shares.
+        when(orderRepository.findMetricsRows(any())).thenReturn(List.of(
+                new MetricsRow(OrderStatus.DELIVERED, 1, "UAH", DeliveryMethod.PICKUP, "Предоплата", base, null, null, null),
+                new MetricsRow(OrderStatus.DELIVERED, 1, "UAH", DeliveryMethod.PICKUP, null, base, null, null, null),
+                new MetricsRow(OrderStatus.DELIVERED, 1, "UAH", DeliveryMethod.PICKUP, " ", base, null, null, null)));
+
+        MetricsDto dto = metricsService.compute(TimeRange.MONTH);
+
+        assertThat(dto.paymentOptions()).extracting(MetricsDto.PaymentOptionCount::title, MetricsDto.PaymentOptionCount::count)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("Не указано", 2L),
+                        org.assertj.core.groups.Tuple.tuple("Предоплата", 1L));
     }
 
     @Test

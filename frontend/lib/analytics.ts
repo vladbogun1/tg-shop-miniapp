@@ -85,6 +85,33 @@ export function track(event: string, target?: string, meta?: string) {
   }
 }
 
+// ---- structured events -------------------------------------------------------
+// The click journal only knows the label of what was tapped ("button:В корзину"), so the funnel had
+// to guess the product from card texts. These carry ids in `meta` (JSON) and are what the admin's
+// funnel and "viewed but not bought" read. Contract shared with the backend (StructuredEvents) and
+// the website (site/lib/analytics.ts).
+
+/** A product card was opened. */
+export function trackProductView(productId: string) {
+  track("product_view", undefined, JSON.stringify({ productId }));
+}
+
+/** A line was added to the cart (first add from zero, not every "+"). */
+export function trackAddToCart(productId: string, variantId: string | null, qty: number) {
+  track("add_to_cart", undefined, JSON.stringify({ productId, variantId, qty }));
+}
+
+/** The checkout screen was opened with something in the cart. */
+export function trackCheckoutStart() {
+  track("checkout_start");
+}
+
+/** The order went through. Flushed right away: the app is often closed straight after. */
+export function trackOrderCreated(orderId: string) {
+  track("order_created", undefined, JSON.stringify({ orderId }));
+  void flush(true);
+}
+
 /**
  * Sends what is buffered. `keepalive` is used when the app is going away — a normal fetch is
  * cancelled on unload, which is exactly when the most interesting events are sitting in the buffer.

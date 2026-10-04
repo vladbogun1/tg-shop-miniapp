@@ -5,7 +5,9 @@ import java.util.Map;
 
 /**
  * Admin analytics payload for {@code GET /api/admin/metrics}. All money values are integer minor
- * units. Day buckets are keyed by UTC {@code yyyy-MM-dd}.
+ * units. Day buckets are keyed by {@code yyyy-MM-dd} in the shop's timezone ({@code app.timezone},
+ * Europe/Kyiv). {@code revenueMinor} is "sold": orders not rejected, by creation date. The tabbed
+ * metrics page uses {@code /api/admin/metrics/*} ({@link com.maxsolch.shop.analytics.metrics.MetricsDtos}).
  */
 public record MetricsDto(
         String range,

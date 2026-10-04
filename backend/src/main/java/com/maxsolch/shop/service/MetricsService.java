@@ -39,6 +39,7 @@ public class MetricsService {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String DEFAULT_CURRENCY = "UAH";
     private static final int TOP_PRODUCTS = 10;
+    static final String UNSPECIFIED = "Не указано";
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -91,12 +92,15 @@ public class MetricsService {
         long totalOrders = orders.size();
         long deliveredOrders = byStatus.get(OrderStatus.DELIVERED);
 
-        // Revenue = sum of total_minor for DELIVERED orders in range.
+        // Revenue = "sold": total_minor of every order in range that was not rejected. Counting only
+        // DELIVERED (a status set by hand days after shipping) made the last week of any range look
+        // like a collapse in sales while those orders were simply still on their way.
+        long soldOrders = orders.stream().filter(o -> o.status() != OrderStatus.REJECTED).count();
         long revenueMinor = orders.stream()
-                .filter(o -> o.status() == OrderStatus.DELIVERED)
+                .filter(o -> o.status() != OrderStatus.REJECTED)
                 .mapToLong(MetricsRow::totalMinor)
                 .sum();
-        long avgOrderValueMinor = deliveredOrders == 0 ? 0 : revenueMinor / deliveredOrders;
+        long avgOrderValueMinor = soldOrders == 0 ? 0 : revenueMinor / soldOrders;
 
         // Per-day buckets in the business timezone. TreeMap keeps yyyy-MM-dd keys chronological.
         Map<String, long[]> revenuePerDay = new TreeMap<>(); // [revenueMinor, ordersCount]
@@ -104,7 +108,7 @@ public class MetricsService {
         for (MetricsRow o : orders) {
             String day = dayOf(o.createdAt());
             ordersPerDay.merge(day, 1L, Long::sum);
-            if (o.status() == OrderStatus.DELIVERED) {
+            if (o.status() != OrderStatus.REJECTED) {
                 long[] acc = revenuePerDay.computeIfAbsent(day, k -> new long[2]);
                 acc[0] += o.totalMinor();
                 acc[1] += 1;
@@ -130,13 +134,12 @@ public class MetricsService {
             }
         }
 
-        // Payment options by title.
+        // Payment options by title; orders without one (pre-V7 history) get their own bucket instead of
+        // silently vanishing from the shares.
         Map<String, Long> paymentAgg = new LinkedHashMap<>();
         for (MetricsRow o : orders) {
             String title = o.paymentOptionTitle();
-            if (title != null && !title.isBlank()) {
-                paymentAgg.merge(title, 1L, Long::sum);
-            }
+            paymentAgg.merge(title == null || title.isBlank() ? UNSPECIFIED : title, 1L, Long::sum);
         }
         List<MetricsDto.PaymentOptionCount> paymentOptions = paymentAgg.entrySet().stream()
                 .map(e -> new MetricsDto.PaymentOptionCount(e.getKey(), e.getValue()))
@@ -165,7 +168,10 @@ public class MetricsService {
                 deliverySpeed);
     }
 
-    /** Best sellers, grouped and sorted by the database rather than by walking every order. */
+    /**
+     * Best sellers by product (current title), without rejected orders and gift lines, grouped and
+     * sorted by the database rather than by walking every order.
+     */
     private List<MetricsDto.TopProduct> topProducts(Instant from) {
         return orderItemRepository.topProducts(from, PageRequest.of(0, TOP_PRODUCTS)).stream()
                 .map(r -> new MetricsDto.TopProduct(

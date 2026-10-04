@@ -64,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/tags").permitAll()
                         // Public website catalog (filters, slugs, categories, sitemap)
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                        // Website event journal (package C): anonymous visitors too, per-IP limited
+                        .requestMatchers(HttpMethod.POST, "/api/public/analytics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payment-options").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/promo-codes/preview").permitAll()
                         .requestMatchers("/api/np/**").permitAll()

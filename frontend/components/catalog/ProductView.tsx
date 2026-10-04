@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { Gallery } from "@/components/catalog/Gallery";
 import { useT } from "@/i18n/context";
+import { trackProductView } from "@/lib/analytics";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
@@ -49,6 +50,11 @@ function ViewBody({
 
   const needsVariant = hasVariants && !variant;
   const stock = hasVariants ? (variant?.stock ?? 0) : (product.stock ?? 0);
+
+  // One product_view per opening of the sheet (ViewBody is keyed by product id).
+  useEffect(() => {
+    trackProductView(product.id);
+  }, [product.id]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;

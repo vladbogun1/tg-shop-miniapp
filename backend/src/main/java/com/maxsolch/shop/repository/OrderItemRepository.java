@@ -12,13 +12,18 @@ import java.util.List;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     /**
-     * Best sellers in a range: {@code [titleSnapshot, totalQty, revenueMinor]}, ordered by quantity.
-     * Grouped in SQL — the dashboard used to build this by iterating every order's items in Java.
+     * Best sellers in a range: {@code [title, totalQty, revenueMinor]}, ordered by quantity. Grouped by
+     * product id (a renamed product used to split into two rows) with its current title, and without
+     * rejected orders or gift lines (a cancelled order must not lift a product). Revenue is at the
+     * line price, before the order's promo discount.
      */
-    @Query("select it.titleSnapshot, sum(it.quantity), sum(it.quantity * it.priceMinorSnapshot) "
-            + "from OrderItem it "
+    @Query("select coalesce(max(p.title), max(it.titleSnapshot)), sum(it.quantity), "
+            + "sum(it.quantity * it.priceMinorSnapshot) "
+            + "from OrderItem it left join Product p on p.id = it.productId "
             + "where (:from is null or it.order.createdAt >= :from) "
-            + "group by it.titleSnapshot "
+            + "and it.order.status <> com.maxsolch.shop.domain.OrderStatus.REJECTED "
+            + "and it.gift = false "
+            + "group by it.productId "
             + "order by sum(it.quantity) desc")
     List<Object[]> topProducts(@Param("from") Instant from, Pageable pageable);
 

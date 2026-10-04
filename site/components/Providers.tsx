@@ -7,6 +7,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useState } from "react";
+import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastHost } from "@/components/ui/Toast";
 import { I18nProvider } from "@/i18n/context";
@@ -84,6 +85,7 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <InputModality />
         <LocaleSync locale={locale} />
         <CartSync />
+        <Analytics />
         {children}
         <CartDrawer />
         <ToastHost />

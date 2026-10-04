@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { imgproxyUrl, type StorefrontProduct } from "@shop/shared";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
+import { TrackProductView } from "@/components/Analytics";
 import { BuyBox } from "@/components/product/BuyBox";
 import { Gallery } from "@/components/product/Gallery";
 import { alternates, localePath, makeT, type MessageKey } from "@/i18n";
@@ -125,6 +126,7 @@ export default async function ProductPage({ params }: { params: Params }) {
         <Gallery images={images} alt={product.title} />
         <div className="min-w-0">
           <BuyBox product={product} />
+          <TrackProductView productId={product.id} />
           <ul className="mt-6 grid gap-3 sm:grid-cols-2">
             {PROMISES.map(({ icon: Icon, title, text, href }) => (
               <li key={title} className="nb-flat flex gap-3 bg-[var(--surface)] p-3.5">
