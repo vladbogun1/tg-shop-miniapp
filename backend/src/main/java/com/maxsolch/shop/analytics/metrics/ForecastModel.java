@@ -11,7 +11,7 @@ import java.util.List;
  * <p>Model: <b>level × weekday factor</b>.
  * <ul>
  *   <li><b>Weekday factors</b> — average sales of each weekday over the last 12 weeks relative to the
- *       overall average, pulled halfway back to 1 (the shop's weekdays are fairly even; a single
+ *       overall average (days above the 90th percentile capped), pulled halfway back to 1 (the shop's weekdays are fairly even; a single
  *       big Saturday must not become a rule).</li>
  *   <li><b>Level</b> — average daily sales of the last 28 days after removing the weekday effect, with
  *       the days above that window's 90th percentile capped at it: a single wholesale-size order should
@@ -66,15 +66,22 @@ public final class ForecastModel {
         double[] f = new double[7];
         Arrays.fill(f, 1.0);
         int from = Math.max(0, n - WEEKDAY_DAYS);
+        // The same cap as for the level: one huge Tuesday must not make every Tuesday "big".
+        List<Double> dowWindow = new ArrayList<>();
+        for (int i = from; i < n; i++) {
+            dowWindow.add(y[i]);
+        }
+        double dowCap = dowWindow.isEmpty() ? 0 : Stats.percentile(dowWindow, CAP_PERCENTILE);
         double sum = 0;
         int cnt = 0;
         double[] dowSum = new double[7];
         int[] dowCnt = new int[7];
         for (int i = from; i < n; i++) {
             int dow = firstDay.plusDays(i).getDayOfWeek().getValue() - 1;
-            dowSum[dow] += y[i];
+            double v = Math.min(y[i], dowCap);
+            dowSum[dow] += v;
             dowCnt[dow]++;
-            sum += y[i];
+            sum += v;
             cnt++;
         }
         double mean = cnt == 0 ? 0 : sum / cnt;
