@@ -1,10 +1,12 @@
 # ==========================================================
 #  Production TLS overlay for the server (132.145.132.80).
-#  Adds a Caddy front that terminates HTTPS on non-standard ports
-#  (80/443 are taken on the host) and proxies to the single-origin
-#  gateways from docker-compose.public.yml:
-#     https://maxsolkh.shop:666  -> gateway (customer Mini App)
-#     https://maxsolkh.shop:667  -> gateway-admin (admin)
+#  Since v3.1.0 the public addresses are subdomains served by the HOST's edge Caddy
+#  (~/edge on the server, 80/443), which reaches the gateways over the maxsolch-v2_tgshop network:
+#     https://chisetup.com.ua        -> gateway-site
+#     https://app.chisetup.com.ua    -> gateway (customer Mini App)
+#     https://admin.chisetup.com.ua  -> gateway-admin
+#  The `caddy` service below now only serves the OLD https://maxsolkh.shop:666 / :667
+#  as permanent redirects to app./admin. (infra/Caddyfile.prod).
 #
 #  This overlay also pins backend + both frontends to PRE-BUILT registry images
 #  (built/pushed by .github/workflows/publish.yml) so the server only PULLS,
