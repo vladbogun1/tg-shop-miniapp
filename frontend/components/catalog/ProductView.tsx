@@ -8,7 +8,7 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { Gallery } from "@/components/catalog/Gallery";
 import { useT } from "@/i18n/context";
@@ -69,6 +69,19 @@ function ViewBody({
     };
   }, [onClose]);
 
+  // The action bar (button + hint + the tab bar under it) is taller than any fixed guess once the
+  // hint or a variant warning wraps, and the end of the description hid behind it. The copy now
+  // scrolls exactly past the bar's measured height, plus breathing room.
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barH, setBarH] = useState<number | null>(null);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setBarH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const close = () => {
     haptic();
     onClose();
@@ -105,8 +118,11 @@ function ViewBody({
         </button>
 
         <div
-          className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(160px+var(--safe-bottom))]"
-          style={{ paddingTop: "max(14px, var(--safe-top))" }}
+          className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4"
+          style={{
+            paddingTop: "max(14px, var(--safe-top))",
+            paddingBottom: barH ? `${barH + 28}px` : "calc(220px + var(--safe-bottom))",
+          }}
         >
           <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
             <div className="nb overflow-hidden">
@@ -179,6 +195,7 @@ function ViewBody({
 
         {/* sticky bottom action bar */}
         <div
+          ref={barRef}
           className="absolute inset-x-0 bottom-0 z-10 border-t border-[var(--line)] px-4 pt-3 backdrop-blur-[12px]"
           style={{ paddingBottom: "calc(84px + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
         >
