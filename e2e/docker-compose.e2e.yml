@@ -1,0 +1,26 @@
+# Isolated MySQL for the admin e2e tests (local runs only — CI uses a job service container).
+#
+# Own compose project name (tgshop_e2e), own port, data on tmpfs: it never touches the dev stack
+# (tgshop_v2_mysql on 3341) and a `down` leaves nothing behind. Started by e2e/scripts/run.mjs.
+name: tgshop_e2e
+
+services:
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: tgshop_e2e
+      MYSQL_USER: e2e
+      MYSQL_PASSWORD: e2e-db-pass
+      MYSQL_ROOT_PASSWORD: e2e-root-pass
+    ports:
+      - "${E2E_MYSQL_PORT:-33307}:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pe2e-root-pass"]
+      interval: 2s
+      timeout: 5s
+      retries: 60

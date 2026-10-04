@@ -45,3 +45,10 @@ Thumbs.db
 .devdata/
 # Снятые с прода бэкапы БД: там настоящие имена и телефоны покупателей.
 safety-backups/
+
+# ── e2e админки (Playwright): сборка-копия, токен, отчёты ──────
+.e2e-admin/
+e2e/.auth/
+e2e/logs/
+e2e/test-results/
+e2e/playwright-report/
