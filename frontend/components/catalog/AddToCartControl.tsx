@@ -9,6 +9,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useT } from "@/i18n/context";
+import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, useCart } from "@/lib/cart";
 import { haptic } from "@/lib/telegram";
 import type { Product, ProductVariant } from "@/lib/api";
@@ -66,6 +67,7 @@ export function AddToCartControl({
           stop(e);
           haptic();
           add(product, variant, 1);
+          trackAddToCart(product.id, variantId, 1);
           onAdded?.();
         }}
         className={`nb-accent nb-press nb-up inline-flex items-center justify-center gap-2 px-4 ${h} ${fullWidth ? "w-full" : ""}`}

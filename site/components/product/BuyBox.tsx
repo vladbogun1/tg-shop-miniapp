@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
+import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
@@ -52,6 +53,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
   function addToCart(): boolean {
     if (!canBuy) return false;
     add(product, variant, qty);
+    trackAddToCart(product.id, variant?.id ?? null, qty);
     return true;
   }
 

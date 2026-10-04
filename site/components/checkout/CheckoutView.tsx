@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
+import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
@@ -60,6 +61,15 @@ export function CheckoutView() {
   const session = useSession();
   const hydrated = useHydrated();
   const lines = useCart((s) => s.lines);
+
+  // Funnel step "started checkout" — also for guests, who are sent to sign in from here: losing
+  // people at the login wall is exactly what the funnel should show.
+  const checkoutTracked = useRef(false);
+  useEffect(() => {
+    if (!hydrated || checkoutTracked.current || lines.length === 0) return;
+    checkoutTracked.current = true;
+    trackCheckoutStart();
+  }, [hydrated, lines.length]);
 
   // Guests are sent to sign in first and come straight back here.
   useEffect(() => {
@@ -226,6 +236,7 @@ function CheckoutForm() {
       // the ordered lines from it — otherwise the late write would put them back.
       await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
+      trackOrderCreated(created.orderId);
       saveSuccess({
         orderId: created.orderId,
         requisites: created.requisites ?? null,

@@ -10,6 +10,7 @@ import Link from "next/link";
 import type { StorefrontProduct } from "@shop/shared";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
+import { trackAddToCart } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
@@ -86,6 +87,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
             type="button"
             onClick={() => {
               add(product, null, 1);
+              trackAddToCart(product.id, null, 1);
               toast(t("product.added"));
             }}
             className="nb-accent nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 px-3 text-[13px] hover:brightness-105"

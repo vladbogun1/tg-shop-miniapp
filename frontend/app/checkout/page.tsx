@@ -33,7 +33,8 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
@@ -154,6 +155,14 @@ export default function CheckoutPage() {
   // Cart guard — redirect handled by render below.
   const emptyCart = lines.length === 0 && !success;
 
+  // Funnel step "started checkout": once per visit of this screen, only with something to buy.
+  const checkoutTracked = useRef(false);
+  useEffect(() => {
+    if (checkoutTracked.current || lines.length === 0) return;
+    checkoutTracked.current = true;
+    trackCheckoutStart();
+  }, [lines.length]);
+
   async function submit() {
     if (submitting) return;
     setSubmitError(null);
@@ -187,6 +196,7 @@ export default function CheckoutPage() {
       await flushCart();
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
+      trackOrderCreated(orderId);
       // Requisites come straight back with the order; fall back to the detail fetch.
       let requisites: PaymentRequisites | null | undefined = created.requisites;
       if (!requisites) {
