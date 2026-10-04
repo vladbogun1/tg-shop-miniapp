@@ -385,7 +385,7 @@ function PromoRow({
           <button
             type="button"
             onClick={() => setShowOrders((v) => !v)}
-            className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)]"
+            className="hit inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)]"
           >
             Заказы с кодом
             <ChevronDown className={showOrders ? "h-3.5 w-3.5 rotate-180" : "h-3.5 w-3.5"} />

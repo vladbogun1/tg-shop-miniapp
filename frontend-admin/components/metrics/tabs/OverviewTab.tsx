@@ -276,7 +276,7 @@ function ForecastPanel({ forecast, error }: { forecast?: Forecast; error: boolea
               вероятно {uahShort(forecast.next30.lowMinor)} – {uahShort(forecast.next30.highMinor)}
             </div>
           </div>
-          <button type="button" onClick={() => setOpen((v) => !v)} className="self-start text-[12px] font-bold text-[var(--accent)] underline-offset-2 hover:underline">
+          <button type="button" onClick={() => setOpen((v) => !v)} className="hit self-start text-[12px] font-bold text-[var(--accent)] underline-offset-2 hover:underline">
             {open ? "Скрыть, как считается" : "Как считается и насколько точно"}
           </button>
         </div>

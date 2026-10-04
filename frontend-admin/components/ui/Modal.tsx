@@ -5,8 +5,9 @@ import { X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
-import { backdropVariants, modalVariants } from "@/lib/motion";
+import { backdropVariants, modalVariants, sheetVariants } from "@/lib/motion";
 import { useOverlayLayer } from "@/lib/overlay-stack";
+import { useMediaQuery } from "@/lib/use-media";
 import { Button } from "./Button";
 
 /**
@@ -80,7 +81,8 @@ export function Modal({
     if (!open) setAskClose(false);
   }, [open]);
 
-  const width = size === "sm" ? "max-w-md" : size === "lg" ? "max-w-3xl" : "max-w-xl";
+  const width = size === "sm" ? "sm:max-w-md" : size === "lg" ? "sm:max-w-3xl" : "sm:max-w-xl";
+  const dialog = useMediaQuery("(min-width: 640px)", true);
 
   if (typeof document === "undefined") return null;
 
@@ -89,7 +91,9 @@ export function Modal({
       {createPortal(
         <AnimatePresence>
           {open && (
-            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            // Phone: a full-width bottom sheet (footer under the thumb, room for the keyboard);
+            // from sm up: the centred dialog.
+            <div className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4">
               <motion.div
                 variants={backdropVariants}
                 initial="initial"
@@ -105,13 +109,15 @@ export function Modal({
               <motion.div
                 role="dialog"
                 aria-modal="true"
-                variants={modalVariants}
+                variants={dialog ? modalVariants : sheetVariants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
                 className={cn(
-                  "panel card-sheen relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden",
-                  fixedHeight && "h-[min(90vh,680px)]",
+                  "panel card-sheen relative z-10 flex w-full flex-col overflow-hidden",
+                  "max-h-[calc(100dvh-var(--safe-top)-12px)] sm:max-h-[90dvh]",
+                  "max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-[0_-5px_0_var(--shadow)]",
+                  fixedHeight && "h-[min(calc(100dvh-var(--safe-top)-12px),680px)] sm:h-[min(90dvh,680px)]",
                   width
                 )}
               >
@@ -124,15 +130,22 @@ export function Modal({
                       <button
                         onClick={requestClose}
                         aria-label="Закрыть"
-                        className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)]"
+                        className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] pointer-coarse:h-11 pointer-coarse:w-11"
                       >
                         <X className="h-5 w-5" />
                       </button>
                     </div>
                   )}
-                  <div className="thin-scroll min-h-0 flex-1 overflow-auto px-5 py-4">{children}</div>
+                  <div
+                    className={cn(
+                      "thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain px-4 py-4 sm:px-5",
+                      !footer && "max-sm:pb-[calc(16px+var(--safe-bottom))]"
+                    )}
+                  >
+                    {children}
+                  </div>
                   {footer && (
-                    <div className="flex flex-wrap items-center justify-end gap-2 border-t-[3px] border-[var(--line)] px-5 py-4">
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t-[3px] border-[var(--line)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 sm:px-5 sm:py-4">
                       {footer}
                     </div>
                   )}

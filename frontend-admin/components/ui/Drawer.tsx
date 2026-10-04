@@ -60,7 +60,10 @@ export function Drawer({
           >
             {/* min-w-0 on the header slot + shrink-0 on × : long badges wrap instead of pushing the
                 close button off a phone screen. */}
-            <div className="flex items-start justify-between gap-3 border-b-[3px] border-[var(--line)] px-4 py-3 sm:px-5 sm:py-4">
+            <div
+              data-app-chrome
+              className="flex items-start justify-between gap-3 border-b-[3px] border-[var(--line)] px-4 pb-3 pt-[calc(12px+var(--safe-top))] sm:px-5 sm:pb-4 sm:pt-[calc(16px+var(--safe-top))]"
+            >
               <div className="min-w-0 flex-1">
                 {header ?? (
                   <div className="text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">{title}</div>
@@ -69,12 +72,13 @@ export function Drawer({
               <button
                 onClick={onClose}
                 aria-label="Закрыть"
-                className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)]"
+                className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] pointer-coarse:h-11 pointer-coarse:w-11"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="thin-scroll min-h-0 flex-1 overflow-auto">{children}</div>
+            {/* The content's own bottom bar (order actions, chat composer) pads for the home indicator. */}
+            <div className="thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>
           </motion.aside>
         </div>
       )}

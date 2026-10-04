@@ -187,6 +187,10 @@ services:
       WEB_COOKIE_SECURE: ${WEB_COOKIE_SECURE:-}
       SITE_REVALIDATE_URL: ${SITE_REVALIDATE_URL:-}
       SITE_REVALIDATE_SECRET: ${SITE_REVALIDATE_SECRET:-}
+      # Web Push for the admin PWA (empty = off). See .env.example for generating the keys.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     ports:
       - "8080:8080"
     networks:

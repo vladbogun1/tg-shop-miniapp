@@ -64,7 +64,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[400] flex flex-col gap-2.5">
+      {/* Above the phone tab bar / home indicator; bottom-right corner on a computer. */}
+      <div
+        className="pointer-events-none fixed left-3 right-3 z-[400] flex flex-col items-end gap-2.5 sm:left-auto sm:right-5"
+        style={{ bottom: "calc(max(var(--bottom-nav), var(--safe-bottom)) + 14px)" }}
+      >
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -85,14 +89,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     t.action?.onClick();
                     remove(t.id);
                   }}
-                  className="shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:bg-[var(--surface-2)]"
+                  className="hit shrink-0 rounded-[var(--r-sm)] border-2 border-[var(--line)] px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:bg-[var(--surface-2)] pointer-coarse:py-1.5"
                 >
                   {t.action.label}
                 </button>
               )}
               <button
                 onClick={() => remove(t.id)}
-                className="ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+                aria-label="Закрыть уведомление"
+                className="hit ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

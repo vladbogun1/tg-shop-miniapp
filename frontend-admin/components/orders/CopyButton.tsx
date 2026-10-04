@@ -60,7 +60,7 @@ export function CopyButton({
         }
       }}
       className={cn(
-        "nb-press grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)]",
+        "nb-press hit grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)]",
         className
       )}
     >

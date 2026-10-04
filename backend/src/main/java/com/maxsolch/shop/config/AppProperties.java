@@ -24,6 +24,7 @@ public class AppProperties {
     private S3 s3 = new S3();
     private NovaPoshta novaposhta = new NovaPoshta();
     private Site site = new Site();
+    private Push push = new Push();
 
     @Getter
     @Setter
@@ -102,5 +103,20 @@ public class AppProperties {
         private String apiKey;
         private String apiUrl;
         private String syncCron;
+    }
+
+    /**
+     * Web Push for the admin PWA (VAPID, RFC 8292). All three blank = the feature is off: the
+     * subscribe endpoint answers 409 and no notification is ever attempted.
+     */
+    @Getter
+    @Setter
+    public static class Push {
+        /** Uncompressed P-256 public key (65 bytes), base64url — handed to the browser. */
+        private String vapidPublicKey;
+        /** P-256 private scalar (32 bytes), base64url. */
+        private String vapidPrivateKey;
+        /** Contact for the push services: {@code mailto:owner@example.com} or an https URL. */
+        private String vapidSubject;
     }
 }

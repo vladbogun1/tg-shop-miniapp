@@ -120,7 +120,7 @@ export function Autocomplete<T>({
               setQ(e.target.value);
               setOpen(true);
             }}
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
+            className="min-w-0 flex-1 self-stretch bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
           />
           {loading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--text-faint)]" />}
         </div>

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { ToastProvider } from "@/lib/toast";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { PwaBoot } from "@/components/pwa/AppRuntime";
 
 function makeClient() {
   return new QueryClient({
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(makeClient);
   return (
     <QueryClientProvider client={client}>
+      <PwaBoot />
       <ToastProvider>
         <AuthGate>{children}</AuthGate>
       </ToastProvider>

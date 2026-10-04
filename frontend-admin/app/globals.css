@@ -67,7 +67,20 @@
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Phone bottom tab bar (Shell): its height without the home-indicator inset, and the space
+     everything fixed/sticky at the bottom must leave for it (0 on desktop, 0 while the on-screen
+     keyboard is up — the bar hides then). */
+  --tabbar-h: 60px;
+  --bottom-nav: calc(var(--tabbar-h) + var(--safe-bottom));
 }
+
+@media (min-width: 1024px) {
+  :root { --bottom-nav: 0px; }
+}
+html.kb-open { --bottom-nav: 0px; }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -242,6 +255,54 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .focusable:focus-visible { outline: none; box-shadow: var(--ring-accent); }
+
+/* ----------------------------------------------------------------------------
+   Phone / installed-app ergonomics
+   ---------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* No grey flash on tap in iOS / Android WebViews; our buttons have their own pressed state. */
+  -webkit-tap-highlight-color: transparent;
+}
+/* Pull-to-refresh / rubber-band of the whole document fights the app's own scroll areas. */
+html, body { overscroll-behavior-y: none; }
+
+/* Touch screens: no double-tap zoom delay on controls. */
+button, a, [role="button"], [role="tab"], input, select, textarea, label { touch-action: manipulation; }
+
+/* iOS zooms the page into any focused field whose text is under 16px — and stays zoomed.
+   Unlayered, so it wins over the text-[14px] utilities on touch devices only. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Invisible 44×44 tap area around a visually small control (copy, ±, ×) on touch screens.
+   In the components layer so a utility (absolute / fixed) on the same element still wins. */
+@layer components {
+@media (pointer: coarse) {
+  .hit { position: relative; }
+  .hit::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+}
+
+/* Installed app (home-screen PWA): no text selection on chrome, no callout on long-press of links. */
+@media (display-mode: standalone) {
+  header, nav, [data-app-chrome] { -webkit-user-select: none; user-select: none; }
+  a { -webkit-touch-callout: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

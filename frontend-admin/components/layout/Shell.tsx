@@ -1,8 +1,12 @@
 "use client";
 
 /**
- * App shell — fixed sidebar (collapses to a drawer on mobile) + sticky top bar,
- * with an animated active-link indicator and page transitions.
+ * App shell.
+ *  - Desktop (lg+): fixed sidebar + sticky top bar.
+ *  - Phone: sticky top bar (under the status bar in the installed app — safe-area padded) and a
+ *    bottom tab bar for the daily screens: Внимание · Заказы · Отправка · Товары · Ещё. «Ещё»
+ *    opens the full menu drawer with everything else.
+ * Animated active indicators and page transitions on both.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -25,6 +29,8 @@ import {
   Settings,
   BellRing,
 } from "lucide-react";
+import { AppRuntime } from "@/components/pwa/AppRuntime";
+import { InstallBanner, UpdateBanner } from "@/components/pwa/Banners";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -93,7 +99,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              "group relative flex items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase tracking-wide transition-colors",
+              "group relative flex min-h-11 items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase tracking-wide transition-colors lg:min-h-0",
               active
                 ? "text-[var(--accent-ink)]"
                 : "text-[var(--text)] hover:bg-[var(--surface-2)]"
@@ -159,7 +165,7 @@ function LogoutEverywhereButton() {
     <button
       onClick={run}
       disabled={busy}
-      className="flex w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)] disabled:opacity-60"
+      className="flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2 text-[12px] lg:min-h-0 font-bold uppercase tracking-wide text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)] disabled:opacity-60"
     >
       <MonitorX className="h-[16px] w-[16px]" />
       Выйти на всех устройствах
@@ -183,7 +189,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
       <div className="mt-auto border-t-[3px] border-[var(--line)] pt-3">
         <button
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase tracking-wide text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)]"
+          className="flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase lg:min-h-0 tracking-wide text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)]"
         >
           <LogOut className="h-[18px] w-[18px]" />
           Выйти
@@ -194,31 +200,120 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** Daily screens on the phone's tab bar; everything else is under «Ещё». */
+const TABS = [
+  { href: "/inbox", label: "Внимание", icon: BellRing, badge: true },
+  { href: "/", label: "Заказы", icon: LayoutDashboard, exact: true },
+  { href: "/dispatch", label: "Отправка", icon: Truck },
+  { href: "/products", label: "Товары", icon: Package },
+];
+
+const TAB_CELL =
+  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10.5px] font-extrabold uppercase leading-none tracking-wide transition-colors";
+
+function TabIcon({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "relative grid h-8 w-12 place-items-center rounded-[var(--r-sm)] border-2 transition-colors duration-150",
+        active ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-transparent"
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function TabBar({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void }) {
+  const pathname = usePathname();
+  const { data: inbox } = useInbox();
+  const inboxTotal = inbox?.total ?? 0;
+  const onTab = TABS.some((t) => isActive(pathname, t.href, t.exact));
+  const moreActive = menuOpen || !onTab;
+
+  return (
+    <nav
+      aria-label="Главные разделы"
+      data-app-chrome
+      className="tabbar fixed inset-x-0 bottom-0 z-[60] border-t-[3px] border-[var(--line)] bg-[var(--surface)] lg:hidden"
+      style={{ paddingBottom: "var(--safe-bottom)", paddingLeft: "var(--safe-left)", paddingRight: "var(--safe-right)" }}
+    >
+      <div className="mx-auto flex h-[var(--tabbar-h)] max-w-xl items-stretch">
+        {TABS.map((t) => {
+          const active = !menuOpen && isActive(pathname, t.href, t.exact);
+          const Icon = t.icon;
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(TAB_CELL, active ? "text-[var(--text)]" : "text-[var(--text-muted)]")}
+            >
+              <TabIcon active={active}>
+                <Icon className="h-[19px] w-[19px]" />
+                {t.badge && inboxTotal > 0 && (
+                  <span
+                    aria-label={`Требует внимания: ${inboxTotal}`}
+                    className="absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+                  >
+                    {inboxTotal > 99 ? "99+" : inboxTotal}
+                  </span>
+                )}
+              </TabIcon>
+              <span className="max-w-full truncate px-0.5">{t.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="Ещё — все разделы"
+          aria-expanded={menuOpen}
+          className={cn(TAB_CELL, moreActive ? "text-[var(--text)]" : "text-[var(--text-muted)]")}
+        >
+          <TabIcon active={moreActive}>
+            <Menu className="h-[19px] w-[19px]" />
+          </TabIcon>
+          <span>Ещё</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);
   const pathname = usePathname();
-  const title = TITLE[pathname] ?? "Панель";
+  const title = TITLE[pathname] ?? (pathname.startsWith("/orders/") ? "Заказ" : "Панель");
 
   return (
     <div className="flex min-h-dvh">
+      <AppRuntime />
+
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col border-r-[3px] border-[var(--line)] bg-[var(--surface)] p-4 lg:flex">
         <SidebarInner />
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Phone: the full menu («Ещё») */}
       <AnimatePresence>
         {drawer && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/55 lg:hidden"
+              className="fixed inset-0 z-[70] bg-black/55 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawer(false)}
             />
             <motion.aside
-              className="fixed inset-y-0 left-0 z-50 w-72 border-r-[3px] border-[var(--line)] bg-[var(--surface)] p-4 shadow-[7px_0_0_var(--shadow)] lg:hidden"
+              aria-label="Все разделы"
+              className="thin-scroll fixed inset-y-0 left-0 z-[80] flex w-[min(20rem,86vw)] flex-col overflow-y-auto border-r-[3px] border-[var(--line)] bg-[var(--surface)] pr-4 shadow-[7px_0_0_var(--shadow)] lg:hidden"
+              style={{
+                paddingTop: "calc(12px + var(--safe-top))",
+                paddingBottom: "calc(16px + var(--safe-bottom))",
+                paddingLeft: "calc(16px + var(--safe-left))",
+              }}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -226,7 +321,7 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               <button
                 onClick={() => setDrawer(false)}
-                className="nb-press mb-2 ml-auto grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)]"
+                className="nb-press mb-2 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)]"
                 aria-label="Закрыть меню"
               >
                 <X className="h-5 w-5" />
@@ -238,23 +333,25 @@ export function Shell({ children }: { children: ReactNode }) {
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b-[3px] border-[var(--line)] bg-[var(--bg)] px-4 py-3 lg:px-7">
-          <button
-            onClick={() => setDrawer(true)}
-            className="nb-press grid h-10 w-10 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[4px_4px_0_var(--shadow)] lg:hidden"
-            aria-label="Меню"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">{title}</div>
-          <div className="ml-auto flex items-center gap-2">
-            <NotificationsBell />
+        {/* Top bar — on a phone it sits under the status bar of the installed app */}
+        <header
+          data-app-chrome
+          className="sticky top-0 z-30 flex items-center gap-3 border-b-[3px] border-[var(--line)] bg-[var(--bg)] pb-2.5 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-[calc(10px+var(--safe-top))] lg:px-7 lg:py-3"
+        >
+          <div className="min-w-0 truncate text-[17px] font-black uppercase tracking-wide text-[var(--text)] lg:text-[16px]">
+            {title}
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            {/* On a phone the «Внимание» tab carries the same badge — no second bell there. */}
+            <div className="hidden lg:block">
+              <NotificationsBell />
+            </div>
             <ThemeToggle />
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 lg:p-7">
+        <main className="min-w-0 flex-1 pb-[calc(var(--bottom-nav)+20px)] pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-4 lg:p-7">
+          <InstallBanner />
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 10 }}
@@ -265,6 +362,9 @@ export function Shell({ children }: { children: ReactNode }) {
           </motion.div>
         </main>
       </div>
+
+      <TabBar menuOpen={drawer} onMenu={() => setDrawer((v) => !v)} />
+      <UpdateBanner />
     </div>
   );
 }

@@ -35,7 +35,9 @@ import {
   type SettingValue,
 } from "@/lib/settings";
 import { useToast } from "@/lib/toast";
+import { useIsDesktop } from "@/lib/use-media";
 import { initialDraft, isDirty, parse, toRaw, validate, type Draft } from "./draft";
+import { DevicePanel } from "./DevicePanel";
 import { PanelHeader } from "./PanelHeader";
 import { SettingField } from "./SettingField";
 import { SitePanel } from "./SitePanel";
@@ -62,6 +64,8 @@ export default function SettingsPage() {
   const { push } = useToast();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: SETTINGS_QUERY_KEY, queryFn: settingsApi.list });
+  // «Приложение и уведомления»: first thing on a phone, top of the side column on a computer.
+  const isDesktop = useIsDesktop();
 
   const [draft, setDraft] = useState<Draft>({});
   const [saving, setSaving] = useState(false);
@@ -137,6 +141,7 @@ export default function SettingsPage() {
       >
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
           <div className="flex min-w-0 flex-col gap-6">
+            {!isDesktop && <DevicePanel />}
             {(q.data?.groups ?? []).map((g, i) => {
               const groupItems = items.filter((it) => it.group === g.id);
               if (groupItems.length === 0) return null;
@@ -160,6 +165,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[88px]">
+            {isDesktop && <DevicePanel />}
             <SitePanel />
             <SystemPanel />
           </div>
@@ -174,7 +180,9 @@ export default function SettingsPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            className="fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:left-[260px] lg:px-7"
+            // Above the phone tab bar (--bottom-nav), which already covers the home-indicator inset.
+            style={{ bottom: "var(--bottom-nav)" }}
+            className="fixed inset-x-0 z-[55] border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:left-[260px] lg:px-7 lg:pb-[max(12px,env(safe-area-inset-bottom))]"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 text-[13px] font-bold text-[var(--text)]">

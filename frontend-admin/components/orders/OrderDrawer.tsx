@@ -426,7 +426,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-[var(--r-sm)] border-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide transition-colors",
+                  "flex items-center gap-1.5 rounded-[var(--r-sm)] border-2 px-3 py-2 text-[12px] font-black uppercase tracking-wide transition-colors pointer-coarse:min-h-11",
                   tab === t
                     ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[var(--shadow-1)]"
                     : "border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
@@ -516,7 +516,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
           )}
 
           {tab === "chat" && (
-            <div className="flex min-h-0 flex-1 p-3 sm:p-5">{orderId && <OrderChat key={orderId} orderId={orderId} />}</div>
+            <div className="flex min-h-0 flex-1 p-3 pb-[calc(12px+var(--safe-bottom))] sm:p-5 sm:pb-[calc(20px+var(--safe-bottom))]">{orderId && <OrderChat key={orderId} orderId={orderId} />}</div>
           )}
 
           {tab === "history" && (

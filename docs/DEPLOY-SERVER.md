@@ -197,6 +197,23 @@ cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app && docker compose start app prox
 cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && docker compose down   # снять v2
 ```
 
+### Push-уведомления админки (PWA, VAPID)
+
+Админка (https://maxsolkh.shop:667) ставится на телефон как приложение и шлёт push о новом заказе,
+«я оплатил», сообщении клиента и сбое ревалидации сайта. Без ключей push просто выключен.
+
+```bash
+# один раз сгенерировать пару (команды — в .env.example, блок VAPID_*), вписать в .env на сервере:
+#   VAPID_PUBLIC_KEY=...  VAPID_PRIVATE_KEY=...  VAPID_SUBJECT=mailto:<почта владельца>
+docker compose $C up -d --no-build backend      # подхватить ключи
+docker compose logs backend | grep "Web Push"   # «Admin Web Push is on»
+```
+
+Ключи не менять без нужды: при смене все устройства надо заново включить в «Настройки → Приложение и
+уведомления» (старые подписки push-сервисы отклонят, бэкенд их удалит сам). Таблица подписок —
+`admin_push_subscriptions` (V34). Бэкенду нужен исходящий HTTPS к fcm.googleapis.com,
+web.push.apple.com, updates.push.services.mozilla.com.
+
 ### MinIO: образов больше нет в реестрах
 
 `minio/minio` и `minio/mc` (и `quay.io/minio/*`) больше не публикуются, поэтому в compose у них
