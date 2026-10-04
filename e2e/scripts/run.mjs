@@ -4,7 +4,7 @@
  *
  *   1. MySQL 8.4 in its own docker compose project `tgshop_e2e` (port 33307, data on tmpfs);
  *      skipped with --external-db / E2E_EXTERNAL_DB=1 (CI: a job service container);
- *   2. backend jar — `mvn package` when the jar is missing or older than the sources
+ *   2. backend jar — `mvn clean package` (clean: stale migrations left in target/ by other branches break Flyway) when the jar is missing or older than the sources
  *      (--skip-backend-build to use whatever jar is there, E2E_BACKEND_JAR to point elsewhere);
  *   3. admin — frontend-admin is copied to .e2e-admin/ and built there with the e2e API URL baked
  *      in (a build in frontend-admin/ itself would clobber the .next of a running `next dev`);
@@ -88,7 +88,7 @@ try {
       process.exit(1);
     }
   } else if (!jarFresh) {
-    must("mvn", ["-B", "-q", "-ntp", "-DskipTests", "package"], { cwd: backendDir });
+    must("mvn", ["-B", "-q", "-ntp", "-DskipTests", "clean", "package"], { cwd: backendDir });
   } else {
     console.log(`✔ backend jar is up to date: ${path.relative(REPO_ROOT, BACKEND_JAR)}`);
   }
