@@ -280,14 +280,15 @@ public class AdminOrderController {
 
     /**
      * Hard delete of a closed order (DELIVERED / REJECTED; anything else is a 400). See
-     * {@link OrderService#delete}: stock of a delivered order goes back unless {@code restock=false},
+     * {@link OrderService#delete}: a delivered order's stock stays as is (the goods are with the
+     * customer — deleting is clean-up, not a return) unless {@code restock=true} is passed,
      * the promo use is released, chat files and the dispatch card are removed after the commit.
      * Audited only once the delete has actually happened.
      */
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a DELIVERED/REJECTED order (restock=false keeps a delivered order's stock as is)")
+    @Operation(summary = "Delete a DELIVERED/REJECTED order (restock=true returns a delivered order's units to stock)")
     public ResponseEntity<Void> delete(@PathVariable String id,
-                                       @RequestParam(defaultValue = "true") boolean restock) {
+                                       @RequestParam(defaultValue = "false") boolean restock) {
         OrderService.DeletedOrder d = orderService.delete(load(id).getId(), restock);
         audit.record("ORDER_DELETE", "ORDER", id,
                 "удалён заказ " + d.customerName() + ", " + d.totalMinor() + " (мин. ед.), статус "

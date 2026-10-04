@@ -196,6 +196,7 @@ public class MeController {
     @Operation(summary = "Send a chat message (customer)")
     public MessageDto sendMessage(@PathVariable String id, @RequestBody SendMessageRequest req) {
         Order order = ownedOrder(id);
+        requireOwnAttachment(req);
         String name = order.getCustomerName();
         return messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
     }
@@ -208,6 +209,7 @@ public class MeController {
         if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
             throw new BadRequestException(messages.current("api.order.proofRequired"));
         }
+        requireOwnAttachment(req);
         // Post the proof into the order chat (admins get notified via MessageService).
         messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
         // NOTE: this only records a CLAIM. It must not set paid/received — doing so used to zero
@@ -239,7 +241,18 @@ public class MeController {
     @Operation(summary = "Upload a chat attachment")
     public UploadResponse upload(@RequestParam("file") MultipartFile file) {
         uploadValidator.validateAttachment(file);
-        return UploadResponse.ofKey(imageStorageService.uploadChatAttachment(file));
+        return UploadResponse.ofKey(
+                imageStorageService.uploadCustomerChatAttachment(file, SecurityUtil.currentUserId()));
+    }
+
+    /** A customer may attach only a file they uploaded themselves (their chat/u{id}/ prefix). */
+    private void requireOwnAttachment(SendMessageRequest req) {
+        if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
+            return;
+        }
+        if (!ImageStorageService.isCustomerAttachmentKey(req.attachmentUrl(), SecurityUtil.currentUserId())) {
+            throw new BadRequestException(messages.current("api.chat.badAttachment"));
+        }
     }
 
     private Order ownedOrder(String id) {

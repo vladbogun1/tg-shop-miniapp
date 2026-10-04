@@ -613,11 +613,11 @@ export const adminApi = {
     body: { promoCode?: string; amountMinor?: number; percent?: number; clear?: boolean; notifyCustomer?: boolean }
   ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/discount`, body),
   /**
-   * Hard delete — DELIVERED / REJECTED only (400 otherwise). A delivered order's stock goes back
-   * unless `restock: false`; the promo use is released, chat files are removed.
+   * Hard delete — DELIVERED / REJECTED only (400 otherwise). A delivered order's stock stays as is
+   * (the goods are with the customer) unless `restock: true`; the promo use is released, chat files are removed.
    */
   deleteOrder: (id: string, opts: { restock?: boolean } = {}) =>
-    apiDelete<void>(`/api/admin/orders/${id}${opts.restock === false ? "?restock=false" : ""}`),
+    apiDelete<void>(`/api/admin/orders/${id}${opts.restock === true ? "?restock=true" : ""}`),
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/admin/orders/unread-count"),

@@ -85,6 +85,27 @@ public class ImageStorageService {
         return upload(file, key);
     }
 
+    /**
+     * Upload a customer's chat attachment under their own prefix: chat/u{userId}/{uuid}/{filename}.
+     * The prefix is what lets a customer message reference only files that customer uploaded
+     * (see {@link #isCustomerAttachmentKey}) — otherwise any known key, e.g. someone else's payment
+     * screenshot, could be attached to one's own order and fetched back through a signed URL.
+     */
+    public String uploadCustomerChatAttachment(MultipartFile file, long userId) {
+        String filename = sanitize(file.getOriginalFilename());
+        String key = customerChatPrefix(userId) + UUID.randomUUID() + "/" + filename;
+        return upload(file, key);
+    }
+
+    public static String customerChatPrefix(long userId) {
+        return "chat/u" + userId + "/";
+    }
+
+    /** True if {@code key} is a plain object key inside this customer's own chat prefix. */
+    public static boolean isCustomerAttachmentKey(String key, long userId) {
+        return key != null && key.startsWith(customerChatPrefix(userId)) && !key.contains("..");
+    }
+
     /** A stored object's bytes plus the content type it was uploaded with. */
     public record StoredObject(InputStream stream, String contentType) {
     }
