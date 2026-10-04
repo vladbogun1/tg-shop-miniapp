@@ -6,12 +6,15 @@
  *
  * Most site visitors never sign in, so a visitor is identified by a random id kept in localStorage
  * (`anonId`): it ties "opened a product" before login to "placed an order" after it. When the
- * `access` cookie is there, the backend also records the Telegram id. Only what the funnel needs is
- * sent: page views, product views, adds to cart, checkout start, order created — no click journal,
- * no field values, nothing personal.
+ * `access` cookie is there, the backend also records the Telegram id. Sent: page views, product
+ * views, adds to cart, checkout start, order created, and clicks — the label of what was tapped plus
+ * the element actually under the finger (same as the Mini App, shared/src/tap.ts). No field values,
+ * nothing personal.
  *
  * Nothing here may break a page: every path is wrapped, failures are dropped.
  */
+
+import { describeTap } from "@shop/shared";
 
 const BUFFER_KEY = "mx-analytics-buffer";
 const ANON_KEY = "mx-aid";
@@ -22,6 +25,7 @@ const MAX_BUFFERED = 50;
 
 interface SiteEvent {
   event: string;
+  target?: string;
   path?: string;
   meta?: string;
   clientTime: string;
@@ -77,12 +81,13 @@ function restore() {
   }
 }
 
-function track(event: string, meta?: Record<string, unknown>) {
+function track(event: string, meta?: Record<string, unknown> | string, target?: string) {
   try {
     buffer.push({
       event,
+      target,
       path: typeof location === "undefined" ? undefined : location.pathname,
-      meta: meta ? JSON.stringify(meta) : undefined,
+      meta: meta === undefined ? undefined : typeof meta === "string" ? meta : JSON.stringify(meta),
       clientTime: new Date().toISOString(),
     });
     if (buffer.length > MAX_BUFFERED) buffer = buffer.slice(-MAX_BUFFERED);
@@ -147,11 +152,21 @@ export function startAnalytics(): () => void {
     if (document.visibilityState === "hidden") void flush(true);
   };
   const onPageHide = () => void flush(true);
+  const onClick = (e: MouseEvent) => {
+    try {
+      const tap = describeTap(e);
+      if (tap) track("click", tap.meta, tap.label);
+    } catch {
+      /* never let instrumentation break a page */
+    }
+  };
+  document.addEventListener("click", onClick, { capture: true, passive: true });
   document.addEventListener("visibilitychange", onHide);
   window.addEventListener("pagehide", onPageHide);
   const timer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
   return () => {
     clearInterval(timer);
+    document.removeEventListener("click", onClick, { capture: true });
     document.removeEventListener("visibilitychange", onHide);
     window.removeEventListener("pagehide", onPageHide);
     started = false;

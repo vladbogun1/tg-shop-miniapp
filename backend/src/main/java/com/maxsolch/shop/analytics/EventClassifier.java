@@ -155,7 +155,9 @@ public final class EventClassifier {
                 } else if (StructuredEvents.CHECKOUT_START.equals(event)) {
                     checkout = true;
                 } else if (!structured) {
-                    if ("click".equals(event) && e.target() != null) {
+                    // Website clicks (journalled since 2026-10) postdate the structured events: only
+                    // the Mini App's old click texts are read as funnel steps.
+                    if ("click".equals(event) && e.target() != null && !"WEB".equals(e.channel())) {
                         String target = e.target().toLowerCase(Locale.ROOT);
                         LegacyCard card = legacyCard(target);
                         if (card != null) {

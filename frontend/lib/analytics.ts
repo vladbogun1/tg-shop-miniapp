@@ -16,6 +16,7 @@
  *
  * It records what was tapped and where, never what was typed: field values never enter the buffer.
  */
+import { describeTap } from "@shop/shared";
 import { getAccessToken, getApiBase } from "@/lib/api";
 
 const BUFFER_KEY = "analytics-buffer";
@@ -146,32 +147,21 @@ export async function flush(keepalive = false): Promise<void> {
   }
 }
 
-/** A short, privacy-safe description of what was tapped. */
-function describe(target: EventTarget | null): string | undefined {
-  if (!(target instanceof Element)) return undefined;
-  const el = target.closest("[data-analytics],button,a,input,textarea,[role='button']");
-  if (!el) return undefined;
-
-  const name = el.getAttribute("data-analytics");
-  if (name) return name.slice(0, 120);
-
-  const tag = el.tagName.toLowerCase();
-  // Never read a value: the buffer must not end up holding phone numbers or promo codes.
-  if (tag === "input" || tag === "textarea") {
-    return `${tag}:${el.getAttribute("aria-label") ?? el.getAttribute("name") ?? "field"}`;
-  }
-  const label =
-    el.getAttribute("aria-label") ?? (el.textContent ?? "").replace(/\s+/g, " ").trim();
-  return `${tag}:${label.slice(0, 60)}`;
-}
-
 /** Installs the listeners once. Safe to call from every mount. */
 export function startAnalytics(): () => void {
   if (started || typeof window === "undefined") return () => {};
   started = true;
   restore();
 
-  const onClick = (e: MouseEvent) => track("click", describe(e.target));
+  // Label of what the tap was meant for + what was really under the finger (shared/src/tap.ts).
+  const onClick = (e: MouseEvent) => {
+    try {
+      const tap = describeTap(e);
+      if (tap) track("click", tap.label, tap.meta);
+    } catch {
+      /* never let instrumentation break a screen */
+    }
+  };
   const onError = (e: ErrorEvent) => track("error", e.message?.slice(0, 120));
   const onRejection = (e: PromiseRejectionEvent) =>
     track("error", String(e.reason).slice(0, 120));

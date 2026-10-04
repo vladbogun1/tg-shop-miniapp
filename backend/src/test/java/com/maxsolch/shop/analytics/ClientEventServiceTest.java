@@ -51,11 +51,13 @@ class ClientEventServiceTest {
     void web_acceptsOnlyWhitelistedEvents_anonymousAllowed() {
         int saved = service().recordWeb(null, new WebEventBatch("anon-1234567", "tab1", List.of(
                 ev(StructuredEvents.ADD_TO_CART, "{\"productId\":\"bad\"}"),
-                ev("click", null))));
+                ev("click", "{\"hit\":\"div.fixed\"}"),
+                ev("debug_dump", null))));
 
         ArgumentCaptor<List<ClientEvent>> captor = ArgumentCaptor.forClass(List.class);
         verify(repository).saveAll(captor.capture());
-        assertThat(saved).isEqualTo(1);
+        assertThat(saved).isEqualTo(2); // clicks are journalled from the web too; unknown events are not
+        assertThat(captor.getValue().get(1).getEvent()).isEqualTo("click");
         ClientEvent row = captor.getValue().get(0);
         assertThat(row.getChannel()).isEqualTo(EventChannel.WEB);
         assertThat(row.getTelegramUserId()).isNull();

@@ -23,9 +23,12 @@ public final class StructuredEvents {
     public static final String CHECKOUT_START = "checkout_start";
     public static final String ORDER_CREATED = "order_created";
 
-    /** What an anonymous website visitor may write: no free-form click journal from the open web. */
+    /**
+     * What an anonymous website visitor may write. Clicks carry only a label of what was tapped and,
+     * in {@code meta}, a description of the element actually hit — never field values.
+     */
     public static final Set<String> WEB_ALLOWED = Set.of(
-            "view", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED);
+            "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED);
 
     private StructuredEvents() {
     }
