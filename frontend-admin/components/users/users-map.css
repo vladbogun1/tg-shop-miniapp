@@ -1,0 +1,84 @@
+/* Users map (components/users/UsersMap.tsx) — Leaflet in the graphite theme. */
+
+.um-map.leaflet-container {
+  background: #0B0B0D;
+  font-family: var(--font-body);
+}
+
+/* Same OSM tiles as the Nova Poshta map, inverted into a dark atlas: water near-black,
+   land graphite, labels light — so the orange dots are the only colour on screen. */
+.um-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.35);
+}
+
+.um-map .leaflet-bar {
+  border: 1px solid var(--line-strong) !important;
+  box-shadow: var(--shadow-1) !important;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.um-map .leaflet-bar a,
+.um-map .leaflet-bar a:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.um-map .leaflet-bar a:hover { background: var(--surface-hover); }
+@media (pointer: coarse) {
+  .um-map .leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
+}
+
+.um-map .leaflet-control-attribution {
+  background: rgba(14, 14, 16, .78) !important;
+  color: var(--text-faint) !important;
+  font-size: 10px;
+}
+.um-map .leaflet-control-attribution a { color: var(--text-muted) !important; }
+
+.um-dot-wrap { background: transparent; border: 0; }
+
+.um-dot,
+.um-cluster {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #FF6600;
+  color: #0E0E10;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 0 0 0 2px rgba(14, 14, 16, .9), 0 0 12px rgba(255, 102, 0, .55);
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: pointer;
+}
+.um-dot:hover,
+.um-cluster:hover { transform: scale(1.08); }
+
+.um-dot--active {
+  box-shadow: 0 0 0 2px #0E0E10, 0 0 0 4px #FFFFFF, 0 0 18px rgba(255, 102, 0, .9);
+}
+
+/* A cluster is a translucent halo around a solid core — reads as "many" next to a single city. */
+.um-cluster {
+  background: radial-gradient(circle, #FF6600 0 58%, rgba(255, 102, 0, .28) 60% 100%);
+  box-shadow: 0 0 14px rgba(255, 102, 0, .45);
+}
+.um-cluster span { text-shadow: none; }
+
+@keyframes um-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); }
+  70% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+.um-live {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ok);
+  animation: um-pulse 1.8s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .um-live { animation: none; }
+  .um-dot, .um-cluster { transition: none; }
+}

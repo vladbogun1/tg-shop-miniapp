@@ -5,7 +5,8 @@
  *  - «Список»: search first, then a sortable / paged table (GET /api/admin/users); on a phone,
  *    cards with a sort select. Language = the one chosen in the shop (users.locale).
  *  - «Аналитика»: KPI cards + charts (GET /api/admin/users/metrics); the period switch lives
- *    here only — it never filtered the table, which read as a broken filter (D7).
+ *    here only — it never filtered the table, which read as a broken filter (D7). On top: the
+ *    users map (IP → city) with "online now" (UsersMapBlock, GET /api/admin/users/geo*).
  * A row opens the UserProfileDrawer; an order in it opens the OrderDrawer ON TOP, so closing it
  * returns to the profile and the list with its search and page intact.
  */
@@ -68,6 +69,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ChartTooltip } from "@/components/metrics/ChartTooltip";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
+import { UsersMapBlock } from "@/components/users/UsersMapBlock";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
@@ -140,7 +142,11 @@ export default function UsersPage() {
         )}
       </div>
 
-      {tab === "list" ? <UsersTable onOpenUser={setProfileUser} /> : <UserMetrics range={range} />}
+      {tab === "list" ? (
+        <UsersTable onOpenUser={setProfileUser} />
+      ) : (
+        <UserMetrics range={range} onOpenUser={setProfileUser} />
+      )}
 
       <UserProfileDrawer
         user={profileUser}
@@ -155,7 +161,7 @@ export default function UsersPage() {
 
 /* ------------------------------------------------------------------ metrics */
 
-function UserMetrics({ range }: { range: TimeRange }) {
+function UserMetrics({ range, onOpenUser }: { range: TimeRange; onOpenUser: (u: UserCardDto) => void }) {
   const { data: m, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["user-metrics", range],
     queryFn: () => adminApi.userMetrics(range),
@@ -197,6 +203,8 @@ function UserMetrics({ range }: { range: TimeRange }) {
 
   return (
     <div className="flex flex-col gap-6">
+      <UsersMapBlock onOpenUser={onOpenUser} />
+
       <motion.div
         className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6"
         variants={staggerContainer}
