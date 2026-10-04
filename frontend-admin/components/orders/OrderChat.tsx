@@ -164,7 +164,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
     }
     setUploading(true);
     try {
-      const { key: uploadKey } = await adminApi.upload(file);
+      const { key: uploadKey } = await adminApi.uploadChatAttachment(orderId, file);
       const msg = await adminApi.sendMessage(orderId, {
         type: "PHOTO",
         attachmentUrl: uploadKey,

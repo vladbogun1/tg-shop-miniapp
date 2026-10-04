@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   LogOut,
+  MonitorX,
   Store,
   Truck,
   Languages,
@@ -26,8 +27,9 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { logout } from "@/lib/api";
+import { ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 
 const NAV = [
@@ -114,6 +116,36 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** Revokes every token of this admin — for a lost phone or a session left open somewhere. */
+function LogoutEverywhereButton() {
+  const { push } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  async function run() {
+    if (!window.confirm("Выйти на всех устройствах? Админку придётся открыть заново везде, включая это устройство.")) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await logoutEverywhere();
+    } catch (e) {
+      push(e instanceof ApiError ? e.message : "Не удалось выйти на всех устройствах", "error");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={run}
+      disabled={busy}
+      className="flex w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2 text-[12px] font-bold uppercase tracking-wide text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)] disabled:opacity-60"
+    >
+      <MonitorX className="h-[16px] w-[16px]" />
+      Выйти на всех устройствах
+    </button>
+  );
+}
+
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
@@ -135,6 +167,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
           <LogOut className="h-[18px] w-[18px]" />
           Выйти
         </button>
+        <LogoutEverywhereButton />
       </div>
     </div>
   );

@@ -139,7 +139,7 @@ export default function PromocodesPage() {
         >
           {promos.map((p) => {
             const limited = !!p.maxUses;
-            const used = p.usedCount ?? 0;
+            const used = p.usesCount ?? 0;
             const exhausted = limited && used >= (p.maxUses ?? 0);
             return (
               <motion.div
