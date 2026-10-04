@@ -16,14 +16,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   return (
     <label htmlFor={taId} className="flex flex-col gap-1.5">
       {label && (
-        <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{label}</span>
+        <span className="field-label">{label}</span>
       )}
       <textarea
         ref={ref}
         id={taId}
         className={cn(
-          "w-full resize-y rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[14px] leading-relaxed text-[var(--text)] outline-none transition-colors",
-          "placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]",
+          "w-full resize-y rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] leading-relaxed text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-150",
+          "placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:!border-[var(--accent)] focus:shadow-[var(--ring-accent)]",
           className
         )}
         {...rest}

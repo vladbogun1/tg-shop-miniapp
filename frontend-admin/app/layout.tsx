@@ -1,23 +1,34 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Exo_2, Inter } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
+// Body text, tables and fields.
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-inter",
+  variable: "--font-body",
+  display: "swap",
+});
+
+// Display face (DESIGN-V3 §3, §8): page titles, KPI numbers, nav, buttons, badges. No 900 in
+// Exo 2 — 800 is the heaviest; italic 800 is for the ChiSetup wordmark (faces are fetched on use).
+const exo = Exo_2({
+  subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "MAXSOLCH — админка",
-  description: "Админка магазина MAX/SOLCH: заказы, отправка, товары, оплата, клиенты",
-  applicationName: "MAXSOLCH Admin",
+  title: "ChiSetup Admin",
+  description: "Админка магазина ChiSetup: заказы, отправка, товары, оплата, клиенты",
+  applicationName: "ChiSetup Admin",
   // The manifest is linked automatically from app/manifest.ts.
   appleWebApp: {
     capable: true,
-    title: "MAXSOLCH",
+    title: "ChiSetup Admin",
     // Content runs under the status bar; the shell pads itself with env(safe-area-inset-top).
     statusBarStyle: "black-translucent",
   },
@@ -37,20 +48,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   // Android Chrome: the on-screen keyboard shrinks the layout, so fields and sticky bars stay visible.
   interactiveWidget: "resizes-content",
-  // Light theme colour; the stored theme updates it before paint (themeInit) and on toggle (lib/theme).
-  themeColor: "#F4F1E6",
+  // One dark theme (v3) — also the status bar / browser chrome colour of the installed app.
+  themeColor: "#0E0E10",
+  colorScheme: "dark",
 };
-
-// Apply the stored theme before paint to avoid a flash (light by default) — also the status bar /
-// browser chrome colour of the installed app.
-const themeInit = `(function(){var d='light';try{d=localStorage.getItem('admin-theme')==='dark'?'dark':'light';}catch(e){}document.documentElement.setAttribute('data-theme',d);try{var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',d==='dark'?'#26262B':'#F4F1E6');}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={inter.variable} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
-      </head>
+    <html lang="ru" className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
       <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <div className="aurora" aria-hidden />

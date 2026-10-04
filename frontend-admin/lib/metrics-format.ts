@@ -27,25 +27,27 @@ export function hoursLabel(h: number | null | undefined): string {
 }
 
 /**
- * Palette for charts — pulled from the Liquid Glass status accents so charts
- * theme to the dark glass. These are literal values (recharts can't read CSS
- * vars from JS), kept in sync with globals.css :root.
+ * Chart palette for JS-only places (recharts props that can't read CSS vars, e.g. <Cell fill>,
+ * gradient <stop>s). Literal mirror of the --mx-* tokens in components/metrics/metrics.css and
+ * the --st-* tokens in app/globals.css — ChiSetup dark (DESIGN-V3 §8): orange is the series
+ * that matters, steel / greys are context, status hues only for statuses.
  */
-/* Neo palette. grid/axis/text are neutral grey so they read on BOTH the light
-   cream and dark grey backgrounds (recharts can't read CSS vars). */
 export const CHART_COLORS = {
-  accent: "#FF5A2C",
-  // Status hues — kept in sync with the --st-* tokens in globals.css so charts,
-  // the kanban board and status chips all use the same identity. approved
-  // (violet) is now clearly distinct from delivered (green).
+  accent: "#FF6600",
+  steel: "#7B93B8",
+  grey: "#D4D4D8",
+  prev: "#8A8A93",
+  // Status hues — identical to the --st-* tokens, so charts, the board and the chips agree.
   new: "#3F8CF5",
   approved: "#9B6BFF",
   shipped: "#F5A623",
   delivered: "#22C07D",
   rejected: "#F0503C",
-  grid: "rgba(128,128,128,0.28)",
-  axis: "#8b8b8b",
-  text: "#8b8b8b",
+  grid: "rgba(255,255,255,0.06)",
+  axis: "rgba(255,255,255,0.4)",
+  text: "#A1A1AA",
+  /** Tooltip cursor band / hover fill. */
+  cursor: "rgba(255,255,255,0.04)",
 } as const;
 
 /** Status -> chart color, matching the kanban accents. */
@@ -57,14 +59,19 @@ export const STATUS_COLOR: Record<string, string> = {
   REJECTED: CHART_COLORS.rejected,
 };
 
-/** A small rotating palette for categorical series (top products, payments). */
+/**
+ * Categorical order for part-of-whole charts (sources, languages, payment methods). Fixed order,
+ * never cycled past the end: a 9th category belongs in «Другое». Orange first, then neutrals with
+ * clear lightness steps so neighbours separate without hue (validated: adjacent ΔE ≥ 15).
+ * For a single-series ranking (top products) use ONE colour (accent), not this list.
+ */
 export const SERIES_PALETTE = [
-  "#FF5A2C",
-  "#2F6BFF",
-  "#16B36B",
-  "#E8A300",
-  "#12B886",
-  "#E5341F",
-  "#7B5Cff",
-  "#FF73B5",
+  "#FF6600",
+  "#7B93B8",
+  "#D4D4D8",
+  "#FFA766",
+  "#4E5D75",
+  "#8A8A93",
+  "#B04F07",
+  "#55555C",
 ];

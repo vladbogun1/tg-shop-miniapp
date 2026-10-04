@@ -2,10 +2,12 @@
 
 /**
  * Admin login — browser username + password (POST /api/auth/admin/login).
+ * ChiSetup v3: full logo (HUD brackets + tagline) in a HUD-framed card, chamfered «Войти».
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { LogIn, ShieldCheck, User, Lock } from "lucide-react";
+import { LogIn, User, Lock } from "lucide-react";
+import { LogoFull } from "@/components/brand/Logo";
 import { authAdminLogin, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,27 +38,29 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center px-4">
+    <div className="relative grid min-h-dvh place-items-center px-4 py-10">
       <motion.form
         onSubmit={submit}
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 280, damping: 26 }}
-        className="elevated w-full max-w-md p-8"
+        className="hud-frame w-full max-w-[420px] rounded-[var(--r-lg)] border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] px-6 py-8 backdrop-blur-sm sm:px-9 sm:py-10"
       >
-        <div className="mb-7 flex flex-col items-center text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
           <motion.div
-            initial={{ scale: 0.6, rotate: -12, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.1 }}
-            className="accent-fill mb-4 grid h-16 w-16 place-items-center rounded-[var(--r-md)]"
+            initial={{ scale: 0.92, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+            className="[filter:drop-shadow(0_0_22px_rgba(255,102,0,.18))]"
           >
-            <ShieldCheck className="h-8 w-8" />
+            <LogoFull width={264} />
           </motion.div>
-          <h1 className="text-[26px] font-black uppercase tracking-wide text-[var(--text)]">
-            MAXSOLCH <span className="text-[var(--accent)]">админка</span>
-          </h1>
-          <p className="mt-1.5 text-[14px] font-medium text-[var(--text-muted)]">
+          <div className="mt-6 flex items-center gap-2.5">
+            <span aria-hidden className="h-[2px] w-6 rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
+            <h1 className="font-display text-[13px] font-semibold uppercase tracking-[0.32em] text-[var(--text)]">Админка</h1>
+            <span aria-hidden className="h-[2px] w-6 rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
+          </div>
+          <p className="mt-2 text-[14px] text-[var(--text-muted)]">
             Вход для администратора магазина
           </p>
         </div>
@@ -83,7 +87,8 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
             size="lg"
             loading={loading}
             icon={<LogIn className="h-4 w-4" />}
-            className="mt-1 w-full"
+            chamfer
+            className="mt-2 w-full"
           >
             Войти
           </Button>

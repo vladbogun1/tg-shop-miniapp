@@ -104,7 +104,7 @@ export function Modal({
                   if (closeOnBackdrop && pressedOnBackdrop.current) requestClose();
                   pressedOnBackdrop.current = false;
                 }}
-                className="absolute inset-0 bg-black/50"
+                className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
               />
               <motion.div
                 role="dialog"
@@ -114,23 +114,23 @@ export function Modal({
                 animate="animate"
                 exit="exit"
                 className={cn(
-                  "panel card-sheen relative z-10 flex w-full flex-col overflow-hidden",
+                  "card-sheen relative z-10 flex w-full flex-col overflow-hidden rounded-[var(--r-xl)] border border-[var(--line-strong)] bg-[var(--surface)] shadow-[var(--shadow-3)]",
                   "max-h-[calc(100dvh-var(--safe-top)-12px)] sm:max-h-[90dvh]",
-                  "max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-[0_-5px_0_var(--shadow)]",
+                  "max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-[0_-12px_40px_-12px_rgba(0,0,0,.7)]",
                   fixedHeight && "h-[min(calc(100dvh-var(--safe-top)-12px),680px)] sm:h-[min(90dvh,680px)]",
                   width
                 )}
               >
                 <ModalCloseContext.Provider value={requestClose}>
                   {title && (
-                    <div className="flex items-center justify-between gap-3 border-b-[3px] border-[var(--line)] px-5 py-4">
-                      <div className="min-w-0 text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+                    <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-3.5">
+                      <div className="min-w-0 font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">
                         {title}
                       </div>
                       <button
                         onClick={requestClose}
                         aria-label="Закрыть"
-                        className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] pointer-coarse:h-11 pointer-coarse:w-11"
+                        className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] pointer-coarse:h-11 pointer-coarse:w-11"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -145,7 +145,7 @@ export function Modal({
                     {children}
                   </div>
                   {footer && (
-                    <div className="flex flex-wrap items-center justify-end gap-2 border-t-[3px] border-[var(--line)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 sm:px-5 sm:py-4">
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 sm:px-5 sm:py-4">
                       {footer}
                     </div>
                   )}

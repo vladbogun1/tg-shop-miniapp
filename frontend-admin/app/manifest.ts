@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 /**
  * Web app manifest (served as /manifest.webmanifest): what Chrome on Android installs and what
- * iOS reads for «На экран Домой». Colours = the light theme tokens (app/globals.css).
+ * iOS reads for «На экран Домой». Colours = --bg of the one dark ChiSetup theme (app/globals.css).
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "MAXSOLCH Admin",
-    short_name: "MAXSOLCH",
-    description: "Админка магазина MAX/SOLCH: заказы, оплата, отправка, чаты с клиентами",
+    name: "ChiSetup Admin",
+    short_name: "ChiSetup",
+    description: "Админка магазина ChiSetup: заказы, оплата, отправка, чаты с клиентами",
     lang: "ru",
     dir: "ltr",
     start_url: "/inbox",
@@ -17,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["standalone"],
     orientation: "any",
-    background_color: "#F4F1E6",
-    theme_color: "#F4F1E6",
+    background_color: "#0E0E10",
+    theme_color: "#0E0E10",
     categories: ["business", "productivity", "shopping"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

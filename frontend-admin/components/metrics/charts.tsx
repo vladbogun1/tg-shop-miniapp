@@ -23,7 +23,7 @@ import type { ForecastPoint, SeriesPoint } from "./api";
 import { bucketLabel, num, pct, uah, uahShort } from "./format";
 
 const axis = {
-  tick: { fill: "var(--mx-axis)", fontSize: 11 },
+  tick: { fill: "var(--mx-axis)", fontSize: 11, fontFamily: "var(--font-body), system-ui, sans-serif" },
   tickLine: false,
   axisLine: { stroke: "var(--mx-grid)" },
 } as const;
@@ -37,19 +37,19 @@ interface TipRow {
 
 function TipBox({ title, rows }: { title: string; rows: TipRow[] }) {
   return (
-    <div className="min-w-[150px] rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[12px] shadow-[var(--shadow-3)]">
-      <div className="mb-1.5 font-extrabold text-[var(--text)]">{title}</div>
+    <div className="min-w-[150px] rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 text-[12px] shadow-[var(--shadow-3)]">
+      <div className="font-display mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">{title}</div>
       <div className="flex flex-col gap-1">
         {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-1.5 text-[var(--text-muted)]">
               <span
                 className="inline-block h-0 w-3 shrink-0"
-                style={{ borderTop: `${r.dashed ? "2px dashed" : "3px solid"} ${r.color}` }}
+                style={{ borderTop: `2px ${r.dashed ? "dashed" : "solid"} ${r.color}` }}
               />
               {r.label}
             </span>
-            <span className="font-bold text-[var(--text)] mx-num">{r.value}</span>
+            <span className="font-semibold text-[var(--text)] mx-num">{r.value}</span>
           </div>
         ))}
       </div>
@@ -67,7 +67,7 @@ export function Legend({ items }: { items: { color: string; label: string; dashe
           ) : (
             <span
               className="inline-block h-0 w-4"
-              style={{ borderTop: `${i.dashed ? "2px dashed" : "3px solid"} ${i.color}` }}
+              style={{ borderTop: `2px ${i.dashed ? "dashed" : "solid"} ${i.color}` }}
             />
           )}
           {i.label}
@@ -128,7 +128,7 @@ export function SalesChart({
             }}
           />
           <Line type="linear" dataKey="prev" stroke="var(--mx-prev)" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-          <Line type="linear" dataKey="cur" stroke="var(--mx-s1)" strokeWidth={2} dot={data.length <= 14 ? { r: 3, fill: "var(--mx-s1)", strokeWidth: 0 } : false} activeDot={{ r: 4, stroke: "var(--surface)", strokeWidth: 2 }} isAnimationActive={false} />
+          <Line type="linear" dataKey="cur" stroke="var(--mx-s1)" strokeWidth={2} dot={data.length <= 14 ? { r: 3, fill: "var(--mx-s1)", strokeWidth: 0 } : false} activeDot={{ r: 4.5, fill: "var(--mx-s1)", stroke: "var(--surface)", strokeWidth: 2 }} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </>
@@ -151,7 +151,7 @@ export function OrdersChart({ series, granularity }: { series: SeriesPoint[]; gr
           <XAxis dataKey="bucket" tickFormatter={(k) => bucketLabel(k, granularity)} minTickGap={16} {...axis} />
           <YAxis allowDecimals={false} width={32} {...axis} />
           <Tooltip
-            cursor={{ fill: "var(--mx-grid)" }}
+            cursor={{ fill: "rgba(255,255,255,.04)" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as SeriesPoint;
@@ -166,8 +166,8 @@ export function OrdersChart({ series, granularity }: { series: SeriesPoint[]; gr
               );
             }}
           />
-          <Bar dataKey="orders" stackId="o" fill="var(--mx-s1)" stroke="var(--surface)" strokeWidth={1} maxBarSize={22} isAnimationActive={false} />
-          <Bar dataKey="rejected" stackId="o" fill="var(--mx-s2)" stroke="var(--surface)" strokeWidth={1} maxBarSize={22} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="orders" stackId="o" fill="var(--mx-s1)" stroke="var(--surface)" strokeWidth={2} maxBarSize={22} isAnimationActive={false} />
+          <Bar dataKey="rejected" stackId="o" fill="var(--mx-s2)" stroke="var(--surface)" strokeWidth={2} maxBarSize={22} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </>
@@ -215,8 +215,8 @@ export function ForecastChart({ history, forecast }: { history: ForecastPoint[];
             }}
           />
           <Area dataKey="band" stroke="none" fill="var(--mx-band)" isAnimationActive={false} />
-          <Bar dataKey="actual" fill="var(--mx-s1)" stroke="var(--surface)" strokeWidth={1} maxBarSize={26} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-          <Bar dataKey="forecast" fill="var(--mx-s3)" stroke="var(--surface)" strokeWidth={1} maxBarSize={26} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="actual" fill="var(--mx-s1)" stroke="var(--surface)" strokeWidth={2} maxBarSize={26} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="forecast" fill="var(--mx-s3)" stroke="var(--surface)" strokeWidth={2} maxBarSize={26} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </>
@@ -226,7 +226,7 @@ export function ForecastChart({ history, forecast }: { history: ForecastPoint[];
 const RAMP = ["--mx-q1", "--mx-q2", "--mx-q3", "--mx-q4", "--mx-q5", "--mx-q6", "--mx-q7"];
 const DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-/** Orders by weekday × hour, sequential blue; hover shows the exact count. */
+/** Orders by weekday × hour, sequential orange (dark → bright); hover shows the exact count. */
 export function Heatmap({ grid }: { grid: number[][] }) {
   const [hover, setHover] = useState<{ d: number; h: number } | null>(null);
   const max = Math.max(1, ...grid.flat());
@@ -250,7 +250,7 @@ export function Heatmap({ grid }: { grid: number[][] }) {
                   className="h-5 rounded-[2px] outline-offset-0"
                   style={{
                     background: color(v),
-                    outline: hover?.d === d && hover?.h === h ? "2px solid var(--line)" : undefined,
+                    outline: hover?.d === d && hover?.h === h ? "2px solid #FFFFFF" : undefined,
                   }}
                   onMouseEnter={() => setHover({ d, h })}
                   onMouseLeave={() => setHover(null)}
@@ -282,7 +282,7 @@ export function Heatmap({ grid }: { grid: number[][] }) {
 function HeatRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
-      <div className="flex items-center text-[11px] font-bold text-[var(--text-muted)]">{label}</div>
+      <div className="font-display flex items-center text-[11px] font-semibold text-[var(--text-muted)]">{label}</div>
       {children}
     </>
   );
@@ -300,10 +300,10 @@ export function FunnelBars({
     <div className="flex flex-col gap-2.5">
       {steps.map((s, i) => (
         <div key={s.key} className="grid items-center gap-x-3 gap-y-1 sm:grid-cols-[170px_1fr_220px]">
-          <div className="text-[13px] font-bold text-[var(--text)]">{s.label}</div>
-          <div className="h-7 overflow-hidden rounded-[2px] bg-[var(--surface-3)]">
+          <div className="text-[13px] font-semibold text-[var(--text)]">{s.label}</div>
+          <div className="h-7 overflow-hidden rounded-[4px] bg-[var(--surface-2)]">
             <div
-              className="h-full rounded-r-[3px]"
+              className="h-full rounded-r-[4px]"
               style={{ width: `${Math.max(1.5, (s.count / max) * 100)}%`, background: `var(${ramp[i] ?? "--mx-q3"})` }}
             />
           </div>
@@ -334,11 +334,11 @@ export function RankBars({
       {rows.map((r) => (
         <div key={r.key} className="flex flex-col gap-1">
           <div className="flex items-baseline justify-between gap-3 text-[13px]">
-            <span className="min-w-0 truncate font-bold text-[var(--text)]">{r.label}</span>
-            <span className="shrink-0 font-extrabold text-[var(--text)] mx-num">{format(r.value)}</span>
+            <span className="min-w-0 truncate font-medium text-[var(--text)]">{r.label}</span>
+            <span className="font-display shrink-0 font-bold text-[var(--text)] mx-num">{format(r.value)}</span>
           </div>
-          <div className="h-2.5 overflow-hidden rounded-[2px] bg-[var(--surface-3)]">
-            <div className="h-full rounded-r-[3px]" style={{ width: `${Math.max(1, (r.value / max) * 100)}%`, background: "var(--mx-s1)" }} />
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
+            <div className="h-full rounded-full" style={{ width: `${Math.max(1, (r.value / max) * 100)}%`, background: "var(--mx-s1)" }} />
           </div>
           {sub && <div className="text-[11px] text-[var(--text-faint)]">{sub(r.key)}</div>}
         </div>

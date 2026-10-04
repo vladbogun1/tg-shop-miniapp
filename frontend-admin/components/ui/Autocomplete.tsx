@@ -87,18 +87,18 @@ export function Autocomplete<T>({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      {label && <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{label}</span>}
+      {label && <span className="field-label">{label}</span>}
 
       {selectedLabel ? (
-        <div className="flex h-11 items-center justify-between gap-2 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent)] px-3.5">
-          <span className="truncate text-[14px] font-bold text-[var(--accent-ink)]">{selectedLabel}</span>
+        <div className="flex h-10 items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--accent)] bg-[var(--accent-soft)] px-3 pointer-coarse:h-11">
+          <span className="truncate text-[14px] font-semibold text-[var(--accent-hi)]">{selectedLabel}</span>
           <button
             type="button"
             onClick={() => {
               onClear?.();
               setQ("");
             }}
-            className="grid h-6 w-6 shrink-0 place-items-center rounded-[2px] text-[var(--accent-ink)] hover:bg-[var(--accent-ink)]/15"
+            className="hit grid h-6 w-6 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--accent-hi)] hover:bg-[var(--accent-soft-2)]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -107,8 +107,8 @@ export function Autocomplete<T>({
         <div
           ref={boxRef}
           className={cn(
-            "flex h-11 items-center gap-2 rounded-[var(--r-md)] border-[3px] bg-[var(--surface-2)] px-3 transition-colors",
-            open ? "border-[var(--accent)] shadow-[var(--ring-accent)]" : "border-[var(--line)]"
+            "flex h-10 items-center gap-2 rounded-[var(--r-md)] border bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] duration-150 pointer-coarse:h-11",
+            open ? "border-[var(--accent)] shadow-[var(--ring-accent)]" : "border-[var(--line)] hover:border-[var(--border-2)]"
           )}
         >
           <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
@@ -143,7 +143,7 @@ export function Autocomplete<T>({
                   width: rect.width,
                   zIndex: 200,
                 }}
-                className="elevated thin-scroll max-h-72 overflow-auto p-1.5"
+                className="elevated thin-scroll max-h-72 overflow-auto p-1"
               >
                 {items.length === 0 ? (
                   <div className="px-3 py-3 text-[13px] text-[var(--text-faint)]">
@@ -159,7 +159,7 @@ export function Autocomplete<T>({
                         setOpen(false);
                         setQ("");
                       }}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-[var(--r-sm)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-3)]"
+                      className="flex w-full flex-col items-start gap-0.5 rounded-[var(--r-sm)] px-3 py-2 text-left transition-colors hover:bg-[var(--surface-2)]"
                     >
                       <span className="truncate text-[14px] text-[var(--text)]">{itemLabel(it)}</span>
                       {itemSubLabel && (

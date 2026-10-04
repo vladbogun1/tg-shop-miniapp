@@ -44,7 +44,7 @@ export function Drawer({
             animate="animate"
             exit="exit"
             onClick={onClose}
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
           />
           <motion.aside
             role="dialog"
@@ -54,7 +54,7 @@ export function Drawer({
             animate="animate"
             exit="exit"
             className={cn(
-              "absolute inset-y-0 right-0 flex w-full flex-col border-l-[3px] border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow-3)]",
+              "absolute inset-y-0 right-0 flex w-full flex-col border-l border-[var(--line-strong)] bg-[var(--surface)] shadow-[var(--shadow-3)] sm:rounded-l-[var(--r-xl)]",
               width
             )}
           >
@@ -62,17 +62,17 @@ export function Drawer({
                 close button off a phone screen. */}
             <div
               data-app-chrome
-              className="flex items-start justify-between gap-3 border-b-[3px] border-[var(--line)] px-4 pb-3 pt-[calc(12px+var(--safe-top))] sm:px-5 sm:pb-4 sm:pt-[calc(16px+var(--safe-top))]"
+              className="flex items-start justify-between gap-3 border-b border-[var(--line)] px-4 pb-3 pt-[calc(12px+var(--safe-top))] sm:px-5 sm:pb-4 sm:pt-[calc(16px+var(--safe-top))]"
             >
               <div className="min-w-0 flex-1">
                 {header ?? (
-                  <div className="text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">{title}</div>
+                  <div className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
                 )}
               </div>
               <button
                 onClick={onClose}
                 aria-label="Закрыть"
-                className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-sm)] border-[2px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] pointer-coarse:h-11 pointer-coarse:w-11"
+                className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] pointer-coarse:h-11 pointer-coarse:w-11"
               >
                 <X className="h-5 w-5" />
               </button>

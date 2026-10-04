@@ -1,68 +1,97 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   NEO-BRUTALISM — admin design system
+   ChiSetup Admin (v3) — the admin's design system.
    ----------------------------------------------------------------------------
-   Thick ink borders, hard offset shadows (no blur), near-sharp corners, raw
-   bold color, heavy type. Light by default; dark (greyer, so the hard shadows
-   read) via [data-theme="dark"]. Token names are kept identical to the previous
-   theme so every component restyles via tokens + utility classes.
+   One dark theme, the same identity as the Mini App and the site (docs/DESIGN-V3.md §2–§5,
+   admin rules in §8 «Админка (v3)»): graphite surfaces, hairline borders, a single orange
+   accent with a soft glow, chamfered CTAs and HUD "bracket" frames. Denser than the shop:
+   Inter carries tables, forms and running text; Exo 2 carries page titles, KPI numbers,
+   navigation, buttons and badges.
+
+   Token NAMES are the ones the admin always used (--text, --line, --r-md, --shadow-1 …) —
+   only the values changed, so every component that reads var(--…) restyles by itself.
+   Names shared with frontend/ and site/ (--bg, --surface*, --accent*, --st-*, --r, --r-card,
+   --chamfer, --ink/--muted/--faint) carry the SAME values there.
    ============================================================================ */
 
-:root,
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #F4F1E6;
-  --bg-2: #EFEBDD;
-  --surface: #FFFFFF;
-  --surface-2: #F1EEE3;
-  --surface-3: #E7E2D2;
-  --surface-hover: #EDE9DB;
+:root {
+  color-scheme: dark;
 
-  --line: #141414;
-  --border: #141414;
-  --border-2: #141414;
-  --border-strong: #141414;
-  --shadow: #141414;
+  /* Surfaces: page → raised layers */
+  --bg: #0E0E10;
+  --bg-2: #131315;          /* sunken strips: kanban column bodies, table headers */
+  --surface: #1A1A1A;       /* cards, panels, sidebar, modals */
+  --surface-2: #222222;     /* fields, nested blocks, hover on --surface */
+  --surface-3: #2A2A2D;     /* pressed, tracks, neutral chips */
+  --surface-hover: #262628; /* row / item hover on --surface */
 
-  --text: #141414;
-  --text-muted: #5F5B50;
-  --text-faint: #8C8878;
+  /* Hairlines. `--line` is THE border colour; the others are stronger steps of it. */
+  --line: rgba(255, 255, 255, .08);
+  --line-strong: rgba(255, 255, 255, .16);
+  --border: var(--line);
+  --border-2: rgba(255, 255, 255, .12);
+  --border-strong: var(--line-strong);
+  --shadow: rgba(0, 0, 0, .55);
 
-  --accent: #FF5A2C;
-  --accent-2: #2F6BFF;
-  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
-  --accent-soft-2: color-mix(in srgb, var(--accent) 26%, transparent);
-  --accent-ink: #141414;
-  --grad-accent: var(--accent);
-  --grad-accent-soft: var(--accent-soft);
+  /* Text. --text is a hair softer than pure white: long tables in pure #FFF glare. */
+  --text: #F4F4F5;
+  --text-muted: #A1A1AA;
+  --text-faint: #6B6B73;
+  /* Aliases with the Mini App / site names, so markup can move between apps unchanged. */
+  --ink: #FFFFFF;
+  --muted: var(--text-muted);
+  --faint: var(--text-faint);
 
-  --c3: #FFD23F;
+  /* Brand */
+  --accent: #FF6600;
+  --accent-hi: #FF8533;     /* hover, links on dark, "Setup" gradient */
+  --accent-lo: #E65C00;     /* pressed */
+  --accent-2: var(--accent-hi); /* was the blue second accent → collapses into the brand */
+  --accent-ink: #0E0E10;    /* text on orange (and on any bright fill) is ALWAYS dark: white on #FF6600 is 2.9:1 */
+  --accent-soft: rgba(255, 102, 0, .12);   /* active chip / nav item / selected row */
+  --accent-soft-2: rgba(255, 102, 0, .22); /* focus ring, stronger selection */
+  --grad-accent: linear-gradient(180deg, #FF8533, #FF6600 55%, #F25500);
+  --grad-accent-soft: linear-gradient(180deg, rgba(255, 102, 0, .16), rgba(255, 102, 0, .06));
+  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
+  --glow-sm: 0 0 10px rgba(255, 102, 0, .55);
 
-  --ok: #16B36B;
-  --warn: #E8A300;
-  --danger: #E5341F;
-  --danger-ink: #7A1A10;
-  --info: #2F6BFF;
+  /* Former multicolour accents collapse into the brand (same as frontend/site). */
+  --c2: #A1A1AA;
+  --c3: #FF8533;            /* "highlight" fills — light orange, text on it forced dark below */
+  --c4: #22C55E;
+  --c5: #FF6600;
 
-  /* Distinct, identifiable status hues — same in light & dark (chips/bars carry
-     an ink border so they read on both backgrounds; chip text is --accent-ink). */
-  --st-new: #3F8CF5;       /* blue — incoming */
-  --st-approved: #9B6BFF;  /* violet — confirmed */
-  --st-shipped: #F5A623;   /* amber — in transit */
-  --st-delivered: #22C07D; /* green — success */
-  --st-rejected: #F0503C;  /* red — cancelled */
+  /* Functional colours — status only, never decoration. */
+  --ok: #22C55E;
+  --warn: #F59E0B;
+  --danger: #EF4444;
+  --danger-ink: #FCA5A5;    /* red TEXT on a dark/tinted background */
+  --info: #60A5FA;
 
-  --r-sm: 3px;
-  --r-md: 3px;
-  --r-lg: 3px;
-  --r-xl: 4px;
-  --r-pill: 4px;
+  /* Order-status hues — identical to the Mini App and the site. Use them as a 16% tint +
+     coloured text/dot (StatusBadge, .chip-tint), not as solid fills under white text. */
+  --st-new: #3F8CF5;
+  --st-approved: #9B6BFF;
+  --st-shipped: #F5A623;
+  --st-delivered: #22C07D;
+  --st-rejected: #F0503C;
 
-  --shadow-1: 4px 4px 0 var(--shadow);
-  --shadow-2: 5px 5px 0 var(--shadow);
-  --shadow-3: 7px 7px 0 var(--shadow);
-  --shadow-accent: 4px 4px 0 var(--shadow);
+  /* Radii. --r / --r-card / --chamfer = frontend names; the --r-* scale is the admin's. */
+  --r: 6px;
+  --r-card: 12px;
+  --chamfer: 10px;
+  --r-sm: 4px;     /* small chips, tags, inner buttons */
+  --r-md: 6px;     /* controls: buttons, fields, segmented, nav items */
+  --r-lg: 12px;    /* cards, panels, popovers */
+  --r-xl: 16px;    /* modals, drawers, sheets */
+  --r-pill: 999px;
+
+  /* Soft depth (no hard offset shadows any more). */
+  --shadow-1: 0 8px 24px -12px var(--shadow);
+  --shadow-2: 0 18px 40px -16px var(--shadow), 0 2px 6px -2px rgba(0, 0, 0, .4);
+  --shadow-3: 0 24px 64px -16px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
+  --shadow-accent: var(--glow);
   --ring-accent: 0 0 0 3px var(--accent-soft-2);
 
   --safe-top: env(safe-area-inset-top, 0px);
@@ -81,40 +110,6 @@
   :root { --bottom-nav: 0px; }
 }
 html.kb-open { --bottom-nav: 0px; }
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  /* Greyer (not near-black) so the hard offset shadows read on every block. */
-  --bg: #26262B;
-  --bg-2: #1F1F23;
-  --surface: #34343B;
-  --surface-2: #2D2D33;
-  --surface-3: #3A3A42;
-  --surface-hover: #3D3D45;
-
-  --line: #F4F1E6;
-  --border: #F4F1E6;
-  --border-2: #F4F1E6;
-  --border-strong: #F4F1E6;
-  --shadow: #0A0A0C;
-
-  --text: #F4F1E6;
-  --text-muted: #AEACA6;
-  --text-faint: #79776F;
-
-  --accent: #FF6A3D;
-  --accent-2: #5B8BFF;
-  --accent-ink: #141414;
-  --danger-ink: #FFB4AB;
-
-  --ok: #2BD489;
-  --warn: #FFB627;
-  --danger: #FF5747;
-  --info: #5B8BFF;
-
-  /* Status hues stay identical to light theme (inherited from :root) so the
-     5 statuses are consistent everywhere — do not override them here. */
-}
 
 @theme inline {
   --color-bg: var(--bg);
@@ -136,6 +131,14 @@ html.kb-open { --bottom-nav: 0px; }
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
   --radius-xl: var(--r-xl);
+  --radius-nb: var(--r);
+  --radius-card: var(--r-card);
+}
+
+/* Exo 2 (display): page titles, KPI numbers, nav, buttons, badges, tabs. `--font-display` is
+   set by next/font on <html>; Inter (`--font-body`) carries tables, fields and running text. */
+@utility font-display {
+  font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -143,102 +146,372 @@ html, body { margin: 0; padding: 0; min-height: 100%; }
 body {
   color: var(--text);
   background: var(--bg);
-  font-family: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
+  font-family: var(--font-body), "Helvetica Neue", Arial, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
-/* ".aurora" → flat ink graph-paper grid (no gradient/blur). */
-.aurora {
+::selection { background: rgba(255, 102, 0, .35); color: #fff; }
+
+/* In @layer base so `outline-none` on fields (whose wrapper shows the focus ring) still wins. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* Native controls follow the dark scheme (date pickers, number spinners, <option>s). */
+  input, select, textarea { color-scheme: dark; }
+  option { background: var(--surface-2); color: var(--text); }
+}
+
+/* ".aurora" (the fixed layer under the app, kept by name) = the ChiSetup scene: graphite, a
+   faint HUD grid fading out towards the centre, a soft orange spot at the top and two dim orange
+   diagonal "neon" strips in the corners. Dimmer than the shop's (.35 → .22): the admin is a work
+   tool. Static on purpose — animated fixed layers stutter in iOS webviews. `.scene` = alias. */
+.aurora,
+.scene {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: var(--bg);
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 1px);
-  background-size: 28px 28px;
-}
-
-/* ----------------------------------------------------------------------------
-   Surfaces — thick ink border + hard offset shadow + sharp corners
-   ---------------------------------------------------------------------------- */
-.card {
-  background-color: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r-md);
-  box-shadow: 4px 4px 0 var(--shadow);
-}
-.card-2 {
-  background-color: var(--surface-2);
-  border: 3px solid var(--line);
-  border-radius: var(--r-md);
-}
-.panel {
-  background-color: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r-md);
-  box-shadow: 5px 5px 0 var(--shadow);
-}
-.elevated {
-  background-color: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r-md);
-  box-shadow: 7px 7px 0 var(--shadow);
-}
-.hairline { border: 2px solid var(--line); }
-.card-sheen { position: relative; }
-
-/* press = drop into the shadow */
-.nb-press { transition: transform .07s ease, box-shadow .07s ease; }
-.nb-press:active { transform: translate(4px, 4px); box-shadow: none; }
-
-/* ----------------------------------------------------------------------------
-   Accent surfaces (flat accent fill, ink border, hard shadow)
-   ---------------------------------------------------------------------------- */
-.accent-fill,
-.glossy {
-  background-color: var(--accent);
-  background-image: none;
-  color: var(--accent-ink);
-  border: 3px solid var(--line);
-  box-shadow: 4px 4px 0 var(--shadow);
-}
-
-/* legacy .glass shims → neo card */
-.glass {
-  background-color: var(--surface);
-  border: 3px solid var(--line);
-  border-radius: var(--r-md);
-  box-shadow: 4px 4px 0 var(--shadow);
-}
-.glass--strong { background-color: var(--surface); border: 3px solid var(--line); box-shadow: 5px 5px 0 var(--shadow); }
-.glass--floating { box-shadow: 7px 7px 0 var(--shadow); }
-
-.text-gradient { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--accent); }
-
-/* Bright yellow fills are light in BOTH themes → keep text/icons dark on them. */
-.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
-
-/* ----------------------------------------------------------------------------
-   Skeleton shimmer
-   ---------------------------------------------------------------------------- */
-.shimmer {
-  position: relative;
   overflow: hidden;
-  background-color: var(--surface-2);
-  border: 2px solid var(--line);
-  border-radius: var(--r-md);
+  background-color: var(--bg);
+  background-image: radial-gradient(ellipse 60% 32% at 50% -8%, rgba(255, 102, 0, .08), transparent 70%);
 }
-.shimmer::after {
+.aurora::before,
+.scene::before {
   content: "";
   position: absolute;
   inset: 0;
-  transform: translateX(-100%);
-  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 8%, transparent), transparent);
-  animation: shimmer 1.5s infinite;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
+  mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
 }
+.aurora::after,
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .22;
+  background-image:
+    linear-gradient(135deg,
+      transparent 91%,
+      rgba(255, 102, 0, 0) 91%, rgba(255, 102, 0, .9) 91.35%, rgba(255, 102, 0, 0) 91.7%,
+      transparent 93.6%,
+      rgba(255, 102, 0, 0) 93.6%, rgba(255, 102, 0, .55) 93.8%, rgba(255, 102, 0, 0) 94%,
+      transparent 94%),
+    linear-gradient(135deg,
+      transparent 6%,
+      rgba(255, 102, 0, 0) 6%, rgba(255, 102, 0, .55) 6.2%, rgba(255, 102, 0, 0) 6.4%,
+      transparent 8.3%,
+      rgba(255, 102, 0, 0) 8.3%, rgba(255, 102, 0, .9) 8.65%, rgba(255, 102, 0, 0) 9%,
+      transparent 9%);
+}
+
+/* ---------------------------------------------------------------------------
+   Primitives. In @layer components so a Tailwind utility on the same element wins
+   (`card p-0 rounded-none`, `panel bg-[var(--surface-2)]` do what they say).
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Surfaces */
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-1);
+  }
+  .card-2 {
+    background-color: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+  .panel {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-2);
+  }
+  /* Floating layers: dropdown menus, popovers, toasts. */
+  .elevated {
+    background-color: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-3);
+  }
+  .hairline { border: 1px solid var(--line); }
+  .card-sheen { position: relative; }
+  /* Interactive card: lighter border + 1px lift on hover (kanban cards, list rows as cards). */
+  .card-hover { transition: border-color .15s ease, transform .15s ease, background-color .15s ease; }
+  @media (hover: hover) {
+    .card-hover:hover { border-color: var(--line-strong); background-color: #1E1E1F; }
+  }
+
+  /* Legacy names → the same card (no glass, no blur). */
+  .glass {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-1);
+  }
+  .glass--strong { background-color: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow-2); }
+  .glass--floating { box-shadow: var(--shadow-3); }
+
+  /* Solid orange (icon tiles, accent blocks). Text/icons on it are dark. */
+  .accent-fill,
+  .glossy {
+    background-color: var(--accent);
+    background-image: none;
+    color: var(--accent-ink);
+    border: 0;
+    box-shadow: none;
+  }
+  /* Orange-tinted tile: icon tiles that should not shout (KPI icons, banners). */
+  .accent-tint {
+    background-color: var(--accent-soft);
+    color: var(--accent-hi);
+    border: 1px solid rgba(255, 102, 0, .28);
+  }
+
+  /* Primary CTA à la shop: solid orange, dark Exo 2 text, chamfered corners. A clip-path clips
+     box-shadow, so no outer glow here — hover is a brighter fill. Use on the ONE main action of a
+     screen (login «Войти», «Сохранить» of a big form). <Button variant="accent" chamfer>. */
+  .nb-accent {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 0;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 700;
+    clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+  }
+  @media (hover: hover) {
+    .nb-accent:hover:not(:disabled) { background: var(--accent-hi); }
+  }
+  .nb-accent:active:not(:disabled) { background: var(--accent-lo); }
+
+  /* Press: a light scale, no "drop into the shadow". */
+  .nb-press { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease, color .12s ease; }
+  .nb-press:active:not(:disabled) { transform: scale(.98); }
+
+  /* Pills (filters, quick choices). */
+  .nb-chip {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .nb-chip-active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-hi);
+  }
+  /* Tinted chip in any colour: style={{ "--chip": "var(--st-new)" }} className="chip-tint". */
+  .chip-tint {
+    --chip: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--chip);
+    background: color-mix(in srgb, var(--chip) 16%, transparent);
+  }
+
+  .nb-up {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+  }
+
+  /* Eyebrow / meta label: "GAMING GEAR & SETUP" style. */
+  .eyebrow {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .28em;
+    color: var(--text-muted);
+  }
+
+  /* Field label above inputs/selects (Inter is too small in caps — Exo 2 600). */
+  .field-label {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+  }
+
+  /* Page title (h1 of PageHeader) and section heading. */
+  .page-title {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: var(--ink);
+  }
+  .section-title {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text);
+  }
+
+  /* KPI / big number: Exo 2 700, tabular. */
+  .kpi-num {
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* Count badge (nav, bell, tabs): small solid pill. Default orange; .count-badge--danger red. */
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .count-badge--danger { background: var(--danger); color: #fff; }
+  .count-badge--muted { background: var(--surface-3); color: var(--text); }
+
+  .chamfer {
+    clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
+  }
+
+  /* HUD bracket frame (DESIGN-V3 §4), like the brackets around the logo: white top-left,
+     orange bottom-right. The two bracketed corners of the box itself are cut to the same 45° chamfer
+     (clip-path, see the unlayered block below), and each bracket is an L with that chamfer sitting
+     exactly on the outer edge of the border box, covering the 1px border — so no rounded border
+     pokes out past the diagonal and nothing floats off the edge. Brackets live inside the clip,
+     which also means: no box-shadow / outside glow on a .hud-frame host (it would be cut).
+     Knobs: --hud-c chamfer, --hud-w line, --hud-x/--hud-y arm lengths, --hud-bw = host border
+     width (0px on a borderless host). Same implementation as frontend/ and site/. */
+  .hud-frame {
+    --hud-c: 12px;
+    --hud-w: 2px;
+    --hud-x: 44px;
+    --hud-y: 28px;
+    --hud-bw: 1px;
+    position: relative;
+  }
+  .hud-frame::before,
+  .hud-frame::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    width: var(--hud-x);
+    height: var(--hud-y);
+    pointer-events: none;
+  }
+  .hud-frame::before {
+    top: calc(-1 * var(--hud-bw));
+    left: calc(-1 * var(--hud-bw));
+    background: #FFFFFF;
+    clip-path: polygon(0 100%, 0 var(--hud-c), var(--hud-c) 0, 100% 0, 100% var(--hud-w), calc(var(--hud-c) + var(--hud-w) * .4142) var(--hud-w), var(--hud-w) calc(var(--hud-c) + var(--hud-w) * .4142), var(--hud-w) 100%);
+  }
+  .hud-frame::after {
+    right: calc(-1 * var(--hud-bw));
+    bottom: calc(-1 * var(--hud-bw));
+    background: var(--accent);
+    clip-path: polygon(100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 calc(100% - var(--hud-w)), calc(100% - var(--hud-c) - var(--hud-w) * .4142) calc(100% - var(--hud-w)), calc(100% - var(--hud-w)) calc(100% - var(--hud-c) - var(--hud-w) * .4142), calc(100% - var(--hud-w)) 0);
+  }
+  /* Smaller brackets for KPI tiles / compact empty states. */
+  .hud-frame--sm { --hud-c: 8px; --hud-x: 28px; --hud-y: 18px; }
+
+  /* Compact data table (orders list, audit, users, metrics tables): Inter 13px, Exo 2 caps
+     header on --bg-2, hairline rows, hover row tint, `.r` right-aligned tabular cells. */
+  .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .data-table th {
+    text-align: left;
+    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+    background: var(--bg-2);
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .data-table tbody tr { transition: background-color .12s ease; }
+  .data-table tbody tr:hover td { background: var(--surface-hover); }
+  .data-table tr[aria-selected="true"] td { background: var(--accent-soft); }
+  .data-table td.r, .data-table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Skeleton */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--surface-2);
+    border: 0;
+    border-radius: var(--r-md);
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+/* .hud-frame corner cut — unlayered on purpose, so it beats `rounded-*` / `shadow-*` utilities on
+   the same element (only these properties; position etc. stay overridable by utilities). */
+.hud-frame {
+  border-top-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+  clip-path: polygon(var(--hud-c) 0, 100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 var(--hud-c));
+}
+
+.text-gradient {
+  background: linear-gradient(180deg, #FF8533, #FF6600 55%, #F25500);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Light-orange fills (--c3) stay light → text/icons on them must be dark, never --text (white). */
+.bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
+
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
 /* ----------------------------------------------------------------------------
@@ -246,15 +519,21 @@ body {
    ---------------------------------------------------------------------------- */
 .tap { min-width: 40px; min-height: 40px; }
 
-.thin-scroll { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.thin-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .14) transparent; }
 .thin-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
-.thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 0; }
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .24); }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.focusable:focus-visible { outline: none; box-shadow: var(--ring-accent); }
+.focusable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
 
 /* ----------------------------------------------------------------------------
    Phone / installed-app ergonomics
@@ -264,6 +543,7 @@ html {
   text-size-adjust: 100%;
   /* No grey flash on tap in iOS / Android WebViews; our buttons have their own pressed state. */
   -webkit-tap-highlight-color: transparent;
+  scrollbar-color: rgba(255, 255, 255, .14) var(--bg);
 }
 /* Pull-to-refresh / rubber-band of the whole document fights the app's own scroll areas. */
 html, body { overscroll-behavior-y: none; }

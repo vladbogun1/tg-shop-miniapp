@@ -59,14 +59,14 @@ export function Select<T extends string>({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      {label && <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{label}</span>}
+      {label && <span className="field-label">{label}</span>}
       <button
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "focusable flex h-11 items-center justify-between gap-2 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] px-3.5 text-[14px] transition-colors",
-          open && "border-[var(--accent)] shadow-[var(--ring-accent)]"
+          "focusable flex h-10 items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[14px] transition-[border-color,box-shadow] duration-150 hover:border-[var(--border-2)] pointer-coarse:h-11",
+          open && "!border-[var(--accent)] shadow-[var(--ring-accent)]"
         )}
       >
         <span className={selected ? "text-[var(--text)]" : "text-[var(--text-faint)]"}>
@@ -94,7 +94,7 @@ export function Select<T extends string>({
                   width: rect.width,
                   zIndex: 200,
                 }}
-                className="elevated thin-scroll max-h-72 overflow-auto p-1.5"
+                className="elevated thin-scroll max-h-72 overflow-auto p-1"
               >
                 {options.map((o) => {
                   const active = o.value === value;
@@ -109,8 +109,8 @@ export function Select<T extends string>({
                       className={cn(
                         "flex w-full items-center justify-between gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[14px] transition-colors",
                         active
-                          ? "bg-[var(--accent)] font-bold text-[var(--accent-ink)]"
-                          : "text-[var(--text)] hover:bg-[var(--surface-3)]"
+                          ? "bg-[var(--accent-soft)] font-semibold text-[var(--accent-hi)]"
+                          : "text-[var(--text)] hover:bg-[var(--surface-2)]"
                       )}
                     >
                       <span className="truncate">{o.label}</span>

@@ -1,19 +1,24 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import type { OrderStatus } from "@/lib/api";
-import { STATUS_LABEL } from "@/lib/orders";
+import { STATUS_LABEL, STATUS_VAR } from "@/lib/orders";
 
 type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
 
+/**
+ * Tinted chips (DESIGN-V3 §6/§8): colour at 16% as the fill, text (and dot) in the colour itself,
+ * no ink border. Exo 2 600 caps — the `.chip-tint` class in globals.css; `--chip` picks the hue.
+ * Text colours are the lighter steps where the base hue is too dark on graphite (danger, accent).
+ */
 const TONE: Record<Tone, string> = {
-  neutral: "bg-[var(--surface-3)] text-[var(--text-muted)] border-[var(--line)]",
-  accent: "bg-[var(--accent)] text-[var(--accent-ink)] border-[var(--line)]",
-  ok: "bg-[var(--ok)] text-[var(--accent-ink)] border-[var(--line)]",
-  warn: "bg-[var(--warn)] text-[var(--accent-ink)] border-[var(--line)]",
-  danger: "bg-[var(--danger)] text-[var(--accent-ink)] border-[var(--line)]",
-  info: "bg-[var(--info)] text-[var(--accent-ink)] border-[var(--line)]",
+  neutral: "var(--text-muted)",
+  accent: "var(--accent-hi)",
+  ok: "var(--ok)",
+  warn: "var(--warn)",
+  danger: "#F87171",
+  info: "var(--info)",
 };
 
 export function Badge({
@@ -29,30 +34,20 @@ export function Badge({
 }) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-[2px] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide",
-        TONE[tone],
-        className
-      )}
+      className={cn("chip-tint", tone === "neutral" && "!bg-[var(--surface-3)]", className)}
+      style={{ "--chip": TONE[tone] } as CSSProperties}
     >
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+      {dot && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
       {children}
     </span>
   );
 }
 
+/** Order-status chip: the status hue (--st-*) at 16% + dot and text in the hue — as in the Mini App. */
 export function StatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-[var(--r-sm)] border-[2px] border-[var(--line)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--accent-ink)]",
-        className
-      )}
-      style={{
-        backgroundColor: `var(--st-${status.toLowerCase()})`,
-      }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-ink)]" />
+    <span className={cn("chip-tint", className)} style={{ "--chip": STATUS_VAR[status] } as CSSProperties}>
+      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {STATUS_LABEL[status]}
     </span>
   );

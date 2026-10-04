@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+/** Empty / error state: a HUD-bracketed graphite block (DESIGN-V3 §4) with an orange-tinted icon tile. */
 export function EmptyState({
   icon: Icon,
   title,
@@ -19,14 +20,14 @@ export function EmptyState({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center gap-3 rounded-[var(--r-lg)] border-[3px] border-dashed border-[var(--line)] px-6 py-16 text-center"
+      className="hud-frame flex flex-col items-center justify-center gap-3 rounded-[var(--r-lg)] border border-[var(--line)] bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] px-6 py-14 text-center"
     >
       {Icon && (
-        <div className="grid h-14 w-14 place-items-center rounded-[var(--r-sm)] border-[3px] border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)]">
-          <Icon className="h-7 w-7" />
+        <div className="accent-tint grid h-12 w-12 place-items-center rounded-[var(--r-md)]">
+          <Icon className="h-6 w-6" />
         </div>
       )}
-      <div className="text-[16px] font-extrabold uppercase tracking-wide text-[var(--text)]">{title}</div>
+      <div className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
       {description && (
         <div className="max-w-sm text-[13px] leading-relaxed text-[var(--text-muted)]">
           {description}

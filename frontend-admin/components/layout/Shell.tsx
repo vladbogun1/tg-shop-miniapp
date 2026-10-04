@@ -6,7 +6,9 @@
  *  - Phone: sticky top bar (under the status bar in the installed app — safe-area padded) and a
  *    bottom tab bar for the daily screens: Внимание · Заказы · Отправка · Товары · Ещё. «Ещё»
  *    opens the full menu drawer with everything else.
- * Animated active indicators and page transitions on both.
+ * Animated active indicators and page transitions on both. ChiSetup v3 look (DESIGN-V3 §8):
+ * graphite chrome, hairlines, active item = orange text/icon + 2px glowing orange indicator.
+ * The desktop sidebar collapses to an icon rail (CS mark on top), remembered per browser.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -22,7 +24,8 @@ import {
   X,
   LogOut,
   MonitorX,
-  Store,
+  PanelLeftClose,
+  PanelLeftOpen,
   Truck,
   Languages,
   ScrollText,
@@ -33,9 +36,9 @@ import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, UpdateBanner } from "@/components/pwa/Banners";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useInbox } from "@/lib/inbox";
@@ -79,7 +82,12 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+/**
+ * Sidebar / drawer menu. Active item: orange text + icon on a faint orange tint, with a 2px orange
+ * indicator (glowing) on the left edge that slides between items. `collapsed` (desktop rail):
+ * icons only — the label stays in the DOM as sr-only, so the link keeps its accessible name.
+ */
+function NavLinks({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
   // Fields × languages that need a translation (missing or stale), refreshed every 2 min and
   // right after imports on the «Переводы» screen.
@@ -89,49 +97,64 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
   return (
-    <nav className="flex flex-col gap-1">
+    <nav className="flex flex-col gap-0.5">
       {NAV.map((item) => {
         const active = isActive(pathname, item.href, item.exact);
         const Icon = item.icon;
+        const inboxBadge = "badge" in item && item.badge === "inbox" && inboxTotal > 0;
+        const trBadge = "badge" in item && item.badge === "translations" && trPending > 0;
         return (
           <Link
             key={item.href}
             href={item.href}
             onClick={onNavigate}
+            title={collapsed ? item.label : undefined}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "group relative flex min-h-11 items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase tracking-wide transition-colors lg:min-h-0",
+              "font-display group relative flex min-h-11 items-center gap-3 rounded-[var(--r-md)] text-[14px] font-semibold tracking-[0.01em] transition-colors lg:min-h-10",
+              collapsed ? "justify-center px-0" : "px-3",
               active
-                ? "text-[var(--accent-ink)]"
-                : "text-[var(--text)] hover:bg-[var(--surface-2)]"
+                ? "bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
             )}
           >
             {active && (
               <motion.span
                 layoutId="nav-active"
-                transition={{ type: "spring", stiffness: 400, damping: 34 }}
-                className="absolute inset-0 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent)] shadow-[3px_3px_0_var(--shadow)]"
+                transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]"
               />
             )}
-            <Icon
-              className={cn(
-                "relative z-10 h-[18px] w-[18px] transition-colors",
-                active ? "text-[var(--accent-ink)]" : "text-[var(--text-muted)] group-hover:text-[var(--text)]"
+            <span className="relative">
+              <Icon
+                className={cn(
+                  "h-[18px] w-[18px] transition-colors",
+                  active ? "text-[var(--accent)]" : "text-[var(--text-faint)] group-hover:text-[var(--text-muted)]"
+                )}
+                strokeWidth={active ? 2.25 : 2}
+              />
+              {/* Collapsed rail: the count shrinks to a dot on the icon. */}
+              {collapsed && (inboxBadge || trBadge) && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -right-1 -top-1 h-2 w-2 rounded-full ring-2 ring-[var(--surface)]",
+                    inboxBadge ? "bg-[var(--accent)]" : "bg-[var(--text-muted)]"
+                  )}
+                />
               )}
-            />
-            <span className="relative z-10">{item.label}</span>
-            {"badge" in item && item.badge === "inbox" && inboxTotal > 0 && (
-              <span
-                aria-label={`Требует внимания: ${inboxTotal}`}
-                className="relative z-10 ml-auto flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
-              >
+            </span>
+            <span className={cn("truncate", collapsed && "sr-only")}>{item.label}</span>
+            {inboxBadge && (
+              <span aria-label={`Требует внимания: ${inboxTotal}`} className={cn("count-badge ml-auto", collapsed && "sr-only")}>
                 {inboxTotal > 99 ? "99+" : inboxTotal}
               </span>
             )}
-            {"badge" in item && item.badge === "translations" && trPending > 0 && (
+            {trBadge && (
               <span
                 aria-label={`Нужно перевести: ${trPending}`}
                 title="Полей без актуального перевода (uk + en)"
-                className="relative z-10 ml-auto flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--c3)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+                className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
               >
                 {trPending > 999 ? "999+" : trPending}
               </span>
@@ -144,7 +167,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** Revokes every token of this admin — for a lost phone or a session left open somewhere. */
-function LogoutEverywhereButton() {
+function LogoutEverywhereButton({ collapsed = false }: { collapsed?: boolean }) {
   const { push } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -165,36 +188,81 @@ function LogoutEverywhereButton() {
     <button
       onClick={run}
       disabled={busy}
-      className="flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2 text-[12px] lg:min-h-0 font-bold uppercase tracking-wide text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)] disabled:opacity-60"
+      title={collapsed ? "Выйти на всех устройствах" : undefined}
+      className={cn(
+        "flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] py-2 text-[12.5px] font-medium text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-60 lg:min-h-9",
+        collapsed ? "justify-center px-0" : "px-3"
+      )}
     >
-      <MonitorX className="h-[16px] w-[16px]" />
-      Выйти на всех устройствах
+      <MonitorX className="h-[16px] w-[16px] shrink-0" />
+      <span className={cn(collapsed && "sr-only")}>Выйти на всех устройствах</span>
     </button>
   );
 }
 
-function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
+/** Brand block: compact vector wordmark + «ADMIN» eyebrow; the collapsed rail shows the CS mark. */
+function Brand({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+  if (collapsed) {
+    return (
+      <Link href="/" onClick={onNavigate} aria-label="ChiSetup Admin — на главную" className="mx-auto grid place-items-center rounded-[var(--r-md)]">
+        <LogoMark size={38} />
+      </Link>
+    );
+  }
+  return (
+    <Link href="/" onClick={onNavigate} aria-label="ChiSetup Admin — на главную" className="group flex flex-col items-start gap-1.5 rounded-[var(--r-md)] px-1 py-1">
+      <Wordmark size={21} className="transition-[filter] duration-150 group-hover:[filter:drop-shadow(0_0_10px_rgba(255,102,0,.35))]" />
+      <span className="flex items-center gap-2">
+        <span aria-hidden className="h-[2px] w-5 rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
+        <span className="eyebrow !text-[10px] !tracking-[0.34em]">Admin</span>
+      </span>
+    </Link>
+  );
+}
+
+function SidebarInner({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+}) {
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-7 flex items-center gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] p-3 shadow-[4px_4px_0_var(--shadow)]">
-        <div className="accent-fill grid h-10 w-10 place-items-center rounded-[var(--r-md)]">
-          <Store className="h-5 w-5" />
-        </div>
-        <div className="leading-tight">
-          <div className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">MAXSOLCH</div>
-          <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-faint)]">tg-shop · админка</div>
-        </div>
+      <div className={cn("mb-6 flex items-center", collapsed ? "justify-center" : "px-2 pt-1")}>
+        <Brand collapsed={collapsed} onNavigate={onNavigate} />
       </div>
-      <NavLinks onNavigate={onNavigate} />
-      <div className="mt-auto border-t-[3px] border-[var(--line)] pt-3">
+      <NavLinks onNavigate={onNavigate} collapsed={collapsed} />
+      <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--line)] pt-3">
         <button
           onClick={logout}
-          className="flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] px-3.5 py-2.5 text-[14px] font-bold uppercase lg:min-h-0 tracking-wide text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger)]"
+          title={collapsed ? "Выйти" : undefined}
+          className={cn(
+            "font-display flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] py-2 text-[14px] font-semibold text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger-ink)] lg:min-h-10",
+            collapsed ? "justify-center px-0" : "px-3"
+          )}
         >
-          <LogOut className="h-[18px] w-[18px]" />
-          Выйти
+          <LogOut className="h-[18px] w-[18px] shrink-0" />
+          <span className={cn(collapsed && "sr-only")}>Выйти</span>
         </button>
-        <LogoutEverywhereButton />
+        <LogoutEverywhereButton collapsed={collapsed} />
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
+            title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+            className={cn(
+              "mt-1 flex h-9 items-center gap-3 rounded-[var(--r-md)] text-[12.5px] text-[var(--text-faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+              collapsed ? "justify-center px-0" : "px-3"
+            )}
+          >
+            {collapsed ? <PanelLeftOpen className="h-[16px] w-[16px]" /> : <PanelLeftClose className="h-[16px] w-[16px]" />}
+            {!collapsed && <span>Свернуть</span>}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -209,18 +277,21 @@ const TABS = [
 ];
 
 const TAB_CELL =
-  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10.5px] font-extrabold uppercase leading-none tracking-wide transition-colors";
+  "font-display relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10.5px] font-semibold uppercase leading-none tracking-[0.06em] transition-colors";
 
-function TabIcon({ active, children }: { active: boolean; children: ReactNode }) {
+/** Tab icon box; the active colour comes from the cell (orange icon + label). */
+function TabIcon({ children }: { children: ReactNode }) {
+  return <span className="relative grid h-7 w-10 place-items-center">{children}</span>;
+}
+
+/** 2px glowing orange bar on the top edge of the active tab (as in the Mini App), slides between tabs. */
+function TabIndicator() {
   return (
-    <span
-      className={cn(
-        "relative grid h-8 w-12 place-items-center rounded-[var(--r-sm)] border-2 transition-colors duration-150",
-        active ? "border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-transparent"
-      )}
-    >
-      {children}
-    </span>
+    <motion.span
+      layoutId="tab-active"
+      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+      className="absolute left-1/2 top-0 h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
+    />
   );
 }
 
@@ -235,7 +306,7 @@ function TabBar({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void })
     <nav
       aria-label="Главные разделы"
       data-app-chrome
-      className="tabbar fixed inset-x-0 bottom-0 z-[60] border-t-[3px] border-[var(--line)] bg-[var(--surface)] lg:hidden"
+      className="tabbar fixed inset-x-0 bottom-0 z-[60] border-t border-[var(--line)] bg-[rgba(26,26,26,.92)] backdrop-blur-md lg:hidden"
       style={{ paddingBottom: "var(--safe-bottom)", paddingLeft: "var(--safe-left)", paddingRight: "var(--safe-right)" }}
     >
       <div className="mx-auto flex h-[var(--tabbar-h)] max-w-xl items-stretch">
@@ -247,14 +318,15 @@ function TabBar({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void })
               key={t.href}
               href={t.href}
               aria-current={active ? "page" : undefined}
-              className={cn(TAB_CELL, active ? "text-[var(--text)]" : "text-[var(--text-muted)]")}
+              className={cn(TAB_CELL, active ? "text-[var(--accent)]" : "text-[var(--text-muted)]")}
             >
-              <TabIcon active={active}>
-                <Icon className="h-[19px] w-[19px]" />
+              {active && <TabIndicator />}
+              <TabIcon>
+                <Icon className="h-[21px] w-[21px]" strokeWidth={active ? 2.25 : 2} />
                 {t.badge && inboxTotal > 0 && (
                   <span
                     aria-label={`Требует внимания: ${inboxTotal}`}
-                    className="absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+                    className="count-badge absolute -right-1 -top-1.5 ring-2 ring-[#1A1A1A]"
                   >
                     {inboxTotal > 99 ? "99+" : inboxTotal}
                   </span>
@@ -269,10 +341,11 @@ function TabBar({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void })
           onClick={onMenu}
           aria-label="Ещё — все разделы"
           aria-expanded={menuOpen}
-          className={cn(TAB_CELL, moreActive ? "text-[var(--text)]" : "text-[var(--text-muted)]")}
+          className={cn(TAB_CELL, moreActive ? "text-[var(--accent)]" : "text-[var(--text-muted)]")}
         >
-          <TabIcon active={moreActive}>
-            <Menu className="h-[19px] w-[19px]" />
+          {moreActive && <TabIndicator />}
+          <TabIcon>
+            <Menu className="h-[21px] w-[21px]" strokeWidth={moreActive ? 2.25 : 2} />
           </TabIcon>
           <span>Ещё</span>
         </button>
@@ -281,8 +354,34 @@ function TabBar({ menuOpen, onMenu }: { menuOpen: boolean; onMenu: () => void })
   );
 }
 
+const COLLAPSE_KEY = "admin-sidebar-collapsed";
+
+/** Desktop rail state, remembered per browser (a convenience — falls back to expanded). */
+function useCollapsedSidebar(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {
+      /* storage blocked — stay expanded */
+    }
+  }, []);
+  function toggle() {
+    setCollapsed((v) => {
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, v ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !v;
+    });
+  }
+  return [collapsed, toggle];
+}
+
 export function Shell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);
+  const [collapsed, toggleCollapsed] = useCollapsedSidebar();
   const pathname = usePathname();
   const title = TITLE[pathname] ?? (pathname.startsWith("/orders/") ? "Заказ" : "Панель");
 
@@ -290,9 +389,14 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh">
       <AppRuntime />
 
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col border-r-[3px] border-[var(--line)] bg-[var(--surface)] p-4 lg:flex">
-        <SidebarInner />
+      {/* Desktop sidebar (icon rail when collapsed) */}
+      <aside
+        className={cn(
+          "thin-scroll sticky top-0 hidden h-dvh shrink-0 flex-col overflow-y-auto border-r border-[var(--line)] bg-[var(--surface)] px-3 py-5 transition-[width] duration-200 lg:flex",
+          collapsed ? "w-[76px]" : "w-[248px]"
+        )}
+      >
+        <SidebarInner collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
       {/* Phone: the full menu («Ещё») */}
@@ -300,7 +404,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {drawer && (
           <>
             <motion.div
-              className="fixed inset-0 z-[70] bg-black/55 lg:hidden"
+              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-[6px] lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -308,11 +412,11 @@ export function Shell({ children }: { children: ReactNode }) {
             />
             <motion.aside
               aria-label="Все разделы"
-              className="thin-scroll fixed inset-y-0 left-0 z-[80] flex w-[min(20rem,86vw)] flex-col overflow-y-auto border-r-[3px] border-[var(--line)] bg-[var(--surface)] pr-4 shadow-[7px_0_0_var(--shadow)] lg:hidden"
+              className="thin-scroll fixed inset-y-0 left-0 z-[80] flex w-[min(20rem,86vw)] flex-col overflow-y-auto rounded-r-[var(--r-xl)] border-r border-[var(--line-strong)] bg-[var(--surface)] pr-3 shadow-[var(--shadow-3)] lg:hidden"
               style={{
                 paddingTop: "calc(12px + var(--safe-top))",
                 paddingBottom: "calc(16px + var(--safe-bottom))",
-                paddingLeft: "calc(16px + var(--safe-left))",
+                paddingLeft: "calc(12px + var(--safe-left))",
               }}
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
@@ -321,7 +425,7 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               <button
                 onClick={() => setDrawer(false)}
-                className="nb-press mb-2 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)]"
+                className="nb-press mb-1 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
                 aria-label="Закрыть меню"
               >
                 <X className="h-5 w-5" />
@@ -336,9 +440,10 @@ export function Shell({ children }: { children: ReactNode }) {
         {/* Top bar — on a phone it sits under the status bar of the installed app */}
         <header
           data-app-chrome
-          className="sticky top-0 z-30 flex items-center gap-3 border-b-[3px] border-[var(--line)] bg-[var(--bg)] pb-2.5 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-[calc(10px+var(--safe-top))] lg:px-7 lg:py-3"
+          className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--line)] bg-[rgba(14,14,16,.85)] pb-2.5 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-[calc(10px+var(--safe-top))] backdrop-blur-md lg:min-h-[61px] lg:px-7 lg:py-2.5"
         >
-          <div className="min-w-0 truncate text-[17px] font-black uppercase tracking-wide text-[var(--text)] lg:text-[16px]">
+          <LogoMark size={28} className="lg:hidden" />
+          <div className="font-display min-w-0 truncate text-[16px] font-bold uppercase tracking-[0.06em] text-[var(--text)] lg:text-[13px] lg:font-semibold lg:tracking-[0.2em] lg:text-[var(--text-muted)]">
             {title}
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
@@ -346,7 +451,6 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="hidden lg:block">
               <NotificationsBell />
             </div>
-            <ThemeToggle />
           </div>
         </header>
 

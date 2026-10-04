@@ -29,7 +29,7 @@ export function SegmentedControl<T extends string>({
       className={cn(
         // max-w-full + own horizontal scroll: on a phone a wide control scrolls inside itself
         // instead of pushing the whole page sideways (B9).
-        "thin-scroll inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] p-1",
+        "thin-scroll inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] p-[3px]",
         className
       )}
     >
@@ -41,16 +41,16 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "hit relative shrink-0 rounded-[var(--r-sm)] font-bold uppercase tracking-wide transition-colors",
+              "font-display hit relative shrink-0 rounded-[var(--r-sm)] font-semibold uppercase tracking-[0.06em] transition-colors",
               size === "sm" ? "px-2.5 py-1 text-[11px] pointer-coarse:py-1.5" : "px-3.5 py-1.5 text-[12px] pointer-coarse:py-2",
-              active ? "text-[var(--accent-ink)]" : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              active ? "text-[var(--accent-hi)]" : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}
           >
             {active && (
               <motion.span
                 layoutId={`seg-${layoutId}`}
                 transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute inset-0 rounded-[var(--r-sm)] bg-[var(--accent)]"
+                className="absolute inset-0 rounded-[var(--r-sm)] border border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)]"
               />
             )}
             <span className="relative z-10 flex items-center gap-1.5 whitespace-nowrap">
@@ -58,8 +58,8 @@ export function SegmentedControl<T extends string>({
               {o.count != null && (
                 <span
                   className={cn(
-                    "rounded-[2px] px-1.5 text-[11px]",
-                    active ? "bg-[var(--accent-ink)]/15 text-[var(--accent-ink)]" : "bg-[var(--surface-3)] text-[var(--text-faint)]"
+                    "tabular rounded-full px-1.5 text-[10.5px] leading-[16px]",
+                    active ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface-3)] text-[var(--text-muted)]"
                   )}
                 >
                   {o.count}

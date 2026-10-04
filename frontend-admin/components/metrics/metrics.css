@@ -1,66 +1,57 @@
 /* ============================================================================
-   Chart tokens of the metrics page. Validated with the dataviz palette checker
-   against the admin's own chart surfaces (light #FFFFFF, dark #34343B):
-   series 1 blue / series 2 orange / series 3 aqua pass CVD + normal-vision
-   separation in both themes. Aqua sits below 3:1 on white, so it is only used
-   with direct labels. Recharts reads these via fill="var(--mx-…)".
+   Chart tokens of the metrics page — ChiSetup dark (DESIGN-V3 §8 «Графики»).
+   Recharts reads these via fill/stroke="var(--mx-…)"; JS-only places use the literal mirror in
+   lib/metrics-format.ts (CHART_COLORS / SERIES_PALETTE) — keep both in sync.
+
+   Monochrome + one orange, like the brand: the series that matters is orange, context series are
+   steel / light grey. Checked with the dataviz validator on --surface #1A1A1A: s1↔s2 CVD ΔE 19.4,
+   normal ΔE 26; s2↔s3 normal ΔE 22; all ≥ 3:1 against the surface. Steel and grey intentionally
+   fail the "chroma floor" (they ARE neutrals) — so every multi-series chart keeps a legend and,
+   where lines overlap, a second encoding (dashed prev period, boxes vs lines).
+   Status charts use the --st-* hues (identical to chips and the board), always with labels.
    ============================================================================ */
 .mx-root {
-  --mx-s1: #2a78d6;
-  --mx-s2: #eb6834;
-  --mx-s3: #1baf7a;
-  --mx-prev: #8c8878;
-  --mx-grid: color-mix(in srgb, var(--text) 12%, transparent);
-  --mx-axis: var(--text-faint);
-  --mx-band: color-mix(in srgb, #2a78d6 18%, transparent);
-  /* Sequential blue ramp (heatmap / funnel), light -> dark. */
-  --mx-q0: #f1eee3;
-  --mx-q1: #cde2fb;
-  --mx-q2: #9ec5f4;
-  --mx-q3: #6da7ec;
-  --mx-q4: #3987e5;
-  --mx-q5: #256abf;
-  --mx-q6: #184f95;
-  --mx-q7: #0d366b;
-  --mx-up: #006300;
-  --mx-down: #b3261e;
-}
-
-:root[data-theme="dark"] .mx-root {
-  --mx-s1: #3987e5;
-  --mx-s2: #d95926;
-  --mx-s3: #199e70;
-  --mx-prev: #aeaca6;
-  --mx-band: color-mix(in srgb, #3987e5 26%, transparent);
-  --mx-q0: #3a3a42;
-  --mx-q1: #0d366b;
-  --mx-q2: #104281;
-  --mx-q3: #1c5cab;
-  --mx-q4: #2a78d6;
-  --mx-q5: #5598e7;
-  --mx-q6: #86b6ef;
-  --mx-q7: #b7d3f6;
-  --mx-up: #2bd489;
-  --mx-down: #ff8a80;
+  --mx-s1: #FF6600;   /* primary series: current period, actuals */
+  --mx-s2: #7B93B8;   /* secondary series: rejected, comparison bars */
+  --mx-s3: #D4D4D8;   /* tertiary: forecast */
+  --mx-prev: #8A8A93; /* previous period (always dashed) */
+  --mx-grid: rgba(255, 255, 255, .06);
+  --mx-axis: rgba(255, 255, 255, .4);
+  --mx-band: rgba(212, 212, 216, .14);
+  /* Sequential orange ramp (heatmap / funnel): dark → bright on the dark surface, so "more" glows.
+     Lightness rises monotonically; q0 = empty cell. */
+  --mx-q0: #232326;
+  --mx-q1: #3A2416;
+  --mx-q2: #5A2F12;
+  --mx-q3: #83400D;
+  --mx-q4: #B04F07;
+  --mx-q5: #E05C00;
+  --mx-q6: #FF7A1F;
+  --mx-q7: #FFA766;
+  --mx-up: #22C55E;
+  --mx-down: #F87171;
 }
 
 .mx-num { font-variant-numeric: tabular-nums; }
 
-.mx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* Metrics tables = the generic .data-table look (globals.css), kept under its own name. */
+.mx-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
 .mx-table th {
   text-align: left;
+  font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
+  background: var(--bg-2);
   padding: 8px 10px;
-  border-bottom: 2px solid var(--line);
+  border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 .mx-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-bottom: 1px solid var(--line);
   color: var(--text);
   vertical-align: middle;
 }

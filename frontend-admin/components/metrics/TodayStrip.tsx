@@ -8,6 +8,7 @@
  * Board deep links used here: `/?status=NEW` and `/?payment=claimed` — the board (package B)
  * reads those query parameters; without that support the links simply open the board.
  */
+import { cn } from "@/lib/cn";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Hourglass, PackageCheck, Send, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -124,13 +125,17 @@ function Cell({
     <Link
       href={href}
       title={title}
-      className="nb-press card flex min-w-0 flex-col gap-1 p-3 hover:bg-[var(--surface-hover)]"
-      style={alert ? { boxShadow: "4px 4px 0 var(--accent)" } : undefined}
+      className={cn(
+        "nb-press card card-hover relative flex min-w-0 flex-col gap-1.5 overflow-hidden p-3",
+        alert && "!border-[rgba(255,102,0,.4)]"
+      )}
     >
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
-        <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
+      {/* Something waits on the owner: orange hairline on top + orange icon (not colour alone — the number says it). */}
+      {alert && <span aria-hidden className="absolute inset-x-0 top-0 h-[2px] bg-[var(--accent)] shadow-[var(--glow-sm)]" />}
+      <span className="font-display flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", alert && "text-[var(--accent)]")} /> {label}
       </span>
-      <span className="truncate text-[20px] font-extrabold leading-none text-[var(--text)] mx-num">{value}</span>
+      <span className="kpi-num truncate text-[20px]">{value}</span>
       {sub && <span className="truncate text-[11px] text-[var(--text-faint)]">{sub}</span>}
     </Link>
   );

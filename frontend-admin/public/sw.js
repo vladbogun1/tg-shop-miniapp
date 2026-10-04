@@ -1,4 +1,4 @@
-/* MAXSOLCH Admin — service worker.
+/* ChiSetup Admin — service worker.
  *
  * Deliberately small (no Workbox):
  *  - /_next/static/* (content-hashed, immutable) and the icons: cache-first, so a relaunch of the
@@ -150,9 +150,9 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "MAXSOLCH Admin", body: event.data ? event.data.text() : "" };
+    data = { title: "ChiSetup Admin", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "MAXSOLCH Admin";
+  const title = data.title || "ChiSetup Admin";
   const url = typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/inbox";
   const options = {
     body: data.body || "",

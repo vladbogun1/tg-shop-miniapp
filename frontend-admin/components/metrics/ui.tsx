@@ -32,7 +32,7 @@ export function Panel({
     <motion.section variants={riseItem} className={cn("panel min-w-0 p-4 sm:p-5", className)}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-2 text-[14px] font-extrabold uppercase tracking-wide text-[var(--text)]">
+          <h3 className="section-title flex items-center gap-2">
             {Icon && <Icon className="h-[17px] w-[17px] shrink-0 text-[var(--accent)]" />}
             {title}
           </h3>
@@ -60,7 +60,7 @@ export function Delta({ kpi, goodWhenUp = true, suffix }: { kpi: Kpi; goodWhenUp
   return (
     <span className="inline-flex flex-wrap items-center gap-1 text-[12px]">
       <span
-        className="inline-flex items-center gap-0.5 font-extrabold mx-num"
+        className="font-display inline-flex items-center gap-0.5 font-bold mx-num"
         style={{ color: good == null ? "var(--text-muted)" : good ? "var(--mx-up)" : "var(--mx-down)" }}
       >
         <Icon className="h-3.5 w-3.5" strokeWidth={3} />
@@ -94,8 +94,8 @@ export function KpiTile({
   const data = spark?.map((v, i) => ({ i, v }));
   return (
     <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-1.5 p-4">
-      <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
-      <div className="text-[24px] font-extrabold leading-none tracking-tight text-[var(--text)] mx-num">{value}</div>
+      <div className="field-label !text-[11px]">{label}</div>
+      <div className="kpi-num text-[24px]">{value}</div>
       {data && data.length > 1 && (
         <div className="h-7 w-full" aria-hidden>
           <ResponsiveContainer width="100%" height="100%">
@@ -116,8 +116,8 @@ export function KpiTile({
 
 export function Note({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2 rounded-[var(--r-sm)] border-2 border-dashed border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[12px] leading-snug text-[var(--text-muted)]">
-      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+    <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2 text-[12px] leading-snug text-[var(--text-muted)]">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" />
       <div>{children}</div>
     </div>
   );
@@ -131,8 +131,8 @@ export function Empty({ children }: { children: ReactNode }) {
 export function InlineBar({ value, max, color = "var(--mx-s1)" }: { value: number; max: number; color?: string }) {
   const w = max > 0 ? Math.max(2, (value / max) * 100) : 0;
   return (
-    <div className="h-2 w-full min-w-[60px] overflow-hidden rounded-[2px] bg-[var(--surface-3)]">
-      <div className="h-full rounded-r-[2px]" style={{ width: `${w}%`, background: color }} />
+    <div className="h-1.5 w-full min-w-[60px] overflow-hidden rounded-full bg-[var(--surface-3)]">
+      <div className="h-full rounded-full" style={{ width: `${w}%`, background: color }} />
     </div>
   );
 }
@@ -151,7 +151,7 @@ export function useLimited<T>(rows: T[], initial = 10): { visible: T[]; toggle: 
       <button
         type="button"
         onClick={() => setAll((v) => !v)}
-        className="mt-2 text-[12px] font-bold text-[var(--accent)] hover:underline"
+        className="mt-2 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline"
       >
         {all ? "Свернуть" : `Показать все (${rows.length})`}
       </button>
@@ -161,12 +161,11 @@ export function useLimited<T>(rows: T[], initial = 10): { visible: T[]; toggle: 
 
 /** Status chip: icon + label, never colour alone. */
 export function StatusChip({ tone, children }: { tone: "danger" | "warn" | "ok" | "muted"; children: ReactNode }) {
-  const bg =
-    tone === "danger" ? "var(--danger)" : tone === "warn" ? "var(--warn)" : tone === "ok" ? "var(--ok)" : "var(--surface-3)";
+  const c = tone === "danger" ? "#F87171" : tone === "warn" ? "var(--warn)" : tone === "ok" ? "var(--ok)" : "var(--text-muted)";
   return (
     <span
-      className="inline-flex items-center gap-1 whitespace-nowrap rounded-[2px] border-2 border-[var(--line)] px-1.5 py-0.5 text-[11px] font-bold"
-      style={{ background: bg, color: tone === "muted" ? "var(--text)" : "var(--accent-ink)" }}
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold"
+      style={{ background: tone === "muted" ? "var(--surface-3)" : `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
     >
       {children}
     </span>

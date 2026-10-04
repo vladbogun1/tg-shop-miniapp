@@ -23,8 +23,10 @@ export function NotificationsBell() {
       aria-label={count > 0 ? `Требует внимания: ${count}` : "Внимание — всё разобрано"}
       aria-current={here ? "page" : undefined}
       className={cn(
-        "nb-press focusable relative grid h-10 w-10 place-items-center rounded-[var(--r-md)] border-[3px] border-[var(--line)] text-[var(--text)] shadow-[4px_4px_0_var(--shadow)]",
-        here ? "bg-[var(--accent)] text-[var(--accent-ink)]" : "bg-[var(--surface)]"
+        "nb-press focusable relative grid h-10 w-10 place-items-center rounded-[var(--r-md)] border transition-colors",
+        here
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : "border-[var(--line)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--line-strong)] hover:text-[var(--text)]"
       )}
     >
       <Bell className="h-[18px] w-[18px]" />
@@ -35,7 +37,7 @@ export function NotificationsBell() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 500, damping: 26 }}
-            className="absolute -right-2 -top-2 flex h-[20px] min-w-[20px] items-center justify-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--danger)] px-1 text-[10px] font-black leading-none text-[var(--accent-ink)]"
+            className="count-badge absolute -right-1.5 -top-1.5 ring-2 ring-[var(--bg)]"
           >
             {count > 99 ? "99+" : count}
           </motion.span>

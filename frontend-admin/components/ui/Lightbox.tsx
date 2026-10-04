@@ -27,11 +27,12 @@ export function Lightbox({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/85 p-6"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/85 p-6 backdrop-blur-[6px]"
         >
           <button
             onClick={onClose}
-            className="nb-press absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-[var(--r-sm)] border-[3px] border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[4px_4px_0_var(--shadow)] hover:bg-[var(--surface-3)]"
+            aria-label="Закрыть"
+            className="nb-press absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]"
           >
             <X className="h-6 w-6" />
           </button>
@@ -43,7 +44,7 @@ export function Lightbox({
             src={src}
             alt=""
             onClick={(e) => e.stopPropagation()}
-            className="max-h-[88vh] max-w-[92vw] rounded-[var(--r-md)] border-[3px] border-[var(--line)] object-contain shadow-[7px_7px_0_var(--shadow)]"
+            className="max-h-[88vh] max-w-[92vw] rounded-[var(--r-lg)] border border-[var(--line)] object-contain shadow-[var(--shadow-3)]"
           />
           {originalHref && (
             <a
@@ -51,7 +52,7 @@ export function Lightbox({
               target="_blank"
               rel="noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="nb-press absolute bottom-5 rounded-[var(--r-sm)] border-[3px] border-[var(--line)] bg-[var(--accent)] px-4 py-2 text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent-ink)] shadow-[4px_4px_0_var(--shadow)]"
+              className="nb-press nb-accent absolute bottom-5 px-4 py-2.5 text-[12px] uppercase tracking-[0.06em]"
             >
               Открыть оригинал
             </a>

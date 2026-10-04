@@ -38,9 +38,9 @@ export function resolveImageFull(value: string, maxSide = 1600): string {
 
 export { imgproxyUrl } from "@shop/shared";
 
-/** Neutral placeholder that reads on both the light (default) and dark admin themes. */
+/** Neutral placeholder = --surface-2 of the dark ChiSetup theme. */
 const BLUR =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23b9b9b4'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23222222'/%3E%3C/svg%3E";
 
 export function Image({
   imageKey,

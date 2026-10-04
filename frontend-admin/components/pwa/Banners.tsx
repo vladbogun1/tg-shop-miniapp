@@ -32,16 +32,16 @@ export function UpdateBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
-          className="fixed inset-x-3 z-[350] mx-auto flex max-w-md flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--c3)] p-3 shadow-[5px_5px_0_var(--shadow)] lg:left-auto lg:right-6"
+          className="elevated fixed inset-x-3 z-[350] mx-auto flex max-w-md flex-wrap items-center gap-x-3 gap-y-2.5 !border-[rgba(255,102,0,.45)] p-3 lg:left-auto lg:right-6"
           style={{ bottom: "calc(var(--bottom-nav) + 12px)" }}
         >
-          <RefreshCw className="h-5 w-5 shrink-0" aria-hidden />
-          <div className="min-w-[10rem] flex-1 text-[13px] font-bold leading-snug">
+          <RefreshCw className="h-5 w-5 shrink-0 text-[var(--accent)]" aria-hidden />
+          <div className="min-w-[10rem] flex-1 text-[13px] font-semibold leading-snug text-[var(--text)]">
             Вышла новая версия админки
-            <span className="block text-[12px] font-semibold opacity-75">Сначала сохраните то, что редактируете</span>
+            <span className="block text-[12px] font-normal text-[var(--text-muted)]">Сначала сохраните то, что редактируете</span>
           </div>
           <Button
-            variant="surface"
+            variant="accent"
             size="sm"
             loading={busy}
             className="h-11 w-full shrink-0 sm:w-auto"
@@ -81,11 +81,11 @@ export function InstallBanner() {
 
   return (
     <div className="card mb-4 flex items-start gap-3 p-3.5" data-app-chrome>
-      <div className="accent-fill grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] !shadow-none">
+      <div className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
         {ios ? <SquarePlus className="h-5 w-5" /> : <Download className="h-5 w-5" />}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-black uppercase tracking-wide text-[var(--text)]">Админка как приложение</div>
+        <div className="font-display text-[14px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">Админка как приложение</div>
         {ios ? (
           <p className="mt-1 text-[13px] leading-relaxed text-[var(--text-muted)]">
             Нажмите{" "}

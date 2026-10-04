@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * ChartTooltip — recharts tooltip styled as a neo-brutalist bordered card
- * (thick ink border + hard offset shadow, --surface bg). Rows are pre-formatted
+ * ChartTooltip — recharts tooltip styled as a ChiSetup graphite card
+ * (hairline border, soft deep shadow, --surface bg, Exo 2 caps title). Rows are pre-formatted
  * by the caller via `valueFormatter`, so this stays generic for money / counts /
  * hours. It renders normal DOM (not SVG), so it can use CSS vars + utilities.
  */
@@ -34,9 +34,9 @@ export function ChartTooltip({
 }: Props) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="min-w-[120px] rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[12px] shadow-[var(--shadow-3)]">
+    <div className="min-w-[120px] rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 text-[12px] shadow-[var(--shadow-3)]">
       {label != null && (
-        <div className="mb-1.5 font-extrabold uppercase tracking-wide text-[var(--text)]">
+        <div className="font-display mb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
           {labelFormatter ? labelFormatter(String(label)) : String(label)}
         </div>
       )}
@@ -50,10 +50,10 @@ export function ChartTooltip({
               className="flex items-center gap-2 text-[var(--text-muted)]"
             >
               <span
-                className="inline-block h-3 w-3 shrink-0 border-2 border-[var(--line)]"
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-[2px]"
                 style={{ background: p.color ?? "var(--accent)" }}
               />
-              <span className="font-bold text-[var(--text)]">
+              <span className="font-semibold tabular-nums text-[var(--text)]">
                 {valueFormatter ? valueFormatter(value, name) : value}
               </span>
             </div>
