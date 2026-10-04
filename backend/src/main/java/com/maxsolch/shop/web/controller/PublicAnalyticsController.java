@@ -2,9 +2,12 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.analytics.WebEventBatch;
+import com.maxsolch.shop.common.ClientIp;
+import com.maxsolch.shop.geo.VisitorLocationService;
 import com.maxsolch.shop.security.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,15 +27,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class PublicAnalyticsController {
 
     private final ClientEventService clientEventService;
+    private final VisitorLocationService visitorLocations;
 
-    public PublicAnalyticsController(ClientEventService clientEventService) {
+    public PublicAnalyticsController(ClientEventService clientEventService,
+                                     VisitorLocationService visitorLocations) {
         this.clientEventService = clientEventService;
+        this.visitorLocations = visitorLocations;
     }
 
     @PostMapping("/analytics")
     @Operation(summary = "Submit a batch of website events (anonymous or signed-in)")
-    public ResponseEntity<Void> analytics(@RequestBody WebEventBatch batch) {
-        clientEventService.recordWeb(currentCustomerOrNull(), batch);
+    public ResponseEntity<Void> analytics(@RequestBody WebEventBatch batch, HttpServletRequest request) {
+        Long customer = currentCustomerOrNull();
+        clientEventService.recordWeb(customer, batch);
+        // Users map: throttled, asynchronous, never throws.
+        visitorLocations.touchWeb(customer, batch == null ? null : batch.anonId(), ClientIp.of(request));
         return ResponseEntity.noContent().build();
     }
 

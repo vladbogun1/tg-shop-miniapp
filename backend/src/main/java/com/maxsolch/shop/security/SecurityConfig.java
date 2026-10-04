@@ -1,6 +1,7 @@
 package com.maxsolch.shop.security;
 
 import com.maxsolch.shop.config.AllowedOrigins;
+import com.maxsolch.shop.geo.VisitorLocationFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,13 +26,16 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final VisitorLocationFilter visitorLocationFilter;
     private final AllowedOrigins allowedOrigins;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           RateLimitFilter rateLimitFilter,
+                          VisitorLocationFilter visitorLocationFilter,
                           AllowedOrigins allowedOrigins) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.visitorLocationFilter = visitorLocationFilter;
         this.allowedOrigins = allowedOrigins;
     }
 
@@ -82,13 +86,15 @@ public class SecurityConfig {
                         // Everything else requires authentication; admin routes use @RequiredAdmin
                         .anyRequest().authenticated())
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // After the JWT filter: remembers a signed-in customer's last IP / place (users map).
+                .addFilterAfter(visitorLocationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * Both filters are {@code @Component}s, which makes Spring Boot auto-register them in the
+     * These filters are {@code @Component}s, which makes Spring Boot auto-register them in the
      * plain servlet chain on top of the security chain — they would run twice per request (and the
      * rate limiter would count every request twice). These beans opt them out of auto-registration;
      * the security chain above is the only place they run.
@@ -96,6 +102,13 @@ public class SecurityConfig {
     @Bean
     public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter filter) {
         FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<VisitorLocationFilter> visitorLocationFilterRegistration(VisitorLocationFilter filter) {
+        FilterRegistrationBean<VisitorLocationFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
