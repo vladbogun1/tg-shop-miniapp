@@ -632,6 +632,29 @@ class OrderServiceTest {
         order.verify(productRepository).findByIdForUpdate(high);
     }
 
+    // ---------- dispatch sync ----------
+
+    @Test
+    void broadcastDispatch_writesOnlyChangedCardIds_withoutDirtyFlushingTheOrder() {
+        Order posted = persistedOrder(OrderStatus.APPROVED);
+        Order unchanged = persistedOrder(OrderStatus.APPROVED);
+        unchanged.setDispatchMessageId(5);
+        when(orderRepository.findWithItemsByStatus(OrderStatus.APPROVED)).thenReturn(List.of(posted, unchanged));
+        when(notificationService.syncDispatchCard(posted)).thenAnswer(inv -> {
+            posted.setDispatchMessageId(99);
+            return true;
+        });
+        when(notificationService.syncDispatchCard(unchanged)).thenReturn(false);
+
+        assertThat(service.broadcastDispatch()).isEqualTo(1);
+
+        verify(entityManager).detach(posted);
+        verify(entityManager).detach(unchanged);
+        verify(orderRepository).updateDispatchMessageId(posted.getId(), 99);
+        verify(orderRepository, never()).updateDispatchMessageId(unchanged.getId(), 5);
+        verify(orderRepository, never()).save(any());
+    }
+
     // ---------- hard delete ----------
 
     @Test

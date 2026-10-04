@@ -354,6 +354,10 @@ public class OrderService {
         List<Order> approved = orderRepository.findWithItemsByStatus(OrderStatus.APPROVED);
         int posted = 0;
         for (Order o : approved) {
+            // Detached: open-in-view keeps these managed, and the card id set by Telegram sync
+            // would then be flushed as a full-row UPDATE of a possibly stale order (undoing, say,
+            // a status change made meanwhile). Only the targeted update below writes it.
+            entityManager.detach(o);
             Integer before = o.getDispatchMessageId();
             if (notificationService.syncDispatchCard(o)) {
                 posted++;
