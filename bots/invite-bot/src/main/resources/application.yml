@@ -1,0 +1,6 @@
+app:
+  telegram:
+    bot-token: ${BOT_TOKEN:PASTE_REAL_TOKEN_HERE}
+    bot-username: ${BOT_USERNAME:ChiSetupBot}
+  invite:
+    landing-image-url: ${LANDING_IMAGE_URL:https://ru.files.fm/f/evk8czqqdj}
