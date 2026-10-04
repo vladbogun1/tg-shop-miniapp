@@ -52,7 +52,11 @@ public class SiteRevalidator {
 
     private final AppProperties props;
     private final ObjectMapper objectMapper;
+    // HTTP/1.1 explicitly: the JDK client defaults to HTTP/2 and, over plain http://, sends an
+    // "Upgrade: h2c" request. The Next.js (Node) server has no upgrade handler for it and drops the
+    // socket, so every call failed with "HTTP/1.1 header parser received no bytes".
     private final HttpClient http = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(3))
             .build();
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
