@@ -72,7 +72,7 @@ export function ProductCard({
             type="button"
             onClick={open}
             disabled={!inStock}
-            className="nb-accent nb-press tap nb-up flex w-full items-center justify-center gap-1.5 px-3 py-2.5 text-[13px] disabled:opacity-50"
+            className="nb-accent nb-press nb-up flex h-11 w-full items-center justify-center gap-1.5 px-3 text-[13px] disabled:opacity-50"
           >
             <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.5} />
             {inStock ? t("product.choose") : t("product.outOfStock")}

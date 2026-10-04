@@ -140,7 +140,7 @@ export function LoginView() {
 
   return (
     <div className="container-site max-w-4xl pt-8 md:pt-12">
-      <LogoFull size={40} className="mb-6" />
+      <LogoFull width={320} className="mb-6 h-auto max-w-full" />
       <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[40px]">{t("login.title")}</h1>
       <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[var(--muted)]">{t("login.lead")}</p>
 
@@ -232,8 +232,9 @@ export function LoginView() {
               <div className="rounded-[var(--r-card)] border border-[var(--line-strong)] bg-white p-3">
                 <QRCodeSVG value={phase.start.deepLink} size={196} level="M" marginSize={0} />
               </div>
-              <p className="flex max-w-[220px] items-center gap-1.5 text-center text-[12px] font-medium text-[var(--muted)]">
-                <Smartphone className="h-4 w-4 shrink-0" /> {t("login.qr")}
+              <p className="max-w-[220px] text-balance text-center text-[12px] font-medium leading-snug text-[var(--muted)]">
+                <Smartphone className="mr-1 inline-block h-4 w-4 align-[-3px]" aria-hidden />
+                {t("login.qr")}
               </p>
             </div>
           )}

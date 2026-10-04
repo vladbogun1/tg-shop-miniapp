@@ -93,7 +93,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
 export function CartEmpty({ onNavigate }: { onNavigate?: () => void }) {
   const { t, href } = useI18n();
   return (
-    <div className="hud-frame m-1 flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <div className="hud-frame m-1 flex [--hud-bw:0px] flex-col items-center gap-3 px-4 py-12 text-center">
       <span className="chamfer grid h-16 w-16 place-items-center bg-[var(--surface-2)]">
         <ShoppingBag className="h-8 w-8 text-[var(--accent)]" strokeWidth={1.75} />
       </span>

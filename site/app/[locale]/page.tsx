@@ -71,7 +71,7 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
             <p className="eyebrow mt-5 text-[11px] leading-relaxed text-[var(--ink)] sm:text-[12px]">{t("home.hero.kicker")}</p>
             <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-[var(--muted)] sm:text-[17px]">{t("home.hero.text")}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <span className="cta-glow w-full sm:w-auto">
+              <span className="cta-glow flex w-full sm:w-auto">
                 <ButtonLink href={href("/catalog")} variant="accent" size="lg" className="w-full sm:w-auto" icon={<ArrowRight className="h-5 w-5" strokeWidth={2.25} />}>
                   {t("home.hero.cta")}
                 </ButtonLink>

@@ -226,29 +226,42 @@ body {
     clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
   }
 
-  /* HUD "brackets" like the ones around the logo: white top-left, orange bottom-right, both
-     with a cut corner. The host must not clip overflow (the brackets sit on its border). */
-  .hud-frame { position: relative; }
+  /* HUD bracket frame (DESIGN-V3 §4), like the brackets around the logo: white top-left,
+     orange bottom-right. The two bracketed corners of the box itself are cut to the same 45° chamfer
+     (clip-path, see the unlayered block below), and each bracket is an L with that chamfer sitting
+     exactly on the outer edge of the border box, covering the 1px border — so no rounded border
+     pokes out past the diagonal and nothing floats off the edge. Brackets live inside the clip,
+     which also means: no box-shadow / outside glow on a .hud-frame host (it would be cut).
+     Knobs: --hud-c chamfer, --hud-w line, --hud-x/--hud-y arm lengths, --hud-bw = host border
+     width (0px on a borderless host). */
+  .hud-frame {
+    --hud-c: 12px;
+    --hud-w: 2px;
+    --hud-x: 44px;
+    --hud-y: 28px;
+    --hud-bw: 1px;
+    position: relative;
+  }
   .hud-frame::before,
   .hud-frame::after {
     content: "";
     position: absolute;
-    width: 26px;
-    height: 26px;
+    z-index: 1;
+    width: var(--hud-x);
+    height: var(--hud-y);
     pointer-events: none;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
   }
   .hud-frame::before {
-    top: -3px;
-    left: -3px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M1.5 26V9.5L9.5 1.5H26' fill='none' stroke='%23FFFFFF' stroke-width='2.5'/%3E%3C/svg%3E");
+    top: calc(-1 * var(--hud-bw));
+    left: calc(-1 * var(--hud-bw));
+    background: #FFFFFF;
+    clip-path: polygon(0 100%, 0 var(--hud-c), var(--hud-c) 0, 100% 0, 100% var(--hud-w), calc(var(--hud-c) + var(--hud-w) * .4142) var(--hud-w), var(--hud-w) calc(var(--hud-c) + var(--hud-w) * .4142), var(--hud-w) 100%);
   }
   .hud-frame::after {
-    right: -3px;
-    bottom: -3px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cpath d='M24.5 0V16.5L16.5 24.5H0' fill='none' stroke='%23FF6600' stroke-width='2.5'/%3E%3C/svg%3E");
-    filter: drop-shadow(0 0 6px rgba(255, 102, 0, .6));
+    right: calc(-1 * var(--hud-bw));
+    bottom: calc(-1 * var(--hud-bw));
+    background: var(--accent);
+    clip-path: polygon(100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 calc(100% - var(--hud-w)), calc(100% - var(--hud-c) - var(--hud-w) * .4142) calc(100% - var(--hud-w)), calc(100% - var(--hud-w)) calc(100% - var(--hud-c) - var(--hud-w) * .4142), calc(100% - var(--hud-w)) 0);
   }
 
   /* Skeleton */
@@ -267,6 +280,15 @@ body {
     background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .05), transparent);
     animation: shimmer 1.4s infinite;
   }
+}
+
+/* .hud-frame corner cut — unlayered on purpose, so it beats `rounded-*` / `shadow-*` utilities on
+   the same element (only these properties; position etc. stay overridable by utilities). */
+.hud-frame {
+  border-top-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+  clip-path: polygon(var(--hud-c) 0, 100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 var(--hud-c));
 }
 
 /* Light-orange fills (--c3) stay light → text/icons on them must be dark, never --ink (white). */

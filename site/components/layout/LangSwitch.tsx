@@ -17,7 +17,7 @@ export function LangSwitch() {
   const router = useRouter();
   return (
     <nav aria-label={t("header.lang")}>
-      <ul className="flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
+      <ul className="inline-flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface)] p-1">
         {LOCALES.map((l) => {
           const target = localePath(l, pathname);
           const active = l === locale;

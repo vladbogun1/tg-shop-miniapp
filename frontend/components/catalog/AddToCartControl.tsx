@@ -43,7 +43,8 @@ export function AddToCartControl({
   const atMax = qty >= stock;
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
-  const h = size === "sm" ? "py-2.5 text-[13px]" : "py-3.5 text-[15px]";
+  // One height for every state (add / disabled / stepper / "choose" on the card): 44px sm, 48px md.
+  const h = size === "sm" ? "h-11 text-[13px]" : "h-12 text-[15px]";
 
   if (needsVariant || outOfStock) {
     return (
@@ -78,7 +79,7 @@ export function AddToCartControl({
     );
   }
 
-  const btnDim = size === "sm" ? "h-8 w-8" : "h-10 w-10";
+  const btnDim = size === "sm" ? "h-[34px] w-[34px]" : "h-[38px] w-[38px]"; // + p-1 + 1px border = 44 / 48
   const numDim = size === "sm" ? "min-w-[26px] text-[15px]" : "min-w-[34px] text-[17px]";
 
   return (

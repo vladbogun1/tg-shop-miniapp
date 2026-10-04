@@ -3,6 +3,8 @@ import { Exo_2, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { Preloader } from "@/components/Preloader";
+import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { alternates, makeT } from "@/i18n";
 import { isLocale, LOCALE_TAG, type Locale } from "@/i18n/locales";
@@ -81,8 +83,11 @@ export default async function LocaleLayout({
   return (
     <html lang={LOCALE_TAG[locale]} className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
+        {/* First-load overlay (logo + loading bar) — plain HTML, painted before fonts/React. */}
+        <Preloader />
         <div className="scene" aria-hidden />
         <Providers locale={locale}>
+          <PreloaderReady />
           <Header categories={categories} />
           {/* No z-index here: it would trap the sheets and lightboxes rendered inside under the sticky header. */}
           <main id="main" className="relative flex-1">

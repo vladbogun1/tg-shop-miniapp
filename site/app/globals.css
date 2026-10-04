@@ -217,29 +217,42 @@ body {
 .cta-glow { transition: filter .15s ease; }
 .cta-glow:hover { filter: drop-shadow(0 0 14px rgba(255, 102, 0, .45)); }
 
-/* HUD bracket frame: top-left corner white, bottom-right orange, both chamfered. */
-.hud-frame { position: relative; isolation: isolate; }
+/* HUD bracket frame (DESIGN-V3 §4), like the brackets around the logo: white top-left,
+   orange bottom-right. The two bracketed corners of the box itself are cut to the same 45° chamfer
+   (clip-path, see the unlayered block below), and each bracket is an L with that chamfer sitting
+   exactly on the outer edge of the border box, covering the 1px border — so no rounded border
+   pokes out past the diagonal and nothing floats off the edge. Brackets live inside the clip,
+   which also means: no box-shadow / outside glow on a .hud-frame host (it would be cut).
+   Knobs: --hud-c chamfer, --hud-w line, --hud-x/--hud-y arm lengths, --hud-bw = host border
+   width (0px on a borderless host). */
+.hud-frame {
+  --hud-c: 12px;
+  --hud-w: 2px;
+  --hud-x: 44px;
+  --hud-y: 28px;
+  --hud-bw: 1px;
+  position: relative;
+}
 .hud-frame::before,
 .hud-frame::after {
   content: "";
   position: absolute;
-  width: 44px;
-  height: 30px;
-  pointer-events: none;
   z-index: 1;
+  width: var(--hud-x);
+  height: var(--hud-y);
+  pointer-events: none;
 }
 .hud-frame::before {
-  top: -1px;
-  left: -1px;
-  background: rgba(255, 255, 255, .85);
-  clip-path: polygon(0 100%, 0 12px, 12px 0, 100% 0, 100% 2px, 13px 2px, 2px 13px, 2px 100%);
+  top: calc(-1 * var(--hud-bw));
+  left: calc(-1 * var(--hud-bw));
+  background: #FFFFFF;
+  clip-path: polygon(0 100%, 0 var(--hud-c), var(--hud-c) 0, 100% 0, 100% var(--hud-w), calc(var(--hud-c) + var(--hud-w) * .4142) var(--hud-w), var(--hud-w) calc(var(--hud-c) + var(--hud-w) * .4142), var(--hud-w) 100%);
 }
 .hud-frame::after {
-  right: -1px;
-  bottom: -1px;
+  right: calc(-1 * var(--hud-bw));
+  bottom: calc(-1 * var(--hud-bw));
   background: var(--accent);
-  clip-path: polygon(100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 calc(100% - 2px), calc(100% - 13px) calc(100% - 2px), calc(100% - 2px) calc(100% - 13px), calc(100% - 2px) 0);
-  filter: drop-shadow(0 0 6px rgba(255, 102, 0, .7));
+  clip-path: polygon(100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 calc(100% - var(--hud-w)), calc(100% - var(--hud-c) - var(--hud-w) * .4142) calc(100% - var(--hud-w)), calc(100% - var(--hud-w)) calc(100% - var(--hud-c) - var(--hud-w) * .4142), calc(100% - var(--hud-w)) 0);
 }
 
 /* Tech marks: a short orange dash + a row of dots, as on the banner. */
@@ -263,6 +276,15 @@ body {
   background-image: radial-gradient(circle, rgba(255, 255, 255, .35) 1px, transparent 1.2px);
   background-size: 6px 2px;
 }
+}
+
+/* .hud-frame corner cut — unlayered on purpose, so it beats `rounded-*` / `shadow-*` utilities on
+   the same element (only these properties; position etc. stay overridable by utilities). */
+.hud-frame {
+  border-top-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+  clip-path: polygon(var(--hud-c) 0, 100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 var(--hud-c));
 }
 
 /* Skeleton */

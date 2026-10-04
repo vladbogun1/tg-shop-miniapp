@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Exo_2, Inter } from "next/font/google";
 import Script from "next/script";
+import { Preloader } from "@/components/Preloader";
+import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { TabBar } from "@/components/TabBar";
 import "./globals.css";
@@ -109,9 +111,14 @@ export default function RootLayout({
         />
       </head>
       <body>
+        {/* First-load overlay (logo + loading bar) — plain HTML, painted before fonts/React. The
+            WebApp.ready()/expand() poller above still runs first, so Telegram reveals the webview
+            straight onto it. */}
+        <Preloader />
         {/* Static ChiSetup backdrop: graphite + HUD grid + orange corner strips (DESIGN-V3 §4). */}
         <div className="scene" aria-hidden />
         <Providers>
+          <PreloaderReady />
           {/* Tsentrirovannyy container, max-width ~480px (design doc §8bis.1).
               Bottom padding ostavlyaet mesto pod tab-bar. */}
           <main

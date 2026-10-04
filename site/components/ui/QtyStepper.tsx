@@ -47,7 +47,7 @@ export function QtyStepper({
   );
 
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface)] p-1">
+    <div className="inline-flex items-center gap-1.5 rounded-[calc(var(--r)+4px)] border border-[var(--line-strong)] bg-[var(--surface)] p-1">
       <Btn label={t("qty.decrease")} disabled={value <= min} onClick={() => onChange(value - 1)}>
         <Minus className="h-4 w-4" strokeWidth={2.5} />
       </Btn>

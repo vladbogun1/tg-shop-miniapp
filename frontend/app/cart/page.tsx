@@ -137,7 +137,7 @@ export default function CartPage() {
                       haptic();
                       remove(l.key);
                     }}
-                    className="tap -mr-1 -mt-1 grid h-9 w-9 min-h-0 min-w-0 place-items-center rounded-[var(--r)] text-[var(--faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--danger)]"
+                    className="tap -mr-1.5 -mt-2 grid h-9 w-9 min-h-0 min-w-0 place-items-center rounded-[var(--r)] text-[var(--faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--danger)]"
                   >
                     <Trash2 className="h-4 w-4" strokeWidth={2.25} />
                   </motion.button>
