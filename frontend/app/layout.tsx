@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   // right title anyway — it reads the same in all three languages.
   title: "ChiSetup",
   description: "ChiSetup — ігрові девайси для твого сетапу",
+  // The Mini App (app.chisetup.com.ua) is opened from Telegram, not from search: the public shop
+  // is chisetup.com.ua. Keep its pages out of the index (Telegram does not read this).
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
