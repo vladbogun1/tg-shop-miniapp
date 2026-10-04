@@ -121,16 +121,30 @@ public class AdminMetricsService {
             }
         }
 
-        Reorder reorder = new ReorderCalculator().compute(facts, interest30(now), 30);
-        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
-        List<ReorderRow> soon = reorder.rows().stream()
-                .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
-                .toList();
+        List<ReorderRow> soon = runningOut(facts, interest30(now));
         MetricsDtos.MonthForecast month = new ForecastCalculator(zone).compute(facts, ChannelFilter.ALL).month();
         return new MetricsDtos.Today(toApprove, toShip, awaiting,
                 today.sold(), today.orders(), yesterday.sold(), ySameTime.sold(),
                 today.received(), yesterday.received(), cod, soon.size(),
                 soon.size() > 3 ? soon.subList(0, 3) : soon, month);
+    }
+
+    /**
+     * "Заканчиваются": selling products/variants whose stock lasts at most {@code metrics.lowStockDays}
+     * at the current pace — the same rule as the Today strip and «Что дозаказать». For the admin
+     * inbox: interest (views / cart adds) only decorates rows and never selects them, so the event
+     * journal is not read here.
+     */
+    public List<ReorderRow> runningOut() {
+        return runningOut(loader.load(), Map.of());
+    }
+
+    private List<ReorderRow> runningOut(MetricsFacts facts, Map<String, ReorderCalculator.Interest> interest) {
+        Reorder reorder = new ReorderCalculator().compute(facts, interest, 30);
+        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        return reorder.rows().stream()
+                .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
+                .toList();
     }
 
     /** Views / unique viewers / adds to cart per product over the last 30 days, all channels. */

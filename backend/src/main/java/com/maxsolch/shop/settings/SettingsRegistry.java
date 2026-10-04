@@ -32,6 +32,8 @@ public final class SettingsRegistry {
     public static final String METRICS_DEAD_STOCK_DAYS = "metrics.deadStockDays";
     public static final String NOTIFY_CUSTOMER_STATUS = "notify.customerStatus";
     public static final String NOVAPOSHTA_AUTO_SYNC = "novaposhta.autoSync";
+    public static final String INBOX_NEW_STALE_HOURS = "inbox.newStaleHours";
+    public static final String INBOX_APPROVED_STALE_HOURS = "inbox.approvedStaleHours";
     /** Prefix of the per-language /start greeting overrides: {@code bot.startText.uk} etc. */
     public static final String BOT_START_TEXT_PREFIX = "bot.startText.";
 
@@ -43,7 +45,8 @@ public final class SettingsRegistry {
             new Group("stock", "Склад и метрики", "Пороги, по которым товары помечаются «мало» и «не продаются»."),
             new Group("notifications", "Уведомления", "Что бот пишет покупателям."),
             new Group("bot", "Бот", "Тексты, которые видит покупатель в Telegram-боте."),
-            new Group("novaposhta", "Новая Почта", "Справочник отделений и почтоматов."));
+            new Group("novaposhta", "Новая Почта", "Справочник отделений и почтоматов."),
+            new Group("inbox", "Внимание", "Когда заказ попадает на экран «Внимание» как застрявший."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             intSetting(PROMO_HOLD_MINUTES, "orders",
@@ -90,7 +93,17 @@ public final class SettingsRegistry {
                     "Обновлять отделения каждую ночь",
                     "Каждую ночь бэкенд подтягивает свежий список отделений и почтоматов. "
                             + "Выключайте, только если API Новой Почты сбоит.",
-                    true));
+                    true),
+
+            intSetting(INBOX_NEW_STALE_HOURS, "inbox",
+                    "Новый заказ без одобрения дольше",
+                    "Новый заказ, который не одобрили за это время, появляется на экране «Внимание».",
+                    3, 1, 168, "ч"),
+            intSetting(INBOX_APPROVED_STALE_HOURS, "inbox",
+                    "Одобрен, но не отправлен дольше",
+                    "Одобренный заказ, который не отправили за это время (считая от одобрения), "
+                            + "появляется на экране «Внимание».",
+                    24, 1, 720, "ч"));
 
     private static final Map<String, SettingDefinition> BY_KEY = new LinkedHashMap<>();
 
