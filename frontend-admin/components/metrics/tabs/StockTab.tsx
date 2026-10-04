@@ -1,5 +1,6 @@
 "use client";
 
+import { useShopSetting } from "@/lib/settings";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Archive, EyeOff, PackageSearch, PackageX, Pencil, ShoppingCart, Snowflake, Trophy, Warehouse } from "lucide-react";
@@ -29,7 +30,10 @@ export function UrgencyChip({ row }: { row: Pick<ReorderRow, "daysToZero" | "urg
 }
 
 export function StockTab({ params }: { params: PeriodParams }) {
-  const [deadDays, setDeadDays] = useState<number>(60);
+  // Default threshold comes from «Настройки» (metrics.deadStockDays); a click on 30/60/90 overrides it.
+  const defaultDead = useShopSetting("metrics.deadStockDays", 60);
+  const [pickedDead, setDeadDays] = useState<number | null>(null);
+  const deadDays = pickedDead ?? defaultDead;
   const [coverDays, setCoverDays] = useState<number>(30);
   const q = useQuery({
     queryKey: ["metrics2", "stock", params, deadDays, coverDays],

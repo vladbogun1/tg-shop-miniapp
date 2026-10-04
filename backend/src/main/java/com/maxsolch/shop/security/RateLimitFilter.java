@@ -133,7 +133,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             // Admin password / admin Telegram login (and anything new under /api/auth): strict.
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
         }
-        if (path.equals("/api/me/analytics") && "POST".equalsIgnoreCase(method)) {
+        if ((path.equals("/api/me/analytics") || path.equals("/api/public/analytics"))
+                && "POST".equalsIgnoreCase(method)) {
+            // /api/public/analytics is the site's anonymous twin — unauthenticated, so it must be capped too.
             // The client flushes on a timer (~4/min) plus on close; this leaves room for a busy
             // session and still caps a client that decided to send an event per tap.
             return new Bucket(analyticsFlushes, ANALYTICS_LIMIT, 60);

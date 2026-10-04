@@ -1,5 +1,7 @@
 package com.maxsolch.shop.analytics.metrics;
 
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.analytics.AnalyticsReader;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.analytics.EventClassifier;
@@ -31,11 +33,14 @@ public class AdminMetricsService {
     private final MetricsFactsLoader loader;
     private final AnalyticsReader analytics;
     private final ZoneId zone;
+    private final SettingsService settings;
 
-    public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, AppProperties props) {
+    public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, AppProperties props,
+                               SettingsService settings) {
         this.loader = loader;
         this.analytics = analytics;
         this.zone = AnalyticsZone.of(props);
+        this.settings = settings;
     }
 
     public MetricsPeriod period(String token, String from, String to) {
@@ -61,7 +66,8 @@ public class AdminMetricsService {
         MetricsFacts facts = loader.load();
         Map<String, ReorderCalculator.Interest> interest = interest30(facts.now());
         Reorder reorder = new ReorderCalculator().compute(facts, interest, normaliseCover(coverDays));
-        int dead = StockCalculator.DEAD_DAYS.contains(deadDays) ? deadDays : StockCalculator.DEFAULT_DEAD_DAYS;
+        int dead = StockCalculator.DEAD_DAYS.contains(deadDays) ? deadDays
+                : settings.getInt(SettingsRegistry.METRICS_DEAD_STOCK_DAYS);
         return new StockCalculator().compute(facts, period, channel, dead, interest, reorder);
     }
 
@@ -116,8 +122,9 @@ public class AdminMetricsService {
         }
 
         Reorder reorder = new ReorderCalculator().compute(facts, interest30(now), 30);
+        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
         List<ReorderRow> soon = reorder.rows().stream()
-                .filter(r -> r.daysToZero() != null && r.daysToZero() <= ReorderCalculator.LOW_STOCK_DAYS)
+                .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
                 .toList();
         MetricsDtos.MonthForecast month = new ForecastCalculator(zone).compute(facts, ChannelFilter.ALL).month();
         return new MetricsDtos.Today(toApprove, toShip, awaiting,

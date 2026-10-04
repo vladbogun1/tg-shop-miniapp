@@ -12,7 +12,7 @@
  *  - Column money totals come from the server.
  *  - Realtime: polling refetch (board query refetchInterval).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   DndContext,
@@ -23,7 +23,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, X } from "lucide-react";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { CLOSED_STATUSES, STATUS_LABEL, STATUS_ORDER, canTransition, shortId } from "@/lib/orders";
@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { QueryState } from "@/components/ui/QueryState";
+import { TodayStrip } from "@/components/metrics/TodayStrip";
 import { KanbanColumn } from "@/components/orders/KanbanColumn";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
@@ -84,7 +85,32 @@ export default function BoardPage() {
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
   });
-  const board = boardQ.data;
+  // «Сегодня» links land here as /?status=NEW or /?payment=claimed. Read once from the URL (no
+  // useSearchParams: it would force a Suspense boundary around the whole board).
+  const [claimedOnly, setClaimedOnly] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status") as OrderStatus | null;
+    if (status && STATUS_ORDER.includes(status)) setMobileTab(status);
+    if (params.get("payment") === "claimed") setClaimedOnly(true);
+  }, []);
+  function clearClaimed() {
+    setClaimedOnly(false);
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+
+  const rawBoard = boardQ.data;
+  // "Ждут подтверждения оплаты": the customer sent a screenshot that nobody has verified yet.
+  const board = useMemo<AdminBoard | undefined>(() => {
+    if (!rawBoard || !claimedOnly) return rawBoard;
+    const columns = Object.fromEntries(
+      Object.entries(rawBoard.columns).map(([k, v]) => [k, (v ?? []).filter((o) => o.paymentClaimed && !o.paid)])
+    ) as AdminBoard["columns"];
+    const counts = Object.fromEntries(
+      Object.entries(columns).map(([k, v]) => [k, v?.length ?? 0])
+    ) as AdminBoard["counts"];
+    return { ...rawBoard, columns, counts, sums: undefined };
+  }, [rawBoard, claimedOnly]);
 
   const findCard = useMemo(() => {
     return (id: string | null): OrderCardDto | undefined => {
@@ -233,7 +259,15 @@ export default function BoardPage() {
         <OrdersTable search={debouncedSearch} range={range} onOpen={setOpenId} />
       ) : (
         <>
-          {/* TodayStrip */}
+          <TodayStrip />
+          {claimedOnly && (
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-[13px] font-bold text-[var(--text)]">Показаны только заказы, где ждут подтверждения оплаты</span>
+              <Button variant="ghost" icon={<X className="h-4 w-4" />} onClick={clearClaimed}>
+                Сбросить
+              </Button>
+            </div>
+          )}
           <QueryState
             isLoading={boardQ.isLoading || (!board && !boardQ.isError)}
             isError={boardQ.isError && !board}
