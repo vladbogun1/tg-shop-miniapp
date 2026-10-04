@@ -1,0 +1,15 @@
+app:
+  telegram:
+    bot-token: ${BOT_TOKEN:PASTE_REAL_TOKEN_HERE}
+    bot-username: ${BOT_USERNAME:ChiSetupBot}
+  invite:
+    landing-image-url: ${LANDING_IMAGE_URL:https://ru.files.fm/f/evk8czqqdj}
+    # Everything below can be overridden from ENV; the defaults are what the bot has always sent.
+    caption: "${INVITE_CAPTION:Добро пожаловать! Выбирай нужный раздел ниже 👇}"
+    buttons:
+      - text: "${INVITE_SHOP_TEXT:🛍️ Магазин}"
+        url: "${INVITE_SHOP_URL:https://t.me/ChiSetup}"
+      - text: "${INVITE_REVIEWS_TEXT:⭐ Отзывы}"
+        url: "${INVITE_REVIEWS_URL:https://t.me/ChiSetup_Comments}"
+      - text: "${INVITE_CHANNEL_TEXT:📣 Основной канал}"
+        url: "${INVITE_CHANNEL_URL:https://t.me/maxsolch}"

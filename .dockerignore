@@ -13,6 +13,8 @@ migration
 infra
 docs
 safety-backups
+# Standalone bots have their own build context (bots/<name>/).
+bots
 **/*.md
 # Legal texts of the website are markdown rendered at runtime — they must reach the image.
 !site/content/**/*.md
