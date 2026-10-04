@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -43,12 +44,16 @@ class PromoServiceTest {
     PromoReservationRepository reservationRepository;
     @Mock
     com.maxsolch.shop.i18n.Messages messages;
+    @Mock
+    com.maxsolch.shop.settings.SettingsService settings;
 
     PromoService service;
 
     @BeforeEach
     void setUp() {
-        service = new PromoService(promoCodeRepository, reservationRepository, messages);
+        service = new PromoService(promoCodeRepository, reservationRepository, messages, settings);
+        // No stored setting: the default hold applies, as on a fresh deployment.
+        lenient().when(settings.get(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         // The wording is the message catalogue's job (MessageBundlesTest); here only the decision
         // matters, so every key resolves to itself.
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -105,6 +110,23 @@ class PromoServiceTest {
         verify(reservationRepository).save(saved.capture());
         assertThat(saved.getValue().getTelegramUserId()).isEqualTo(USER);
         assertThat(saved.getValue().getPromoCodeId()).isEqualTo(promo.getId());
+    }
+
+    @Test
+    void reserveUsesTheHoldLengthFromSettings() {
+        PromoCode promo = code("LIMITED", 3, 1);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("LIMITED")).thenReturn(Optional.of(promo));
+        when(reservationRepository.countOthers(eq(promo.getId()), eq(USER), any())).thenReturn(0L);
+        when(reservationRepository.find(promo.getId(), USER)).thenReturn(Optional.empty());
+        when(settings.get(eq(com.maxsolch.shop.settings.SettingsRegistry.PROMO_HOLD_MINUTES), anyInt()))
+                .thenReturn(120);
+
+        Instant before = Instant.now();
+        PromoPreviewDto result = service.reserve("LIMITED", SUBTOTAL, USER);
+
+        assertThat(result.reservedUntil())
+                .isAfter(before.plusSeconds(119 * 60))
+                .isBefore(before.plusSeconds(121 * 60));
     }
 
     @Test

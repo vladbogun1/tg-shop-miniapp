@@ -8,6 +8,8 @@ import com.maxsolch.shop.domain.NovaPoshtaCity;
 import com.maxsolch.shop.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.repository.NovaPoshtaCityRepository;
 import com.maxsolch.shop.repository.NovaPoshtaWarehouseRepository;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,9 +56,16 @@ public class NovaPoshtaSyncService {
     private static final int LIMIT = 500;
     private static final int MAX_PAGES = 200; // safety cap
 
+    /** System keys (shop_settings) shown read-only on the admin «Настройки → Система» block. */
+    public static final String SYSTEM_LAST_SYNC_AT = "np.lastSyncAt";
+    public static final String SYSTEM_LAST_SYNC_SUMMARY = "np.lastSyncSummary";
+    public static final String SYSTEM_LAST_ERROR_AT = "np.lastErrorAt";
+    public static final String SYSTEM_LAST_ERROR = "np.lastError";
+
     private final AppProperties props;
     private final NovaPoshtaWarehouseRepository warehouseRepository;
     private final NovaPoshtaUpsertService upsertService;
+    private final SettingsService settings;
     /** One daemon thread: the sync is a rare, long, strictly serial job. */
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "np-sync");
@@ -71,10 +81,12 @@ public class NovaPoshtaSyncService {
 
     public NovaPoshtaSyncService(AppProperties props,
                                  NovaPoshtaWarehouseRepository warehouseRepository,
-                                 NovaPoshtaUpsertService upsertService) {
+                                 NovaPoshtaUpsertService upsertService,
+                                 SettingsService settings) {
         this.props = props;
         this.warehouseRepository = warehouseRepository;
         this.upsertService = upsertService;
+        this.settings = settings;
     }
 
     @PreDestroy
@@ -96,6 +108,12 @@ public class NovaPoshtaSyncService {
 
     @Scheduled(cron = "${app.novaposhta.sync-cron:0 30 3 * * *}")
     public void scheduledSync() {
+        // The admin can pause the nightly run (Настройки → Новая Почта) while the NP API misbehaves;
+        // the startup sync of an empty table still runs, without it checkout has no warehouses.
+        if (!settings.getBool(SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)) {
+            log.info("Nova Poshta nightly sync disabled in settings — skipping.");
+            return;
+        }
         syncAsync();
     }
 
@@ -106,6 +124,8 @@ public class NovaPoshtaSyncService {
                 sync();
             } catch (Exception e) {
                 log.warn("Nova Poshta sync failed: {}", e.getMessage());
+                settings.putSystem(SYSTEM_LAST_ERROR_AT, Instant.now().toString());
+                settings.putSystem(SYSTEM_LAST_ERROR, String.valueOf(e.getMessage()));
             }
         });
     }
@@ -146,6 +166,15 @@ public class NovaPoshtaSyncService {
 
             upsertService.saveCities(cities.values());
             log.info("Nova Poshta sync done: {} warehouses, {} cities.", total, cities.size());
+            if (total == 0) {
+                // A non-200 or an empty first page is not a successful sync, whatever the log says.
+                settings.putSystem(SYSTEM_LAST_ERROR_AT, Instant.now().toString());
+                settings.putSystem(SYSTEM_LAST_ERROR, "API Новой Почты не вернул ни одного отделения");
+            } else {
+                settings.putSystem(SYSTEM_LAST_SYNC_AT, Instant.now().toString());
+                settings.putSystem(SYSTEM_LAST_SYNC_SUMMARY,
+                        "отделений: " + total + ", городов: " + cities.size());
+            }
         } finally {
             running.set(false);
         }

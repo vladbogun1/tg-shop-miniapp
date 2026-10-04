@@ -4,6 +4,8 @@ import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.security.TelegramUser;
 import com.maxsolch.shop.service.AuthService;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -33,14 +35,16 @@ public class ShopBot extends TelegramLongPollingBot {
     private final AuthService authService;
     private final Messages messages;
     private final WebLoginBotHandler webLogin;
+    private final SettingsService settings;
 
     public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages,
-                   @Lazy WebLoginBotHandler webLogin) {
+                   @Lazy WebLoginBotHandler webLogin, SettingsService settings) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
         this.authService = authService;
         this.messages = messages;
         this.webLogin = webLogin;
+        this.settings = settings;
     }
 
     @Override
@@ -112,7 +116,7 @@ public class ShopBot extends TelegramLongPollingBot {
         String webapp = props.getWebappBaseUrl();
         SendMessage msg = SendMessage.builder()
                 .chatId(String.valueOf(chatId))
-                .text(messages.get(locale, "bot.start.text"))
+                .text(startText(locale))
                 .build();
         if (webapp != null && !webapp.isBlank()) {
             InlineKeyboardButton btn = InlineKeyboardButton.builder()
@@ -124,6 +128,12 @@ public class ShopBot extends TelegramLongPollingBot {
                     .build());
         }
         executeSafe(msg);
+    }
+
+    /** The admin's greeting for this language (Настройки → Бот), else the bundled one. */
+    private String startText(Locale locale) {
+        String custom = settings.get(SettingsRegistry.BOT_START_TEXT_PREFIX + locale.getLanguage(), "");
+        return custom == null || custom.isBlank() ? messages.get(locale, "bot.start.text") : custom;
     }
 
     private void sendHelp(long chatId, String languageCode) {

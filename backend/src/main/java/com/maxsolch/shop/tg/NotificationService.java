@@ -6,6 +6,8 @@ import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.service.OrderQueryService;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -35,11 +37,14 @@ public class NotificationService {
     private final ShopBot bot;
     private final AppProperties props;
     private final Messages messages;
+    private final SettingsService settings;
 
-    public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages) {
+    public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages,
+                               SettingsService settings) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
+        this.settings = settings;
     }
 
     private boolean enabled() {
@@ -133,7 +138,8 @@ public class NotificationService {
 
     /** DM the customer about a status change (only if tg_user_id is present and > 0). */
     public void notifyCustomerStatus(Order order) {
-        if (!enabled()) {
+        // Admin switch (Настройки → Уведомления), e.g. while bulk-fixing statuses.
+        if (!enabled() || !settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)) {
             return;
         }
         Long tgUserId = order.getTgUserId();
