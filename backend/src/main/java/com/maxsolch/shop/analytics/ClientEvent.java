@@ -2,6 +2,8 @@ package com.maxsolch.shop.analytics;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,7 +14,7 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * One thing a customer did in the Mini App.
+ * One thing a customer did in the Mini App or on the website.
  *
  * <p>Deliberately flat and free of foreign keys: this is a journal for working out why a session
  * went wrong, not a modelled part of the domain, and it must never make a write to the shop fail.
@@ -28,8 +30,18 @@ public class ClientEvent {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "telegram_user_id", nullable = false)
-    private long telegramUserId;
+    /** MINIAPP or WEB; see {@link EventChannel}. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel", nullable = false)
+    private EventChannel channel = EventChannel.MINIAPP;
+
+    /** Null for an anonymous website visitor who has not signed in yet. */
+    @Column(name = "telegram_user_id")
+    private Long telegramUserId;
+
+    /** Browser-generated id of a website visitor, kept before and after sign-in. */
+    @Column(name = "anon_id", length = 64)
+    private String anonId;
 
     @Column(name = "session_id", nullable = false, length = 64)
     private String sessionId;
@@ -45,6 +57,10 @@ public class ClientEvent {
 
     @Column(name = "meta", length = 512)
     private String meta;
+
+    /** Parsed from a structured event's {@code meta.productId} so aggregates need no JSON. */
+    @Column(name = "product_id", columnDefinition = "BINARY(16)")
+    private byte[] productId;
 
     @Column(name = "client_time", nullable = false)
     private Instant clientTime;

@@ -1,5 +1,8 @@
 package com.maxsolch.shop.analytics;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxsolch.shop.common.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -9,13 +12,18 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
- * Stores the click journal the Mini App sends in batches.
+ * Stores the event journal the Mini App and the website send in batches.
  *
  * <p>Two rules shape this: it is written in flushes rather than per tap, so the database is not
  * touched on every interaction; and nothing here may break the shop — a malformed or oversized
  * batch is trimmed and accepted, never rejected in a way the customer would notice.
+ *
+ * <p>Structured events ({@link StructuredEvents}) carry a JSON {@code meta}; its {@code productId}
+ * is lifted into its own column so the nightly aggregation ({@link AnalyticsAggregationService})
+ * never has to parse JSON in SQL.
  */
 @Slf4j
 @Service
@@ -24,15 +32,26 @@ public class ClientEventService {
     /** Per flush. The client batches ~every 15s; anything beyond this is noise or abuse. */
     private static final int MAX_EVENTS_PER_BATCH = 200;
 
-    /** This is a debugging journal, not analytics storage — it is not kept forever. */
-    private static final Duration RETENTION = Duration.ofDays(30);
+    /** The open web gets a tighter cap: it is unauthenticated and only sends a handful of events. */
+    private static final int MAX_WEB_EVENTS_PER_BATCH = 50;
+
+    /**
+     * This is a journal, not analytics storage — it is not kept forever. What outlives it is the
+     * daily roll-up in {@code analytics_daily*} (written by {@link AnalyticsAggregationService}).
+     */
+    static final Duration RETENTION = Duration.ofDays(30);
+
+    private static final Pattern ANON_ID = Pattern.compile("[A-Za-z0-9_-]{8,64}");
 
     private final ClientEventRepository repository;
+    private final ObjectMapper objectMapper;
 
-    public ClientEventService(ClientEventRepository repository) {
+    public ClientEventService(ClientEventRepository repository, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.objectMapper = objectMapper;
     }
 
+    /** A Mini App flush: always a signed-in Telegram user. */
     @Transactional
     public int record(long telegramUserId, ClientEventBatch batch) {
         if (batch == null || batch.events() == null || batch.events().isEmpty()) {
@@ -42,30 +61,83 @@ public class ClientEventService {
         if (sessionId == null) {
             return 0;
         }
+        return save(build(EventChannel.MINIAPP, telegramUserId, null, sessionId,
+                batch.events(), MAX_EVENTS_PER_BATCH, false));
+    }
+
+    /**
+     * A website flush. {@code telegramUserId} is null for a visitor who has not signed in; the
+     * browser's anonymous id ties their events together either way. Only the structured events and
+     * page views are accepted from the open web.
+     */
+    @Transactional
+    public int recordWeb(Long telegramUserId, WebEventBatch batch) {
+        if (batch == null || batch.events() == null || batch.events().isEmpty()) {
+            return 0;
+        }
+        String anonId = trim(batch.anonId(), 64);
+        if (anonId == null || !ANON_ID.matcher(anonId).matches()) {
+            return 0;
+        }
+        String sessionId = trim(batch.sessionId(), 64);
+        return save(build(EventChannel.WEB, telegramUserId, anonId,
+                sessionId == null ? anonId : sessionId, batch.events(), MAX_WEB_EVENTS_PER_BATCH, true));
+    }
+
+    private List<ClientEvent> build(EventChannel channel, Long telegramUserId, String anonId,
+                                    String sessionId, List<ClientEventDto> events, int cap,
+                                    boolean whitelistOnly) {
         Instant now = Instant.now();
         List<ClientEvent> rows = new ArrayList<>();
-        for (ClientEventDto dto : batch.events().stream().limit(MAX_EVENTS_PER_BATCH).toList()) {
-            if (dto == null || trim(dto.event(), 64) == null) {
+        for (ClientEventDto dto : events.stream().limit(cap).toList()) {
+            String event = dto == null ? null : trim(dto.event(), 64);
+            if (event == null) {
+                continue;
+            }
+            if (whitelistOnly && !StructuredEvents.WEB_ALLOWED.contains(event)) {
                 continue;
             }
             ClientEvent row = new ClientEvent();
+            row.setChannel(channel);
             row.setTelegramUserId(telegramUserId);
+            row.setAnonId(anonId);
             row.setSessionId(sessionId);
-            row.setEvent(trim(dto.event(), 64));
+            row.setEvent(event);
             row.setTarget(trim(dto.target(), 255));
             row.setPath(trim(dto.path(), 255));
             row.setMeta(trim(dto.meta(), 512));
+            row.setProductId(productIdOf(row.getMeta()));
             // A device clock can be wrong by years; keep the reported time but never let it order
             // events after the flush that carried them.
             row.setClientTime(dto.clientTime() == null || dto.clientTime().isAfter(now)
                     ? now : dto.clientTime());
             rows.add(row);
         }
+        return rows;
+    }
+
+    private int save(List<ClientEvent> rows) {
         if (rows.isEmpty()) {
             return 0;
         }
         repository.saveAll(rows);
         return rows.size();
+    }
+
+    /** {@code productId} from a JSON meta, or null — never throws on a malformed payload. */
+    byte[] productIdOf(String meta) {
+        if (meta == null || meta.isEmpty() || meta.charAt(0) != '{') {
+            return null;
+        }
+        try {
+            JsonNode node = objectMapper.readTree(meta).get("productId");
+            if (node == null || !node.isTextual()) {
+                return null;
+            }
+            return UuidUtil.toBytes(node.asText());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Scheduled(cron = "${app.analytics.purge-cron:0 15 4 * * *}")
