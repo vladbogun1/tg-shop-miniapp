@@ -21,21 +21,24 @@ final class OrderSearchQueries {
 
     /**
      * Free-text match across the order's own fields and its item titles. {@code q} must already be
-     * lowercased and wrapped in {@code %...%}; {@code idKey} is set when {@code q} parses as a UUID
-     * so searching by order id works.
+     * lowercased, LIKE-escaped with {@code !} and wrapped in {@code %...%} (see
+     * {@link OrderSearchTerm}). {@code idLo}/{@code idHi} are set when the query looks like an
+     * order number — the 8-character short id shown everywhere ({@code #5bf865c4}), any longer
+     * prefix, or the full UUID — and match it as a range over the binary primary key, so it is an
+     * index range scan rather than a hex() over every row.
      */
     static final String TEXT =
             "(:q is null or "
-            + "  (:idKey is not null and o.id = :idKey) "
-            + "  or lower(o.customerName) like :q "
-            + "  or lower(o.phone) like :q "
-            + "  or lower(coalesce(o.trackingNumber, '')) like :q "
-            + "  or lower(coalesce(o.promoCode, '')) like :q "
-            + "  or lower(coalesce(o.npWarehouseName, '')) like :q "
-            + "  or lower(coalesce(o.npCityName, '')) like :q "
-            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q "
+            + "  (:idLo is not null and o.id between :idLo and :idHi) "
+            + "  or lower(o.customerName) like :q escape '!' "
+            + "  or lower(o.phone) like :q escape '!' "
+            + "  or lower(coalesce(o.trackingNumber, '')) like :q escape '!' "
+            + "  or lower(coalesce(o.promoCode, '')) like :q escape '!' "
+            + "  or lower(coalesce(o.npWarehouseName, '')) like :q escape '!' "
+            + "  or lower(coalesce(o.npCityName, '')) like :q escape '!' "
+            + "  or lower(coalesce(o.paymentOptionTitle, '')) like :q escape '!' "
             + "  or exists (select 1 from OrderItem it where it.order = o "
-            + "             and lower(it.titleSnapshot) like :q)) ";
+            + "             and lower(it.titleSnapshot) like :q escape '!')) ";
 
     /** Optional status filter (null = any status). */
     static final String ANY_STATUS = "(:status is null or o.status = :status) ";

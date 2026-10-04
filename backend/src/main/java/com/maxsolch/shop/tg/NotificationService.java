@@ -434,7 +434,12 @@ public class NotificationService {
      * tracked id either way so the card is never re-deleted.
      */
     public void removeDispatchCard(Order order) {
-        Integer messageId = order.getDispatchMessageId();
+        removeDispatchCard(order.getDispatchMessageId());
+        order.setDispatchMessageId(null);
+    }
+
+    /** Deletes a dispatch card by its message id (best-effort; null = nothing to do). */
+    public void removeDispatchCard(Integer messageId) {
         String chatId = props.getTelegram().getNotifyChatId();
         if (messageId == null || chatId == null || chatId.isBlank()) {
             return;
@@ -445,9 +450,8 @@ public class NotificationService {
                     .messageId(messageId)
                     .build());
         } catch (Exception e) {
-            log.debug("removeDispatchCard failed for order {}: {}", idStr(order), e.getMessage());
+            log.debug("removeDispatchCard failed for message {}: {}", messageId, e.getMessage());
         }
-        order.setDispatchMessageId(null);
     }
 
     /** Seller-facing dispatch card: address, items, and the exact COD (наложка) to set. */

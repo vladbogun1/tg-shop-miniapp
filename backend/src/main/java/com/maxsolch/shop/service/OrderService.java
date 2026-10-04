@@ -5,6 +5,7 @@ import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
@@ -18,6 +19,8 @@ import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -29,6 +32,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -58,6 +62,7 @@ public class OrderService {
     private final PromoService promoService;
     private final CartService cartService;
     private final Messages messages;
+    private final EntityManager entityManager;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
@@ -67,7 +72,8 @@ public class OrderService {
                         ApplicationEventPublisher events,
                         PromoService promoService,
                         CartService cartService,
-                        Messages messages) {
+                        Messages messages,
+                        EntityManager entityManager) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -77,6 +83,7 @@ public class OrderService {
         this.promoService = promoService;
         this.cartService = cartService;
         this.messages = messages;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -212,7 +219,7 @@ public class OrderService {
 
     @Transactional
     public Order approve(byte[] orderId) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.NEW) {
             throw new BadRequestException("only NEW orders can be approved");
         }
@@ -224,7 +231,7 @@ public class OrderService {
 
     @Transactional
     public Order ship(byte[] orderId, String trackingNumber) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.APPROVED && order.getStatus() != OrderStatus.NEW) {
             throw new BadRequestException("order must be NEW or APPROVED to ship");
         }
@@ -238,7 +245,7 @@ public class OrderService {
 
     @Transactional
     public Order deliver(byte[] orderId) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.SHIPPED) {
             throw new BadRequestException("only SHIPPED orders can be delivered");
         }
@@ -261,7 +268,7 @@ public class OrderService {
      */
     @Transactional
     public Order cancelByCustomer(byte[] orderId, String reason) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (order.isPaid()) {
             throw new BadRequestException("оплаченный заказ нельзя отменить — напишите в чат");
         }
@@ -283,7 +290,7 @@ public class OrderService {
      */
     @Transactional
     public Order reject(byte[] orderId, String reason, boolean restock) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (order.getStatus() == OrderStatus.REJECTED) {
             throw new BadRequestException("order already rejected");
         }
@@ -316,18 +323,43 @@ public class OrderService {
     }
 
     /**
+     * The order, row-locked ({@code SELECT ... FOR UPDATE}) for the rest of the transaction, with
+     * its state as of AFTER the lock was granted.
+     *
+     * <p>The refresh matters: with open-in-view the request's persistence context usually already
+     * holds this order (the controller loaded it to check access/existence), and a locking query
+     * then hands back that cached instance untouched. Two concurrent rejects would both still see
+     * {@code NEW} after waiting for each other's lock — and both return the stock. Refreshing with
+     * the lock re-reads the committed row.
+     */
+    private Order lock(byte[] orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("order not found"));
+        entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
+        return order;
+    }
+
+    /**
      * Sync the seller "К ОТПРАВКЕ" topic with the current APPROVED orders. For each order we
      * reconcile its card with Telegram: missing cards are posted, manually-deleted cards are
      * re-posted, and existing cards are refreshed in place. Idempotent — pressing the button
      * repeatedly never creates duplicates. Returns how many cards were (re)posted.
+     *
+     * <p>Deliberately NOT one transaction: that held a database connection (and the transaction)
+     * open across one Bot API round trip per approved order. The orders are read with their items
+     * up front, Telegram is called with no transaction open, and each changed card id is written
+     * back on its own in a short update.
      */
-    @Transactional
     public int broadcastDispatch() {
-        List<Order> approved = orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED);
+        List<Order> approved = orderRepository.findWithItemsByStatus(OrderStatus.APPROVED);
         int posted = 0;
         for (Order o : approved) {
+            Integer before = o.getDispatchMessageId();
             if (notificationService.syncDispatchCard(o)) {
                 posted++;
+            }
+            if (!Objects.equals(before, o.getDispatchMessageId())) {
+                orderRepository.updateDispatchMessageId(o.getId(), o.getDispatchMessageId());
             }
         }
         return posted;
@@ -341,7 +373,7 @@ public class OrderService {
      */
     @Transactional
     public Order claimPayment(byte[] orderId) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         if (!order.isPaymentClaimed()) {
             order.setPaymentClaimed(true);
             order.setPaymentClaimedAt(Instant.now());
@@ -358,8 +390,17 @@ public class OrderService {
      */
     @Transactional
     public Order markPaid(byte[] orderId, long receivedMinor) {
-        Order order = get(orderId);
-        long received = Math.max(0, Math.min(receivedMinor, order.getTotalMinor()));
+        Order order = lock(orderId);
+        if (receivedMinor < 0) {
+            throw new BadRequestException("сумма не может быть отрицательной");
+        }
+        if (receivedMinor > order.getTotalMinor()) {
+            // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" without
+            // the admin noticing the amount they typed was never what got saved.
+            throw new BadRequestException("получено больше суммы заказа ("
+                    + order.getTotalMinor() / 100 + " " + order.getCurrency() + ")");
+        }
+        long received = receivedMinor;
         order.setReceivedMinor(received);
         boolean paid = received > 0;
         order.setPaid(paid);
@@ -377,7 +418,7 @@ public class OrderService {
     @Transactional
     public Order addItem(byte[] orderId, String productId, String variantId, int qty,
                          boolean gift, boolean notifyCustomer) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         requireEditable(order);
         if (qty < 1) {
             throw new BadRequestException("quantity must be >= 1");
@@ -436,16 +477,10 @@ public class OrderService {
         return saved;
     }
 
-    /** Admin adds a FREE gift (shortcut: addItem with gift=true). */
-    @Transactional
-    public Order addGift(byte[] orderId, String productId, String variantId, int qty, boolean notifyCustomer) {
-        return addItem(orderId, productId, variantId, qty, true, notifyCustomer);
-    }
-
     /** Admin removes an order item (a gift or a line), restoring its stock and recomputing totals. */
     @Transactional
     public Order removeItem(byte[] orderId, long itemId) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         requireEditable(order);
         OrderItem item = order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
@@ -462,7 +497,7 @@ public class OrderService {
     /** Admin changes an item's quantity, reserving/releasing stock by the delta. */
     @Transactional
     public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         requireEditable(order);
         if (newQty < 1) {
             throw new BadRequestException("quantity must be >= 1 (use remove to delete)");
@@ -496,7 +531,7 @@ public class OrderService {
     @Transactional
     public Order applyDiscount(byte[] orderId, String promoCode, Long amountMinor,
                                Integer percent, boolean clear, boolean notifyCustomer) {
-        Order order = get(orderId);
+        Order order = lock(orderId);
         requireEditable(order);
         long subtotal = order.getItems().stream()
                 .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
@@ -533,6 +568,56 @@ public class OrderService {
         events.publishEvent(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
         return saved;
+    }
+
+    // ----- admin hard delete -----
+
+    /** What was deleted, for the audit line written after the commit. */
+    public record DeletedOrder(String customerName, long totalMinor, OrderStatus status,
+                               boolean restocked, String promoCode, int attachments) {
+    }
+
+    /**
+     * Deletes an order for good (cascade: items and chat). Only closed orders — DELIVERED or
+     * REJECTED — may go; anything still in progress is a 400, the UI never offered it and the API
+     * now agrees.
+     *
+     * <p>A deleted order must not leave its side effects behind:
+     * <ul>
+     *   <li>stock — a REJECTED order already settled its stock when it was rejected (restocked or
+     *       deliberately not), so only a DELIVERED one returns its units, and only when
+     *       {@code restock} is true;</li>
+     *   <li>promo usage — rejecting does not give the use back, so it is released here for both;</li>
+     *   <li>chat attachments ({@code chat/*}, customers' payment screenshots) and the seller's
+     *       dispatch card — removed after the commit (see {@link OrderEvents.Deleted}).</li>
+     * </ul>
+     */
+    @Transactional
+    public DeletedOrder delete(byte[] orderId, boolean restock) {
+        Order order = lock(orderId);
+        OrderStatus status = order.getStatus();
+        if (status != OrderStatus.DELIVERED && status != OrderStatus.REJECTED) {
+            throw new BadRequestException(
+                    "удалить можно только доставленный или отклонённый заказ — сначала отклоните его");
+        }
+        boolean restocked = status != OrderStatus.REJECTED && restock;
+        if (restocked) {
+            restoreStock(order);
+        }
+        releasePromoUsage(order.getPromoCode());
+
+        List<String> attachmentKeys = order.getMessages().stream()
+                .map(OrderMessage::getAttachmentUrl)
+                .filter(key -> key != null && key.startsWith("chat/"))
+                .distinct()
+                .toList();
+        Integer dispatchMessageId = order.getDispatchMessageId();
+        DeletedOrder summary = new DeletedOrder(order.getCustomerName(), order.getTotalMinor(), status,
+                restocked, order.getPromoCode(), attachmentKeys.size());
+
+        orderRepository.delete(order);
+        events.publishEvent(new OrderEvents.Deleted(order.getId(), dispatchMessageId, attachmentKeys));
+        return summary;
     }
 
     // ----- helpers -----
@@ -620,7 +705,8 @@ public class OrderService {
         if (code == null || code.isBlank()) {
             return;
         }
-        promoCodeRepository.findByCode(code).ifPresent(p -> {
+        // Locked like the checkout's increment, or the two could overwrite each other's count.
+        promoCodeRepository.findByCodeForUpdate(code).ifPresent(p -> {
             if (p.getUsesCount() > 0) {
                 p.setUsesCount(p.getUsesCount() - 1);
                 promoCodeRepository.save(p);
@@ -639,8 +725,15 @@ public class OrderService {
         return saved;
     }
 
+    /**
+     * Returns every line to stock. Product rows are locked in id order — the same order
+     * {@link #createOrder} uses — so a cancellation and a checkout touching the same two products
+     * cannot deadlock each other.
+     */
     private void restoreStock(Order order) {
-        for (OrderItem item : order.getItems()) {
+        List<OrderItem> items = new ArrayList<>(order.getItems());
+        items.sort(Comparator.comparing(i -> UuidUtil.toString(i.getProductId())));
+        for (OrderItem item : items) {
             restoreItemStock(item);
         }
     }

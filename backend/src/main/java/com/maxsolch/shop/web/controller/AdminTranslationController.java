@@ -1,6 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.translation.TranslationAdminService;
 import com.maxsolch.shop.translation.TranslationDtos.DeleteResult;
@@ -38,10 +39,13 @@ public class AdminTranslationController {
 
     private final TranslationAdminService service;
     private final AdminAuditService audit;
+    private final SiteRevalidator siteRevalidator;
 
-    public AdminTranslationController(TranslationAdminService service, AdminAuditService audit) {
+    public AdminTranslationController(TranslationAdminService service, AdminAuditService audit,
+                                      SiteRevalidator siteRevalidator) {
         this.service = service;
         this.audit = audit;
+        this.siteRevalidator = siteRevalidator;
     }
 
     @GetMapping("/export")
@@ -63,6 +67,11 @@ public class AdminTranslationController {
                         + ": applied " + r.applied() + ", stale " + r.skippedStale()
                         + ", manual " + r.skippedManual() + ", notFound " + r.notFound()
                         + ", invalid " + r.invalid());
+        if (r.applied() > 0) {
+            // Translated text is on every page of the uk/en site (titles, categories, payment
+            // methods) — without this it stayed stale until each page's ISR timer ran out.
+            siteRevalidator.allChanged();
+        }
         return r;
     }
 
@@ -75,6 +84,9 @@ public class AdminTranslationController {
         audit.record("TRANSLATIONS_SOURCE_FIX", first.entityType(), first.entityId(),
                 "fields " + body.items().size() + " (" + first.field() + "): updated " + r.updated()
                         + ", stale " + r.skippedStale() + ", translations " + r.translationsApplied());
+        if (r.updated() > 0 || r.translationsApplied() > 0) {
+            siteRevalidator.allChanged();
+        }
         return r;
     }
 
@@ -94,6 +106,9 @@ public class AdminTranslationController {
         audit.record("TRANSLATIONS_DELETE", "TRANSLATION", entityId == null ? locale : entityId,
                 "locale " + locale + (entityType == null ? "" : ", " + entityType)
                         + (field == null || field.isBlank() ? "" : "." + field) + ": deleted " + deleted);
+        if (deleted > 0) {
+            siteRevalidator.allChanged();
+        }
         return new DeleteResult(deleted);
     }
 }

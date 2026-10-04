@@ -62,6 +62,29 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage(), ex.getCode());
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage(), ex.getCode());
+    }
+
+    /**
+     * Lock contention: a row lock could not be taken in time (two admins / an admin and a customer
+     * acting on the same order at once), a deadlock victim, or a stale optimistic version. None of
+     * these is a server fault — the other action won, and the client should reload and retry.
+     * Without this they surfaced as a 500 "internal error".
+     */
+    @ExceptionHandler({
+            org.springframework.dao.PessimisticLockingFailureException.class,
+            org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+            org.springframework.dao.OptimisticLockingFailureException.class,
+            jakarta.persistence.OptimisticLockException.class,
+            jakarta.persistence.PessimisticLockException.class,
+            jakarta.persistence.LockTimeoutException.class})
+    public ResponseEntity<Map<String, Object>> handleLockFailure(Exception ex) {
+        log.info("Lock conflict: {}", ex.getMessage());
+        return error(HttpStatus.CONFLICT, messages.current("api.error.conflict"), ConflictException.CONFLICT);
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
         return error(HttpStatus.FORBIDDEN, ex.getMessage());

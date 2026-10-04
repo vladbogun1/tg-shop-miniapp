@@ -7,11 +7,15 @@ import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.AdminPaymentOptionDto;
 import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,13 +39,19 @@ public class AdminPaymentController {
     private final PaymentOptionRepository paymentOptionRepository;
     private final PaymentRequisitesRepository requisitesRepository;
     private final AdminAuditService audit;
+    private final SiteRevalidator siteRevalidator;
+    private final Validator validator;
 
     public AdminPaymentController(PaymentOptionRepository paymentOptionRepository,
                                   PaymentRequisitesRepository requisitesRepository,
-                                  AdminAuditService audit) {
+                                  AdminAuditService audit,
+                                  SiteRevalidator siteRevalidator,
+                                  Validator validator) {
         this.paymentOptionRepository = paymentOptionRepository;
         this.requisitesRepository = requisitesRepository;
         this.audit = audit;
+        this.siteRevalidator = siteRevalidator;
+        this.validator = validator;
     }
 
     /**
@@ -70,6 +80,13 @@ public class AdminPaymentController {
     @Operation(summary = "Save the list of payment options (upsert; missing ones are deactivated)")
     public List<AdminPaymentOptionDto> replaceOptions(@RequestBody List<AdminPaymentOptionDto> body) {
         List<AdminPaymentOptionDto> incoming = body == null ? List.of() : body;
+        // A JSON array body is not cascaded into by @Valid, so the elements are checked by hand:
+        // an overlong title used to reach the database and come back as a vague "save failed".
+        for (AdminPaymentOptionDto dto : incoming) {
+            validator.validate(dto).stream().findFirst().ifPresent(v -> {
+                throw new BadRequestException(v.getPropertyPath() + ": " + v.getMessage());
+            });
+        }
 
         Map<String, PaymentOption> existing = new LinkedHashMap<>();
         for (PaymentOption po : paymentOptionRepository.findAllByOrderBySortOrderAsc()) {
@@ -106,6 +123,8 @@ public class AdminPaymentController {
                 paymentOptionRepository.save(entry.getValue());
             }
         }
+        // The site's checkout caches the list under the "payment-options" data tag (after commit).
+        siteRevalidator.paymentChanged();
         return options();
     }
 
@@ -120,7 +139,7 @@ public class AdminPaymentController {
     @PutMapping("/payment-requisites")
     @Transactional
     @Operation(summary = "Update payment requisites")
-    public PaymentRequisitesDto updateRequisites(@RequestBody PaymentRequisitesDto body) {
+    public PaymentRequisitesDto updateRequisites(@Valid @RequestBody PaymentRequisitesDto body) {
         PaymentRequisites r = requisitesRepository.findById(1).orElseGet(() -> {
             PaymentRequisites n = new PaymentRequisites();
             n.setId(1);
@@ -134,7 +153,9 @@ public class AdminPaymentController {
         r.setNote(body.note());
         // Payment details are money-critical and must never be logged verbatim.
         audit.record("PAYMENT_REQUISITES", "PAYMENT", null, "реквизиты обновлены");
-        return toReqDto(requisitesRepository.save(r));
+        PaymentRequisitesDto saved = toReqDto(requisitesRepository.save(r));
+        siteRevalidator.paymentChanged();
+        return saved;
     }
 
     private AdminPaymentOptionDto toDto(PaymentOption p) {

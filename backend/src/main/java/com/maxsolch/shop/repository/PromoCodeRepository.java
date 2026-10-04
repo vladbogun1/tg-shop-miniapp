@@ -24,5 +24,18 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
 
     Optional<PromoCode> findByCode(String code);
 
+    /** Same row lock as above, regardless of {@code active} — for giving a use back. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PromoCode p where p.code = :code")
+    Optional<PromoCode> findByCodeForUpdate(@Param("code") String code);
+
+    /**
+     * Locked load for the admin editor: saving the form writes the whole row, and without the lock a
+     * checkout that took a use in between had its {@code uses_count++} overwritten by the stale form.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from PromoCode p where p.id = :id")
+    Optional<PromoCode> findByIdForUpdate(@Param("id") byte[] id);
+
     List<PromoCode> findAllByOrderByCreatedAtDesc();
 }

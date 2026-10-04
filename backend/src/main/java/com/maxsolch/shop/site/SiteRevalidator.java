@@ -13,6 +13,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Tells the public site (Next.js ISR) which pages to rebuild after an admin edit:
@@ -35,6 +37,9 @@ import java.util.concurrent.Executors;
  *
  * <p>Each path is sent unprefixed and with the {@code /ru} and {@code /en} locale prefixes, since
  * those are separate ISR entries on the site.
+ *
+ * <p>The outcome of the last call is kept ({@link #status()}) so the admin panel can show that the
+ * site stopped picking up changes, instead of the failure living only in the server log.
  */
 @Slf4j
 @Component
@@ -55,6 +60,14 @@ public class SiteRevalidator {
         t.setDaemon(true);
         return t;
     });
+
+    /** Outcome of the most recent call, for {@code GET /api/admin/site/revalidate/status}. */
+    public record Status(boolean enabled, Instant lastSuccessAt, Instant lastErrorAt, String lastError) {
+    }
+
+    private final AtomicReference<Instant> lastSuccessAt = new AtomicReference<>();
+    private final AtomicReference<Instant> lastErrorAt = new AtomicReference<>();
+    private final AtomicReference<String> lastError = new AtomicReference<>();
 
     public SiteRevalidator(AppProperties props, ObjectMapper objectMapper) {
         this.props = props;
@@ -95,6 +108,42 @@ public class SiteRevalidator {
     }
 
     /**
+     * Content that can appear on any page changed (translations): rebuild the whole site, queued
+     * like {@link #revalidate} (after the commit, off the request thread).
+     */
+    public void allChanged() {
+        if (!enabled()) {
+            return;
+        }
+        schedule(() -> send(Map.of("all", true, "paths", List.of()), "all pages"));
+    }
+
+    /**
+     * Payment methods / requisites changed. The site route drops the {@code payment-options} data
+     * tag on every call, so any path will do — the home page is the cheapest one to rebuild.
+     */
+    public void paymentChanged() {
+        revalidate(List.of("/"));
+    }
+
+    /**
+     * Rebuilds the whole site right now (the admin's «Обновить сайт»), synchronously so the caller
+     * can report the outcome.
+     *
+     * @return null on success, otherwise a short description of what went wrong
+     */
+    public String revalidateAllNow() {
+        if (!enabled()) {
+            return "ревалидация выключена (SITE_REVALIDATE_URL не задан)";
+        }
+        return send(Map.of("all", true, "paths", List.of()), "all pages");
+    }
+
+    public Status status() {
+        return new Status(enabled(), lastSuccessAt.get(), lastErrorAt.get(), lastError.get());
+    }
+
+    /**
      * Queues the call; when inside a transaction, only after it commits — otherwise the site could
      * re-render from the database before the change is visible there.
      */
@@ -108,7 +157,11 @@ public class SiteRevalidator {
                 paths.add(prefix.isEmpty() ? p : ("/".equals(p) ? prefix : prefix + p));
             }
         }
-        Runnable task = () -> send(List.copyOf(paths));
+        List<String> list = List.copyOf(paths);
+        schedule(() -> send(Map.of("paths", list), list));
+    }
+
+    private void schedule(Runnable task) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -121,10 +174,11 @@ public class SiteRevalidator {
         }
     }
 
-    private void send(List<String> paths) {
+    /** @return null on success, otherwise the failure (also remembered for {@link #status()}) */
+    private String send(Map<String, Object> payload, Object what) {
         String url = props.getSite().getRevalidateUrl();
         try {
-            String body = objectMapper.writeValueAsString(Map.of("paths", paths));
+            String body = objectMapper.writeValueAsString(payload);
             HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url.trim()))
                     .timeout(Duration.ofSeconds(10))
                     .header("Content-Type", "application/json")
@@ -135,15 +189,26 @@ public class SiteRevalidator {
             }
             HttpResponse<Void> res = http.send(req.build(), HttpResponse.BodyHandlers.discarding());
             if (res.statusCode() >= 300) {
-                log.warn("Site revalidation answered {} for {}", res.statusCode(), paths);
-            } else {
-                log.debug("Site revalidated: {}", paths);
+                log.warn("Site revalidation answered {} for {}", res.statusCode(), what);
+                return failed("сайт ответил HTTP " + res.statusCode());
             }
+            log.debug("Site revalidated: {}", what);
+            lastSuccessAt.set(Instant.now());
+            return null;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            return failed("прервано");
         } catch (Exception e) {
             log.warn("Site revalidation failed ({}): {}", url, e.toString());
+            return failed(e.getClass().getSimpleName()
+                    + (e.getMessage() == null ? "" : ": " + e.getMessage()));
         }
+    }
+
+    private String failed(String error) {
+        lastErrorAt.set(Instant.now());
+        lastError.set(error);
+        return error;
     }
 
     @PreDestroy

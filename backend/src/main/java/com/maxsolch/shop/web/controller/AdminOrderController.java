@@ -5,7 +5,10 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.repository.OrderSearchTerm;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
@@ -21,6 +24,7 @@ import com.maxsolch.shop.web.dto.OrderCardDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UpdateOrderStatusRequest;
+import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,6 +42,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -57,17 +62,23 @@ public class AdminOrderController {
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
     private final AdminAuditService audit;
+    private final ImageStorageService imageStorageService;
+    private final UploadValidator uploadValidator;
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
-                                AdminAuditService audit) {
+                                AdminAuditService audit,
+                                ImageStorageService imageStorageService,
+                                UploadValidator uploadValidator) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.audit = audit;
+        this.imageStorageService = imageStorageService;
+        this.uploadValidator = uploadValidator;
     }
 
     /** Per-status column cap on the board so we never load all 10k orders. */
@@ -104,8 +115,7 @@ public class AdminOrderController {
                                @RequestParam(defaultValue = "month") String range) {
         TimeRange timeRange = TimeRange.parse(range);
         Instant from = timeRange.from();
-        String like = likeOrNull(q);
-        byte[] idKey = idKeyOrNull(q);
+        OrderSearchTerm term = OrderSearchTerm.parse(q);
         Pageable cap = PageRequest.of(0, BOARD_COLUMN_LIMIT);
 
         // Fetch every column first, then map them together: the unread and item counts come from
@@ -114,7 +124,8 @@ public class AdminOrderController {
         Map<String, List<Order>> byStatus = new LinkedHashMap<>();
         List<Order> all = new ArrayList<>();
         for (OrderStatus status : OrderStatus.values()) {
-            List<Order> orders = orderRepository.searchByStatus(status, like, idKey, from, cap);
+            List<Order> orders = orderRepository.searchByStatus(
+                    status, term.like(), term.idLo(), term.idHi(), from, cap);
             byStatus.put(status.name(), orders);
             all.addAll(orders);
         }
@@ -130,7 +141,7 @@ public class AdminOrderController {
         for (OrderStatus status : OrderStatus.values()) {
             counts.put(status.name(), 0L);
         }
-        for (Object[] row : orderRepository.countsByStatus(like, idKey, from)) {
+        for (Object[] row : orderRepository.countsByStatus(term.like(), term.idLo(), term.idHi(), from)) {
             counts.put(((OrderStatus) row[0]).name(), ((Number) row[1]).longValue());
         }
         return new OrderBoardDto(columns, counts);
@@ -154,13 +165,12 @@ public class AdminOrderController {
                                    @RequestParam(defaultValue = "createdAt") String sortBy,
                                    @RequestParam(defaultValue = "desc") String sortDir) {
         OrderStatus statusFilter = parseStatusOrNull(status);
-        String like = likeOrNull(q);
-        byte[] idKey = idKeyOrNull(q);
+        OrderSearchTerm term = OrderSearchTerm.parse(q);
         Instant from = TimeRange.parse(range).from();
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
                 sortOf(sortBy, sortDir));
         return orderQueryService.toCards(
-                orderRepository.search(statusFilter, like, idKey, from, pageable).getContent(),
+                orderRepository.search(statusFilter, term.like(), term.idLo(), term.idHi(), from, pageable).getContent(),
                 SenderType.CUSTOMER);
     }
 
@@ -173,26 +183,6 @@ public class AdminOrderController {
         return Sort.by(direction, property);
     }
 
-    /** Lowercased {@code %term%} for the LIKE predicates, or null when there is no query. */
-    private static String likeOrNull(String q) {
-        if (q == null || q.isBlank()) {
-            return null;
-        }
-        return "%" + q.trim().toLowerCase() + "%";
-    }
-
-    /** Binary order-id key when {@code q} parses as a UUID, so search-by-id works; else null. */
-    private static byte[] idKeyOrNull(String q) {
-        if (q == null || q.isBlank()) {
-            return null;
-        }
-        try {
-            return UuidUtil.toBytes(q.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     @GetMapping("/dispatch")
     @Operation(summary = "Seller dispatch list — approved orders with COD (наложка) amounts")
     public List<DispatchOrderDto> dispatch() {
@@ -202,7 +192,9 @@ public class AdminOrderController {
     @PostMapping("/dispatch/broadcast")
     @Operation(summary = "Post the dispatch cards of all approved orders to the seller Telegram topic")
     public Map<String, Integer> dispatchBroadcast() {
-        return Map.of("posted", orderService.broadcastDispatch());
+        int posted = orderService.broadcastDispatch();
+        audit.record("DISPATCH_BROADCAST", "ORDER", null, "карточек к отправке выложено заново: " + posted);
+        return Map.of("posted", posted);
     }
 
     @GetMapping("/{id}")
@@ -230,23 +222,12 @@ public class AdminOrderController {
     @PatchMapping("/{id}/paid")
     @Operation(summary = "Set the order's paid flag")
     public OrderDetailDto setPaid(@PathVariable String id,
-                                  @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
+                                  @Valid @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
         Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor());
         audit.record("ORDER_PAID", "ORDER", id,
                 req.receivedMinor() > 0
                         ? "подтверждено получено: " + req.receivedMinor() + " (мин. ед.)"
                         : "оплата снята");
-        return orderQueryService.toDetail(updated);
-    }
-
-    @PostMapping("/{id}/gift")
-    @Operation(summary = "Add a free gift product to the order (stock decremented, price 0)")
-    public OrderDetailDto addGift(@PathVariable String id,
-                                  @Valid @RequestBody com.maxsolch.shop.web.dto.GiftRequest req) {
-        int qty = req.quantity() == null ? 1 : req.quantity();
-        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = orderService.addGift(load(id).getId(), req.productId(), req.variantId(), qty, notify);
-        audit.record("ORDER_GIFT", "ORDER", id, "подарок " + req.productId() + " x" + qty);
         return orderQueryService.toDetail(updated);
     }
 
@@ -266,7 +247,7 @@ public class AdminOrderController {
     @PatchMapping("/{id}/items/{itemId}")
     @Operation(summary = "Change an order item's quantity (reserves/releases stock)")
     public OrderDetailDto changeItemQty(@PathVariable String id, @PathVariable long itemId,
-                                        @RequestBody com.maxsolch.shop.web.dto.ChangeItemQtyRequest req) {
+                                        @Valid @RequestBody com.maxsolch.shop.web.dto.ChangeItemQtyRequest req) {
         int qty = req.quantity() == null ? 1 : req.quantity();
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.changeItemQuantity(load(id).getId(), itemId, qty, notify);
@@ -285,7 +266,7 @@ public class AdminOrderController {
     @PostMapping("/{id}/discount")
     @Operation(summary = "Apply/update/remove a discount (promo code or manual amount/percent)")
     public OrderDetailDto discount(@PathVariable String id,
-                                   @RequestBody com.maxsolch.shop.web.dto.ApplyDiscountRequest req) {
+                                   @Valid @RequestBody com.maxsolch.shop.web.dto.ApplyDiscountRequest req) {
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
         Order updated = orderService.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
                 req.percent(), Boolean.TRUE.equals(req.clear()), notify);
@@ -297,16 +278,37 @@ public class AdminOrderController {
         return orderQueryService.toDetail(updated);
     }
 
+    /**
+     * Hard delete of a closed order (DELIVERED / REJECTED; anything else is a 400). See
+     * {@link OrderService#delete}: stock of a delivered order goes back unless {@code restock=false},
+     * the promo use is released, chat files and the dispatch card are removed after the commit.
+     * Audited only once the delete has actually happened.
+     */
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete order")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        Order order = load(id);
-        // Hard delete cascades to items and chat history — record it before it is gone.
+    @Operation(summary = "Delete a DELIVERED/REJECTED order (restock=false keeps a delivered order's stock as is)")
+    public ResponseEntity<Void> delete(@PathVariable String id,
+                                       @RequestParam(defaultValue = "true") boolean restock) {
+        OrderService.DeletedOrder d = orderService.delete(load(id).getId(), restock);
         audit.record("ORDER_DELETE", "ORDER", id,
-                "удалён заказ " + order.getCustomerName() + ", " + order.getTotalMinor() + " (мин. ед.), "
-                        + "статус " + order.getStatus());
-        orderRepository.delete(order);
+                "удалён заказ " + d.customerName() + ", " + d.totalMinor() + " (мин. ед.), статус "
+                        + d.status()
+                        + (d.restocked() ? ", сток возвращён" : "")
+                        + (d.promoCode() == null ? "" : ", промокод " + d.promoCode() + " освобождён")
+                        + (d.attachments() == 0 ? "" : ", файлов чата: " + d.attachments()));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Admin attachment for the order chat: pictures or a PDF, stored under {@code chat/} — the
+     * private prefix served only through signed, expiring links. Admin files used to go through
+     * the product-image upload, i.e. into {@code products/}, which imgproxy serves publicly.
+     */
+    @PostMapping("/{id}/attachments")
+    @Operation(summary = "Upload a chat attachment (image or PDF) for this order; returns the object key")
+    public UploadResponse uploadAttachment(@PathVariable String id, @RequestParam("file") MultipartFile file) {
+        load(id);
+        uploadValidator.validateAttachment(file);
+        return UploadResponse.ofKey(imageStorageService.uploadChatAttachment(file));
     }
 
     @GetMapping("/{id}/messages")
