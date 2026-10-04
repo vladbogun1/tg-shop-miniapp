@@ -45,7 +45,8 @@ export type OrderSource = "MINIAPP" | "WEB" | "ADMIN";
 
 /** Names the admin UI already uses for the shared shapes (+ admin-only fields). */
 export type OrderCardDto = OrderCard & { source?: OrderSource };
-export type OrderDetailDto = OrderDetail & { source?: OrderSource };
+/** `customerLocale`: uk/ru/en chosen by the customer in the shop (users.locale) — answer in it. */
+export type OrderDetailDto = OrderDetail & { source?: OrderSource; customerLocale?: string | null };
 
 /**
  * Product as the admin API returns it: the shared shape plus the public-site fields

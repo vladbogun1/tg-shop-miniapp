@@ -4,12 +4,14 @@
  * UserProfileDrawer (Neo-Brutalism) — right drawer with a user's profile + ALL
  * their orders (GET /api/admin/orders/by-user/{tgId}).
  *
- * Decoupling: clicking an order row navigates to the dedicated order route
- * (`/orders/{id}`) via the router — this drawer never imports OrderDrawer.
+ * Decoupling: clicking an order row calls `onOpenOrder` — the page opens the OrderDrawer ON TOP of
+ * this one, so closing the order returns here (it used to navigate away to `/orders/{id}` and the
+ * list lost its search and page). Without `onOpenOrder` it falls back to that route.
  */
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { LANG_LABEL, type ShopLang, type UserCard } from "@/lib/api-extra";
 import {
   Crown,
   Ban,
@@ -36,6 +38,15 @@ import { staggerContainer, riseItem, spring } from "@/lib/motion";
 interface Props {
   user: UserCardDto | null;
   onClose: () => void;
+  /** Open an order over the profile (the users page renders the OrderDrawer). */
+  onOpenOrder?: (orderId: string) => void;
+}
+
+/** «пишет на: Украинский» — the language to answer in (users.locale, else Telegram's). */
+function languageLine(u: UserCard): string {
+  if (u.locale) return "язык магазина: " + (LANG_LABEL[u.locale as ShopLang] ?? u.locale);
+  if (u.languageCode) return "язык Telegram: " + u.languageCode;
+  return "";
 }
 
 function displayName(u: UserCardDto): string {
@@ -54,7 +65,7 @@ function telegramHref(u: UserCardDto): string {
   return u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.telegramUserId}`;
 }
 
-export function UserProfileDrawer({ user, onClose }: Props) {
+export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
   const router = useRouter();
 
   const { data: orders, isLoading } = useQuery({
@@ -86,7 +97,7 @@ export function UserProfileDrawer({ user, onClose }: Props) {
         </div>
         <div className="mt-0.5 truncate text-[12px] text-[var(--text-faint)]">
           {user.username ? "@" + user.username + " · " : ""}#{user.telegramUserId}
-          {user.languageCode ? " · " + user.languageCode : ""}
+          {languageLine(user as UserCard) ? " · " + languageLine(user as UserCard) : ""}
         </div>
       </div>
     </div>
@@ -159,7 +170,7 @@ export function UserProfileDrawer({ user, onClose }: Props) {
                   <OrderRow
                     key={o.id}
                     order={o}
-                    onClick={() => router.push("/orders/" + o.id)}
+                    onClick={() => (onOpenOrder ? onOpenOrder(o.id) : router.push("/orders/" + o.id))}
                   />
                 ))}
               </motion.div>

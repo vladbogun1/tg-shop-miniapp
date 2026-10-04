@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Пользователи (Neo-Brutalism) — bot users dashboard.
- *
- * KPI cards + charts (new users by day, languages, top customers) from
- * GET /api/admin/users/metrics, then a searchable / sortable / paged table from
- * GET /api/admin/users (active / blocked-the-bot, premium, orders, spend).
- * Clicking a row opens the UserProfileDrawer.
+ * Пользователи — two tabs (R11):
+ *  - «Список»: search first, then a sortable / paged table (GET /api/admin/users); on a phone,
+ *    cards with a sort select. Language = the one chosen in the shop (users.locale).
+ *  - «Аналитика»: KPI cards + charts (GET /api/admin/users/metrics); the period switch lives
+ *    here only — it never filtered the table, which read as a broken filter (D7).
+ * A row opens the UserProfileDrawer; an order in it opens the OrderDrawer ON TOP, so closing it
+ * returns to the profile and the list with its search and page intact.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ import {
   type SortDir,
   type TimeRange,
 } from "@/lib/api";
+import { LANG_SHORT, type UserCard } from "@/lib/api-extra";
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { money } from "@/lib/money";
 import { formatDateTime, timeAgo } from "@/lib/orders";
@@ -66,6 +68,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ChartTooltip } from "@/components/metrics/ChartTooltip";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
+import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { QueryState } from "@/components/ui/QueryState";
+import { Select } from "@/components/ui/Select";
 import { staggerContainer, riseItem } from "@/lib/motion";
 
 const PAGE_SIZE = 30;
@@ -89,30 +94,61 @@ function initials(u: UserCardDto): string {
   return both || String(u.telegramUserId).slice(0, 2);
 }
 
+/** Shop language (users.locale) with the Telegram one as a marked fallback. */
+function userLang(u: UserCard): { label: string; fromTelegram: boolean } {
+  if (u.locale) return { label: LANG_SHORT[u.locale] ?? u.locale.toUpperCase(), fromTelegram: false };
+  if (u.languageCode) return { label: u.languageCode.slice(0, 2).toUpperCase(), fromTelegram: true };
+  return { label: "—", fromTelegram: false };
+}
+
+function LangCell({ u }: { u: UserCard }) {
+  const l = userLang(u);
+  return (
+    <span
+      title={l.fromTelegram ? "Язык не выбран в магазине — показан язык Telegram" : "Язык, выбранный в магазине"}
+      className={l.fromTelegram ? "text-[var(--text-faint)]" : "font-bold text-[var(--text)]"}
+    >
+      {l.label}
+      {l.fromTelegram && <sup className="ml-0.5 text-[9px]">TG</sup>}
+    </span>
+  );
+}
+
+type Tab = "list" | "analytics";
+
 export default function UsersPage() {
   const [range, setRange] = useTimeRange();
+  const [tab, setTab] = useState<Tab>("list");
   const [profileUser, setProfileUser] = useState<UserCardDto | null>(null);
+  const [openOrderId, setOpenOrderId] = useState<string | null>(null);
 
   return (
-    <div>
-      <PageHeader
-        title="Пользователи"
-        subtitle="Пользователи бота, метрики и заказы"
-        actions={
-          <SegmentedControl<TimeRange>
-            options={RANGE_OPTIONS}
-            value={range}
-            onChange={setRange}
-          />
-        }
-      />
+    <div className="min-w-0">
+      <PageHeader title="Пользователи" subtitle="Пользователи бота, их заказы и аналитика" />
 
-      <div className="flex flex-col gap-6">
-        <UserMetrics range={range} />
-        <UsersTable onOpenUser={setProfileUser} />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <SegmentedControl<Tab>
+          options={[
+            { value: "list", label: "Список" },
+            { value: "analytics", label: "Аналитика" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+        {tab === "analytics" && (
+          <SegmentedControl<TimeRange> options={RANGE_OPTIONS} value={range} onChange={setRange} size="sm" />
+        )}
       </div>
 
-      <UserProfileDrawer user={profileUser} onClose={() => setProfileUser(null)} />
+      {tab === "list" ? <UsersTable onOpenUser={setProfileUser} /> : <UserMetrics range={range} />}
+
+      <UserProfileDrawer
+        user={profileUser}
+        onClose={() => setProfileUser(null)}
+        onOpenOrder={setOpenOrderId}
+      />
+      {/* Mounted after the profile drawer, so it stacks above it (same z-index, later in the DOM). */}
+      <OrderDrawer orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );
 }
@@ -120,13 +156,16 @@ export default function UsersPage() {
 /* ------------------------------------------------------------------ metrics */
 
 function UserMetrics({ range }: { range: TimeRange }) {
-  const { data: m, isLoading } = useQuery({
+  const { data: m, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["user-metrics", range],
     queryFn: () => adminApi.userMetrics(range),
     placeholderData: keepPreviousData,
     refetchInterval: 120_000,
   });
 
+  if (isError && !m) {
+    return <QueryState isLoading={false} isError error={error} refetch={refetch}>{null}</QueryState>;
+  }
   if (isLoading || !m) {
     return (
       <div className="flex flex-col gap-6">
@@ -145,8 +184,9 @@ function UserMetrics({ range }: { range: TimeRange }) {
   }
 
   const currency = m.currency || "UAH";
+  // users.locale (the language chosen in the shop); "—" = never chose.
   const langData = (m.languages ?? []).map((l) => ({
-    name: l.language || "—",
+    name: l.language && l.language !== "—" ? (LANG_SHORT[l.language] ?? l.language) : "не выбран",
     value: l.count,
   }));
   const topCustomers = (m.topCustomers ?? []).slice(0, 8).map((t) => ({
@@ -240,7 +280,7 @@ function UserMetrics({ range }: { range: TimeRange }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Языки" empty={langData.length === 0}>
+        <ChartCard title="Язык магазина" empty={langData.length === 0}>
           <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
@@ -362,7 +402,7 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
     }
   }
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["users-table", debounced, blockedOnly, page, sortBy, sortDir],
     queryFn: () =>
       adminApi.users({
@@ -376,14 +416,14 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
     placeholderData: keepPreviousData,
   });
 
-  const rows = useMemo(() => data ?? [], [data]);
+  const rows = useMemo(() => (data ?? []) as UserCard[], [data]);
   const hasNext = rows.length >= PAGE_SIZE;
 
   return (
     <div className="panel overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b-[3px] border-[var(--line)] p-4">
-        <div className="min-w-[220px] flex-1">
+        <div className="min-w-[200px] flex-1">
           <Input
             placeholder="Поиск: имя, @username, ID"
             icon={<Search className="h-4 w-4" />}
@@ -399,7 +439,28 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
         >
           Заблокировали бота
         </Button>
+        {/* Phones have no sortable table headers — sort from here. */}
+        <div className="w-full md:hidden">
+          <Select<string>
+            label="Сортировка"
+            value={`${sortBy}:${sortDir}`}
+            onChange={(v) => {
+              const [col, dir] = v.split(":");
+              setSortBy(col as UserSortBy);
+              setSortDir(dir as SortDir);
+            }}
+            options={MOBILE_SORTS}
+          />
+        </div>
       </div>
+
+      {isError && !data ? (
+        <div className="p-4">
+          <QueryState isLoading={false} isError error={error} refetch={refetch}>
+            {null}
+          </QueryState>
+        </div>
+      ) : null}
 
       {/* Desktop table */}
       <div className="thin-scroll hidden overflow-x-auto md:block">
@@ -456,8 +517,8 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[var(--text-muted)]">
-                      {u.languageCode || "—"}
+                    <td className="px-4 py-3">
+                      <LangCell u={u} />
                     </td>
                     <td className="px-4 py-3 font-semibold text-[var(--text-muted)]">{u.ordersCount}</td>
                     <td className="px-4 py-3 font-bold text-[var(--text)]">
@@ -529,6 +590,7 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
             </div>
             <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
               <span>{u.ordersCount} зак.</span>
+              <LangCell u={u} />
               <span className="font-bold text-[var(--text)]">
                 {money(u.totalSpentMinor)}
               </span>
@@ -541,7 +603,7 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
         ))}
       </motion.div>
 
-      {!isLoading && rows.length === 0 && (
+      {!isLoading && !isError && rows.length === 0 && (
         <div className="p-6">
           <EmptyState
             icon={Inbox}
@@ -577,6 +639,15 @@ function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
     </div>
   );
 }
+
+const MOBILE_SORTS: { value: string; label: string }[] = [
+  { value: "createdAt:desc", label: "Новые сначала" },
+  { value: "createdAt:asc", label: "Старые сначала" },
+  { value: "lastSeenAt:desc", label: "Недавно заходили" },
+  { value: "ordersCount:desc", label: "Больше заказов" },
+  { value: "totalSpentMinor:desc", label: "Больше потратили" },
+  { value: "username:asc", label: "Username А–Я" },
+];
 
 function SortableTh({
   label,
