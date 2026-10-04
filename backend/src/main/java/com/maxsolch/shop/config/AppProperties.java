@@ -75,11 +75,11 @@ public class AppProperties {
         private String bucket;
     }
 
-    /** Public website (maxsolkh.shop root): cookies, allowed origin, ISR revalidation. */
+    /** Public website (chisetup.com.ua root): cookies, allowed origin, ISR revalidation. */
     @Getter
     @Setter
     public static class Site {
-        /** Public origin of the site, e.g. https://maxsolkh.shop. Added to the allowed origins. */
+        /** Public origin of the site, e.g. https://chisetup.com.ua. Added to the allowed origins. */
         private String baseUrl;
         /**
          * {@code Secure} flag of the auth cookies. Unset = true, except under the dev profile

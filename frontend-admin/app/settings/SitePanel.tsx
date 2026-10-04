@@ -58,7 +58,7 @@ export function SitePanel() {
 
   return (
     <section id="site" ref={rootRef} className="panel min-w-0 scroll-mt-[88px] p-5">
-      <PanelHeader icon={Globe} title="Сайт" description="maxsolkh.shop обновляет страницы сам; кнопка — если нужно сразу." />
+      <PanelHeader icon={Globe} title="Сайт" description="Сайт обновляет страницы сам; кнопка — если нужно сразу." />
       <Button
         variant="surface"
         className="w-full"

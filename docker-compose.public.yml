@@ -86,7 +86,7 @@ services:
       context: .
       dockerfile: site/Dockerfile
       args:
-        NEXT_PUBLIC_SITE_URL: ${SITE_BASE_URL:-https://maxsolkh.shop}
+        NEXT_PUBLIC_SITE_URL: ${SITE_BASE_URL:-https://chisetup.com.ua}
     image: tgshop-v2-site-public:local
     container_name: tgshop_v2_site_public
     restart: unless-stopped

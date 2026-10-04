@@ -4,7 +4,7 @@
  */
 
 /** Canonical public origin — used for metadataBase, canonical URLs, sitemap and OG images. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://maxsolkh.shop").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://chisetup.com.ua").replace(/\/$/, "");
 
 /** The shop's Telegram bot (footer, contacts, login fallback). */
 export const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/ChiSetupShop_bot";

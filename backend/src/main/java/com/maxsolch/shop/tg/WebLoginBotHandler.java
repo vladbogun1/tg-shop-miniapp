@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
  * The bot's half of the website login (see {@link WebAuthService}).
  *
  * <ul>
- *   <li>{@code /start login_<nonce>} → "Sign-in to maxsolkh.shop · Chrome, Windows — pick the
+ *   <li>{@code /start login_<nonce>} → "Sign-in to chisetup.com.ua · Chrome, Windows — pick the
  *       number you see on the website" with three numbers and "This is not me".</li>
  *   <li>{@code wl:<loginId>:<n>} / {@code wl:<loginId>:x} → confirm / reject, message edited.</li>
  *   <li>After the browser completes: "Signed in to the website · …" + [End this session]

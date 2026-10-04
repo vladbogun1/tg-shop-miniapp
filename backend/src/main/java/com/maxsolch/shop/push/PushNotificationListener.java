@@ -79,7 +79,7 @@ public class PushNotificationListener {
     public void onSiteFailed(SiteRevalidator.Failed event) {
         push.runAsync(() -> push.notifyAdmins(new PushMessage(
                 "Сайт не обновился",
-                "Изменения не попали на maxsolkh.shop — подробности во «Внимании»",
+                "Изменения не попали на сайт — подробности во «Внимании»",
                 "/inbox", "site-error", badge(), false)));
     }
 

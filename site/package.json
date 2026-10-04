@@ -2,7 +2,7 @@
   "name": "tg-shop-v2-site",
   "version": "0.1.0",
   "private": true,
-  "description": "tg-shop-v2 — public website maxsolkh.shop (ChiSetup v3 dark theme, desktop-first, SSR/ISR)",
+  "description": "tg-shop-v2 — public website chisetup.com.ua (ChiSetup v3 dark theme, desktop-first, SSR/ISR)",
   "scripts": {
     "dev": "next dev -p 3006",
     "build": "next build",

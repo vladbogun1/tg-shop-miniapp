@@ -165,7 +165,7 @@ export default function AccountPage() {
       <footer className="mt-10 flex flex-col items-center gap-2 pb-2" aria-label="ChiSetup">
         <Logo size="sm" variant="full" />
         <span className="mt-1 text-[11px] font-medium tracking-[0.04em] text-[var(--faint)]">
-          maxsolkh.shop
+          chisetup.com.ua
         </span>
       </footer>
     </div>
