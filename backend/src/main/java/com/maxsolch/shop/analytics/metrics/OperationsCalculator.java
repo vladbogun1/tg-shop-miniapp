@@ -164,7 +164,11 @@ public final class OperationsCalculator {
         if (reason == null) {
             return UNSPECIFIED;
         }
-        String s = reason.toLowerCase(Locale.ROOT).replaceAll("[\\p{Punct}«»—–]+", " ").replaceAll("\\s+", " ").strip();
+        String s = reason.toLowerCase(Locale.ROOT)
+                .replaceAll("\\(\\p{L}{1,2}\\)", "") // "передумал(а)" -> "передумал"
+                .replaceAll("[\\p{Punct}«»—–]+", " ")
+                .replaceAll("\\s+", " ")
+                .strip();
         return s.isEmpty() ? UNSPECIFIED : s.length() > 60 ? s.substring(0, 60) : s;
     }
 

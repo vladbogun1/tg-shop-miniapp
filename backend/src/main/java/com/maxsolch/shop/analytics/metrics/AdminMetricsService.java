@@ -46,8 +46,14 @@ public class AdminMetricsService {
         MetricsFacts facts = loader.load();
         AnalyticsReader.Window window = analytics.read(period.from(), period.to());
         Map<String, Long> visitors = new HashMap<>();
-        EventClassifier.stagesByVisitor(window.visitors()).keySet()
-                .forEach(k -> visitors.merge(k.substring(0, k.indexOf('|')), 1L, Long::sum));
+        // Conversion "buyers / visitors" is only honest when the journal covers the whole period:
+        // buyers come from orders (complete), visitors only from the days events were recorded.
+        boolean covered = window.dataSince() != null
+                && !window.dataSince().atStartOfDay(zone).toInstant().isAfter(period.from());
+        if (covered) {
+            EventClassifier.stagesByVisitor(window.visitors()).keySet()
+                    .forEach(k -> visitors.merge(k.substring(0, k.indexOf('|')), 1L, Long::sum));
+        }
         return new OverviewCalculator(zone).compute(facts, period, channel, visitors);
     }
 

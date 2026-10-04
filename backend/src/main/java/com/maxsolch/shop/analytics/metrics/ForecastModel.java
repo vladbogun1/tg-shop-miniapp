@@ -20,7 +20,7 @@ import java.util.List;
  * A trend term was tried and dropped: on this shop's history (sharp month-to-month swings) it made
  * the 30-day backtest worse, not better. The interval comes from the model's own backtest: every day
  * with at least 12 weeks of history before it is used as a forecast origin, the ratio actual/forecast
- * of the following 30 days is recorded, and its 10th–90th percentiles become the band.
+ * of the following 30 (and 7) days is recorded, and its 10th–90th percentiles become the band.
  */
 public final class ForecastModel {
 
@@ -125,6 +125,11 @@ public final class ForecastModel {
 
     /** Rolling-origin backtest of the 30-day total (see the class comment). */
     public static Backtest backtest(double[] y, LocalDate firstDay) {
+        return backtest(y, firstDay, HORIZON);
+    }
+
+    /** Rolling-origin backtest of the {@code horizon}-day total; the naive rival repeats the last N days. */
+    public static Backtest backtest(double[] y, LocalDate firstDay, int horizon) {
         List<Double> ratios = new ArrayList<>();
         double absErr = 0;
         double naiveErr = 0;
@@ -132,17 +137,17 @@ public final class ForecastModel {
         int used = 0;
         int covered = 0;
         int coverageTests = 0;
-        for (int o = MIN_HISTORY; o + HORIZON <= y.length; o++) {
+        for (int o = MIN_HISTORY; o + horizon <= y.length; o++) {
             double[] hist = Arrays.copyOfRange(y, 0, o);
             Fit fit = fit(hist, firstDay);
-            double forecast = total(fit, firstDay.plusDays(o), HORIZON);
+            double forecast = total(fit, firstDay.plusDays(o), horizon);
             double actual = 0;
-            for (int h = 0; h < HORIZON; h++) {
+            for (int h = 0; h < horizon; h++) {
                 actual += y[o + h];
             }
-            double last30 = 0;
-            for (int i = Math.max(0, o - 30); i < o; i++) {
-                last30 += y[i];
+            double lastN = 0;
+            for (int i = Math.max(0, o - horizon); i < o; i++) {
+                lastN += y[i];
             }
             if (actual <= 0 || forecast <= 0) {
                 continue;
@@ -158,7 +163,7 @@ public final class ForecastModel {
             }
             ratios.add(actual / forecast);
             absErr += Math.abs(forecast - actual) / actual;
-            naiveErr += Math.abs(last30 - actual) / actual;
+            naiveErr += Math.abs(lastN - actual) / actual;
             signed += (forecast - actual) / actual;
             used++;
         }
@@ -175,13 +180,14 @@ public final class ForecastModel {
     }
 
     /**
-     * Band for a horizon shorter than the backtested 30 days: relative error grows as the horizon
-     * shrinks (fewer days to average out), roughly with 1/sqrt(days), capped at 2.5× the 30-day spread.
+     * Interval for a forecast over {@code days} days: the 10th–90th percentile ratios of the backtest
+     * at the nearest horizons (7 and 30 days), interpolated in between. Shorter totals are noisier, so
+     * a week gets a wider relative band than a month.
      */
-    public static double[] band(double forecast, Backtest bt, int days) {
-        double widen = Math.min(2.5, Math.sqrt((double) HORIZON / Math.max(5, days)));
-        double lo = 1 - (1 - bt.lowRatio()) * widen;
-        double hi = 1 + (bt.highRatio() - 1) * widen;
+    public static double[] band(double forecast, Backtest week, Backtest month, int days) {
+        double t = days <= 7 ? 0 : days >= HORIZON ? 1 : (days - 7) / (double) (HORIZON - 7);
+        double lo = week.lowRatio() + (month.lowRatio() - week.lowRatio()) * t;
+        double hi = week.highRatio() + (month.highRatio() - week.highRatio()) * t;
         return new double[]{Math.max(0, forecast * lo), forecast * hi};
     }
 }

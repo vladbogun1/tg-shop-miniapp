@@ -34,9 +34,11 @@ public final class ReorderCalculator {
 
     static final String METHOD = "Скорость продаж: 50% — последние 14 дн., 30% — дни 15–30, 20% — дни 31–90 "
             + "(шт./день, без отказов и подарков). Дней до нуля = остаток / скорость. "
-            + "Рекомендуется = скорость × горизонт − остаток. Дни без товара на складе считаются днями "
+            + "Рекомендуется = скорость × горизонт − остаток. В списке — то, что продалось хотя бы 2 раза за 90 дней. Дни без товара на складе считаются днями "
             + "без спроса, поэтому для товаров, которых долго не было, смотрите на просмотры и корзины.";
 
+    /** At least this many units sold in 90 days before a product counts as "selling". */
+    static final int MIN_SALES = 2;
     private static final int MAX_ROWS = 60;
     private static final int MAX_DEMAND = 30;
 
@@ -132,8 +134,8 @@ public final class ReorderCalculator {
     private void addRow(List<ReorderRow> rows, ProductFact p, VariantFact v, int stock, Sales s, double ageDays,
                         Interest in, int coverDays) {
         double velocity = velocity(s, ageDays);
-        if (velocity <= 0) {
-            return;
+        if (velocity <= 0 || s.sold90() < MIN_SALES) {
+            return; // a single sale in a quarter is luck, not a pace worth reordering for
         }
         double daysToZero = stock <= 0 ? 0 : stock / velocity;
         if (daysToZero > coverDays) {

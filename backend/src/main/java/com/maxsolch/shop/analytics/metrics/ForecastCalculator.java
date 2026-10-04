@@ -75,10 +75,11 @@ public final class ForecastCalculator {
 
         ForecastModel.Fit fit = ForecastModel.fit(full, d.first());
         ForecastModel.Backtest bt = ForecastModel.backtest(full, d.first());
+        ForecastModel.Backtest btWeek = ForecastModel.backtest(full, d.first(), 7);
 
         // Next 30 days starting today (today's remaining part counts as a day).
         double next30 = ForecastModel.total(fit, today, ForecastModel.HORIZON);
-        double[] band30 = ForecastModel.band(next30, bt, ForecastModel.HORIZON);
+        double[] band30 = ForecastModel.band(next30, btWeek, bt, ForecastModel.HORIZON);
 
         // This month: actual so far + forecast for the rest.
         YearMonth ym = YearMonth.from(today);
@@ -94,7 +95,7 @@ public final class ForecastCalculator {
         }
         double remaining = ForecastModel.total(fit, today.plusDays(1), daysAfterToday)
                 + Math.max(0, fit.predict(today) - actualToday);
-        double[] bandRest = ForecastModel.band(remaining, bt, daysAfterToday + 1);
+        double[] bandRest = ForecastModel.band(remaining, btWeek, bt, daysAfterToday + 1);
         MonthForecast month = new MonthForecast(ym.toString(), Math.round(actualMonth), Math.round(remaining),
                 Math.round(actualMonth + remaining), Math.round(actualMonth + bandRest[0]),
                 Math.round(actualMonth + bandRest[1]), daysAfterToday + 1);
@@ -116,20 +117,27 @@ public final class ForecastCalculator {
         List<ForecastPoint> forecast = new ArrayList<>();
         for (int w = 0; w < FORECAST_WEEKS; w++) {
             LocalDate ws = thisWeek.plusWeeks(w);
-            double sum = 0;
+            double actualPart = 0;
+            double futurePart = 0;
+            int futureDays = 0;
             for (int i = 0; i < 7; i++) {
                 LocalDate day = ws.plusDays(i);
                 if (day.isBefore(today)) {
                     int idx = (int) ChronoUnit.DAYS.between(d.first(), day);
-                    sum += idx >= 0 && idx < all.length ? all[idx] : 0;
+                    actualPart += idx >= 0 && idx < all.length ? all[idx] : 0;
                 } else if (day.equals(today)) {
-                    sum += Math.max(actualToday, fit.predict(day));
+                    actualPart += actualToday;
+                    futurePart += Math.max(0, fit.predict(day) - actualToday);
+                    futureDays++;
                 } else {
-                    sum += fit.predict(day);
+                    futurePart += fit.predict(day);
+                    futureDays++;
                 }
             }
-            double[] b = ForecastModel.band(sum, bt, 7);
-            forecast.add(new ForecastPoint(ws.toString(), Math.round(sum), Math.round(b[0]), Math.round(b[1])));
+            // The band only covers what is still to come; the days already gone are facts.
+            double[] b = ForecastModel.band(futurePart, btWeek, bt, Math.max(1, futureDays));
+            forecast.add(new ForecastPoint(ws.toString(), Math.round(actualPart + futurePart),
+                    Math.round(actualPart + b[0]), Math.round(actualPart + b[1])));
         }
 
         List<Double> factors = new ArrayList<>();

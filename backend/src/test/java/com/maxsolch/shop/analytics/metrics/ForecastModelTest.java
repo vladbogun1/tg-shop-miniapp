@@ -64,14 +64,18 @@ class ForecastModelTest {
     }
 
     @Test
-    void band_widensForShortHorizons() {
-        ForecastModel.Backtest bt = new ForecastModel.Backtest(List.of(), 20.0, 25.0, 0.0, 80.0, 0.8, 1.25);
-        double[] b30 = ForecastModel.band(1000, bt, 30);
-        double[] b7 = ForecastModel.band(1000, bt, 7);
+    void band_usesTheBacktestOfTheNearestHorizon_interpolatedBetween() {
+        ForecastModel.Backtest week = new ForecastModel.Backtest(List.of(), 40.0, 45.0, 0.0, 80.0, 0.5, 1.8);
+        ForecastModel.Backtest month = new ForecastModel.Backtest(List.of(), 20.0, 25.0, 0.0, 80.0, 0.8, 1.25);
+
+        double[] b30 = ForecastModel.band(1000, week, month, 30);
+        double[] b7 = ForecastModel.band(1000, week, month, 7);
+        double[] b18 = ForecastModel.band(1000, week, month, 18);
 
         assertThat(b30[0]).isCloseTo(800, within(1e-6));
         assertThat(b30[1]).isCloseTo(1250, within(1e-6));
-        assertThat(b7[1] - b7[0]).isGreaterThan(b30[1] - b30[0]);
+        assertThat(b7[0]).isCloseTo(500, within(1e-6));
+        assertThat(b18[0]).isBetween(500.0, 800.0);
     }
 
     @Test
