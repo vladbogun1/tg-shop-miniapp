@@ -660,10 +660,11 @@ function FmtBtn({ icon, onClick, title }: { icon: ReactNode; onClick: () => void
     <motion.button
       type="button"
       title={title}
+      aria-label={title}
       onClick={onClick}
       whileTap={{ scale: 0.92 }}
       transition={spring}
-      className="focusable nb-press grid h-9 w-9 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+      className="focusable nb-press hit grid h-9 w-9 place-items-center rounded-[var(--r-md)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
     >
       {icon}
     </motion.button>

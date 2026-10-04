@@ -113,7 +113,15 @@ export async function enablePush(publicKey: string): Promise<PushSubscription> {
   }
   const reg = await getRegistration();
   if (!reg) throw new Error("Сервис-воркер не запустился — обновите страницу");
-  const sub = await subscribeWith(reg, publicKey);
+  let sub: PushSubscription;
+  try {
+    sub = await subscribeWith(reg, publicKey);
+  } catch (e) {
+    // Browser-side failure (no push service in this browser profile, blocked by the OS…): the
+    // raw DOMException text is English and cryptic.
+    const detail = e instanceof Error && e.message ? ` (${e.message})` : "";
+    throw new Error(`Браузер не смог подписаться на уведомления${detail}. Попробуйте ещё раз или перезапустите приложение`);
+  }
   await pushApi.subscribe(sub.toJSON());
   setWanted(true);
   return sub;

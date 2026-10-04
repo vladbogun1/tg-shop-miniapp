@@ -32,16 +32,19 @@ export function UpdateBanner() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
-          className="fixed inset-x-3 z-[350] mx-auto flex max-w-md items-center gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--c3)] p-3 shadow-[5px_5px_0_var(--shadow)] lg:left-auto lg:right-6"
+          className="fixed inset-x-3 z-[350] mx-auto flex max-w-md flex-wrap items-center gap-x-3 gap-y-2.5 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--c3)] p-3 shadow-[5px_5px_0_var(--shadow)] lg:left-auto lg:right-6"
           style={{ bottom: "calc(var(--bottom-nav) + 12px)" }}
         >
           <RefreshCw className="h-5 w-5 shrink-0" aria-hidden />
-          <div className="min-w-0 flex-1 text-[13px] font-bold leading-snug">Вышла новая версия админки</div>
+          <div className="min-w-[10rem] flex-1 text-[13px] font-bold leading-snug">
+            Вышла новая версия админки
+            <span className="block text-[12px] font-semibold opacity-75">Сначала сохраните то, что редактируете</span>
+          </div>
           <Button
             variant="surface"
             size="sm"
             loading={busy}
-            className="h-10 shrink-0"
+            className="h-11 w-full shrink-0 sm:w-auto"
             onClick={() => {
               setBusy(true);
               applyUpdate();
