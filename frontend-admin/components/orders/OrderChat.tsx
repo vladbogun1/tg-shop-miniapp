@@ -193,8 +193,8 @@ export function OrderChat({ orderId }: { orderId: string }) {
       .then(() => {
         qc.setQueryData<MessageDto[]>(key, (prev) => markCustomerRead(prev));
         qc.invalidateQueries({ queryKey: ["board"] });
-        qc.invalidateQueries({ queryKey: ["admin", "unread-count"] });
-        qc.invalidateQueries({ queryKey: ["admin", "conversations"] });
+        // «Внимание» (and its badge on the menu / bell) lists unread chats.
+        qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
       })
       .catch(() => {});
   }, [orderId, qc, key]);
