@@ -2,6 +2,7 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.service.OrderEvents;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +30,14 @@ public class OrderNotificationListener {
 
     private final OrderRepository orderRepository;
     private final NotificationService notificationService;
+    private final ImageStorageService imageStorageService;
 
     public OrderNotificationListener(OrderRepository orderRepository,
-                                     NotificationService notificationService) {
+                                     NotificationService notificationService,
+                                     ImageStorageService imageStorageService) {
         this.orderRepository = orderRepository;
         this.notificationService = notificationService;
+        this.imageStorageService = imageStorageService;
     }
 
     @TransactionalEventListener
@@ -104,6 +108,19 @@ public class OrderNotificationListener {
                 notificationService.onCustomerChatMessage(order, event.preview());
             }
         });
+    }
+
+    /**
+     * An order was deleted: take its dispatch card out of the seller topic and delete the chat
+     * attachments from storage. After the commit only — a rolled-back delete must not have lost
+     * its files — and with no database work at all (the row is gone).
+     */
+    @TransactionalEventListener
+    public void onDeleted(OrderEvents.Deleted event) {
+        notificationService.removeDispatchCard(event.dispatchMessageId());
+        if (event.attachmentKeys() != null) {
+            event.attachmentKeys().forEach(imageStorageService::deleteQuietly);
+        }
     }
 
     /** The seller's dispatch card only exists while the order is awaiting shipment. */

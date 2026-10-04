@@ -20,6 +20,7 @@ class JwtServiceTest {
         AppProperties p = new AppProperties();
         p.getSecurity().setJwtSecret(SECRET);
         p.getSecurity().setJwtAccessTtlMinutes(ttlMinutes);
+        p.getSecurity().setAdminTokenTtlMinutes(ttlMinutes);
         return p;
     }
 
@@ -82,6 +83,24 @@ class JwtServiceTest {
 
         assertThatThrownBy(() -> shortLived.parse(token))
                 .isInstanceOf(JwtException.class);
+    }
+
+    @Test
+    void adminTokens_areShortLivedAndCarryAnId_customerTokensNot() {
+        AppProperties p = props(43_200);
+        p.getSecurity().setAdminTokenTtlMinutes(720);
+        JwtService svc = new JwtService(p);
+
+        AuthPrincipal admin = svc.parse(svc.issueToken(1L, Role.ADMIN, 3));
+        AuthPrincipal customer = svc.parse(svc.issueToken(2L, Role.CUSTOMER));
+
+        assertThat(admin.tokenId()).isNotBlank();
+        assertThat(admin.tokenVersion()).isEqualTo(3);
+        assertThat(admin.expiresAt()).isBefore(java.time.Instant.now().plus(java.time.Duration.ofMinutes(721)));
+        assertThat(customer.tokenId()).isNull();
+        assertThat(customer.expiresAt()).isAfter(java.time.Instant.now().plus(java.time.Duration.ofDays(29)));
+        // Every issue is a distinct token, so one can be revoked without the others.
+        assertThat(svc.parse(svc.issueToken(1L, Role.ADMIN, 3)).tokenId()).isNotEqualTo(admin.tokenId());
     }
 
     @Test

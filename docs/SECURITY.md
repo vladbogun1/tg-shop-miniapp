@@ -27,15 +27,35 @@
 сравнение — за константное время, плюс TTL по `auth_date`.
 
 **Админ.** Либо `POST /api/auth/admin/telegram` (telegram id должен быть активным в `admin_users`),
-либо `POST /api/auth/admin/login` (логин + BCrypt-пароль).
+либо `POST /api/auth/admin/login` (логин + BCrypt-пароль). Оба доступны **только через админский
+gateway (:667)**: в `gateway.conf` (:666) и `gateway-site.conf.template` (сайт) `/api/auth/admin/` → 404.
+При неизвестном логине BCrypt всё равно выполняется (фиктивный хэш) — по времени ответа не видно,
+существует ли логин.
+
+**Срок жизни admin-токена** — `ADMIN_TOKEN_TTL_MINUTES` (12 ч), а не 30 дней, как у покупателя.
+Пока админка открыта и работает, она сама перевыпускает токен после половины срока
+(`POST /api/admin/token/refresh`); брошенная вкладка просто истекает.
 
 **Отзыв токенов.** JWT stateless и живёт 30 дней, поэтому деактивация админа или смена пароля
 раньше ничего не меняли. Теперь у токена есть claim `tv`, который сверяется с
 `admin_users.token_version` (`AdminTokenValidator`, кэш 30 c). Смена пароля увеличивает версию —
 все старые токены умирают.
+- «Выйти» (`POST /api/admin/logout`) отзывает только текущий токен: у admin-JWT есть `jti`, он кладётся
+  в `admin_revoked_tokens` (V23) до истечения токена.
+- «Выйти на всех устройствах» (`POST /api/admin/logout-all`) — `token_version + 1`.
+- Открытый WebSocket админа перепроверяет токен на каждом SUBSCRIBE и на каждом сообщении к нему;
+  отозванный/истёкший — сессия закрывается ERROR-фреймом.
 
-**Rate limiting.** `RateLimitFilter`: 10 попыток / 5 мин на `/api/auth/**` (по IP), 30/мин на
-загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов. Для входа на сайт —
+**Rate limiting.** `RateLimitFilter`: 10 попыток / 5 мин на `/api/auth/admin/*` (по IP), 60 / 5 мин на
+`/api/auth/telegram` (каждый запуск Mini App; покупатели за мобильным NAT делят один IP), 30/мин на
+загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов. Плюс в `AuthService`
+не больше 10 неудачных паролей в час **на логин** — независимо от IP.
+
+**IP клиента** — `server.forward-headers-strategy: native` (Tomcat RemoteIpValve): `X-Forwarded-For`
+читается справа налево, свои прокси (приватные/loopback-адреса) пропускаются, первый чужой адрес —
+клиент. Раньше брался самый левый адрес — то, что прислал сам клиент. Требование к прокси перед
+gateway: дописывать реальный адрес (`$proxy_add_x_forwarded_for` или `$remote_addr`), иначе весь
+трафик сайта будет выглядеть как один адрес хоста. Для входа на сайт —
 отдельно: `POST /api/auth/web/start` 10/мин, остальные `/api/auth/web/*` (опрос статуса) 90/мин.
 
 **Покупатель на сайте (maxsolkh.shop).** Вход только через бота: `start` → deep link
@@ -62,8 +82,10 @@ Cookies `HttpOnly` + `SameSite=Lax` + `Secure` (`WEB_COOKIE_SECURE`, в `dev` в
 - **Загрузки** проверяются `UploadValidator`: whitelist content-type И расширения, лимит 15 МБ
   (`spring.servlet.multipart`). Без этого в чат можно было залить `.html`/`.svg` — хранимая XSS
   против админа, который по нему кликнет.
-- **imgproxy** ограничен `IMGPROXY_ALLOWED_SOURCES` своим бакетом, иначе неподписанный imgproxy —
-  открытый прокси. Плюс `limit_req`/`limit_conn` на `/img` в nginx: ресайз это CPU.
+- **imgproxy** ограничен `IMGPROXY_ALLOWED_SOURCES` префиксом `s3://<bucket>/products/`: иначе
+  неподписанный imgproxy — открытый прокси, а при доступе ко всему бакету через `/img/` без подписи
+  и навсегда читались бы вложения чата (`chat/`). Вложения админа в чат тоже кладутся в `chat/`
+  (`POST /api/admin/orders/{id}/attachments`). Плюс `limit_req`/`limit_conn` на `/img` в nginx: ресайз это CPU.
 
 ---
 

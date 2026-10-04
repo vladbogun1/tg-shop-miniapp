@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.core.Ordered;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -16,7 +17,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * TelegramBotsApi + bot registration explicitly when it lands.
  */
 @SpringBootApplication
-@EnableCaching
+// The caching advice must wrap the transactional one, not the other way round. Both defaulted to
+// LOWEST_PRECEDENCE, which leaves their order undefined: on a method that is both @Transactional and
+// @CacheEvict the eviction could run BEFORE the commit, and a catalog read racing it re-cached the
+// old rows for the full TTL. One step higher precedence makes the cache interceptor the outer one,
+// so evictions happen after the transaction has committed (and a cache hit opens no transaction).
+@EnableCaching(order = Ordered.LOWEST_PRECEDENCE - 1)
 @EnableScheduling
 @EnableAsync
 @EnableConfigurationProperties(AppProperties.class)

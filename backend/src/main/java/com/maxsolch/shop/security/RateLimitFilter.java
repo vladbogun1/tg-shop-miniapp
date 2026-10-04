@@ -1,6 +1,7 @@
 package com.maxsolch.shop.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.maxsolch.shop.common.ClientIp;
 import com.maxsolch.shop.i18n.Messages;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
@@ -21,18 +22,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Per-IP request throttling for the endpoints worth abusing.
  *
- * <p>Three buckets, each a fixed window kept in Caffeine (single instance, so in-memory is the
- * right scope — a distributed limiter would need Redis and this deployment has none):
+ * <p>Buckets are fixed windows kept in Caffeine (single instance, so in-memory is the right scope —
+ * a distributed limiter would need Redis and this deployment has none):
  * <ul>
- *   <li><b>auth</b> — {@value #AUTH_LIMIT} tries per {@value #AUTH_WINDOW_MINUTES} min. The admin
- *       password endpoint had no limit at all, i.e. offline-speed brute force over HTTP.</li>
+ *   <li><b>admin auth</b> — {@value #AUTH_LIMIT} tries per {@value #AUTH_WINDOW_MINUTES} min for
+ *       {@code /api/auth/admin/*}. On top of it {@code AuthService} caps failed passwords per
+ *       username, whatever the IP.</li>
+ *   <li><b>customer auth</b> — {@value #CUSTOMER_AUTH_LIMIT} per {@value #AUTH_WINDOW_MINUTES} min
+ *       for {@code /api/auth/telegram}: every Mini App launch calls it, and customers behind a
+ *       mobile carrier's NAT share one address — they used to share the admin's strict bucket.</li>
  *   <li><b>uploads</b> — {@value #UPLOAD_LIMIT}/min, so nobody fills the object store.</li>
  *   <li><b>public reads</b> — {@value #PUBLIC_LIMIT}/min for the unauthenticated catalog and Nova
  *       Poshta endpoints (the bbox one can return 2000 rows per call).</li>
  * </ul>
  *
- * <p>Counting is per client IP. Behind the nginx gateway that means {@code X-Forwarded-For}, which
- * Spring resolves for us because {@code server.forward-headers-strategy=framework} is set.
+ * <p>Counting is per client IP as resolved by {@link ClientIp}: the right-most untrusted address of
+ * {@code X-Forwarded-For} (Tomcat's RemoteIpValve, {@code server.forward-headers-strategy=native}).
+ * The left-most entry used before is whatever the client sent, so a random value per request
+ * meant a fresh bucket per request.
  */
 @Slf4j
 @Component
@@ -46,6 +53,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int AUTH_LIMIT = 10;
     private static final int AUTH_WINDOW_MINUTES = 5;
+    private static final int CUSTOMER_AUTH_LIMIT = 60;
     private static final int UPLOAD_LIMIT = 30;
     private static final int PUBLIC_LIMIT = 120;
     private static final int ANALYTICS_LIMIT = 20;
@@ -56,6 +64,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Cache<String, AtomicInteger> authAttempts = Caffeine.newBuilder()
             .maximumSize(10_000)
+            .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
+            .build();
+
+    private final Cache<String, AtomicInteger> customerAuthAttempts = Caffeine.newBuilder()
+            .maximumSize(50_000)
             .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
             .build();
 
@@ -91,7 +104,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        String ip = clientIp(request);
+        String ip = ClientIp.of(request);
 
         Bucket bucket = internalCatalogRead(request, path) ? null : bucketFor(path, request.getMethod());
         if (bucket != null && exceeded(bucket, ip)) {
@@ -113,7 +126,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/auth/web/") && !path.equals("/api/auth/web/dev-login")) {
             return new Bucket(webAuthCalls, WEB_AUTH_LIMIT, 60);
         }
+        if (path.equals("/api/auth/telegram")) {
+            return new Bucket(customerAuthAttempts, CUSTOMER_AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
         if (path.startsWith("/api/auth/")) {
+            // Admin password / admin Telegram login (and anything new under /api/auth): strict.
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
         }
         if (path.equals("/api/me/analytics") && "POST".equalsIgnoreCase(method)) {
@@ -121,7 +138,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             // session and still caps a client that decided to send an event per tap.
             return new Bucket(analyticsFlushes, ANALYTICS_LIMIT, 60);
         }
-        if (path.endsWith("/uploads") && "POST".equalsIgnoreCase(method)) {
+        if ((path.endsWith("/uploads") || path.endsWith("/attachments")) && "POST".equalsIgnoreCase(method)) {
             return new Bucket(uploadAttempts, UPLOAD_LIMIT, 60);
         }
         if (path.startsWith("/api/np/") || path.startsWith("/api/products") || path.startsWith("/api/public/")
@@ -178,21 +195,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         response.getWriter().write(
                 "{\"status\":429,\"error\":\"Too Many Requests\","
                         + "\"message\":\"" + messages.get(locale, "api.error.rateLimited") + "\"}");
-    }
-
-    /**
-     * Real client address. {@code getRemoteAddr()} already honours X-Forwarded-For thanks to
-     * {@code server.forward-headers-strategy=framework}; the explicit header read is a fallback for
-     * setups where that is not in play.
-     */
-    private static String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            int comma = forwarded.indexOf(',');
-            return (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
-        }
-        String remote = request.getRemoteAddr();
-        return remote == null ? "unknown" : remote;
     }
 
     private record Bucket(Cache<String, AtomicInteger> cache, int limit, int retryAfterSeconds) {

@@ -44,7 +44,10 @@ export function DiscountModal({
     queryFn: () => adminApi.promocodes(),
     enabled: open,
   });
-  const activePromos = promos.filter((p) => p.active);
+  // Exhausted codes would only fail on the server ("лимит исчерпан") — don't offer them.
+  const activePromos = promos.filter(
+    (p) => p.active && (p.maxUses == null || (p.usesCount ?? 0) < p.maxUses)
+  );
 
   const subtotal = order?.subtotalMinor ?? 0;
   const cur = order?.currency ?? "UAH";

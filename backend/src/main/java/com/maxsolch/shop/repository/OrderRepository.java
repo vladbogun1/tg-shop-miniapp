@@ -3,14 +3,19 @@ package com.maxsolch.shop.repository;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.service.MetricsRow;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, byte[]> {
 
@@ -23,6 +28,27 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     List<Order> findAllByOrderByCreatedAtDesc();
 
     /**
+     * Loads the order and takes its row lock ({@code SELECT ... FOR UPDATE}) until the transaction
+     * ends. Every state change of an order goes through this, so two of them (a customer cancelling
+     * while an admin rejects, two admin tabs) run one after the other instead of both seeing
+     * {@code NEW} and both returning the stock. Lock order is always order row, then product rows.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.id = :id")
+    Optional<Order> findByIdForUpdate(@Param("id") byte[] id);
+
+    /** Orders of one status with their items, for work done outside a transaction (dispatch sync). */
+    @Query("select distinct o from Order o left join fetch o.items where o.status = :status "
+            + "order by o.createdAt desc")
+    List<Order> findWithItemsByStatus(@Param("status") OrderStatus status);
+
+    /** Writes back the dispatch card's message id in its own short transaction. */
+    @Transactional
+    @Modifying
+    @Query("update Order o set o.dispatchMessageId = :messageId where o.id = :id")
+    int updateDispatchMessageId(@Param("id") byte[] id, @Param("messageId") Integer messageId);
+
+    /**
      * Smart, paged search for the order table. The predicate itself lives in
      * {@link OrderSearchQueries} so the list, its count, and the two board queries below cannot
      * drift apart.
@@ -31,7 +57,8 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             countQuery = "select count(o) from Order o" + OrderSearchQueries.WHERE_LIST)
     Page<Order> search(@Param("status") OrderStatus status,
                        @Param("q") String q,
-                       @Param("idKey") byte[] idKey,
+                       @Param("idLo") byte[] idLo,
+                       @Param("idHi") byte[] idHi,
                        @Param("from") Instant from,
                        Pageable pageable);
 
@@ -42,7 +69,8 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query("select o from Order o" + OrderSearchQueries.WHERE_COLUMN + "order by o.createdAt desc")
     List<Order> searchByStatus(@Param("status") OrderStatus status,
                                @Param("q") String q,
-                               @Param("idKey") byte[] idKey,
+                               @Param("idLo") byte[] idLo,
+                       @Param("idHi") byte[] idHi,
                                @Param("from") Instant from,
                                Pageable pageable);
 
@@ -53,7 +81,8 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query("select count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN)
     long countByStatusSearch(@Param("status") OrderStatus status,
                              @Param("q") String q,
-                             @Param("idKey") byte[] idKey,
+                             @Param("idLo") byte[] idLo,
+                       @Param("idHi") byte[] idHi,
                              @Param("from") Instant from);
 
     /**
@@ -63,7 +92,8 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query("select o.status, count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES
             + "group by o.status")
     List<Object[]> countsByStatus(@Param("q") String q,
-                                  @Param("idKey") byte[] idKey,
+                                  @Param("idLo") byte[] idLo,
+                       @Param("idHi") byte[] idHi,
                                   @Param("from") Instant from);
 
     /**

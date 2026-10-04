@@ -24,6 +24,9 @@ class AdminTokenValidatorTest {
     @Mock
     AdminUserRepository adminUserRepository;
 
+    @Mock
+    AdminTokenRevocations revocations;
+
     @InjectMocks
     AdminTokenValidator validator;
 
@@ -64,6 +67,18 @@ class AdminTokenValidatorTest {
                 .thenReturn(Optional.empty());
 
         assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 0))).isFalse();
+    }
+
+    @Test
+    void tokenRevokedByLogoutIsRejected_otherTokensOfTheSameAdminAreNot() {
+        when(adminUserRepository.findByTelegramUserIdAndActiveTrue(anyLong()))
+                .thenReturn(Optional.of(admin(3)));
+        when(revocations.isRevoked("jti-logged-out")).thenReturn(true);
+
+        assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 3, null, null, "jti-logged-out", null)))
+                .isFalse();
+        assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 3, null, null, "jti-phone", null)))
+                .isTrue();
     }
 
     @Test

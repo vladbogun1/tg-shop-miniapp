@@ -112,17 +112,100 @@ export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
 
-export function logout(): void {
+function dropSession(): void {
   setAccessToken(null);
   unauthorizedListeners.forEach((cb) => cb());
 }
 
+/**
+ * «Выйти»: the server revokes THIS token (other devices stay logged in), then the session is
+ * dropped locally. Fire-and-forget — leaving must work even when the backend is unreachable.
+ */
+export function logout(): void {
+  const token = getAccessToken();
+  if (token) {
+    void fetch(`${API_BASE}/api/admin/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      keepalive: true,
+    }).catch(() => undefined);
+  }
+  dropSession();
+}
+
+/** «Выйти на всех устройствах»: every token of this admin dies (token_version + 1). */
+export async function logoutEverywhere(): Promise<void> {
+  await http.post<void>("/api/admin/logout-all");
+  dropSession();
+}
+
+// ---- quiet token renewal ----------------------------------------------------
+// Admin tokens are short-lived (12 h by default). Once the current one is past half its life,
+// the next API call triggers one background refresh, so a panel in use never logs out while an
+// abandoned one simply expires.
+
+interface TokenTimes {
+  iat: number;
+  exp: number;
+  /** Tokens from before short admin tokens had no id — those are swapped right away. */
+  hasId: boolean;
+}
+
+function tokenTimes(token: string): TokenTimes | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/"));
+    const claims = JSON.parse(json) as { iat?: number; exp?: number; jti?: string };
+    if (typeof claims.iat !== "number" || typeof claims.exp !== "number") return null;
+    return { iat: claims.iat, exp: claims.exp, hasId: !!claims.jti };
+  } catch {
+    return null;
+  }
+}
+
+const REFRESH_RETRY_MS = 60_000;
+let refreshing = false;
+let lastRefreshAttempt = 0;
+
+function maybeRefresh(token: string): void {
+  if (refreshing || typeof window === "undefined") return;
+  const t = tokenTimes(token);
+  if (!t) return;
+  const now = Date.now() / 1000;
+  if (now >= t.exp) return; // already expired: the request will 401 and show the login screen
+  const halfLife = t.iat + (t.exp - t.iat) / 2;
+  if (t.hasId && now < halfLife) return;
+  if (Date.now() - lastRefreshAttempt < REFRESH_RETRY_MS) return;
+  lastRefreshAttempt = Date.now();
+  refreshing = true;
+  // Plain fetch, not the client: a failed refresh must not log the admin out — the current token
+  // is still valid, and the next call after a minute simply tries again.
+  fetch(`${API_BASE}/api/admin/token/refresh`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  })
+    .then(async (res) => {
+      if (!res.ok) return;
+      const body = (await res.json()) as AdminAuthResponse;
+      // Only if nobody logged out / in meanwhile.
+      if (body.accessToken && getAccessToken() === token) setAccessToken(body.accessToken);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      refreshing = false;
+    });
+}
+
 const http = createHttpClient({
   baseUrl: API_BASE,
-  getToken: getAccessToken,
+  getToken: () => {
+    const token = getAccessToken();
+    if (token) maybeRefresh(token);
+    return token;
+  },
   onUnauthorized: () => {
-    setAccessToken(null);
-    unauthorizedListeners.forEach((cb) => cb());
+    dropSession();
   },
 });
 
@@ -135,11 +218,6 @@ export const apiDelete = http.del;
 /** Multipart upload -> { key } (POST /api/admin/uploads). */
 export function uploadFile(path: string, file: File): Promise<{ key: string }> {
   return http.upload<{ key: string }>(path, file);
-}
-
-/** Makes a server-relative signed media link (chat attachments) absolute. */
-export function mediaUrl(path: string | null | undefined): string | null {
-  return http.absolute(path);
 }
 
 // ---- admin auth ------------------------------------------------------------
@@ -212,18 +290,6 @@ export interface DispatchOrder {
 export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status";
 export type SortDir = "asc" | "desc";
 
-export interface OrderItemDto {
-  id?: number;
-  productId?: string;
-  variantId?: string | null;
-  title: string;
-  variantName?: string | null;
-  quantity: number;
-  priceMinor: number;
-  imageUrl?: string | null;
-  gift?: boolean;
-}
-
 export interface ProductWriteRequest {
   title: string;
   description?: string;
@@ -253,7 +319,8 @@ export interface PromoCode {
   discountPercent?: number | null;
   discountAmountMinor?: number | null;
   maxUses?: number | null;
-  usedCount?: number | null;
+  /** How many orders used the code (backend `usesCount`). */
+  usesCount?: number | null;
   active: boolean;
 }
 
@@ -265,12 +332,13 @@ export interface PaymentOption {
   prepaymentMinor?: number | null;
 }
 
-export interface Paged<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
+/** Outcome of the public site's on-demand rebuild (GET /api/admin/site/revalidate/status). */
+export interface SiteRevalidateStatus {
+  /** False when SITE_REVALIDATE_URL is not configured. */
+  enabled: boolean;
+  lastSuccessAt?: string | null;
+  lastErrorAt?: string | null;
+  lastError?: string | null;
 }
 
 /** One row of the admin action log (GET /api/admin/audit). */
@@ -521,11 +589,6 @@ export const adminApi = {
   /** PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment. */
   setPaid: (id: string, receivedMinor: number) =>
     apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { receivedMinor }),
-  /** Add a free gift product to the order (stock decremented, price 0). */
-  addGift: (
-    id: string,
-    body: { productId: string; variantId?: string; quantity?: number; notifyCustomer?: boolean }
-  ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/gift`, body),
   /** Add a product line to the order (paid, or gift when gift=true). */
   addOrderItem: (
     id: string,
@@ -545,7 +608,12 @@ export const adminApi = {
     id: string,
     body: { promoCode?: string; amountMinor?: number; percent?: number; clear?: boolean; notifyCustomer?: boolean }
   ) => apiPost<OrderDetailDto>(`/api/admin/orders/${id}/discount`, body),
-  deleteOrder: (id: string) => apiDelete<void>(`/api/admin/orders/${id}`),
+  /**
+   * Hard delete — DELIVERED / REJECTED only (400 otherwise). A delivered order's stock goes back
+   * unless `restock: false`; the promo use is released, chat files are removed.
+   */
+  deleteOrder: (id: string, opts: { restock?: boolean } = {}) =>
+    apiDelete<void>(`/api/admin/orders/${id}${opts.restock === false ? "?restock=false" : ""}`),
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/admin/orders/unread-count"),
@@ -564,6 +632,9 @@ export const adminApi = {
     apiPost<MessageDto>(`/api/admin/orders/${id}/messages`, body),
   markRead: (id: string) =>
     apiPost<void>(`/api/admin/orders/${id}/messages/read`),
+  /** Chat attachment (image or PDF) -> { key }: stored privately under chat/, not with product photos. */
+  uploadChatAttachment: (id: string, file: File) =>
+    uploadFile(`/api/admin/orders/${id}/attachments`, file),
 
   // ---- products ----
   products: () => apiGet<AdminProduct[]>("/api/admin/products"),
@@ -663,6 +734,15 @@ export const adminApi = {
     source: string;
     translations: Partial<Record<TrLocale, string>>;
   }) => apiPut<TrSourceFixResult>("/api/admin/translations/source-fix", body),
+
+  // ---- public site ----
+  /** POST /api/admin/site/revalidate -> rebuild every page now; `error` is null on success. */
+  siteRevalidate: () =>
+    apiPost<{ ok: boolean; error?: string | null; status: SiteRevalidateStatus }>(
+      "/api/admin/site/revalidate"
+    ),
+  /** Last automatic/manual rebuild outcome. */
+  siteRevalidateStatus: () => apiGet<SiteRevalidateStatus>("/api/admin/site/revalidate/status"),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

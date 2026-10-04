@@ -1,5 +1,9 @@
 package com.maxsolch.shop.web.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
 /**
  * Admin applies a discount to an existing order. Exactly one mode:
  *  - promoCode: apply an existing promo code (validated),
@@ -8,9 +12,10 @@ package com.maxsolch.shop.web.dto;
  *  - clear=true: remove any discount.
  */
 public record ApplyDiscountRequest(
-        String promoCode,
-        Long amountMinor,
-        Integer percent,
+        @Size(max = 64) String promoCode,
+        @Positive(message = "сумма скидки должна быть больше 0") Long amountMinor,
+        @Positive(message = "процент должен быть больше 0")
+        @Max(value = 100, message = "не больше 100 %") Integer percent,
         Boolean clear,
         /** DM the customer about the discount (default true). */
         Boolean notifyCustomer) {

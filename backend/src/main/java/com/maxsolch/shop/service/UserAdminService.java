@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.web.dto.UserCardDto;
 import com.maxsolch.shop.web.dto.UserMetricsDto;
 import com.maxsolch.shop.repository.UserRepository;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -24,7 +26,11 @@ import java.util.TreeMap;
 public class UserAdminService {
 
     private static final String CURRENCY = "UAH";
-    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+    /**
+     * Day buckets of "new users per day" in the business timezone (app.timezone), like the order
+     * metrics. In UTC, everyone who arrived between 00:00 and 03:00 Kyiv time landed in "yesterday".
+     */
+    private final DateTimeFormatter day;
 
     /**
      * Whitelisted sort columns → SQL. Entity columns AND the two computed aliases
@@ -43,8 +49,18 @@ public class UserAdminService {
 
     private final UserRepository userRepository;
 
-    public UserAdminService(UserRepository userRepository) {
+    public UserAdminService(UserRepository userRepository, AppProperties props) {
         this.userRepository = userRepository;
+        this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(businessZone(props.getTimezone()));
+    }
+
+    static ZoneId businessZone(String configured) {
+        try {
+            return configured == null || configured.isBlank()
+                    ? ZoneId.of("Europe/Kyiv") : ZoneId.of(configured.trim());
+        } catch (Exception e) {
+            return ZoneId.of("Europe/Kyiv");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +151,7 @@ public class UserAdminService {
         Map<String, Long> byDay = new TreeMap<>();
         for (Instant ts : created) {
             if (ts == null) continue;
-            byDay.merge(DAY.format(ts), 1L, Long::sum);
+            byDay.merge(day.format(ts), 1L, Long::sum);
         }
         List<UserMetricsDto.CountByDay> newUsersByDay = byDay.entrySet().stream()
                 .map(e -> new UserMetricsDto.CountByDay(e.getKey(), e.getValue()))

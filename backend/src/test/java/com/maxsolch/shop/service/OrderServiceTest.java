@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
@@ -13,9 +14,13 @@ import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -56,6 +62,8 @@ class OrderServiceTest {
     CartService cartService;
     @Mock
     com.maxsolch.shop.i18n.Messages messages;
+    @Mock
+    EntityManager entityManager;
 
     OrderService service;
 
@@ -66,7 +74,7 @@ class OrderServiceTest {
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages);
+                promoService, cartService, messages, entityManager);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -381,7 +389,7 @@ class OrderServiceTest {
     @Test
     void approve_thenShip_thenDeliver_setTimestamps() {
         Order o = persistedOrder(OrderStatus.NEW);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order approved = service.approve(o.getId());
         assertThat(approved.getStatus()).isEqualTo(OrderStatus.APPROVED);
@@ -402,7 +410,7 @@ class OrderServiceTest {
     @Test
     void approve_nonNewOrder_throws() {
         Order o = persistedOrder(OrderStatus.SHIPPED);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.approve(o.getId()))
                 .isInstanceOf(BadRequestException.class)
@@ -412,7 +420,7 @@ class OrderServiceTest {
     @Test
     void deliver_nonShippedOrder_throws() {
         Order o = persistedOrder(OrderStatus.NEW);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.deliver(o.getId()))
                 .isInstanceOf(BadRequestException.class)
@@ -435,7 +443,7 @@ class OrderServiceTest {
         it.setTitleSnapshot("Test Product");
         o.getItems().add(it);
 
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
         Order rejected = service.reject(o.getId(), "out of stock", true);
@@ -451,7 +459,7 @@ class OrderServiceTest {
     @Test
     void reject_alreadyRejected_throws() {
         Order o = persistedOrder(OrderStatus.REJECTED);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
                 .isInstanceOf(BadRequestException.class)
@@ -463,7 +471,7 @@ class OrderServiceTest {
         // A delivered order can be cancelled (e.g. a Nova Poshta return). With
         // restock=false the items are NOT put back on the shelf.
         Order o = persistedOrder(OrderStatus.DELIVERED);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order rejected = service.reject(o.getId(), "возврат на НП", false);
 
@@ -485,7 +493,7 @@ class OrderServiceTest {
     @Test
     void changeStatus_dispatchesToApprove() {
         Order o = persistedOrder(OrderStatus.NEW);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order result = service.changeStatus(o.getId(), OrderStatus.APPROVED, null, null, true);
 
@@ -501,7 +509,7 @@ class OrderServiceTest {
         // cash-on-delivery amount, or a customer gets goods shipped without paying.
         Order o = persistedOrder(OrderStatus.APPROVED);
         o.setTotalMinor(50_000);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order claimed = service.claimPayment(o.getId());
 
@@ -516,7 +524,7 @@ class OrderServiceTest {
     @Test
     void claimPayment_isIdempotent() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Instant first = service.claimPayment(o.getId()).getPaymentClaimedAt();
         Instant second = service.claimPayment(o.getId()).getPaymentClaimedAt();
@@ -528,7 +536,7 @@ class OrderServiceTest {
     void markPaid_recordsTheAmountAndShrinksCod() {
         Order o = persistedOrder(OrderStatus.APPROVED);
         o.setTotalMinor(50_000);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order paid = service.markPaid(o.getId(), 10_000);
 
@@ -538,15 +546,199 @@ class OrderServiceTest {
     }
 
     @Test
-    void markPaid_isCappedAtTheOrderTotal() {
+    void markPaid_moreThanTheTotal_isRejectedInsteadOfSilentlyCapped() {
         Order o = persistedOrder(OrderStatus.APPROVED);
         o.setTotalMinor(50_000);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        o.setCurrency("UAH");
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order paid = service.markPaid(o.getId(), 999_999);
+        assertThatThrownBy(() -> service.markPaid(o.getId(), 999_999))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("больше суммы заказа");
+        assertThat(o.getReceivedMinor()).isZero();
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void markPaid_fullTotalIsAccepted() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        Order paid = service.markPaid(o.getId(), 50_000);
 
         assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
         assertThat(OrderQueryService.codMinor(paid)).isZero();
+    }
+
+    // ---------- row locking ----------
+
+    @Test
+    void mutations_lockTheOrderRowAndReReadIt() {
+        // open-in-view: the controller has usually loaded this order already, and a locking query
+        // would hand back that stale instance — the refresh under the lock is what makes the
+        // status checks see a concurrent change.
+        Order o = persistedOrder(OrderStatus.NEW);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        service.reject(o.getId(), "x", false);
+
+        verify(orderRepository).findByIdForUpdate(o.getId());
+        verify(orderRepository, never()).findById(any());
+        verify(entityManager).refresh(o, LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Test
+    void reject_afterACustomerCancelCommitted_doesNotRestockTwice() {
+        // Simulates the race: by the time the admin's reject gets the row lock, the customer's
+        // cancel has committed. The refresh under the lock surfaces REJECTED, so the stock is not
+        // returned a second time.
+        Order o = persistedOrder(OrderStatus.NEW);
+        Product p = simpleProduct(5, 1_000);
+        OrderItem it = new OrderItem();
+        it.setProductId(p.getId());
+        it.setQuantity(2);
+        o.getItems().add(it);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        org.mockito.Mockito.doAnswer(inv -> {
+            ((Order) inv.getArgument(0)).setStatus(OrderStatus.REJECTED);
+            return null;
+        }).when(entityManager).refresh(o, LockModeType.PESSIMISTIC_WRITE);
+
+        assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(p.getStock()).isEqualTo(5);
+        verify(productRepository, never()).findByIdForUpdate(any());
+    }
+
+    @Test
+    void restoreStock_locksProductsInIdOrder() {
+        Order o = persistedOrder(OrderStatus.NEW);
+        byte[] high = UuidUtil.toBytes("ffffffff-0000-0000-0000-000000000000");
+        byte[] low = UuidUtil.toBytes("00000000-0000-0000-0000-000000000001");
+        for (byte[] pid : List.of(high, low)) {
+            OrderItem it = new OrderItem();
+            it.setProductId(pid);
+            it.setQuantity(1);
+            o.getItems().add(it);
+        }
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
+
+        service.reject(o.getId(), "x", true);
+
+        InOrder order = inOrder(productRepository);
+        order.verify(productRepository).findByIdForUpdate(low);
+        order.verify(productRepository).findByIdForUpdate(high);
+    }
+
+    // ---------- dispatch sync ----------
+
+    @Test
+    void broadcastDispatch_writesOnlyChangedCardIds_withoutDirtyFlushingTheOrder() {
+        Order posted = persistedOrder(OrderStatus.APPROVED);
+        Order unchanged = persistedOrder(OrderStatus.APPROVED);
+        unchanged.setDispatchMessageId(5);
+        when(orderRepository.findWithItemsByStatus(OrderStatus.APPROVED)).thenReturn(List.of(posted, unchanged));
+        when(notificationService.syncDispatchCard(posted)).thenAnswer(inv -> {
+            posted.setDispatchMessageId(99);
+            return true;
+        });
+        when(notificationService.syncDispatchCard(unchanged)).thenReturn(false);
+
+        assertThat(service.broadcastDispatch()).isEqualTo(1);
+
+        verify(entityManager).detach(posted);
+        verify(entityManager).detach(unchanged);
+        verify(orderRepository).updateDispatchMessageId(posted.getId(), 99);
+        verify(orderRepository, never()).updateDispatchMessageId(unchanged.getId(), 5);
+        verify(orderRepository, never()).save(any());
+    }
+
+    // ---------- hard delete ----------
+
+    @Test
+    void delete_inProgressOrder_isRejected() {
+        for (OrderStatus status : List.of(OrderStatus.NEW, OrderStatus.APPROVED, OrderStatus.SHIPPED)) {
+            Order o = persistedOrder(status);
+            when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+            assertThatThrownBy(() -> service.delete(o.getId(), true))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessageContaining("только доставленный или отклонённый");
+        }
+        verify(orderRepository, never()).delete(any());
+    }
+
+    @Test
+    void delete_delivered_restocksReleasesPromoAndSchedulesCleanup() {
+        Order o = persistedOrder(OrderStatus.DELIVERED);
+        o.setPromoCode("SALE");
+        o.setDispatchMessageId(77);
+        Product p = simpleProduct(1, 1_000);
+        OrderItem it = new OrderItem();
+        it.setProductId(p.getId());
+        it.setQuantity(2);
+        o.getItems().add(it);
+        o.setMessages(new ArrayList<>(List.of(message("chat/a/receipt.png"), message("products/x/old.png"),
+                message(null))));
+        PromoCode promo = new PromoCode();
+        promo.setCode("SALE");
+        promo.setUsesCount(3);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        when(promoCodeRepository.findByCodeForUpdate("SALE")).thenReturn(Optional.of(promo));
+
+        OrderService.DeletedOrder d = service.delete(o.getId(), true);
+
+        assertThat(d.restocked()).isTrue();
+        assertThat(p.getStock()).isEqualTo(3);
+        assertThat(promo.getUsesCount()).isEqualTo(2);
+        verify(orderRepository).delete(o);
+        ArgumentCaptor<OrderEvents.Deleted> event = ArgumentCaptor.forClass(OrderEvents.Deleted.class);
+        verify(events).publishEvent(event.capture());
+        assertThat(event.getValue().dispatchMessageId()).isEqualTo(77);
+        // Only the private chat/ objects; a products/ key may be shared, it is left alone.
+        assertThat(event.getValue().attachmentKeys()).containsExactly("chat/a/receipt.png");
+    }
+
+    @Test
+    void delete_delivered_withRestockFalse_keepsStock() {
+        Order o = persistedOrder(OrderStatus.DELIVERED);
+        OrderItem it = new OrderItem();
+        it.setProductId(productId);
+        it.setQuantity(2);
+        o.getItems().add(it);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        OrderService.DeletedOrder d = service.delete(o.getId(), false);
+
+        assertThat(d.restocked()).isFalse();
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(orderRepository).delete(o);
+    }
+
+    @Test
+    void delete_rejected_neverRestocksAgain() {
+        // Rejecting already settled the stock (returned, or deliberately kept off the shelf).
+        Order o = persistedOrder(OrderStatus.REJECTED);
+        OrderItem it = new OrderItem();
+        it.setProductId(productId);
+        it.setQuantity(2);
+        o.getItems().add(it);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        OrderService.DeletedOrder d = service.delete(o.getId(), true);
+
+        assertThat(d.restocked()).isFalse();
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(orderRepository).delete(o);
+    }
+
+    private static OrderMessage message(String attachment) {
+        OrderMessage m = new OrderMessage();
+        m.setAttachmentUrl(attachment);
+        return m;
     }
 
     @Test
@@ -555,7 +747,7 @@ class OrderServiceTest {
         o.setTotalMinor(50_000);
         o.setPaid(true);
         o.setReceivedMinor(50_000);
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order cleared = service.markPaid(o.getId(), 0);
 

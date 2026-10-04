@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.common.AfterCommit;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
@@ -225,7 +226,11 @@ public class AdminProductService {
             img.setSortOrder(order++);
         }
 
-        orphanKeys.forEach(imageStorageService::deleteQuietly);
+        // After the commit: the save can still fail after this point (unknown tag, duplicate slug on
+        // flush), and a rollback would leave product_images rows pointing at deleted files.
+        if (!orphanKeys.isEmpty()) {
+            AfterCommit.run(() -> orphanKeys.forEach(imageStorageService::deleteQuietly));
+        }
     }
 
     private void applyTags(Product p, ProductUpsertRequest req) {

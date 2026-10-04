@@ -47,7 +47,11 @@ server:
   port: 8080
   # Behind the nginx gateway: honour X-Forwarded-For/Proto so client IPs (rate limiting, logs)
   # and generated URLs are the real ones instead of the proxy's.
-  forward-headers-strategy: framework
+  # native = Tomcat's RemoteIpValve: X-Forwarded-For is read right-to-left, skipping trusted proxies
+  # (private/loopback addresses = our gateways), and the first untrusted address is the client.
+  # "framework" took the LEFT-most entry (or a client-sent "Forwarded: for=") — i.e. whatever the
+  # client claimed, which made the per-IP login limit trivially bypassable.
+  forward-headers-strategy: native
 
 management:
   info:
@@ -86,7 +90,6 @@ app:
   telegram:
     bot-token: ${BOT_TOKEN:}
     bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
-    admin-user-ids: ${ADMIN_USER_IDS:}
     init-data-ttl-seconds: ${INITDATA_TTL_SECONDS:86400}
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
     notify-chat-id: ${NOTIFY_CHAT_ID:0}
@@ -100,6 +103,8 @@ app:
   security:
     jwt-secret: ${JWT_SECRET:Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==}
     jwt-access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:43200}
+    # Admin tokens: 12 h by default, silently re-issued while the panel is in use.
+    admin-token-ttl-minutes: ${ADMIN_TOKEN_TTL_MINUTES:720}
     admin-login: ${ADMIN_LOGIN:}
     admin-password: ${ADMIN_PASSWORD:}
     admin-bootstrap-tg-id: ${ADMIN_BOOTSTRAP_TG_ID:1}
