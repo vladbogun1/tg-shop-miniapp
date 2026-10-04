@@ -35,6 +35,13 @@ export const modalVariants: Variants = {
   exit: { opacity: 0, y: 12, scale: 0.97, transition: { duration: 0.16 } },
 };
 
+/** The same dialog on a phone: a bottom sheet sliding up from the edge. */
+export const sheetVariants: Variants = {
+  initial: { y: "100%" },
+  animate: { y: 0, transition: { type: "spring", stiffness: 360, damping: 34 } },
+  exit: { y: "100%", transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } },
+};
+
 /** Right-side drawer slide. */
 export const drawerVariants: Variants = {
   initial: { x: "100%" },

@@ -145,7 +145,7 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
         <button
           type="button"
           onClick={onOpen}
-          className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-left"
+          className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-left pointer-coarse:min-h-11"
           title="Открыть заказ"
         >
           <span className="inline-flex items-center gap-1 rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[13px] font-extrabold text-[var(--text)]">
@@ -153,7 +153,7 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
             {o.shortId}
           </span>
           {o.status === "NEW" && <Badge tone="info">Новый</Badge>}
-          <span className="text-[13px] font-bold text-[var(--accent)] underline-offset-2 hover:underline">открыть заказ →</span>
+          <span className="text-[13px] font-bold text-[var(--accent)] underline-offset-2 hover:underline pointer-coarse:py-2">открыть заказ →</span>
         </button>
         <PaymentBadge order={o} icon={false} />
       </div>
@@ -236,7 +236,7 @@ function CopyField({
       <div className="min-w-0 flex-1">
         <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-faint)]">{label}</div>
         {href ? (
-          <a href={href} className={cn("block truncate text-[14px] font-extrabold text-[var(--text)] hover:underline", mono && "font-mono")}>
+          <a href={href} className={cn("block truncate text-[14px] font-extrabold text-[var(--text)] hover:underline pointer-coarse:py-2.5", mono && "font-mono")}>
             {value}
           </a>
         ) : (

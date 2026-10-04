@@ -424,7 +424,7 @@ export default function PaymentPage() {
               <Languages className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 Назначение и примечание покупатель видит на своём языке — переводы uk/en в{" "}
-                <Link href="/translations" className="font-bold underline">
+                <Link href="/translations" className="hit font-bold underline">
                   «Переводах»
                 </Link>
                 . Правка русского текста сбрасывает перевод, пока его не обновят.
@@ -465,7 +465,7 @@ export default function PaymentPage() {
         </div>
 
         {/* One save for the whole page, pinned so it is reachable on a phone. */}
-        <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:-mx-7 lg:px-7">
+        <div style={{ bottom: "var(--bottom-nav)" }} className="sticky z-20 -mx-4 mt-6 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:-mx-7 lg:px-7">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className={cn(
@@ -538,7 +538,7 @@ function OrderBtn({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-[18px] w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-30"
+      className="grid h-[18px] w-7 place-items-center rounded-[var(--r-sm)] border-2 pointer-coarse:h-8 pointer-coarse:w-10 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-30"
     >
       {children}
     </button>

@@ -11,8 +11,12 @@ export function getStoredTheme(): Theme {
   return v === "dark" ? "dark" : "light";
 }
 
+/** Browser chrome / status-bar colour of the installed app, per theme (= --bg). */
+const THEME_COLOR: Record<Theme, string> = { light: "#F4F1E6", dark: "#26262B" };
+
 function apply(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLOR[theme]);
 }
 
 export function useTheme(): [Theme, (t: Theme) => void] {

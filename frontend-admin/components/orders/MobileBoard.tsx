@@ -72,7 +72,7 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
                       e.stopPropagation();
                       setMoveFor({ id: o.id, from: o.status, label: o.customerName });
                     }}
-                    className="nb-press -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
+                    className="nb-press hit -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)] transition-colors hover:bg-[var(--surface-hover)]"
                     aria-label="Переместить"
                   >
                     <ArrowRightLeft className="h-4 w-4" />

@@ -41,8 +41,8 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative shrink-0 rounded-[var(--r-sm)] font-bold uppercase tracking-wide transition-colors",
-              size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3.5 py-1.5 text-[12px]",
+              "hit relative shrink-0 rounded-[var(--r-sm)] font-bold uppercase tracking-wide transition-colors",
+              size === "sm" ? "px-2.5 py-1 text-[11px] pointer-coarse:py-1.5" : "px-3.5 py-1.5 text-[12px] pointer-coarse:py-2",
               active ? "text-[var(--accent-ink)]" : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}
           >

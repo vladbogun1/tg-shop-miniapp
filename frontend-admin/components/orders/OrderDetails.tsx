@@ -76,7 +76,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               <button
                 type="button"
                 onClick={h.onOpenCustomer}
-                className="min-w-0 truncate text-left font-semibold text-[var(--accent)] hover:underline"
+                className="min-w-0 truncate text-left font-semibold text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
                 title="Профиль клиента и другие его заказы"
               >
                 {order.customerName}
@@ -87,7 +87,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <CopyButton value={order.customerName} label="Скопировать ФИО" className="ml-auto" />
           </Row>
           <Row icon={<Phone className="h-4 w-4" />}>
-            <a href={`tel:${order.phone}`} className="font-mono font-semibold text-[var(--text)] hover:underline">
+            <a href={`tel:${order.phone}`} className="hit font-mono font-semibold text-[var(--text)] hover:underline">
               {order.phone}
             </a>
             <CopyButton value={order.phone} label="Скопировать телефон" className="ml-auto" />
@@ -97,14 +97,14 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               href={`https://t.me/${order.tgUsername.replace(/^@/, "")}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline"
+              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
             >
               <ExternalLink className="h-4 w-4" />@{order.tgUsername.replace(/^@/, "")}
             </a>
           ) : order.tgUserId ? (
             <a
               href={`tg://user?id=${order.tgUserId}`}
-              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline"
+              className="flex items-center gap-2 text-[14px] text-[var(--accent)] hover:underline pointer-coarse:py-2.5"
             >
               <ExternalLink className="h-4 w-4" />
               Открыть в Telegram (без @username)
@@ -164,7 +164,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                     onClick={h.onEditTracking}
                     title="Изменить ТТН"
                     aria-label="Изменить ТТН"
-                    className="nb-press grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                    className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -225,7 +225,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                       type="button"
                       onClick={() => h.onRemoveItem(it.id!, it.title)}
                       disabled={!!h.busyKey}
-                      className="nb-press ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)] disabled:opacity-40"
+                      className="nb-press hit ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--accent-ink)] disabled:opacity-40"
                       aria-label="Убрать позицию"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -320,7 +320,7 @@ function Requisites({ r }: { r: NonNullable<AdminOrderDetail["requisites"]> }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex w-full items-center justify-between gap-2 text-left pointer-coarse:min-h-10"
       >
         <span className="text-[12px] font-black uppercase tracking-wide text-[var(--text-faint)]">
           Реквизиты магазина: <span className="normal-case text-[var(--text-muted)]">{short}</span>
@@ -375,7 +375,7 @@ function SectionAction({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline"
+      className="hit flex items-center gap-1 text-[12px] font-bold text-[var(--accent)] hover:underline"
     >
       {icon}
       {children}
@@ -389,7 +389,7 @@ function QtyBtn({ onClick, disabled, children }: { onClick: () => void; disabled
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="nb-press grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-black leading-none text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] disabled:opacity-40"
+      className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-black leading-none text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] disabled:opacity-40"
     >
       {children}
     </button>

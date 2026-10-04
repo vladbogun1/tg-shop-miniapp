@@ -305,7 +305,7 @@ export default function ProductsPage() {
                 onClick={() => setView("list")}
                 aria-label="Список"
                 className={cn(
-                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors",
+                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors pointer-coarse:h-10 pointer-coarse:w-11",
                   view === "list"
                     ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -318,7 +318,7 @@ export default function ProductsPage() {
                 onClick={() => setView("cards")}
                 aria-label="Карточки"
                 className={cn(
-                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors",
+                  "grid h-8 w-9 place-items-center rounded-[var(--r-sm)] transition-colors pointer-coarse:h-10 pointer-coarse:w-11",
                   view === "cards"
                     ? "border-2 border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -487,7 +487,7 @@ function IconBtn({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "nb-press grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors",
+        "nb-press grid h-9 w-9 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] shadow-[3px_3px_0_var(--shadow)] transition-colors pointer-coarse:h-11 pointer-coarse:w-11",
         danger ? "hover:bg-[var(--danger)] hover:text-[var(--accent-ink)]" : "hover:bg-[var(--surface-hover)]"
       )}
     >

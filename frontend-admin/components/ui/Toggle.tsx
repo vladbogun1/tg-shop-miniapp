@@ -25,7 +25,7 @@ export function Toggle({ checked, onChange, label, disabled }: ToggleProps) {
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={cn(
-          "focusable relative h-7 w-12 shrink-0 rounded-[var(--r-sm)] border-[3px] border-[var(--line)] transition-colors duration-200",
+          "focusable hit relative h-7 w-12 shrink-0 rounded-[var(--r-sm)] border-[3px] border-[var(--line)] transition-colors duration-200",
           checked ? "bg-[var(--accent)]" : "bg-[var(--surface-3)]"
         )}
       >

@@ -231,14 +231,14 @@ export default function TagsPage() {
                     <button
                       onClick={() => startEdit(t)}
                       aria-label="Изменить"
-                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-11 pointer-coarse:w-11"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setPendingDelete(t)}
                       aria-label="Удалить"
-                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger)]"
+                      className="grid h-9 w-9 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_16%,transparent)] hover:text-[var(--danger)] pointer-coarse:h-11 pointer-coarse:w-11"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

@@ -233,7 +233,7 @@ function EntityCell({ e }: { e: AuditEntry }) {
       <span className="font-bold uppercase tracking-wide">{auditEntityLabel(e.entityType)}</span>
       {id &&
         (href ? (
-          <Link href={href} className="inline-flex items-center gap-0.5 font-mono text-[var(--accent)] hover:underline">
+          <Link href={href} className="hit inline-flex items-center gap-0.5 font-mono text-[var(--accent)] hover:underline">
             {id}
             <ExternalLink className="h-3 w-3" />
           </Link>
