@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.config.AppProperties;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -65,13 +66,23 @@ public class SiteRevalidator {
     public record Status(boolean enabled, Instant lastSuccessAt, Instant lastErrorAt, String lastError) {
     }
 
+    /**
+     * Published when revalidation starts failing (the first failure after a success, or ever) —
+     * not on every retry of an ongoing outage. Consumed by the admin push notifications.
+     */
+    public record Failed(String error) {
+    }
+
     private final AtomicReference<Instant> lastSuccessAt = new AtomicReference<>();
     private final AtomicReference<Instant> lastErrorAt = new AtomicReference<>();
     private final AtomicReference<String> lastError = new AtomicReference<>();
 
-    public SiteRevalidator(AppProperties props, ObjectMapper objectMapper) {
+    private final ApplicationEventPublisher events;
+
+    public SiteRevalidator(AppProperties props, ObjectMapper objectMapper, ApplicationEventPublisher events) {
         this.props = props;
         this.objectMapper = objectMapper;
+        this.events = events;
     }
 
     public boolean enabled() {
@@ -206,8 +217,18 @@ public class SiteRevalidator {
     }
 
     private String failed(String error) {
+        Instant prevError = lastErrorAt.get();
+        Instant prevSuccess = lastSuccessAt.get();
+        boolean newOutage = prevError == null || (prevSuccess != null && prevSuccess.isAfter(prevError));
         lastErrorAt.set(Instant.now());
         lastError.set(error);
+        if (newOutage && events != null) {
+            try {
+                events.publishEvent(new Failed(error));
+            } catch (RuntimeException e) {
+                log.debug("Site failure event not delivered: {}", e.toString());
+            }
+        }
         return error;
     }
 

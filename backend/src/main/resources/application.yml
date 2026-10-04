@@ -87,6 +87,12 @@ app:
     web-cookie-secure: ${WEB_COOKIE_SECURE:}
     revalidate-url: ${SITE_REVALIDATE_URL:}
     revalidate-secret: ${SITE_REVALIDATE_SECRET:}
+  # Web Push for the admin PWA. Empty keys = push off (no errors, the settings screen says so).
+  # How to generate the keys: .env.example (VAPID_*).
+  push:
+    vapid-public-key: ${VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${VAPID_PRIVATE_KEY:}
+    vapid-subject: ${VAPID_SUBJECT:}
   telegram:
     bot-token: ${BOT_TOKEN:}
     bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
