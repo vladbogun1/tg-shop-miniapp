@@ -11,6 +11,7 @@ import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.web.ConflictException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.ProductImageDto;
@@ -91,7 +92,10 @@ public class AdminProductService {
     })
     @Transactional
     public AdminProductDto update(String id, ProductUpsertRequest req) {
-        Product p = load(id);
+        // Row lock on the product: checkout reserves stock under the same lock, so the
+        // expectedStock comparison below cannot race with an order being placed.
+        Product p = productRepository.findByIdForUpdate(toBytes(id))
+                .orElseThrow(() -> new NotFoundException("product not found"));
         if (req.title() != null && !req.title().trim().equalsIgnoreCase(p.getTitle())
                 && productRepository.existsByTitle(req.title().trim())) {
             throw new BadRequestException("product title already exists");
@@ -140,7 +144,11 @@ public class AdminProductService {
             p.setCurrency(req.currency().trim());
         }
         // base product stock: kept in sync with rolled-up variant stock if variants present.
-        p.setStock(req.stock());
+        // null = the admin did not touch the field, so units sold meanwhile are not overwritten.
+        if (req.stock() != null) {
+            checkStock(p.getStock(), req.stock(), req.expectedStock(), p.getTitle());
+            p.setStock(req.stock());
+        }
         if (req.active() != null) {
             p.setActive(req.active());
         }
@@ -290,10 +298,16 @@ public class AdminProductService {
                 p.getVariants().add(v);
             }
             v.setName(vi.name().trim());
-            v.setStock(vi.stock());
+            if (vi.stock() != null) {
+                if (v.getId() != null) {
+                    checkStock(v.getStock(), vi.stock(), vi.expectedStock(),
+                            p.getTitle() + " / " + v.getName());
+                }
+                v.setStock(vi.stock());
+            }
             v.setSortOrder(order++);
             keep.add(v);
-            rollup += vi.stock();
+            rollup += v.getStock();
         }
 
         // Anything not matched was removed by the admin (orphanRemoval deletes the rows).
@@ -309,6 +323,20 @@ public class AdminProductService {
             p.setStock(rollup);
         }
         return removed;
+    }
+
+    /**
+     * Lost-update guard for stock (A5): the form sends the value it was opened with as
+     * {@code expected}; if the stored value moved since (an order reserved or released units)
+     * and the admin is changing it, reject instead of overwriting. No-op when nothing changes
+     * or the client sent no expectation.
+     */
+    static void checkStock(int current, int requested, Integer expected, String label) {
+        if (expected == null || requested == current || expected == current) {
+            return;
+        }
+        throw new ConflictException("Остаток «" + label + "» изменился (было " + expected
+                + ", стало " + current + ") — обновите", "STOCK_CONFLICT");
     }
 
     private static String normalized(String name) {

@@ -12,7 +12,8 @@ public record ProductUpsertRequest(
         @Size(max = 20_000) String description,
         @PositiveOrZero long priceMinor,
         @Size(max = 8) String currency,
-        @PositiveOrZero int stock,
+        /** Absolute stock; {@code null} = leave the stored value alone (the admin did not touch it). */
+        @PositiveOrZero Integer stock,
         Boolean active,
         @Size(max = 30) List<@Size(max = 2048) String> imageKeys,
         @Size(max = 50) List<String> tagIds,
@@ -23,7 +24,13 @@ public record ProductUpsertRequest(
         /** Struck-through "old" price; 0 or negative clears it. */
         Long compareAtMinor,
         @Size(max = 255) String seoTitle,
-        @Size(max = 512) String seoDescription) {
+        @Size(max = 512) String seoDescription,
+        /**
+         * Stock the admin saw when the form was opened. When {@code stock} changes and the stored
+         * value no longer equals this, the save is rejected with 409 STOCK_CONFLICT instead of
+         * silently overwriting units sold in the meantime. {@code null} = no check (older builds).
+         */
+        @PositiveOrZero Integer expectedStock) {
 
     /**
      * @param id existing variant id, when the client is editing a variant that already exists.
@@ -34,6 +41,9 @@ public record ProductUpsertRequest(
     public record VariantInput(
             String id,
             @NotBlank @Size(max = 128) String name,
-            @PositiveOrZero int stock) {
+            /** {@code null} = keep the stored value (0 for a new variant). */
+            @PositiveOrZero Integer stock,
+            /** See {@link ProductUpsertRequest#expectedStock()}. */
+            @PositiveOrZero Integer expectedStock) {
     }
 }
