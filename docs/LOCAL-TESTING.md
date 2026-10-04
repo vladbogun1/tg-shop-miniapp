@@ -135,7 +135,73 @@ docker compose exec -T mysql mysql -uroot -p"$DBP" -N -e \
      from $DBN.promo_reservations r join $DBN.promo_codes p on p.id = r.promo_code_id;"
 ```
 
-## 6. Чего стенд НЕ покрывает
+## 6. Автотесты админки (e2e, Playwright)
+
+Основные сценарии админки (вход/выход, «Внимание», доска, оплата, статусы и ТТН, «Отправка»,
+отклонение и возврат, товары и конфликт остатка, шаблоны чата, «Оплата», «Настройки», «Метрики»,
+«Журнал») проверяются автотестами из пакета `e2e/`. Они идут на **своём изолированном стенде** и
+не трогают ни дев-стек выше, ни его базу:
+
+| что            | e2e-стенд                                   | дев-стек                    |
+|----------------|---------------------------------------------|-----------------------------|
+| MySQL          | compose-проект `tgshop_e2e`, порт **33307**, данные в tmpfs | `tgshop_v2_mysql`, 3341 |
+| бэкенд         | `backend/target/app.jar`, порт **18089**, профиль `dev` | :8080          |
+| админка        | копия в `.e2e-admin/`, `next build && next start`, порт **3105** | :3005 (`next dev`) |
+
+Запуск одной командой из корня (нужны Docker, JDK 21, Maven, Node 22):
+
+```bash
+npm install                  # один раз
+npm exec -w e2e -- playwright install chromium   # один раз — браузер для тестов
+npm run e2e
+```
+
+Что делает `npm run e2e` (`e2e/scripts/run.mjs`):
+
+1. поднимает MySQL 8.4 (`docker compose -f e2e/docker-compose.e2e.yml up -d --wait`);
+2. собирает jar (`mvn -DskipTests package`), если его нет или исходники бэкенда новее;
+3. копирует `frontend-admin/` в `.e2e-admin/` и собирает там с
+   `NEXT_PUBLIC_API_BASE_URL=http://localhost:18089` (сборка прямо в `frontend-admin/` затёрла бы
+   `.next` работающего `next dev`); пересобирает, только если поменялись `frontend-admin/` или `shared/`;
+4. запускает `playwright test`: Playwright сам стартует бэкенд и админку, global setup заливает
+   фикстуру `e2e/fixtures/seed.sql` (поверх Flyway, перед каждым прогоном) и логинится один раз;
+5. гасит MySQL (`down -v`).
+
+Тестовый админ — `e2e-admin` / `e2e-admin-pass-not-a-placeholder`, JWT-секрет тестовый, бот выключен
+(`BOT_TOKEN` пустой), MinIO и Новая Почта указывают на закрытый порт. Всё это в `e2e/env.js`, каждое
+значение переопределяется переменной окружения (`E2E_DB_PORT`, `E2E_BACKEND_PORT`, `E2E_ADMIN_PORT`, …).
+
+Полезное:
+
+```bash
+npm run e2e -- inbox              # только спеки, в имени которых есть "inbox"
+npm run e2e -- --project=mobile   # только телефонные (390×844)
+npm run e2e -- --keep             # не гасить MySQL — дальше можно гонять быстрее:
+cd e2e && npx playwright test 07-status --headed
+npm run report -w e2e             # HTML-отчёт последнего прогона (трассы, скриншоты, видео падений)
+docker compose -f e2e/docker-compose.e2e.yml down -v   # убрать MySQL после --keep
+```
+
+В PowerShell npm съедает голый `--`, поэтому флаги там задаются переменными: `$env:E2E_KEEP=1`,
+`$env:E2E_REBUILD_ADMIN=1`, `$env:E2E_SKIP_BACKEND_BUILD=1`.
+
+Устройство тестов:
+
+- данные — только вымышленные (`e2e/fixtures/seed.sql`); id читаемые: заказ `e2e00005-…` на экране
+  `#e2e00005`. Каждый спек работает со своими заказами/товарами (`e2e/lib/seed.ts`), поэтому их можно
+  запускать по одному; общие экраны («Внимание», суммы доски, «Журнал») сверяются с API, а не с
+  захардкоженными числами;
+- селекторы — по ролям, подписям и тексту (`getByRole` / `getByLabel` / `getByText`), без `data-testid`;
+- ждут состояния (`expect(...).toBeVisible()`, `expect.poll`), без `sleep`; падение в странице
+  (`pageerror`) валит тест;
+- вход ограничен 10 попытками за 5 минут с IP, поэтому токен кешируется в `e2e/.auth/` и
+  переиспользуется, пока бэкенд его принимает;
+- при падении остаются трасса, скриншот и видео (`e2e/test-results/`), лог бэкенда — `e2e/logs/backend.log`.
+
+В CI это job `e2e-admin` (`.github/workflows/ci.yml`): берёт jar из job `backend`, MySQL — сервис
+job'а, браузер кешируется; при падении выгружает артефакт `e2e-admin-report`.
+
+## 7. Чего стенд НЕ покрывает
 
 - Telegram-бот (уведомления, кнопки) — для этого нужен реальный токен и вебхук;
 - поведение самого клиента Telegram: fullscreen, safe-area, системная клавиатура.

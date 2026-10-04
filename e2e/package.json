@@ -1,0 +1,19 @@
+{
+  "name": "tg-shop-v2-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "tg-shop-v2 — end-to-end tests of the admin panel (Playwright) against an isolated stack",
+  "scripts": {
+    "e2e": "node scripts/run.mjs",
+    "test": "playwright test",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.0",
+    "mysql2": "^3.24.5",
+    "typescript": "^5.7.0"
+  }
+}

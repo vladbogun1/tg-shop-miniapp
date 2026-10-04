@@ -6,11 +6,13 @@
     "shared",
     "frontend",
     "frontend-admin",
-    "site"
+    "site",
+    "e2e"
   ],
   "scripts": {
     "build": "npm run build -w frontend && npm run build -w frontend-admin",
     "lint": "npm run lint -w frontend && npm run lint -w frontend-admin",
-    "typecheck": "npm run typecheck -w frontend && npm run typecheck -w frontend-admin"
+    "typecheck": "npm run typecheck -w frontend && npm run typecheck -w frontend-admin",
+    "e2e": "npm run e2e -w e2e --"
   }
 }
