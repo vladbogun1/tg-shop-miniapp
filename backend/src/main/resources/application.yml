@@ -47,7 +47,11 @@ server:
   port: 8080
   # Behind the nginx gateway: honour X-Forwarded-For/Proto so client IPs (rate limiting, logs)
   # and generated URLs are the real ones instead of the proxy's.
-  forward-headers-strategy: framework
+  # native = Tomcat's RemoteIpValve: X-Forwarded-For is read right-to-left, skipping trusted proxies
+  # (private/loopback addresses = our gateways), and the first untrusted address is the client.
+  # "framework" took the LEFT-most entry (or a client-sent "Forwarded: for=") — i.e. whatever the
+  # client claimed, which made the per-IP login limit trivially bypassable.
+  forward-headers-strategy: native
 
 management:
   info:

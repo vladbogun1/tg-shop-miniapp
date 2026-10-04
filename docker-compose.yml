@@ -31,6 +31,11 @@ services:
 
   minio:
     image: minio/minio
+    # The minio/minio and minio/mc images are no longer published (neither on Docker Hub nor on
+    # quay.io): a pull would fail and take the whole `docker compose pull` down with it. Use the
+    # image already present on the host and never try to refresh it. See docs/DEPLOY-SERVER.md §6
+    # for pinning it / moving to a mirror.
+    pull_policy: missing
     container_name: tgshop_v2_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -57,6 +62,7 @@ services:
   # It used to be public-read, which made every uploaded file world-readable forever.
   minio-init:
     image: minio/mc
+    pull_policy: missing
     container_name: tgshop_v2_minio_init
     depends_on:
       minio:
@@ -93,10 +99,13 @@ services:
       IMGPROXY_USE_ETAG: "true"
       IMGPROXY_ENABLE_WEBP_DETECTION: "true"
       IMGPROXY_ENABLE_AVIF_DETECTION: "true"
-      # Only our own bucket may be proxied. Without this, an unsigned imgproxy is an open
-      # image proxy: anyone could point it at arbitrary URLs and burn CPU (or reach internal
-      # addresses) through it.
-      IMGPROXY_ALLOWED_SOURCES: "s3://${S3_BUCKET}/"
+      # Only PRODUCT images may be proxied. Without a restriction an unsigned imgproxy is an open
+      # image proxy (arbitrary URLs, internal addresses). And it must be products/ only, not the
+      # whole bucket: chat/ holds customers' payment screenshots, which are private (signed,
+      # expiring /api/media links) — with "s3://bucket/" anyone holding one such link's key could
+      # fetch the file through /img/ forever, unsigned and cached for 30 days. imgproxy matches
+      # this as a prefix. After changing it, clear the nginx /img cache (see DEPLOY-SERVER.md §6).
+      IMGPROXY_ALLOWED_SOURCES: "s3://${S3_BUCKET}/products/"
       # Refuse absurd source images instead of trying to decode them.
       IMGPROXY_MAX_SRC_RESOLUTION: "30"
       IMGPROXY_DOWNLOAD_TIMEOUT: "10"

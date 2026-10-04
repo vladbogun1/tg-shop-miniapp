@@ -12,10 +12,11 @@ import java.util.Optional;
 /**
  * Makes long-lived ADMIN tokens revocable.
  *
- * <p>JWTs are stateless and live for 30 days, so without a check here deactivating an admin or
- * changing their password left every previously issued token fully valid until expiry. On each
- * ADMIN request we compare the token's {@code tv} claim with the row's current
- * {@code token_version} and require the account to still be active.
+ * <p>JWTs are stateless, so without a check here deactivating an admin or changing their password
+ * left every previously issued token fully valid until expiry. On each ADMIN request we compare the
+ * token's {@code tv} claim with the row's current {@code token_version} (bumped by «Выйти на всех
+ * устройствах»), require the account to still be active, and refuse a token whose {@code jti} was
+ * revoked by «Выйти» ({@link AdminTokenRevocations}).
  *
  * <p>The lookup is cached for a short window so this costs at most one query per admin per
  * {@value #CACHE_SECONDS}s rather than one per request. The window is the worst-case delay
@@ -33,9 +34,11 @@ public class AdminTokenValidator {
             .build();
 
     private final AdminUserRepository adminUserRepository;
+    private final AdminTokenRevocations revocations;
 
-    public AdminTokenValidator(AdminUserRepository adminUserRepository) {
+    public AdminTokenValidator(AdminUserRepository adminUserRepository, AdminTokenRevocations revocations) {
         this.adminUserRepository = adminUserRepository;
+        this.revocations = revocations;
     }
 
     /**
@@ -48,7 +51,8 @@ public class AdminTokenValidator {
         Optional<Integer> current = cache.get(principal.telegramUserId(), this::loadVersion);
         return current != null
                 && current.isPresent()
-                && current.get() == principal.tokenVersion();
+                && current.get() == principal.tokenVersion()
+                && !revocations.isRevoked(principal.tokenId());
     }
 
     /** Drops the cached version so a revocation takes effect immediately for this instance. */

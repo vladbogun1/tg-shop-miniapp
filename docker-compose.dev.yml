@@ -17,12 +17,15 @@ services:
   # Прод это не затрагивает: он собирается из базового файла.
   minio:
     image: quay.io/minio/minio:latest
+    # These images are gone from quay.io as well — use what is already on the machine.
+    pull_policy: missing
 
   imgproxy:
     image: ghcr.io/imgproxy/imgproxy:latest
 
   minio-init:
     image: quay.io/minio/mc:latest
+    pull_policy: missing
 
   backend:
     environment:

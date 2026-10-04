@@ -172,10 +172,21 @@ docker compose logs -f caddy
 
 # обновление (новый образ): запушить новый тег в CI -> на сервере сменить IMAGE_TAG в .env
 C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml"
-git pull origin v2 && docker compose $C pull && docker compose $C up -d --no-build
+# Тянем только НАШИ образы. minio/minio и minio/mc больше не публикуются (ни Docker Hub, ни quay.io):
+# у них в compose стоит pull_policy: missing, и они берутся из уже скачанного на сервере образа.
+# Голый `docker compose $C pull` на них упадёт — не запускать его без списка сервисов.
+git pull origin v2 \
+  && docker compose $C pull backend frontend-public frontend-admin-public site-public \
+  && docker compose $C up -d --no-build
 
 # рестарт одного сервиса
 docker compose restart backend
+
+# после смены IMGPROXY_ALLOWED_SOURCES (теперь только s3://<bucket>/products/) — пересоздать
+# imgproxy и сбросить кэш картинок nginx, иначе уже закэшированные /img/... (в т.ч. из chat/)
+# отдаются ещё до 30 дней
+docker compose $C up -d imgproxy
+docker exec tgshop_v2_nginx sh -c 'rm -rf /var/cache/nginx/img/*' && docker compose restart nginx
 
 # бэкап БД v2 (cron-friendly)
 docker exec tgshop_v2_mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" \
@@ -185,6 +196,19 @@ docker exec tgshop_v2_mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD
 cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app && docker compose start app proxy
 cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && docker compose down   # снять v2
 ```
+
+### MinIO: образов больше нет в реестрах
+
+`minio/minio` и `minio/mc` (и `quay.io/minio/*`) больше не публикуются, поэтому в compose у них
+`pull_policy: missing` — используется образ, уже лежащий на сервере. **Не удаляйте его**
+(`docker image prune -a` удалит неиспользуемый `minio/mc` — он нужен только при `up` minio-init).
+Чтобы не зависеть от локального кэша:
+
+1. **Закрепить образ у себя:** `docker save minio/minio minio/mc | gzip > ~/BACKUPS/minio-images.tar.gz`
+   (восстановить — `docker load < ...`), либо `docker tag` + `docker push` в свой Docker Hub
+   (`<DOCKERHUB_USERNAME>/minio:<дата>`) и прописать этот тег в `image:` (лучше по digest, не `latest`).
+2. **Зеркало/замена:** собрать MinIO из исходников (AGPL, github.com/minio/minio) или перейти на
+   другое S3-совместимое хранилище (SeaweedFS, Garage и т.п.) — backend и imgproxy нужен только S3 API.
 
 ---
 
