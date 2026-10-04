@@ -1,13 +1,18 @@
 "use client";
 
 /**
- * Рассылки (Neo-brutalism restyle) — compose an HTML-formatted Telegram broadcast,
- * send a test to a specific user (admin autocomplete or manual id), then
- * broadcast to an audience (all / active / inactive / premium) with live
- * progress polling. Functionality & API calls preserved 1:1 with the original;
- * only the visual layer changed.
+ * Рассылки — compose an HTML-formatted Telegram broadcast, test it, send it to an audience, and see
+ * past broadcasts with their results (R9).
+ *
+ *  - Text: the main version + optional uk / ru / en versions; each customer gets the version of
+ *    their language (users.locale → Telegram language → uk), else the main text.
+ *  - Audience: all / with orders / without / premium, optionally narrowed to one language.
+ *  - Draft (texts, audience, button) survives leaving the page (localStorage).
+ *  - Character counter against Telegram's 4096 limit; HTML is validated before anything is sent.
+ *  - Test: «себе» (the signed-in admin) or any user picked by name / id.
+ *  - History: GET /api/admin/broadcast/history (table `broadcasts`).
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -21,29 +26,42 @@ import {
   MessageSquareText,
   Eye,
   Users,
+  History,
+  RotateCcw,
+  UserRound,
 } from "lucide-react";
 import { sanitizeTelegramHtml, validateTelegramHtml } from "@shop/shared";
-import {
-  adminApi,
-  type BroadcastAudience,
-  type UserCardDto,
-  ApiError,
-} from "@/lib/api";
+import { adminApi, type BroadcastAudience, type UserCardDto, ApiError } from "@/lib/api";
+import { extApi, LANG_LABEL, type BroadcastHistoryItem, type ShopLang } from "@/lib/api-extra";
+import { formatDateTime } from "@/lib/orders";
+import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Textarea } from "@/components/ui/Textarea";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { Autocomplete } from "@/components/ui/Autocomplete";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer, riseItem, spring } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 
-function userLabel(u: UserCardDto): string {
-  const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
-  return full || (u.username ? "@" + u.username : "#" + u.telegramUserId);
-}
+/** Telegram refuses longer messages (the backend checks the same). */
+const MAX_LEN = 4096;
+const DRAFT_KEY = "admin.broadcast.draft.v1";
+
+type TextKey = "main" | ShopLang;
+type Texts = Record<TextKey, string>;
+const EMPTY_TEXTS: Texts = { main: "", uk: "", ru: "", en: "" };
+
+const TEXT_TABS: { value: TextKey; label: string }[] = [
+  { value: "main", label: "Основной" },
+  { value: "uk", label: "UA" },
+  { value: "ru", label: "RU" },
+  { value: "en", label: "EN" },
+];
 
 const AUDIENCE_LABEL: Record<BroadcastAudience, string> = {
   all: "Все",
@@ -52,23 +70,86 @@ const AUDIENCE_LABEL: Record<BroadcastAudience, string> = {
   premium: "Premium",
 };
 
+const DEFAULT_BUTTON = "🛍 Открыть магазин";
+
+interface Draft {
+  texts: Texts;
+  audience: BroadcastAudience;
+  lang: ShopLang | "";
+  withButton: boolean;
+  buttonText: string;
+}
+
+function loadDraft(): Draft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Partial<Draft>;
+    return {
+      texts: { ...EMPTY_TEXTS, ...(d.texts ?? {}) },
+      audience: d.audience ?? "all",
+      lang: d.lang ?? "",
+      withButton: d.withButton ?? true,
+      buttonText: d.buttonText ?? "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(d: Draft | null) {
+  try {
+    if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    else localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // private mode / blocked storage — the draft simply does not persist
+  }
+}
+
+function userLabel(u: UserCardDto): string {
+  const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return full || (u.username ? "@" + u.username : "#" + u.telegramUserId);
+}
+
 export default function BroadcastsPage() {
   const { push } = useToast();
   const qc = useQueryClient();
 
-  const [text, setText] = useState("");
+  const [texts, setTexts] = useState<Texts>(EMPTY_TEXTS);
+  const [editing, setEditing] = useState<TextKey>("main");
   const [audience, setAudience] = useState<BroadcastAudience>("all");
+  const [lang, setLang] = useState<ShopLang | "">("");
+  const [withButton, setWithButton] = useState(true);
+  const [buttonText, setButtonText] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserCardDto | null>(null);
   const [manualId, setManualId] = useState("");
-  const [withButton, setWithButton] = useState(true);
-  const [buttonText, setButtonText] = useState("🛍 Открыть магазин");
-  const [testing, setTesting] = useState(false);
+  const [testing, setTesting] = useState<"me" | "user" | null>(null);
   const [starting, setStarting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [restored, setRestored] = useState(false);
+
+  // Restore the draft once, then mirror every change into it.
+  useEffect(() => {
+    const d = loadDraft();
+    if (d) {
+      setTexts(d.texts);
+      setAudience(d.audience);
+      setLang(d.lang);
+      setWithButton(d.withButton);
+      setButtonText(d.buttonText);
+    }
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    const empty = !Object.values(texts).some((t) => t.trim());
+    saveDraft(empty && !buttonText ? null : { texts, audience, lang, withButton, buttonText });
+  }, [restored, texts, audience, lang, withButton, buttonText]);
 
   const { data: audiences } = useQuery({
-    queryKey: ["broadcast-audiences"],
-    queryFn: () => adminApi.broadcastAudiences(),
+    queryKey: ["broadcast-audiences", lang],
+    queryFn: () => extApi.broadcastAudiences(lang),
+    placeholderData: keepPreviousData,
   });
   const { data: status } = useQuery({
     queryKey: ["broadcast-status"],
@@ -76,8 +157,21 @@ export default function BroadcastsPage() {
     refetchInterval: (q) => (q.state.data?.running ? 1000 : false),
     placeholderData: keepPreviousData,
   });
-
   const running = status?.running ?? false;
+  const historyQ = useQuery({
+    queryKey: ["broadcast-history"],
+    queryFn: () => extApi.broadcastHistory(20),
+    refetchInterval: running ? 3000 : false,
+  });
+  // The last progress tick of a finished broadcast also refreshes the history row.
+  useEffect(() => {
+    if (status && !status.running) qc.invalidateQueries({ queryKey: ["broadcast-history"] });
+  }, [status, qc]);
+
+  const text = texts[editing];
+  function setText(v: string | ((t: string) => string)) {
+    setTexts((prev) => ({ ...prev, [editing]: typeof v === "function" ? v(prev[editing]) : v }));
+  }
 
   function wrap(open: string, close: string) {
     const ta = document.getElementById("bcast-ta") as HTMLTextAreaElement | null;
@@ -88,8 +182,7 @@ export default function BroadcastsPage() {
     const s = ta.selectionStart ?? text.length;
     const e = ta.selectionEnd ?? text.length;
     const sel = text.slice(s, e);
-    const next = text.slice(0, s) + open + sel + close + text.slice(e);
-    setText(next);
+    setText(text.slice(0, s) + open + sel + close + text.slice(e));
     requestAnimationFrame(() => {
       ta.focus();
       const pos = s + open.length + sel.length;
@@ -97,30 +190,48 @@ export default function BroadcastsPage() {
     });
   }
 
-  const audienceOptions = (Object.keys(AUDIENCE_LABEL) as BroadcastAudience[]).map(
-    (a) => ({
-      value: a,
-      label: `${AUDIENCE_LABEL[a]}${audiences ? ` · ${audiences[a]}` : ""}`,
-    })
-  );
-
-  const targetId =
-    manualId.trim() || (selectedUser ? String(selectedUser.telegramUserId) : "");
+  const audienceOptions = (Object.keys(AUDIENCE_LABEL) as BroadcastAudience[]).map((a) => ({
+    value: a,
+    label: `${AUDIENCE_LABEL[a]}${audiences ? ` · ${audiences[a]}` : ""}`,
+  }));
   const audienceCount = audiences?.[audience] ?? 0;
 
-  // Telegram rejects the whole message on a single bad tag. Catching that here beats discovering
-  // it as N silent failures after the broadcast has already started.
-  const htmlProblems = useMemo(() => validateTelegramHtml(text), [text]);
-  const htmlOk = htmlProblems.length === 0;
-  const previewHtml = useMemo(() => sanitizeTelegramHtml(text), [text]);
+  // Every filled version must be valid HTML and fit the limit — Telegram rejects the whole
+  // message on one bad tag, and a broadcast would only report it as N failed sends.
+  const problems = useMemo(() => {
+    const out: string[] = [];
+    for (const t of TEXT_TABS) {
+      const v = texts[t.value];
+      if (!v.trim()) continue;
+      const tag = t.value === "main" ? "" : `${t.label}: `;
+      if (v.length > MAX_LEN) out.push(`${tag}длиннее ${MAX_LEN} символов (${v.length})`);
+      const html = validateTelegramHtml(v);
+      if (html.length) out.push(tag + html[0].message);
+    }
+    return out;
+  }, [texts]);
+  const ok = problems.length === 0 && texts.main.trim().length > 0;
+  const currentProblems = useMemo(() => validateTelegramHtml(text), [text]);
 
-  async function sendTest() {
-    if (!htmlOk) return push(htmlProblems[0].message, "error");
-    const id = Number(targetId);
-    if (!id || Number.isNaN(id)) return push("Выберите админа или введите ID", "error");
-    setTesting(true);
+  /** What the preview shows: the edited version, or the main text it falls back to. */
+  const previewSource = text.trim() ? text : texts.main;
+  const previewHtml = useMemo(() => sanitizeTelegramHtml(previewSource), [previewSource]);
+  const versions = (["uk", "ru", "en"] as ShopLang[]).filter((l) => texts[l].trim());
+
+  async function sendTest(toMe: boolean) {
+    if (!text.trim()) return push("Сначала напишите текст", "error");
+    if (currentProblems.length) return push(currentProblems[0].message, "error");
+    let id: number | undefined;
+    if (!toMe) {
+      const raw = manualId.trim() || (selectedUser ? String(selectedUser.telegramUserId) : "");
+      id = Number(raw);
+      if (!raw || !id || Number.isNaN(id)) {
+        return push("Выберите получателя в списке или введите его Telegram ID", "error");
+      }
+    }
+    setTesting(toMe ? "me" : "user");
     try {
-      const r = await adminApi.broadcastTest({
+      const r = await extApi.broadcastTest({
         text,
         telegramUserId: id,
         withButton,
@@ -130,12 +241,13 @@ export default function BroadcastsPage() {
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Ошибка отправки", "error");
     } finally {
-      setTesting(false);
+      setTesting(null);
     }
   }
 
   function requestBroadcast() {
-    if (!htmlOk) return push(htmlProblems[0].message, "error");
+    if (!texts.main.trim()) return push("Основной текст обязателен — он уходит тем, для кого нет версии", "error");
+    if (problems.length) return push(problems[0], "error");
     setConfirmOpen(true);
   }
 
@@ -143,14 +255,21 @@ export default function BroadcastsPage() {
     setConfirmOpen(false);
     setStarting(true);
     try {
-      await adminApi.broadcast({
-        text,
+      await extApi.broadcast({
+        text: texts.main,
+        textUk: texts.uk.trim() || undefined,
+        textRu: texts.ru.trim() || undefined,
+        textEn: texts.en.trim() || undefined,
         audience,
+        lang,
         withButton,
         buttonText: buttonText.trim() || undefined,
       });
       push("Рассылка запущена", "ok");
+      setTexts(EMPTY_TEXTS);
+      setEditing("main");
       qc.invalidateQueries({ queryKey: ["broadcast-status"] });
+      qc.invalidateQueries({ queryKey: ["broadcast-history"] });
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Не удалось запустить", "error");
     } finally {
@@ -158,13 +277,24 @@ export default function BroadcastsPage() {
     }
   }
 
+  function reuse(h: BroadcastHistoryItem) {
+    setTexts({ main: h.text, uk: h.textUk ?? "", ru: h.textRu ?? "", en: h.textEn ?? "" });
+    setAudience(h.audience);
+    setLang(h.lang ?? "");
+    setWithButton(h.withButton);
+    setEditing("main");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    push("Текст рассылки загружен в черновик", "info");
+  }
+
+  function clearDraft() {
+    setTexts(EMPTY_TEXTS);
+    setButtonText("");
+    setEditing("main");
+  }
+
   return (
-    <motion.div
-      variants={staggerContainer}
-      initial="initial"
-      animate="animate"
-      className="flex flex-col"
-    >
+    <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex min-w-0 flex-col">
       {/* Scoped styling for HTML rendered inside the Telegram preview bubble. */}
       <style>{`
         .tg-preview a { color: #6ab3f3; text-decoration: none; }
@@ -191,12 +321,36 @@ export default function BroadcastsPage() {
         subtitle="Соберите сообщение, проверьте предпросмотр, отправьте тест и разошлите аудитории."
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         {/* Compose */}
-        <motion.div variants={riseItem} className="card flex flex-col gap-3 p-5">
-          <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
-            <MessageSquareText className="h-4 w-4 text-[var(--accent)]" />
-            Сообщение
+        <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
+              <MessageSquareText className="h-4 w-4 text-[var(--accent)]" />
+              Сообщение
+            </div>
+            {Object.values(texts).some((t) => t.trim()) && (
+              <Button size="sm" variant="ghost" icon={<RotateCcw className="h-3.5 w-3.5" />} onClick={clearDraft}>
+                Очистить черновик
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <SegmentedControl<TextKey>
+              size="sm"
+              value={editing}
+              onChange={setEditing}
+              options={TEXT_TABS.map((t) => ({
+                value: t.value,
+                label: t.label + (t.value !== "main" && texts[t.value].trim() ? " ✓" : ""),
+              }))}
+            />
+            <p className="text-[11px] text-[var(--text-faint)]">
+              {editing === "main"
+                ? "Основной текст получают все, для чьего языка нет отдельной версии."
+                : `Версия для тех, кто читает магазин на языке «${LANG_LABEL[editing]}». Пусто — получат основной текст.`}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -204,48 +358,49 @@ export default function BroadcastsPage() {
             <FmtBtn icon={<Italic className="h-4 w-4" />} onClick={() => wrap("<i>", "</i>")} title="Курсив" />
             <FmtBtn icon={<Code className="h-4 w-4" />} onClick={() => wrap("<code>", "</code>")} title="Моноширинный" />
             <FmtBtn icon={<Quote className="h-4 w-4" />} onClick={() => wrap("<blockquote>", "</blockquote>")} title="Цитата" />
-            <FmtBtn
-              icon={<Link2 className="h-4 w-4" />}
-              onClick={() => wrap('<a href="https://">', "</a>")}
-              title="Ссылка"
-            />
+            <FmtBtn icon={<Link2 className="h-4 w-4" />} onClick={() => wrap('<a href="https://">', "</a>")} title="Ссылка" />
           </div>
 
           <Textarea
             id="bcast-ta"
-            label="Текст сообщения (HTML)"
+            label={editing === "main" ? "Текст сообщения (HTML)" : `Текст: ${LANG_LABEL[editing]} (HTML)`}
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={9}
           />
-          <p className="text-[11px] text-[var(--text-faint)]">
-            Поддерживается HTML Telegram: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;s&gt;, &lt;code&gt;,
-            &lt;a href&gt;, &lt;blockquote&gt;. Эмодзи можно вставлять как есть.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="text-[11px] text-[var(--text-faint)]">
+              HTML Telegram: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;s&gt;, &lt;code&gt;, &lt;a href&gt;, &lt;blockquote&gt;.
+              Эмодзи — как есть. Черновик сохраняется автоматически.
+            </p>
+            <span
+              className={cn(
+                "shrink-0 text-[12px] font-bold tabular-nums",
+                text.length > MAX_LEN ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
+              )}
+            >
+              {text.length} / {MAX_LEN}
+            </span>
+          </div>
 
-          {/* Telegram refuses the whole message on one bad tag, and a broadcast would just report
-              it as N failed sends — so the problems are shown before anything is sent. */}
-          {text.trim() && !htmlOk && (
+          {problems.length > 0 && Object.values(texts).some((t) => t.trim()) && (
             <ul className="flex flex-col gap-1 rounded-[var(--r-sm)] border-2 border-[var(--danger)] bg-[var(--surface-2)] px-3 py-2">
-              {htmlProblems.map((p) => (
-                <li key={p.message} className="text-[12px] font-bold text-[var(--danger)]">
-                  {p.message}
+              {problems.map((p) => (
+                <li key={p} className="text-[12px] font-bold text-[var(--danger)]">
+                  {p}
                 </li>
               ))}
             </ul>
           )}
 
-          {/* Highlighted sub-panel: shop button toggle + editable text */}
           <div className="mt-1 flex flex-col gap-3 rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[var(--accent-soft)] p-4">
-            <Toggle
-              checked={withButton}
-              onChange={setWithButton}
-              label="Кнопка «Открыть магазин» под сообщением"
-            />
+            <Toggle checked={withButton} onChange={setWithButton} label="Кнопка «Открыть магазин» под сообщением" />
             {withButton && (
               <Input
                 label="Текст кнопки"
                 value={buttonText}
+                placeholder={`${DEFAULT_BUTTON} (на языке получателя)`}
+                hint="Пусто — стандартная подпись на языке получателя."
                 onChange={(e) => setButtonText(e.target.value)}
               />
             )}
@@ -253,14 +408,20 @@ export default function BroadcastsPage() {
         </motion.div>
 
         {/* Preview */}
-        <motion.div variants={riseItem} className="card flex flex-col gap-3 p-5">
+        <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
           <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-wide text-[var(--text)]">
             <Eye className="h-4 w-4 text-[var(--accent)]" />
             Предпросмотр
+            {editing !== "main" && (
+              <span className="text-[11px] font-bold normal-case text-[var(--text-faint)]">
+                — {LANG_LABEL[editing]}
+                {!text.trim() && texts.main.trim() ? " (будет основной текст)" : ""}
+              </span>
+            )}
           </div>
           <div className="rounded-[var(--r-md)] border-[3px] border-[var(--line)] bg-[#0e1621] p-4">
             <div className="max-w-[85%] rounded-[14px] rounded-tl-[4px] bg-[#17212b] p-3 shadow-[var(--shadow-2)]">
-              {text.trim() ? (
+              {previewSource.trim() ? (
                 <div
                   className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"
                   // Sanitised to Telegram's tag subset (see @shop/shared): attributes are dropped
@@ -272,7 +433,7 @@ export default function BroadcastsPage() {
               )}
               {withButton && (
                 <div className="mt-2 rounded-[8px] bg-[#2b5278] px-3 py-2 text-center text-[14px] font-medium text-white">
-                  {buttonText.trim() || "🛍 Открыть магазин"}
+                  {buttonText.trim() || DEFAULT_BUTTON}
                 </div>
               )}
             </div>
@@ -285,11 +446,22 @@ export default function BroadcastsPage() {
         <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
           <FlaskConical className="h-4 w-4 text-[var(--accent)]" />
           Тестовая отправка
+          <span className="text-[11px] font-bold normal-case text-[var(--text-faint)]">
+            — уходит текст открытой вкладки ({TEXT_TABS.find((t) => t.value === editing)?.label})
+          </span>
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[220px] flex-1">
+          <Button
+            variant="accent"
+            loading={testing === "me"}
+            onClick={() => sendTest(true)}
+            icon={<UserRound className="h-4 w-4" />}
+          >
+            Тест себе
+          </Button>
+          <div className="min-w-[200px] flex-1">
             <Autocomplete<UserCardDto>
-              label="Пользователь"
+              label="или пользователю"
               selectedLabel={selectedUser ? userLabel(selectedUser) : null}
               fetchItems={(q) => adminApi.users({ q, size: 8 })}
               itemLabel={userLabel}
@@ -307,9 +479,9 @@ export default function BroadcastsPage() {
               onClear={() => setSelectedUser(null)}
             />
           </div>
-          <div className="min-w-[150px] flex-1">
+          <div className="min-w-[140px] flex-1">
             <Input
-              label="или ID вручную"
+              label="или Telegram ID"
               value={manualId}
               inputMode="numeric"
               onChange={(e) => {
@@ -320,8 +492,8 @@ export default function BroadcastsPage() {
           </div>
           <Button
             variant="surface"
-            loading={testing}
-            onClick={sendTest}
+            loading={testing === "user"}
+            onClick={() => sendTest(false)}
             icon={<Send className="h-4 w-4" />}
           >
             Отправить тест
@@ -336,24 +508,35 @@ export default function BroadcastsPage() {
           Рассылка
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[220px] flex-1">
-            <Select
-              label="Аудитория"
-              value={audience}
-              options={audienceOptions}
-              onChange={(v) => setAudience(v)}
+          <div className="min-w-[200px] flex-1">
+            <Select label="Аудитория" value={audience} options={audienceOptions} onChange={(v) => setAudience(v)} />
+          </div>
+          <div className="min-w-[180px] flex-1">
+            <Select<string>
+              label="Язык покупателя"
+              value={lang}
+              onChange={(v) => setLang(v as ShopLang | "")}
+              options={[
+                { value: "", label: "Все языки" },
+                { value: "uk", label: LANG_LABEL.uk },
+                { value: "ru", label: LANG_LABEL.ru },
+                { value: "en", label: LANG_LABEL.en },
+              ]}
             />
           </div>
           <Button
             variant="accent"
             loading={starting}
-            disabled={running || audienceCount === 0 || !htmlOk}
+            disabled={running || audienceCount === 0 || !ok}
             onClick={requestBroadcast}
             icon={<Send className="h-4 w-4" />}
           >
             Разослать ({audienceCount})
           </Button>
         </div>
+        <p className="text-[11px] text-[var(--text-faint)]">
+          Язык — выбранный покупателем в магазине; если не выбирал — язык Telegram, иначе украинский.
+        </p>
 
         {status && (status.running || status.total > 0) && (
           <BroadcastProgress
@@ -363,6 +546,32 @@ export default function BroadcastsPage() {
             failed={status.failed}
             blocked={status.blocked}
           />
+        )}
+      </motion.div>
+
+      {/* History */}
+      <motion.div variants={riseItem} className="card mt-4 flex min-w-0 flex-col gap-3 p-5">
+        <div className="flex items-center gap-2 text-[14px] font-black uppercase tracking-wide text-[var(--text)]">
+          <History className="h-4 w-4 text-[var(--accent)]" />
+          Прошлые рассылки
+        </div>
+        {historyQ.isError ? (
+          <p className="text-[13px] text-[var(--danger)]">
+            Не удалось загрузить историю.{" "}
+            <button type="button" className="font-bold underline" onClick={() => historyQ.refetch()}>
+              Повторить
+            </button>
+          </p>
+        ) : (historyQ.data ?? []).length === 0 ? (
+          <p className="text-[13px] text-[var(--text-faint)]">
+            {historyQ.isLoading ? "Загружаем…" : "Пока ни одной рассылки (история ведётся с этой версии)."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {(historyQ.data ?? []).map((h) => (
+              <HistoryRow key={h.id} h={h} onReuse={() => reuse(h)} />
+            ))}
+          </div>
         )}
       </motion.div>
 
@@ -377,12 +586,7 @@ export default function BroadcastsPage() {
             <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
               Отмена
             </Button>
-            <Button
-              variant="accent"
-              loading={starting}
-              onClick={startBroadcast}
-              icon={<Send className="h-4 w-4" />}
-            >
+            <Button variant="accent" loading={starting} onClick={startBroadcast} icon={<Send className="h-4 w-4" />}>
               Разослать
             </Button>
           </>
@@ -390,29 +594,68 @@ export default function BroadcastsPage() {
       >
         <p className="text-[14px] leading-relaxed text-[var(--text)]">
           Разослать сообщение аудитории{" "}
-          <span className="font-semibold text-[var(--accent)]">
-            «{AUDIENCE_LABEL[audience]}»
-          </span>{" "}
-          —{" "}
-          <span className="font-semibold">{audienceCount}</span> получателей?
+          <span className="font-semibold text-[var(--accent)]">«{AUDIENCE_LABEL[audience]}»</span>
+          {lang ? (
+            <>
+              {" "}
+              (язык: <span className="font-semibold">{LANG_LABEL[lang]}</span>)
+            </>
+          ) : null}{" "}
+          — <span className="font-semibold">{audienceCount}</span> получателей?
         </p>
         <p className="mt-2 text-[13px] text-[var(--text-muted)]">
-          Действие нельзя отменить после запуска.
+          {versions.length
+            ? `Отдельные версии: ${versions.map((v) => v.toUpperCase()).join(", ")}; остальным — основной текст.`
+            : "Все получат основной текст."}
         </p>
+        <p className="mt-2 text-[13px] text-[var(--text-muted)]">Действие нельзя отменить после запуска.</p>
       </Modal>
     </motion.div>
   );
 }
 
-function FmtBtn({
-  icon,
-  onClick,
-  title,
-}: {
-  icon: ReactNode;
-  onClick: () => void;
-  title: string;
-}) {
+function HistoryRow({ h, onReuse }: { h: BroadcastHistoryItem; onReuse: () => void }) {
+  const versions = [h.textUk && "UA", h.textRu && "RU", h.textEn && "EN"].filter(Boolean);
+  const plain = h.text.replace(/<[^>]+>/g, "");
+  return (
+    <div className="card-2 flex min-w-0 flex-col gap-1.5 rounded-[var(--r-md)] p-3">
+      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <span className="font-bold text-[var(--text)]">{formatDateTime(h.startedAt)}</span>
+        {h.status === "RUNNING" ? (
+          <Badge tone="info">идёт</Badge>
+        ) : h.status === "INTERRUPTED" ? (
+          <Badge tone="warn">прервана</Badge>
+        ) : (
+          <Badge tone="ok">готово</Badge>
+        )}
+        <span className="text-[var(--text-muted)]">
+          {AUDIENCE_LABEL[h.audience] ?? h.audience}
+          {h.lang ? ` · ${LANG_LABEL[h.lang]}` : ""}
+          {versions.length ? ` · версии ${versions.join(", ")}` : ""}
+        </span>
+        {h.adminName && <span className="text-[var(--text-faint)]">· {h.adminName}</span>}
+      </div>
+      <p className="line-clamp-2 break-words text-[13px] text-[var(--text)]">{plain}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
+        <span className="flex flex-wrap gap-3">
+          <span className="text-[var(--ok)]">✓ {h.sent}</span>
+          <span className="text-[var(--danger)]">✕ {h.failed}</span>
+          <span className="text-[var(--warn)]">⊘ {h.blocked}</span>
+          <span className="text-[var(--text-muted)]">из {h.total}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onReuse}
+          className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--accent)] hover:underline"
+        >
+          В черновик
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FmtBtn({ icon, onClick, title }: { icon: ReactNode; onClick: () => void; title: string }) {
   return (
     <motion.button
       type="button"
