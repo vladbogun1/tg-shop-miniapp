@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
+import { settlePreloader } from "@shop/shared";
 
-/** Tells the first-load preloader (components/Preloader.tsx) that React has hydrated. */
+/**
+ * Pairs with components/Preloader.tsx. Runs on every mount of the root layout, before paint: reports
+ * hydration on the first load, and hides the overlay when the layout is remounted later (language
+ * switch), where the preloader's inline script does not run again. See settlePreloader().
+ */
 export function PreloaderReady() {
-  useEffect(() => {
-    (window as unknown as { __csPreloader?: { hydrated: () => void } }).__csPreloader?.hydrated();
+  useLayoutEffect(() => {
+    settlePreloader();
   }, []);
   return null;
 }

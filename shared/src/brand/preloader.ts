@@ -10,6 +10,10 @@
  *   "out"          bar at 100%, overlay fading (300ms), clicks pass through
  *   "done"         display:none — and it stays so on every client-side navigation, because the
  *                  inline script only ever runs on a real page load.
+ * A client navigation that REMOUNTS the root layout (the site's language switch changes the [locale]
+ * segment) re-inserts the overlay markup and React resets <html>'s attributes, while the inline script
+ * does not run again — the overlay hung over the page with scrolling locked. The apps' <PreloaderReady>
+ * mounts with the layout and settles that case before paint (see settlePreloader).
  * Progress is real: milestones DOMContentLoaded, document.fonts.ready, React hydration
  * (`window.__csPreloader.hydrated()`, called from a client effect), window "load", then the
  * images in the first viewport. Shown at least MIN_MS, never longer than MAX_MS.
@@ -99,9 +103,26 @@ function imgs(){setTimeout(function(){var L=[],vh=innerHeight,a=d.images;
 function done(){if(fin)return;fin=true;var wait=Math.max(0,${MIN_MS}-(now()-t0));
  setTimeout(function(){set(1);setTimeout(function(){h.setAttribute("data-pl","out");
   setTimeout(function(){h.setAttribute("data-pl","done");h.style.removeProperty("--cspl-p");},320);},220);},wait);}
-window.__csPreloader={hydrated:function(){mark("hyd")},finish:done};
+window.__csPreloader={hydrated:function(){mark("hyd")},finish:done,finished:function(){return fin}};
 if(d.readyState!=="loading")mark("dom");else d.addEventListener("DOMContentLoaded",function(){mark("dom")});
 if(d.fonts&&d.fonts.ready)d.fonts.ready.then(function(){mark("fonts")},function(){mark("fonts")});else mark("fonts");
 if(d.readyState==="complete")mark("load");else window.addEventListener("load",function(){mark("load")});
 setTimeout(done,${MAX_MS});
 })();`;
+
+/**
+ * Called from each app's <PreloaderReady> in a layout effect, i.e. on every mount of the root layout:
+ * on the real first load it reports hydration; on a remount (the script already finished, or never
+ * ran for this markup) it hides the overlay at once instead of leaving it stuck.
+ */
+export function settlePreloader(): void {
+  if (typeof window === "undefined") return;
+  const pl = (window as unknown as { __csPreloader?: { hydrated: () => void; finished: () => boolean } }).__csPreloader;
+  if (pl && !pl.finished()) {
+    pl.hydrated();
+    return;
+  }
+  const h = document.documentElement;
+  h.setAttribute("data-pl", "done");
+  h.style.removeProperty("--cspl-p");
+}
