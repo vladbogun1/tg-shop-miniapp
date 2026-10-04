@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
+import { toCardProducts } from "@/lib/card";
 import { PAGE_SIZE } from "@/lib/config";
 import { CatalogFilters, CatalogSortSelect, MobileFiltersButton } from "./CatalogFilters";
 import { ProductGrid } from "./ProductCard";
@@ -118,7 +119,7 @@ export function CatalogView({
             </div>
           ) : (
             <>
-              <ProductGrid products={data.items} priorityCount={4} />
+              <ProductGrid products={toCardProducts(data.items)} priorityCount={4} />
               {pages > 1 && <Pagination locale={locale} state={state} pages={pages} />}
             </>
           )}
