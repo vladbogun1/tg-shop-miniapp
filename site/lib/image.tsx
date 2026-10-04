@@ -132,6 +132,11 @@ export function Image({
   if (fit) {
     return (
       <div ref={nearRef} className="relative flex justify-center overflow-hidden bg-[var(--surface-2)]">
+        {!near && (
+          <noscript>
+            <img src={finalSrc} alt={alt} loading="lazy" decoding="async" className={`block h-auto w-auto object-contain ${className ?? ""}`} />
+          </noscript>
+        )}
         {near && <img
           ref={imgRef}
           src={finalSrc}
@@ -157,6 +162,15 @@ export function Image({
           aria-hidden
           className="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
         />
+      )}
+      {!near && (
+        // Until the photo nears the viewport there is no <img> at all, so the server HTML had only
+        // the grey placeholder: crawlers that do not run JS (image search, link previews,
+        // aggregators) saw no product photos. A <noscript> copy is ignored by every browser with
+        // JS — no extra download, no change on screen.
+        <noscript>
+          <img src={finalSrc} srcSet={srcSet} sizes={srcSet ? sizes : undefined} alt={alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        </noscript>
       )}
       {near && <img
         ref={imgRef}

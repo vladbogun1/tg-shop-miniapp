@@ -21,13 +21,36 @@ const nextConfig: NextConfig = {
     "/**": ["./content/**/*"],
   },
   poweredByHeader: false,
+  // Next 15.2+ streams metadata (<title>, canonical, hreflang, robots, OG) into <body> for every
+  // user agent outside its built-in "HTML-limited bots" list — and Googlebot is not on it. Google
+  // ignores canonical and hreflang outside <head>. Matching every UA renders metadata blocking,
+  // inside <head>, for all visitors; the page looks the same.
+  htmlLimitedBots: /.*/,
   async rewrites() {
-    if (process.env.NODE_ENV !== "development") return [];
-    return [
-      { source: "/api/:path*", destination: `${DEV_API}/api/:path*` },
-      { source: "/ws", destination: `${DEV_API}/ws` },
-      { source: "/img/:path*", destination: `${DEV_IMG}/img/:path*` },
-    ];
+    return {
+      // Ukrainian lives without a prefix: /… is served by app/[locale] as /uk/…. This used to be a
+      // NextResponse.rewrite() in middleware, and a middleware rewrite turns ISR off — every uk page
+      // answered `Cache-Control: private, no-store` and was rendered on each request, while the same
+      // pages under /ru and /en were cached. A config rewrite keeps ISR. The exclusions mirror the
+      // middleware matcher (backend, images, Next internals, service routes, files with extensions).
+      beforeFiles: [
+        { source: "/", destination: "/uk" },
+        {
+          source:
+            "/:path((?!(?:ru|en|uk)(?:/|$)|api(?:/|$)|ws$|img/|_next/|_site/|_vercel|favicon\\.ico$|sitemap\\.xml$|robots\\.txt$|.*\\.[a-zA-Z0-9]+$).+)",
+          destination: "/uk/:path",
+        },
+      ],
+      afterFiles:
+        process.env.NODE_ENV === "development"
+          ? [
+              { source: "/api/:path*", destination: `${DEV_API}/api/:path*` },
+              { source: "/ws", destination: `${DEV_API}/ws` },
+              { source: "/img/:path*", destination: `${DEV_IMG}/img/:path*` },
+            ]
+          : [],
+      fallback: [],
+    };
   },
   async headers() {
     return [

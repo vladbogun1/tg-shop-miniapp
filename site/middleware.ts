@@ -1,13 +1,13 @@
 /**
  * Locale routing.
  *
- *   /…        → Ukrainian (default, no prefix) — internally rewritten to /uk/…
+ *   /…        → Ukrainian (default, no prefix) — rewritten to /uk/… by next.config.ts, NOT here:
+ *               a middleware rewrite turns ISR off for the page (see the comment there)
  *   /ru/…     → Russian
  *   /en/…     → English
  *   /uk/…     → permanent redirect to the unprefixed URL (one canonical address per page)
  *
- * Everything under app/ lives in app/[locale]/…, so the rewrite is all it takes; the URL the
- * visitor sees never changes.
+ * So the middleware only redirects, and only runs for /uk… and product/category paths.
  */
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -21,19 +21,28 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  if (/^\/(ru|en)(\/|$)/.test(pathname)) {
-    return NextResponse.next();
+  // Slugs are lower case and the API matches them case-insensitively, so /product/ATTACK-Shark
+  // answered 200 with the same page. One address per page: a real 301 to the lower-case path.
+  // (Percent-escapes like %D0 are left alone — their hex case means nothing.)
+  if (/^(?:\/(?:ru|en))?\/(?:product|catalog)\/[^/]*[A-Z]/.test(pathname.replace(/%[0-9a-fA-F]{2}/g, ""))) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.replace(/%[0-9a-fA-F]{2}|[A-Z]+/g, (m) => (m.startsWith("%") ? m : m.toLowerCase()));
+    url.search = search;
+    return NextResponse.redirect(url, 301);
   }
 
-  const url = req.nextUrl.clone();
-  url.pathname = `/uk${pathname === "/" ? "" : pathname}`;
-  return NextResponse.rewrite(url);
+  return NextResponse.next();
 }
 
 export const config = {
-  // Not: the backend (/api, /ws), images (/img), Next internals, the site's own service routes
-  // (/_site), metadata files and anything with a file extension.
   matcher: [
-    "/((?!api/|api$|ws|img/|_next/|_site/|_vercel|favicon\\.ico|sitemap\\.xml|robots\\.txt|.*\\.[a-zA-Z0-9]+$).*)",
+    "/uk",
+    "/uk/:path*",
+    "/product/:path*",
+    "/catalog/:path*",
+    "/ru/product/:path*",
+    "/ru/catalog/:path*",
+    "/en/product/:path*",
+    "/en/catalog/:path*",
   ],
 };

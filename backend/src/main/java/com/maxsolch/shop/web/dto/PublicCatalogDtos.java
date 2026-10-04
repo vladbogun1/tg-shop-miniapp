@@ -25,7 +25,8 @@ public final class PublicCatalogDtos {
     public record SitemapProduct(String slug, Instant updatedAt) {
     }
 
-    public record SitemapCategory(String slug) {
+    /** Only categories that have public products; {@code updatedAt} = newest product change. */
+    public record SitemapCategory(String slug, Instant updatedAt) {
     }
 
     public record SitemapDto(List<SitemapProduct> products, List<SitemapCategory> categories) {

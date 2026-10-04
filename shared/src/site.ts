@@ -47,7 +47,8 @@ export interface PublicProductPage {
 /** GET /api/public/sitemap */
 export interface PublicSitemap {
   products: { slug: string; updatedAt?: string | null }[];
-  categories: { slug: string }[];
+  /** Only categories with products; `updatedAt` = newest change among them. */
+  categories: { slug: string; updatedAt?: string | null }[];
 }
 
 // ---- web login through the bot ---------------------------------------------

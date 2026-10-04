@@ -6,10 +6,11 @@ import { CategoryArt, CategoryArtDefs } from "@/components/home/CategoryArt";
 import { HeroArt } from "@/components/home/HeroArt";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import { alternates, localePath, makeT, type MessageKey } from "@/i18n";
-import { BOT_URL, SITE_URL } from "@/lib/config";
+import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 import { getCategories, getProducts, safe } from "@/lib/server-api";
+import { pageMeta, storeJsonLd } from "@/lib/seo";
+import { toCardProducts } from "@/lib/card";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;
@@ -17,11 +18,7 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);
   const t = makeT(locale);
-  return {
-    title: { absolute: t("meta.title") },
-    description: t("meta.description"),
-    alternates: alternates("/", locale),
-  };
+  return pageMeta({ locale, path: "/", title: t("meta.title"), absoluteTitle: true, description: t("meta.description") });
 }
 
 const TRUST: { icon: typeof Truck; title: MessageKey; text: MessageKey }[] = [
@@ -44,16 +41,7 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
 
   return (
     <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: "ChiSetup",
-          url: SITE_URL,
-          sameAs: [BOT_URL],
-          legalName: "ФОП Солоха Максим Андрійович",
-        }}
-      />
+      <JsonLd data={storeJsonLd(locale)} />
 
       {/* hero (DESIGN-V3 §6, after the brandboard's website example) */}
       <section className="container-site pt-8 md:pt-14">
@@ -122,14 +110,14 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
       {hits && hits.items.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-hits">
           <SectionHead id="home-hits" title={t("home.hits")} more={href("/catalog")} moreLabel={t("common.showAll")} />
-          <ProductGrid products={hits.items} />
+          <ProductGrid products={toCardProducts(hits.items)} />
         </section>
       )}
 
       {fresh && fresh.items.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-new">
           <SectionHead id="home-new" title={t("home.new")} more={href("/catalog?sort=new")} moreLabel={t("common.showAll")} />
-          <ProductGrid products={fresh.items} />
+          <ProductGrid products={toCardProducts(fresh.items)} />
         </section>
       )}
 

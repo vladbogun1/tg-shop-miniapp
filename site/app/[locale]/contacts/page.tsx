@@ -2,13 +2,15 @@ import { AtSign, Clock, MapPin, MessageCircle, Send, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { alternates, localePath, makeT } from "@/i18n";
+import { localePath, makeT } from "@/i18n";
 import { BOT_URL, OWNER_TELEGRAM, SELLER } from "@/lib/config";
 import { localeOf, type LocaleParams } from "@/lib/route";
+import { pageMeta } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);
-  return { title: makeT(locale)("info.contacts"), alternates: alternates("/contacts", locale) };
+  const t = makeT(locale);
+  return pageMeta({ locale, path: "/contacts", title: t("info.contacts"), description: t("meta.desc.contacts") });
 }
 
 export default async function ContactsPage({ params }: { params: LocaleParams }) {

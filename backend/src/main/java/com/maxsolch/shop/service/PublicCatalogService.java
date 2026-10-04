@@ -140,15 +140,46 @@ public class PublicCatalogService {
                 .toList();
     }
 
+    /**
+     * Products and menu categories for sitemap.xml. A category with no public products is left out:
+     * it renders an empty list (the site marks it {@code noindex}), i.e. a soft 404 for search
+     * engines. A category's {@code updatedAt} is the newest change among its products.
+     */
     @Transactional(readOnly = true)
     public SitemapDto sitemap() {
+        Map<String, Instant> updatedBySlug = new HashMap<>();
         List<SitemapProduct> products = productRepository.findAllActive().stream()
-                .map(p -> new SitemapProduct(p.getSlug(),
-                        p.getUpdatedAt() != null ? p.getUpdatedAt() : p.getCreatedAt()))
+                .map(p -> {
+                    Instant updated = p.getUpdatedAt() != null ? p.getUpdatedAt() : p.getCreatedAt();
+                    if (p.getSlug() != null && updated != null) {
+                        updatedBySlug.put(p.getSlug(), updated);
+                    }
+                    return new SitemapProduct(p.getSlug(), updated);
+                })
                 .toList();
+
+        // Same product set and tag membership as categories() — the cached public DTOs.
+        Set<String> nonEmpty = new HashSet<>();
+        Map<String, Instant> lastChange = new HashMap<>();
+        for (ProductDto p : catalogService.listActiveProducts(ContentLocale.RU)) {
+            if (p.tags() == null) {
+                continue;
+            }
+            Instant updated = updatedBySlug.get(p.slug());
+            for (TagDto t : p.tags()) {
+                if (t.slug() == null) {
+                    continue;
+                }
+                nonEmpty.add(t.slug());
+                if (updated != null) {
+                    lastChange.merge(t.slug(), updated, (a, b) -> a.isAfter(b) ? a : b);
+                }
+            }
+        }
         List<SitemapCategory> categories = tagRepository.findAllByOrderByNameAsc().stream()
                 .filter(t -> t.isShowInMenu())
-                .map(t -> new SitemapCategory(t.getSlug()))
+                .filter(t -> nonEmpty.contains(t.getSlug()))
+                .map(t -> new SitemapCategory(t.getSlug(), lastChange.get(t.getSlug())))
                 .toList();
         return new SitemapDto(products, categories);
     }

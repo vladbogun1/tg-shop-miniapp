@@ -6,9 +6,10 @@ import { Header } from "@/components/layout/Header";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
-import { alternates, makeT } from "@/i18n";
+import { makeT } from "@/i18n";
 import { isLocale, LOCALE_TAG, type Locale } from "@/i18n/locales";
 import { SITE_URL } from "@/lib/config";
+import { pageMeta } from "@/lib/seo";
 import { getCategories, safe } from "@/lib/server-api";
 import "../globals.css";
 
@@ -51,20 +52,19 @@ export async function generateMetadata({
   const locale: Locale = isLocale(raw) ? raw : "uk";
   const t = makeT(locale);
   const indexable = process.env.SITE_INDEXABLE === "true";
+  // Defaults for every page (pages send their own full set via pageMeta). No canonical/hreflang
+  // here: a page that forgets them (the 404) must not claim to be the home page.
+  const base = pageMeta({ locale, path: "/", title: t("meta.title"), absoluteTitle: true, description: t("meta.description") });
   return {
     metadataBase: new URL(SITE_URL),
     title: { default: t("meta.title"), template: "%s · ChiSetup" },
     description: t("meta.description"),
     applicationName: "ChiSetup",
-    alternates: alternates("/", locale),
-    openGraph: {
-      type: "website",
-      siteName: "ChiSetup",
-      locale: LOCALE_TAG[locale].replace("-", "_"),
-      title: t("meta.title"),
-      description: t("meta.description"),
-    },
-    robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
+    openGraph: { ...base.openGraph, url: undefined },
+    twitter: base.twitter,
+    // Indexable is the default, so nothing is emitted then — otherwise the 404 page carried both
+    // "index, follow" from here and Next's own "noindex".
+    ...(indexable ? {} : { robots: { index: false, follow: false } }),
   };
 }
 

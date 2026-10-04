@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-DNS-Prefetch-Control", value: "off" },
+          // Not for search engines (the public shop is chisetup.com.ua); Telegram ignores it.
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
     ];
