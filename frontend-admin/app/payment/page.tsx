@@ -1,42 +1,93 @@
 "use client";
 
 /**
- * Payment settings (route "/payment") — Neo-brutalism restyle.
- *  - Payment options list: GET/PUT /api/admin/payment-options (replace list).
+ * Payment settings (route "/payment").
+ *  - Payment options: GET ?includeInactive=true / PUT /api/admin/payment-options (the whole list,
+ *    in checkout order). Each option can be switched off (kept for old orders) and moved up/down.
  *  - Requisites: GET/PUT /api/admin/payment-requisites, with a live customer preview.
- * Functionality preserved 1:1 from the original; only the look changed.
+ *
+ * Nothing can be saved until both loads succeeded (A7: a failed load used to leave an empty form
+ * whose «Сохранить» switched every payment option off and wiped the requisites). One «Сохранить»
+ * writes whatever changed; leaving with unsaved edits asks first. Card and IBAN are checked
+ * (Luhn, UA + 27 digits) before they reach customers.
  */
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Save, CreditCard, Wallet, ReceiptText } from "lucide-react";
 import {
-  adminApi,
-  ApiError,
-  type PaymentOption,
-  type PaymentRequisitesDto,
-} from "@/lib/api";
+  ArrowDown,
+  ArrowUp,
+  CreditCard,
+  Languages,
+  Plus,
+  ReceiptText,
+  Save,
+  Trash2,
+  Wallet,
+} from "lucide-react";
+import { adminApi, ApiError, type PaymentRequisitesDto } from "@/lib/api";
+import { extApi, type PaymentOptionFull } from "@/lib/api-extra";
 import { toMajor, toMinor } from "@/lib/money";
+import { cardProblem, ibanProblem } from "@/lib/requisites";
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
+import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { QueryState } from "@/components/ui/QueryState";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
-import { CenterSpinner } from "@/components/ui/Spinner";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { staggerContainer, riseItem, ease } from "@/lib/motion";
+import { ease } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 
-interface OptionRow extends Omit<PaymentOption, "prepaymentMinor"> {
+interface OptionRow {
+  /** Stable key for React while rows move (id is absent on new rows). */
+  key: string;
+  id?: string;
+  title: string;
+  description: string;
+  requiresPrepayment: boolean;
   prepaymentMajor: string;
+  active: boolean;
+}
+
+let rowSeq = 0;
+
+function toRows(list: PaymentOptionFull[]): OptionRow[] {
+  return list.map((o) => ({
+    key: o.id ?? `new-${rowSeq++}`,
+    id: o.id,
+    title: o.title ?? "",
+    description: o.description ?? "",
+    requiresPrepayment: !!o.requiresPrepayment,
+    prepaymentMajor: o.prepaymentMinor ? String(toMajor(o.prepaymentMinor)) : "",
+    active: o.active !== false,
+  }));
+}
+
+/** Comparable shape (no React keys) for the dirty check. */
+function optionsSnapshot(rows: OptionRow[]): string {
+  return JSON.stringify(
+    rows.map((r) => [r.id, r.title, r.description, r.requiresPrepayment, r.prepaymentMajor, r.active])
+  );
+}
+
+const EMPTY_REQ: PaymentRequisitesDto = {};
+function reqSnapshot(r: PaymentRequisitesDto): string {
+  const n = (s?: string | null) => (s ?? "").trim();
+  return JSON.stringify([n(r.cardNumber), n(r.iban), n(r.recipient), n(r.edrpou), n(r.purpose), n(r.note)]);
 }
 
 export default function PaymentPage() {
   const { push } = useToast();
 
   const optionsQ = useQuery({
-    queryKey: ["payment-options"],
-    queryFn: () => adminApi.paymentOptions(),
+    queryKey: ["payment-options", "all"],
+    queryFn: () => extApi.paymentOptionsAll(),
   });
   const reqQ = useQuery({
     queryKey: ["payment-requisites"],
@@ -44,83 +95,131 @@ export default function PaymentPage() {
   });
 
   const [options, setOptions] = useState<OptionRow[]>([]);
-  const [req, setReq] = useState<PaymentRequisitesDto>({});
-  const [savingOpts, setSavingOpts] = useState(false);
-  const [savingReq, setSavingReq] = useState(false);
+  const [baseOptions, setBaseOptions] = useState("");
+  const [req, setReq] = useState<PaymentRequisitesDto>(EMPTY_REQ);
+  const [baseReq, setBaseReq] = useState<PaymentRequisitesDto | null>(null);
+  const [showHidden, setShowHidden] = useState(true);
+  const [toDelete, setToDelete] = useState<OptionRow | null>(null);
+  const [saving, setSaving] = useState(false);
 
+  // Fill the form only from a successful load — never from the empty initial state.
   useEffect(() => {
-    if (optionsQ.data) {
-      setOptions(
-        optionsQ.data.map((o) => ({
-          ...o,
-          prepaymentMajor: o.prepaymentMinor ? String(toMajor(o.prepaymentMinor)) : "",
-        }))
-      );
-    }
+    if (!optionsQ.data) return;
+    const rows = toRows(optionsQ.data);
+    setOptions(rows);
+    setBaseOptions(optionsSnapshot(rows));
   }, [optionsQ.data]);
-
   useEffect(() => {
-    if (reqQ.data) setReq(reqQ.data);
+    if (!reqQ.data) return;
+    setReq(reqQ.data);
+    setBaseReq(reqQ.data);
   }, [reqQ.data]);
 
-  function patchOption(i: number, patch: Partial<OptionRow>) {
-    setOptions((prev) => prev.map((o, j) => (j === i ? { ...o, ...patch } : o)));
+  const loaded = !!optionsQ.data && !!reqQ.data && baseReq !== null;
+  const optionsDirty = loaded && optionsSnapshot(options) !== baseOptions;
+  const reqDirty = loaded && reqSnapshot(req) !== reqSnapshot(baseReq ?? EMPTY_REQ);
+  const dirty = optionsDirty || reqDirty;
+  useUnsavedGuard(dirty);
+
+  // Checked only when changed: an old value that predates the rule must not block other edits.
+  const cardErr =
+    (req.cardNumber ?? "").trim() !== (baseReq?.cardNumber ?? "").trim() ? cardProblem(req.cardNumber) : null;
+  const ibanErr = (req.iban ?? "").trim() !== (baseReq?.iban ?? "").trim() ? ibanProblem(req.iban) : null;
+  const named = options.filter((o) => o.title.trim());
+  const activeCount = named.filter((o) => o.active).length;
+  const blankTitles = options.some((o) => !o.title.trim() && (o.description.trim() || o.id));
+  const blocker = !loaded
+    ? "Настройки не загружены"
+    : activeCount === 0
+      ? "Включите хотя бы один способ оплаты — иначе покупатели не смогут оформить заказ"
+      : blankTitles
+        ? "У каждого способа оплаты должно быть название"
+        : cardErr || ibanErr;
+
+  function patchOption(key: string, patch: Partial<OptionRow>) {
+    setOptions((prev) => prev.map((o) => (o.key === key ? { ...o, ...patch } : o)));
+  }
+
+  function move(key: string, delta: -1 | 1) {
+    setOptions((prev) => {
+      const i = prev.findIndex((o) => o.key === key);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
   }
 
   function addOption() {
+    setShowHidden(true);
     setOptions((p) => [
       ...p,
-      { title: "", description: "", requiresPrepayment: false, prepaymentMajor: "" },
+      {
+        key: `new-${rowSeq++}`,
+        title: "",
+        description: "",
+        requiresPrepayment: false,
+        prepaymentMajor: "",
+        active: true,
+      },
     ]);
   }
 
-  async function saveOptions() {
-    setSavingOpts(true);
+  async function save() {
+    if (blocker) {
+      push(blocker, "error");
+      return;
+    }
+    setSaving(true);
     try {
-      const payload: PaymentOption[] = options
-        .filter((o) => o.title.trim())
-        .map((o) => ({
+      if (optionsDirty) {
+        const payload: PaymentOptionFull[] = named.map((o) => ({
           id: o.id,
           title: o.title.trim(),
-          description: o.description?.trim() || undefined,
+          description: o.description.trim() || undefined,
           requiresPrepayment: o.requiresPrepayment,
-          prepaymentMinor:
-            o.requiresPrepayment && o.prepaymentMajor ? toMinor(o.prepaymentMajor) : null,
+          prepaymentMinor: o.requiresPrepayment && o.prepaymentMajor ? toMinor(o.prepaymentMajor) : null,
+          active: o.active,
         }));
-      await adminApi.putPaymentOptions(payload);
-      push("Варианты оплаты сохранены", "ok");
-      optionsQ.refetch();
+        const saved = await extApi.putPaymentOptions(payload);
+        const rows = toRows(saved);
+        setOptions(rows);
+        setBaseOptions(optionsSnapshot(rows));
+      }
+      if (reqDirty) {
+        const saved = await adminApi.putPaymentRequisites(req);
+        setReq(saved);
+        setBaseReq(saved);
+      }
+      push("Настройки оплаты сохранены", "ok");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
+      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
     } finally {
-      setSavingOpts(false);
+      setSaving(false);
     }
   }
 
-  async function saveReq() {
-    setSavingReq(true);
-    try {
-      await adminApi.putPaymentRequisites(req);
-      push("Реквизиты сохранены", "ok");
-    } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
-    } finally {
-      setSavingReq(false);
-    }
-  }
-
-  const loading = optionsQ.isLoading || reqQ.isLoading;
+  const visible = useMemo(
+    () => options.filter((o) => showHidden || o.active || !o.id),
+    [options, showHidden]
+  );
+  const hiddenCount = options.filter((o) => o.id && !o.active).length;
 
   return (
     <div className="min-w-0">
-      <PageHeader
-        title="Оплата"
-        subtitle="Варианты оплаты и реквизиты, которые видит покупатель."
-      />
+      <PageHeader title="Оплата" subtitle="Варианты оплаты и реквизиты, которые видит покупатель." />
 
-      {loading ? (
-        <CenterSpinner label="Загрузка настроек оплаты" />
-      ) : (
+      <QueryState
+        isLoading={optionsQ.isLoading || reqQ.isLoading}
+        isError={optionsQ.isError || reqQ.isError}
+        error={optionsQ.error ?? reqQ.error}
+        refetch={() => {
+          optionsQ.refetch();
+          reqQ.refetch();
+        }}
+        loadingLabel="Загрузка настроек оплаты"
+      >
         <div className="grid min-w-0 gap-6 lg:grid-cols-2">
           {/* ===================== Payment options ===================== */}
           <motion.section
@@ -139,19 +238,24 @@ export default function PaymentPage() {
                     Варианты оплаты
                   </h2>
                   <p className="text-[12px] text-[var(--text-muted)]">
-                    Покупатель выбирает один из них при оформлении.
+                    Покупатель выбирает один из них. Порядок — как в оформлении.
                   </p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="surface"
-                icon={<Plus className="h-4 w-4" />}
-                onClick={addOption}
-              >
+              <Button size="sm" variant="surface" icon={<Plus className="h-4 w-4" />} onClick={addOption}>
                 Добавить
               </Button>
             </div>
+
+            {hiddenCount > 0 && (
+              <div className="mb-3">
+                <Toggle
+                  checked={showHidden}
+                  onChange={setShowHidden}
+                  label={`Показывать выключенные (${hiddenCount})`}
+                />
+              </div>
+            )}
 
             {options.length === 0 ? (
               <EmptyState
@@ -159,85 +263,95 @@ export default function PaymentPage() {
                 title="Нет вариантов оплаты"
                 description="Добавьте хотя бы один способ оплаты, чтобы покупатели могли оформить заказ."
                 action={
-                  <Button
-                    size="sm"
-                    variant="accent"
-                    icon={<Plus className="h-4 w-4" />}
-                    onClick={addOption}
-                  >
+                  <Button size="sm" variant="accent" icon={<Plus className="h-4 w-4" />} onClick={addOption}>
                     Добавить вариант
                   </Button>
                 }
               />
             ) : (
-              <motion.div
-                variants={staggerContainer}
-                initial="initial"
-                animate="animate"
-                className="flex min-w-0 flex-col gap-3"
-              >
-                {options.map((o, i) => (
-                  <motion.div
-                    key={i}
-                    variants={riseItem}
-                    className="card-2 flex min-w-0 flex-col gap-3 rounded-[var(--r-md)] p-4"
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <Input
-                          label="Название"
-                          className="max-w-full"
-                          value={o.title}
-                          onChange={(e) => patchOption(i, { title: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setOptions((p) => p.filter((_, j) => j !== i))}
-                        className="focusable mt-[26px] grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--danger)]"
-                        aria-label="Удалить"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <Input
-                      label="Описание"
-                      className="max-w-full"
-                      value={o.description ?? ""}
-                      onChange={(e) => patchOption(i, { description: e.target.value })}
-                    />
-
-                    <div className="flex flex-wrap items-end justify-between gap-3">
-                      <Toggle
-                        checked={o.requiresPrepayment}
-                        onChange={(v) => patchOption(i, { requiresPrepayment: v })}
-                        label="Предоплата"
-                      />
-                      {o.requiresPrepayment && (
-                        <Input
-                          label="Сумма (UAH)"
-                          inputMode="decimal"
-                          className="max-w-full"
-                          value={o.prepaymentMajor}
-                          onChange={(e) => patchOption(i, { prepaymentMajor: e.target.value })}
-                        />
+              <div className="flex min-w-0 flex-col gap-3">
+                {visible.map((o) => {
+                  const i = options.indexOf(o);
+                  return (
+                    <div
+                      key={o.key}
+                      className={cn(
+                        "card-2 flex min-w-0 flex-col gap-3 rounded-[var(--r-md)] p-4",
+                        !o.active && "opacity-70"
                       )}
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex shrink-0 flex-col gap-1 pt-[22px]">
+                          <OrderBtn label="Выше" disabled={i === 0} onClick={() => move(o.key, -1)}>
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          </OrderBtn>
+                          <OrderBtn
+                            label="Ниже"
+                            disabled={i === options.length - 1}
+                            onClick={() => move(o.key, 1)}
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          </OrderBtn>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Input
+                            label="Название"
+                            className="max-w-full"
+                            value={o.title}
+                            onChange={(e) => patchOption(o.key, { title: e.target.value })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => (o.id ? setToDelete(o) : setOptions((p) => p.filter((x) => x.key !== o.key)))}
+                          className="focusable mt-[26px] grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--danger)]"
+                          aria-label="Удалить"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
 
-            <Button
-              variant="accent"
-              className="mt-4"
-              loading={savingOpts}
-              icon={<Save className="h-4 w-4" />}
-              onClick={saveOptions}
-            >
-              Сохранить варианты
-            </Button>
+                      <Input
+                        label="Описание"
+                        className="max-w-full"
+                        value={o.description}
+                        onChange={(e) => patchOption(o.key, { description: e.target.value })}
+                      />
+
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <Toggle
+                          checked={o.requiresPrepayment}
+                          onChange={(v) => patchOption(o.key, { requiresPrepayment: v })}
+                          label="Предоплата"
+                        />
+                        {o.requiresPrepayment && (
+                          <Input
+                            label="Сумма, ₴"
+                            inputMode="decimal"
+                            className="max-w-full"
+                            value={o.prepaymentMajor}
+                            onChange={(e) => patchOption(o.key, { prepaymentMajor: e.target.value })}
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-[var(--border-2)] pt-3">
+                        <Toggle
+                          checked={o.active}
+                          onChange={(v) => patchOption(o.key, { active: v })}
+                          label="Показывать покупателям"
+                        />
+                        {!o.active && <Badge tone="warn">выключен</Badge>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {activeCount === 0 && options.length > 0 && (
+              <p className="mt-3 text-[13px] font-bold text-[var(--danger)]">
+                Все способы выключены — оформить заказ будет нельзя.
+              </p>
+            )}
           </motion.section>
 
           {/* ===================== Requisites + preview ===================== */}
@@ -254,7 +368,8 @@ export default function PaymentPage() {
               <div className="min-w-0">
                 <h2 className="text-[16px] font-black uppercase tracking-wide text-[var(--text)]">Реквизиты</h2>
                 <p className="text-[12px] text-[var(--text-muted)]">
-                  Отображаются покупателю для оплаты заказа.
+                  Отображаются покупателю для оплаты заказа. Каждая смена карты/IBAN пишется в журнал и
+                  приходит уведомлением в Telegram.
                 </p>
               </div>
             </div>
@@ -263,13 +378,16 @@ export default function PaymentPage() {
               <Input
                 label="Номер карты"
                 className="max-w-full"
+                inputMode="numeric"
                 value={req.cardNumber ?? ""}
+                error={cardErr ?? undefined}
                 onChange={(e) => setReq({ ...req, cardNumber: e.target.value })}
               />
               <Input
                 label="IBAN"
                 className="max-w-full"
                 value={req.iban ?? ""}
+                error={ibanErr ?? undefined}
                 onChange={(e) => setReq({ ...req, iban: e.target.value })}
               />
               <Input
@@ -302,6 +420,16 @@ export default function PaymentPage() {
                 />
               </div>
             </div>
+            <p className="mt-2 flex items-start gap-1.5 text-[12px] text-[var(--text-muted)]">
+              <Languages className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                Назначение и примечание покупатель видит на своём языке — переводы uk/en в{" "}
+                <Link href="/translations" className="font-bold underline">
+                  «Переводах»
+                </Link>
+                . Правка русского текста сбрасывает перевод, пока его не обновят.
+              </span>
+            </p>
 
             {/* Live preview — matches what the customer sees */}
             <div className="mt-4 min-w-0">
@@ -313,11 +441,7 @@ export default function PaymentPage() {
                   <CreditCard className="h-4 w-4 text-[var(--accent)]" />
                   Реквизиты для оплаты
                 </div>
-                {req.cardNumber ||
-                req.iban ||
-                req.recipient ||
-                req.edrpou ||
-                req.purpose ? (
+                {req.cardNumber || req.iban || req.recipient || req.edrpou || req.purpose ? (
                   <div className="flex min-w-0 flex-col gap-2.5">
                     {req.cardNumber && <ReqRow label="Карта" value={req.cardNumber} mono />}
                     {req.iban && <ReqRow label="IBAN" value={req.iban} mono />}
@@ -337,20 +461,87 @@ export default function PaymentPage() {
                 )}
               </div>
             </div>
-
-            <Button
-              variant="accent"
-              className="mt-4"
-              loading={savingReq}
-              icon={<Save className="h-4 w-4" />}
-              onClick={saveReq}
-            >
-              Сохранить реквизиты
-            </Button>
           </motion.section>
         </div>
-      )}
+
+        {/* One save for the whole page, pinned so it is reachable on a phone. */}
+        <div className="sticky bottom-0 z-20 -mx-4 mt-6 border-t-[3px] border-[var(--line)] bg-[var(--surface)] px-4 py-3 lg:-mx-7 lg:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span
+              className={cn(
+                "text-[13px] font-bold",
+                blocker && dirty ? "text-[var(--danger)]" : "text-[var(--text-muted)]"
+              )}
+            >
+              {dirty ? (blocker ?? "Есть несохранённые изменения") : "Все изменения сохранены"}
+            </span>
+            <Button
+              variant="accent"
+              loading={saving}
+              disabled={!dirty || !!blocker}
+              icon={<Save className="h-4 w-4" />}
+              onClick={save}
+            >
+              Сохранить
+            </Button>
+          </div>
+        </div>
+      </QueryState>
+
+      <Modal
+        open={!!toDelete}
+        onClose={() => setToDelete(null)}
+        size="sm"
+        title="Удалить способ оплаты?"
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <Button variant="ghost" onClick={() => setToDelete(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                const k = toDelete?.key;
+                setOptions((p) => p.filter((x) => x.key !== k));
+                setToDelete(null);
+              }}
+            >
+              Удалить
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[14px] text-[var(--text)]">
+          «{toDelete?.title || "Без названия"}» пропадёт из оформления заказа после «Сохранить». Старые заказы
+          сохранят его название. Если нужно убрать на время — лучше выключите тумблер «Показывать покупателям».
+        </p>
+      </Modal>
     </div>
+  );
+}
+
+function OrderBtn({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="grid h-[18px] w-7 place-items-center rounded-[var(--r-sm)] border-2 border-[var(--line)] bg-[var(--surface)] text-[var(--text)] disabled:opacity-30"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -358,11 +549,7 @@ function ReqRow({ label, value, mono }: { label: string; value: string; mono?: b
   return (
     <div className="min-w-0">
       <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
-      <div
-        className={`break-words text-[14px] text-[var(--text)] ${
-          mono ? "font-mono tracking-wide" : ""
-        }`}
-      >
+      <div className={`break-words text-[14px] text-[var(--text)] ${mono ? "font-mono tracking-wide" : ""}`}>
         {value}
       </div>
     </div>

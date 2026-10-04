@@ -48,8 +48,8 @@ export interface WorkSet {
   byId: Map<string, UniqueString>;
 }
 
-const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, PRODUCT: 2, VARIANT: 3 };
-const FIELD_ORDER: Record<string, number> = { title: 0, name: 0, description: 1, seo_title: 2, seo_description: 3 };
+const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, PAYMENT_REQUISITES: 1, PRODUCT: 2, VARIANT: 3 };
+const FIELD_ORDER: Record<string, number> = { title: 0, name: 0, description: 1, seo_title: 2, seo_description: 3, purpose: 0, note: 1 };
 
 export function fieldKey(i: { entityType: string; entityId: string; field: string }): string {
   return `${i.entityType}:${i.entityId}:${i.field}`;
