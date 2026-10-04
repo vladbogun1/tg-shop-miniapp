@@ -10,7 +10,7 @@
  * graphite chrome, hairlines, active item = orange text/icon + 2px glowing orange indicator.
  * The desktop sidebar collapses to an icon rail (CS mark on top), remembered per browser.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   BarChart3,
@@ -87,7 +87,15 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
  * indicator (glowing) on the left edge that slides between items. `collapsed` (desktop rail):
  * icons only — the label stays in the DOM as sr-only, so the link keeps its accessible name.
  */
-function NavLinks({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) {
+function NavLinks({
+  onNavigate,
+  collapsed = false,
+  layoutScope,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  layoutScope: string;
+}) {
   const pathname = usePathname();
   // Fields × languages that need a translation (missing or stale), refreshed every 2 min and
   // right after imports on the «Переводы» screen.
@@ -120,7 +128,7 @@ function NavLinks({ onNavigate, collapsed = false }: { onNavigate?: () => void; 
           >
             {active && (
               <motion.span
-                layoutId="nav-active"
+                layoutId={`nav-active-${layoutScope}`}
                 transition={{ type: "spring", stiffness: 420, damping: 36 }}
                 className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]"
               />
@@ -224,17 +232,20 @@ function SidebarInner({
   onNavigate,
   collapsed = false,
   onToggleCollapsed,
+  layoutScope,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /** Desktop sidebar and phone menu are both mounted — each needs its own sliding indicator. */
+  layoutScope: string;
 }) {
   return (
     <div className="flex h-full flex-col">
       <div className={cn("mb-6 flex items-center", collapsed ? "justify-center" : "px-2 pt-1")}>
         <Brand collapsed={collapsed} onNavigate={onNavigate} />
       </div>
-      <NavLinks onNavigate={onNavigate} collapsed={collapsed} />
+      <NavLinks onNavigate={onNavigate} collapsed={collapsed} layoutScope={layoutScope} />
       <div className="mt-auto flex flex-col gap-0.5 border-t border-[var(--line)] pt-3">
         <button
           onClick={logout}
@@ -385,6 +396,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const title = TITLE[pathname] ?? (pathname.startsWith("/orders/") ? "Заказ" : "Панель");
 
+  // Any navigation (menu link, system back, a tapped notification) closes the menu.
+  useEffect(() => {
+    setDrawer(false);
+  }, [pathname]);
+
   return (
     <div className="flex min-h-dvh">
       <AppRuntime />
@@ -396,45 +412,50 @@ export function Shell({ children }: { children: ReactNode }) {
           collapsed ? "w-[76px]" : "w-[248px]"
         )}
       >
-        <SidebarInner collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+        <SidebarInner collapsed={collapsed} onToggleCollapsed={toggleCollapsed} layoutScope="sidebar" />
       </aside>
 
-      {/* Phone: the full menu («Ещё») */}
-      <AnimatePresence>
-        {drawer && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-[6px] lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawer(false)}
-            />
-            <motion.aside
-              aria-label="Все разделы"
-              className="thin-scroll fixed inset-y-0 left-0 z-[80] flex w-[min(20rem,86vw)] flex-col overflow-y-auto rounded-r-[var(--r-xl)] border-r border-[var(--line-strong)] bg-[var(--surface)] pr-3 shadow-[var(--shadow-3)] lg:hidden"
-              style={{
-                paddingTop: "calc(12px + var(--safe-top))",
-                paddingBottom: "calc(16px + var(--safe-bottom))",
-                paddingLeft: "calc(12px + var(--safe-left))",
-              }}
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", stiffness: 360, damping: 34 }}
-            >
-              <button
-                onClick={() => setDrawer(false)}
-                className="nb-press mb-1 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
-                aria-label="Закрыть меню"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <SidebarInner onNavigate={() => setDrawer(false)} />
-            </motion.aside>
-          </>
+      {/* Phone: the full menu («Ещё»). Always mounted and driven by `animate` rather than
+          AnimatePresence: an exit that never finished (route change mid-animation on iOS/Android)
+          used to leave the invisible full-screen backdrop on top, and no tap reached the app. Now
+          the closed state is pointer-events:none + inert regardless of where the animation is. */}
+      <motion.div
+        aria-hidden
+        className={cn(
+          "fixed inset-0 z-[70] bg-black/60 backdrop-blur-[6px] lg:hidden",
+          !drawer && "pointer-events-none"
         )}
-      </AnimatePresence>
+        initial={false}
+        animate={drawer ? { opacity: 1, visibility: "visible" } : { opacity: 0, transitionEnd: { visibility: "hidden" } }}
+        transition={{ duration: 0.2 }}
+        onClick={() => setDrawer(false)}
+      />
+      <motion.aside
+        aria-label="Все разделы"
+        aria-hidden={!drawer}
+        inert={!drawer}
+        className={cn(
+          "thin-scroll fixed inset-y-0 left-0 z-[80] flex w-[min(20rem,86vw)] flex-col overflow-y-auto rounded-r-[var(--r-xl)] border-r border-[var(--line-strong)] bg-[var(--surface)] pr-3 shadow-[var(--shadow-3)] lg:hidden",
+          !drawer && "pointer-events-none"
+        )}
+        style={{
+          paddingTop: "calc(12px + var(--safe-top))",
+          paddingBottom: "calc(16px + var(--safe-bottom))",
+          paddingLeft: "calc(12px + var(--safe-left))",
+        }}
+        initial={false}
+        animate={drawer ? { x: 0, visibility: "visible" } : { x: "-105%", transitionEnd: { visibility: "hidden" } }}
+        transition={{ type: "spring", stiffness: 360, damping: 34 }}
+      >
+        <button
+          onClick={() => setDrawer(false)}
+          className="nb-press mb-1 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+          aria-label="Закрыть меню"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <SidebarInner onNavigate={() => setDrawer(false)} layoutScope="drawer" />
+      </motion.aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — on a phone it sits under the status bar of the installed app */}
