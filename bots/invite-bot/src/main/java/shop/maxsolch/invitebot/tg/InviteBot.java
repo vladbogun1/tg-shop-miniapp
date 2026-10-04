@@ -1,7 +1,7 @@
 package shop.maxsolch.invitebot.tg;
 
-import shop.maxsolch.invitebot.config.AppProperties;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -9,11 +9,11 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import shop.maxsolch.invitebot.config.AppProperties;
 
+@Slf4j
 @Component
 public class InviteBot extends TelegramLongPollingBot {
-
-    private static final String LANDING_CAPTION = "Добро пожаловать! Выбирай нужный раздел ниже 👇";
 
     private final AppProperties props;
 
@@ -43,33 +43,34 @@ public class InviteBot extends TelegramLongPollingBot {
     }
 
     private void sendLanding(long chatId) {
-        var keyboard = InlineKeyboardMarkup.builder()
-            .keyboardRow(List.of(urlButton("🛍️ Магазин", "https://t.me/ChiSetup")))
-            .keyboardRow(List.of(urlButton("⭐ Отзывы", "https://t.me/ChiSetup_Comments")))
-            .keyboardRow(List.of(urlButton("📣 Основной канал", "https://t.me/maxsolch")))
-            .build();
-
-        var photo = SendPhoto.builder()
-            .chatId(chatId)
-            .photo(new InputFile(props.getInvite().getLandingImageUrl()))
-            .caption(LANDING_CAPTION)
-            .replyMarkup(keyboard)
-            .build();
-
-        safeExecute(photo);
-    }
-
-    private InlineKeyboardButton urlButton(String text, String url) {
-        return InlineKeyboardButton.builder()
-            .text(text)
-            .url(url)
-            .build();
-    }
-
-    private void safeExecute(SendPhoto msg) {
+        SendPhoto photo = landing(chatId, props.getInvite());
         try {
-            execute(msg);
-        } catch (Exception ignored) {
+            execute(photo);
+        } catch (Exception e) {
+            // Not rethrown: one failed reply must not break the polling loop. But it is logged —
+            // a broken image URL or a blocked chat should be visible in `docker logs`.
+            log.warn("Failed to send landing to chat {}: {}", chatId, e.getMessage(), e);
         }
+    }
+
+    /** The /start reply: landing photo, caption and one URL button per row. */
+    static SendPhoto landing(long chatId, AppProperties.Invite invite) {
+        return SendPhoto.builder()
+            .chatId(chatId)
+            .photo(new InputFile(invite.getLandingImageUrl()))
+            .caption(invite.getCaption())
+            .replyMarkup(keyboard(invite.getButtons()))
+            .build();
+    }
+
+    static InlineKeyboardMarkup keyboard(List<AppProperties.Button> buttons) {
+        var builder = InlineKeyboardMarkup.builder();
+        for (AppProperties.Button b : buttons) {
+            builder.keyboardRow(List.of(InlineKeyboardButton.builder()
+                .text(b.getText())
+                .url(b.getUrl())
+                .build()));
+        }
+        return builder.build();
     }
 }
