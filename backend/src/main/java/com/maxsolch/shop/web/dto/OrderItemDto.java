@@ -9,5 +9,7 @@ public record OrderItemDto(
         String variantName,
         int quantity,
         String imageUrl,
-        boolean gift) {
+        boolean gift,
+        /** Units of this line the customer sent back. */
+        int returnedQty) {
 }

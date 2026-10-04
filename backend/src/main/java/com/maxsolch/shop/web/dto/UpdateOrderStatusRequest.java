@@ -7,5 +7,7 @@ public record UpdateOrderStatusRequest(
         String trackingNumber,
         String rejectReason,
         /** For REJECTED: return items to stock? null = true (default). */
-        Boolean restock) {
+        Boolean restock,
+        /** For REJECTED: RejectReasonCode name (NO_RESPONSE, CHANGED_MIND, …); text is then optional. */
+        String rejectReasonCode) {
 }

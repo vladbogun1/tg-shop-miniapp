@@ -252,6 +252,30 @@ public class NotificationService {
         }
     }
 
+    /** The tracking number was corrected after shipping → DM the customer the new one. */
+    public void notifyCustomerTracking(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0 || order.getTrackingNumber() == null) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String text = messages.get(locale, "bot.tracking.changed",
+                    shortId(order), esc(order.getTrackingNumber()));
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerTracking failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** Admin posted a chat message → DM the customer with a deep-link to the order chat. */
     public void onAdminChatMessage(Order order, String preview) {
         if (!enabled()) {

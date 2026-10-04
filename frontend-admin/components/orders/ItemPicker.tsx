@@ -35,7 +35,10 @@ export function ItemPicker({
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
   const [variant, setVariant] = useState<ProductVariant | null>(null);
-  const [qty, setQty] = useState(1);
+  // Text, not a number: "Math.max(1, …)" turned an erased field back into "1", so typing "3" gave "13".
+  const [qtyText, setQtyText] = useState("1");
+  const qty = Math.max(0, parseInt(qtyText, 10) || 0);
+  const setQty = (n: number) => setQtyText(String(n));
   const [gift, setGift] = useState(defaultGift);
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,6 +99,8 @@ export function ItemPicker({
         onClose();
       }}
       size="md"
+      closeOnBackdrop={false}
+      dirty={!!selected}
       title="Добавить в заказ"
       footer={
         <div className="flex w-full items-center justify-between gap-2">
@@ -202,8 +207,9 @@ export function ItemPicker({
               label={`Количество (доступно ${available})`}
               inputMode="numeric"
               className="w-40"
-              value={String(qty)}
-              onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+              value={qtyText}
+              onChange={(e) => setQtyText(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              onBlur={() => qty < 1 && setQty(1)}
             />
             {qty > available && (
               <span className="pb-2.5 text-[12px] font-bold text-[var(--danger)]">Не хватает на складе</span>

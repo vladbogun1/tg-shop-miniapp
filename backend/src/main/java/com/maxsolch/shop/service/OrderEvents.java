@@ -37,6 +37,10 @@ public final class OrderEvents {
         DISCOUNT,
         /** A free gift was added. */
         GIFT,
+        /** The tracking number was corrected after shipping: tell the customer the new one. */
+        TRACKING,
+        /** Recipient / delivery address corrected: refresh the seller's cards, nothing for the customer. */
+        DETAILS,
         /** Nothing to tell the customer — only refresh the seller's dispatch card. */
         SILENT
     }

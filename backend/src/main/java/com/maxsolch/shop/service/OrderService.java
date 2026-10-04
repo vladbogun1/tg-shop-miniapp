@@ -11,6 +11,7 @@ import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
@@ -280,6 +281,7 @@ public class OrderService {
         order.setRejectedAt(Instant.now());
         String r = reason == null ? "" : reason.trim();
         order.setRejectReason(r.isBlank() ? "Отменён покупателем" : "Отменён покупателем: " + r);
+        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
         return afterTransition(order);
     }
 
@@ -290,6 +292,16 @@ public class OrderService {
      */
     @Transactional
     public Order reject(byte[] orderId, String reason, boolean restock) {
+        return reject(orderId, reason, null, restock);
+    }
+
+    /**
+     * Admin reject with a reason code from the fixed list ({@link RejectReasonCode}) and an
+     * optional free-text explanation. Blank text is stored as null, so the customer gets the plain
+     * "order rejected" note instead of an empty "Reason:".
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock) {
         Order order = lock(orderId);
         if (order.getStatus() == OrderStatus.REJECTED) {
             throw new BadRequestException("order already rejected");
@@ -299,7 +311,8 @@ public class OrderService {
         }
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(Instant.now());
-        order.setRejectReason(reason);
+        order.setRejectReason(reason == null || reason.isBlank() ? null : reason.trim());
+        order.setRejectReasonCode(reasonCode == null ? null : reasonCode.name());
         return afterTransition(order);
     }
 
@@ -307,11 +320,18 @@ public class OrderService {
     @Transactional
     public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
                               String reason, boolean restock) {
+        return changeStatus(orderId, target, trackingNumber, reason, null, restock);
+    }
+
+    /** Same, with the structured reject reason. */
+    @Transactional
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, RejectReasonCode reasonCode, boolean restock) {
         return switch (target) {
             case APPROVED -> approve(orderId);
             case SHIPPED -> ship(orderId, trackingNumber);
             case DELIVERED -> deliver(orderId);
-            case REJECTED -> reject(orderId, reason, restock);
+            case REJECTED -> reject(orderId, reason, reasonCode, restock);
             case NEW -> throw new BadRequestException("cannot transition back to NEW");
         };
     }
@@ -332,7 +352,12 @@ public class OrderService {
      * {@code NEW} after waiting for each other's lock — and both return the stock. Refreshing with
      * the lock re-reads the committed row.
      */
-    private Order lock(byte[] orderId) {
+    /**
+     * Loads the order under a row lock (SELECT … FOR UPDATE) and refreshes it, so concurrent
+     * admin / customer actions on one order run one after another. Package-private: also used by
+     * {@link OrderAdjustmentService}.
+     */
+    Order lock(byte[] orderId) {
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new NotFoundException("order not found"));
         entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
@@ -669,20 +694,35 @@ public class OrderService {
         }
     }
 
-    /** Return one item's units to product + variant stock. */
+    /**
+     * Return one item's units to product + variant stock — only the units not already put back by
+     * an earlier return ({@link OrderItem#getRestockedQty()}), so nothing is restocked twice.
+     */
     private void restoreItemStock(OrderItem item) {
+        restockItem(item, item.getQuantity() - item.getRestockedQty());
+    }
+
+    /**
+     * Puts {@code units} of one order line back on the shelf and records them on the line. Shared
+     * with {@link OrderAdjustmentService} (partial returns); the caller runs inside a transaction.
+     */
+    void restockItem(OrderItem item, int units) {
+        if (units <= 0) {
+            return;
+        }
         productRepository.findByIdForUpdate(item.getProductId()).ifPresent(product -> {
             ProductVariant variant = item.getVariantId() == null ? null
                     : findVariant(product, UuidUtil.toString(item.getVariantId()));
             if (item.getVariantId() != null && variant == null) {
                 // The variant was deleted from the catalog after the order was placed: put the
                 // units back on the product so they are not lost entirely.
-                product.setStock(product.getStock() + item.getQuantity());
+                product.setStock(product.getStock() + units);
             } else {
-                releaseStock(product, variant, item.getQuantity());
+                releaseStock(product, variant, units);
             }
             productRepository.save(product);
         });
+        item.setRestockedQty(Math.min(item.getQuantity(), item.getRestockedQty() + units));
     }
 
     /** product.stock mirrors the sum of variant stocks whenever the product has variants. */

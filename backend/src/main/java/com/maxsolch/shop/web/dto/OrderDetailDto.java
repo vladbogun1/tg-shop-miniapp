@@ -39,5 +39,13 @@ public record OrderDetailDto(
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
         String source,
         /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
-        String customerLocale) {
+        String customerLocale,
+        /** RejectReasonCode name, null = not specified. */
+        String rejectReasonCode,
+        /** Money given back to the customer (returns). */
+        long refundedMinor,
+        Instant returnedAt,
+        /** Nova Poshta refs — the admin's delivery editor needs them to keep the address valid. */
+        String npCityRef,
+        String npWarehouseRef) {
 }

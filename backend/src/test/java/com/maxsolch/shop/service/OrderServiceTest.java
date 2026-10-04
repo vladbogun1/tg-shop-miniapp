@@ -479,6 +479,49 @@ class OrderServiceTest {
         assertThat(rejected.getRejectReason()).isEqualTo("возврат на НП");
     }
 
+    @Test
+    void reject_withReasonCode_storesCodeAndBlankTextAsNull() {
+        Order o = persistedOrder(OrderStatus.NEW);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        Order rejected = service.reject(o.getId(), "  ", com.maxsolch.shop.domain.RejectReasonCode.NO_RESPONSE, false);
+
+        assertThat(rejected.getRejectReasonCode()).isEqualTo("NO_RESPONSE");
+        // Blank text must not reach the customer as an empty "Причина:".
+        assertThat(rejected.getRejectReason()).isNull();
+    }
+
+    @Test
+    void reject_afterPartialReturn_doesNotRestockReturnedUnitsTwice() {
+        Order o = persistedOrder(OrderStatus.DELIVERED);
+        Product p = simpleProduct(0, 1_000);
+        OrderItem it = new OrderItem();
+        it.setProductId(p.getId());
+        it.setQuantity(3);
+        it.setTitleSnapshot("Test Product");
+        // One unit already came back and was put on the shelf by a partial return.
+        it.setReturnedQty(1);
+        it.setRestockedQty(1);
+        o.getItems().add(it);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+
+        service.reject(o.getId(), "возврат", true);
+
+        assertThat(p.getStock()).isEqualTo(2); // only the 2 units still out
+        assertThat(it.getRestockedQty()).isEqualTo(3);
+    }
+
+    @Test
+    void cancelByCustomer_setsChangedMindCode() {
+        Order o = persistedOrder(OrderStatus.NEW);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        Order cancelled = service.cancelByCustomer(o.getId(), "передумал");
+
+        assertThat(cancelled.getRejectReasonCode()).isEqualTo("CHANGED_MIND");
+    }
+
     // ---------- changeStatus dispatcher ----------
 
     @Test

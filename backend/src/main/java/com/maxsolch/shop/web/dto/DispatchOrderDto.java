@@ -29,7 +29,9 @@ public record DispatchOrderDto(
         String paymentOptionTitle,
         String trackingNumber,
         Instant createdAt,
-        Instant approvedAt) {
+        Instant approvedAt,
+        /** APPROVED, or NEW when the list includes not-yet-approved orders (NEW → SHIPPED is allowed). */
+        String status) {
 
     public record DispatchItem(String title, String variantName, int quantity, long priceMinor) {
     }

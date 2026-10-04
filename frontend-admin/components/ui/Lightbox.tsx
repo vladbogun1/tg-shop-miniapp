@@ -2,8 +2,8 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayLayer } from "@/lib/overlay-stack";
 
 export function Lightbox({
   src,
@@ -14,12 +14,8 @@ export function Lightbox({
   onClose: () => void;
   originalHref?: string;
 }) {
-  useEffect(() => {
-    if (!src) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [src, onClose]);
+  // Esc closes the picture only — not the chat drawer underneath it.
+  useOverlayLayer(!!src, onClose);
 
   if (typeof document === "undefined") return null;
 
