@@ -69,7 +69,9 @@ export function Gallery({
                 src={url}
                 alt={t("gallery.photoAlt", { alt, n: i + 1 })}
                 size={1000}
+                sizes="100vw"
                 priority={i === 0}
+                eager={Math.abs(i - slide) <= 1}
                 className="pointer-events-none h-full w-full"
               />
             </div>

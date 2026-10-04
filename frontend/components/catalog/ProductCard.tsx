@@ -41,6 +41,7 @@ export function ProductCard({
             src={product.images?.[0]?.url}
             alt={product.title}
             size={600}
+            sizes="50vw"
             className={`h-full w-full ${inStock ? "" : "opacity-60 grayscale-[.85]"}`}
           />
           <span

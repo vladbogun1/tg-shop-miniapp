@@ -35,6 +35,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
             src={image?.url}
             alt={product.title}
             size={600}
+            sizes="(min-width: 1280px) 300px, (min-width: 768px) 33vw, 50vw"
             priority={priority}
             className="h-full w-full"
             imgClassName="group-hover:scale-[1.04]"

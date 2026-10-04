@@ -76,8 +76,10 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
                 src={url}
                 alt={t("gallery.photo", { alt, n: i + 1 })}
                 size={1000}
+                sizes="(min-width: 1024px) 640px, 100vw"
                 fit={false}
                 priority={i === 0}
+                eager={Math.abs(i - slide) <= 1}
                 className="pointer-events-none h-full w-full"
               />
             </button>

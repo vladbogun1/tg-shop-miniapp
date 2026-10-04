@@ -122,7 +122,7 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
       {hits && hits.items.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-hits">
           <SectionHead id="home-hits" title={t("home.hits")} more={href("/catalog")} moreLabel={t("common.showAll")} />
-          <ProductGrid products={hits.items} priorityCount={4} />
+          <ProductGrid products={hits.items} />
         </section>
       )}
 

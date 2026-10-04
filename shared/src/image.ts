@@ -37,6 +37,24 @@ export function imgproxyUrl(imageBase: string, key: string, size = 600, fit = fa
   return `${base}/insecure/rs:${rt}:${size}:${size}/plain/s3://${BUCKET}/${key}@webp`;
 }
 
+/**
+ * Widths offered to the browser in `srcset`. A short fixed list on purpose: every distinct size is
+ * a separate imgproxy render and a separate entry in the nginx /img cache.
+ */
+export const IMAGE_WIDTHS = [320, 480, 640, 1000] as const;
+
+/**
+ * `srcset` for a product photo (S3 key through imgproxy), so a phone with a 170px card picks a 320/480
+ * render instead of always downloading the 600px one. Capped at `maxSize` — the size the caller would
+ * otherwise request. Absolute urls and signed /api/media links have no variants: returns undefined.
+ */
+export function imgproxySrcSet(value: string, imageBase: string, maxSize: number, fit = false): string | undefined {
+  if (isAbsoluteUrl(value) || isApiMediaUrl(value)) return undefined;
+  const key = value.replace(/^\/+/, "");
+  const widths = IMAGE_WIDTHS.filter((w) => w < maxSize);
+  return [...widths, maxSize].map((w) => `${imgproxyUrl(imageBase, key, w, fit)} ${w}w`).join(", ");
+}
+
 export interface ResolveOptions {
   /** NEXT_PUBLIC_IMAGE_BASE_URL — the nginx/imgproxy entry point. */
   imageBase: string;
