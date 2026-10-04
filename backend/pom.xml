@@ -23,6 +23,7 @@
         <telegrambots.version>6.9.7.1</telegrambots.version>
         <jjwt.version>0.12.6</jjwt.version>
         <minio.version>8.5.17</minio.version>
+        <geoip2.version>4.3.0</geoip2.version>
     </properties>
 
     <dependencies>
@@ -119,6 +120,13 @@
             <groupId>io.minio</groupId>
             <artifactId>minio</artifactId>
             <version>${minio.version}</version>
+        </dependency>
+
+        <!-- Offline IP -> city/coordinates (DB-IP / MaxMind .mmdb) for the admin users map -->
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>${geoip2.version}</version>
         </dependency>
 
         <!-- Lombok -->

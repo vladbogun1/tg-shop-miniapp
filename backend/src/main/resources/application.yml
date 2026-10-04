@@ -120,6 +120,13 @@ app:
     access-key: ${S3_ACCESS_KEY:minioadmin}
     secret-key: ${S3_SECRET_KEY:change_me_minio}
     bucket: ${S3_BUCKET:product-images}
+  # Users map in the admin: last IP + approximate place per visitor (V35 visitor_locations).
+  # path = offline DB-IP "IP to City Lite" .mmdb (CC BY 4.0), put into the image by backend/Dockerfile.
+  # No file there = the map simply has no points; enabled=false stops recording IPs at all.
+  geoip:
+    enabled: ${GEOIP_ENABLED:true}
+    path: ${GEOIP_PATH:/app/geoip/dbip-city-lite.mmdb}
+    throttle: ${GEOIP_THROTTLE:PT15M}
   novaposhta:
     api-key: ${NOVAPOSHTA_API_KEY:}
     api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}
