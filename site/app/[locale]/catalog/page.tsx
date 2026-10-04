@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
-import { alternates, makeT } from "@/i18n";
+import { makeT } from "@/i18n";
+import { catalogPageMeta } from "@/lib/seo";
 import { parseCatalogState, toApiQuery, type SearchParams } from "@/lib/catalog-params";
 import { localeOf, type LocaleParams } from "@/lib/route";
 import { getCategories, getProducts, safe } from "@/lib/server-api";
@@ -20,15 +21,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = await localeOf(params);
   const t = makeT(locale);
-  const sp = await searchParams;
-  // Filtered/sorted/paged variants are the same content — keep them out of the index.
-  const variant = Object.keys(sp).length > 0;
-  return {
-    title: t("catalog.title"),
-    description: t("meta.description"),
-    alternates: alternates("/catalog", locale),
-    ...(variant ? { robots: { index: false, follow: true } } : {}),
-  };
+  // Filtered/sorted variants are the same content — out of the index; plain ?page=N stays in.
+  return catalogPageMeta({
+    locale,
+    path: "/catalog",
+    searchParams: await searchParams,
+    title: (page) => (page > 1 ? `${t("catalog.title")}, ${t("meta.page", { n: page })}` : t("catalog.title")),
+    description: t("meta.desc.catalog"),
+  });
 }
 
 export default async function CatalogPage({

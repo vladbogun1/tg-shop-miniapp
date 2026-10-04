@@ -20,6 +20,27 @@ export const en: RuDictionary = {
   "meta.title": "ChiSetup — gaming gear for your setup",
   "meta.description":
     "Mice, keyboards, mouse pads and accessories. Nova Poshta delivery across Ukraine, pay by card transfer or cash on delivery.",
+  "meta.buy": "buy in Ukraine",
+  "meta.page": "page {n}",
+  "meta.categoryDescription":
+    "{name}: {count} in the ChiSetup catalogue, prices from {price}. Shipped by Nova Poshta within 1–2 business days, pickup in Kharkiv, pay by card or cash on delivery.",
+  "meta.categoryDescriptionEmpty":
+    "{name} at ChiSetup. Nova Poshta delivery across Ukraine, pickup in Kharkiv.",
+  "meta.productDescription": "Price {price}. Nova Poshta delivery across Ukraine, pay on delivery.",
+  "meta.desc.catalog":
+    "ChiSetup catalogue: gaming mice, keyboards, mouse pads, mouse skates, keycaps and accessories. Nova Poshta delivery across Ukraine, pickup in Kharkiv.",
+  "meta.desc.contacts":
+    "Contact ChiSetup: Telegram bot and a manager chat for every order, pickup in Kharkiv, open 8:00–20:00, seller details.",
+  "meta.desc.delivery":
+    "Nova Poshta delivery across Ukraine: shipped within 1–2 business days, pickup in Kharkiv. Payment: 100 UAH prepayment + cash on delivery, or full payment to the seller's account.",
+  "meta.desc.returns":
+    "Returns and exchanges within 14 days of receipt: conditions for items in good condition and for faulty items, refund times.",
+  "meta.desc.warranty":
+    "ChiSetup store warranty on gaming peripherals: 6 months unless the product page states otherwise. What it covers and how to make a claim.",
+  "meta.desc.privacy":
+    "How ChiSetup collects, uses and protects the personal data of customers of the website, the Telegram bot and the Mini App.",
+  "meta.desc.terms":
+    "ChiSetup public offer and terms of use: ordering, payment, delivery, returns, rights and obligations of the parties.",
 
   "time.today": "Today",
   "time.yesterday": "Yesterday",

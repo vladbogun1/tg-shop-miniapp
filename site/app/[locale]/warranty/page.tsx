@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { LegalView } from "@/components/info/LegalView";
-import { alternates, makeT } from "@/i18n";
+import { makeT } from "@/i18n";
 import { loadLegal } from "@/lib/legal";
 import { localeOf, type LocaleParams } from "@/lib/route";
+import { legalPageMeta } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);
-  return { title: makeT(locale)("info.warranty"), alternates: alternates("/warranty", locale) };
+  const t = makeT(locale);
+  return legalPageMeta(locale, "/warranty", t("info.warranty"), t("meta.desc.warranty"));
 }
 
 export default async function Page({ params }: { params: LocaleParams }) {

@@ -2,13 +2,14 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import { alternates, localePath, makeT } from "@/i18n";
+import { localePath, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
+import { clip, pageMeta } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);
   const t = makeT(locale);
-  return { title: t("info.about"), description: t("about.lead"), alternates: alternates("/about", locale) };
+  return pageMeta({ locale, path: "/about", title: t("info.about"), description: clip(`${t("about.lead")} ${t("about.text1")}`, 200) });
 }
 
 export default async function AboutPage({ params }: { params: LocaleParams }) {

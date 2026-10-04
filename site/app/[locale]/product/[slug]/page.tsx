@@ -1,17 +1,19 @@
 import { CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { imgproxyUrl, type StorefrontProduct } from "@shop/shared";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
 import { BuyBox } from "@/components/product/BuyBox";
 import { Gallery } from "@/components/product/Gallery";
-import { alternates, localePath, makeT, type MessageKey } from "@/i18n";
+import { localePath, makeT, type MessageKey } from "@/i18n";
+import { toCardProducts } from "@/lib/card";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { stockOf } from "@/lib/stock";
 import { localeOf } from "@/lib/route";
 import { getProductBySlug, getProducts, safe } from "@/lib/server-api";
+import { ORG_ID, pageMeta, productBrand, productDescription, productTitle, returnPolicyLd, shippingLd } from "@/lib/seo";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;
@@ -35,10 +37,13 @@ function absoluteImage(key: string, size: number): string {
   return `${SITE_URL}${imgproxyUrl(IMAGE_BASE, key.replace(/^\/+/, ""), size, true)}`;
 }
 
-function summary(p: StorefrontProduct): string {
-  if (p.seoDescription) return p.seoDescription;
-  const text = (p.description ?? "").replace(/[•\s]+/g, " ").trim();
-  return text.length > 160 ? `${text.slice(0, 157)}…` : text || p.title;
+/**
+ * Share picture as JPEG: imgproxy renders WebP by default, and a part of link-preview clients
+ * (older Viber/LinkedIn, mail) do not take WebP.
+ */
+function shareImage(key: string): string {
+  if (/^https?:\/\//i.test(key)) return key;
+  return `${SITE_URL}${imgproxyUrl(IMAGE_BASE, key.replace(/^\/+/, ""), 1200, false).replace(/@webp$/, "@jpg")}`;
 }
 
 function primaryCategory(p: StorefrontProduct) {
@@ -53,18 +58,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const product = await safe(getProductBySlug(decodeURIComponent(slug), locale), null);
   if (!product) return { title: t("notFound.title"), robots: { index: false } };
   const images = sortedImages(product);
-  const title = product.seoTitle || product.title;
-  return {
-    title,
-    description: summary(product),
-    alternates: alternates(`/product/${product.slug}`, locale),
-    openGraph: {
-      type: "website",
-      title,
-      description: summary(product),
-      images: images.slice(0, 1).map((k) => ({ url: absoluteImage(k, 1200), width: 1200, height: 1200 })),
-    },
-  };
+  return pageMeta({
+    locale,
+    path: `/product/${product.slug}`,
+    title: productTitle(product, locale),
+    description: productDescription(product, locale),
+    image: images[0] ? { url: shareImage(images[0]), width: 1200, height: 1200, alt: product.title } : null,
+  });
 }
 
 const PROMISES: { icon: typeof Truck; title: MessageKey; text: MessageKey; href?: string }[] = [
@@ -80,6 +80,9 @@ export default async function ProductPage({ params }: { params: Params }) {
   const t = makeT(locale);
   const product = await safe(getProductBySlug(decodeURIComponent(slug), locale), null);
   if (!product) notFound();
+  // One address per product: /product/ATTACK-Shark → /product/attack-shark (the API matches slugs
+  // case-insensitively, so the odd spelling would otherwise be a 200 duplicate).
+  if (decodeURIComponent(slug) !== product.slug) permanentRedirect(localePath(locale, `/product/${product.slug}`));
 
   const category = primaryCategory(product);
   const related = category
@@ -96,23 +99,30 @@ export default async function ProductPage({ params }: { params: Params }) {
   const images = sortedImages(product);
   const inStock = stockOf(product, null) > 0;
 
+  const brand = productBrand(product);
+  const markdown = (product.tags ?? []).some((tag) => tag.slug === "utsenka");
+  const productUrl = `${SITE_URL}${localePath(locale, path)}`;
   const productLd = {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": `${productUrl}#product`,
     name: product.title,
+    url: productUrl,
     sku: product.id,
-    description: summary(product),
+    description: productDescription(product, locale),
     image: images.slice(0, 6).map((k) => absoluteImage(k, 1200)),
     ...(category ? { category: category.name } : {}),
-    brand: { "@type": "Brand", name: product.title.split(" ")[0] },
+    ...(brand ? { brand: { "@type": "Brand", name: brand } } : {}),
     offers: {
       "@type": "Offer",
-      url: `${SITE_URL}${localePath(locale, path)}`,
+      url: productUrl,
       priceCurrency: product.currency ?? "UAH",
       price: (product.priceMinor / 100).toFixed(2),
       availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
-      seller: { "@type": "Organization", name: "ChiSetup" },
+      shippingDetails: shippingLd(),
+      hasMerchantReturnPolicy: returnPolicyLd(markdown),
+      seller: { "@type": "OnlineStore", "@id": ORG_ID, name: "ChiSetup", url: SITE_URL },
     },
   };
 
@@ -169,7 +179,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             <span aria-hidden className="tech-mark" />
             {t("product.related")}
           </h2>
-          <ProductGrid products={relatedItems.slice(0, 4)} />
+          <ProductGrid products={toCardProducts(relatedItems.slice(0, 4))} />
         </section>
       )}
     </div>

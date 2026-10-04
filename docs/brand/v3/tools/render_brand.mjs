@@ -3,6 +3,8 @@
 //   docs/brand/v3/bot-avatar.png     640x640  CS mark, full bleed (Telegram crops it to a circle)
 //   site/app/apple-icon.png          180x180  CS mark, full bleed (iOS rounds it itself)
 //   docs/brand/v3/miniapp-cover.png  640x360  logo-full on the dark "banner" background (BotFather)
+//   site/public/og-image.png        1200x630  same cover, default og:image of the website
+//   site/public/logo.png             512x512  CS mark, schema.org Organization logo
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -50,6 +52,9 @@ const jobs = [
   { out: "docs/brand/v3/bot-avatar.png", w: 640, h: 640, html: sized(markBleed, 640, 640) },
   { out: "site/app/apple-icon.png", w: 180, h: 180, html: sized(markBleed, 180, 180) },
   { out: "docs/brand/v3/miniapp-cover.png", w: 640, h: 360, html: cover(640, 360) },
+  // Website: default share picture (og:image / twitter:image) and the schema.org logo.
+  { out: "site/public/og-image.png", w: 1200, h: 630, html: cover(1200, 630) },
+  { out: "site/public/logo.png", w: 512, h: 512, html: sized(markBleed, 512, 512) },
 ];
 
 const browser = await chromium.launch();
