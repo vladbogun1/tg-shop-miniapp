@@ -39,6 +39,8 @@ public final class ReorderCalculator {
 
     /** At least this many units sold in 90 days before a product counts as "selling". */
     static final int MIN_SALES = 2;
+    /** A window must have covered at least this many days of the product's life to count. */
+    static final int MIN_WINDOW_DAYS = 7;
     private static final int MAX_ROWS = 60;
     private static final int MAX_DEMAND = 30;
 
@@ -162,8 +164,8 @@ public final class ReorderCalculator {
         double weights = 0;
         for (double[] w : windows) {
             double covered = Math.min(w[1], ageDays) - w[0];
-            if (covered < 3) {
-                continue; // fewer than 3 days of existence in this window: no evidence either way
+            if (covered < MIN_WINDOW_DAYS) {
+                continue; // too few days of existence in this window: a couple of sales would look like a rush
             }
             weighted += w[3] * (w[2] / covered);
             weights += w[3];

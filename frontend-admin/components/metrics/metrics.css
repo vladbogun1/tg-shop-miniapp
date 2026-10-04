@@ -1,0 +1,69 @@
+/* ============================================================================
+   Chart tokens of the metrics page. Validated with the dataviz palette checker
+   against the admin's own chart surfaces (light #FFFFFF, dark #34343B):
+   series 1 blue / series 2 orange / series 3 aqua pass CVD + normal-vision
+   separation in both themes. Aqua sits below 3:1 on white, so it is only used
+   with direct labels. Recharts reads these via fill="var(--mx-…)".
+   ============================================================================ */
+.mx-root {
+  --mx-s1: #2a78d6;
+  --mx-s2: #eb6834;
+  --mx-s3: #1baf7a;
+  --mx-prev: #8c8878;
+  --mx-grid: color-mix(in srgb, var(--text) 12%, transparent);
+  --mx-axis: var(--text-faint);
+  --mx-band: color-mix(in srgb, #2a78d6 18%, transparent);
+  /* Sequential blue ramp (heatmap / funnel), light -> dark. */
+  --mx-q0: #f1eee3;
+  --mx-q1: #cde2fb;
+  --mx-q2: #9ec5f4;
+  --mx-q3: #6da7ec;
+  --mx-q4: #3987e5;
+  --mx-q5: #256abf;
+  --mx-q6: #184f95;
+  --mx-q7: #0d366b;
+  --mx-up: #006300;
+  --mx-down: #b3261e;
+}
+
+:root[data-theme="dark"] .mx-root {
+  --mx-s1: #3987e5;
+  --mx-s2: #d95926;
+  --mx-s3: #199e70;
+  --mx-prev: #aeaca6;
+  --mx-band: color-mix(in srgb, #3987e5 26%, transparent);
+  --mx-q0: #3a3a42;
+  --mx-q1: #0d366b;
+  --mx-q2: #104281;
+  --mx-q3: #1c5cab;
+  --mx-q4: #2a78d6;
+  --mx-q5: #5598e7;
+  --mx-q6: #86b6ef;
+  --mx-q7: #b7d3f6;
+  --mx-up: #2bd489;
+  --mx-down: #ff8a80;
+}
+
+.mx-num { font-variant-numeric: tabular-nums; }
+
+.mx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mx-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--line);
+  white-space: nowrap;
+}
+.mx-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  color: var(--text);
+  vertical-align: middle;
+}
+.mx-table tr:last-child td { border-bottom: 0; }
+.mx-table td.r, .mx-table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.mx-table tbody tr:hover td { background: var(--surface-hover); }
