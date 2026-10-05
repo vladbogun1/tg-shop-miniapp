@@ -31,6 +31,7 @@ import {
   ScrollText,
   Settings,
   BellRing,
+  UserRound,
 } from "lucide-react";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, UpdateBanner } from "@/components/pwa/Banners";
@@ -59,6 +60,7 @@ const NAV = [
   { href: "/translations", label: "Переводы", icon: Languages, badge: "translations" as const },
   { href: "/audit", label: "Журнал", icon: ScrollText },
   { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/account", label: "Мой аккаунт", icon: UserRound },
 ];
 
 const TITLE: Record<string, string> = {
@@ -75,6 +77,7 @@ const TITLE: Record<string, string> = {
   "/translations": "Переводы",
   "/audit": "Журнал",
   "/settings": "Настройки",
+  "/account": "Мой аккаунт",
 };
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {

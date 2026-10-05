@@ -216,6 +216,9 @@ function maybeRefresh(token: string): void {
 
 const http = createHttpClient({
   baseUrl: API_BASE,
+  // The «trusted device» cookie (HttpOnly, path /api/auth/admin) has to travel with the sign-in
+  // calls; prod is same-origin anyway, the e2e/dev split origins need "include".
+  credentials: "include",
   getToken: () => {
     const token = getAccessToken();
     if (token) maybeRefresh(token);
@@ -238,26 +241,113 @@ export function uploadFile(path: string, file: File): Promise<{ key: string }> {
 }
 
 // ---- admin auth ------------------------------------------------------------
+// Two steps: password or Telegram → { status: TOTP_REQUIRED | SETUP_REQUIRED, preAuthToken } → the
+// code from the authenticator app (or the 2FA setup) → { status: OK, accessToken }. A remembered
+// device («Доверять этому устройству») answers OK right after the first step.
 export interface AdminAuthResponse {
   accessToken: string;
 }
 
-/** POST /api/auth/admin/telegram { initData } -> { accessToken }. */
-export async function authAdminTelegram(initData: string): Promise<AdminAuthResponse> {
-  const res = await http.post<AdminAuthResponse>("/api/auth/admin/telegram", { initData });
-  setAccessToken(res.accessToken);
+export type AdminLoginStatus = "OK" | "TOTP_REQUIRED" | "SETUP_REQUIRED";
+
+export interface AdminLoginResult {
+  status: AdminLoginStatus;
+  accessToken?: string;
+  /** 5-minute token for the second step; grants nothing else. Kept in memory only. */
+  preAuthToken?: string;
+  name?: string;
+}
+
+export interface TwoFactorSetup {
+  /** Base32 secret for manual entry. */
+  secret: string;
+  /** otpauth://totp/… — the QR content; opens the authenticator on the same phone. */
+  otpauthUri: string;
+  account: string;
+  issuer: string;
+}
+
+function signedIn(res: AdminLoginResult): AdminLoginResult {
+  if (res.status === "OK" && res.accessToken) setAccessToken(res.accessToken);
   return res;
 }
 
-/** POST /api/auth/admin/login { username, password } -> { accessToken }. */
-export async function authAdminLogin(
-  username: string,
-  password: string
-): Promise<AdminAuthResponse> {
-  const res = await http.post<AdminAuthResponse>("/api/auth/admin/login", { username, password });
-  setAccessToken(res.accessToken);
-  return res;
+/** POST /api/auth/admin/telegram { initData } — first factor. */
+export async function authAdminTelegram(initData: string): Promise<AdminLoginResult> {
+  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/telegram", { initData }));
 }
+
+/** POST /api/auth/admin/login { username, password } — first factor. */
+export async function authAdminLogin(username: string, password: string): Promise<AdminLoginResult> {
+  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/login", { username, password }));
+}
+
+/** POST /api/auth/admin/2fa/verify — the code from the app. */
+export async function verifyTwoFactor(preAuthToken: string, code: string, trustDevice: boolean): Promise<AdminLoginResult> {
+  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/2fa/verify", { preAuthToken, code, trustDevice }));
+}
+
+/** POST /api/auth/admin/2fa/setup — first sign-in without 2FA: a new secret. */
+export function startTwoFactorSetup(preAuthToken: string): Promise<TwoFactorSetup> {
+  return http.post<TwoFactorSetup>("/api/auth/admin/2fa/setup", { preAuthToken });
+}
+
+/** POST /api/auth/admin/2fa/confirm — the first code from the new secret; signs in. */
+export async function confirmTwoFactorSetup(
+  preAuthToken: string,
+  code: string,
+  trustDevice: boolean
+): Promise<AdminLoginResult> {
+  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/2fa/confirm", { preAuthToken, code, trustDevice }));
+}
+
+// ---- «Мой аккаунт» -----------------------------------------------------------
+
+export interface AdminAccount {
+  telegramUserId: number;
+  name: string | null;
+  username: string | null;
+  role: "ADMIN" | "SUPER_ADMIN";
+  superAdmin: boolean;
+  passwordSet: boolean;
+  passwordChangedAt: string | null;
+  totpEnabled: boolean;
+  totpEnabledAt: string | null;
+  trustedDevices: number;
+  trustedDeviceDays: number;
+}
+
+export type LoginResultCode = "OK" | "BAD_PASSWORD" | "UNKNOWN_LOGIN" | "BAD_CODE" | "LOCKED" | "NOT_ADMIN" | "BAD_TELEGRAM";
+
+export interface AdminLoginEntry {
+  id: number;
+  at: string;
+  method: "PASSWORD" | "TELEGRAM";
+  result: LoginResultCode;
+  secondFactor: "TOTP" | "TRUSTED_DEVICE" | "SETUP" | null;
+  ip: string | null;
+  country: string | null;
+  city: string | null;
+  device: string | null;
+  newDevice: boolean;
+  newCity: boolean;
+}
+
+export const accountApi = {
+  get: () => http.get<AdminAccount>("/api/admin/account"),
+  logins: () => http.get<AdminLoginEntry[]>("/api/admin/account/logins"),
+  /** Ends every other session; the answer carries this device's new token (stored here). */
+  async changePassword(currentPassword: string, newPassword: string, code: string): Promise<void> {
+    const res = await http.post<AdminAuthResponse>("/api/admin/account/password", { currentPassword, newPassword, code });
+    setAccessToken(res.accessToken);
+  },
+  startTotpReset: (code: string) => http.post<TwoFactorSetup>("/api/admin/account/2fa/reset", { code }),
+  async confirmTotpReset(code: string): Promise<void> {
+    const res = await http.post<AdminAuthResponse>("/api/admin/account/2fa/confirm", { code });
+    setAccessToken(res.accessToken);
+  },
+  forgetDevices: () => http.post<{ forgotten: number }>("/api/admin/account/devices/forget"),
+};
 
 // ============================================================================
 // Admin-only payloads
