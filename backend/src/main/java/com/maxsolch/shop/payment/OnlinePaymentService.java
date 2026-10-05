@@ -192,7 +192,8 @@ public class OnlinePaymentService {
         String prefix = locale == null || locale.isBlank() || "uk".equals(locale) ? "" : "/" + locale;
         if (returnTo == ReturnTo.MINIAPP) {
             // Opened from the Mini App in a browser: a small page that sends them back to Telegram.
-            return trimSlash(props.getWebappBaseUrl()) + "/pay-return?order=" + id;
+            return trimSlash(props.getWebappBaseUrl()) + "/pay-return?order=" + id
+                    + "&lang=" + (locale == null || locale.isBlank() ? "uk" : locale);
         }
         return trimSlash(props.getSite().getBaseUrl()) + prefix + "/account/orders/" + id + "?payment=return";
     }
