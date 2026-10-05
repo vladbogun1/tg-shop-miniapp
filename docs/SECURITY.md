@@ -12,7 +12,9 @@
 | `SPRING_PROFILES_ACTIVE` ≠ `dev` | `docker-compose.prod.yml` выставляет `prod`. Вне `dev` бэкенд **не стартует** с `ALLOW_UNSIGNED_INIT_DATA=true`, с плейсхолдерным `JWT_SECRET` или `ADMIN_PASSWORD` — см. `StartupSecurityCheck`. |
 | `ALLOW_UNSIGNED_INIT_DATA=false` | С этим флагом подпись Telegram initData не проверяется вообще: любой может выпустить себе ADMIN-токен на 30 дней. |
 | `JWT_SECRET` сгенерирован | `openssl rand -base64 32`. Плейсхолдер из `application.yml` публичный. |
-| `ADMIN_PASSWORD` не из `.env.example` | Смена пароля бампает `admin_users.token_version` и отзывает все ранее выданные токены. |
+| `ADMIN_PASSWORD` не из `.env.example` | Нужен только для первой учётки на пустой базе и для аварийного сброса (`ADMIN_EMERGENCY_RESET`). При каждом старте пароль больше не перезаписывается. |
+| `ADMIN_2FA_KEY` задан | `openssl rand -base64 32`. Задать до того, как админы настроят 2FA, и не менять потом (см. docs/ADMIN-2FA.md). |
+| `ADMIN_EMERGENCY_RESET` не `true` | После аварийного сброса флаг нужно убрать. Повторно сброс с тем же паролем не выполняется. |
 | Порты БД и MinIO не наружу | `docker-compose.prod.yml` снимает публикацию у `mysql`, `minio`, `nginx`, `backend`. Проверить: `docker compose ... ps` — наружу торчит только Caddy (666/667). |
 | Swagger / Actuator недоступны снаружи | Оба gateway отдают 404 на `/swagger-ui`, `/v3/api-docs`, `/actuator`. `/actuator/**` кроме `health`/`info` требует роль ADMIN. |
 | Бакет MinIO приватный | `mc anonymous get local/<bucket>` → `none`. Вложения чата (скриншоты переводов с номерами карт) не должны быть публичными. |
@@ -26,11 +28,48 @@
 по официальному алгоритму Telegram (HMAC-SHA256 с ключом `HMAC("WebAppData", bot_token)`),
 сравнение — за константное время, плюс TTL по `auth_date`.
 
-**Админ.** Либо `POST /api/auth/admin/telegram` (telegram id должен быть активным в `admin_users`),
-либо `POST /api/auth/admin/login` (логин + BCrypt-пароль). Оба доступны **только через админский
-gateway (:667)**: в `gateway.conf` (:666) и `gateway-site.conf.template` (сайт) `/api/auth/admin/` → 404.
-При неизвестном логине BCrypt всё равно выполняется (фиктивный хэш) — по времени ответа не видно,
-существует ли логин.
+**Админ: вход в два шага, 2FA обязательна** (V37, подробно в docs/ADMIN-2FA.md).
+
+Первый фактор:
+- `POST /api/auth/admin/login`: логин + BCrypt-пароль;
+- или `POST /api/auth/admin/telegram`: initData; telegram id должен быть активным в `admin_users`.
+
+Первый фактор возвращает только **pre-auth токен** на 5 минут. Он подписан своим HKDF-ключом, имеет
+`typ=admin-preauth`, привязан к `token_version` и одноразовый. Этот токен не принимается как
+access-токен: с ним `/api/admin/**` и всё остальное отвечает 403 `TWO_FACTOR_REQUIRED`.
+
+Второй шаг:
+- `POST /api/auth/admin/2fa/verify`: код TOTP (RFC 6238, 6 цифр, 30 с, допуск ±1 шаг; код с уже
+  использованным шагом не принимается);
+- или первая настройка: `/2fa/setup` (секрет + otpauth URI) → `/2fa/confirm`.
+
+Только второй шаг выдаёт ADMIN JWT.
+
+Секреты TOTP хранятся зашифрованными: AES-256-GCM, ключ `ADMIN_2FA_KEY`, в качестве associated data —
+id админа.
+
+«Доверять устройству 30 дней» выдаёт cookie `admin_device`: HttpOnly, SameSite=Strict, путь
+`/api/auth/admin`. В БД лежит только SHA-256 этого токена. Доверие отзывается при смене пароля,
+перенастройке 2FA, «Забыть все устройства», «Выйти на всех устройствах» и «Заблокировать» в
+Telegram.
+
+5 неверных паролей или кодов подряд блокируют учётку на 15 минут (счётчик хранится в БД).
+Неизвестный логин после 5 попыток получает такой же ответ, поэтому по блокировке не видно, какие
+логины существуют.
+
+Все попытки пишутся в `admin_login_log` (90 дней) и в журнал. О входе с нового устройства и о
+блокировке бот пишет админу в личку, в сообщении есть кнопка «Заблокировать».
+
+Вход через Telegram:
+- initData для админки действует 5 минут (`ADMIN_INITDATA_TTL_SECONDS`) и принимается один раз;
+- отклоняются `auth_date` из будущего и повторяющиеся ключи;
+- хэш сравнивается по байтам через `MessageDigest.isEqual`.
+
+Эндпоинты входа доступны **только через админский gateway (:667)**: в `gateway.conf` (:666) и
+`gateway-site.conf.template` (сайт) `/api/auth/admin/` → 404. При неизвестном логине BCrypt всё равно
+выполняется (фиктивный хэш), поэтому по времени ответа не видно, существует ли логин.
+`@RequiredSuperAdmin` проверяет роль `SUPER_ADMIN` по БД. Аннотация понадобится на этапе 2 для
+управления админами.
 
 **Срок жизни admin-токена** — `ADMIN_TOKEN_TTL_MINUTES` (12 ч), а не 30 дней, как у покупателя.
 Пока админка открыта и работает, она сама перевыпускает токен после половины срока
@@ -46,10 +85,10 @@ gateway (:667)**: в `gateway.conf` (:666) и `gateway-site.conf.template` (са
 - Открытый WebSocket админа перепроверяет токен на каждом SUBSCRIBE и на каждом сообщении к нему;
   отозванный/истёкший — сессия закрывается ERROR-фреймом.
 
-**Rate limiting.** `RateLimitFilter`: 10 попыток / 5 мин на `/api/auth/admin/*` (по IP), 60 / 5 мин на
+**Rate limiting.** `RateLimitFilter`: `ADMIN_AUTH_RATE_LIMIT` (20) запросов / 5 мин на `/api/auth/admin/*` (по IP), 60 / 5 мин на
 `/api/auth/telegram` (каждый запуск Mini App; покупатели за мобильным NAT делят один IP), 30/мин на
-загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов. Плюс в `AuthService`
-не больше 10 неудачных паролей в час **на логин** — независимо от IP.
+загрузки, 120/мин на публичные каталог, Нову Пошту и превью промокодов. Плюс блокировка
+учётки на 15 минут после 5 неверных паролей или кодов подряд, независимо от IP (`AdminLockout`).
 
 **IP клиента** — `server.forward-headers-strategy: native` (Tomcat RemoteIpValve): `X-Forwarded-For`
 читается справа налево, свои прокси (приватные/loopback-адреса) пропускаются, первый чужой адрес —
