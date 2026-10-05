@@ -275,7 +275,7 @@ export const en: RuDictionary = {
   "checkout.mapLoading": "Loading map…",
   "checkout.warehouse": "Branch",
   "checkout.warehouseField": "Branch / parcel locker",
-  "checkout.warehousePlaceholder": "Number or address — e.g. 12 or Sumska",
+  "checkout.warehousePlaceholder": "Number or address",
   "checkout.warehouseNone": "No such branch in this city",
   "checkout.lastWarehouse": "Same as your previous order",
   "checkout.changeWarehouse": "Choose another",

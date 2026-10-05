@@ -275,7 +275,7 @@ export const uk: RuDictionary = {
   "checkout.mapLoading": "Завантаження карти…",
   "checkout.warehouse": "Відділення",
   "checkout.warehouseField": "Відділення / поштомат",
-  "checkout.warehousePlaceholder": "Номер або адреса — наприклад, 12 або Сумська",
+  "checkout.warehousePlaceholder": "Номер або адреса",
   "checkout.warehouseNone": "У цьому місті такого відділення немає",
   "checkout.lastWarehouse": "Як у попередньому замовленні",
   "checkout.changeWarehouse": "Обрати інше",

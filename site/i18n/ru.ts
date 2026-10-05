@@ -297,7 +297,7 @@ export const ru = {
   "checkout.mapLoading": "Загрузка карты…",
   "checkout.warehouse": "Отделение",
   "checkout.warehouseField": "Отделение / почтомат",
-  "checkout.warehousePlaceholder": "Номер или адрес — например, 12 или Сумская",
+  "checkout.warehousePlaceholder": "Номер или адрес",
   "checkout.warehouseNone": "В этом городе такого отделения нет",
   "checkout.lastWarehouse": "Как в прошлом заказе",
   "checkout.changeWarehouse": "Выбрать другое",
