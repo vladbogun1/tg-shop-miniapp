@@ -28,6 +28,8 @@ import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { LanguageSegments } from "@/components/LanguageToggle";
+import { SupportEntry } from "@/components/account/SupportEntry";
+import { AccountReviewsLink } from "@/components/reviews/AccountReviewsLink";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { spring } from "@/lib/motion";
@@ -109,6 +111,10 @@ export default function AccountPage() {
       <div className="mb-5">
         <LanguageSegments />
       </div>
+
+      <AccountReviewsLink />
+
+      <SupportEntry />
 
       <h2 className="eyebrow mb-3 px-0.5">
         {t("account.myOrders")}

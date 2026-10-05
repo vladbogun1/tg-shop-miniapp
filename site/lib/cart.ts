@@ -43,7 +43,14 @@ export function lineKey(productId: string, variantId?: string | null): string {
 }
 
 function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
+  return Math.max(min, Math.min(max, n, qtyCap));
+}
+
+/** antibot.maxQtyPerProduct from the server (lib/order-limits.ts); Infinity until known / 0 = off. */
+let qtyCap = Number.POSITIVE_INFINITY;
+
+export function setQtyCap(n: number): void {
+  qtyCap = n > 0 ? n : Number.POSITIVE_INFINITY;
 }
 
 /**

@@ -77,6 +77,10 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
+        String personal = personalRejection(promo, userId, Instant.now());
+        if (personal != null) {
+            return invalid(subtotal, messages.current(personal));
+        }
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
         }
@@ -101,6 +105,10 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
+        String personal = personalRejection(promo, userId, Instant.now());
+        if (personal != null) {
+            return invalid(subtotal, messages.current(personal));
+        }
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
         }
@@ -161,6 +169,30 @@ public class PromoService {
         long heldByOthers = reservationRepository.countOthers(
                 promo.getId(), userId == null ? Long.MIN_VALUE : userId, Instant.now());
         return left - heldByOthers;
+    }
+
+    /**
+     * Owner and expiry of a code (V44), checked everywhere a code is validated or applied: the cart
+     * preview, the hold, the checkout and an admin applying a code to an order.
+     *
+     * @param userId the customer (telegram user id) who wants to use the code; null = unknown (a
+     *               guest's cart preview)
+     * @return the message key of the reason, or null when the code may be used
+     */
+    public static String personalRejection(PromoCode promo, Long userId, Instant now) {
+        if (promo.isExpiredAt(now)) {
+            return "api.promo.expired";
+        }
+        if (promo.getOwnerUserId() != null) {
+            if (userId == null) {
+                return "api.promo.personalSignIn";
+            }
+            if (!promo.usableBy(userId)) {
+                // Somebody else's personal code: the same answer as for a code that does not exist.
+                return "api.promo.notFound";
+            }
+        }
+        return null;
     }
 
     /**

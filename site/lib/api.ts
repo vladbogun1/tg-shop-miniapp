@@ -19,6 +19,7 @@ import {
   type NpCity,
   type NpWarehouse,
   type OrderDetail,
+  type OrderLimits,
   type OrderSummary,
   type PaymentOption,
   type PaymentStart,
@@ -26,6 +27,12 @@ import {
   type PromoPreview,
   type PublicCategory,
   type PublicProductPage,
+  type BonusCode,
+  type MyReview,
+  type PendingReviewLine,
+  type ReviewPage,
+  type SubmitReviewRequest,
+  type SubmitReviewResult,
   type SendMessageRequest,
   type StorefrontProduct,
   type WebLoginStart,
@@ -176,6 +183,8 @@ export const api = {
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
   paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+  /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
+  orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(
       `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
@@ -261,9 +270,29 @@ export const api = {
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
+  /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
+  requestCancel: (id: string, reason: string) =>
+    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel-request`, { reason })),
   markRead: (id: string) => authed(() => http.post<void>(`/api/me/orders/${id}/messages/read`)),
   uploadAttachment: (file: File) =>
     authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
+
+  // reviews (V44)
+  /** Public: published reviews of a product, newest first (page is 0-based). */
+  productReviews: (idOrSlug: string, page = 0, size = 10) =>
+    http.get<ReviewPage>(`/api/public/products/${encodeURIComponent(idOrSlug)}/reviews?page=${page}&size=${size}`),
+  /** Lines of my DELIVERED orders still waiting for a review (optionally one order). */
+  pendingReviews: (orderId?: string) =>
+    authed(() =>
+      http.get<PendingReviewLine[]>(
+        `/api/me/reviews/pending${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ""}`
+      )
+    ),
+  myReviews: () => authed(() => http.get<MyReview[]>("/api/me/reviews")),
+  /** Create, or edit while still PENDING (same orderItemId). 400 = localized message. */
+  submitReview: (body: SubmitReviewRequest) =>
+    authed(() => http.post<SubmitReviewResult>("/api/me/reviews", body)),
+  myBonuses: () => authed(() => http.get<BonusCode[]>("/api/me/bonuses")),
 };
 
 export type {

@@ -39,6 +39,9 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
 
     List<PromoCode> findAllByOrderByCreatedAtDesc();
 
+    /** Personal codes of one customer (review bonuses, V44), newest first. */
+    List<PromoCode> findByOwnerUserIdOrderByCreatedAtDesc(Long ownerUserId);
+
     /**
      * Orders placed with a code, newest first (the «Промокоды» page shows where a code went). Lives
      * here rather than in OrderRepository: it is a promo question, and JPQL can read any entity.

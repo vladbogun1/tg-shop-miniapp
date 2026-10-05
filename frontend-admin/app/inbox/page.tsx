@@ -22,9 +22,11 @@ import {
   CheckCheck,
   Globe,
   Hourglass,
+  LifeBuoy,
   MessageCircle,
   PackageMinus,
   RotateCw,
+  Star,
   Truck,
   Undo2,
   Wallet,
@@ -65,6 +67,8 @@ const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   RETURN: Undo2,
   LOW_STOCK: PackageMinus,
   SITE_ERROR: Globe,
+  REVIEW: Star,
+  SUPPORT: LifeBuoy,
 };
 
 /** Group hue (icon tile tint, icon, count): money and people first, information last. */
@@ -76,6 +80,8 @@ const GROUP_TONE: Record<KnownInboxType, string> = {
   RETURN: "var(--st-rejected)",
   LOW_STOCK: "var(--warn)",
   SITE_ERROR: "var(--text-muted)",
+  REVIEW: "var(--accent)",
+  SUPPORT: "var(--info)",
 };
 
 function groupIcon(type: InboxType): LucideIcon {
@@ -221,6 +227,13 @@ export default function InboxPage() {
         break;
       case "SITE_ERROR":
         void retrySite();
+        break;
+      case "REVIEW":
+        router.push("/reviews?status=PENDING");
+        break;
+      case "SUPPORT":
+        // A support thread, not an order: entityId is the thread id.
+        router.push(`/support?thread=${encodeURIComponent(item.entityId)}`);
         break;
       default:
         if (item.orderId) setOrder({ id: item.orderId, tab: "details", payment: false });

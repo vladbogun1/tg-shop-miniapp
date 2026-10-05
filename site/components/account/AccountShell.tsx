@@ -5,12 +5,15 @@
  * a horizontal tab row on phones.
  */
 import { Loader2, LogOut, MonitorSmartphone, Package, Settings } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { displayName, rememberedUser, useLogout, useSession } from "@/lib/session";
+import { LifeBuoy } from "lucide-react";
+import { useSupportConfig, useSupportUnread } from "@/lib/support";
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
   const { t, href } = useI18n();
@@ -19,6 +22,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const path = stripLocale(rawPath);
   const session = useSession();
   const logout = useLogout();
+  const { enabled: supportEnabled } = useSupportConfig();
+  const supportUnread = useSupportUnread();
   const [name, setName] = useState<string | null>(null);
   useEffect(() => setName(displayName(rememberedUser())), []);
 
@@ -40,6 +45,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
 
   const items = [
     { href: "/account", label: t("account.orders"), icon: Package, active: path === "/account" || path.startsWith("/account/orders") },
+    { href: "/account/reviews", label: t("account.reviews"), icon: MessageSquareText, active: path === "/account/reviews" },
+    ...(supportEnabled ? [{ href: "/account/support", label: t("support.nav"), icon: LifeBuoy, active: path.startsWith("/account/support") }] : []),
     { href: "/account/settings", label: t("account.settings"), icon: Settings, active: path === "/account/settings" },
     { href: "/account/settings#sessions", label: t("account.devices"), icon: MonitorSmartphone, active: false },
   ];
@@ -71,6 +78,9 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 >
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   {label}
+                  {h === "/account/support" && supportUnread > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-ink)]">{supportUnread}</span>
+                  )}
                 </Link>
               </li>
             ))}

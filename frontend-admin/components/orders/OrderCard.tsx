@@ -8,7 +8,7 @@
  * in one muted line (the "Нова пошта" / "Передоплата" badges repeated on every card took most of it).
  */
 import type { CSSProperties, ReactNode } from "react";
-import { Truck, Store, MessageCircle, Package2 } from "lucide-react";
+import { Ban, Truck, Store, MessageCircle, Package2 } from "lucide-react";
 import type { OrderCardDto } from "@/lib/api";
 import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
@@ -70,6 +70,16 @@ export function OrderCard({ order, onClick, dragging, headerAction }: Props) {
         <span className="shrink-0 whitespace-nowrap">
           <PaymentBadge order={order} showTimeLeft />
         </span>
+        {order.cancelRequestStatus === "PENDING" && (
+          <span
+            className="chip-tint shrink-0 !gap-1 !px-1.5 !text-[10.5px]"
+            style={{ "--chip": "#FBBF24" } as CSSProperties}
+            title="Покупатель просит отменить оплаченный заказ"
+          >
+            <Ban className="h-3 w-3" />
+            Отмена?
+          </span>
+        )}
         {order.paymentOptionTitle && (
           <span className="min-w-0 truncate text-[11px] text-[var(--text-faint)]">{order.paymentOptionTitle}</span>
         )}

@@ -128,6 +128,9 @@ public class AdminPromoController {
                 p.getMaxUses(),
                 p.getUsesCount(),
                 p.isActive(),
-                reserved);
+                reserved,
+                p.getOwnerUserId(),
+                p.getExpiresAt(),
+                p.getSource());
     }
 }

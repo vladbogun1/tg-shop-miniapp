@@ -63,6 +63,15 @@ public class PushNotificationListener {
     }
 
     @TransactionalEventListener(fallbackExecution = true)
+    public void onCancelRequested(OrderEvents.CancelRequested event) {
+        byte[] id = event.orderId();
+        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+                "Запрос отмены #" + o.shortId(),
+                "Покупатель просит отменить оплаченный заказ — одобрите или отклоните",
+                "/orders/" + o.id(), "cancel-" + o.id(), badge(), true))));
+    }
+
+    @TransactionalEventListener(fallbackExecution = true)
     public void onChatMessage(OrderEvents.ChatMessage event) {
         if (event.fromAdmin()) {
             return;

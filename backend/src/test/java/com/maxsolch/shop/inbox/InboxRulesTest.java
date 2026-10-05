@@ -174,6 +174,34 @@ class InboxRulesTest {
     }
 
     @Test
+    void cancelRequest_pendingOnUnshippedOrder_replacesPaidConfirm() {
+        O paidNew = order().id(id(1)).paidOnline(Duration.ofHours(2));
+        O paidShipped = order().id(id(2)).paidOnline(Duration.ofHours(2)).status(OrderStatus.SHIPPED);
+        OrderRow pending = withRequest(paidNew.row(), "PENDING", "не той розмір", NOW.minus(Duration.ofMinutes(15)));
+        OrderRow shipped = withRequest(paidShipped.row(), "PENDING", "x", NOW.minus(Duration.ofMinutes(15)));
+        OrderRow declined = withRequest(order().id(id(3)).paidOnline(Duration.ofHours(2)).row(), "DECLINED", "x",
+                NOW.minus(Duration.ofMinutes(15)));
+
+        Inbox inbox = InboxRules.build(orders(pending, shipped, declined), Map.of(), T);
+
+        List<Item> payment = group(inbox, InboxItemType.PAYMENT).items();
+        Item request = payment.stream().filter(i -> i.entityId().equals(id(1))).findFirst().orElseThrow();
+        assertThat(request.subtitle()).startsWith(InboxRules.CANCEL_REQUEST).contains("не той розмір");
+        assertThat(request.waitMinutes()).isEqualTo(15);
+        // a declined request is back to the normal "paid — confirm" row
+        assertThat(payment.stream().filter(i -> i.entityId().equals(id(3))).findFirst().orElseThrow().subtitle())
+                .isEqualTo(InboxRules.PAID_CONFIRM);
+        assertThat(payment.stream().map(Item::entityId)).doesNotContain(id(2));
+    }
+
+    static OrderRow withRequest(OrderRow r, String status, String reason, Instant at) {
+        return new OrderRow(r.id(), r.status(), r.customerName(), r.totalMinor(), r.receivedMinor(),
+                r.prepaymentMinor(), r.refundedMinor(), r.createdAt(), r.approvedAt(), r.shippedAt(), r.rejectedAt(),
+                r.returnedAt(), r.paid(), r.paidAt(), r.paidOnline(), r.rejectReason(), r.rejectReasonCode(),
+                status, reason, at);
+    }
+
+    @Test
     void paidThenCancelled_untilTheMoneyIsBack() {
         Inbox inbox = InboxRules.build(orders(
                 order().id(id(1)).paidOnline(Duration.ofHours(1)).status(OrderStatus.REJECTED)
@@ -321,7 +349,8 @@ class InboxRulesTest {
                 order().id(id(1)).paidOnline(Duration.ofMinutes(5)).created(Duration.ofHours(4)).row()), Map.of(), T);
 
         assertThat(inbox.groups()).extracting(Group::id).containsExactly(
-                "PAYMENT", "CHAT", "NEW_STALE", "APPROVED_STALE", "RETURN", "LOW_STOCK", "SITE_ERROR");
+                "PAYMENT", "CHAT", "SUPPORT", "NEW_STALE", "APPROVED_STALE", "RETURN", "REVIEW", "LOW_STOCK",
+                "SITE_ERROR");
         // the same order needs two different things: confirm the payment AND approve it
         assertThat(inbox.total()).isEqualTo(2);
         assertThat(group(inbox, InboxItemType.RETURN).dismissible()).isTrue();

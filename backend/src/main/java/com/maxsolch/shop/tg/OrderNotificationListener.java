@@ -106,6 +106,18 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onCancelRequested(OrderEvents.CancelRequested event) {
+        withOrder(event.orderId(), notificationService::onCancelRequested);
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onCancelRequestResolved(OrderEvents.CancelRequestResolved event) {
+        withOrder(event.orderId(), order -> notificationService.notifyCustomerCancelRequest(order, event.approved()));
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onChatMessage(OrderEvents.ChatMessage event) {
         withOrder(event.orderId(), order -> {
             if (event.fromAdmin()) {

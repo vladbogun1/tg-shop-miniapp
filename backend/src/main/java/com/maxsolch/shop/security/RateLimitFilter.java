@@ -106,6 +106,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .expireAfterWrite(Duration.ofMinutes(1))
             .build();
 
+    /** POST /api/orders per IP: {@value #ORDER_CREATE_LIMIT} per {@value #ORDER_CREATE_WINDOW_MINUTES} min. */
+    private static final int ORDER_CREATE_LIMIT = 10;
+    private static final int ORDER_CREATE_WINDOW_MINUTES = 10;
+
+    private final Cache<String, AtomicInteger> orderCreates = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(ORDER_CREATE_WINDOW_MINUTES))
+            .build();
+
+    /** POST /api/me/support/** per IP (questions, messages, read/close): {@value #SUPPORT_POST_LIMIT}/min. */
+    private static final int SUPPORT_POST_LIMIT = 30;
+
+    private final Cache<String, AtomicInteger> supportPosts = Caffeine.newBuilder()
+            .maximumSize(50_000)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build();
+
     private final Cache<String, AtomicInteger> analyticsFlushes = Caffeine.newBuilder()
             .maximumSize(50_000)
             .expireAfterWrite(Duration.ofMinutes(1))
@@ -152,6 +169,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/auth/")) {
             // Admin password / admin Telegram login (and anything new under /api/auth): strict.
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
+        if (path.startsWith("/api/me/support/") && "POST".equalsIgnoreCase(method)) {
+            // Support: the per-customer limits (settings «Поддержка») sit behind this per-IP brake.
+            return new Bucket(supportPosts, SUPPORT_POST_LIMIT, 60);
+        }
+        if (path.equals("/api/orders") && "POST".equalsIgnoreCase(method)) {
+            // Checkout: a person places a couple of orders a day; the per-customer limits
+            // (OrderGuard, settings «Защита от ботов») sit behind this per-IP brake.
+            return new Bucket(orderCreates, ORDER_CREATE_LIMIT, ORDER_CREATE_WINDOW_MINUTES * 60);
         }
         if ((path.equals("/api/me/analytics") || path.equals("/api/public/analytics"))
                 && "POST".equalsIgnoreCase(method)) {

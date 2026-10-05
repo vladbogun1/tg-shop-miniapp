@@ -21,5 +21,7 @@ public record OrderCardDto(
         /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
         long amountDueMinor,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
-        String source) {
+        String source,
+        /** PENDING | APPROVED | DECLINED — customer's cancellation request; null = none. */
+        String cancelRequestStatus) {
 }

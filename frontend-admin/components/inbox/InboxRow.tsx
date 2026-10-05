@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
   Package,
   RefreshCw,
+  Star,
   Undo2,
   type LucideIcon,
 } from "lucide-react";
@@ -44,6 +45,8 @@ const PRIMARY: Record<KnownInboxType, { label: string; icon: LucideIcon }> = {
   RETURN: { label: "Открыть заказ", icon: ClipboardList },
   LOW_STOCK: { label: "Открыть товар", icon: Package },
   SITE_ERROR: { label: "Повторить", icon: RefreshCw },
+  REVIEW: { label: "К отзывам", icon: Star },
+  SUPPORT: { label: "Ответить", icon: MessageCircle },
 };
 
 const OPEN_ORDER = { label: "Открыть заказ", icon: ClipboardList };

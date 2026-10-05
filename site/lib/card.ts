@@ -18,6 +18,8 @@ export function toCardProduct(p: StorefrontProduct): StorefrontProduct {
     currency: p.currency,
     compareAtMinor: p.compareAtMinor,
     stock: p.stock,
+    ratingAvg: p.ratingAvg,
+    ratingCount: p.ratingCount,
     images: first ? [{ url: first.url, sortOrder: first.sortOrder }] : [],
     variants: (p.variants ?? []).map((v) => ({ id: v.id, name: v.name, stock: v.stock, sortOrder: v.sortOrder })),
   };

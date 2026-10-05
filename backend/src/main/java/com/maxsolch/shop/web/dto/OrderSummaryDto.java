@@ -16,5 +16,7 @@ public record OrderSummaryDto(
         /** Deadline to pay online; null for orders placed before online payment existed. */
         Instant paymentDueAt,
         /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
-        long amountDueMinor) {
+        long amountDueMinor,
+        /** PENDING | APPROVED | DECLINED — my cancellation request; null = none. */
+        String cancelRequestStatus) {
 }

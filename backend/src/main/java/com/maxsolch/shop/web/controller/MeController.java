@@ -68,6 +68,8 @@ public class MeController {
     private final ClientEventService clientEventService;
     private final Messages messages;
     private final OnlinePaymentService onlinePayments;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.maxsolch.shop.payment.CancelRequestService cancelRequests;
     /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
     private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -256,14 +258,20 @@ public class MeController {
     public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
                                  Locale locale) {
         Order order = ownedOrder(id);
-        // The bank may be charging the card right now: let that settle first.
-        onlinePayments.refreshOrder(order.getId());
-        if (onlinePayments.hasPaymentInFlight(order.getId())) {
-            throw new BadRequestException(messages.current("api.payment.inProgress"));
-        }
-        Order cancelled = orderService.cancelByCustomer(order.getId(), req == null ? null : req.reason());
-        onlinePayments.closeOpenInvoices(order.getId());
+        // Refreshes the payment state first; 400 PAYMENT_IN_PROGRESS while the bank is charging,
+        // 400 PAID_NEEDS_REQUEST once money arrived (→ cancel-request).
+        Order cancelled = cancelRequests.cancelUnpaid(order.getId(), req == null ? null : req.reason());
         return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
+    }
+
+    @PostMapping("/orders/{id}/cancel-request")
+    @Operation(summary = "Ask to cancel a PAID order (NEW/APPROVED); reason required, max 500. One request "
+            + "per order — an admin approves (cancel + refund) or declines with a comment")
+    public OrderDetailDto cancelRequest(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
+                                        Locale locale) {
+        Order order = ownedOrder(id);
+        Order updated = cancelRequests.request(order.getId(), req == null ? null : req.reason());
+        return orderQueryService.toDetail(updated, ContentLocale.normalize(locale));
     }
 
     @PostMapping("/orders/{id}/messages/read")

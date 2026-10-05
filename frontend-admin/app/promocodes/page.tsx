@@ -345,6 +345,14 @@ function PromoRow({
             </Badge>
             {exhausted && <Badge tone="warn">лимит исчерпан</Badge>}
             {heldByReserve && <Badge tone="info">слоты в резерве</Badge>}
+            {(p.source === "REVIEW_BONUS" || p.ownerUserId != null) && (
+              <Badge tone="accent">{p.source === "REVIEW_BONUS" ? "личный · бонус за отзыв" : "личный"}</Badge>
+            )}
+            {p.expiresAt && (
+              <Badge tone={new Date(p.expiresAt).getTime() < Date.now() ? "warn" : "neutral"}>
+                {new Date(p.expiresAt).getTime() < Date.now() ? "истёк" : "до"} {formatDateTime(p.expiresAt)}
+              </Badge>
+            )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
             {p.discountAmountMinor ? (

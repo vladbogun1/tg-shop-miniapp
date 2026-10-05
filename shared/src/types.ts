@@ -50,6 +50,132 @@ export interface Product {
   images?: ProductImage[];
   variants?: ProductVariant[];
   tags?: ProductTag[];
+  /** Average of the published reviews (V44); null/absent while there are none. */
+  ratingAvg?: number | null;
+  /** Number of published reviews (V44). */
+  ratingCount?: number;
+}
+
+// ---- reviews (V44) ------------------------------------------------------------
+
+export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
+
+/** Rating summary; `distribution[0]` = number of 1★ reviews … `[4]` = 5★. */
+export interface ReviewSummary {
+  avg: number | null;
+  count: number;
+  distribution: number[];
+}
+
+/** A published review. Empty `author` = show a localized "Customer". */
+export interface PublicReview {
+  id: number;
+  author: string;
+  rating: number;
+  text: string;
+  variantName?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+  adminReply?: string | null;
+  adminReplyAt?: string | null;
+}
+
+/** `GET /api/public/products/{idOrSlug}/reviews?page=&size=` (page is 0-based). */
+export interface ReviewPage {
+  productId: string;
+  summary: ReviewSummary;
+  items: PublicReview[];
+  page: number;
+  size: number;
+  totalPages: number;
+  total: number;
+}
+
+/** `GET /api/me/reviews/pending[?orderId=]` — a delivered order line still waiting for a review. */
+export interface PendingReviewLine {
+  orderItemId: number;
+  orderId: string;
+  productId: string;
+  productSlug?: string | null;
+  title: string;
+  variantName?: string | null;
+  imageUrl?: string | null;
+  deliveredAt?: string | null;
+}
+
+/** `GET /api/me/reviews` — one of my reviews. `editable` = still PENDING (may be re-submitted). */
+export interface MyReview {
+  id: number;
+  orderItemId: number;
+  orderId?: string | null;
+  productId: string;
+  productSlug?: string | null;
+  title: string;
+  variantName?: string | null;
+  imageUrl?: string | null;
+  rating: number;
+  text: string;
+  status: ReviewStatus;
+  editable: boolean;
+  adminReply?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+}
+
+/** `GET /api/me/bonuses` — a personal promo code (review bonus). */
+export interface BonusCode {
+  code: string;
+  percent: number;
+  expiresAt?: string | null;
+  state: "ACTIVE" | "USED" | "EXPIRED";
+  orderId?: string | null;
+  createdAt?: string | null;
+}
+
+/** `POST /api/me/reviews` body. */
+export interface SubmitReviewRequest {
+  orderItemId: number;
+  rating: number;
+  text: string;
+}
+
+/** `POST /api/me/reviews` answer; `bonus` is set when this review earned the code right away. */
+export interface SubmitReviewResult {
+  review: MyReview;
+  bonus?: BonusCode | null;
+}
+
+/** Admin `GET /api/admin/reviews?status=&productId=&page=&size=` row. */
+export interface AdminReview {
+  id: number;
+  status: ReviewStatus;
+  rating: number;
+  text: string;
+  author: string;
+  productId: string;
+  productTitle?: string | null;
+  productSlug?: string | null;
+  variantName?: string | null;
+  orderId?: string | null;
+  orderShortId?: string | null;
+  userId?: number | null;
+  customerName?: string | null;
+  adminReply?: string | null;
+  adminReplyAt?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  publishedAt?: string | null;
+}
+
+export interface AdminReviewPage {
+  items: AdminReview[];
+  page: number;
+  size: number;
+  totalPages: number;
+  total: number;
+  pendingCount: number;
+  publishedCount: number;
+  hiddenCount: number;
 }
 
 // ---- orders -----------------------------------------------------------------
@@ -159,6 +285,21 @@ export interface OrderSummary {
   paymentDueAt?: string | null;
   /** Still to pay online now; 0 = nothing to pay. */
   amountDueMinor?: number;
+  /** My cancellation request of a paid order; null = none. */
+  cancelRequestStatus?: CancelRequestStatus | null;
+}
+
+/** Customer's request to cancel a PAID order (one per order). */
+export type CancelRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
+
+/** GET /api/public/order-limits — anti-bot limits; 0 = no limit. */
+export interface OrderLimits {
+  maxQtyPerProduct: number;
+  maxUnitsPerOrder: number;
+  maxUnpaidOrders: number;
+  orderCooldownSec: number;
+  maxOrdersPerDay: number;
+  maxSelfCancelsPerDay: number;
 }
 
 export interface OrderDetail {
@@ -196,6 +337,13 @@ export interface OrderDetail {
   shippedAt?: string | null;
   deliveredAt?: string | null;
   rejectedAt?: string | null;
+  /** Cancellation request of a paid order (POST /api/me/orders/{id}/cancel-request); null = none. */
+  cancelRequestStatus?: CancelRequestStatus | null;
+  cancelRequestReason?: string | null;
+  cancelRequestedAt?: string | null;
+  cancelRequestResolvedAt?: string | null;
+  /** The shop's answer — shown to the customer when DECLINED. */
+  cancelRequestAdminComment?: string | null;
   /** Admin-only extras (GET /api/admin/orders/{id}). */
   tgUserId?: number | null;
   tgUsername?: string | null;
@@ -217,6 +365,8 @@ export interface OrderCard {
   receivedMinor: number;
   paymentDueAt?: string | null;
   amountDueMinor?: number;
+  /** PENDING = the customer asks to cancel this paid order. */
+  cancelRequestStatus?: CancelRequestStatus | null;
 }
 
 // ---- chat -------------------------------------------------------------------

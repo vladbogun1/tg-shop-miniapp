@@ -138,6 +138,27 @@ public class Order {
     @Column(name = "received_minor", nullable = false)
     private long receivedMinor = 0;
 
+    /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
+    @Column(name = "cancel_request_status", length = 16)
+    private String cancelRequestStatus;
+
+    @Column(name = "cancel_request_reason", length = 500)
+    private String cancelRequestReason;
+
+    @Column(name = "cancel_requested_at")
+    private Instant cancelRequestedAt;
+
+    @Column(name = "cancel_request_resolved_at")
+    private Instant cancelRequestResolvedAt;
+
+    /** Why the request was declined (shown to the customer), or a note on approval. */
+    @Column(name = "cancel_request_admin_comment", length = 1000)
+    private String cancelRequestAdminComment;
+
+    /** Cancelled on the customer's initiative (feeds antibot.maxSelfCancelsPerDay). */
+    @Column(name = "cancelled_by_customer", nullable = false)
+    private boolean cancelledByCustomer = false;
+
     @Column(name = "tg_user_id")
     private Long tgUserId;
 

@@ -10,7 +10,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
+import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { Gallery } from "@/components/catalog/Gallery";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { RatingBadge } from "@/components/reviews/Stars";
 import { useT } from "@/i18n/context";
 import { trackProductView } from "@/lib/analytics";
 import { money } from "@/lib/money";
@@ -82,6 +85,8 @@ function ViewBody({
     return () => ro.disconnect();
   }, []);
 
+  const reviewsRef = useRef<HTMLDivElement>(null);
+
   const close = () => {
     haptic();
     onClose();
@@ -131,6 +136,16 @@ function ViewBody({
 
             <div className="mt-4">
               <h2 className="font-display text-[22px] font-bold leading-tight text-[var(--ink)]">{product.title}</h2>
+              {(product.ratingCount ?? 0) > 0 && (
+                <div className="mt-1.5">
+                  <RatingBadge
+                    size="md"
+                    avg={product.ratingAvg}
+                    count={product.ratingCount}
+                    onClick={() => reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  />
+                </div>
+              )}
               <span className="font-display mt-2 inline-block text-[26px] font-bold tabular-nums leading-none text-[var(--accent)]">
                 {money(product.priceMinor, product.currency)}
               </span>
@@ -190,6 +205,14 @@ function ViewBody({
                 {t("product.noDescription")}
               </div>
             )}
+
+            <div>
+              <AskAboutProduct productId={product.id} />
+            </div>
+
+            <div ref={reviewsRef} className="scroll-mt-4">
+              <ProductReviews productId={product.id} />
+            </div>
           </div>
         </div>
 

@@ -229,8 +229,39 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         }
     }
 
+    /** Support threads (/topic/support/{threadId}): the thread's customer or any admin — like order chat. */
+    private com.maxsolch.shop.support.SupportService supportService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSupportService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.support.SupportService s) {
+        this.supportService = s;
+    }
+
+    private void authorizeSupportSubscription(StompHeaderAccessor accessor, String destination) {
+        if (!(accessor.getUser() instanceof StompPrincipal sp)) {
+            throw new IllegalArgumentException("unauthorized subscription");
+        }
+        AuthPrincipal principal = sp.principal();
+        if (principal.role() == Role.ADMIN) {
+            if (!adminSessionStillValid(principal)) {
+                throw new IllegalArgumentException("unauthorized: admin token revoked");
+            }
+            return;
+        }
+        String rest = destination.substring("/topic/support/".length());
+        int slash = rest.indexOf('/');
+        String threadId = slash >= 0 ? rest.substring(0, slash) : rest;
+        if (supportService == null || !supportService.isOwner(threadId, principal.telegramUserId())) {
+            throw new IllegalArgumentException("forbidden: not your support thread");
+        }
+    }
+
     private void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
+        if (destination != null && destination.startsWith("/topic/support/")) {
+            authorizeSupportSubscription(accessor, destination);
+            return;
+        }
         if (destination == null || !destination.startsWith("/topic/orders/")) {
             return;
         }

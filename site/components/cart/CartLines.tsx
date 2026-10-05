@@ -6,6 +6,7 @@ import Link from "next/link";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useI18n } from "@/i18n/context";
 import { useCart, type CartLine } from "@/lib/cart";
+import { maxQty, useOrderLimits } from "@/lib/order-limits";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
@@ -24,6 +25,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
   const { t, href } = useI18n();
   const fmt = useFmt();
   const setQty = useCart((s) => s.setQty);
+  const limits = useOrderLimits();
   const remove = useCart((s) => s.remove);
   const unavailable = line.stock <= 0;
   const productHref = href(`/product/${line.slug ?? line.productId}`);
@@ -75,7 +77,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
               size="sm"
               value={line.quantity}
               min={1}
-              max={Math.max(1, line.stock)}
+              max={maxQty(line.stock, limits)}
               onChange={(n) => setQty(line.key, n)}
             />
           ) : (
@@ -85,6 +87,9 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
             {fmt.money(line.priceMinor * line.quantity, line.currency)}
           </span>
         </div>
+        {!unavailable && limits && limits.maxQtyPerProduct > 0 && limits.maxQtyPerProduct < line.stock && line.quantity >= limits.maxQtyPerProduct && (
+          <p className="text-[11px] font-semibold text-[var(--muted)]">{t("cart.qtyLimit", { n: limits.maxQtyPerProduct })}</p>
+        )}
       </div>
     </li>
   );

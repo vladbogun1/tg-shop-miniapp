@@ -29,7 +29,11 @@ public record ProductDto(
         /** Brand for schema.org (V36, not translated); null = the site's heuristic. */
         String brand,
         /** Article number (V36); null = the site uses the id. */
-        String sku) {
+        String sku,
+        /** Average of the published reviews (V44), null while there are none. */
+        Double ratingAvg,
+        /** Number of published reviews (V44). */
+        int ratingCount) {
 
     /** Units actually available: the variant sum when there are variants, else the product stock. */
     public int effectiveStock() {

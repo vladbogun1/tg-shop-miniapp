@@ -18,7 +18,8 @@
  * 3 s: paid → the sheet closes with a success haptic; a failed attempt keeps it open (the bank page
  * says why) and refreshes the order underneath. When the bank page / our /pay-return inside it
  * says it is done, or the customer closes the sheet, the short "Перевіряємо оплату…" loop below
- * takes over. `autoPay` (the page's `?pay=1`, straight from checkout) opens the sheet on arrival.
+ * takes over. Nothing opens by itself: straight from checkout (`?created=1`) the block reads
+ * «Замовлення #… створено» with «Оплатити» and «Скасувати замовлення» (`created` / `onCancel`).
  *
  * Fallback "Відкрити в браузері" (Apple Pay / Google Pay rarely work in Telegram's webview): the
  * regular page opens over the Mini App (WebApp.openLink), which keeps running underneath. When the
@@ -28,9 +29,9 @@
  * a webhook is lost.
  */
 import { motion } from "framer-motion";
-import { CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
+import { Ban, CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { codMinor, paymentState, type OnlinePaymentStatus } from "@shop/shared";
+import { codMinor, paymentState, shortOrderId, type OnlinePaymentStatus } from "@shop/shared";
 import { PaymentSheet, type PaymentSheetClose } from "@/components/account/PaymentSheet";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
@@ -70,18 +71,18 @@ export function OrderPayment({
   order,
   onOrder,
   onRefetch,
-  autoPay = false,
-  onAutoPayHandled,
+  created = false,
+  onCancel,
 }: {
   order: OrderDetail;
   /** A fresher copy of the order (from /payment/refresh) — put it in the query cache. */
   onOrder: (o: OrderDetail) => void;
   /** Re-read the order (its payability changed under us). */
   onRefetch: () => void;
-  /** Open the payment sheet right away (arrived from checkout with `?pay=1`). */
-  autoPay?: boolean;
-  /** autoPay was acted on — drop it from the address so a reload / back does not reopen it. */
-  onAutoPayHandled?: () => void;
+  /** Just placed (arrived from checkout with `?created=1`): "order #… created" heading. */
+  created?: boolean;
+  /** Shows «Скасувати замовлення» under «Оплатити» (opens the page's cancel dialog). */
+  onCancel?: () => void;
 }) {
   const { t, locale } = useI18n();
   const [paying, setPaying] = useState(false);
@@ -223,10 +224,6 @@ export function OrderPayment({
       setPaying(false);
     }
   }
-  const payRef = useRef(pay);
-  useEffect(() => {
-    payRef.current = pay;
-  });
 
   /** "Відкрити в браузері": the regular page over the Mini App (Apple Pay / Google Pay). */
   async function payInBrowser() {
@@ -296,20 +293,6 @@ export function OrderPayment({
       if (tick !== undefined) window.clearTimeout(tick);
     };
   }, [sheetUrl, celebrate]);
-
-  // Straight from checkout (`?pay=1`): open the form on arrival. No user-gesture problem — it is an
-  // iframe, not a new window.
-  const autoPayDone = useRef(false);
-  useEffect(() => {
-    if (!autoPay || autoPayDone.current) return;
-    autoPayDone.current = true;
-    onAutoPayHandled?.();
-    const o = orderRef.current;
-    const due = o.paymentDueAt ? new Date(o.paymentDueAt).getTime() : null;
-    if (awaitingOnline(o) && !IN_FLIGHT.includes(o.payment.status) && (due === null || due > Date.now())) {
-      void payRef.current();
-    }
-  }, [autoPay, onAutoPayHandled]);
 
   const sheet = (
     <PaymentSheet
@@ -418,6 +401,15 @@ export function OrderPayment({
   const failed = status === "failure";
   return withSheet(
     <Card tone="accent">
+      {created && (
+        <div className="mb-3 border-b border-[var(--line)] pb-3">
+          <p className="nb-up flex items-center gap-2 text-[16px] font-extrabold text-[var(--ok)]">
+            <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+            {t("created.title", { id: shortOrderId(order.id) })}
+          </p>
+          <p className="mt-1 text-[12px] text-[var(--muted)]">{t("created.text")}</p>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
           <CreditCard className="h-4 w-4" strokeWidth={2.25} /> {t("pay.title")}
@@ -495,6 +487,18 @@ export function OrderPayment({
               {t("pay.openBrowser")}
             </span>
           </button>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={() => {
+                haptic();
+                onCancel();
+              }}
+              className="font-display tap nb-press mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-transparent text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--danger)]"
+            >
+              <Ban className="h-4 w-4" strokeWidth={2.25} /> {t("cancel.button")}
+            </button>
+          )}
         </>
       )}
 

@@ -23,6 +23,8 @@ import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
+import { SupportGate } from "@/components/support/SupportGate";
+import { useSupportUnread } from "@/lib/support";
 
 export function Header({ categories }: { categories: PublicCategory[] }) {
   const { t, href } = useI18n();
@@ -62,6 +64,11 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
           <NavLink href={href("/contacts")} active={pathname === "/contacts"} className="hidden xl:inline-flex">
             {t("header.nav.contacts")}
           </NavLink>
+          <SupportGate>
+            <NavLink href={href("/account/support")} active={pathname.startsWith("/account/support")} className="hidden xl:inline-flex">
+              {t("support.nav")}
+            </NavLink>
+          </SupportGate>
         </nav>
         <div className="mx-1 hidden min-w-0 flex-1 md:block">
           <SearchBox />
@@ -122,7 +129,8 @@ const ACCOUNT_SKELETON_W = "w-11 lg:w-[96px]";
 
 function AccountButton() {
   const { t, href } = useI18n();
-  const { status, unread } = useSession();
+  const { status, unread: orderUnread } = useSession();
+  const unread = orderUnread + useSupportUnread();
 
   if (status === "loading") {
     return <span aria-hidden className={`shimmer block h-11 shrink-0 ${ACCOUNT_SKELETON_W}`} />;
@@ -252,6 +260,13 @@ function MobileMenu({
                     </MenuLink>
                   </li>
                 ))}
+                <SupportGate>
+                  <li>
+                    <MenuLink href={href("/account/support")} active={false}>
+                      {t("support.nav")}
+                    </MenuLink>
+                  </li>
+                </SupportGate>
               </ul>
             </nav>
             <div className="border-t border-[var(--line)] px-4 py-3">

@@ -171,3 +171,70 @@ export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   AWAITING: "Ждёт оплаты",
   UNPAID: "Не оплачен",
 };
+
+// ---- customer cancellation (phase A) ----------------------------------------
+
+/**
+ * What the customer can do about cancelling an order:
+ * - CANCEL — unpaid NEW/APPROVED: cancel at once (POST /api/me/orders/{id}/cancel);
+ * - REQUEST — paid NEW/APPROVED, no request yet: file a request with a reason (…/cancel-request);
+ * - PENDING / DECLINED / APPROVED — the request's state (DECLINED: no new request, write to the chat);
+ * - PROCESSING — the bank is charging the card right now: wait;
+ * - RETURNS — shipped / delivered: no cancel, returns page (site) or the order chat (Mini App);
+ * - NONE — closed (rejected) or nothing applies.
+ */
+export type CustomerCancelMode =
+  | "CANCEL"
+  | "REQUEST"
+  | "PENDING"
+  | "DECLINED"
+  | "APPROVED"
+  | "PROCESSING"
+  | "RETURNS"
+  | "NONE";
+
+export function customerCancelMode(order: {
+  status: OrderStatus;
+  paid: boolean;
+  receivedMinor?: number;
+  cancelRequestStatus?: string | null;
+  payment?: { status?: string | null } | null;
+}): CustomerCancelMode {
+  const req = order.cancelRequestStatus;
+  if (req === "APPROVED") return "APPROVED";
+  if (order.status === "SHIPPED" || order.status === "DELIVERED") return "RETURNS";
+  if (order.status !== "NEW" && order.status !== "APPROVED") return "NONE";
+  if (req === "PENDING") return "PENDING";
+  if (req === "DECLINED") return "DECLINED";
+  const ps = order.payment?.status;
+  if (ps === "processing" || ps === "hold") return "PROCESSING";
+  const paid = order.paid || (order.receivedMinor ?? 0) > 0;
+  return paid ? "REQUEST" : "CANCEL";
+}
+
+/** Longest cancellation-request reason the server accepts. */
+export const CANCEL_REASON_MAX = 500;
+
+/** Stable error codes of POST /api/orders (anti-bot limits) — `ApiError.code`. */
+export const ORDER_LIMIT_CODES = [
+  "TOO_MANY_UNPAID",
+  "ORDER_COOLDOWN",
+  "ORDER_DAILY_LIMIT",
+  "QTY_LIMIT",
+  "CANCEL_LIMIT",
+] as const;
+export type OrderLimitCode = (typeof ORDER_LIMIT_CODES)[number];
+
+export function isOrderLimitCode(code: string | null | undefined): code is OrderLimitCode {
+  return !!code && (ORDER_LIMIT_CODES as readonly string[]).includes(code);
+}
+
+/**
+ * Clamp a cart quantity to the per-product limit (0 = no limit) and to the stock.
+ */
+export function clampQty(qty: number, limits?: { maxQtyPerProduct?: number } | null, stock?: number | null): number {
+  let max = Number.POSITIVE_INFINITY;
+  if (limits?.maxQtyPerProduct && limits.maxQtyPerProduct > 0) max = limits.maxQtyPerProduct;
+  if (stock != null && stock >= 0) max = Math.min(max, stock);
+  return Math.max(1, Math.min(qty, max));
+}

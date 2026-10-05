@@ -5,8 +5,9 @@
  *
  * Payment is online only: POST /api/me/orders/{id}/payment (display IFRAME) opens a monobank invoice
  * for what is due now (the whole order or the prepayment) and its form (card, Apple Pay, Google Pay,
- * the mono app) is shown in PaymentModal over this page. The checkout lands here with `?pay=1`, which
- * opens the modal at once. When the modal closes after a payment, or the customer comes back from the
+ * the mono app) is shown in PaymentModal over this page. The checkout lands here with `?created=1`:
+ * the block then reads «Замовлення #… створено» with the amount, the countdown, «Оплатити» and
+ * «Скасувати» — the form is NOT opened by itself any more. When the modal closes after a payment, or the customer comes back from the
  * new-tab fallback page with `?payment=return`, the webhook may lag, so the page asks
  * POST .../payment/refresh every 3 s for up to a minute. Unpaid orders are cancelled by the server
  * after `paymentDueAt` (PAYMENT_TIMEOUT). A paid order stays NEW until an admin confirms it.
@@ -15,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock, CreditCard, Loader2, ShieldCheck, Truck, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { codMinor, paymentState, type OnlinePayment, type OrderDetail } from "@shop/shared";
+import { codMinor, paymentState, shortOrderId, type OnlinePayment, type OrderDetail } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import type { TFunction } from "@/i18n";
@@ -27,9 +28,9 @@ import { PaymentModal, type PaymentModalClose } from "./PaymentModal";
 
 // ---- starting a payment ------------------------------------------------------------------------
 
-/** The order page with this query opens the payment form at once (the checkout lands there). */
-export function orderPayHref(orderPage: string): string {
-  return `${orderPage}?pay=1`;
+/** The order page right after the checkout: the "order created — pay or cancel" step. */
+export function orderCreatedHref(orderPage: string): string {
+  return `${orderPage}?created=1`;
 }
 
 /**
@@ -102,7 +103,19 @@ const GIVE_UP_UNPAID_MS = 15_000;
 
 // ---- the block ---------------------------------------------------------------------------------
 
-export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefetch: () => void }) {
+export function OrderPayment({
+  order,
+  onRefetch,
+  created = false,
+  onCancel,
+}: {
+  order: OrderDetail;
+  onRefetch: () => void;
+  /** Just placed (the checkout landed here): "order #… created" heading. */
+  created?: boolean;
+  /** Shows «Скасувати замовлення» next to «Оплатити» (opens the cancel dialog of the page). */
+  onCancel?: () => void;
+}) {
   const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
@@ -119,20 +132,13 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
   const [err, setErr] = useState<string | null>(null);
   /** The monobank form (the framed invoice page) shown in the modal; null = closed. */
   const [payUrl, setPayUrl] = useState<string | null>(null);
-  /** `?pay=1` (from the checkout): open the form as soon as the block is ready. */
-  const [autoPay, setAutoPay] = useState(false);
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const back = sp.get("payment") === "return";
     setReturnParam(back);
     setReturning(back);
-    if (sp.get("pay") === "1") {
-      setAutoPay(true);
-      // Consumed: a reload must not open the form again.
-      router.replace(href(`/account/orders/${order.id}`), { scroll: false });
-    }
-  }, [order.id, router, href]);
+  }, [order.id]);
 
   usePageRestore(() => {
     setStarting(false);
@@ -218,18 +224,6 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
       setStarting(false);
     }
   }
-
-  // `?pay=1`: open the form once, if there is still something to pay right now.
-  const canPay = awaiting && p.enabled && !inFlight && !(dueAt <= Date.now());
-  const payRef = useRef(pay);
-  useEffect(() => {
-    payRef.current = pay;
-  });
-  useEffect(() => {
-    if (!autoPay) return;
-    setAutoPay(false);
-    if (canPay) void payRef.current();
-  }, [autoPay, canPay]);
 
   function onModalClose(why: PaymentModalClose) {
     setPayUrl(null);
@@ -342,9 +336,19 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
 
     return (
       <section className="nb hud-frame p-5 sm:p-6">
-        <h3 className="eyebrow mb-4 flex items-center gap-2 text-[11px]">
-          <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t("order.payment")}
-        </h3>
+        {created ? (
+          <div className="mb-4">
+            <p className="flex items-center gap-2 font-display text-[18px] font-bold uppercase tracking-[.04em] text-[var(--ok)] sm:text-[20px]">
+              <CheckCircle2 className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+              {t("created.title", { id: shortOrderId(order.id) })}
+            </p>
+            <p className="mt-1 text-[13px] font-medium text-[var(--muted)]">{t("created.text")}</p>
+          </div>
+        ) : (
+          <h3 className="eyebrow mb-4 flex items-center gap-2 text-[11px]">
+            <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t("order.payment")}
+          </h3>
+        )}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[13px] font-semibold text-[var(--muted)]">{t("pay.due")}</p>
@@ -391,6 +395,19 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
         >
           {t("pay.button", { amount: fmt.money(order.amountDueMinor, order.currency) })}
         </Button>
+        {onCancel && (
+          <Button
+            type="button"
+            variant="surface"
+            size="md"
+            fullWidth
+            className="mt-2"
+            icon={<Ban className="h-4 w-4" strokeWidth={2.25} />}
+            onClick={onCancel}
+          >
+            {t("cancel.button")}
+          </Button>
+        )}
         <PaymentTrust className="mt-3 justify-center" />
       </section>
     );

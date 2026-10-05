@@ -31,6 +31,8 @@ public class OrderController {
     private final OrderService orderService;
     private final UserRepository userRepository;
     private final OrderIdempotencyService idempotency;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.maxsolch.shop.service.OrderGuard orderGuard;
 
     public OrderController(OrderService orderService, UserRepository userRepository,
                            OrderIdempotencyService idempotency) {
@@ -54,6 +56,11 @@ public class OrderController {
             return new CreateOrderResponse(existingOrderId,
                     OrderService.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
         }
+
+        // Anti-bot / anti-hoarding limits (settings «Защита от ботов и спама»): 400/429 with a code.
+        orderGuard.check(userId, req.items().stream()
+                .map(i -> new CreateOrderCommand.Line(i.productId(), i.variantId(), i.quantity()))
+                .toList());
 
         // Snapshot the customer's Telegram @username (from the users row, populated at auth)
         // so the admin order card can deep-link to their Telegram DM.

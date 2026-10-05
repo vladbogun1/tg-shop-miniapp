@@ -62,6 +62,19 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage(), ex.getCode());
     }
 
+    /** Business limits (anti-bot): 429 with a code and Retry-After. */
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<Map<String, Object>> handleTooMany(TooManyRequestsException ex) {
+        ResponseEntity<Map<String, Object>> body = error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), ex.getCode());
+        if (ex.getRetryAfterSeconds() > 0) {
+            body.getBody().put("retryAfterSec", ex.getRetryAfterSeconds());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                    .body(body.getBody());
+        }
+        return body;
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
         return error(HttpStatus.CONFLICT, ex.getMessage(), ex.getCode());

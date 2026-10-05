@@ -75,6 +75,14 @@ public final class OrderEvents {
     }
 
     /** A chat message was posted. Admin messages DM the customer; customer messages ping admins. */
+    /** The customer asked to cancel a paid order: Telegram topic + push to the admins. */
+    public record CancelRequested(byte[] orderId) {
+    }
+
+    /** An admin approved (rejected + refund) or declined the customer's cancellation request: DM the customer. */
+    public record CancelRequestResolved(byte[] orderId, boolean approved) {
+    }
+
     public record ChatMessage(byte[] orderId, boolean fromAdmin, String preview) {
     }
 }

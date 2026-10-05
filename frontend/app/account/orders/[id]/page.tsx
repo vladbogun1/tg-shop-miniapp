@@ -10,6 +10,8 @@
  * stacked `.nb` sections (status + StatusTimeline, items with thumbnails,
  * totals, delivery, payment + tracking, reject banner, the payment block) and
  * a prominent sticky bottom "Написать в чат" button within thumb reach.
+ * `?created=1` (from checkout) turns the payment block into the "order created" step; cancelling
+ * follows the shared `customerCancelMode` (unpaid → at once, paid → a request, shipped → chat).
  * All data fields, routes and query keys are preserved.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +20,8 @@ import {
   ArrowLeft,
   Ban,
   Check,
+  CheckCircle2,
+  Clock,
   Copy,
   CreditCard,
   MapPin,
@@ -27,17 +31,19 @@ import {
   Store,
   Truck,
   WifiOff,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
-import { IN_FLIGHT, OrderPayment } from "@/components/account/OrderPayment";
+import { useEffect, useRef, useState } from "react";
+import { OrderPayment } from "@/components/account/OrderPayment";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
+import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
-import { paymentState } from "@shop/shared";
+import { CANCEL_REASON_MAX, customerCancelMode, paymentState } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -147,31 +153,33 @@ function OrderBody({
   const t = useT();
   const isPickup = order.deliveryMethod === "PICKUP";
   const payState = paymentState(order);
-  // The backend refuses to cancel while the bank is charging the card — do not offer it then.
-  const cancelable =
-    !order.paid &&
-    (order.status === "NEW" || order.status === "APPROVED") &&
-    !IN_FLIGHT.includes(order.payment.status);
+  const cancelMode = customerCancelMode(order);
   const paymentTimeout =
     order.status === "REJECTED" &&
     (order as OrderWithReasonCode).rejectReasonCode === "PAYMENT_TIMEOUT";
-  // `?pay=1` (straight from checkout): open the in-app payment form on arrival. Read once from the
-  // address — and dropped from it right away, so a reload or "back" does not reopen the form.
+  // `?created=1` (straight from checkout): the "order created — pay or cancel" step. Read once
+  // from the address and dropped from it, so a reload shows the plain order page.
   const router = useRouter();
-  const [autoPay] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pay") === "1"
+  const [created] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("created") === "1"
   );
-  const onAutoPayHandled = useCallback(
-    () => router.replace(`/account/orders/${id}`, { scroll: false }),
-    [router, id]
-  );
+  useEffect(() => {
+    if (created) router.replace(`/account/orders/${id}`, { scroll: false });
+  }, [created, router, id]);
+
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const cancelRef = useRef<HTMLDivElement>(null);
+  const openCancel = () => {
+    setCancelOpen(true);
+    window.setTimeout(() => cancelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  };
   const payment = (
     <OrderPayment
       order={order}
       onOrder={onOrder}
       onRefetch={onRefetch}
-      autoPay={autoPay}
-      onAutoPayHandled={onAutoPayHandled}
+      created={created}
+      onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
     />
   );
 
@@ -232,6 +240,9 @@ function OrderBody({
             {t("order.createdAt", { when: formatDateTime(order.createdAt) })}
           </p>
         </motion.section>
+
+        {/* reviews (Phase C): delivered order → review form per line + bonus */}
+        {order.status === "DELIVERED" && <OrderReviewsCard orderId={order.id} />}
 
         {/* items + totals */}
         <motion.section variants={riseItem} className="nb p-4">
@@ -345,10 +356,16 @@ function OrderBody({
         {/* paid: amount, card / Apple Pay, what is left for the courier */}
         {payState !== "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
 
-        {/* cancel (only while unpaid + NEW/APPROVED) */}
-        {cancelable && (
-          <motion.section variants={riseItem}>
-            <CancelOrder orderId={order.id} onDone={onRefetch} />
+        {/* cancel: unpaid → at once; paid → a request; shipped → the chat (shared customerCancelMode) */}
+        {cancelMode !== "NONE" && (
+          <motion.section variants={riseItem} ref={cancelRef}>
+            <Cancellation
+              order={order}
+              mode={cancelMode}
+              open={cancelOpen}
+              setOpen={setCancelOpen}
+              onDone={onRefetch}
+            />
           </motion.section>
         )}
       </motion.div>
@@ -487,10 +504,160 @@ const CANCEL_REASONS = [
 
 type CancelReasonId = (typeof CANCEL_REASONS)[number]["id"];
 
-/** Cancel an unpaid order with a reason picker (NEW/APPROVED only). */
-function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void }) {
+type CancelMode = ReturnType<typeof customerCancelMode>;
+
+/**
+ * Cancelling, per the shared `customerCancelMode`: the unpaid cancel dialog, the request form of a
+ * paid order and its states, the "bank is processing" hint, and — once shipped — the chat.
+ */
+function Cancellation({
+  order,
+  mode,
+  open,
+  setOpen,
+  onDone,
+}: {
+  order: OrderDetail;
+  mode: CancelMode;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  onDone: () => void;
+}) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  switch (mode) {
+    case "CANCEL":
+      return open ? (
+        <CancelOrder orderId={order.id} onClose={() => setOpen(false)} onDone={onDone} />
+      ) : (
+        <DangerButton
+          onClick={() => {
+            haptic();
+            setOpen(true);
+          }}
+        >
+          {t("cancel.button")}
+        </DangerButton>
+      );
+    case "REQUEST":
+      return open ? (
+        <RequestCancel orderId={order.id} onClose={() => setOpen(false)} onDone={onDone} />
+      ) : (
+        <DangerButton
+          onClick={() => {
+            haptic();
+            setOpen(true);
+          }}
+        >
+          {t("cancel.request.button")}
+        </DangerButton>
+      );
+    case "PROCESSING":
+      return (
+        <div className="flex flex-col gap-2">
+          <DangerButton disabled>{t("cancel.button")}</DangerButton>
+          <p className="flex items-center justify-center gap-1.5 text-center text-[12px] text-[var(--muted)]">
+            <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} /> {t("cancel.processing")}
+          </p>
+        </div>
+      );
+    case "PENDING":
+      return (
+        <StateCard tone="warn" icon={<Clock className="h-5 w-5" strokeWidth={2.25} />} title={t("cancel.request.pending.title")}>
+          <p>{t("cancel.request.pending.text")}</p>
+          {order.cancelRequestReason && (
+            <p className="mt-2 text-[var(--muted)]">
+              {t("cancel.request.yourReason")}: <span className="text-[var(--ink)]">{order.cancelRequestReason}</span>
+            </p>
+          )}
+          {order.cancelRequestedAt && (
+            <p className="mt-1 text-[11px] text-[var(--faint)]">{formatDateTime(order.cancelRequestedAt)}</p>
+          )}
+        </StateCard>
+      );
+    case "DECLINED":
+      return (
+        <StateCard tone="danger" icon={<XCircle className="h-5 w-5" strokeWidth={2.25} />} title={t("cancel.request.declined.title")}>
+          {order.cancelRequestAdminComment && (
+            <p>
+              {t("cancel.request.shopComment")}: <span className="font-semibold">{order.cancelRequestAdminComment}</span>
+            </p>
+          )}
+          <p className="mt-2 text-[var(--muted)]">{t("cancel.request.declined.text")}</p>
+        </StateCard>
+      );
+    case "APPROVED":
+      return (
+        <StateCard tone="ok" icon={<CheckCircle2 className="h-5 w-5" strokeWidth={2.25} />} title={t("cancel.request.approved.title")}>
+          <p>{t("cancel.request.approved.text")}</p>
+        </StateCard>
+      );
+    case "RETURNS":
+      return (
+        <p className="rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5 text-[12px] text-[var(--muted)]">
+          {t("cancel.returns.text")}
+        </p>
+      );
+    default:
+      return null;
+  }
+}
+
+function DangerButton({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="font-display tap nb-press flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-transparent py-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--danger)] disabled:opacity-45"
+    >
+      <Ban className="h-4 w-4" strokeWidth={2.25} /> {children}
+    </button>
+  );
+}
+
+const STATE_TONE = { ok: "var(--ok)", warn: "var(--warn)", danger: "var(--danger)" } as const;
+
+function StateCard({
+  tone,
+  icon,
+  title,
+  children,
+}: {
+  tone: keyof typeof STATE_TONE;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  const c = STATE_TONE[tone];
+  return (
+    <div
+      className="nb flex items-start gap-2.5 p-4"
+      style={{ borderColor: `color-mix(in srgb, ${c} 45%, transparent)`, background: `color-mix(in srgb, ${c} 10%, var(--surface))` }}
+    >
+      <span className="mt-0.5 shrink-0" style={{ color: c }}>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1 text-[13px] text-[var(--ink)]">
+        <p className="nb-up mb-1 text-[14px] font-bold" style={{ color: c }}>
+          {title}
+        </p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Cancel an unpaid order (NEW/APPROVED) — the reason is optional. */
+function CancelOrder({ orderId, onClose, onDone }: { orderId: string; onClose: () => void; onDone: () => void }) {
+  const t = useT();
   const [reason, setReason] = useState<CancelReasonId | null>(null);
   const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
@@ -498,9 +665,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
 
   async function confirm() {
     const finalReason =
-      reason === "other"
-        ? other.trim()
-        : CANCEL_REASONS.find((r) => r.id === reason)?.ru ?? undefined;
+      reason === "other" ? other.trim() : CANCEL_REASONS.find((r) => r.id === reason)?.ru ?? undefined;
     setBusy(true);
     setErr(null);
     try {
@@ -510,32 +675,16 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : t("cancel.failed"));
       setBusy(false);
+      // Paid meanwhile / the bank is busy: re-read so the right state shows.
+      if (e instanceof ApiError && e.code) onDone();
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          haptic();
-          setOpen(true);
-        }}
-        className="font-display tap nb-press flex w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-transparent py-3 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--danger)]"
-      >
-        <Ban className="h-4 w-4" strokeWidth={2.25} /> {t("cancel.button")}
-      </button>
-    );
-  }
-
-  const confirmDisabled =
-    busy || !reason || (reason === "other" && !other.trim());
+  const confirmDisabled = busy || (reason === "other" && !other.trim());
 
   return (
     <div className="nb p-4">
-      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
-        {t("cancel.title")}
-      </h3>
+      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">{t("cancel.reasonOptional")}</h3>
       <div className="mt-3 flex flex-col gap-2">
         {CANCEL_REASONS.map((r) => {
           const on = reason === r.id;
@@ -545,9 +694,9 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
               type="button"
               onClick={() => {
                 haptic();
-                setReason(r.id);
+                setReason(on ? null : r.id);
               }}
-              className={`tap flex items-center gap-2.5 rounded-[var(--r)] border px-3 py-2.5 text-left text-[13px] font-medium ${
+              className={`tap flex min-h-[44px] items-center gap-2.5 rounded-[var(--r)] border px-3 py-2.5 text-left text-[13px] font-medium ${
                 on
                   ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--ink)]"
                   : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
@@ -558,9 +707,7 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
                   on ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--line-strong)]"
                 }`}
               >
-                {on && (
-                  <Check className="h-2.5 w-2.5 text-[var(--accent-ink)]" strokeWidth={4} />
-                )}
+                {on && <Check className="h-2.5 w-2.5 text-[var(--accent-ink)]" strokeWidth={4} />}
               </span>
               {t(`cancel.reason.${r.id}`)}
             </button>
@@ -570,20 +717,18 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
       {reason === "other" && (
         <textarea
           value={other}
-          onChange={(e) => setOther(e.target.value)}
+          onChange={(e) => setOther(e.target.value.slice(0, CANCEL_REASON_MAX))}
           placeholder={t("cancel.otherPlaceholder")}
           rows={2}
           className="mt-2 w-full resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
         />
       )}
-      {err && (
-        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
-      )}
+      {err && <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>}
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          onClick={() => setOpen(false)}
-          className="font-display tap nb-press flex-1 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] py-2.5 text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink)]"
+          onClick={onClose}
+          className="font-display tap nb-press min-h-[44px] flex-1 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] py-2.5 text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink)]"
         >
           {t("common.back")}
         </button>
@@ -591,10 +736,69 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
           type="button"
           disabled={confirmDisabled}
           onClick={confirm}
-          className="font-display tap nb-press flex-1 rounded-[var(--r)] py-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-white disabled:opacity-50"
+          className="font-display tap nb-press min-h-[44px] flex-1 rounded-[var(--r)] py-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-white disabled:opacity-50"
           style={{ background: "var(--danger)" }}
         >
-          {busy ? "…" : t("cancel.button")}
+          {busy ? "…" : t("cancel.confirm")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Paid order: a cancellation request with a required reason (goes to the shop as typed). */
+function RequestCancel({ orderId, onClose, onDone }: { orderId: string; onClose: () => void; onDone: () => void }) {
+  const t = useT();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setErr(null);
+    try {
+      haptic();
+      await customerApi.requestCancel(orderId, reason.trim());
+      onDone();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : t("cancel.request.failed"));
+      setBusy(false);
+      if (e instanceof ApiError && e.code) onDone();
+    }
+  }
+
+  return (
+    <div className="nb p-4">
+      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">{t("cancel.request.title")}</h3>
+      <p className="mt-2 text-[12px] text-[var(--muted)]">{t("cancel.request.text")}</p>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value.slice(0, CANCEL_REASON_MAX))}
+        placeholder={t("cancel.request.placeholder")}
+        rows={3}
+        maxLength={CANCEL_REASON_MAX}
+        className="mt-3 w-full resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
+      />
+      <p className="text-right text-[11px] tabular-nums text-[var(--faint)]">
+        {reason.length}/{CANCEL_REASON_MAX}
+      </p>
+      {err && <p className="mt-1 text-[12px] font-bold text-[var(--danger)]">{err}</p>}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="font-display tap nb-press min-h-[44px] flex-1 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] py-2.5 text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--ink)]"
+        >
+          {t("common.back")}
+        </button>
+        <button
+          type="button"
+          disabled={busy || !reason.trim()}
+          onClick={send}
+          className="font-display tap nb-press min-h-[44px] flex-1 rounded-[var(--r)] py-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-white disabled:opacity-50"
+          style={{ background: "var(--danger)" }}
+        >
+          {busy ? "…" : t("cancel.request.send")}
         </button>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { localePath, makeT } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
 import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
+import { SupportGate } from "@/components/support/SupportGate";
 
 /**
  * Site footer (server component): shop links, customer info pages, Telegram, seller requisites.
@@ -65,6 +66,13 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
                 </Link>
               </li>
             ))}
+            <SupportGate>
+              <li>
+                <Link href={href("/account/support")} className={linkCls}>
+                  {t("support.nav")}
+                </Link>
+              </li>
+            </SupportGate>
           </ul>
         </nav>
 

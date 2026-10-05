@@ -35,6 +35,7 @@ import { Image } from "@/lib/image";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { CopyButton } from "./CopyButton";
+import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
 
 export interface DetailHandlers {
@@ -188,6 +189,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           )}
         </div>
       </Section>
+
+      <CancelRequestBlock order={order} onChanged={h.onPaymentChanged} />
 
       <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
 

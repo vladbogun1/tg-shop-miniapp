@@ -239,7 +239,9 @@ public class TranslationService {
                     text(TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, p.seoDescription()),
                     p.createdAt(),
                     p.brand(),
-                    p.sku());
+                    p.sku(),
+                    p.ratingAvg(),
+                    p.ratingCount());
         }
 
         public List<ProductDto> products(List<ProductDto> list) {

@@ -10,11 +10,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ProductVariant, StorefrontProduct } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
+import { RatingLink } from "@/components/reviews/RatingLink";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, stockOf, useCart } from "@/lib/cart";
+import { maxQty, useOrderLimits } from "@/lib/order-limits";
 import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
@@ -27,6 +29,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
   const add = useCart((s) => s.add);
   const openDrawer = useCart((s) => s.openDrawer);
   const lines = useCart((s) => s.lines);
+  const limits = useOrderLimits();
 
   const variants = useMemo(
     () => (product.variants ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
@@ -62,6 +65,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
       <h1 className="font-display text-[26px] font-bold leading-tight tracking-[.01em] text-[var(--ink)] sm:text-[32px]">
         {product.title}
       </h1>
+      <RatingLink avg={product.ratingAvg} count={product.ratingCount} />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span className="font-display text-[34px] font-bold leading-none tabular-nums text-[var(--accent)] [text-shadow:0_0_24px_rgba(255,102,0,.35)]">
@@ -132,7 +136,7 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-3">
           <span className="eyebrow text-[11px]">{t("qty.label")}</span>
-          <QtyStepper value={qty} onChange={setQty} min={1} max={Math.max(1, stock)} />
+          <QtyStepper value={qty} onChange={setQty} min={1} max={maxQty(stock, limits)} />
         </div>
         {inCart > 0 && (
           <span className="text-[13px] font-medium text-[var(--muted)]">{t("product.inCart", { n: inCart })}</span>

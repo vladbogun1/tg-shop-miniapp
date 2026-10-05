@@ -38,7 +38,15 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { npCityBounds, npLatLng, resolveNpWarehouse, type NpCity, type OrderDetail } from "@shop/shared";
+import {
+  isOrderLimitCode,
+  npCityBounds,
+  npLatLng,
+  resolveNpWarehouse,
+  type NpCity,
+  type OrderDetail,
+  type OrderLimitCode,
+} from "@shop/shared";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useI18n, useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
@@ -234,6 +242,8 @@ export default function CheckoutPage() {
   const idempotencyKey = useRef(newIdempotencyKey());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
+  const [limitCode, setLimitCode] = useState<OrderLimitCode | null>(null);
   /** The order went through — on the way to its page (the cart is already empty by then). */
   const [placedId, setPlacedId] = useState<string | null>(null);
 
@@ -281,6 +291,7 @@ export default function CheckoutPage() {
   async function submit() {
     if (submitting) return;
     setSubmitError(null);
+    setLimitCode(null);
     setSubmitting(true);
     const body: CreateOrderRequest = {
       items: lines.map((l) => ({
@@ -317,10 +328,11 @@ export default function CheckoutPage() {
       idempotencyKey.current = newIdempotencyKey();
       setPlacedId(orderId);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
-      // Straight to payment: the order page opens the monobank form in its in-app sheet on arrival
-      // (`?pay=1`, components/account/OrderPayment). Nothing to pay online now → just the order.
+      // The "order created" step: the order page shows the amount, the 24 h countdown,
+      // «Оплатити» (the in-app monobank sheet) and «Скасувати» (`?created=1`,
+      // components/account/OrderPayment). Nothing opens by itself any more.
       router.replace(
-        created.amountDueMinor > 0 ? `/account/orders/${orderId}?pay=1` : `/account/orders/${orderId}`
+        created.amountDueMinor > 0 ? `/account/orders/${orderId}?created=1` : `/account/orders/${orderId}`
       );
     } catch (e) {
       // The cart validated the code, so a rejection here means somebody took the last use in the
@@ -330,9 +342,12 @@ export default function CheckoutPage() {
         setPromoCode("");
         setSubmitError(t("checkout.promoDropped", { message: e.message }));
       } else {
+        // Anti-bot limits (TOO_MANY_UNPAID, ORDER_COOLDOWN, ORDER_DAILY_LIMIT, QTY_LIMIT,
+        // CANCEL_LIMIT) come with a localized message that says what to do.
         setSubmitError(
           e instanceof ApiError ? e.message : t("checkout.failed")
         );
+        setLimitCode(e instanceof ApiError && isOrderLimitCode(e.code) ? e.code : null);
       }
     } finally {
       setSubmitting(false);
@@ -386,7 +401,7 @@ export default function CheckoutPage() {
   }
 
   const primaryLabel =
-    step < 3 ? t("common.next") : t("checkout.submitPay", { amount: money(dueNow, currency) });
+    step < 3 ? t("common.next") : t("checkout.submit");
 
   return (
     <div className="pt-1">
@@ -484,9 +499,23 @@ export default function CheckoutPage() {
         </motion.div>
       </AnimatePresence>
 
+      {step === 3 && dueNow > 0 && (
+        <p className="mt-4 text-center text-[12px] font-semibold text-[var(--muted)]">
+          {t("checkout.submitHint", { amount: money(dueNow, currency) })}
+        </p>
+      )}
+
       {submitError && (
         <p className="mt-4 rounded-[var(--r-card)] border border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)] shadow-[0_8px_24px_-12px_var(--shadow)]">
           {submitError}
+          {limitCode === "TOO_MANY_UNPAID" && (
+            <>
+              {" "}
+              <Link href="/account" className="underline">
+                {t("checkout.toOrders")}
+              </Link>
+            </>
+          )}
         </p>
       )}
 

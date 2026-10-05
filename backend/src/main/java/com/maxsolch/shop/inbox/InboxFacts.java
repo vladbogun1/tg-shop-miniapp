@@ -23,7 +23,18 @@ public record InboxFacts(Instant now, List<OrderRow> orders, List<ChatRow> chats
     public record OrderRow(String id, OrderStatus status, String customerName, long totalMinor, long receivedMinor,
                            long prepaymentMinor, long refundedMinor, Instant createdAt, Instant approvedAt,
                            Instant shippedAt, Instant rejectedAt, Instant returnedAt, boolean paid,
-                           Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode) {
+                           Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode,
+                           String cancelRequestStatus, String cancelRequestReason, Instant cancelRequestedAt) {
+
+        /** Without a cancellation request (older callers / tests). */
+        public OrderRow(String id, OrderStatus status, String customerName, long totalMinor, long receivedMinor,
+                        long prepaymentMinor, long refundedMinor, Instant createdAt, Instant approvedAt,
+                        Instant shippedAt, Instant rejectedAt, Instant returnedAt, boolean paid,
+                        Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode) {
+            this(id, status, customerName, totalMinor, receivedMinor, prepaymentMinor, refundedMinor, createdAt,
+                    approvedAt, shippedAt, rejectedAt, returnedAt, paid, paidAt, paidOnline, rejectReason,
+                    rejectReasonCode, null, null, null);
+        }
     }
 
     /**

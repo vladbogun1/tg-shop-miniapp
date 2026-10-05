@@ -11,6 +11,7 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useT } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, useCart } from "@/lib/cart";
+import { maxQty, useOrderLimits } from "@/lib/order-limits";
 import { haptic } from "@/lib/telegram";
 import type { Product, ProductVariant } from "@/lib/api";
 
@@ -34,13 +35,15 @@ export function AddToCartControl({
   const key = lineKey(product.id, variantId);
 
   const add = useCart((s) => s.add);
+  const limits = useOrderLimits();
   const inc = useCart((s) => s.inc);
   const dec = useCart((s) => s.dec);
   const qty = useCart((s) => s.lines.find((l) => l.key === key)?.quantity ?? 0);
 
   const stock = variant ? variant.stock : (product.stock ?? 0);
   const outOfStock = stock <= 0;
-  const atMax = qty >= stock;
+  // Stock, and the anti-bot cap per product (antibot.maxQtyPerProduct) when it is lower.
+  const atMax = qty >= maxQty(stock, limits);
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   // One height for every state (add / disabled / stepper / "choose" on the card): 44px sm, 48px md.

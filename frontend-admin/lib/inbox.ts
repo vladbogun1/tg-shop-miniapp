@@ -15,6 +15,9 @@ export const INBOX_TYPES = [
   "RETURN",
   "LOW_STOCK",
   "SITE_ERROR",
+  "REVIEW",
+  /** Support question waiting for an answer: entityId = thread id, no orderId. */
+  "SUPPORT",
 ] as const;
 export type KnownInboxType = (typeof INBOX_TYPES)[number];
 /** A kind from the server: one of the known ones, or a newer one rendered with its own title. */

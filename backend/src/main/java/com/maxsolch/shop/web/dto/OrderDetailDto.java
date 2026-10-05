@@ -49,5 +49,12 @@ public record OrderDetailDto(
         Instant returnedAt,
         /** Nova Poshta refs — the admin's delivery editor needs them to keep the address valid. */
         String npCityRef,
-        String npWarehouseRef) {
+        String npWarehouseRef,
+        /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
+        String cancelRequestStatus,
+        String cancelRequestReason,
+        Instant cancelRequestedAt,
+        Instant cancelRequestResolvedAt,
+        /** Admin's answer (decline reason) shown to the customer. */
+        String cancelRequestAdminComment) {
 }

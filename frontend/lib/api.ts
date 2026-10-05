@@ -22,6 +22,7 @@ import {
   type NpCity,
   type NpWarehouse,
   type OrderDetail,
+  type OrderLimits,
   type OrderSummary,
   type PaymentOption,
   type PaymentStart,
@@ -41,6 +42,7 @@ export type {
   NpCity,
   NpWarehouse,
   OrderDetail,
+  OrderLimits,
   OrderSummary,
   PaymentOption,
   PaymentStart,
@@ -215,6 +217,8 @@ export const customerApi = {
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
   getPaymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
+  /** Anti-bot order limits (0 = no limit): quantity steppers clamp to maxQtyPerProduct. */
+  getOrderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   /** What a promo code is worth for this cart — read-only, does not consume a use. */
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(
@@ -304,6 +308,9 @@ export const customerApi = {
   refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
+  /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
+  requestCancel: (id: string, reason: string) =>
+    http.post<OrderDetail>(`/api/me/orders/${id}/cancel-request`, { reason }),
   markRead: (id: string) => http.post<void>(`/api/me/orders/${id}/messages/read`),
   uploadAttachment: (file: File) => http.upload<{ url: string }>("/api/me/uploads", file),
 };

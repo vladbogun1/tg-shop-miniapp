@@ -391,6 +391,67 @@ public class NotificationService {
         }
     }
 
+    /** The customer asked to cancel a paid order → admins, in the chat topic, with an open button. */
+    public void onCancelRequested(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
+            return;
+        }
+        try {
+            String cur = nz(order.getCurrency());
+            long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+            String text = "🛑 <b>Запрос отмены</b>\n"
+                    + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                    + "Оплачено: <b>" + money(received) + " " + cur + "</b>\n"
+                    + "<blockquote>" + esc(trim(nz(order.getCancelRequestReason()), 300)) + "</blockquote>\n"
+                    + "<i>Одобрите (отмена + возврат денег на карту) или отклоните в карточке заказа.</i>";
+            SendMessage msg = SendMessage.builder()
+                    .chatId(chatId)
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(adminButtons(order))
+                    .build();
+            int topic = props.getTelegram().getNotifyTopicChat();
+            if (topic > 0) {
+                msg.setMessageThreadId(topic);
+            }
+            bot.execute(msg);
+        } catch (Exception e) {
+            log.warn("onCancelRequested failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** The admin answered the customer's cancellation request → DM the customer in their language. */
+    public void notifyCustomerCancelRequest(Order order, boolean approved) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+            String text = approved
+                    ? messages.get(locale, "bot.cancelRequest.approved", shortId(order),
+                            money(received) + " " + nz(order.getCurrency()))
+                    : messages.get(locale, "bot.cancelRequest.declined", shortId(order),
+                            esc(nz(order.getCancelRequestAdminComment())));
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(approved ? orderButton(order, locale) : chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerCancelRequest failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** Order approved → post a dispatch card (what to ship + COD to collect) to the seller topic. */
     public void onApprovedDispatch(Order order) {
         if (!enabled()) {

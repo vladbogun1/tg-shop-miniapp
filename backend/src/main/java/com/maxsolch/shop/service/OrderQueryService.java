@@ -127,7 +127,8 @@ public class OrderQueryService {
                 o.isPaid(),
                 receivedMinor(o),
                 o.getPaymentDueAt(),
-                OrderService.amountDueMinor(o));
+                OrderService.amountDueMinor(o),
+                o.getCancelRequestStatus());
     }
 
     @Transactional(readOnly = true)
@@ -148,7 +149,8 @@ public class OrderQueryService {
                 receivedMinor(o),
                 o.getPaymentDueAt(),
                 OrderService.amountDueMinor(o),
-                sourceOf(o));
+                sourceOf(o),
+                o.getCancelRequestStatus());
     }
 
     private static String sourceOf(Order o) {
@@ -235,7 +237,12 @@ public class OrderQueryService {
                 Math.max(0, o.getRefundedMinor()),
                 o.getReturnedAt(),
                 o.getNpCityRef(),
-                o.getNpWarehouseRef());
+                o.getNpWarehouseRef(),
+                o.getCancelRequestStatus(),
+                o.getCancelRequestReason(),
+                o.getCancelRequestedAt(),
+                o.getCancelRequestResolvedAt(),
+                o.getCancelRequestAdminComment());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

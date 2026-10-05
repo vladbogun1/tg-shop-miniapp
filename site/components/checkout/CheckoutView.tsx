@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DeliveryMethod, NpCity, NpWarehouse, OrderDetail } from "@shop/shared";
-import { orderPayHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
+import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
@@ -38,7 +38,7 @@ import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { useSession } from "@/lib/session";
-import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/shared";
+import { isOrderLimitCode, npCityBounds, npLatLng, resolveNpWarehouse, type OrderLimitCode } from "@shop/shared";
 import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
@@ -198,6 +198,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const idempotencyKey = useRef(newIdempotencyKey());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
+  const [limitCode, setLimitCode] = useState<OrderLimitCode | null>(null);
 
   // ---- prefill from the last order -----------------------------------------------------------
   const lastOrder = useQuery({
@@ -276,6 +278,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   async function submit() {
     setTouched(true);
     setSubmitError(null);
+    setLimitCode(null);
     if (!formOk) {
       setSubmitError(hasProblems ? t("cart.hasProblems") : t("checkout.fixErrors"));
       const firstBad = !nameOk || !phoneOk ? "co-contacts" : !deliveryOk ? "co-delivery" : "co-payment";
@@ -309,13 +312,17 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
       const orderPage = href(`/account/orders/${created.orderId}`);
-      // Something to pay: the order page opens the monobank form over itself (PaymentModal), so the
-      // order is on screen behind it and stays there whatever happens with the payment.
-      router.push(created.amountDueMinor > 0 ? orderPayHref(orderPage) : orderPage);
+      // Something to pay: the order page shows the "order created" step — amount, 24 h countdown,
+      // «Оплатити» (the monobank form opens over the page) and «Скасувати». Nothing opens by itself.
+      router.push(created.amountDueMinor > 0 ? orderCreatedHref(orderPage) : orderPage);
     } catch (e) {
       if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
         setPromoCode("");
         setSubmitError(t("checkout.promoDropped", { message: e.message }));
+      } else if (e instanceof ApiError && isOrderLimitCode(e.code)) {
+        // Anti-bot limits: the server's message says what to do (pay/cancel, wait, fewer items).
+        setSubmitError(e.message);
+        setLimitCode(e.code);
       } else {
         setSubmitError(e instanceof ApiError ? e.message : t("checkout.failed"));
       }
@@ -323,7 +330,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     }
   }
 
-  const submitLabel = t("checkout.submitPay", { amount: fmt.money(dueNow, currency) });
+  const submitLabel = t("checkout.submit");
   // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
   // the fields and the map open, so it can be changed in place.
   const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
@@ -591,11 +598,24 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
             {submitError && (
               <p role="alert" className="rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-[13px] font-medium text-[var(--danger)]">
                 {submitError}
+                {limitCode === "TOO_MANY_UNPAID" && (
+                  <>
+                    {" "}
+                    <Link href={href("/account")} className="font-semibold underline">
+                      {t("checkout.toOrders")}
+                    </Link>
+                  </>
+                )}
               </p>
             )}
             <Button type="submit" variant="accent" size="lg" fullWidth loading={submitting}>
               {submitLabel}
             </Button>
+            {dueNow > 0 && (
+              <p className="-mt-1 text-center text-[12px] font-semibold text-[var(--muted)]">
+                {t("checkout.submitHint", { amount: fmt.money(dueNow, currency) })}
+              </p>
+            )}
             <p className="text-center text-[12px] font-medium text-[var(--muted)]">
               {t("checkout.agree")}{" "}
               <Link href={href("/terms")} target="_blank" className="link-ink font-semibold text-[var(--ink)]">

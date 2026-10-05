@@ -77,6 +77,6 @@ class PublicCatalogServiceSitemapTest {
     private static ProductDto dto(String slug, Tag... tags) {
         List<TagDto> tagDtos = java.util.Arrays.stream(tags).map(TagDto::of).toList();
         return new ProductDto(UuidUtil.toString(UuidUtil.randomBytes()), slug, null, 100_00, "UAH", 1, true, 0,
-                List.of(), List.of(), tagDtos, slug, null, null, null, OLD, null, null);
+                List.of(), List.of(), tagDtos, slug, null, null, null, OLD, null, null, null, 0);
     }
 }
