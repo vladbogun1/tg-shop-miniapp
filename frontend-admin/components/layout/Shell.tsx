@@ -32,7 +32,9 @@ import {
   Settings,
   BellRing,
   UserRound,
+  UsersRound,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, UpdateBanner } from "@/components/pwa/Banners";
 import Link from "next/link";
@@ -40,7 +42,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
-import { ApiError, logout, logoutEverywhere } from "@/lib/api";
+import { accountApi, ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useInbox } from "@/lib/inbox";
 import { useToast } from "@/lib/toast";
@@ -60,6 +62,7 @@ const NAV = [
   { href: "/translations", label: "Переводы", icon: Languages, badge: "translations" as const },
   { href: "/audit", label: "Журнал", icon: ScrollText },
   { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "/admins", label: "Админы", icon: UsersRound, superOnly: true },
   { href: "/account", label: "Мой аккаунт", icon: UserRound },
 ];
 
@@ -77,8 +80,18 @@ const TITLE: Record<string, string> = {
   "/translations": "Переводы",
   "/audit": "Журнал",
   "/settings": "Настройки",
+  "/admins": "Админы",
   "/account": "Мой аккаунт",
 };
+
+/**
+ * Is the signed-in admin the main one (SUPER_ADMIN)? Same query as «Мой аккаунт». Hides «Админы»
+ * for everyone else — the backend answers 403 there anyway.
+ */
+export function useIsSuperAdmin(): boolean | undefined {
+  const { data } = useQuery({ queryKey: ["admin", "account"], queryFn: accountApi.get, staleTime: 60_000 });
+  return data?.superAdmin;
+}
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
   if (exact) return pathname === href;
@@ -107,9 +120,10 @@ function NavLinks({
   // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
+  const superAdmin = useIsSuperAdmin();
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV.map((item) => {
+      {NAV.filter((item) => !("superOnly" in item) || superAdmin).map((item) => {
         const active = isActive(pathname, item.href, item.exact);
         const Icon = item.icon;
         const inboxBadge = "badge" in item && item.badge === "inbox" && inboxTotal > 0;

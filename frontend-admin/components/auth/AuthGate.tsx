@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApiError, isAuthenticated, onUnauthorized, authAdminTelegram, type AdminLoginResult } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram";
@@ -12,8 +13,17 @@ import { useToast } from "@/lib/toast";
  * Signed in → the app. Otherwise the sign-in: inside Telegram the first factor is tried with the
  * Mini App's initData right away (it is single-use on the server), and the code / 2FA-setup step
  * follows on the Login screen; in a browser — login and password.
+ *
+ * /invite/<token> is public (a new admin has no account yet): rendered bare, without the sign-in
+ * and without the shell.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/invite/")) return <>{children}</>;
+  return <SignedIn>{children}</SignedIn>;
+}
+
+function SignedIn({ children }: { children: React.ReactNode }) {
   const { push } = useToast();
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);

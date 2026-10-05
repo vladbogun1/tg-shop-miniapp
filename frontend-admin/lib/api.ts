@@ -322,7 +322,7 @@ export type LoginResultCode = "OK" | "BAD_PASSWORD" | "UNKNOWN_LOGIN" | "BAD_COD
 export interface AdminLoginEntry {
   id: number;
   at: string;
-  method: "PASSWORD" | "TELEGRAM";
+  method: "PASSWORD" | "TELEGRAM" | "INVITE";
   result: LoginResultCode;
   secondFactor: "TOTP" | "TRUSTED_DEVICE" | "SETUP" | null;
   ip: string | null;
@@ -347,6 +347,116 @@ export const accountApi = {
     setAccessToken(res.accessToken);
   },
   forgetDevices: () => http.post<{ forgotten: number }>("/api/admin/account/devices/forget"),
+};
+
+// ---- «Админы» (SUPER_ADMIN only, /api/admin/admins/**) ----------------------
+
+export type AdminRoleCode = "ADMIN" | "SUPER_ADMIN";
+export type InviteKind = "NEW" | "CREDENTIALS" | "PASSWORD_RESET";
+
+export interface TeamInvite {
+  id: number;
+  kind: InviteKind;
+  telegramUserId: number;
+  name: string | null;
+  role: AdminRoleCode;
+  createdAt: string;
+  expiresAt: string;
+  /** The bot delivered the link (otherwise the super admin handed it over). */
+  delivered: boolean;
+  invitedByName: string | null;
+  /** «@username · Имя» from the shop's users, when known. */
+  telegramLabel: string | null;
+}
+
+export interface TeamAdmin {
+  telegramUserId: number;
+  name: string | null;
+  username: string | null;
+  role: AdminRoleCode;
+  status: "SUPER_ADMIN" | "ADMIN" | "BLOCKED";
+  active: boolean;
+  totpEnabled: boolean;
+  passwordSet: boolean;
+  createdAt: string | null;
+  lastLogin: { at: string; city: string | null; country: string | null; method: string } | null;
+  trustedDevices: number;
+  /** Locked for wrong passwords / codes until then (stage 1 lockout), or null. */
+  lockedUntil: string | null;
+  /** Open login / password link of this admin. */
+  invite: TeamInvite | null;
+  telegramLabel: string | null;
+  /** The caller — managed in «Мой аккаунт», not here. */
+  self: boolean;
+}
+
+export interface Team {
+  admins: TeamAdmin[];
+  /** Open invites of NEW admins (no account yet). */
+  invites: TeamInvite[];
+}
+
+/** A new invite link; `link`/`path` only when the bot could NOT deliver it. */
+export interface InviteCreated {
+  inviteId: number;
+  kind: InviteKind;
+  delivered: boolean;
+  link?: string;
+  path?: string;
+  expiresAt: string;
+}
+
+export const teamApi = {
+  list: () => http.get<Team>("/api/admin/admins"),
+  invite: (body: { telegramUserId: number; name?: string; role?: AdminRoleCode; code: string }) =>
+    http.post<InviteCreated>("/api/admin/admins/invites", body),
+  resendInvite: (id: number) => http.post<InviteCreated>(`/api/admin/admins/invites/${id}/resend`),
+  revokeInvite: (id: number) => http.del<void>(`/api/admin/admins/invites/${id}`),
+  update: (id: number, body: { name?: string; role?: AdminRoleCode; code?: string }) =>
+    http.patch<void>(`/api/admin/admins/${id}`, body),
+  resetTwoFactor: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/reset-2fa`, { code }),
+  resetPassword: (id: number, code: string) => http.post<InviteCreated>(`/api/admin/admins/${id}/reset-password`, { code }),
+  forgetDevices: (id: number) => http.post<{ forgotten: number }>(`/api/admin/admins/${id}/forget-devices`),
+  block: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/block`, { code }),
+  unblock: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/unblock`, { code }),
+  remove: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/delete`, { code }),
+};
+
+/** The full invite URL to hand over: the backend's absolute link, or this admin's origin + path. */
+export function inviteUrl(c: InviteCreated): string | null {
+  if (c.link) return c.link;
+  if (c.path && typeof window !== "undefined") return `${window.location.origin}${c.path}`;
+  return null;
+}
+
+// ---- public /invite/<token> (no sign-in) -------------------------------------
+
+export interface InviteInfo {
+  kind: InviteKind;
+  name: string | null;
+  /** «админ» / «главный админ». */
+  role: string;
+  /** Fixed login (password reset), or null when the person chooses one. */
+  username: string | null;
+  loginEditable: boolean;
+  /** true: a new authenticator entry is set up; false: the current code is asked. */
+  twoFactorSetup: boolean;
+  expiresAt: string;
+}
+
+export interface InviteAccepted {
+  next: "SETUP" | "VERIFY";
+  setup?: TwoFactorSetup;
+}
+
+export const inviteApi = {
+  check: (token: string) => http.post<InviteInfo>("/api/auth/admin/invite/check", { token }),
+  accept: (token: string, username: string, password: string) =>
+    http.post<InviteAccepted>("/api/auth/admin/invite/accept", { token, username, password }),
+  /** Burns the link, activates the account and signs in (the token is stored). */
+  async complete(token: string, code: string, trustDevice: boolean): Promise<AdminLoginResult> {
+    return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/invite/complete", { token, code, trustDevice }));
+  },
 };
 
 // ============================================================================

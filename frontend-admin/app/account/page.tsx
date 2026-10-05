@@ -84,7 +84,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function ProfilePanel({ account }: { account: AdminAccount }) {
   return (
     <section className="panel min-w-0 p-5">
-      <PanelHeader icon={UserRound} title="Профиль" description="Кто вы в админке. Имя и роль меняет главный админ." />
+      <PanelHeader icon={UserRound} title="Профиль" description="Кто вы в админке. Имя и роль меняет главный админ в разделе «Админы»." />
       <div className="flex flex-col">
         <Row label="Имя">{account.name || "—"}</Row>
         <Row label="Логин">{account.username || "нет (вход только через Telegram)"}</Row>
@@ -392,7 +392,7 @@ function LoginHistory({ entries }: { entries: AdminLoginEntry[] }) {
       {entries.map((e) => {
         const r = RESULT[e.result] ?? { label: e.result, tone: "neutral" as const };
         const place = [e.city, e.country].filter(Boolean).join(", ") || "место неизвестно";
-        const method = e.method === "TELEGRAM" ? "Telegram" : "пароль";
+        const method = e.method === "TELEGRAM" ? "Telegram" : e.method === "INVITE" ? "приглашение" : "пароль";
         return (
           <li key={e.id} className="flex flex-col gap-1.5 py-2.5 sm:flex-row sm:items-center sm:gap-4">
             <div className="flex min-w-0 items-center gap-2 sm:w-[190px] sm:shrink-0">

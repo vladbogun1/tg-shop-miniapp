@@ -101,7 +101,7 @@ export function Login({ onSuccess, initial }: { onSuccess: () => void; initial?:
 
 // ---------------------------------------------------------------------------------------------
 
-function StepHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: ReactNode }) {
+export function StepHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: ReactNode }) {
   return (
     <div className="mb-6 flex flex-col items-center text-center">
       <LogoMark size={40} />
@@ -196,7 +196,7 @@ function handleSecondStepError(
   onRestart(err instanceof ApiError ? err.message : "Не удалось войти — попробуйте ещё раз");
 }
 
-function TrustToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+export function TrustToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5">
       <Toggle checked={checked} onChange={onChange} label={TRUST_LABEL} />
@@ -412,7 +412,7 @@ function SetupStep({
   );
 }
 
-function StepLabel({ n, children }: { n: number; children: ReactNode }) {
+export function StepLabel({ n, children }: { n: number; children: ReactNode }) {
   return (
     <h2 className="mb-2 flex items-center gap-2.5">
       <span className="font-display grid h-6 w-6 place-items-center rounded-full border border-[var(--accent)] text-[12px] font-bold text-[var(--accent-hi)]">
