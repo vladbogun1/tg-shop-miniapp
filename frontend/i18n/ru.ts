@@ -215,7 +215,7 @@ export const ru = {
   "pay.title": "Оплата",
   "pay.due": "К оплате",
   "pay.button": "Оплатить {amount}",
-  "pay.hint": "Откроется страница monobank: карта, Apple Pay, Google Pay. Если она не открылась — нажмите кнопку ещё раз.",
+  "pay.hint": "Форма monobank откроется прямо здесь, в приложении: карта или monobank. Для Apple Pay / Google Pay — «Открыть в браузере».",
   "pay.prepayment": "Предоплата онлайн, остальное {amount} — при получении.",
   "pay.until": "Оплатите до {when}",
   "pay.left": "осталось {time}",
@@ -239,6 +239,9 @@ export const ru = {
   "pay.timeout": "Отменён — не оплачен в течение суток",
   "pay.unavailable": "Онлайн-оплата временно недоступна",
   "pay.unavailableText": "Напишите нам в чат — поможем завершить заказ.",
+  "pay.sheetTitle": "Оплата · {amount}",
+  "pay.sheetLoading": "Загружаем форму monobank…",
+  "pay.openBrowser": "Открыть в браузере (Apple Pay / Google Pay)",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
   "np.cat.all": "Все",
@@ -315,6 +318,8 @@ export const ru = {
   "payReturn.order": "Заказ {id}",
   "payReturn.back": "Вернуться в Telegram",
   "payReturn.closeHint": "Окно не закрылось само — закройте его крестиком или кнопкой «Готово» вверху.",
+  "payReturn.embedded": "Оплата принята в обработку…",
+  "payReturn.embeddedText": "Возвращаемся к заказу",
 } satisfies Dictionary;
 
 /**

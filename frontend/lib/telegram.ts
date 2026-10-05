@@ -8,7 +8,7 @@
  * insets into CSS variables. Gracefully no-ops in a plain browser (dev) so `npm run dev` works
  * outside Telegram.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface TgUser {
   id: number;
@@ -204,6 +204,13 @@ interface WebApp {
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
   onEvent?: (event: string, cb: () => void) => void;
   offEvent?: (event: string, cb: () => void) => void;
+  /** Bot API 6.1+: the native "back" arrow in the header (and Android's hardware back). */
+  BackButton?: {
+    show: () => void;
+    hide: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
 }
 
 function webApp(): WebApp | null {
@@ -333,4 +340,68 @@ export function onAppResume(cb: () => void): () => void {
       /* noop */
     }
   };
+}
+
+/**
+ * While `active`, shows Telegram's native back button and routes it — and Android's hardware back,
+ * which would otherwise close the whole Mini App — to `onBack`. Used by full-screen overlays (the
+ * payment sheet). No-op outside Telegram.
+ */
+export function useBackButton(active: boolean, onBack: () => void): void {
+  const cb = useRef(onBack);
+  useEffect(() => {
+    cb.current = onBack;
+  });
+  useEffect(() => {
+    if (!active) return;
+    const bb = webApp()?.initData ? webApp()?.BackButton : undefined;
+    if (!bb) return;
+    const handler = () => cb.current();
+    try {
+      bb.onClick(handler);
+      bb.show();
+    } catch {
+      return;
+    }
+    return () => {
+      try {
+        bb.offClick(handler);
+        bb.hide();
+      } catch {
+        /* noop */
+      }
+    };
+  }, [active]);
+}
+
+/** Schemes a payment page may never make us navigate to. */
+const UNSAFE_SCHEMES = new Set(["javascript:", "data:", "vbscript:", "file:", "blob:", "about:", "http:"]);
+
+/**
+ * Opens a link the embedded monobank page asks for (`monopay-link`: pay in the monobank app).
+ *
+ * `WebApp.openLink` accepts http(s) only — telegram-web-app.js throws on anything else — so a
+ * universal https link goes through {@link openExternalLink} (the OS hands it to the bank app when
+ * it is installed), while a custom scheme (`monobank://…`, Android `intent:`) is navigated to
+ * directly: the webview passes it to the OS and the Mini App page stays where it is. Script-ish and
+ * plain-http URLs are ignored.
+ */
+export function openAppLink(raw: string): void {
+  if (typeof window === "undefined") return;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return;
+  }
+  if (url.protocol === "https:") {
+    openExternalLink(url.href);
+    return;
+  }
+  if (UNSAFE_SCHEMES.has(url.protocol)) return;
+  try {
+    window.location.href = url.href;
+  } catch {
+    /* the webview refused the scheme */
+  }
 }

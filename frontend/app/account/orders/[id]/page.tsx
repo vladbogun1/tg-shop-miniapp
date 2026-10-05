@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { IN_FLIGHT, OrderPayment } from "@/components/account/OrderPayment";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
@@ -155,7 +155,25 @@ function OrderBody({
   const paymentTimeout =
     order.status === "REJECTED" &&
     (order as OrderWithReasonCode).rejectReasonCode === "PAYMENT_TIMEOUT";
-  const payment = <OrderPayment order={order} onOrder={onOrder} onRefetch={onRefetch} />;
+  // `?pay=1` (straight from checkout): open the in-app payment form on arrival. Read once from the
+  // address — and dropped from it right away, so a reload or "back" does not reopen the form.
+  const router = useRouter();
+  const [autoPay] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pay") === "1"
+  );
+  const onAutoPayHandled = useCallback(
+    () => router.replace(`/account/orders/${id}`, { scroll: false }),
+    [router, id]
+  );
+  const payment = (
+    <OrderPayment
+      order={order}
+      onOrder={onOrder}
+      onRefetch={onRefetch}
+      autoPay={autoPay}
+      onAutoPayHandled={onAutoPayHandled}
+    />
+  );
 
   return (
     <>

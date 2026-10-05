@@ -3,12 +3,13 @@
 /**
  * Online payment (monobank acquiring) of an order — the block on the order page.
  *
- * Payment is online only: POST /api/me/orders/{id}/payment opens a monobank invoice for what is due
- * now (the whole order or the prepayment) and the browser goes to monobank's hosted page (card,
- * Apple Pay, Google Pay, the mono app). monobank sends the customer back to the order page with
- * `?payment=return`; the webhook may lag, so the page asks POST .../payment/refresh every 3 s for up
- * to a minute. Unpaid orders are cancelled by the server after `paymentDueAt` (PAYMENT_TIMEOUT).
- * A paid order stays NEW until an admin confirms it.
+ * Payment is online only: POST /api/me/orders/{id}/payment (display IFRAME) opens a monobank invoice
+ * for what is due now (the whole order or the prepayment) and its form (card, Apple Pay, Google Pay,
+ * the mono app) is shown in PaymentModal over this page. The checkout lands here with `?pay=1`, which
+ * opens the modal at once. When the modal closes after a payment, or the customer comes back from the
+ * new-tab fallback page with `?payment=return`, the webhook may lag, so the page asks
+ * POST .../payment/refresh every 3 s for up to a minute. Unpaid orders are cancelled by the server
+ * after `paymentDueAt` (PAYMENT_TIMEOUT). A paid order stays NEW until an admin confirms it.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock, CreditCard, Loader2, ShieldCheck, Truck, TriangleAlert } from "lucide-react";
@@ -19,37 +20,21 @@ import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import type { TFunction } from "@/i18n";
 import { useI18n } from "@/i18n/context";
+import { toast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
+import { PaymentModal, type PaymentModalClose } from "./PaymentModal";
 
 // ---- starting a payment ------------------------------------------------------------------------
 
-/** Opens a monobank invoice and sends the browser to its page. Throws ApiError when it can't. */
-export async function goToPayment(orderId: string, locale: string): Promise<void> {
-  const start = await api.startPayment(orderId, locale);
-  window.location.assign(start.pageUrl);
+/** The order page with this query opens the payment form at once (the checkout lands there). */
+export function orderPayHref(orderPage: string): string {
+  return `${orderPage}?pay=1`;
 }
 
 /**
- * The checkout navigates to the order page when the payment could not be started; the reason is
- * handed over in memory (client-side navigation keeps modules alive) and shown once there.
- */
-let pendingStartError: { orderId: string; message: string } | null = null;
-
-export function rememberPaymentError(orderId: string, message: string): void {
-  pendingStartError = { orderId, message };
-}
-
-function takePaymentError(orderId: string): string | null {
-  if (pendingStartError?.orderId !== orderId) return null;
-  const { message } = pendingStartError;
-  pendingStartError = null;
-  return message;
-}
-
-/**
- * Back from monobank via the browser's Back button: the page comes out of the bfcache exactly as it
- * was left — with a spinner on the pay button. `onRestore` puts it right.
+ * Back from a page the browser left (the checkout, the order page) via its Back button: the page
+ * comes out of the bfcache exactly as it was left. `onRestore` puts it right.
  */
 export function usePageRestore(onRestore: () => void): void {
   const cb = useRef(onRestore);
@@ -132,14 +117,22 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
   const [stalled, setStalled] = useState(false);
   const [starting, setStarting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /** The monobank form (the framed invoice page) shown in the modal; null = closed. */
+  const [payUrl, setPayUrl] = useState<string | null>(null);
+  /** `?pay=1` (from the checkout): open the form as soon as the block is ready. */
+  const [autoPay, setAutoPay] = useState(false);
 
   useEffect(() => {
-    const back = new URLSearchParams(window.location.search).get("payment") === "return";
+    const sp = new URLSearchParams(window.location.search);
+    const back = sp.get("payment") === "return";
     setReturnParam(back);
     setReturning(back);
-    const pending = takePaymentError(order.id);
-    if (pending) setErr(pending);
-  }, [order.id]);
+    if (sp.get("pay") === "1") {
+      setAutoPay(true);
+      // Consumed: a reload must not open the form again.
+      router.replace(href(`/account/orders/${order.id}`), { scroll: false });
+    }
+  }, [order.id, router, href]);
 
   usePageRestore(() => {
     setStarting(false);
@@ -147,7 +140,8 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
   });
 
   const inFlight = IN_FLIGHT.has(p.status);
-  const shouldCheck = !order.paid && order.status !== "REJECTED" && (returning || inFlight) && !stalled;
+  // While the form is open the modal polls on its own.
+  const shouldCheck = !order.paid && order.status !== "REJECTED" && (returning || inFlight) && !stalled && !payUrl;
 
   // The latest order setter, without restarting the polling loop on every render.
   const apply = useRef<(d: OrderDetail) => void>(() => {});
@@ -210,10 +204,9 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
     setStarting(true);
     setErr(null);
     try {
-      await goToPayment(order.id, locale);
-      // The browser is leaving for monobank; keep the spinner until it does.
+      const start = await api.startPayment(order.id, locale, "IFRAME");
+      setPayUrl(start.pageUrl);
     } catch (e) {
-      setStarting(false);
       if (e instanceof ApiError && e.code === "PAYMENT_IN_PROGRESS") {
         setStalled(false);
         setReturning(true);
@@ -221,145 +214,187 @@ export function OrderPayment({ order, onRefetch }: { order: OrderDetail; onRefet
       }
       setErr(e instanceof ApiError ? e.message : t("pay.startFailed"));
       if (e instanceof ApiError && e.code !== "PAYMENT_FAILED") onRefetch();
+    } finally {
+      setStarting(false);
     }
   }
 
-  // ---- states ----
+  // `?pay=1`: open the form once, if there is still something to pay right now.
+  const canPay = awaiting && p.enabled && !inFlight && !(dueAt <= Date.now());
+  const payRef = useRef(pay);
+  useEffect(() => {
+    payRef.current = pay;
+  });
+  useEffect(() => {
+    if (!autoPay) return;
+    setAutoPay(false);
+    if (canPay) void payRef.current();
+  }, [autoPay, canPay]);
 
-  if (order.status === "REJECTED") {
-    if (!isPaymentTimeout(order)) return null;
-    return (
-      <Notice tone="danger" icon={<Ban className="h-5 w-5" strokeWidth={2} />} title={t("pay.timeout")} text={t("pay.timeoutText")}>
-        <ButtonLink href={href("/catalog")} variant="surface" size="sm" className="mt-3">
-          {t("common.toCatalog")}
-        </ButtonLink>
-      </Notice>
+  function onModalClose(why: PaymentModalClose) {
+    setPayUrl(null);
+    if (why === "paid") {
+      toast(t("pay.received"));
+      return;
+    }
+    if (why === "check") {
+      // The form says it is done (or "back" was pressed in it): check the status for a short while.
+      setStalled(false);
+      setReturning(true);
+      return;
+    }
+    // Closed with ✕ / Esc: one quiet look at the status, without the "checking" screen.
+    api.refreshPayment(order.id).then(
+      (d) => apply.current(d),
+      () => onRefetch()
     );
   }
-
-  if (order.paid) {
-    const received = order.receivedMinor > 0 ? order.receivedMinor : p.amountMinor;
-    const method = paymentMethodLabel(p, t);
-    const cod = codMinor(order);
-    return (
-      <section className="nb border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface))] p-5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2} />
-          <p className="font-display text-[16px] font-bold uppercase tracking-[.06em] text-[var(--ok)]">
-            {t("pay.paid", { amount: fmt.money(received, order.currency) })}
-          </p>
-          {method && <span className="text-[13px] font-semibold text-[var(--muted)]">{method}</span>}
-        </div>
-        {cod > 0 && (
-          <p className="mt-3 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)]">
-            <Truck className="h-4 w-4 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
-            {t("pay.cod", { amount: fmt.money(cod, order.currency) })}
-          </p>
-        )}
-        {order.status === "NEW" && <p className="mt-3 text-[13px] font-medium text-[var(--muted)]">{t("pay.confirmNote")}</p>}
-      </section>
-    );
-  }
-
-  if (shouldCheck) {
-    return (
-      <section className="nb flex items-start gap-3 p-5" aria-live="polite" aria-busy="true">
-        <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-[var(--accent)]" strokeWidth={2.25} />
-        <div>
-          <p className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("pay.checking")}</p>
-          <p className="mt-1 text-[13px] font-medium text-[var(--muted)]">{t("pay.checkingText")}</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (stalled && inFlight) {
-    return (
-      <Notice tone="warn" icon={<Clock className="h-5 w-5" strokeWidth={2} />} text={t("pay.stillProcessing")}>
-        <Button type="button" variant="surface" size="sm" className="mt-3" onClick={() => setStalled(false)}>
-          {t("pay.checkAgain")}
-        </Button>
-      </Notice>
-    );
-  }
-
-  if (!awaiting) {
-    return p.status === "reversed" ? <Notice tone="warn" icon={<TriangleAlert className="h-5 w-5" strokeWidth={2} />} text={t("pay.reversed")} /> : null;
-  }
-
-  const left = Number.isNaN(dueAt) ? null : dueAt - now;
-  if (left !== null && left <= 0) {
-    return <Notice tone="danger" icon={<Clock className="h-5 w-5" strokeWidth={2} />} text={t("pay.expired")} />;
-  }
-
-  if (!p.enabled) {
-    return (
-      <Notice
-        tone="warn"
-        icon={<TriangleAlert className="h-5 w-5" strokeWidth={2} />}
-        title={t("pay.unavailable")}
-        text={t("pay.unavailableText")}
-      />
-    );
-  }
-
-  const afterPayment = order.totalMinor - order.receivedMinor - order.amountDueMinor;
-  const failed = p.status === "failure";
 
   return (
-    <section className="nb hud-frame p-5 sm:p-6">
-      <h3 className="eyebrow mb-4 flex items-center gap-2 text-[11px]">
-        <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t("order.payment")}
-      </h3>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[13px] font-semibold text-[var(--muted)]">{t("pay.due")}</p>
-          <p className="font-display text-[28px] font-bold leading-tight tabular-nums text-[var(--accent)]">
-            {fmt.money(order.amountDueMinor, order.currency)}
-          </p>
-        </div>
-        {left !== null && order.paymentDueAt && (
-          <div className="text-right">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 font-display text-[13px] font-semibold tabular-nums tracking-[.04em] text-[var(--accent-hi)]">
-              <Clock className="h-3.5 w-3.5" strokeWidth={2.5} />
-              {t("pay.left", { time: countdown(left) })}
+    <>
+      {renderState()}
+      <PaymentModal order={order} pageUrl={payUrl} onOrder={(d) => apply.current(d)} onClose={onModalClose} />
+    </>
+  );
+
+  // ---- states ----
+
+  function renderState(): React.ReactNode {
+    if (order.status === "REJECTED") {
+      if (!isPaymentTimeout(order)) return null;
+      return (
+        <Notice tone="danger" icon={<Ban className="h-5 w-5" strokeWidth={2} />} title={t("pay.timeout")} text={t("pay.timeoutText")}>
+          <ButtonLink href={href("/catalog")} variant="surface" size="sm" className="mt-3">
+            {t("common.toCatalog")}
+          </ButtonLink>
+        </Notice>
+      );
+    }
+
+    if (order.paid) {
+      const received = order.receivedMinor > 0 ? order.receivedMinor : p.amountMinor;
+      const method = paymentMethodLabel(p, t);
+      const cod = codMinor(order);
+      return (
+        <section className="nb border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface))] p-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2} />
+            <p className="font-display text-[16px] font-bold uppercase tracking-[.06em] text-[var(--ok)]">
+              {t("pay.paid", { amount: fmt.money(received, order.currency) })}
             </p>
-            <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
-              {t("pay.until", { time: fmt.dateTime(order.paymentDueAt) })}
+            {method && <span className="text-[13px] font-semibold text-[var(--muted)]">{method}</span>}
+          </div>
+          {cod > 0 && (
+            <p className="mt-3 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-[14px] font-semibold text-[var(--ink)]">
+              <Truck className="h-4 w-4 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
+              {t("pay.cod", { amount: fmt.money(cod, order.currency) })}
+            </p>
+          )}
+          {order.status === "NEW" && <p className="mt-3 text-[13px] font-medium text-[var(--muted)]">{t("pay.confirmNote")}</p>}
+        </section>
+      );
+    }
+
+    if (shouldCheck) {
+      return (
+        <section className="nb flex items-start gap-3 p-5" aria-live="polite" aria-busy="true">
+          <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-[var(--accent)]" strokeWidth={2.25} />
+          <div>
+            <p className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("pay.checking")}</p>
+            <p className="mt-1 text-[13px] font-medium text-[var(--muted)]">{t("pay.checkingText")}</p>
+          </div>
+        </section>
+      );
+    }
+
+    if (stalled && inFlight) {
+      return (
+        <Notice tone="warn" icon={<Clock className="h-5 w-5" strokeWidth={2} />} text={t("pay.stillProcessing")}>
+          <Button type="button" variant="surface" size="sm" className="mt-3" onClick={() => setStalled(false)}>
+            {t("pay.checkAgain")}
+          </Button>
+        </Notice>
+      );
+    }
+
+    if (!awaiting) {
+      return p.status === "reversed" ? <Notice tone="warn" icon={<TriangleAlert className="h-5 w-5" strokeWidth={2} />} text={t("pay.reversed")} /> : null;
+    }
+
+    const left = Number.isNaN(dueAt) ? null : dueAt - now;
+    if (left !== null && left <= 0) {
+      return <Notice tone="danger" icon={<Clock className="h-5 w-5" strokeWidth={2} />} text={t("pay.expired")} />;
+    }
+
+    if (!p.enabled) {
+      return (
+        <Notice
+          tone="warn"
+          icon={<TriangleAlert className="h-5 w-5" strokeWidth={2} />}
+          title={t("pay.unavailable")}
+          text={t("pay.unavailableText")}
+        />
+      );
+    }
+
+    const afterPayment = order.totalMinor - order.receivedMinor - order.amountDueMinor;
+    const failed = p.status === "failure";
+
+    return (
+      <section className="nb hud-frame p-5 sm:p-6">
+        <h3 className="eyebrow mb-4 flex items-center gap-2 text-[11px]">
+          <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t("order.payment")}
+        </h3>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[13px] font-semibold text-[var(--muted)]">{t("pay.due")}</p>
+            <p className="font-display text-[28px] font-bold leading-tight tabular-nums text-[var(--accent)]">
+              {fmt.money(order.amountDueMinor, order.currency)}
             </p>
           </div>
+          {left !== null && order.paymentDueAt && (
+            <div className="text-right">
+              <p className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-3 py-1 font-display text-[13px] font-semibold tabular-nums tracking-[.04em] text-[var(--accent-hi)]">
+                <Clock className="h-3.5 w-3.5" strokeWidth={2.5} />
+                {t("pay.left", { time: countdown(left) })}
+              </p>
+              <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">
+                {t("pay.until", { time: fmt.dateTime(order.paymentDueAt) })}
+              </p>
+            </div>
+          )}
+        </div>
+        {afterPayment > 0 && (
+          <p className="mt-2 text-[13px] font-semibold text-[var(--muted)]">
+            {t("checkout.rest", { amount: fmt.money(afterPayment, order.currency) })}
+          </p>
         )}
-      </div>
-      {afterPayment > 0 && (
-        <p className="mt-2 text-[13px] font-semibold text-[var(--muted)]">
-          {t("checkout.rest", { amount: fmt.money(afterPayment, order.currency) })}
-        </p>
-      )}
 
-      {(failed || err) && (
-        <p
-          role="alert"
-          className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-[13px] font-medium text-[var(--danger)]"
+        {(failed || err) && (
+          <p
+            role="alert"
+            className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-[13px] font-medium text-[var(--danger)]"
+          >
+            {err ?? t("pay.failed", { reason: p.failureReason ? `: ${p.failureReason}` : "" })}
+          </p>
+        )}
+
+        <Button
+          type="button"
+          variant="accent"
+          size="lg"
+          fullWidth
+          className="mt-4"
+          loading={starting}
+          icon={<CreditCard className="h-4 w-4" strokeWidth={2.25} />}
+          onClick={() => void pay()}
         >
-          {err ?? t("pay.failed", { reason: p.failureReason ? `: ${p.failureReason}` : "" })}
-        </p>
-      )}
-
-      <Button
-        type="button"
-        variant="accent"
-        size="lg"
-        fullWidth
-        className="mt-4"
-        loading={starting}
-        icon={<CreditCard className="h-4 w-4" strokeWidth={2.25} />}
-        onClick={() => void pay()}
-      >
-        {t("pay.button", { amount: fmt.money(order.amountDueMinor, order.currency) })}
-      </Button>
-      <PaymentTrust className="mt-3 justify-center" />
-    </section>
-  );
+          {t("pay.button", { amount: fmt.money(order.amountDueMinor, order.currency) })}
+        </Button>
+        <PaymentTrust className="mt-3 justify-center" />
+      </section>
+    );
+  }
 }
 
 /** "Оплата через monobank. Дані картки ми не бачимо." */

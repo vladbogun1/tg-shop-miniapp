@@ -82,7 +82,7 @@ import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
-import { haptic, openExternalLink } from "@/lib/telegram";
+import { haptic } from "@/lib/telegram";
 
 const STEP_KEYS = [
   "checkout.step.contacts",
@@ -92,7 +92,7 @@ const STEP_KEYS = [
 ];
 
 export default function CheckoutPage() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
@@ -317,16 +317,11 @@ export default function CheckoutPage() {
       idempotencyKey.current = newIdempotencyKey();
       setPlacedId(orderId);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
-      // Straight to the payment page. It may not open — some clients only honour openLink from
-      // a tap, and two requests have passed since — so the order page below always offers the
-      // "Оплатити" button again; if it did open, the order page is waiting underneath.
-      try {
-        const payment = await customerApi.startPayment(orderId, locale);
-        openExternalLink(payment.pageUrl);
-      } catch {
-        /* the order page shows why it cannot be paid, or the button to try again */
-      }
-      router.replace(`/account/orders/${orderId}`);
+      // Straight to payment: the order page opens the monobank form in its in-app sheet on arrival
+      // (`?pay=1`, components/account/OrderPayment). Nothing to pay online now → just the order.
+      router.replace(
+        created.amountDueMinor > 0 ? `/account/orders/${orderId}?pay=1` : `/account/orders/${orderId}`
+      );
     } catch (e) {
       // The cart validated the code, so a rejection here means somebody took the last use in the
       // meantime. Drop it and let them place the order again at the price without it, instead of

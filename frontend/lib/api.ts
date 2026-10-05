@@ -290,9 +290,16 @@ export const customerApi = {
    * page, so calling it again just returns the same link. 409 with `code` PAYMENT_UNAVAILABLE |
    * NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED when it cannot be paid.
    * After paying, monobank sends the browser to the Mini App's /pay-return page.
+   * `display: "IFRAME"` — a page laid out for our in-app sheet (components/account/PaymentSheet);
+   * its return is /pay-return?…&embedded=1 inside that frame. The two kinds are separate invoices:
+   * asking for the other one closes the live page of the first.
    */
-  startPayment: (id: string, locale: string) =>
-    http.post<PaymentStart>(`/api/me/orders/${id}/payment`, { returnTo: "MINIAPP", locale }),
+  startPayment: (id: string, locale: string, display?: "IFRAME") =>
+    http.post<PaymentStart>(`/api/me/orders/${id}/payment`, {
+      returnTo: "MINIAPP",
+      locale,
+      ...(display ? { display } : {}),
+    }),
   /** Asks monobank for the status right now (server-throttled to once per 5 s) → the order. */
   refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   cancelOrder: (id: string, reason?: string) =>

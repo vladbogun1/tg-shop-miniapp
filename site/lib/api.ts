@@ -243,13 +243,18 @@ export const api = {
   sendMessage: (id: string, body: SendMessageRequest) =>
     authed(() => http.post<Message>(`/api/me/orders/${id}/messages`, body)),
   /**
-   * Opens a monobank invoice for what is due now; the browser then goes to `pageUrl`. monobank
-   * sends the customer back to the order page with `?payment=return`. 409 + `code`:
-   * PAYMENT_UNAVAILABLE | NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED.
+   * Opens a monobank invoice for what is due now. `IFRAME`: `pageUrl` is shown inside our payment
+   * modal and monobank ends on /pay-return (which tells the modal "done"); `PAGE` (default): a normal
+   * page — the new-tab fallback — that sends the customer back to the order page with
+   * `?payment=return`. One open invoice per order: starting the other kind closes the previous one.
+   * 409 + `code`: PAYMENT_UNAVAILABLE | NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED.
    */
-  startPayment: (id: string, locale: string) =>
+  startPayment: (id: string, locale: string, display: "IFRAME" | "PAGE" = "PAGE") =>
     authed(() =>
-      http.post<PaymentStart>(`/api/me/orders/${id}/payment`, { returnTo: "SITE", locale })
+      http.post<PaymentStart>(
+        `/api/me/orders/${id}/payment`,
+        display === "IFRAME" ? { returnTo: "SITE", locale, display } : { returnTo: "SITE", locale }
+      )
     ),
   /** Asks monobank for the invoice status right now (server-side throttled to 1 per 5 s). */
   refreshPayment: (id: string) =>

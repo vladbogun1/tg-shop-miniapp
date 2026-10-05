@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DeliveryMethod, NpCity, NpWarehouse, OrderDetail } from "@shop/shared";
-import { goToPayment, PaymentTrust, rememberPaymentError, usePageRestore } from "@/components/order/Payment";
+import { orderPayHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
@@ -66,11 +66,11 @@ export function CheckoutView() {
   const session = useSession();
   const hydrated = useHydrated();
   const lines = useCart((s) => s.lines);
-  /** The order just placed, while the browser is on its way to the payment page. */
+  /** The order just placed, while the browser is on its way to its page (and the payment form). */
   const [leavingFor, setLeavingFor] = useState<string | null>(null);
 
-  // Back from monobank with the browser's Back button (bfcache): the cart is already empty and the
-  // order exists — show it instead of a frozen "opening the payment page" screen.
+  // Back here with the browser's Back button (bfcache, e.g. from the new-tab payment page opened in
+  // this tab): the cart is already empty and the order exists — show it, not a frozen spinner.
   usePageRestore(() => {
     if (leavingFor) router.replace(href(`/account/orders/${leavingFor}`));
   });
@@ -309,17 +309,9 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
       const orderPage = href(`/account/orders/${created.orderId}`);
-      if (created.amountDueMinor <= 0) {
-        router.push(orderPage);
-        return;
-      }
-      try {
-        await goToPayment(created.orderId, locale);
-      } catch (e) {
-        // The order is placed either way; its page has the "Pay" button and shows why it failed.
-        rememberPaymentError(created.orderId, e instanceof ApiError ? e.message : t("pay.startFailed"));
-        router.push(orderPage);
-      }
+      // Something to pay: the order page opens the monobank form over itself (PaymentModal), so the
+      // order is on screen behind it and stays there whatever happens with the payment.
+      router.push(created.amountDueMinor > 0 ? orderPayHref(orderPage) : orderPage);
     } catch (e) {
       if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
         setPromoCode("");

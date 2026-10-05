@@ -203,7 +203,7 @@ export const en: RuDictionary = {
   "pay.title": "Payment",
   "pay.due": "To pay",
   "pay.button": "Pay {amount}",
-  "pay.hint": "The monobank page opens: card, Apple Pay, Google Pay. If it did not open, tap the button again.",
+  "pay.hint": "The monobank form opens right here in the app: card or monobank. For Apple Pay / Google Pay, use “Open in browser”.",
   "pay.prepayment": "Prepayment online, the remaining {amount} on delivery.",
   "pay.until": "Pay by {when}",
   "pay.left": "{time} left",
@@ -227,6 +227,9 @@ export const en: RuDictionary = {
   "pay.timeout": "Cancelled — not paid within 24 hours",
   "pay.unavailable": "Online payment is temporarily unavailable",
   "pay.unavailableText": "Write to us in the chat — we will help you complete the order.",
+  "pay.sheetTitle": "Payment · {amount}",
+  "pay.sheetLoading": "Loading the monobank form…",
+  "pay.openBrowser": "Open in browser (Apple Pay / Google Pay)",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
   "np.cat.all": "All",
@@ -303,4 +306,6 @@ export const en: RuDictionary = {
   "payReturn.order": "Order {id}",
   "payReturn.back": "Back to Telegram",
   "payReturn.closeHint": "The window did not close by itself — close it with the ✕ or the “Done” button at the top.",
+  "payReturn.embedded": "Your payment is being processed…",
+  "payReturn.embeddedText": "Taking you back to the order",
 };

@@ -203,7 +203,7 @@ export const uk: RuDictionary = {
   "pay.title": "Оплата",
   "pay.due": "До сплати",
   "pay.button": "Оплатити {amount}",
-  "pay.hint": "Відкриється сторінка monobank: картка, Apple Pay, Google Pay. Якщо вона не відкрилася — натисніть кнопку ще раз.",
+  "pay.hint": "Форма monobank відкриється тут же, в застосунку: картка або monobank. Для Apple Pay / Google Pay — «Відкрити в браузері».",
   "pay.prepayment": "Передоплата онлайн, решта {amount} — при отриманні.",
   "pay.until": "Оплатіть до {when}",
   "pay.left": "залишилось {time}",
@@ -227,6 +227,9 @@ export const uk: RuDictionary = {
   "pay.timeout": "Скасовано — не оплачено протягом доби",
   "pay.unavailable": "Онлайн-оплата тимчасово недоступна",
   "pay.unavailableText": "Напишіть нам у чат — допоможемо завершити замовлення.",
+  "pay.sheetTitle": "Оплата · {amount}",
+  "pay.sheetLoading": "Завантажуємо форму monobank…",
+  "pay.openBrowser": "Відкрити в браузері (Apple Pay / Google Pay)",
 
   // ── карта відділень Нової Пошти ───────────────────────────────────────────
   "np.cat.all": "Усі",
@@ -303,4 +306,6 @@ export const uk: RuDictionary = {
   "payReturn.order": "Замовлення {id}",
   "payReturn.back": "Повернутися в Telegram",
   "payReturn.closeHint": "Вікно не закрилося саме — закрийте його хрестиком або кнопкою «Готово» вгорі.",
+  "payReturn.embedded": "Оплату прийнято в обробку…",
+  "payReturn.embeddedText": "Повертаємося до замовлення",
 };

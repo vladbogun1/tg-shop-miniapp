@@ -13,16 +13,25 @@
  * A PAYMENT_TIMEOUT cancellation is shown by the page in the status section (it replaces the
  * reject reason), so this block renders nothing then.
  *
- * Returning from the payment page: the page opens over the Mini App (WebApp.openLink), which keeps
- * running underneath. When the customer closes it, {@link onAppResume} fires and the order is
- * re-read from monobank (`/payment/refresh`) every 3 s for up to a minute while the payment is
- * still created / processing / hold. The webhook usually gets there first; this is what makes the
- * screen catch up without a pull-to-refresh — and the fallback when a webhook is lost.
+ * Paying: "Оплатити" opens the monobank form INSIDE the Mini App ({@link PaymentSheet}, an iframe
+ * invoice). While the sheet is open the order is re-read from monobank (`/payment/refresh`) every
+ * 3 s: paid → the sheet closes with a success haptic; a failed attempt keeps it open (the bank page
+ * says why) and refreshes the order underneath. When the bank page / our /pay-return inside it
+ * says it is done, or the customer closes the sheet, the short "Перевіряємо оплату…" loop below
+ * takes over. `autoPay` (the page's `?pay=1`, straight from checkout) opens the sheet on arrival.
+ *
+ * Fallback "Відкрити в браузері" (Apple Pay / Google Pay rarely work in Telegram's webview): the
+ * regular page opens over the Mini App (WebApp.openLink), which keeps running underneath. When the
+ * customer closes it, {@link onAppResume} fires and the order is re-read every 3 s for up to a
+ * minute while the payment is still created / processing / hold. The webhook usually gets there
+ * first; this is what makes the screen catch up without a pull-to-refresh — and the fallback when
+ * a webhook is lost.
  */
 import { motion } from "framer-motion";
-import { CheckCircle2, CreditCard, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
+import { CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { codMinor, paymentState, type OnlinePaymentStatus } from "@shop/shared";
+import { PaymentSheet, type PaymentSheetClose } from "@/components/account/PaymentSheet";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
@@ -61,15 +70,25 @@ export function OrderPayment({
   order,
   onOrder,
   onRefetch,
+  autoPay = false,
+  onAutoPayHandled,
 }: {
   order: OrderDetail;
   /** A fresher copy of the order (from /payment/refresh) — put it in the query cache. */
   onOrder: (o: OrderDetail) => void;
   /** Re-read the order (its payability changed under us). */
   onRefetch: () => void;
+  /** Open the payment sheet right away (arrived from checkout with `?pay=1`). */
+  autoPay?: boolean;
+  /** autoPay was acted on — drop it from the address so a reload / back does not reopen it. */
+  onAutoPayHandled?: () => void;
 }) {
   const { t, locale } = useI18n();
   const [paying, setPaying] = useState(false);
+  /** The in-app payment form (iframe page); null = the sheet is closed. */
+  const [sheetUrl, setSheetUrl] = useState<string | null>(null);
+  /** "Відкрити в браузері": the regular page is being created. */
+  const [browserPaying, setBrowserPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   /** The refresh loop is running. */
   const [watching, setWatching] = useState(false);
@@ -89,6 +108,19 @@ export function OrderPayment({
   const alive = useRef(true);
   const watchUntil = useRef(0);
   const timer = useRef<number | undefined>(undefined);
+  const sheetOpen = useRef(false);
+  useEffect(() => {
+    sheetOpen.current = sheetUrl !== null;
+  }, [sheetUrl]);
+  /** The browser page from the last fallback — reopened inside the tap while it is still live. */
+  const browserPage = useRef<{ url: string; expiresAt: number } | null>(null);
+  /** One success haptic per payment, whichever loop sees it first. */
+  const celebrated = useRef(false);
+  const celebrate = useCallback(() => {
+    if (celebrated.current) return;
+    celebrated.current = true;
+    hapticSuccess();
+  }, []);
 
   const poll = useCallback(async () => {
     timer.current = undefined;
@@ -102,14 +134,15 @@ export function OrderPayment({
     if (!alive.current) return;
     setReturning(false);
     const o = fresh ?? orderRef.current;
-    if (!pendingPayment(o) || Date.now() >= watchUntil.current) {
+    // The open payment sheet polls on its own; closing it restarts this loop.
+    if (!pendingPayment(o) || Date.now() >= watchUntil.current || sheetOpen.current) {
       running.current = false;
       setWatching(false);
-      if (o.paid) hapticSuccess();
+      if (o.paid) celebrate();
       return;
     }
     timer.current = window.setTimeout(() => void poll(), POLL_MS);
-  }, []);
+  }, [celebrate]);
 
   /** Starts (or extends) the refresh loop. Several resume events for one return are harmless. */
   const watch = useCallback(
@@ -130,6 +163,8 @@ export function OrderPayment({
     // message): catch up with the bank at once.
     if (pendingPayment(orderRef.current)) watch(false);
     const off = onAppResume(() => {
+      // Focus coming back from the payment frame is not a return from anywhere.
+      if (sheetOpen.current) return;
       const o = orderRef.current;
       if (awaitingOnline(o) && (opened.current || PENDING.includes(o.payment.status))) watch(true);
     });
@@ -156,49 +191,151 @@ export function OrderPayment({
     }
   }, [state, timeUp, onRefetch]);
 
+  /** A refusal of startPayment, handled the same way for both ways of paying. */
+  function startFailed(e: unknown) {
+    const code = e instanceof ApiError ? e.code : undefined;
+    if (code === "PAYMENT_IN_PROGRESS") {
+      watch(true);
+    } else {
+      setPayError(e instanceof ApiError ? e.message : t("pay.failedGeneric"));
+      if (code === "NOT_PAYABLE" || code === "PAYMENT_EXPIRED" || code === "PAYMENT_UNAVAILABLE") {
+        onRefetch();
+      }
+    }
+  }
+
+  /** "Оплатити": the monobank form in the in-app sheet. */
   async function pay() {
     if (paying) return;
     haptic();
     setPayError(null);
-    // A live page is already known: open it right inside the tap. Some clients only honour
-    // openLink from a user gesture, and an await in between loses it.
-    const p = order.payment;
-    if (
-      p.pageUrl &&
-      status === "created" &&
-      p.expiresAt &&
-      new Date(p.expiresAt).getTime() - Date.now() > 60_000
-    ) {
-      opened.current = true;
-      openExternalLink(p.pageUrl);
-      return;
-    }
     setPaying(true);
     try {
-      const started = await customerApi.startPayment(order.id, locale);
-      opened.current = true;
-      openExternalLink(started.pageUrl);
+      const started = await customerApi.startPayment(order.id, locale, "IFRAME");
+      if (!alive.current) return;
+      // A new iframe invoice closes the browser one at the bank (and vice versa).
+      browserPage.current = null;
+      celebrated.current = false;
+      setSheetUrl(started.pageUrl);
     } catch (e) {
-      const code = e instanceof ApiError ? e.code : undefined;
-      if (code === "PAYMENT_IN_PROGRESS") {
-        watch(true);
-      } else {
-        setPayError(e instanceof ApiError ? e.message : t("pay.failedGeneric"));
-        if (code === "NOT_PAYABLE" || code === "PAYMENT_EXPIRED" || code === "PAYMENT_UNAVAILABLE") {
-          onRefetch();
-        }
-      }
+      startFailed(e);
     } finally {
       setPaying(false);
     }
   }
+  const payRef = useRef(pay);
+  useEffect(() => {
+    payRef.current = pay;
+  });
+
+  /** "Відкрити в браузері": the regular page over the Mini App (Apple Pay / Google Pay). */
+  async function payInBrowser() {
+    if (browserPaying) return;
+    setPayError(null);
+    // A live page is already known: open it right inside the tap. Some clients only honour
+    // openLink from a user gesture, and an await in between loses it.
+    const known = browserPage.current;
+    if (known && known.expiresAt - Date.now() > 60_000 && status === "created") {
+      setSheetUrl(null);
+      opened.current = true;
+      openExternalLink(known.url);
+      return;
+    }
+    setBrowserPaying(true);
+    try {
+      const started = await customerApi.startPayment(order.id, locale);
+      browserPage.current = { url: started.pageUrl, expiresAt: new Date(started.expiresAt).getTime() };
+      celebrated.current = false;
+      setSheetUrl(null);
+      opened.current = true;
+      openExternalLink(started.pageUrl);
+    } catch (e) {
+      setSheetUrl(null);
+      startFailed(e);
+    } finally {
+      setBrowserPaying(false);
+    }
+  }
+
+  /** The sheet closed: unless the customer just dismissed an untouched form, check with the bank
+   *  once more ("Перевіряємо оплату…"). */
+  function closeSheet(why: PaymentSheetClose) {
+    setSheetUrl(null);
+    if (why !== "user" || orderRef.current.payment.status !== "none") watch(true);
+  }
+
+  // While the sheet is open: ask monobank every 3 s. Paid → close with a success haptic; the order
+  // no longer payable (cancelled on timeout, paid otherwise) → close; a failed attempt → stay (the
+  // bank page explains it), the order underneath is refreshed anyway.
+  useEffect(() => {
+    if (sheetUrl === null) return;
+    let stopped = false;
+    let tick: number | undefined;
+    const loop = async () => {
+      try {
+        const fresh = await customerApi.refreshPayment(orderRef.current.id);
+        if (stopped) return;
+        onOrderRef.current(fresh);
+        if (fresh.paid) {
+          celebrate();
+          setSheetUrl(null);
+          return;
+        }
+        if (!awaitingOnline(fresh)) {
+          setSheetUrl(null);
+          return;
+        }
+      } catch {
+        /* offline for a moment — the next tick tries again */
+      }
+      if (!stopped) tick = window.setTimeout(() => void loop(), POLL_MS);
+    };
+    tick = window.setTimeout(() => void loop(), POLL_MS);
+    return () => {
+      stopped = true;
+      if (tick !== undefined) window.clearTimeout(tick);
+    };
+  }, [sheetUrl, celebrate]);
+
+  // Straight from checkout (`?pay=1`): open the form on arrival. No user-gesture problem — it is an
+  // iframe, not a new window.
+  const autoPayDone = useRef(false);
+  useEffect(() => {
+    if (!autoPay || autoPayDone.current) return;
+    autoPayDone.current = true;
+    onAutoPayHandled?.();
+    const o = orderRef.current;
+    const due = o.paymentDueAt ? new Date(o.paymentDueAt).getTime() : null;
+    if (awaitingOnline(o) && !IN_FLIGHT.includes(o.payment.status) && (due === null || due > Date.now())) {
+      void payRef.current();
+    }
+  }, [autoPay, onAutoPayHandled]);
+
+  const sheet = (
+    <PaymentSheet
+      url={sheetUrl}
+      orderId={order.id}
+      amount={money(order.amountDueMinor, order.currency)}
+      browserLoading={browserPaying}
+      onClose={closeSheet}
+      onBrowser={() => void payInBrowser()}
+    />
+  );
+
+  // The sheet stays mounted whatever the block below shows, so it can animate out.
+  const withSheet = (node: React.ReactNode) => (
+    <>
+      {sheet}
+      {node}
+    </>
+  );
 
   // ---- paid ------------------------------------------------------------------------------------
   if (order.paid) {
     const received = order.receivedMinor > 0 ? order.receivedMinor : order.totalMinor;
     const method = methodLabel(order, t);
     const rest = state === "PARTIAL" ? codMinor(order) : 0;
-    return (
+    return withSheet(
       <Card tone="ok">
         <div className="flex items-start gap-2.5">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2.25} />
@@ -221,11 +358,11 @@ export function OrderPayment({
     );
   }
 
-  if (state !== "AWAITING") return null;
+  if (state !== "AWAITING") return withSheet(null);
 
   // ---- online payment switched off on the server -----------------------------------------------
   if (!order.payment.enabled) {
-    return (
+    return withSheet(
       <Card tone="warn">
         <div className="flex items-start gap-2.5">
           <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2.25} />
@@ -242,7 +379,7 @@ export function OrderPayment({
   const inFlight = IN_FLIGHT.includes(status);
   if (returning || inFlight) {
     const spinning = returning || watching;
-    return (
+    return withSheet(
       <Card tone="warn">
         <div className="flex items-start gap-2.5">
           {spinning ? (
@@ -279,7 +416,7 @@ export function OrderPayment({
   // What is left for the courier once this payment arrives (prepayment orders).
   const restOnDelivery = Math.max(0, codMinor(order) - due);
   const failed = status === "failure";
-  return (
+  return withSheet(
     <Card tone="accent">
       <div className="flex items-center justify-between gap-3">
         <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
@@ -340,6 +477,24 @@ export function OrderPayment({
             <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
             {t("pay.hint")}
           </p>
+          <button
+            type="button"
+            disabled={browserPaying}
+            onClick={() => {
+              haptic();
+              void payInBrowser();
+            }}
+            className="tap mt-1 flex min-h-[36px] items-center gap-1.5 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60"
+          >
+            {browserPaying ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" strokeWidth={2.5} />
+            ) : (
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            )}
+            <span className="text-left underline decoration-[var(--line-strong)] underline-offset-4">
+              {t("pay.openBrowser")}
+            </span>
+          </button>
         </>
       )}
 
