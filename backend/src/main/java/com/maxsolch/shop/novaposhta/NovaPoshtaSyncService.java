@@ -247,8 +247,17 @@ public class NovaPoshtaSyncService {
                 wh.setNumber(text(w, "Number"));
                 wh.setDescription(text(w, "Description"));
                 wh.setType(text(w, "TypeOfWarehouse"));
-                wh.setLat(parseDouble(text(w, "Latitude")));
-                wh.setLng(parseDouble(text(w, "Longitude")));
+                Double lat = parseDouble(text(w, "Latitude"));
+                Double lng = parseDouble(text(w, "Longitude"));
+                // The NP directory has branches with the pair swapped (Kharkiv's postomat №23338
+                // came as 36.37 / 49.95 — northern Iran). Swapped, it lands in Ukraine: store it so.
+                if (lat != null && lng != null && !inUkraine(lat, lng) && inUkraine(lng, lat)) {
+                    Double tmp = lat;
+                    lat = lng;
+                    lng = tmp;
+                }
+                wh.setLat(lat);
+                wh.setLng(lng);
                 batch.add(wh);
 
                 if (cityRef != null && !cityRef.isBlank() && !cities.containsKey(cityRef)) {
@@ -274,6 +283,11 @@ public class NovaPoshtaSyncService {
         private static String text(JsonNode node, String field) {
             JsonNode v = node.get(field);
             return (v == null || v.isNull()) ? null : v.asText();
+        }
+
+        /** Ukraine with a margin. */
+        static boolean inUkraine(double lat, double lng) {
+            return lat >= 44 && lat <= 52.6 && lng >= 22 && lng <= 40.5;
         }
 
         private static Double parseDouble(String s) {
