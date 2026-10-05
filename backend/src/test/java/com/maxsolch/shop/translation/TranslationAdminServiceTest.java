@@ -267,6 +267,46 @@ class TranslationAdminServiceTest {
         assertThat(tag.productId()).isNull();
     }
 
+    @Test
+    void tagSeoFieldsAreExportedWithTheCategoryNameAsContext() {
+        Tag tag = new Tag();
+        tag.setId(UuidUtil.toBytes(TAG));
+        tag.setName("Ковры");
+        tag.setSeoTitle("Игровые коврики — купить");
+        tag.setIntroText("Длинный текст");
+        when(tags.findAll()).thenReturn(List.of(tag));
+
+        List<ExportItem> tagItems = service.export("uk", "all", "tag");
+        assertThat(tagItems).extracting(ExportItem::field).containsExactly("name", "seo_title", "intro_text");
+        assertThat(tagItems.get(0).productTitle()).isNull();
+        assertThat(tagItems.get(1).productTitle()).isEqualTo("Ковры");
+        assertThat(tagItems.get(1).productId()).isNull();
+
+        ImportResult r = service.importTranslations(new ImportRequest("uk", null, false, List.of(
+                new ImportItem("TAG", TAG, "intro_text", TranslationService.sha256Hex("Длинный текст"), "Довгий текст"),
+                new ImportItem("TAG", TAG, "h1", TranslationService.sha256Hex("x"), "y"))), 1L);
+        assertThat(r.applied()).isEqualTo(1);
+        assertThat(r.notFound()).isEqualTo(1); // h1 is empty: NO_SOURCE
+    }
+
+    @Test
+    void sourceFixOfATagSeoFieldSkipsTheNameCheck() {
+        Tag tag = new Tag();
+        tag.setId(UuidUtil.toBytes(TAG));
+        tag.setName("Ковры");
+        tag.setH1("Игровые ковирки");
+        when(tags.findById(any())).thenReturn(Optional.of(tag));
+
+        TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("TAG", TAG, "h1", TranslationService.sha256Hex("Игровые ковирки"))),
+                "Игровые коврики", null), 1L);
+
+        assertThat(r.updated()).isEqualTo(1);
+        assertThat(tag.getH1()).isEqualTo("Игровые коврики");
+        assertThat(tag.getName()).isEqualTo("Ковры");
+        verify(tags, never()).findByName(anyString());
+    }
+
     private Product product() {
         Product p = new Product();
         p.setId(UuidUtil.toBytes(PRODUCT));

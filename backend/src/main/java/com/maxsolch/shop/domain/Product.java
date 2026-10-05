@@ -55,6 +55,14 @@ public class Product {
     @Column(name = "seo_description", length = 512)
     private String seoDescription;
 
+    /** Brand for schema.org Product.brand (V36); null = the site's heuristic. Not translated. */
+    @Column(name = "brand", length = 128)
+    private String brand;
+
+    /** Article number (V36), unique when set; null = the site uses the id. */
+    @Column(name = "sku", length = 64)
+    private String sku;
+
     @Column(name = "currency", nullable = false, length = 8)
     private String currency = "UAH";
 

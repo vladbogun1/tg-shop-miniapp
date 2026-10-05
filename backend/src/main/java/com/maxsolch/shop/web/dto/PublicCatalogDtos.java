@@ -22,6 +22,16 @@ public final class PublicCatalogDtos {
     public record CategoryDto(String id, String slug, String name, int sortOrder, long productCount) {
     }
 
+    /**
+     * One category with the SEO of its page (V36, translated like the name). Null SEO fields = the
+     * site uses its template. Separate from {@link CategoryDto} because the menu list goes into every
+     * page and the intro text is long.
+     */
+    public record CategoryDetailDto(String id, String slug, String name, int sortOrder, long productCount,
+                                    boolean showInMenu, String seoTitle, String seoDescription, String h1,
+                                    String introText) {
+    }
+
     public record SitemapProduct(String slug, Instant updatedAt) {
     }
 

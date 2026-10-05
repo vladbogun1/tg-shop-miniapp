@@ -24,6 +24,7 @@ import com.maxsolch.shop.translation.TranslationDtos.Stats;
 import com.maxsolch.shop.translation.TranslationDtos.Status;
 import com.maxsolch.shop.translation.TranslationService.Key;
 import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.web.dto.TagUpsertRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -75,17 +76,21 @@ public class TranslationAdminService {
     }
 
     /** Column sizes of the Russian sources ({@code entityType:field} -> max chars). */
-    private static final Map<String, Integer> SOURCE_MAX_CHARS = Map.of(
-            "PRODUCT:title", 255,
-            "PRODUCT:description", MAX_TEXT_CHARS,
-            "PRODUCT:seo_title", 255,
-            "PRODUCT:seo_description", 512,
-            "VARIANT:name", 128,
-            "TAG:name", 128,
-            "PAYMENT_OPTION:title", 255,
-            "PAYMENT_OPTION:description", 1024,
-            "PAYMENT_REQUISITES:note", 2048,
-            "PAYMENT_REQUISITES:purpose", 255);
+    private static final Map<String, Integer> SOURCE_MAX_CHARS = Map.ofEntries(
+            Map.entry("PRODUCT:title", 255),
+            Map.entry("PRODUCT:description", MAX_TEXT_CHARS),
+            Map.entry("PRODUCT:seo_title", 255),
+            Map.entry("PRODUCT:seo_description", 512),
+            Map.entry("VARIANT:name", 128),
+            Map.entry("TAG:name", 128),
+            Map.entry("TAG:seo_title", 255),
+            Map.entry("TAG:seo_description", 512),
+            Map.entry("TAG:h1", 255),
+            Map.entry("TAG:intro_text", TagUpsertRequest.INTRO_MAX_CHARS),
+            Map.entry("PAYMENT_OPTION:title", 255),
+            Map.entry("PAYMENT_OPTION:description", 1024),
+            Map.entry("PAYMENT_REQUISITES:note", 2048),
+            Map.entry("PAYMENT_REQUISITES:purpose", 255));
 
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
@@ -461,6 +466,13 @@ public class TranslationAdminService {
                 if (t == null) {
                     return "NOT_FOUND";
                 }
+                if (!TranslationEntityType.NAME.equals(field)) {
+                    if (!matches(tagSeoField(t, field), wantedHash, newHash)) {
+                        return "STALE";
+                    }
+                    setTagSeoField(t, field, newSource);
+                    return "OK";
+                }
                 if (!matches(t.getName(), wantedHash, newHash)) {
                     return "STALE";
                 }
@@ -507,6 +519,27 @@ public class TranslationAdminService {
             default -> {
                 return "INVALID_ENTITY_TYPE";
             }
+        }
+    }
+
+    /** The SEO source fields of a tag (everything translatable but the name). */
+    static String tagSeoField(Tag t, String field) {
+        return switch (field) {
+            case TranslationEntityType.SEO_TITLE -> t.getSeoTitle();
+            case TranslationEntityType.SEO_DESCRIPTION -> t.getSeoDescription();
+            case TranslationEntityType.H1 -> t.getH1();
+            case TranslationEntityType.INTRO_TEXT -> t.getIntroText();
+            default -> throw new IllegalArgumentException("not a tag SEO field: " + field);
+        };
+    }
+
+    private static void setTagSeoField(Tag t, String field, String value) {
+        switch (field) {
+            case TranslationEntityType.SEO_TITLE -> t.setSeoTitle(value);
+            case TranslationEntityType.SEO_DESCRIPTION -> t.setSeoDescription(value);
+            case TranslationEntityType.H1 -> t.setH1(value);
+            case TranslationEntityType.INTRO_TEXT -> t.setIntroText(value);
+            default -> throw new IllegalArgumentException("not a tag SEO field: " + field);
         }
     }
 
@@ -609,8 +642,15 @@ public class TranslationAdminService {
                     (String) r[1], live, productId, productTitle);
         }
         for (Tag t : tagRepository.findAll()) {
-            put(out, TranslationEntityType.TAG, UuidUtil.toString(t.getId()), TranslationEntityType.NAME,
-                    t.getName(), true);
+            String id = UuidUtil.toString(t.getId());
+            put(out, TranslationEntityType.TAG, id, TranslationEntityType.NAME, t.getName(), true);
+            // SEO fields carry the category name as context (productTitle; productId stays null),
+            // so the «Переводы» screen and the AI prompt can tell whose page the text belongs to.
+            for (String field : TranslationEntityType.TAG.fields()) {
+                if (!TranslationEntityType.NAME.equals(field)) {
+                    put(out, TranslationEntityType.TAG, id, field, tagSeoField(t, field), true, null, t.getName());
+                }
+            }
         }
         for (PaymentOption p : paymentOptionRepository.findAll()) {
             String id = UuidUtil.toString(p.getId());

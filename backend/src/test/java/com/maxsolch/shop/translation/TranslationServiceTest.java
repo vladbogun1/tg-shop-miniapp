@@ -10,6 +10,7 @@ import com.maxsolch.shop.web.dto.PaymentOptionDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -63,7 +64,7 @@ class TranslationServiceTest {
         return new ProductDto(PRODUCT, title, description, 10_000, "UAH", 3, true, 0, List.of(),
                 List.of(new ProductVariantDto(VARIANT, "Красный", 3, 0)),
                 List.of(new TagDto(TAG, "Ковры", "kovry", 0, true)),
-                "kover", null, seoTitle, null, Instant.EPOCH);
+                "kover", null, seoTitle, null, Instant.EPOCH, "Attack Shark", "AS-1");
     }
 
     @Test
@@ -129,6 +130,32 @@ class TranslationServiceTest {
 
         assertThat(overlay.tags(List.of(new TagDto(TAG, "Ковры", "kovry", 1, true))).get(0).name())
                 .isEqualTo("Килимки");
+    }
+
+    @Test
+    void tagSeoGivesOnlyCurrentTranslationsNeverTheRussianSource() {
+        Overlay overlay = new Overlay(Map.of(
+                new Key(TranslationEntityType.TAG, TAG, SEO_TITLE), current("Коврики купить", "Килимки купити"),
+                new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.H1), current("Старый H1", "Старий H1"),
+                new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.INTRO_TEXT), current("Текст", "Текст uk")));
+
+        TagSeoDto out = overlay.tagSeoTranslated(new TagSeoDto(TAG, "Коврики купить", "Описание", "Новый H1", "Текст"));
+
+        assertThat(out.seoTitle()).isEqualTo("Килимки купити");
+        assertThat(out.seoDescription()).isNull(); // no translation -> the site's template
+        assertThat(out.h1()).isNull();             // stale: source changed
+        assertThat(out.introText()).isEqualTo("Текст uk");
+
+        assertThat(new Overlay(Map.of()).tagSeoTranslated(new TagSeoDto(TAG, "a", "b", "c", "d")).isEmpty()).isTrue();
+    }
+
+    @Test
+    void productBrandAndSkuPassThroughUntranslated() {
+        Overlay overlay = new Overlay(Map.of(
+                new Key(TranslationEntityType.PRODUCT, PRODUCT, TITLE), current("Ковер", "Килимок")));
+        ProductDto out = overlay.product(product("Ковер", null, null));
+        assertThat(out.brand()).isEqualTo("Attack Shark");
+        assertThat(out.sku()).isEqualTo("AS-1");
     }
 
     // ---------------------------------------------------------------- snapshot per language

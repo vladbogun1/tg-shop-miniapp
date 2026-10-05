@@ -33,7 +33,7 @@ export interface UniqueString {
   source: string;
   /** `${entityType}.${field}` of the first field — what the AI is told the string is. */
   kindKey: string;
-  /** Product context for variant names. */
+  /** Context: the product of a variant name, the category of a category SEO field. */
   product: string | null;
   fields: FieldRef[];
   /** Some field still needs this language (MISSING or STALE). */
@@ -49,7 +49,17 @@ export interface WorkSet {
 }
 
 const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, PAYMENT_REQUISITES: 1, PRODUCT: 2, VARIANT: 3 };
-const FIELD_ORDER: Record<string, number> = { title: 0, name: 0, description: 1, seo_title: 2, seo_description: 3, purpose: 0, note: 1 };
+const FIELD_ORDER: Record<string, number> = {
+  title: 0,
+  name: 0,
+  description: 1,
+  seo_title: 2,
+  seo_description: 3,
+  h1: 4,
+  intro_text: 5,
+  purpose: 0,
+  note: 1,
+};
 
 export function fieldKey(i: { entityType: string; entityId: string; field: string }): string {
   return `${i.entityType}:${i.entityId}:${i.field}`;
@@ -123,7 +133,8 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
         sourceHash: f.sourceHash,
         source: f.source,
         kindKey: `${f.entityType}.${f.field}`,
-        product: f.entityType === "VARIANT" ? f.productTitle : null,
+        // Context for the AI: the product of a variant name, the category of a category SEO text.
+        product: f.entityType === "VARIANT" || (f.entityType === "TAG" && f.field !== "name") ? f.productTitle : null,
         fields: [],
         needs: { uk: false, en: false },
         hasMissing: false,

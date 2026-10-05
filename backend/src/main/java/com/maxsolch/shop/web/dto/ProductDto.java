@@ -7,7 +7,7 @@ import java.util.List;
  * Public product representation. Ids are UUID strings, money in minor units.
  *
  * <p>The fields after {@code tags} were added for the public site (slug URLs, struck-through
- * "old" price, SEO overrides, "new arrivals" sort). The Mini App ignores them.
+ * "old" price, SEO overrides, "new arrivals" sort, brand/SKU for schema.org). The Mini App ignores them.
  */
 public record ProductDto(
         String id,
@@ -25,7 +25,11 @@ public record ProductDto(
         Long compareAtMinor,
         String seoTitle,
         String seoDescription,
-        Instant createdAt) {
+        Instant createdAt,
+        /** Brand for schema.org (V36, not translated); null = the site's heuristic. */
+        String brand,
+        /** Article number (V36); null = the site uses the id. */
+        String sku) {
 
     /** Units actually available: the variant sum when there are variants, else the product stock. */
     public int effectiveStock() {

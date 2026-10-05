@@ -25,6 +25,10 @@ public record ProductUpsertRequest(
         Long compareAtMinor,
         @Size(max = 255) String seoTitle,
         @Size(max = 512) String seoDescription,
+        /** Brand for schema.org; blank clears it (the site then guesses from the texts). */
+        @Size(max = 128) String brand,
+        /** Article number, unique among products; blank clears it. */
+        @Size(max = 64) String sku,
         /**
          * Stock the admin saw when the form was opened. When {@code stock} changes and the stored
          * value no longer equals this, the save is rejected with 409 STOCK_CONFLICT instead of

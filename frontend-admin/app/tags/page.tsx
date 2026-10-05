@@ -5,16 +5,20 @@
  * A tag is also a category of the public site: besides the name it has the URL slug
  * (/catalog/<slug>, blank = generated from the name), the position in the site menu and
  * whether it shows there at all. The list is in menu order.
+ * The edit dialog also holds the SEO of the category page (title, description, H1, SEO text):
+ * Russian source, empty = the site's template; uk/en translations live on the «Переводы» screen.
  */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Check, X, Tag as TagIcon, EyeOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Tag as TagIcon, EyeOff, Search } from "lucide-react";
+import Link from "next/link";
 import { adminApi, ApiError, type AdminTag } from "@/lib/api";
 import { slugify } from "@/lib/slug";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
 import { Toggle } from "@/components/ui/Toggle";
 import { Badge } from "@/components/ui/Badge";
@@ -29,6 +33,27 @@ interface EditState {
   slug: string;
   sortOrder: string;
   showInMenu: boolean;
+  seoTitle: string;
+  seoDescription: string;
+  h1: string;
+  introText: string;
+}
+
+/** Limits of the backend columns (V36). */
+const SEO_TITLE_MAX = 255;
+const SEO_DESCRIPTION_MAX = 512;
+const H1_MAX = 255;
+const INTRO_MAX = 10_000;
+
+/** Words in a text (for the 300–600 words target of the category SEO text). */
+function wordCount(text: string): number {
+  const words = text.trim().match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu);
+  return words ? words.length : 0;
+}
+
+/** A category has at least one SEO field filled in. */
+function hasSeo(t: AdminTag): boolean {
+  return !!(t.seoTitle || t.seoDescription || t.h1 || t.introText);
 }
 
 export default function TagsPage() {
@@ -94,6 +119,11 @@ export default function TagsPage() {
         slug: editing.slug.trim(),
         sortOrder: Number.isFinite(order) ? order : 0,
         showInMenu: editing.showInMenu,
+        // "" clears a field (the site falls back to its template).
+        seoTitle: editing.seoTitle.trim(),
+        seoDescription: editing.seoDescription.trim(),
+        h1: editing.h1.trim(),
+        introText: editing.introText.trim(),
       })
     ).then(() => {
       setEditing(null);
@@ -120,10 +150,21 @@ export default function TagsPage() {
       slug: t.slug ?? "",
       sortOrder: String(t.sortOrder ?? 0),
       showInMenu: t.showInMenu ?? true,
+      seoTitle: t.seoTitle ?? "",
+      seoDescription: t.seoDescription ?? "",
+      h1: t.h1 ?? "",
+      introText: t.introText ?? "",
     });
   }
 
   const editSlugPreview = editing ? slugify(editing.slug.trim() || editing.name) : "";
+  const introWords = editing ? wordCount(editing.introText) : 0;
+  // A changed Russian source makes its uk/en translations stale until they are redone.
+  const seoSourceChanged =
+    !!editing &&
+    (["seoTitle", "seoDescription", "h1", "introText"] as const).some(
+      (k) => editing[k].trim() !== (editing.tag[k] ?? "").trim()
+    );
 
   return (
     <motion.div
@@ -228,6 +269,11 @@ export default function TagsPage() {
                           <EyeOff className="h-3 w-3" /> не в меню
                         </Badge>
                       )}
+                      {hasSeo(t) && (
+                        <Badge tone="info" className="shrink-0 px-1.5">
+                          <Search className="h-3 w-3" /> SEO
+                        </Badge>
+                      )}
                     </div>
                     {t.slug && (
                       <div className="truncate font-mono text-[11px] text-[var(--text-faint)]">
@@ -263,7 +309,7 @@ export default function TagsPage() {
         open={!!editing}
         onClose={() => (busy ? undefined : setEditing(null))}
         title="Тег / категория"
-        size="sm"
+        size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setEditing(null)} disabled={busy}>
@@ -317,6 +363,61 @@ export default function TagsPage() {
                 label="Показывать в меню сайта"
               />
             </div>
+
+            <div className="mt-1 border-t border-[var(--line)] pt-4">
+              <div className="section-title !text-[14px] text-[var(--ink)]">SEO страницы категории</div>
+              <p className="mt-1 text-[12px] leading-relaxed text-[var(--text-faint)]">
+                Текст на русском. Пустое поле — сайт берёт свой шаблон. Украинская и английская
+                страницы используют поле, только когда у него есть перевод (иначе — шаблон). Переводы —
+                во вкладке{" "}
+                <Link href="/translations" className="font-semibold text-[var(--accent)] hover:underline">
+                  «Переводы»
+                </Link>
+                , фильтр «Категории».
+              </p>
+            </div>
+            <Input
+              label="SEO-заголовок (title)"
+              value={editing.seoTitle}
+              maxLength={SEO_TITLE_MAX}
+              onChange={(e) => setEditing({ ...editing, seoTitle: e.target.value })}
+              placeholder={`${editing.name || "Категория"} — купить в Украине`}
+              hint={`${editing.seoTitle.length}/${SEO_TITLE_MAX} · вкладка браузера и выдача поиска (видно ~60 символов). Пусто — шаблон.`}
+            />
+            <Textarea
+              label="SEO-описание (description)"
+              rows={3}
+              maxLength={SEO_DESCRIPTION_MAX}
+              value={editing.seoDescription}
+              onChange={(e) => setEditing({ ...editing, seoDescription: e.target.value })}
+              placeholder="Пусто — шаблон: число товаров, цена «от», доставка"
+              hint={`${editing.seoDescription.length}/${SEO_DESCRIPTION_MAX} · сниппет в поиске (видно ~160 символов)`}
+            />
+            <Input
+              label="Заголовок H1 (необязательно)"
+              value={editing.h1}
+              maxLength={H1_MAX}
+              onChange={(e) => setEditing({ ...editing, h1: e.target.value })}
+              placeholder={editing.name || "по умолчанию — название"}
+              hint="Крупный заголовок на странице категории. Пусто — название тега."
+            />
+            <Textarea
+              label="SEO-текст категории"
+              rows={8}
+              maxLength={INTRO_MAX}
+              value={editing.introText}
+              onChange={(e) => setEditing({ ...editing, introText: e.target.value })}
+              placeholder="300–600 слов о категории: что это, как выбрать, чем отличаются товары. Абзацы — через пустую строку."
+              hint={`${introWords} слов${
+                introWords > 0 && (introWords < 300 || introWords > 600) ? " · рекомендуем 300–600" : ""
+              } · на сайте пока не показывается (блок под товарами включим после согласования)`}
+            />
+            {seoSourceChanged && (
+              <p className="text-[12px] leading-relaxed text-[var(--text-muted)]">
+                После сохранения переводы изменённых SEO-полей устареют: пока их не обновят во вкладке
+                «Переводы», украинская и английская страницы категории будут на шаблоне сайта.
+              </p>
+            )}
           </div>
         )}
       </Modal>

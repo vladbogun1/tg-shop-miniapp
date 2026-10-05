@@ -1,6 +1,7 @@
 import type { CatalogSort, PublicCategory, PublicProductPage } from "@shop/shared";
 import { ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
@@ -46,6 +47,7 @@ export function CatalogView({
   activeCategory,
   state,
   data,
+  footer,
 }: {
   locale: Locale;
   title: string;
@@ -54,6 +56,8 @@ export function CatalogView({
   activeCategory: string | null;
   state: CatalogState;
   data: PublicProductPage | null;
+  /** Rendered under the grid and pagination (the category SEO text, see CategoryIntro). */
+  footer?: ReactNode;
 }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
@@ -123,6 +127,7 @@ export function CatalogView({
               {pages > 1 && <Pagination locale={locale} state={state} pages={pages} />}
             </>
           )}
+          {footer}
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -237,7 +238,9 @@ public class TranslationService {
                     p.compareAtMinor(),
                     text(TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_TITLE, p.seoTitle()),
                     text(TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, p.seoDescription()),
-                    p.createdAt());
+                    p.createdAt(),
+                    p.brand(),
+                    p.sku());
         }
 
         public List<ProductDto> products(List<ProductDto> list) {
@@ -250,6 +253,34 @@ public class TranslationService {
             }
             return new TagDto(t.id(), text(TranslationEntityType.TAG, t.id(), TranslationEntityType.NAME, t.name()),
                     t.slug(), t.sortOrder(), t.showInMenu());
+        }
+
+        /** The current translation of a field, or {@code null} when there is none (or it is stale). */
+        public String translationOrNull(TranslationEntityType type, String entityId, String field, String source) {
+            if (source == null || entityId == null || rows.isEmpty()) {
+                return null;
+            }
+            Entry e = rows.get(new Key(type, entityId, field));
+            return e != null && e.sourceHash().equals(sha256Hex(source)) ? e.text() : null;
+        }
+
+        /**
+         * SEO of a category page in a TRANSLATED language: each field is its current translation or
+         * {@code null} — never the Russian source. Unlike a product title, a Russian SEO title on the
+         * Ukrainian page would be worse than the site's own Ukrainian template, which is what a null
+         * falls back to. (For Russian the source itself is the answer; no overlay is applied.)
+         */
+        public TagSeoDto tagSeoTranslated(TagSeoDto t) {
+            if (t == null) {
+                return null;
+            }
+            String id = t.tagId();
+            return new TagSeoDto(id,
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.SEO_TITLE, t.seoTitle()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.SEO_DESCRIPTION,
+                            t.seoDescription()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.H1, t.h1()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.INTRO_TEXT, t.introText()));
         }
 
         public List<TagDto> tags(List<TagDto> list) {

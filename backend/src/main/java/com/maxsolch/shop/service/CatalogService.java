@@ -12,6 +12,7 @@ import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductImageDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,6 +101,32 @@ public class CatalogService {
         return translationService.overlay(lang).tags(original);
     }
 
+    /**
+     * SEO of the category pages (V36) in one language, by tag id; tags without any SEO text are
+     * left out. Russian = the source; uk/en = only fields with a current translation (see
+     * {@link TranslationService.Overlay#tagSeoTranslated}), the rest null so the site uses its
+     * localized template. Lives in the {@code tags} cache (evicted by tag edits and translation
+     * imports) under its own key, apart from {@link #listTags}: the intro texts are long and have no
+     * business in the tag lists the Mini App and every product card carry.
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "tags", key = "'seo:' + " + LANG_KEY)
+    public Map<String, TagSeoDto> tagSeo(String lang) {
+        boolean translated = ContentLocale.isTranslated(ContentLocale.normalize(lang));
+        TranslationService.Overlay overlay = translationService.overlay(lang);
+        Map<String, TagSeoDto> out = new HashMap<>();
+        for (Tag t : tagRepository.findAll()) {
+            TagSeoDto seo = TagSeoDto.of(t);
+            if (translated) {
+                seo = overlay.tagSeoTranslated(seo);
+            }
+            if (!seo.isEmpty()) {
+                out.put(seo.tagId(), seo);
+            }
+        }
+        return Map.copyOf(out);
+    }
+
     private ProductDto toDto(Product p, Map<String, Long> soldCounts) {
         List<ProductImageDto> images = p.getImages().stream()
                 .map(i -> new ProductImageDto(i.getId(), i.getUrl(), i.getSortOrder()))
@@ -127,7 +154,9 @@ public class CatalogService {
                 p.getCompareAtMinor(),
                 p.getSeoTitle(),
                 p.getSeoDescription(),
-                p.getCreatedAt());
+                p.getCreatedAt(),
+                p.getBrand(),
+                p.getSku());
     }
 
     private TagDto toTagDto(Tag t) {

@@ -180,6 +180,8 @@ export const en: RuDictionary = {
   "catalog.prev": "Previous",
   "catalog.next": "Next",
   "catalog.page": "Page {n}",
+  "catalog.intro.more": "Read more",
+  "catalog.intro.less": "Show less",
 
   "search.title": "Search",
   "search.resultsFor": "Results for “{q}”",

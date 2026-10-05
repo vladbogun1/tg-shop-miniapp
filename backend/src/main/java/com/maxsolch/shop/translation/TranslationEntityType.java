@@ -10,7 +10,9 @@ public enum TranslationEntityType {
     PRODUCT(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION,
             TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION)),
     VARIANT(List.of(TranslationEntityType.NAME)),
-    TAG(List.of(TranslationEntityType.NAME)),
+    /** Name + the SEO of the category page (V36). */
+    TAG(List.of(TranslationEntityType.NAME, TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION,
+            TranslationEntityType.H1, TranslationEntityType.INTRO_TEXT)),
     PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION)),
     /**
      * The single shop requisites row (customer-facing note and transfer purpose). Its id is the
@@ -26,6 +28,8 @@ public enum TranslationEntityType {
     public static final String SEO_TITLE = "seo_title";
     public static final String SEO_DESCRIPTION = "seo_description";
     public static final String NAME = "name";
+    public static final String H1 = "h1";
+    public static final String INTRO_TEXT = "intro_text";
     public static final String NOTE = "note";
     public static final String PURPOSE = "purpose";
 

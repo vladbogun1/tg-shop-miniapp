@@ -23,7 +23,9 @@ public final class TranslationDtos {
      * One translatable field. {@code text}/{@code origin} are null when {@code status = MISSING};
      * for STALE they hold the outdated translation (useful as a starting point).
      * {@code productId}/{@code productTitle}: the product a PRODUCT or VARIANT field belongs to
-     * (link to its editor and context for variant names); null for tags and payment options.
+     * (link to its editor and context for variant names); null for payment options and tag names.
+     * For the SEO fields of a TAG {@code productTitle} holds the category name (context only,
+     * {@code productId} stays null).
      */
     public record ExportItem(String entityType, String entityId, String field, String source,
                              String sourceHash, String status, String text, String origin,

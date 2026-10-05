@@ -4,7 +4,7 @@
  * ProductModal — create/edit product as a STEPPED WIZARD (ChiSetup v3).
  * Steps: 1) Основное (название+описание) → 2) Фото (загрузка + порядок,
  * первое = обложка) → 3) Цена и склад (цена/валюта/остаток/варианты) →
- * 4) Теги (+активность) → 5) Сайт (адрес страницы, SEO) → 6) Проверка (обзор + создать/сохранить).
+ * 4) Теги (+активность) → 5) Сайт (адрес страницы, SEO, бренд, артикул) → 6) Проверка (обзор + создать/сохранить).
  * Mobile- and desktop-friendly: numbered progress header, one concept per step,
  * Back/Next footer with per-step validation, animated step transitions.
  * When editing, «Сохранить» is available on every step; closing with unsaved changes asks first.
@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Check,
   Plus,
+  Sparkles,
   Trash2,
   UploadCloud,
   X,
@@ -33,6 +34,7 @@ import {
   type ProductVariant,
   type ProductWriteRequest,
 } from "@/lib/api";
+import { guessProductBrand } from "@shop/shared";
 import { slugify } from "@/lib/slug";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
@@ -64,6 +66,8 @@ function initialForm(product: AdminProduct | null) {
     compareAtMajor: product?.compareAtMinor ? String(toMajor(product.compareAtMinor)) : "",
     seoTitle: product?.seoTitle ?? "",
     seoDescription: product?.seoDescription ?? "",
+    brand: product?.brand ?? "",
+    sku: product?.sku ?? "",
     tagIds: product?.tags?.map((t) => t.id) ?? [],
     // Keep the id: it is what tells the server "this is the same variant", so renaming one edits
     // the existing row instead of deleting it and minting a new UUID (which broke customers'
@@ -123,6 +127,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   const [compareAtMajor, setCompareAtMajor] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
+  const [brand, setBrand] = useState("");
+  const [sku, setSku] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
 
   // What the form was opened with: the dirty check compares against it, and the stock values are
@@ -148,6 +154,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
     setCompareAtMajor(f.compareAtMajor);
     setSeoTitle(f.seoTitle);
     setSeoDescription(f.seoDescription);
+    setBrand(f.brand);
+    setSku(f.sku);
     setTagIds(f.tagIds);
     setVariants(f.variants);
     setImageKeys(f.imageKeys);
@@ -171,6 +179,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
     compareAtMajor,
     seoTitle,
     seoDescription,
+    brand,
+    sku,
     tagIds,
     variants,
     imageKeys,
@@ -234,6 +244,8 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
   const compareAtMinor = compareAtMajor.trim() ? toMinor(compareAtMajor) : 0;
   const compareAtInvalid = compareAtMinor > 0 && compareAtMinor <= priceMinor;
   const slugPreview = slug.trim() ? slugify(slug) : slugify(title);
+  // What the site would put into schema.org without a brand: a "Бренд: …" line or a known name.
+  const suggestedBrand = useMemo(() => guessProductBrand({ title, description }), [title, description]);
 
   function toggleTag(id: string) {
     setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
@@ -338,6 +350,9 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
       compareAtMinor,
       seoTitle: seoTitle.trim(),
       seoDescription: seoDescription.trim(),
+      // "" clears: the site then guesses the brand / uses the id as SKU.
+      brand: brand.trim(),
+      sku: sku.trim(),
     };
     setSaving(true);
     try {
@@ -750,7 +765,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   maxLength={255}
                   onChange={(e) => setSeoTitle(e.target.value)}
                   placeholder={title || "по умолчанию — название"}
-                  hint="Заголовок вкладки и поисковой выдачи. Пусто — название товара."
+                  hint="Заголовок вкладки и поисковой выдачи. Пусто — шаблон сайта: «название — тип товара, купить в Украине»."
                 />
                 <Textarea
                   label="SEO-описание"
@@ -761,6 +776,36 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   placeholder="Пусто — начало описания товара"
                   hint={`${seoDescription.length}/512 · сниппет в поиске и превью ссылки`}
                 />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <Input
+                      label="Бренд"
+                      value={brand}
+                      maxLength={128}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder={suggestedBrand ? `авто: ${suggestedBrand}` : "например, Attack Shark"}
+                      hint="Для разметки товара в поиске. Пусто — сайт угадает по названию и описанию."
+                    />
+                    {suggestedBrand && suggestedBrand !== brand.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setBrand(suggestedBrand)}
+                        className="nb-chip nb-press mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 text-[12px] text-[var(--text-muted)] hover:text-[var(--text)]"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" />
+                        Предложить: {suggestedBrand}
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    label="Артикул (SKU)"
+                    value={sku}
+                    maxLength={64}
+                    onChange={(e) => setSku(e.target.value)}
+                    placeholder="необязательно"
+                    hint="Уникальный у каждого товара. Пусто — в разметке будет id товара."
+                  />
+                </div>
               </div>
             )}
 

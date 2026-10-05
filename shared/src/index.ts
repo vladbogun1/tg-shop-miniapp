@@ -16,6 +16,7 @@ export * from "./money";
 export * from "./site";
 export * from "./tap";
 export * from "./orders";
+export * from "./product-brand";
 export * from "./telegram-html";
 export * from "./types";
 export * from "./ws";

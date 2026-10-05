@@ -14,6 +14,7 @@ import type {
   CatalogSort,
   PaymentOption,
   PublicCategory,
+  PublicCategoryDetail,
   PublicProductPage,
   PublicSitemap,
   StorefrontProduct,
@@ -53,6 +54,16 @@ export function parseSort(value: string | undefined): CatalogSort {
 
 export async function getCategories(locale: Locale): Promise<PublicCategory[]> {
   return getJson<PublicCategory[]>("/api/public/categories", locale);
+}
+
+/** One category with the SEO of its page; null when the slug is unknown. */
+export async function getCategory(slug: string, locale: Locale): Promise<PublicCategoryDetail | null> {
+  try {
+    return await getJson<PublicCategoryDetail>(`/api/public/categories/${encodeURIComponent(slug)}`, locale);
+  } catch (e) {
+    if (e instanceof NotFoundError) return null;
+    throw e;
+  }
 }
 
 export async function getProducts(q: CatalogQuery, locale: Locale): Promise<PublicProductPage> {
