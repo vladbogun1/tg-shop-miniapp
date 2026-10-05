@@ -53,6 +53,30 @@ public class AdminTotp {
         return new NewSecret(base32, Totp.otpauthUri(issuer, accountLabel(admin), base32));
     }
 
+    /** A secret not yet attached to an admin row (invite page): for the QR and, encrypted, for storage. */
+    public record Detached(String secret, String otpauthUri, String encrypted) {
+    }
+
+    /** New secret for {@code adminId} (the AAD — the same as it will have in admin_users) and label. */
+    public Detached createDetached(long adminId, String label) {
+        byte[] secret = Totp.newSecret();
+        String base32 = Base32.encode(secret);
+        return new Detached(base32, Totp.otpauthUri(issuer, label, base32), cipher.encrypt(secret, adminId));
+    }
+
+    /** Code against an encrypted secret that is not on an admin row yet: the matched step, or empty. */
+    public OptionalLong verifyEncrypted(String encrypted, long adminId, String code) {
+        if (encrypted == null || encrypted.isBlank()) {
+            return OptionalLong.empty();
+        }
+        try {
+            return Totp.verify(cipher.decrypt(encrypted, adminId), code, clock.instant().getEpochSecond());
+        } catch (IllegalStateException e) {
+            log.error("Invite 2FA secret for {} cannot be decrypted: {}", adminId, e.getMessage());
+            return OptionalLong.empty();
+        }
+    }
+
     /**
      * Code from the active secret, with replay protection. A {@code true} has already recorded the
      * step (bulk update: entities loaded before this call are stale afterwards).

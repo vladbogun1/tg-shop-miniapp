@@ -1,6 +1,8 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.adminauth.AdminInvite;
 import com.maxsolch.shop.adminauth.AdminSecurityAlerts;
+import com.maxsolch.shop.adminauth.AdminTeamMessenger;
 import com.maxsolch.shop.adminauth.AdminSessions;
 import com.maxsolch.shop.adminauth.LoginMethod;
 import com.maxsolch.shop.audit.AdminAuditService;
@@ -36,13 +38,18 @@ import java.util.concurrent.Executors;
  * and it ends every session, half-finished sign-in and trusted device of the account
  * ({@link AdminSessions#revokeEverything}). Sent off the request thread; with no bot token the
  * alerts are skipped silently — the sign-in never depends on Telegram.
+ *
+ * <p>Stage 2 ({@link AdminTeamMessenger}): the invite link with a button (sent synchronously — the
+ * super admin is shown the link instead when it fails) and notices about a 2FA / password reset or
+ * a block done by the super admin.
  */
 @Slf4j
 @Component
-public class AdminSecurityNotifier implements AdminSecurityAlerts {
+public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMessenger {
 
     static final String BLOCK_PREFIX = "asb:";
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DAY_TIME = DateTimeFormatter.ofPattern("dd.MM HH:mm");
 
     private final ShopBot bot;
     private final AppProperties props;
@@ -85,6 +92,58 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts {
                 + ", IP " + esc(ip) + "\n\n"
                 + "Если это не вы — нажмите «Заблокировать» и смените пароль.";
         send(adminId, text);
+    }
+
+    @Override
+    public boolean sendInvite(long telegramUserId, String link, AdminInvite.Kind kind, String roleLabel,
+                              String inviterName, Instant expiresAt) {
+        if (!enabled() || telegramUserId <= 0 || link == null) {
+            return false;
+        }
+        String what = switch (kind) {
+            case NEW -> "🔑 <b>Вас пригласили в админку ChiSetup</b> (роль: " + esc(roleLabel) + ").\n"
+                    + "Пригласил: " + esc(inviterName) + ".\n\n"
+                    + "Нажмите кнопку, придумайте логин и пароль и подключите приложение-аутентификатор "
+                    + "(Google Authenticator, 1Password, Authy).";
+            case CREDENTIALS -> "🔑 <b>Вход в админку ChiSetup по логину и паролю</b>\n"
+                    + esc(inviterName) + " выдал вам логин. Нажмите кнопку, придумайте логин и пароль"
+                    + " (и подключите приложение-аутентификатор, если ещё не подключено).";
+            case PASSWORD_RESET -> "🔑 <b>Пароль от админки ChiSetup сброшен</b> главным админом.\n"
+                    + "Старый пароль больше не действует, все сессии завершены. Нажмите кнопку и задайте новый.";
+        };
+        String text = what + "\n\nСсылка одноразовая, действует до " + DAY_TIME.format(expiresAt.atZone(zone))
+                + ". Никому её не пересылайте.";
+        try {
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(telegramUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(InlineKeyboardMarkup.builder()
+                            .keyboard(List.of(List.of(InlineKeyboardButton.builder()
+                                    .text(kind == AdminInvite.Kind.PASSWORD_RESET ? "Задать новый пароль" : "Открыть приглашение")
+                                    .url(link)
+                                    .build())))
+                            .build())
+                    .build());
+            return true;
+        } catch (Exception e) {
+            log.info("Admin invite to {} not delivered: {}", telegramUserId, e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public void accountNotice(long adminId, String html) {
+        if (!enabled() || adminId <= 0) {
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                bot.execute(SendMessage.builder().chatId(String.valueOf(adminId)).text(html).parseMode("HTML").build());
+            } catch (Exception e) {
+                log.info("Admin account notice to {} not delivered: {}", adminId, e.getMessage());
+            }
+        });
     }
 
     private void send(long adminId, String text) {

@@ -29,6 +29,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *       min for {@code /api/auth/admin/*} (password/Telegram, then the 2FA step). On top of it
  *       {@code AdminLockout} locks an account for 15 min after 5 wrong passwords/codes in a row,
  *       whatever the IP; other {@code /api/auth/*} paths: {@value #AUTH_LIMIT}.</li>
+ *   <li><b>admin invite links</b> — {@value #INVITE_LIMIT} per {@value #AUTH_WINDOW_MINUTES} min for
+ *       {@code /api/auth/admin/invite/*} (the public /invite page: guessing tokens). The token itself
+ *       is 256 random bits and 5 wrong codes revoke an invite; this caps the noise.</li>
  *   <li><b>customer auth</b> — {@value #CUSTOMER_AUTH_LIMIT} per {@value #AUTH_WINDOW_MINUTES} min
  *       for {@code /api/auth/telegram}: every Mini App launch calls it, and customers behind a
  *       mobile carrier's NAT share one address — they used to share the admin's strict bucket.</li>
@@ -58,6 +61,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int AUTH_LIMIT = 10;
     private static final int AUTH_WINDOW_MINUTES = 5;
     private static final int CUSTOMER_AUTH_LIMIT = 60;
+    /** /invite: check + accept + complete is 3 requests; a few retries on a typo. */
+    private static final int INVITE_LIMIT = 30;
     private static final int UPLOAD_LIMIT = 30;
     private static final int PUBLIC_LIMIT = 120;
     private static final int ANALYTICS_LIMIT = 20;
@@ -67,6 +72,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final int WEB_AUTH_LIMIT = 90;
 
     private final Cache<String, AtomicInteger> authAttempts = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
+            .build();
+
+    private final Cache<String, AtomicInteger> inviteAttempts = Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
             .build();
@@ -132,6 +142,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (path.equals("/api/auth/telegram")) {
             return new Bucket(customerAuthAttempts, CUSTOMER_AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
+        if (path.startsWith("/api/auth/admin/invite/")) {
+            return new Bucket(inviteAttempts, INVITE_LIMIT, AUTH_WINDOW_MINUTES * 60);
         }
         if (path.startsWith("/api/auth/admin/")) {
             return new Bucket(authAttempts, adminAuthLimit, AUTH_WINDOW_MINUTES * 60);

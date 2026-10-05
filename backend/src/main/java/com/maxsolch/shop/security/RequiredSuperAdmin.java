@@ -8,10 +8,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * An ADMIN token whose admin is {@code SUPER_ADMIN} right now (checked against the database through
- * {@link AdminAccess}, so a demotion takes effect within its cache window, not at token expiry).
- * For managing admins (stage 2: invitations, roles, 2FA resets of others); everything else in the
- * panel stays open to every admin.
+ * An ADMIN token whose admin is {@code SUPER_ADMIN} right now (read from the database on every
+ * request through {@link AdminAccess}, so a demotion takes effect on the next request). Guards the
+ * «Админы» section ({@code /api/admin/admins/**}: invitations, roles, resets, blocks); everything
+ * else in the panel stays open to every admin.
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

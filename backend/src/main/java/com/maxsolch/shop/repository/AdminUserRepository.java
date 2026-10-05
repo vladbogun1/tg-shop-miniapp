@@ -20,6 +20,15 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
 
     List<AdminUser> findAllByActiveTrue();
 
+    /**
+     * Active SUPER_ADMINs with 2FA other than {@code exceptId} — the «Админы» section never lets this
+     * drop to zero (there must always be someone able to manage admins).
+     */
+    @Query("select count(a) from AdminUser a where a.active = true "
+            + "and a.role = com.maxsolch.shop.domain.AdminRole.SUPER_ADMIN "
+            + "and a.totpSecretEnc is not null and a.telegramUserId <> :exceptId")
+    long countOtherActiveSupersWith2fa(@Param("exceptId") Long exceptId);
+
     /** Is there an active admin who can sign in with a password? (AdminBootstrap) */
     boolean existsByActiveTrueAndPasswordHashIsNotNull();
 

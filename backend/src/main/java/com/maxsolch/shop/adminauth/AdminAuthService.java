@@ -247,6 +247,15 @@ public class AdminAuthService {
         return complete(admin.getTelegramUserId(), pre.method(), SecondFactor.SETUP, trustDevice, client);
     }
 
+    /**
+     * The /invite page finished (password set, 2FA set up or the current code given): the same
+     * finish as a normal sign-in — token, history, trusted device, new-device alert.
+     */
+    public Outcome completeInvite(long adminId, boolean setUpTwoFactor, boolean trustDevice, ClientInfo client) {
+        return complete(adminId, LoginMethod.INVITE, setUpTwoFactor ? SecondFactor.SETUP : SecondFactor.TOTP,
+                trustDevice, client);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private Outcome complete(long adminId, LoginMethod method, SecondFactor second, boolean trustDevice,
