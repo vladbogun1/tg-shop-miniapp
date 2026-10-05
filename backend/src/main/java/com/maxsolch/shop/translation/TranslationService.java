@@ -255,17 +255,32 @@ public class TranslationService {
                     t.slug(), t.sortOrder(), t.showInMenu());
         }
 
-        /** SEO of a category page; each field falls back to the Russian source on its own. */
-        public TagSeoDto tagSeo(TagSeoDto t) {
-            if (!active() || t == null) {
-                return t;
+        /** The current translation of a field, or {@code null} when there is none (or it is stale). */
+        public String translationOrNull(TranslationEntityType type, String entityId, String field, String source) {
+            if (source == null || entityId == null || rows.isEmpty()) {
+                return null;
+            }
+            Entry e = rows.get(new Key(type, entityId, field));
+            return e != null && e.sourceHash().equals(sha256Hex(source)) ? e.text() : null;
+        }
+
+        /**
+         * SEO of a category page in a TRANSLATED language: each field is its current translation or
+         * {@code null} — never the Russian source. Unlike a product title, a Russian SEO title on the
+         * Ukrainian page would be worse than the site's own Ukrainian template, which is what a null
+         * falls back to. (For Russian the source itself is the answer; no overlay is applied.)
+         */
+        public TagSeoDto tagSeoTranslated(TagSeoDto t) {
+            if (t == null) {
+                return null;
             }
             String id = t.tagId();
             return new TagSeoDto(id,
-                    text(TranslationEntityType.TAG, id, TranslationEntityType.SEO_TITLE, t.seoTitle()),
-                    text(TranslationEntityType.TAG, id, TranslationEntityType.SEO_DESCRIPTION, t.seoDescription()),
-                    text(TranslationEntityType.TAG, id, TranslationEntityType.H1, t.h1()),
-                    text(TranslationEntityType.TAG, id, TranslationEntityType.INTRO_TEXT, t.introText()));
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.SEO_TITLE, t.seoTitle()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.SEO_DESCRIPTION,
+                            t.seoDescription()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.H1, t.h1()),
+                    translationOrNull(TranslationEntityType.TAG, id, TranslationEntityType.INTRO_TEXT, t.introText()));
         }
 
         public List<TagDto> tags(List<TagDto> list) {

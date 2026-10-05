@@ -14,6 +14,10 @@ export interface StorefrontProduct extends Product {
   seoTitle?: string | null;
   seoDescription?: string | null;
   createdAt?: string;
+  /** Brand for schema.org (admin field, not translated); null = the site guesses from the texts. */
+  brand?: string | null;
+  /** Article number; null = the site uses the id. */
+  sku?: string | null;
   tags?: StorefrontTag[];
 }
 
@@ -30,6 +34,20 @@ export interface PublicCategory {
   name: string;
   sortOrder: number;
   productCount: number;
+}
+
+/**
+ * GET /api/public/categories/{slug} — one category with the SEO of its page in the requested
+ * language. Every SEO field is optional: null = the site's template (site/lib/seo.ts).
+ */
+export interface PublicCategoryDetail extends PublicCategory {
+  showInMenu: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  /** Page heading; null = the category name. */
+  h1?: string | null;
+  /** SEO text of the category (300–600 words, plain text with line breaks). */
+  introText?: string | null;
 }
 
 export type CatalogSort = "default" | "price_asc" | "price_desc" | "new" | "name";

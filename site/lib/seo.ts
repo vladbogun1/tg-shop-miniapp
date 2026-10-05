@@ -3,11 +3,12 @@
  * categories and products, and the schema.org bits shared by several pages.
  *
  * Everything here ends up in <head> or in JSON-LD only — none of it is rendered on the page, so the
- * visible site does not change. Real per-category SEO texts (title, description, H1, intro) need
- * new columns on `tags` with translations; until then {@link CATEGORY_SEO} is the fallback.
+ * visible site does not change. Per-category SEO texts (title, description, H1, intro) come from the
+ * admin panel (`tags.seo_*`, translated); a field left empty falls back to the templates here, with
+ * {@link CATEGORY_SEO} as the wording.
  */
 import type { Metadata } from "next";
-import type { StorefrontProduct } from "@shop/shared";
+import { guessProductBrand, type StorefrontProduct } from "@shop/shared";
 import { alternates, localePath, makeT } from "@/i18n";
 import { LOCALE_TAG, LOCALES, type Locale } from "@/i18n/locales";
 import { BOT_URL, OWNER_TELEGRAM, SELLER, SITE_URL } from "./config";
@@ -131,7 +132,8 @@ interface CategoryWords {
 /**
  * Search wording per category slug. Only used in <title>, meta description and OG — the visible H1
  * stays the category name from the admin panel. Unknown slugs fall back to the admin name.
- * TODO(backend): replace with `tags.seo_title / seo_description / h1 / intro` (+ translations).
+ * Fallback only: the admin's `seoTitle` / `seoDescription` of a category win when filled in
+ * (see {@link categoryTitle} and the category page).
  */
 export const CATEGORY_SEO: Record<string, Record<Locale, CategoryWords>> = {
   kovriki: {
@@ -210,10 +212,13 @@ export function categoryWords(slug: string | undefined | null, fallbackName: str
   return (slug && CATEGORY_SEO[slug]?.[locale]) || { name: fallbackName };
 }
 
-/** `<title>` of a category page: "Ігрові килимки для миші — купити в Україні" (+ " · ChiSetup"). */
-export function categoryTitle(slug: string, name: string, locale: Locale, page = 1): string {
+/**
+ * `<title>` of a category page: the admin's `seoTitle` when set, else "Ігрові килимки для миші —
+ * купити в Україні" (+ " · ChiSetup" from the layout template either way).
+ */
+export function categoryTitle(slug: string, name: string, locale: Locale, page = 1, seoTitle?: string | null): string {
   const t = makeT(locale);
-  const base = `${categoryWords(slug, name, locale).name} — ${t("meta.buy")}`;
+  const base = seoTitle?.trim() || `${categoryWords(slug, name, locale).name} — ${t("meta.buy")}`;
   return page > 1 ? `${base}, ${t("meta.page", { n: page })}` : base;
 }
 
@@ -286,64 +291,23 @@ export function productDescription(p: StorefrontProduct, locale: Locale): string
 }
 
 /**
- * Brands we actually sell, as they should be spelt. Matched as whole words in the product title;
- * the earliest match wins ("Кабелі Attack Shark & Mambasnake" → Attack Shark).
- */
-const KNOWN_BRANDS = [
-  "Attack Shark",
-  "ATK",
-  "X-RayPad",
-  "MCHOSE",
-  "WestLab",
-  "IPI",
-  "AULA",
-  "LEOBOG",
-  "MadLions",
-  "Zoepad",
-  "QIANYING",
-  "ZHENHUO",
-  "LEIFU",
-  "Mieyco",
-  "ROCKBROS",
-  "West Biking",
-  "X-Tiger",
-  "ESPTiger",
-  "SIMGOT",
-  "Proove",
-  "VGN",
-  "Scyrox",
-  "Ajazz",
-  "YUNZII",
-  "RAPOO",
-  "Mambasnake",
-  "IROK",
-];
-
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const BRAND_RE = new RegExp(`(?<![\\p{L}\\p{N}])(${KNOWN_BRANDS.map(escape).join("|")})(?![\\p{L}\\p{N}])`, "giu");
-
-/**
- * The product's brand, or null when we do not know it (then schema.org gets no `brand` at all —
- * better than a wrong one). Source, in order: a "Бренд: …" line in the description (that is where
- * the descriptions keep characteristics), then a known brand name in the title.
- * TODO(backend): a real `products.brand` column.
+ * The product's brand guessed from its texts, or null when we do not know it (then schema.org gets
+ * no `brand` at all — better than a wrong one): a "Бренд: …" line in the description, then a known
+ * brand name in the title (`guessProductBrand` in @shop/shared, also used by the admin's hint).
+ * Fallback for {@link productBrandName}: the admin's `brand` field wins when filled in.
  */
 export function productBrand(p: Pick<StorefrontProduct, "title" | "description">): string | null {
-  const line = (p.description ?? "").match(/^[\s•*-]*(?:Бренд|Brand|Виробник|Производитель|Manufacturer)\s*:\s*([^\n]+)$/imu);
-  if (line) {
-    const value = line[1].trim().replace(/[.;,]+$/, "");
-    if (value && value.length <= 40) {
-      const known = KNOWN_BRANDS.find((b) => b.toLowerCase() === value.toLowerCase());
-      return known ?? value;
-    }
-  }
-  let best: { index: number; name: string } | null = null;
-  for (const m of p.title.matchAll(BRAND_RE)) {
-    if (!best || m.index < best.index) {
-      best = { index: m.index, name: KNOWN_BRANDS.find((b) => b.toLowerCase() === m[1].toLowerCase()) ?? m[1] };
-    }
-  }
-  return best?.name ?? null;
+  return guessProductBrand(p);
+}
+
+/** Brand for schema.org: the admin's `brand` field, else the {@link productBrand} heuristic. */
+export function productBrandName(p: Pick<StorefrontProduct, "title" | "description" | "brand">): string | null {
+  return p.brand?.trim() || productBrand(p);
+}
+
+/** schema.org `sku`: the admin's article number, else the product id. */
+export function productSku(p: Pick<StorefrontProduct, "id" | "sku">): string {
+  return p.sku?.trim() || p.id;
 }
 
 // ---------------------------------------------------------------- schema.org

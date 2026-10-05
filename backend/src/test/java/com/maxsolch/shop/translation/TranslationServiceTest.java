@@ -133,18 +133,20 @@ class TranslationServiceTest {
     }
 
     @Test
-    void tagSeoOverlayTranslatesEachCurrentFieldOnItsOwn() {
+    void tagSeoGivesOnlyCurrentTranslationsNeverTheRussianSource() {
         Overlay overlay = new Overlay(Map.of(
                 new Key(TranslationEntityType.TAG, TAG, SEO_TITLE), current("Коврики купить", "Килимки купити"),
                 new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.H1), current("Старый H1", "Старий H1"),
                 new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.INTRO_TEXT), current("Текст", "Текст uk")));
 
-        TagSeoDto out = overlay.tagSeo(new TagSeoDto(TAG, "Коврики купить", "Описание", "Новый H1", "Текст"));
+        TagSeoDto out = overlay.tagSeoTranslated(new TagSeoDto(TAG, "Коврики купить", "Описание", "Новый H1", "Текст"));
 
         assertThat(out.seoTitle()).isEqualTo("Килимки купити");
-        assertThat(out.seoDescription()).isEqualTo("Описание"); // no translation
-        assertThat(out.h1()).isEqualTo("Новый H1");               // stale: source changed
+        assertThat(out.seoDescription()).isNull(); // no translation -> the site's template
+        assertThat(out.h1()).isNull();             // stale: source changed
         assertThat(out.introText()).isEqualTo("Текст uk");
+
+        assertThat(new Overlay(Map.of()).tagSeoTranslated(new TagSeoDto(TAG, "a", "b", "c", "d")).isEmpty()).isTrue();
     }
 
     @Test

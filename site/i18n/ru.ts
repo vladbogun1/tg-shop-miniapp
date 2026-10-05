@@ -198,6 +198,8 @@ export const ru = {
   "catalog.prev": "Назад",
   "catalog.next": "Вперёд",
   "catalog.page": "Страница {n}",
+  "catalog.intro.more": "Читать полностью",
+  "catalog.intro.less": "Свернуть",
 
   "search.title": "Поиск",
   "search.resultsFor": "Результаты по запросу «{q}»",

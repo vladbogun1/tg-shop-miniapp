@@ -103,19 +103,25 @@ public class CatalogService {
 
     /**
      * SEO of the category pages (V36) in one language, by tag id; tags without any SEO text are
-     * left out. Lives in the {@code tags} cache (evicted by tag edits and translation imports) under
-     * its own key, apart from {@link #listTags}: the intro texts are long and have no business in the
-     * tag lists the Mini App and every product card carry.
+     * left out. Russian = the source; uk/en = only fields with a current translation (see
+     * {@link TranslationService.Overlay#tagSeoTranslated}), the rest null so the site uses its
+     * localized template. Lives in the {@code tags} cache (evicted by tag edits and translation
+     * imports) under its own key, apart from {@link #listTags}: the intro texts are long and have no
+     * business in the tag lists the Mini App and every product card carry.
      */
     @Transactional(readOnly = true)
     @Cacheable(value = "tags", key = "'seo:' + " + LANG_KEY)
     public Map<String, TagSeoDto> tagSeo(String lang) {
+        boolean translated = ContentLocale.isTranslated(ContentLocale.normalize(lang));
         TranslationService.Overlay overlay = translationService.overlay(lang);
         Map<String, TagSeoDto> out = new HashMap<>();
         for (Tag t : tagRepository.findAll()) {
             TagSeoDto seo = TagSeoDto.of(t);
+            if (translated) {
+                seo = overlay.tagSeoTranslated(seo);
+            }
             if (!seo.isEmpty()) {
-                out.put(seo.tagId(), overlay.tagSeo(seo));
+                out.put(seo.tagId(), seo);
             }
         }
         return Map.copyOf(out);

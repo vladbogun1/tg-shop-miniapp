@@ -180,6 +180,8 @@ export const uk: RuDictionary = {
   "catalog.prev": "Назад",
   "catalog.next": "Далі",
   "catalog.page": "Сторінка {n}",
+  "catalog.intro.more": "Читати повністю",
+  "catalog.intro.less": "Згорнути",
 
   "search.title": "Пошук",
   "search.resultsFor": "Результати за запитом «{q}»",

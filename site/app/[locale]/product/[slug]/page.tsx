@@ -13,7 +13,16 @@ import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { stockOf } from "@/lib/stock";
 import { localeOf } from "@/lib/route";
 import { getProductBySlug, getProducts, safe } from "@/lib/server-api";
-import { ORG_ID, pageMeta, productBrand, productDescription, productTitle, returnPolicyLd, shippingLd } from "@/lib/seo";
+import {
+  ORG_ID,
+  pageMeta,
+  productBrandName,
+  productDescription,
+  productSku,
+  productTitle,
+  returnPolicyLd,
+  shippingLd,
+} from "@/lib/seo";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;
@@ -99,7 +108,7 @@ export default async function ProductPage({ params }: { params: Params }) {
   const images = sortedImages(product);
   const inStock = stockOf(product, null) > 0;
 
-  const brand = productBrand(product);
+  const brand = productBrandName(product);
   const markdown = (product.tags ?? []).some((tag) => tag.slug === "utsenka");
   const productUrl = `${SITE_URL}${localePath(locale, path)}`;
   const productLd = {
@@ -108,7 +117,7 @@ export default async function ProductPage({ params }: { params: Params }) {
     "@id": `${productUrl}#product`,
     name: product.title,
     url: productUrl,
-    sku: product.id,
+    sku: productSku(product),
     description: productDescription(product, locale),
     image: images.slice(0, 6).map((k) => absoluteImage(k, 1200)),
     ...(category ? { category: category.name } : {}),

@@ -89,6 +89,8 @@ class CatalogServiceCacheTest {
     ContentTranslationRepository translationRepository;
     @Autowired
     CacheManager cacheManager;
+    @Autowired
+    TranslationService translationService;
 
     @BeforeEach
     void setUp() {
@@ -113,6 +115,7 @@ class CatalogServiceCacheTest {
         uk.setSourceHash(TranslationService.sha256Hex("Ковер"));
         when(translationRepository.findByLocale("uk")).thenReturn(List.of(uk));
         when(translationRepository.findByLocale("en")).thenReturn(List.of());
+        translationService.invalidate(); // snapshots of an earlier test must not leak into this one
     }
 
     @Test
@@ -139,5 +142,38 @@ class CatalogServiceCacheTest {
         catalogService.listTags("ru");
         catalogService.listTags("uk");
         verify(tagRepository, times(2)).findAllByOrderByNameAsc();
+    }
+
+    @Test
+    void tagSeoIsTheSourceInRussianAndOnlyTranslationsElsewhere() {
+        Tag t = new Tag();
+        t.setId(UuidUtil.toBytes("33333333-3333-3333-3333-333333333333"));
+        t.setName("Ковры");
+        t.setSeoTitle("Игровые коврики — купить");
+        t.setH1("Игровые коврики");
+        Tag empty = new Tag();
+        empty.setId(UuidUtil.randomBytes());
+        empty.setName("Без SEO");
+        when(tagRepository.findAll()).thenReturn(List.of(t, empty));
+        ContentTranslation title = new ContentTranslation(new ContentTranslationId(
+                TranslationEntityType.TAG, t.getId(), TranslationEntityType.SEO_TITLE, "uk"));
+        title.setText("Ігрові килимки — купити");
+        title.setSourceHash(TranslationService.sha256Hex("Игровые коврики — купить"));
+        when(translationRepository.findByLocale("uk")).thenReturn(List.of(title));
+        translationService.invalidate();
+        String id = UuidUtil.toString(t.getId());
+
+        var ru = catalogService.tagSeo("ru");
+        assertThat(ru).containsOnlyKeys(id);
+        assertThat(ru.get(id).seoTitle()).isEqualTo("Игровые коврики — купить");
+        assertThat(ru.get(id).h1()).isEqualTo("Игровые коврики");
+
+        var uk = catalogService.tagSeo("uk");
+        assertThat(uk.get(id).seoTitle()).isEqualTo("Ігрові килимки — купити");
+        assertThat(uk.get(id).h1()).isNull(); // untranslated -> the site's template, not Russian
+
+        assertThat(catalogService.tagSeo("en")).isEmpty();
+        catalogService.tagSeo("uk");
+        verify(tagRepository, times(3)).findAll();
     }
 }
