@@ -43,7 +43,7 @@ export function TwoFactorSecret({ setup }: { setup: TwoFactorSetup }) {
           <code
             aria-label="Секретный ключ"
             data-secret={setup.secret}
-            className="min-w-0 flex-1 break-all font-mono text-[13.5px] leading-snug tracking-[0.04em] text-[var(--ink)] select-all"
+            className="min-w-0 flex-1 break-words font-mono text-[13.5px] leading-snug tracking-[0.04em] text-[var(--ink)] select-all"
           >
             {groupSecret(setup.secret)}
           </code>

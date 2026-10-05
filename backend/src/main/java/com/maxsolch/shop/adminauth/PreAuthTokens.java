@@ -47,6 +47,7 @@ public class PreAuthTokens {
             .expireAfterWrite(Duration.ofMinutes(TTL_MINUTES + 1))
             .build();
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PreAuthTokens(AdminAuthKeys keys) {
         this(keys.preAuthKey(), Clock.systemUTC());
     }

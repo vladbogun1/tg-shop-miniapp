@@ -26,10 +26,39 @@ export const ADMIN_PORT = Number(env("E2E_ADMIN_PORT", "3105"));
 export const API_URL = `http://localhost:${BACKEND_PORT}`;
 export const ADMIN_URL = `http://localhost:${ADMIN_PORT}`;
 
+/**
+ * The bootstrap admin (tg id 1, created by AdminBootstrap from ADMIN_LOGIN / ADMIN_PASSWORD) — the
+ * one every spec acts as. Its 2FA secret is written by the global setup (lib/admins.ts), so tests
+ * can compute the codes. Test-only values, base32 like an authenticator app shows them.
+ */
 export const ADMIN = {
+  id: 1,
   login: env("E2E_ADMIN_LOGIN", "e2e-admin"),
   password: env("E2E_ADMIN_PASSWORD", "e2e-admin-pass-not-a-placeholder"),
+  totpSecret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
 };
+
+/** Second admin (seeded): trusted device + password change specs. Role ADMIN, 2FA on. */
+export const SECOND_ADMIN = {
+  id: 2,
+  login: "e2e-second",
+  password: "e2e-second-pass-123",
+  // BCrypt(10) of the password above.
+  passwordHash: "$2a$10$dJKRHG4AE4vXijH1LeETGOF59F3wdo9D3RcgOSgthwbyBU7mon0Vu",
+  newPassword: "e2e-second-new-pass-456",
+  totpSecret: "KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU",
+};
+
+/** Third admin (seeded): has a password but no 2FA yet — the first-sign-in setup spec. */
+export const FRESH_ADMIN = {
+  id: 3,
+  login: "e2e-fresh",
+  password: "e2e-fresh-pass-1234",
+  passwordHash: "$2a$10$LwdTaPGtMzeL.kvtV2bHXuLiJ2fM096j5aLSIuqY7PEDfzXDfqTAy",
+};
+
+/** AES-256 key for the 2FA secrets at rest (base64 of 32 bytes) — test only. */
+export const ADMIN_2FA_KEY = "ZTJlLW9ubHktYWRtaW4tMmZhLWtleS0zMi1ieXRlcyE=";
 
 export const BACKEND_JAR = env("E2E_BACKEND_JAR", path.join(REPO_ROOT, "backend", "target", "app.jar"));
 /** Copy of frontend-admin that gets built for the run (keeps the real app dir's .next untouched). */
@@ -49,6 +78,9 @@ export function backendEnv() {
     ADMIN_LOGIN: ADMIN.login,
     ADMIN_PASSWORD: ADMIN.password,
     ADMIN_BOOTSTRAP_TG_ID: "1",
+    ADMIN_2FA_KEY,
+    // Every spec signs in through the 2-step flow; the production 20 / 5 min per IP would trip.
+    ADMIN_AUTH_RATE_LIMIT: "1000",
     // Blank token = the bot is never registered (TelegramBotConfig); notifications become no-ops.
     BOT_TOKEN: "",
     ALLOW_UNSIGNED_INIT_DATA: "false",
