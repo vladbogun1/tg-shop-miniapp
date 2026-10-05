@@ -375,6 +375,59 @@ public class NotificationService {
     }
 
     /**
+     * Money arrived online (monobank). Admins get a note in the chat topic — the order still waits
+     * for their manual confirmation — and the customer a DM that the payment went through.
+     */
+    public void onPaymentReceived(Order order, long amountMinor) {
+        if (!enabled()) {
+            return;
+        }
+        String cur = nz(order.getCurrency());
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId != null && !chatId.isBlank() && !"0".equals(chatId.trim())) {
+            try {
+                long cod = Math.max(0, order.getTotalMinor() - Math.min(order.getReceivedMinor(), order.getTotalMinor()));
+                String text = "💳 <b>Оплачено онлайн (monobank)</b>\n"
+                        + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                        + "Поступило: <b>" + money(amountMinor) + " " + cur + "</b>"
+                        + (cod > 0 ? " · наложка <b>" + money(cod) + " " + cur + "</b>" : " · оплачен полностью") + "\n"
+                        + "<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>";
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text(text)
+                        .parseMode("HTML")
+                        .replyMarkup(adminButtons(order))
+                        .build();
+                int topic = props.getTelegram().getNotifyTopicChat();
+                if (topic > 0) {
+                    msg.setMessageThreadId(topic);
+                }
+                bot.execute(msg);
+            } catch (Exception e) {
+                log.warn("onPaymentReceived (admins) failed for order {}: {}", idStr(order), e.getMessage());
+            }
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String text = messages.get(locale, "bot.paid.title") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, "bot.paid.body", money(amountMinor) + " " + cur);
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("onPaymentReceived (customer) failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /**
      * The shop's card/IBAN/recipient changed (A11). Posted to the seller's service topic so a swap
      * made with a stolen admin token does not go unnoticed. {@code changes} are already masked.
      */

@@ -29,6 +29,10 @@ public final class OrderEvents {
     public record PaymentClaimed(byte[] orderId) {
     }
 
+    /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
+    public record PaymentReceived(byte[] orderId, long amountMinor) {
+    }
+
     /** What changed in an order an admin edited, for the customer-facing message. */
     public enum EditKind {
         /** Composition/price changed. */

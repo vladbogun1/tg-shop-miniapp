@@ -8,6 +8,7 @@ import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
+import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
@@ -25,6 +26,8 @@ import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.OrderSummaryDto;
+import com.maxsolch.shop.web.dto.PaymentStartResponse;
+import com.maxsolch.shop.web.dto.StartPaymentRequest;
 import com.maxsolch.shop.web.dto.PromoPreviewDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UploadResponse;
@@ -64,6 +67,9 @@ public class MeController {
     private final PromoService promoService;
     private final ClientEventService clientEventService;
     private final Messages messages;
+    private final OnlinePaymentService onlinePayments;
+    /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
+    private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
@@ -75,7 +81,8 @@ public class MeController {
                         UploadValidator uploadValidator,
                         PromoService promoService,
                         ClientEventService clientEventService,
-                        Messages messages) {
+                        Messages messages,
+                        OnlinePaymentService onlinePayments) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.orderRepository = orderRepository;
@@ -87,6 +94,7 @@ public class MeController {
         this.promoService = promoService;
         this.clientEventService = clientEventService;
         this.messages = messages;
+        this.onlinePayments = onlinePayments;
     }
 
     /**
@@ -201,23 +209,45 @@ public class MeController {
         return messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
     }
 
-    @PostMapping("/orders/{id}/pay")
-    @Operation(summary = "Submit a transfer screenshot → posts it to the order chat and flags the "
-            + "order as 'payment claimed' (an admin still has to confirm the money arrived)")
-    public OrderDetailDto pay(@PathVariable String id, @RequestBody SendMessageRequest req, Locale locale) {
+    @PostMapping("/orders/{id}/payment")
+    @Operation(summary = "Get a monobank payment page for what is due now (whole order or the "
+            + "prepayment). Reuses a live page; 409 with a code when the order cannot be paid")
+    public PaymentStartResponse startPayment(@PathVariable String id,
+                                             @RequestBody(required = false) StartPaymentRequest req,
+                                             Locale locale) {
         Order order = ownedOrder(id);
-        if (req == null || req.attachmentUrl() == null || req.attachmentUrl().isBlank()) {
-            throw new BadRequestException(messages.current("api.order.proofRequired"));
+        OnlinePaymentService.ReturnTo returnTo;
+        if (req != null && req.returnTo() != null && !req.returnTo().isBlank()) {
+            try {
+                returnTo = OnlinePaymentService.ReturnTo.valueOf(req.returnTo().trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("returnTo must be SITE or MINIAPP");
+            }
+        } else {
+            returnTo = SecurityUtil.currentPrincipal().isWeb()
+                    ? OnlinePaymentService.ReturnTo.SITE : OnlinePaymentService.ReturnTo.MINIAPP;
         }
-        requireOwnAttachment(req);
-        // Post the proof into the order chat (admins get notified via MessageService).
-        messageService.postCustomerMessage(order.getId(), order.getUserId(), order.getCustomerName(), req);
-        // NOTE: this only records a CLAIM. It must not set paid/received — doing so used to zero
-        // out the cash-on-delivery amount on the seller's dispatch card, so any customer could get
-        // goods shipped without paying by uploading an arbitrary picture. Confirmation is manual:
-        // PATCH /api/admin/orders/{id}/paid.
-        Order claimed = orderService.claimPayment(order.getId());
-        return orderQueryService.toDetail(claimed, ContentLocale.normalize(locale));
+        String lang = req != null && req.locale() != null && !req.locale().isBlank()
+                ? ContentLocale.normalize(Locale.forLanguageTag(req.locale())) : ContentLocale.normalize(locale);
+        OnlinePaymentService.StartedPayment p = onlinePayments.start(order.getId(), returnTo, lang);
+        return new PaymentStartResponse(p.invoiceId(), p.pageUrl(), p.amountMinor(), p.expiresAt());
+    }
+
+    @PostMapping("/orders/{id}/payment/refresh")
+    @Operation(summary = "Ask monobank for the latest payment status now (after returning from the "
+            + "payment page) and return the order")
+    public OrderDetailDto refreshPayment(@PathVariable String id, Locale locale) {
+        Order order = ownedOrder(id);
+        java.time.Instant now = java.time.Instant.now();
+        java.time.Instant last = lastRefresh.get(id);
+        if (last == null || last.plusSeconds(5).isBefore(now)) {
+            lastRefresh.put(id, now);
+            if (lastRefresh.size() > 10_000) {
+                lastRefresh.clear();
+            }
+            onlinePayments.refreshOrder(order.getId());
+        }
+        return orderQueryService.toDetail(orderService.get(order.getId()), ContentLocale.normalize(locale));
     }
 
     @PostMapping("/orders/{id}/cancel")
@@ -225,7 +255,13 @@ public class MeController {
     public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
                                  Locale locale) {
         Order order = ownedOrder(id);
+        // The bank may be charging the card right now: let that settle first.
+        onlinePayments.refreshOrder(order.getId());
+        if (onlinePayments.hasPaymentInFlight(order.getId())) {
+            throw new BadRequestException(messages.current("api.payment.inProgress"));
+        }
         Order cancelled = orderService.cancelByCustomer(order.getId(), req == null ? null : req.reason());
+        onlinePayments.closeOpenInvoices(order.getId());
         return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
     }
 

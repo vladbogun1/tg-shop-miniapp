@@ -68,13 +68,79 @@ export interface OrderItem {
   gift?: boolean;
 }
 
-export interface PaymentRequisites {
-  cardNumber?: string;
-  iban?: string;
-  recipient?: string;
-  edrpou?: string;
-  purpose?: string;
-  note?: string;
+/** Latest monobank invoice state: "none" = the customer never opened the payment page. */
+export type OnlinePaymentStatus =
+  | "none"
+  | "created"
+  | "processing"
+  | "hold"
+  | "success"
+  | "failure"
+  | "reversed"
+  | "expired";
+
+/** Online payment (monobank) of an order — OrderDetail.payment. */
+export interface OnlinePayment {
+  /** Online payment is configured on the server (token set). */
+  enabled: boolean;
+  status: OnlinePaymentStatus;
+  /** Live payment page; only while it can still be paid. */
+  pageUrl?: string | null;
+  expiresAt?: string | null;
+  amountMinor: number;
+  /** e.g. "444403******1902" */
+  maskedPan?: string | null;
+  /** pan | apple | google | monobank | wallet | direct */
+  paymentMethod?: string | null;
+  failureReason?: string | null;
+}
+
+/** POST /api/me/orders/{id}/payment — send the customer to pageUrl. */
+export interface PaymentStart {
+  invoiceId: string;
+  pageUrl: string;
+  amountMinor: number;
+  expiresAt: string;
+}
+
+/** POST /api/orders. Next step: start the payment for orderId. */
+export interface CreateOrderResult {
+  orderId: string;
+  /** What has to be paid online now (the whole order or the prepayment). */
+  amountDueMinor: number;
+}
+
+/** GET /api/admin/orders/{id}/payments — one monobank invoice. */
+export interface AdminInvoice {
+  invoiceId: string;
+  status: OnlinePaymentStatus;
+  amountMinor: number;
+  finalAmountMinor?: number | null;
+  refundedMinor: number;
+  pageUrl?: string | null;
+  expiresAt?: string | null;
+  maskedPan?: string | null;
+  paymentMethod?: string | null;
+  paymentSystem?: string | null;
+  rrn?: string | null;
+  approvalCode?: string | null;
+  feeMinor?: number | null;
+  failureReason?: string | null;
+  errCode?: string | null;
+  /** When the payment was credited to the order. */
+  appliedAt?: string | null;
+  refundPending: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/admin/payments/monobank/status */
+export interface MonobankStatus {
+  enabled: boolean;
+  merchantName?: string | null;
+  error?: string | null;
+  lastWebhookAt?: string | null;
+  lastWebhookSignatureOk?: boolean | null;
 }
 
 export interface OrderSummary {
@@ -85,12 +151,14 @@ export interface OrderSummary {
   createdAt: string;
   itemsCount: number;
   unreadCount: number;
-  /** Payment confirmed by an admin. */
+  /** Money arrived (online payment or settled on delivery). */
   paid: boolean;
-  /** Customer uploaded a transfer screenshot; awaiting confirmation. */
-  paymentClaimed: boolean;
-  /** Confirmed amount received (0 until an admin confirms the transfer). */
+  /** Amount received so far. */
   receivedMinor: number;
+  /** Pay online by then or the order is cancelled; null = placed before online payment. */
+  paymentDueAt?: string | null;
+  /** Still to pay online now; 0 = nothing to pay. */
+  amountDueMinor?: number;
 }
 
 export interface OrderDetail {
@@ -111,13 +179,16 @@ export interface OrderDetail {
   trackingNumber?: string | null;
   rejectReason?: string | null;
   items: OrderItem[];
-  requisites?: PaymentRequisites | null;
+  /** Online payment (monobank) state. */
+  payment: OnlinePayment;
   paid: boolean;
   paidAt?: string | null;
   prepaymentMinor: number;
   receivedMinor: number;
-  paymentClaimed: boolean;
-  paymentClaimedAt?: string | null;
+  /** Pay online by then or the order is cancelled; null = placed before online payment. */
+  paymentDueAt?: string | null;
+  /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
+  amountDueMinor: number;
   createdAt: string;
   approvedAt?: string | null;
   shippedAt?: string | null;
@@ -140,9 +211,10 @@ export interface OrderCard {
   createdAt: string;
   status: OrderStatus;
   paid: boolean;
-  paymentClaimed: boolean;
-  /** Confirmed amount received, so a partial payment is distinguishable on the board. */
+  /** Amount received, so a partial payment is distinguishable on the board. */
   receivedMinor: number;
+  paymentDueAt?: string | null;
+  amountDueMinor?: number;
 }
 
 // ---- chat -------------------------------------------------------------------

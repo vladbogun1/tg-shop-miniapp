@@ -68,6 +68,10 @@ public class OrderService {
     private final Messages messages;
     private final EntityManager entityManager;
 
+    /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
+    @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
+    private int paymentDueHours = 24;
+
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
@@ -133,14 +137,18 @@ public class OrderService {
             order.setNpWarehouseName(cmd.npWarehouseName());
         }
 
-        // Payment option snapshot.
-        if (cmd.paymentOptionId() != null && !cmd.paymentOptionId().isBlank()) {
-            PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
-                    .orElseThrow(() -> new BadRequestException("unknown payment option"));
-            order.setPaymentOptionId(po.getId());
-            order.setPaymentOptionTitle(po.getTitle());
-            order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
+        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
+        if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
+            throw new BadRequestException(messages.current("api.order.paymentRequired"));
         }
+        PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
+                .filter(PaymentOption::isActive)
+                .orElseThrow(() -> new BadRequestException("unknown payment option"));
+        order.setPaymentOptionId(po.getId());
+        order.setPaymentOptionTitle(po.getTitle());
+        order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        order.setPaymentDueAt(Instant.now().plus(java.time.Duration.ofHours(Math.max(1, paymentDueHours))));
 
         long subtotal = 0;
         List<Product> toSave = new ArrayList<>();
@@ -448,6 +456,66 @@ public class OrderService {
         // COD on the seller's card changes with the received amount — keep it in sync.
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return saved;
+    }
+
+    /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */
+    public static long dueOnlineMinor(Order order) {
+        long total = order.getTotalMinor();
+        return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
+    }
+
+    /** Still to pay online right now (0 once the online part is covered). */
+    public static long amountDueMinor(Order order) {
+        return Math.max(0, dueOnlineMinor(order) - Math.max(0, order.getReceivedMinor()));
+    }
+
+    /**
+     * Money arrived online (a monobank invoice succeeded). Adds it to the received amount — which
+     * drives наложка — and marks the order paid. The status is NOT moved: an admin still confirms
+     * the order by hand (if the goods turn out unavailable, the money is refunded).
+     */
+    @Transactional
+    public Order recordOnlinePayment(byte[] orderId, long amountMinor) {
+        Order order = lock(orderId);
+        long received = Math.min(order.getTotalMinor(), Math.max(0, order.getReceivedMinor()) + amountMinor);
+        order.setReceivedMinor(received);
+        if (received > 0 && !order.isPaid()) {
+            order.setPaid(true);
+            order.setPaidAt(Instant.now());
+        }
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
+        return saved;
+    }
+
+    /** A refund went through at monobank: book it as money given back to the customer. */
+    @Transactional
+    public Order recordOnlineRefund(byte[] orderId, long amountMinor) {
+        Order order = lock(orderId);
+        order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * The online payment deadline passed with nothing paid: reject the order (reason
+     * PAYMENT_TIMEOUT) and put the goods back on the shelf. Re-checked under the row lock, so a
+     * payment that landed meanwhile wins. Returns null when the order no longer qualifies.
+     */
+    @Transactional
+    public Order expireUnpaid(byte[] orderId, Instant now) {
+        Order order = lock(orderId);
+        if (order.getStatus() != OrderStatus.NEW || order.isPaid() || order.getReceivedMinor() > 0
+                || order.getPaymentDueAt() == null || order.getPaymentDueAt().isAfter(now)) {
+            return null;
+        }
+        restoreStock(order);
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(now);
+        order.setRejectReason("Не оплачен в течение " + Math.max(1, paymentDueHours) + " ч");
+        order.setRejectReasonCode(RejectReasonCode.PAYMENT_TIMEOUT.name());
+        return afterTransition(order);
     }
 
     // ----- admin order editing: gifts & discounts -----

@@ -134,6 +134,15 @@ app:
     enabled: ${GEOIP_ENABLED:true}
     path: ${GEOIP_PATH:/app/geoip/dbip-city-lite.mmdb}
     throttle: ${GEOIP_THROTTLE:PT15M}
+  # Online payment via monobank acquiring (docs/MONOBANK-ACQUIRING.md). Empty token = off.
+  payment:
+    due-hours: ${PAYMENT_DUE_HOURS:24}
+    invoice-ttl-minutes: ${PAYMENT_INVOICE_TTL_MINUTES:60}
+    reconcile-ms: ${PAYMENT_RECONCILE_MS:120000}
+    monobank:
+      token: ${MONOBANK_TOKEN:}
+      api-url: ${MONOBANK_API_URL:https://api.monobank.ua}
+      webhook-url: ${MONOBANK_WEBHOOK_URL:}
   novaposhta:
     api-key: ${NOVAPOSHTA_API_KEY:}
     api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}

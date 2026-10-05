@@ -1,0 +1,657 @@
+## POST /api/merchant/invoice/create Створення рахунку
+Створення рахунку для оплати
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param header X-Cms — Назва CMS, якщо ви розробляєте платіжний модуль для CMS
+param header X-Cms-Version — Версія CMS, якщо ви розробляєте платіжний модуль для CMS
+REQUEST:
+amount* : integer ex=4200 — Сума оплати у мінімальних одиницях (копійки для гривні)
+ccy : integer ex=980 — ISO 4217 код валюти, за замовчуванням 980 (гривня)
+merchantPaymInfo : object — Інформаційні дані замовлення, яке буде оплачуватись. Обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.reference : string ex="84d0070ee4e44667b31371d8f8813947" — Номер чека, замовлення, тощо; визначається мерчантом
+merchantPaymInfo.destination : string maxLen=280 ex="Покупка щастя" — Призначення платежу
+merchantPaymInfo.comment : string maxLen=280 ex="Покупка щастя" — Службове інформаційне поле
+merchantPaymInfo.customerEmails : array<string> ex=[] — Масив пошт, на які потрібно відправити фіскальний чек, якщо у мерчанта активна звʼязка з checkbox
+merchantPaymInfo.discounts : array<object> — Масив знижок або надбавок на всю корзину, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.metadata : object ex={"key1":"value1","key2":"value2"} — Додаткові дані замовлення, які будуть доступні в ендпоінті виписки
+merchantPaymInfo.basketOrder : array<object> — Склад замовлення, використовується для відображення кошика замовлення, обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.basketOrder[].name* : string ex="Табуретка" — Назва товару
+merchantPaymInfo.basketOrder[].qty* : number ex=2 — Кількість одиниць товару
+merchantPaymInfo.basketOrder[].sum* : integer ex=2100 — Сума у мінімальних одиницях валюти за одиницю товару; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].total : integer ex=4200 — Сума у мінімальних одиницях валюти за всю кількість товарів; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].icon : string — Лінк на зображення товару
+merchantPaymInfo.basketOrder[].unit : string ex="шт." — Назва одиниці вимiру товару
+merchantPaymInfo.basketOrder[].code* : string ex="d21da1c47f3c45fca10a10c32518bdeb" — Код товару, обов'язковий для фіскалізації
+merchantPaymInfo.basketOrder[].barcode : string — Значення штрих-коду, може бути потрібно для фіскалізації
+merchantPaymInfo.basketOrder[].header : string — Текст, що передує назві товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].footer : string — Текст, після товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].tax : array<integer> ex=[] — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.basketOrder[].uktzed : string — Код УКТ ЗЕД
+merchantPaymInfo.basketOrder[].splitReceiverId : string ex="a1b2c3d4e5f6" — Для схеми розщеплення - референс саб-мерчанта для виплати за товар
+merchantPaymInfo.basketOrder[].discounts : array<object> — Масив знижок або надбавок на цю позицію в корзині, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.basketOrder[].discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.basketOrder[].discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.basketOrder[].discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.basketOrder[].discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+redirectUrl : string ex="https://example.com/your/website/result/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача після завершення оплати (у разі успіху або помилки)
+successUrl : string ex="https://example.com/your/website/success/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача у разі успішної оплати. Для підключення функції, зверніться, будь ласка, в службу турботи monobank. Редірект недоступний за замовчуванням.
+failUrl : string ex="https://example.com/your/website/fail/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача у разі неуспішної оплати. Для підключення функції, зверніться, будь ласка, в службу турботи monobank. Редірект недоступний за замовчуванням.
+webHookUrl : string ex="https://example.com/mono/acquiring/webhook/maybesomegibberishuniquestringbutnot — Адреса для CallBack (POST) – на цю адресу буде надіслано дані про стан платежу при зміні статусу, окрім статусу `expired`. Зміст тіла запиту ідентичний відповіді запиту "Статус рахунку". **Гарантії доставки повідомлень одне за одним не надається. Тобто, може бути ситуація, коли вебхук про успішну оплату (`status=success`) прийде раніше за вебхук про обробку цієї оплати (`status=processing`). Краще орієнтуватись на поле `modifiedDate` при аналізі поточного статусу рахунку. Вебхук із більшим `modifiedDate` буде актуальним**. Окрім вебхуків при зміні статусу рахунку, вебхуки також будуть приходити при зміні статусу токенізоваї картки, якщо обʼєкт `saveCardData` було вказано при створенні рахунку
+validity : integer ex=3600 — Строк дії в секундах, за замовчуванням рахунок перестає бути дійсним через 24 години. Максимальний термін життя інвойса який можна задати - 30 днів. Якщо передати більше 30 днів, то автоматично обрізається до 30 днів
+paymentType : string enum=debit|hold|verification default=debit — Тип операції. Для значення `hold` термін складає 9 днів. Якщо через 9 днів холд не буде фіналізовано — він скасовується. Працює тільки з `ccy` - 980 Для значення `verification` обов'язково передавати `saveCardData.saveCard: true`. Сума `amount` має бути `0` — у цьому випадку проводиться верифікація картки без фактичного списання коштів. 
+qrId : string ex="XJ_DiM4rTd5V" — Ідентифікатор QR-каси для встановлення суми оплати на існуючих QR-кас
+code : string ex="0a8637b3bccb42aa93fdeb791b8b58e9" — Код терміналу субмерчанта, з апі "Список субмерчантів". Доступний обмеженому колу мерчантів, які точно знають, що їм це потрібно
+saveCardData : object — Дані для збереження (токенізації) картки. Для підключення функції, зверніться, будь ласка, в службу турботи monobank. Токенізація недоступна за замовчуванням
+saveCardData.saveCard* : boolean — Ознака зберігання картки (токенізації) після оплати
+saveCardData.walletId : string ex="69f780d841a0434aa535b08821f4822c" — Ідентифікатор гаманця користувача
+agentFeePercent : number ex=1.42 — Відсоток комісії, який агент встановлює для себе
+displayType : string enum=iframe — Отримання клієнтом посилання iframe для відображення віджета (якщо параметр не передано, то звичайне посилання)
+withAppUrl : boolean ex=true — Якщо передати `true`, у відповіді буде повернуто поле `appUrl` — диплінк `monobank://...` для відкриття застосунку monobank на екрані підтвердження платежу. Не підтримується для QR-платежів та верифікаційних платежів. 
+RESPONSE 200:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку, унікальний
+pageUrl* : string ex="https://pay.mbnk.biz/p2_9ZgpZVsl3" — Посилання на сторінку оплати
+appUrl : string ex="monobank://pay/p2_9ZgpZVsl3" — Диплінк для відкриття застосунку monobank на екрані підтвердження платежу. Повертається лише якщо у запиті було передано `withAppUrl: true`. 
+
+## GET /api/merchant/invoice/status?invoiceId={invoiceId} Статус рахунку
+Метод перевірки статусу рахунку при розсинхронізації з боку продавця.
+
+Не використовуйте сервіс як основний механізм перевірки статусу по інвойсу після здійснення операції. Для отримання інформації про зміну статусу інвойса, краще використовувати Webhooks.
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query invoiceId — Ідентифікатор рахунку
+RESPONSE 200:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку
+status* : string enum=created|processing|hold|success|failure|reversed|expired — Статус операції: `created` - рахунок створено успішно, очікується оплата `processing` - платіж обробляється `hold` - сума заблокована `success` - успішна оплата `failure` - неуспішна оплата `reversed` - оплата повернена після успіху `expired` - час дії вичерпано У випадку вебхуків гарантії доставки повідомлень одне за одним не надається. Тобто, може бути ситуація, коли вебхук про успішну оплату (`success`) прийде раніше за вебхук про обробку цієї оплати (`status=processing`). Краще орієнтуватись на поле `modifiedDate` при аналізі поточного статусу рахунку. Вебхук із більшим `modifiedDate` буде актуальним 
+failureReason : string ex="Неправильний CVV код" — Причина відмови
+errCode : string ex="59" — Код помилки, яка виникла під час обробки платежу. Що цей код означає, і куди звернутися можна в розділі "Помилки в процесі оплати"
+amount* : integer ex=4200 — Сума у мінімальних одиницях валюти
+ccy* : integer ex=980 — Валюта
+finalAmount : integer ex=4200 — Підсумкова сума у мінімальних одиницях валюти, змінюється після оплати та повернень
+createdDate : string — Дата і час фін. операції
+modifiedDate : string — Дата і час останньої модифікації операції
+reference : string ex="84d0070ee4e44667b31371d8f8813947" — Референс платежу, який визначається продавцем
+destination : string ex="Покупка щастя" — Призначення платежу, визначається продавцем
+cancelList : array<object> — Список прийнятих заявок на скасування
+cancelList[].status* : string enum=processing|success|failure — Статус заяви скасування: `processing` - заява на скасування знаходиться в обробці `success` - заяву на скасування виконано успішно `failure` - неуспішне скасування 
+cancelList[].amount : integer ex=4200 — Сума у мінімальних одиницях
+cancelList[].ccy : integer ex=980 — ISO 4217 код валюти
+cancelList[].createdDate* : string — Дата і час створення заяви на скасування
+cancelList[].modifiedDate* : string — Дата і час останньої модифікації операції скасування
+cancelList[].approvalCode : string ex="662476" — Код авторизації
+cancelList[].rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+cancelList[].extRef : string ex="635ace02599849e981b2cd7a65f417fe" — Референс операції скасування, який було вказано продавцем
+paymentInfo : object — Дані оплати, можуть бути `status=processing`, `status=success`, `status=failure`, `status=reversed`
+paymentInfo.maskedPan* : string ex="444403******1902" — Маскований номер картки, за якою здійснювалась оплата
+paymentInfo.approvalCode : string ex="662476" — Код авторизації транзакції
+paymentInfo.rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+paymentInfo.tranId : string ex="13194036" — Ідентифікатор транзакції
+paymentInfo.terminal* : string ex="MI001088" — Ідентифікатор платіжного пристрою, через який пройшла транзакція
+paymentInfo.bank : string ex="Універсал Банк" — Назва банку картки, якою проводилася оплата
+paymentInfo.paymentSystem* : string enum=visa|mastercard ex="visa" — Назва платіжної системи картки
+paymentInfo.paymentMethod* : string enum=pan|apple|google|monobank|wallet|direct — Метод оплати: `pan` - оплата була здійснена за введеним номером картки `apple` - оплата була здійснена через apple pay `google` - оплата була здійснена через google pay `monobank` - оплата була здійснена через monobank `wallet` - оплата була здійснена токенізованою карткою `direct` - оплата була здійснена через апі 'Оплата за реквізитами' (за умови, що у мерчанта був PCI DSS сертифікат) 
+paymentInfo.fee : integer — Еквайрингова комісія в мінімальних одиницях
+paymentInfo.country : string ex="804" — Країна банку (ISO-3166-1 numeric), якому належить картка, якою була здійснена оплата
+paymentInfo.agentFee : integer — Комісія агента в мінімальних одиницях
+walletData : object — Параметри картки
+walletData.cardToken* : string ex="67XZtXdR4NpKU3" — Токен картки
+walletData.walletId* : string ex="c1376a611e17b059aeaf96b73258da9c" — Ідентифікатор гаманця покупця
+walletData.status* : string enum=new|created|failed — Статус токенізації картки: `new` - прийнято заявку на токенізацію `created` - картку успішно токенізовано `failed` - картку не вдалось токенізувати 
+
+## POST /api/merchant/invoice/cancel Скасування оплати
+Скасування успішної оплати рахунку
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку
+extRef : string ex="635ace02599849e981b2cd7a65f417fe" — Референс операції скасування, який визначається продавцем
+amount : integer ex=5000 — Сума у мінімальних одиницях (при частковому поверненні)
+items : array<object> — Список товарів для створення чеку повернення, поле обов'язкове у випадку активованої опції фіскалізації
+items[].name* : string ex="Табуретка" — Назва товару
+items[].qty* : number ex=2 — Кількість
+items[].sum* : integer ex=2100 — Сума у мінімальних одиницях валюти за одиницю товару
+items[].code* : string ex="d21da1c47f3c45fca10a10c32518bdeb" — Код товару, обов'язковий для фіскалізації
+items[].barcode : string ex="3b2a558cc6e44e218cdce301d80a1779" — Значення штрих-коду, може бути потрібно для фіскалізації
+items[].header : string ex="Хідер" — Текст, що передує назві товару, може бути потрібний для фіскалізації
+items[].footer : string ex="Футер" — Текст, після товару, може бути потрібний для фіскалізації
+items[].tax : array<integer> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+items[].uktzed : string ex="uktzedcode" — Код УКТ ЗЕД
+RESPONSE 200:
+status* : string enum=processing|success|failure — Статус операції: `processing` - заява на скасування знаходиться в обробці `success` - заяву на скасування виконано успішно `failure` - неуспішне скасування 
+createdDate* : string — Дата і час створення заяви на скасування
+modifiedDate* : string — Дата і час останньої модифікації операції скасування
+
+## POST /api/merchant/invoice/remove Інвалідація рахунку
+Інвалідація рахунку, якщо за ним ще не було здіснено оплати
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку
+RESPONSE 200:
+
+## GET /api/merchant/pubkey Відкритий ключ для верифікації підписів
+Отримання відкритого ключа для перевірки підпису, який включено у вебхуки. Ключ можна кешувати і робити запит на отримання нового, коли верифікація підпису з поточним ключем перестане працювати. Кожного разу робити запит на отримання ключа не треба
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+key* : string ex="LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0R — base64-закодований x.509 ecdsa відркитий ключ
+
+## POST /api/merchant/invoice/finalize Фіналізація суми холду
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку
+amount* : integer ex=4200 — Сума у мінімальних одиницях
+items : array<object> — Список товарів для для фіскалізації, коли сума фіналізації холду не співпадає з оригінальною сумою оплати
+items[].name* : string ex="Табуретка" — Назва товару
+items[].qty* : number ex=2 — Кількість
+items[].sum* : integer ex=2100 — Сума у мінімальних одиницях валюти за одиницю товару
+items[].code* : string ex="d21da1c47f3c45fca10a10c32518bdeb" — Код товару, обов'язковий для фіскалізації
+items[].barcode : string ex="3b2a558cc6e44e218cdce301d80a1779" — Значення штрих-коду, може бути потрібно для фіскалізації
+items[].header : string ex="Хідер" — Текст, що передує назві товару, може бути потрібний для фіскалізації
+items[].footer : string ex="Футер" — Текст, після товару, може бути потрібний для фіскалізації
+items[].tax : array<integer> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+items[].uktzed : string ex="uktzedcode" — Код УКТ ЗЕД
+RESPONSE 200:
+status* : string enum=success ex="success" — Статус заяви: `success` - заяву на фіналізацію прийнято 
+
+## GET /api/merchant/qr/details?qrId={qrId} Інформація про QR-касу
+Інформація про QR-касу, лише для активованих QR-кас
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query qrId — Ідентифікатор QR-каси
+RESPONSE 200:
+shortQrId* : string ex="OBJE" — Короткий ідентифікатор QR-каси
+invoiceId : string ex="4EwIUTA12JIZ" — Ідентифікатор рахунку для оплати, присутній лише у разі наявності встановленої суми
+amount : integer ex=4200 — Сума у мінімальних одиницях
+ccy : integer ex=980 — ISO 4217 код валюти
+
+## POST /api/merchant/qr/reset-amount Видалення суми оплати
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+qrId* : string ex="XJ_DiM4rTd5V" — Ідентифікатор QR-каси
+RESPONSE 200:
+
+## GET /api/merchant/qr/list Список QR-кас
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+list : array<object> — Список QR-кас
+list[].shortQrId* : string ex="OBJE" — Короткий ідентифікатор QR-каси
+list[].qrId* : string ex="XJ_DiM4rTd5V" — Ідентифікатор QR-каси для встановлення суми оплати на існуючих QR-кас
+list[].amountType* : string enum=merchant|client|fix — Тип суми одноразової каси: `merchant` - суму встановлює мерчант `client` - суму встановлює клієнт `fix` - сума фіксована 
+list[].pageUrl* : string ex="https://pay.mbnk.biz/XJ_DiM4rTd5V" — Посилання на оплату QR-каси
+
+## GET /api/merchant/details Дані мерчанта
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+merchantId* : string ex="12o4Vv7EWy" — Ідентифікатор мерчанта
+merchantName* : string ex="Your Favourite Company" — Найменування мерчанта
+edrpou* : string ex="4242424242" — Код ЄДРПОУ
+
+## GET /api/merchant/statement Виписка за період
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query from* — utc unix timestamp
+param query to — utc unix timestamp
+param query code — Ідентифікатор терміналу субмерчанту (використовується, якщо мерчант має субмерчантів)
+RESPONSE 200:
+list : array<object> — Виписка, впорядкована від більшої дати до меншої
+list[].invoiceId* : string ex="2205175v4MfatvmUL2oR" — Ідентифікатор рахунку, за яким здійснювалась оплата
+list[].status* : string enum=hold|processing|success|failure ex="success" — 
+list[].maskedPan* : string ex="444403******1902" — Маскований номер картки, за якою здійснювалась оплата
+list[].date* : string — Дата і час фін. операції у форматі RFC-3339
+list[].paymentScheme* : string enum=bnpl_later_30|bnpl_parts_4|full — Схема оплати: `bnpl_later_30` - bnpl-оплата `bnpl_parts_4` - платіж 4 частини `full` - повна оплата 
+list[].amount* : integer ex=4200 — Сума оплати у мінімальних одиницях (копійки для гривні)
+list[].profitAmount : integer ex=4100 — Сума, яку отримає мерчант на свій рахунок після взаєморозрахунку з банком
+list[].agentFee : integer ex=500 — Сума агентської комісії, яку отримає агент, якщо при створенні рахунку було вказано `agentFeePercent`
+list[].ccy* : integer ex=980 — ISO 4217 код валюти
+list[].approvalCode : string ex="662476" — Код авторизації транзакції
+list[].rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+list[].reference : string ex="84d0070ee4e44667b31371d8f8813947" — Номер чека, замовлення, тощо, який було вказано мерчантом при створенні рахунку
+list[].shortQrId : string ex="OBJE" — Короткий ідентифікатор QR-каси
+list[].destination : string ex="Покупка щастя" — Призначення платежу, визначається продавцем
+list[].cancelList : array<object> — Перелік операцій скасування
+list[].cancelList[].amount* : integer ex=4200 — Сума оплати у мінімальних одиницях (копійки для гривні)
+list[].cancelList[].ccy* : integer ex=980 — ISO 4217 код валюти
+list[].cancelList[].date* : string — Дата і час фін. операції у форматі RFC-3339
+list[].cancelList[].approvalCode : string ex="662476" — Код авторизації транзакції
+list[].cancelList[].rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+list[].cancelList[].maskedPan* : string ex="444403******1902" — Маскований номер картки, на яку здійснювалось повернення коштів
+list[].splitReceiverList : array<object> — Перелік отримувачів розщепленого платежу
+list[].splitReceiverList[].splitReceiverId* : string ex="sr_aB3dC5eF7g" — Ідентифікатор (референс) отримувача розщепленого платежу
+list[].splitReceiverList[].amount* : integer ex=4200 — Сума, розщеплена на цього отримувача, у копійках
+list[].splitReceiverList[].profit* : integer ex=4100 — Сума, яку отримає саб-мерчант на свій рахунок після взаєморозрахунку з банком
+list[].splitReceiverList[].agentFee : integer ex=500 — Сума агентської комісії за розщепленою частиною, якщо при створенні рахунку було вказано `agentFeePercent`
+list[].metadata : object ex={"key1":"value1","key2":"value2"} — Додаткові дані замовлення, які були вказані при створенні інвойсу
+
+## DELETE /api/merchant/wallet/card Видалення токенізованої картки
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query cardToken — Токен картки
+RESPONSE 200:
+
+## GET /api/merchant/wallet Список карток у гаманці
+
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query walletId — Ідентифікатор гаманця покупця
+RESPONSE 200:
+wallet* : array<object> — 
+wallet[].cardToken* : string ex="67XZtXdR4NpKU3" — Токен картки
+wallet[].maskedPan* : string ex="424242******4242" — Маскований номер картки
+wallet[].country : string ex="804" — Країна банку (ISO-3166-1 numeric), якому належить картка
+
+## POST /api/merchant/wallet/payment Оплата по токену
+Створення платежу за токеном картки
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param header X-Cms — Назва CMS, якщо ви розробляєте платіжний модуль для CMS
+param header X-Cms-Version — Версія CMS, якщо ви розробляєте платіжний модуль для CMS
+REQUEST:
+cardToken* : string ex="67XZtXdR4NpKU3" — Токен картки
+amount* : integer ex=4200 — Сума у мінімальних одиницях
+ccy* : integer ex=980 — ISO 4217 код валюти
+redirectUrl : string ex="https://example.com/your/website/result/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача за умови проведення 3DS
+webHookUrl : string ex="https://example.com/mono/acquiring/webhook/maybesomegibberishuniquestringbutnot — Адреса для CallBack (POST) – на цю адресу буде надіслано дані про стан платежу при зміні статусу, окрім статусу `expired`. Зміст тіла запиту ідентичний відповіді запиту "Статус рахунку". **Гарантії доставки повідомлень одне за одним не надається. Тобто, може бути ситуація, коли вебхук про успішну оплату (`status=success`) прийде раніше за вебхук про обробку цієї оплати (`status=processing`). Краще орієнтуватись на поле `modifiedDate` при аналізі поточного статусу рахунку. Вебхук із більшим `modifiedDate` буде актуальним**
+initiationKind* : string enum=merchant|client — Тип проведення платежу: `merchant` - платіж з ініціативи мерчанта, наприклад, регулярний платіж — коли клієнт не бере участі у підтвердженні платежу `client` - платіж за вимогою клієнта, наприклад, клієнт виконує оплату зі збереженої картки 
+merchantPaymInfo : object — Інформаційні дані замовлення, яке буде оплачуватись. Обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.reference : string ex="84d0070ee4e44667b31371d8f8813947" — Номер чека, замовлення, тощо; визначається мерчантом
+merchantPaymInfo.destination : string maxLen=280 ex="Покупка щастя" — Призначення платежу
+merchantPaymInfo.comment : string maxLen=280 ex="Покупка щастя" — Службове інформаційне поле
+merchantPaymInfo.customerEmails : array<string> ex=[] — Масив пошт, на які потрібно відправити фіскальний чек, якщо у мерчанта активна звʼязка з checkbox
+merchantPaymInfo.discounts : array<object> — Масив знижок або надбавок на всю корзину, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.metadata : object ex={"key1":"value1","key2":"value2"} — Додаткові дані замовлення, які будуть доступні в ендпоінті виписки
+merchantPaymInfo.basketOrder : array<object> — Склад замовлення, використовується для відображення кошика замовлення, обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.basketOrder[].name* : string ex="Табуретка" — Назва товару
+merchantPaymInfo.basketOrder[].qty* : number ex=2 — Кількість одиниць товару
+merchantPaymInfo.basketOrder[].sum* : integer ex=2100 — Сума у мінімальних одиницях валюти за одиницю товару; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].total : integer ex=4200 — Сума у мінімальних одиницях валюти за всю кількість товарів; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].icon : string — Лінк на зображення товару
+merchantPaymInfo.basketOrder[].unit : string ex="шт." — Назва одиниці вимiру товару
+merchantPaymInfo.basketOrder[].code* : string ex="d21da1c47f3c45fca10a10c32518bdeb" — Код товару, обов'язковий для фіскалізації
+merchantPaymInfo.basketOrder[].barcode : string — Значення штрих-коду, може бути потрібно для фіскалізації
+merchantPaymInfo.basketOrder[].header : string — Текст, що передує назві товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].footer : string — Текст, після товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].tax : array<integer> ex=[] — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.basketOrder[].uktzed : string — Код УКТ ЗЕД
+merchantPaymInfo.basketOrder[].splitReceiverId : string ex="a1b2c3d4e5f6" — Для схеми розщеплення - референс саб-мерчанта для виплати за товар
+merchantPaymInfo.basketOrder[].discounts : array<object> — Масив знижок або надбавок на цю позицію в корзині, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.basketOrder[].discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.basketOrder[].discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.basketOrder[].discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.basketOrder[].discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+paymentType : string enum=debit|hold default=debit — Тип операції. Для значення `hold` термін складає 9 днів. Якщо через 9 днів холд не буде фіналізовано — він скасовується
+RESPONSE 200:
+invoiceId* : string ex="2210012MPLYwJjVUzchj" — Ідентифікатор рахунку, за яким здійснювалась оплата
+tdsUrl : string ex="https://example.com/tds/url" — Посилання на 3DS
+status* : string enum=processing|success|failure ex="success" — Статус оплати
+failureReason : string ex="Неправильний CVV код" — Причина відмови
+amount* : integer ex=4200 — Сума у мінімальних одиницях
+ccy* : integer ex=980 — ISO 4217 код валюти
+createdDate* : string — Дата і час створення заяви на оплату
+modifiedDate* : string — Дата і час останньої модифікації операції оплати
+
+## POST /api/merchant/invoice/payment-direct Оплата за реквізитами
+Створення рахунку та його оплата за реквізитами картки. Увага, це апі буде працювати тільки за умови наявності у мерчанта активного PCI DSS сертифіката!
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param header X-Cms — Назва CMS, якщо ви розробляєте платіжний модуль для CMS
+param header X-Cms-Version — Версія CMS, якщо ви розробляєте платіжний модуль для CMS
+REQUEST:
+amount* : integer ex=4200 — Сума оплати у мінімальних одиницях (копійки для гривні)
+ccy : integer ex=980 — ISO 4217 код валюти, за замовчуванням 980 (гривня)
+cardData* : object — Дані картки
+cardData.pan* : string ex="4242424242424242" — Номер картки
+cardData.exp* : string ex="0642" — Термін дії картки у форматі `mmyy`
+cardData.cvv* : string ex=123 — Cvv
+merchantPaymInfo : object — Інформаційні дані замовлення, яке буде оплачуватись. Обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.reference : string ex="84d0070ee4e44667b31371d8f8813947" — Номер чека, замовлення, тощо; визначається мерчантом
+merchantPaymInfo.destination : string maxLen=280 ex="Покупка щастя" — Призначення платежу
+merchantPaymInfo.comment : string maxLen=280 ex="Покупка щастя" — Службове інформаційне поле
+merchantPaymInfo.customerEmails : array<string> ex=[] — Масив пошт, на які потрібно відправити фіскальний чек, якщо у мерчанта активна звʼязка з checkbox
+merchantPaymInfo.discounts : array<object> — Масив знижок або надбавок на всю корзину, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.metadata : object ex={"key1":"value1","key2":"value2"} — Додаткові дані замовлення, які будуть доступні в ендпоінті виписки
+merchantPaymInfo.basketOrder : array<object> — Склад замовлення, використовується для відображення кошика замовлення, обовʼязково вказувати при активній звʼязці з ПРРО (звʼязка створюється у веб-кабінеті https://web.monobank.ua)
+merchantPaymInfo.basketOrder[].name* : string ex="Табуретка" — Назва товару
+merchantPaymInfo.basketOrder[].qty* : number ex=2 — Кількість одиниць товару
+merchantPaymInfo.basketOrder[].sum* : integer ex=2100 — Сума у мінімальних одиницях валюти за одиницю товару; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].total : integer ex=4200 — Сума у мінімальних одиницях валюти за всю кількість товарів; якщо ви торгуєте табуретками, ціна якої 21 гривня, і у вас замовлення на 2 табуретки, то qty=2, sum=2100, amount=4200, total=4200
+merchantPaymInfo.basketOrder[].icon : string — Лінк на зображення товару
+merchantPaymInfo.basketOrder[].unit : string ex="шт." — Назва одиниці вимiру товару
+merchantPaymInfo.basketOrder[].code* : string ex="d21da1c47f3c45fca10a10c32518bdeb" — Код товару, обов'язковий для фіскалізації
+merchantPaymInfo.basketOrder[].barcode : string — Значення штрих-коду, може бути потрібно для фіскалізації
+merchantPaymInfo.basketOrder[].header : string — Текст, що передує назві товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].footer : string — Текст, після товару, може бути потрібний для фіскалізації
+merchantPaymInfo.basketOrder[].tax : array<integer> ex=[] — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+merchantPaymInfo.basketOrder[].uktzed : string — Код УКТ ЗЕД
+merchantPaymInfo.basketOrder[].splitReceiverId : string ex="a1b2c3d4e5f6" — Для схеми розщеплення - референс саб-мерчанта для виплати за товар
+merchantPaymInfo.basketOrder[].discounts : array<object> — Масив знижок або надбавок на цю позицію в корзині, які будуть передані в checkbox для фіскалізації, якщо звʼязку з checkbox активовано
+merchantPaymInfo.basketOrder[].discounts[].type* : string enum=DISCOUNT|EXTRA_CHARGE — Тип знижки або надбавки `DISCOUNT` — знижка `EXTRA_CHARGE` — надбавка 
+merchantPaymInfo.basketOrder[].discounts[].mode* : string enum=PERCENT|VALUE — Режим знижки або надбавки `PERCENT` — відсоток від basketOrder.sum * basketOrder.qty `VALUE` — числове значення 
+merchantPaymInfo.basketOrder[].discounts[].value* : number — Значення, яке буде фігурувати в розрахунках
+merchantPaymInfo.basketOrder[].discounts[].tax : array<obj> — Масив податкових ставок, які використовуються при фіскалізації. • Для Checkbox: необов'язкова передача даних у цьому полі • Для Вчасно.Каса: обов'язкова передача даних у цьому полі При використанні пРРО "API для податкової" податкові ставки наразі не застосовуються 
+webHookUrl : string ex="https://example.com/mono/acquiring/webhook/maybesomegibberishuniquestringbutnot — Адреса для CallBack (POST) – на цю адресу буде надіслано дані про стан платежу при зміні статусу, окрім статусу `expired`. Зміст тіла запиту ідентичний відповіді запиту "Статус рахунку". **Гарантії доставки повідомлень одне за одним не надається. Тобто, може бути ситуація, коли вебхук про успішну оплату (`status=success`) прийде раніше за вебхук про обробку цієї оплати (`status=processing`). Краще орієнтуватись на поле `modifiedDate` при аналізі поточного статусу рахунку. Вебхук із більшим `modifiedDate` буде актуальним**
+paymentType : string enum=debit|hold default=debit — Тип операції. Для значення `hold` термін складає 9 днів. Якщо через 9 днів холд не буде фіналізовано — він скасовується
+saveCardData : object — Дані для збереження (токенізації) картки. Для підключення функції, зверніться, будь ласка, в службу турботи monobank. Токенізація недоступна за замовчуванням
+saveCardData.saveCard* : boolean — Ознака зберігання картки (токенізації) після оплати
+saveCardData.walletId : string ex="69f780d841a0434aa535b08821f4822c" — Ідентифікатор гаманця користувача
+redirectUrl : string ex="https://example.com/your/website/result/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача після завершення оплати (у разі успіху або помилки), це поле обовʼязкове при `initiationKind=client`
+initiationKind : string enum=merchant|client — Тип проведення платежу: `merchant` - платіж з ініціативи мерчанта, наприклад, регулярний платіж — коли клієнт не бере участі у підтвердженні платежу `client` - платіж за вимогою клієнта 
+RESPONSE 200:
+invoiceId* : string ex="2210012MPLYwJjVUzchj" — Ідентифікатор рахунку, за яким здійснювалась оплата
+tdsUrl : string ex="https://example.com/tds/url" — Посилання на 3DS
+status* : string enum=processing|success|failure ex="success" — Статус оплати
+failureReason : string ex="Неправильний CVV код" — Причина відмови
+amount* : integer ex=4200 — Сума у мінімальних одиницях
+ccy* : integer ex=980 — ISO 4217 код валюти
+createdDate* : string — Дата і час створення заяви на оплату
+modifiedDate* : string — Дата і час останньої модифікації операції оплати
+
+## GET /api/merchant/submerchant/list Список субмерчантів
+Дане апі потрібне обмеженому колу осіб, яким при створенні рахунку треба явно вказувати термінал
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+list : array<object> — 
+list[].code* : string ex="0a8637b3bccb42aa93fdeb791b8b58e9" — Ідентифікатор терміналу
+list[].edrpou : string ex="4242424242" — ЄДРПОУ власника терміналу
+list[].iban* : string ex="UA213996220000026007233566001" — IBAN власника терміналу
+list[].owner : string ex="ТОВ Ворона" — Назва власника терміналу
+
+## GET /api/merchant/invoice/receipt?invoiceId={invoiceId} Квитанція
+Метод для отримання та відправки квитанції на електронну пошту
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query invoiceId* — Ідентифікатор рахунку
+param query email — Адреса електронної пошти
+RESPONSE 200:
+file : string ex="CJFVBERi0xLj4QKJaqrrK0KMSAw123I4G9ia3go38PAovQ43JlYXRvciAoQXBhY2hl5IEZPUCBWZXJz — base64-закодований PDF файл квитанції
+
+## GET /api/merchant/invoice/fiscal-checks?invoiceId={invoiceId} Фіскальні чеки
+Метод для отримання даних фіскальних чеків та їх статусів
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query invoiceId — Ідентифікатор рахунку
+RESPONSE 200:
+checks : array<object> — 
+checks[].id* : string ex="a2fd4aef-cdb8-4e25-9b36-b6d4672c554d" — Ідентифікатор чеку
+checks[].type* : string enum=sale|return ex="sale" — Тип чеку
+checks[].status* : string enum=new|process|done|failed ex="done" — Статус чеку
+checks[].statusDescription : string ex="" — Опис статусу чеку
+checks[].taxUrl : string ex="https://cabinet.tax.gov.ua/cashregs/check" — Посилання на чек
+checks[].file : string ex="CJFVBERi0xLj4QKJaqrrK0KMSAw123I4G9ia3go38PAovQ43JlYXRvciAoQXBhY2hl5IEZPUCBWZXJz — base64-закодований PDF файл чеку
+checks[].fiscalizationSource* : string enum=checkbox|monopay|vchasnokasa ex="monopay" — Сервіс, через який виконувалась фіскалізація
+
+## POST /api/merchant/invoice/sync-payment Синхронна оплата
+Апі для синхронної оплати, доступ до апі надається через службу турботи та вимагає наявності певного ряду сертифікатів. Один із обʼєктів `cardData`, `applePay`, `googlePay` є обовʼязковим
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param header X-Cms — Назва CMS, якщо ви розробляєте платіжний модуль для CMS
+param header X-Cms-Version — Версія CMS, якщо ви розробляєте платіжний модуль для CMS
+REQUEST:
+amount* : integer ex=4200 — Сума оплати у мінімальних одиницях (копійки для гривні)
+ccy* : integer ex=980 — ISO 4217 код валюти, за замовчуванням 980 (гривня)
+merchantPaymInfo : object — Інформаційні дані замовлення, яке буде оплачуватись
+merchantPaymInfo.reference : string ex="84d0070ee4e44667b31371d8f8813947" — Номер чека, замовлення, тощо, який було вказано мерчантом при створенні рахунку
+merchantPaymInfo.destination : string ex="Покупка щастя" — Призначення платежу, визначається продавцем
+cardData : object — Дані для оплати карткою
+cardData.pan* : string ex="4242424242424242" — Номер картки
+cardData.type* : string enum=FPAN|DPAN — 
+cardData.exp* : string ex="0642" — Термін дії картки у форматі `mmyy`
+cardData.cvv : string ex="123" — Cvv
+cardData.eciIndicator* : string ex="02" — Electronic Commerce Indicator, значення результату аутентифікації
+cardData.cavv : string ex="123" — Cardholder Authentication Verification Value
+cardData.tavv : string ex="tavv" — Token authentication verification value
+cardData.dsTranId : string ex="12" — XID (DSTranID)
+cardData.tReqID : string ex="51" — Token requestor ID
+cardData.mit : string ex="1" — Merchant Initiated Transaction Indicator 1 - Merchant Initiated Transaction 2 - Customer Initiated Transaction
+cardData.sst : number ex="2" — Subsequent Transaction
+cardData.tid : string ex="12" — Trace Id (ID first operation)
+applePay : object — Дані з криптоконтейнеру Apple Pay
+applePay.token* : string ex="4242424242424242" — Токен картки
+applePay.exp* : string ex="0642" — Термін дії картки у форматі `mmyy`
+applePay.eciIndicator* : string ex="02" — Electronic Commerce Indicator, значення результату аутентифікації
+applePay.cryptogram : string ex="AQAAAAoAR9qDi9kAAAAAgGpLpoA=" — TAVV криптограма
+googlePay : object — Дані з криптоконтейнеру Google Pay
+googlePay.token* : string ex="4242424242424242" — Токен картки
+googlePay.exp* : string ex="0642" — Термін дії картки у форматі `mmyy`
+googlePay.eciIndicator* : string ex="02" — Electronic Commerce Indicator, значення результату аутентифікації
+googlePay.cryptogram : string ex="AQAAAAoAR9qDi9kAAAAAgGpLpoA=" — TAVV криптограма
+RESPONSE 200:
+invoiceId* : string ex="p2_9ZgpZVsl3" — Ідентифікатор рахунку
+status* : string enum=created|processing|hold|success|failure|reversed|expired — Статус операції: `created` - рахунок створено успішно, очікується оплата `processing` - платіж обробляється `hold` - сума заблокована `success` - успішна оплата `failure` - неуспішна оплата `reversed` - оплата повернена після успіху `expired` - час дії вичерпано У випадку вебхуків гарантії доставки повідомлень одне за одним не надається. Тобто, може бути ситуація, коли вебхук про успішну оплату (`success`) прийде раніше за вебхук про обробку цієї оплати (`status=processing`). Краще орієнтуватись на поле `modifiedDate` при аналізі поточного статусу рахунку. Вебхук із більшим `modifiedDate` буде актуальним 
+failureReason : string ex="Неправильний CVV код" — Причина відмови
+errCode : string ex="59" — Код помилки, яка виникла під час обробки платежу. Що цей код означає, і куди звернутися можна в розділі "Помилки в процесі оплати"
+amount* : integer ex=4200 — Сума у мінімальних одиницях валюти
+ccy* : integer ex=980 — Валюта
+finalAmount : integer ex=4200 — Підсумкова сума у мінімальних одиницях валюти, змінюється після оплати та повернень
+createdDate : string — Дата і час фін. операції
+modifiedDate : string — Дата і час останньої модифікації операції
+reference : string ex="84d0070ee4e44667b31371d8f8813947" — Референс платежу, який визначається продавцем
+destination : string ex="Покупка щастя" — Призначення платежу, визначається продавцем
+cancelList : array<object> — Список прийнятих заявок на скасування
+cancelList[].status* : string enum=processing|success|failure — Статус заяви скасування: `processing` - заява на скасування знаходиться в обробці `success` - заяву на скасування виконано успішно `failure` - неуспішне скасування 
+cancelList[].amount : integer ex=4200 — Сума у мінімальних одиницях
+cancelList[].ccy : integer ex=980 — ISO 4217 код валюти
+cancelList[].createdDate* : string — Дата і час створення заяви на скасування
+cancelList[].modifiedDate* : string — Дата і час останньої модифікації операції скасування
+cancelList[].approvalCode : string ex="662476" — Код авторизації
+cancelList[].rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+cancelList[].extRef : string ex="635ace02599849e981b2cd7a65f417fe" — Референс операції скасування, який було вказано продавцем
+paymentInfo : object — Дані оплати, можуть бути `status=processing`, `status=success`, `status=failure`, `status=reversed`
+paymentInfo.maskedPan* : string ex="444403******1902" — Маскований номер картки, за якою здійснювалась оплата
+paymentInfo.approvalCode : string ex="662476" — Код авторизації транзакції
+paymentInfo.rrn : string ex="060189181768" — Ідентифікатор транзакції в платіжній системі
+paymentInfo.tranId : string ex="13194036" — Ідентифікатор транзакції
+paymentInfo.terminal* : string ex="MI001088" — Ідентифікатор платіжного пристрою, через який пройшла транзакція
+paymentInfo.bank : string ex="Універсал Банк" — Назва банку картки, якою проводилася оплата
+paymentInfo.paymentSystem* : string enum=visa|mastercard ex="visa" — Назва платіжної системи картки
+paymentInfo.paymentMethod* : string enum=pan|apple|google|monobank|wallet|direct — Метод оплати: `pan` - оплата була здійснена за введеним номером картки `apple` - оплата була здійснена через apple pay `google` - оплата була здійснена через google pay `monobank` - оплата була здійснена через monobank `wallet` - оплата була здійснена токенізованою карткою `direct` - оплата була здійснена через апі 'Оплата за реквізитами' (за умови, що у мерчанта був PCI DSS сертифікат) 
+paymentInfo.fee : integer — Еквайрингова комісія в мінімальних одиницях
+paymentInfo.country : string ex="804" — Країна банку (ISO-3166-1 numeric), якому належить картка, якою була здійснена оплата
+paymentInfo.agentFee : integer — Комісія агента в мінімальних одиницях
+walletData : object — Параметри картки
+walletData.cardToken* : string ex="67XZtXdR4NpKU3" — Токен картки
+walletData.walletId* : string ex="c1376a611e17b059aeaf96b73258da9c" — Ідентифікатор гаманця покупця
+walletData.status* : string enum=new|created|failed — Статус токенізації картки: `new` - прийнято заявку на токенізацію `created` - картку успішно токенізовано `failed` - картку не вдалось токенізувати 
+
+## GET /api/merchant/split-receiver/list Список отримувачів розщеплених платежів
+Метод для отримання списку саб-мерчантів для Розщеплення
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+list : array<object> — Список отримувачів розщеплених платежів
+list[].splitReceiverId* : string ex="sr_aB3dC5eF7g" — Ідентифікатор (референс) саб-мерчанта для виплати за товар
+list[].edrpou* : string ex="1234567890" — ЄДРПОУ Продавця
+list[].name* : string ex="ФОП Іванов Іван Іванович" — ПІБ/Назва продавця
+
+## GET /api/merchant/t2p/terminal/list Отримання списку терміналів
+Метод для отримання списку терміналів в смартфоні по торговцю
+param header X-Token* — Токен з веб-кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+list : array<object> — Список терміналів, якщо терміналів у клієнта немає, список може бути пустим, відсутнім або null
+list[].code* : string ex="56f27a30b94c4e8db5c3912e7d6af8b1" — Код терміналу
+list[].name* : string ex="Cats n Cash inc." — Назва терміналу
+list[].terminal* : string ex="MT500001" — Ідентифікатор терміналу
+
+## GET /api/merchant/t2p/terminal/payment/external/status Отримання статусу T2P-платежу за externalPaymentId
+Метод дозволяє інтегратору отримати поточний статус та реквізити T2P-платежу за зовнішнім ідентифікатором (externalPaymentId), який інтегратор передав при створенні платежу в deeplink (параметр - id).
+Тіло відповіді ідентичне тілу вебхуку, який банк надсилає на callbackSuccess / callbackFail. Це дозволяє інтегратору не піднімати власний сервер для прийому вебхуків, а періодично опитувати статус самостійно.
+Пошук обмежений останніми 90 днями. Рекомендована частота опитування — не частіше ніж 1 раз на 5 секунд для одного externalPaymentId.
+param header X-Token* — Токен мерчанта, отриманий з https://web.monobank.ua/
+param query externalPaymentId* — Зовнішній ідентифікатор платежу, який інтегратор передав у полі id запиту POST /api/t2p/mob/terminal/payment/create
+RESPONSE 200:
+bank : string ex="АТ Універсал Банк" — Назва банку-еквайра
+terminal : string ex="MT507582" — Код термінала
+paymentType : string enum=purchase|refund|reverse ex="purchase" — Тип операції
+amount : integer ex=3500 — Сума у мінорних одиницях (копійках). 3500 = 35,00 грн
+ccy : string ex="UAH" — Валюта. На цей момент завжди "UAH"
+status : string enum=pending|success|rejected|txp_does_not_answer|transaction_not_completed ex="success" — Статус платежу
+dataTime : string ex="2026-04-21 23:01:54" — Час створення платежу у форматі YYYY-MM-DD HH:MM:SS (UTC)
+internalPaymentId : string ex="f2224275-ba0a-4f58-b6f7-bd00df63b01c" — Внутрішній ідентифікатор платежу в системі банку
+externalPaymentId : string ex="18247112-4eac-4465-aa3c-c42c18f601eb" — Зовнішній ідентифікатор (той самий, що в запиті)
+transactionId : string ex="23417832268" — ID транзакції в системі банку. Наповнюється після виписки
+maskedPan : string ex="44179274******76" — Маскований номер картки
+cardMask : string ex="visa" — Платіжна система картки: visa | mastercard | …
+approvalCode : string ex="125261" — Код авторизації
+rrn : string ex="448571901425" — RRN транзакції
+responseCode : string ex="1" — Код відповіді процесингу
+errorMessage : string — Текст помилки, якщо status — rejected / *_not_completed
+countryCard : string ex="804" — ISO-код країни емітента картки
+
+## POST /api/merchant/pos-transaction-cancel Скасування POS-транзакції
+Ініціює повернення коштів для POS-транзакції за RRN оригінальної операції та сумою повернення
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+rrn* : string ex="060189181768" — RRN (Reference Retrieval Number) оригінальної POS-транзакції
+amount* : integer ex=4200 — Сума повернення у мінімальних одиницях, не більша за залишок після попередніх повернень
+RESPONSE 200:
+status* : string ex="ok" — Статус ініціювання повернення
+tranId : string ex="acq123456789" — Ідентифікатор транзакції повернення
+
+## GET /api/merchant/pos-transaction-cancel/status Статус скасування POS-транзакції
+Повертає повернення, створене запитом [Скасування POS-транзакції](https://monobank.ua/api-docs/acquiring/methods/pos/post--api--merchant--pos-transaction-cancel), за його cancelRef.
+
+Шукає лише серед повернень поточного мерчанта і лише за останні PosRefundMaxDays днів.
+
+Дозволяє дізнатися фінальний статус, якщо webhook типу pos_refund не було отримано.
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query cancelRef* — Унікальний ідентифікатор запиту скасування
+RESPONSE 200:
+amount : integer ex=4200 — Сума повернення у копійках
+cancelRef : string ex="1234567890" — Ідентифікатор запиту скасування, за яким знайдено повернення
+createTime : string ex="2026-10-01T10:30:00Z" — Час створення повернення
+modifyTime : string ex="2026-10-01T11:30:00Z" — Час останньої зміни повернення
+originalTranId : string ex="acq123456789" — Ідентифікатор оригінальної транзакції, яку скасовують
+rrn : string ex="060189181768" — RRN оригінальної транзакції — той, що передавався у запиті скасування
+status : string enum=new|processing|success|rejected|reversed ex="new" — Статус повернення: new, processing, success, rejected, reversed 
+
+## POST /api/merchant/subscription/create Створення регулярного платежу
+Створення регулярного платежу для періодичних списань коштів
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+amount* : integer ex=4200 — Сума регулярного платежу
+ccy : integer ex=980 — ISO 4217 код валюти, за замовчуванням 980 (гривня)
+redirectUrl : string ex="https://example.com/your/website/result/page" — Адреса для повернення (GET) - на цю адресу буде переадресовано користувача після завершення оплати
+webHookUrls : object — 
+webHookUrls.chargeUrl : string ex="https://example.com/mono/subscription/charge/webhook" — Колбек-URL для нотифікації про списання успішне або неуспішне
+webHookUrls.statusUrl : string ex="https://example.com/mono/subscription/status/webhook" — Колбек-URL для нотифікації про cтатус підписки
+interval* : string ex="1m" — {число}{одиниця}, приклади: "1d" - кожен день, "2w" - кожні 2 тижні, "1m" - кожен місяць, "1y" - раз на рік
+validity : integer ex=3600 — Строк дії в секундах, за замовчуванням рахунок перестає бути дійсним через 24 години. Максимальний термін життя інвойса який можна задати - 30 днів. Якщо передати більше 30 днів, то автоматично обрізається до 30 днів
+RESPONSE 200:
+subscriptionId* : string ex="s2_AbrCdXyZ13" — Інвойс підписки
+pageUrl* : string ex="https://pay.mbnk.biz/s2_AbrCdXyZ13" — Посилання на сторінку оплати регулярного платежу
+
+## GET /api/merchant/subscription/status Отримання статусу регулярного платежу
+Метод перевірки статусу регулярного платежу
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query subscriptionId* — Id регулярного платежу
+RESPONSE 200:
+subscriptionId* : string ex="s2_AbrCdXyZ13" — Id регулярного платежу
+status* : string enum=active|cancelled ex="active" — Статус підписки
+startDate* : string ex="2024-06-01T14:15:22Z" — Дата першого списання
+endDate : string ex="2024-06-20T09:30:15Z" — Дата коли регулярний платіж скасували
+amount* : integer ex=4200 — Сума
+ccy* : integer ex=980 — Валюта ISO 4217 код валюти
+interval* : string ex="1m" — Період регулярності
+nextChargeDate : string ex="2024-07-01T14:15:22Z" — Дата наступного списання
+cancellationDesc : string ex="Скасовано за запитом користувача" — Текст помилки
+summary* : object — 
+summary.totalPaid* : integer ex=3 — Кількість успішних списань
+summary.totalFailed* : integer ex=1 — Кількість неуспішних списань
+walletData* : object — 
+walletData.cardToken* : string ex="67XZtXdR4NpKU3" — Токен картки
+walletData.walletId* : string ex="c1376a611e17b059aeaf96b73258da9c" — Ідентифікатор гаманця покупця
+walletData.status* : string enum=new|created|failed ex="created" — Статус токенізації картки: `new` - прийнято заявку на токенізацію `created` - картку успішно токенізовано `failed` - картку не вдалось токенізувати 
+walletData.failureDescription : string ex="Недостатньо коштів на картці" — Причина, з якої картку не вдалось токенізувати
+
+## GET /api/merchant/subscription/payments Перегляд історії платежів за id підписки
+Метод для отримання історії платежів за певною підпискою
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query subscriptionId* — Id підписки
+param query limit — Кількість отриманих платежів (дефолт 20)
+param query page — Зміщення (дефолт 1)
+param query dateFrom* — Дата від - формат rfc3339 (2024-06-26T18:12:44+03:00)
+param query dateTo — Дата до - формат rfc3339 (2024-06-26T18:12:44+03:00)
+RESPONSE 200:
+payments* : array<object> — 
+payments[].amount* : integer ex=4200 — Сума
+payments[].status* : string enum=new|success|failed ex="success" — Статус платежу
+payments[].chargedAt* : string ex="2024-06-01T14:15:22Z" — Дата коли було списання
+payments[].ccy* : integer ex=980 — ISO 4217 код валюти
+pagination* : object — 
+pagination.totalItems* : integer ex=10 — Загальна кількість елементів у вибірці
+pagination.itemsPerPage* : integer ex=20 — Кількість елементів на одній сторінці
+pagination.currentPage* : integer ex=1 — Номер поточної сторінки
+pagination.totalPages* : integer ex=1 — Загальна кількість сторінок
+
+## GET /api/merchant/subscription/list Перегляд регулярних платежів у клієнта
+Метод для отримання списку регулярних платежів
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+param query status — Статус підписок: active - активні підписки, cancelled - неактивні підписки
+param query limit — Кількість отриманих підписок (дефолт 20)
+param query page — Зміщення (дефолт 1)
+param query dateFrom* — Дата від - формат rfc3339 (2024-06-26T18:12:44+03:00)
+param query dateTo — Дата до - формат rfc3339 (2024-06-26T18:12:44+03:00)
+RESPONSE 200:
+list : array<object> — 
+list[].subscriptionId* : string ex="s2_AbrCdXyZ13" — Id підписки
+list[].amount* : integer ex=4200 — Сума підписки
+list[].interval* : string ex="1m" — {число}{одиниця}, приклади: "1d" - кожен день, "2w" - кожні 2 тижні, "1m" - кожен місяць, "1y" - раз на рік
+list[].startDate* : string ex="2024-06-01T14:15:22Z" — Дата початку підписки
+list[].created* : string ex="2024-05-30T12:10:05Z" — Дата створення підписки
+list[].nextChargeDate : string ex="2024-07-01T14:15:22Z" — Наступна дата списання
+list[].endDate : string ex="2024-09-01T14:15:22Z" — Дата закінчення підписки
+list[].status* : string enum=active|cancelled ex="active" — Статус підписки
+pagination* : object — 
+pagination.totalItems* : integer ex=5 — Загальна кількість елементів у вибірці
+pagination.itemsPerPage* : integer ex=20 — Кількість елементів на одній сторінці
+pagination.currentPage* : integer ex=1 — Номер поточної сторінки
+pagination.totalPages* : integer ex=1 — Загальна кількість сторінок
+
+## POST /api/merchant/subscription/remove Інвалідація підписки
+Метод для інвалідації регулярної підписки
+
+Сервіс використовується для видалення підписки, якщо по ній ще не було виконано оплат.
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+subscriptionId* : string ex="s2_AbrCdXyZ13" — Id підписки
+RESPONSE 200:
+
+## POST /api/merchant/subscription/edit Керування регулярним платежем
+Метод для керування регулярним платежем (скасування, повернення коштів)
+param header X-Token* — Токен з особистого кабінету https://web.monobank.ua/ або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+refundAmount : integer ex=4200 — Сума для повернення. Якщо вказана сума, то робимо повернення на вказану суму. Якщо параметр не передано, то повернення не робимо. 
+subscriptionId* : string ex="s2_AbrCdXyZ13" — Ідентифікатор підписки
+action* : string enum=cancel ex="cancel" — Дія над підпискою (поки тільки одна дія - cancel)
+RESPONSE 200:
+
+## POST /api/merchant/monopay/pubkey-import Імпорт ключа для підпису запитів кнопки monopay
+Сервіс для імпорту ключа торговця для взаємодії з віджетом кнопки monopay
+param header X-Token* — Токен можна отримати через підтримку або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+keyValue* : string ex="LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0R — Значення ключа (Base64)
+keyName : string ex="my_key" — Назва ключа (клієнтська назва)
+expiresAt : string ex="2026-02-02T15:04:05+03:00" — Дата та час, коли термін дії ключа закінчується
+RESPONSE 200:
+result : object — 
+result.keyId : string ex="28F91hHGtzoSFJ" — Ключ для підпису запиту на віджет
+
+## POST /api/merchant/monopay/pubkey-delete Видалення ключа для підпису
+Сервіс для видалення ключа підпису для взаємодії з віджетом кнопки monopay
+param header X-Token* — Токен можна отримати через підтримку або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+REQUEST:
+keyId* : string ex="28F91hHGtzoSFJ" — Ключ для підпису запиту на віджет
+RESPONSE 200:
+
+## GET /api/merchant/monopay/pubkey-list Отримання списку ключів для підпису
+Сервіс для отримання ключів для підпису для взаємодії з віджетом кнопки monopay
+param header X-Token* — Токен можна отримати через підтримку або тестовий токен з [https://api.monobank.ua/](https://api.monobank.ua/index.html)
+RESPONSE 200:
+result : array<object> — 
+result[].keyId : string ex="28F91hHGtzoSFJ" — Ідентифікатор ключа
+result[].keyValue : string ex="LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0K..." — Значення ключа
+result[].keyName : string ex="my_key" — Назва ключа (клієнтська назва)
+result[].expiresAt : string ex="2026-02-02T15:04:05+03:00" — Дата та час, коли термін дії ключа закінчується
+

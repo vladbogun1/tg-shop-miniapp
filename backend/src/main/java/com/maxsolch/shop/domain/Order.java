@@ -124,6 +124,13 @@ public class Order {
     private Instant paidAt;
 
     /**
+     * Deadline to pay online (created + 24 h); an order still unpaid past it is rejected
+     * automatically and restocked. Null = placed before online payment existed.
+     */
+    @Column(name = "payment_due_at")
+    private Instant paymentDueAt;
+
+    /**
      * The customer uploaded a transfer screenshot ("я оплатил"). This is a CLAIM,
      * not a confirmation: it never changes {@link #paid} / {@link #receivedMinor}.
      * Only an admin confirms the money actually arrived.

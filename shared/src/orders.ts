@@ -53,6 +53,8 @@ export type RejectReasonCode =
   | "OUT_OF_STOCK"
   | "DUPLICATE"
   | "NOT_PAID"
+  /** Set automatically: not paid online within the deadline (24 h). Not offered in the picker. */
+  | "PAYMENT_TIMEOUT"
   | "REFUSED_AT_POST"
   | "RETURNED"
   | "OTHER";
@@ -64,6 +66,7 @@ export const REJECT_REASON_LABEL: Record<RejectReasonCode, string> = {
   OUT_OF_STOCK: "Нет в наличии",
   DUPLICATE: "Дубль заказа",
   NOT_PAID: "Не оплатил",
+  PAYMENT_TIMEOUT: "Не оплатил за сутки",
   REFUSED_AT_POST: "Отказ на почте",
   RETURNED: "Возврат после получения",
   OTHER: "Другое",
@@ -125,29 +128,36 @@ export function codMinor(order: { totalMinor: number; receivedMinor?: number }):
   return Math.max(0, order.totalMinor - Math.max(0, order.receivedMinor ?? 0));
 }
 
-/** How an order's payment stands — a claim is not a confirmation. */
-export type PaymentState = "PAID" | "PARTIAL" | "CLAIMED" | "UNPAID";
+/**
+ * How an order's payment stands. AWAITING = placed, online payment still due before the deadline
+ * (paymentDueAt); UNPAID = nothing received and nothing pending (old orders, cancelled ones).
+ */
+export type PaymentState = "PAID" | "PARTIAL" | "AWAITING" | "UNPAID";
 
 export function paymentState(order: {
   paid: boolean;
-  paymentClaimed?: boolean;
+  status?: OrderStatus;
   totalMinor?: number;
   receivedMinor?: number;
+  amountDueMinor?: number;
+  paymentDueAt?: string | null;
 }): PaymentState {
-  // `paid` is the admin's confirmation and always wins: a confirmed order is never "на проверке",
-  // whatever the claim flag says (every historical order carries claimed=true from the V12
-  // backfill). Treating an absent receivedMinor as 0 previously made every paid order look
-  // unconfirmed on the board, where the card payload does not carry the amount.
   if (order.paid) {
     const total = order.totalMinor ?? 0;
     const received = order.receivedMinor;
-    // Only claim "partial" when the amount is actually known and falls short.
+    // Only claim "partial" when the amount is actually known and falls short (prepayment + COD).
     if (received !== undefined && total > 0 && received > 0 && received < total) {
       return "PARTIAL";
     }
     return "PAID";
   }
-  if (order.paymentClaimed) return "CLAIMED";
+  if (
+    order.paymentDueAt &&
+    (order.amountDueMinor ?? 1) > 0 &&
+    (order.status === undefined || order.status === "NEW" || order.status === "APPROVED")
+  ) {
+    return "AWAITING";
+  }
   return "UNPAID";
 }
 
@@ -158,6 +168,6 @@ export function paymentState(order: {
 export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   PAID: "Оплачен",
   PARTIAL: "Частично оплачен",
-  CLAIMED: "Оплата на проверке",
+  AWAITING: "Ждёт оплаты",
   UNPAID: "Не оплачен",
 };

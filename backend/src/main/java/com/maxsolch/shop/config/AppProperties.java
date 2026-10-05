@@ -25,6 +25,7 @@ public class AppProperties {
     private NovaPoshta novaposhta = new NovaPoshta();
     private Site site = new Site();
     private Push push = new Push();
+    private Payment payment = new Payment();
 
     @Getter
     @Setter
@@ -141,5 +142,30 @@ public class AppProperties {
         private String vapidPrivateKey;
         /** Contact for the push services: {@code mailto:owner@example.com} or an https URL. */
         private String vapidSubject;
+    }
+
+    /** Online payment (monobank acquiring). See docs/MONOBANK-ACQUIRING.md. */
+    @Getter
+    @Setter
+    public static class Payment {
+        /** How long a new order may stay unpaid before it is rejected and restocked, hours. */
+        private int dueHours = 24;
+        /** Lifetime of one monobank invoice (payment page link), minutes. Capped by the due time. */
+        private int invoiceTtlMinutes = 60;
+        private Monobank monobank = new Monobank();
+    }
+
+    @Getter
+    @Setter
+    public static class Monobank {
+        /** X-Token (test token from api.monobank.ua or the merchant one). Blank = online payment off. */
+        private String token;
+        private String apiUrl = "https://api.monobank.ua";
+        /** Where monobank posts status changes. Blank = {site.baseUrl}/api/payments/mono/webhook. */
+        private String webhookUrl;
+
+        public boolean isEnabled() {
+            return token != null && !token.isBlank();
+        }
     }
 }

@@ -62,6 +62,16 @@ public class PushNotificationListener {
     }
 
     @TransactionalEventListener(fallbackExecution = true)
+    public void onPaymentReceived(OrderEvents.PaymentReceived event) {
+        byte[] id = event.orderId();
+        long amount = event.amountMinor();
+        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+                "Оплачено онлайн #" + o.shortId(),
+                money(amount, o.currency()) + " через monobank — подтвердите заказ",
+                "/orders/" + o.id(), "paid-" + o.id(), badge(), true))));
+    }
+
+    @TransactionalEventListener(fallbackExecution = true)
     public void onChatMessage(OrderEvents.ChatMessage event) {
         if (event.fromAdmin()) {
             return;
