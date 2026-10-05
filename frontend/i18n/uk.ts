@@ -145,7 +145,7 @@ export const uk: RuDictionary = {
 
   // ── оплата ────────────────────────────────────────────────────────────────
   "payment.paid": "Оплачено",
-  "payment.claimed": "На перевірці",
+  "payment.awaiting": "Очікує оплати",
   "payment.partial": "Частково оплачено",
   "payment.unpaid": "Не оплачено",
 
@@ -183,19 +183,8 @@ export const uk: RuDictionary = {
   "order.pickup": "Самовивіз",
   "order.payment": "Оплата",
   "order.comment": "Коментар",
-  "order.requisites.card": "Картка",
-  "order.requisites.edrpou": "РНОКПП",
-  "order.requisites.purpose": "Призначення",
-  "order.requisites.note": "Примітка",
-  "order.paymentConfirmed": "Оплату підтверджено",
-  "order.paymentClaimed": "Оплата на перевірці",
-  "order.paymentClaimedText": "Скрін отримано. Менеджер перевірить надходження і підтвердить оплату — статус оновиться тут.",
   "order.openChat": "Написати в чат",
   "order.copy": "Скопіювати: {label}",
-  "order.proof.title": "Підтвердження переказу",
-  "order.proof.text": "Оплатили? Завантажте скріншот переказу — він потрапить у чат замовлення, менеджер перевірить надходження і підтвердить оплату.",
-  "order.proof.upload": "Завантажити скрін переказу",
-  "order.proof.failed": "Не вдалося надіслати скрін",
 
   // ── скасування замовлення ─────────────────────────────────────────────────
   "cancel.button": "Скасувати замовлення",
@@ -209,7 +198,35 @@ export const uk: RuDictionary = {
   "cancel.failed": "Не вдалося скасувати замовлення",
   "order.giftBadge": "🎁 Подарунок",
   "order.npDelivery": "Нова Пошта · {city}",
-  "order.requisitesTitle": "Реквізити оплати",
+
+  // ── online payment (monobank) on the order page ──────────────────────────
+  "pay.title": "Оплата",
+  "pay.due": "До сплати",
+  "pay.button": "Оплатити {amount}",
+  "pay.hint": "Відкриється сторінка monobank: картка, Apple Pay, Google Pay. Якщо вона не відкрилася — натисніть кнопку ще раз.",
+  "pay.prepayment": "Передоплата онлайн, решта {amount} — при отриманні.",
+  "pay.until": "Оплатіть до {when}",
+  "pay.left": "залишилось {time}",
+  "pay.hm": "{h} год {m} хв",
+  "pay.m": "{m} хв",
+  "pay.timeUp": "Час на оплату минув",
+  "pay.failed": "Оплата не пройшла: {reason}",
+  "pay.failedGeneric": "Оплата не пройшла. Спробуйте ще раз або іншою карткою.",
+  "pay.retry": "Спробувати ще раз · {amount}",
+  "pay.checking": "Перевіряємо оплату…",
+  "pay.checkingText": "Зазвичай це кілька секунд.",
+  "pay.stillProcessing": "Банк ще обробляє платіж. Статус оновиться сам, а бот надішле повідомлення.",
+  "pay.checkAgain": "Перевірити ще раз",
+  "pay.paid": "Оплачено {amount}",
+  "pay.method.card": "Картка •• {last4}",
+  "pay.method.apple": "Apple Pay",
+  "pay.method.google": "Google Pay",
+  "pay.method.monobank": "monobank",
+  "pay.cod": "При отриманні: {amount}",
+  "pay.willConfirm": "Ми перевіримо наявність і підтвердимо замовлення.",
+  "pay.timeout": "Скасовано — не оплачено протягом доби",
+  "pay.unavailable": "Онлайн-оплата тимчасово недоступна",
+  "pay.unavailableText": "Напишіть нам у чат — допоможемо завершити замовлення.",
 
   // ── карта відділень Нової Пошти ───────────────────────────────────────────
   "np.cat.all": "Усі",
@@ -230,8 +247,9 @@ export const uk: RuDictionary = {
   "checkout.step.payment": "Оплата",
   "checkout.step.done": "Готово",
   "checkout.emptyCart": "Кошик порожній.",
-  "checkout.submit": "Оформити · {total}",
   "checkout.failed": "Не вдалося оформити замовлення",
+  "checkout.submitPay": "Оформити та оплатити {amount}",
+  "checkout.redirecting": "Відкриваємо оплату…",
   "checkout.promoDropped": "{message}. Промокод прибрано — оформіть замовлення ще раз.",
 
   "checkout.contacts.intro": "Куди і кому доставити замовлення — почнімо з контактів.",
@@ -264,7 +282,10 @@ export const uk: RuDictionary = {
 
   "checkout.payment.error": "Не вдалося завантажити варіанти оплати.",
   "checkout.payment.none": "Варіанти оплати не налаштовані.",
-  "checkout.payment.prepay": "Передоплата {amount}",
+  "checkout.payment.full": "Уся сума онлайн: картка, Apple Pay або Google Pay",
+  "checkout.payment.prepayOnline": "{amount} онлайн зараз, решта — готівкою при отриманні",
+  "checkout.payment.trust": "Оплата через monobank — дані картки магазин не бачить",
+  "checkout.payment.deadline": "Оплатіть протягом 24 годин, інакше замовлення скасується автоматично.",
 
   "checkout.confirm.items": "Склад",
   "checkout.confirm.sum": "Сума",
@@ -276,11 +297,10 @@ export const uk: RuDictionary = {
   "checkout.confirm.promoProblem": "Промокод «{code}»: {message}",
   "checkout.confirm.promoChecking": "перевіряємо…",
 
-  "checkout.success.title": "Замовлення оформлено!",
-  "checkout.success.orderNumber": "Номер замовлення",
-  "checkout.success.requisites": "Реквізити · {payment}",
-  "checkout.success.payByRequisites": "Оплатіть за реквізитами нижче. Підтвердження — у чаті замовлення.",
-  "checkout.success.claimed": "Скрін переказу надіслано в чат замовлення. Менеджер перевірить надходження і підтвердить оплату.",
-  "checkout.success.payLater": "Можна оплатити пізніше — зі сторінки замовлення",
-  "checkout.success.openOrder": "Перейти до замовлення",
+  // ── payment return page (opened in a browser, outside Telegram) ──────────
+  "payReturn.title": "Дякуємо! Оплату прийнято в обробку",
+  "payReturn.text": "Закрийте це вікно — ви повернетеся в магазин у Telegram. Статус оплати оновиться автоматично, а бот надішле повідомлення.",
+  "payReturn.order": "Замовлення {id}",
+  "payReturn.back": "Повернутися в Telegram",
+  "payReturn.closeHint": "Вікно не закрилося саме — закрийте його хрестиком або кнопкою «Готово» вгорі.",
 };

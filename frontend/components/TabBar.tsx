@@ -5,13 +5,14 @@
  * active tab turns orange and gets a 2px glowing bar on top. Shop / Cart / Account. Safe-area
  * aware, ≥44px.
  *
- * It hides itself in three cases and publishes its height as `--tabbar-h` so every page that
+ * It hides itself in four cases and publishes its height as `--tabbar-h` so every page that
  * docks something to the bottom (cart summary, checkout actions, page padding) follows along
  * instead of hardcoding an offset:
  *   - in the chat, which owns the whole screen;
  *   - during checkout — from there the customer is finishing an order, not browsing, and the bar
  *     cost ~84px of the little vertical space the delivery step needs;
- *   - while the on-screen keyboard is up, where it used to cover the very field being typed in.
+ *   - while the on-screen keyboard is up, where it used to cover the very field being typed in;
+ *   - on /pay-return, which opens in a plain browser after paying, where the shop tabs lead nowhere.
  */
 import { motion } from "framer-motion";
 import { ShoppingBag, ShoppingCart, User } from "lucide-react";
@@ -38,7 +39,10 @@ export function TabBar() {
   const keyboardOpen = useKeyboardOpen();
 
   const hidden =
-    pathname.includes("/chat") || pathname.startsWith("/checkout") || keyboardOpen;
+    pathname.includes("/chat") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/pay-return") ||
+    keyboardOpen;
 
   useEffect(() => {
     document.documentElement.style.setProperty("--tabbar-h", hidden ? "0px" : BAR_H);

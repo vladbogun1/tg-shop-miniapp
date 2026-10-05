@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * and logout of every device.
  *
  * <p>Admin tokens are short-lived (12 h by default) — a leaked one is not a month-long key to the
- * payment requisites any more. Instead of logging an active admin out every 12 hours, the panel
+ * admin panel any more. Instead of logging an active admin out every 12 hours, the panel
  * calls {@code /token/refresh} once its token is past half-life, and an idle panel simply expires.
  */
 @RestController

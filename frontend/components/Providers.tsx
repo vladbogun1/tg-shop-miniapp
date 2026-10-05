@@ -21,7 +21,7 @@ import { authWithTelegram } from "@/lib/api";
 import { startCartSync } from "@/lib/cart-sync";
 import {
   getStartParam,
-  parseOrderDeepLink,
+  parseOrderDeepLink, parseOrderViewDeepLink,
   useHideMainButton,
   useTelegram,
 } from "@/lib/telegram";
@@ -87,7 +87,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!tg.ready || deepLinked.current) return;
     deepLinked.current = true;
-    const orderId = parseOrderDeepLink(getStartParam());
+    const param = getStartParam();
+    const viewId = parseOrderViewDeepLink(param);
+    if (viewId) {
+      router.push(`/account/orders/${viewId}`);
+      return;
+    }
+    const orderId = parseOrderDeepLink(param);
     if (orderId) {
       router.push(`/account/orders/${orderId}/chat`);
     }

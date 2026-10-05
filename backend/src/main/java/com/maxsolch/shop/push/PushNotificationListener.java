@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Turns shop events into admin push notifications: a new order, a «я оплатил» claim, a customer
+ * Turns shop events into admin push notifications: a new order, an online payment, a customer
  * chat message, the public site failing to rebuild.
  *
  * <p>Order events are handled after the commit (a rolled-back order never pings the phone), and
@@ -50,15 +50,6 @@ public class PushNotificationListener {
                 "Новый заказ #" + o.shortId(),
                 money(o.totalMinor(), o.currency()) + " · " + sourceLabel(o.source()),
                 "/orders/" + o.id(), "order-" + o.id(), badge(), true))));
-    }
-
-    @TransactionalEventListener(fallbackExecution = true)
-    public void onPaymentClaimed(OrderEvents.PaymentClaimed event) {
-        byte[] id = event.orderId();
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
-                "Клиент оплатил #" + o.shortId(),
-                "«Я оплатил» · " + money(o.totalMinor(), o.currency()) + " — проверьте поступление",
-                "/orders/" + o.id(), "pay-" + o.id(), badge(), true))));
     }
 
     @TransactionalEventListener(fallbackExecution = true)

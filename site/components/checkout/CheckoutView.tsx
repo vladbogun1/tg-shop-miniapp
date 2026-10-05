@@ -11,14 +11,19 @@
  * an Idempotency-Key per attempt, the promo code sent ONLY when the server has just confirmed it,
  * and PROMO_REJECTED handled by dropping the code and asking for one more click. The difference is
  * the session: the website is signed in with cookies, so a guest is sent to /login first.
+ *
+ * Payment is online only (monobank acquiring, see docs/MONOBANK-ACQUIRING.md): right after the
+ * order is created, POST /api/me/orders/{id}/payment opens an invoice and the browser goes to
+ * monobank's page. If that fails, the order page takes over — it has the "Pay" button and the error.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Loader2, MapPin, Store, Truck } from "lucide-react";
+import { CreditCard, Loader2, MapPin, Store, Truck, Wallet } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DeliveryMethod, NpCity, NpWarehouse, OrderDetail } from "@shop/shared";
+import { goToPayment, PaymentTrust, rememberPaymentError, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
@@ -38,7 +43,6 @@ import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
-import { saveSuccess } from "./success-store";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -62,6 +66,14 @@ export function CheckoutView() {
   const session = useSession();
   const hydrated = useHydrated();
   const lines = useCart((s) => s.lines);
+  /** The order just placed, while the browser is on its way to the payment page. */
+  const [leavingFor, setLeavingFor] = useState<string | null>(null);
+
+  // Back from monobank with the browser's Back button (bfcache): the cart is already empty and the
+  // order exists — show it instead of a frozen "opening the payment page" screen.
+  usePageRestore(() => {
+    if (leavingFor) router.replace(href(`/account/orders/${leavingFor}`));
+  });
 
   // Funnel step "started checkout" — also for guests, who are sent to sign in from here: losing
   // people at the login wall is exactly what the funnel should show.
@@ -89,6 +101,16 @@ export function CheckoutView() {
     );
   }
 
+  if (leavingFor) {
+    return (
+      <div className="container-site pt-10">
+        <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]" aria-live="polite">
+          <Loader2 className="h-5 w-5 animate-spin" /> {t("checkout.toPayment")}
+        </p>
+      </div>
+    );
+  }
+
   if (lines.length === 0) {
     return (
       <div className="container-site pt-10">
@@ -103,10 +125,11 @@ export function CheckoutView() {
     );
   }
 
-  return <CheckoutForm />;
+  return <CheckoutForm onPlaced={setLeavingFor} />;
 }
 
-function CheckoutForm() {
+/** `onPlaced`: the order exists and the cart is emptied — the parent covers the empty-cart state. */
+function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
@@ -236,11 +259,11 @@ function CheckoutForm() {
   const promoValid = promo.data?.valid === true;
   const discount = promo.discount;
   const total = Math.max(0, subtotal - discount);
+  // Every option is paid online through monobank acquiring: either the whole order, or the
+  // prepayment now and the rest as cash on delivery (Nova Poshta COD). The server answers with the
+  // same amountDueMinor; this one is for the button and the summary.
   const dueNow =
     chosen?.requiresPrepayment && chosen.prepaymentMinor ? Math.min(chosen.prepaymentMinor, total) : total;
-  // Both payment options the shop has (prepayment + COD, full payment to the FOP account) are paid
-  // by transfer, so once one is chosen the order ends with requisites. There is no acquiring.
-  const needsRequisites = !!chosen;
 
   // ---- validation -----------------------------------------------------------------------------
   const nameOk = name.trim().length >= 2;
@@ -282,17 +305,21 @@ function CheckoutForm() {
       await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
       trackOrderCreated(created.orderId);
-      saveSuccess({
-        orderId: created.orderId,
-        requisites: created.requisites ?? null,
-        paymentTitle: chosen?.title ?? "",
-        totalMinor: total,
-        dueNowMinor: dueNow,
-        currency,
-      });
       cartAfterOrder(orderable.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
-      router.push(href(`/checkout/success/${created.orderId}`));
+      onPlaced(created.orderId);
+      const orderPage = href(`/account/orders/${created.orderId}`);
+      if (created.amountDueMinor <= 0) {
+        router.push(orderPage);
+        return;
+      }
+      try {
+        await goToPayment(created.orderId, locale);
+      } catch (e) {
+        // The order is placed either way; its page has the "Pay" button and shows why it failed.
+        rememberPaymentError(created.orderId, e instanceof ApiError ? e.message : t("pay.startFailed"));
+        router.push(orderPage);
+      }
     } catch (e) {
       if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
         setPromoCode("");
@@ -304,7 +331,7 @@ function CheckoutForm() {
     }
   }
 
-  const submitLabel = needsRequisites ? t("checkout.submitRequisites") : t("checkout.submit");
+  const submitLabel = t("checkout.submitPay", { amount: fmt.money(dueNow, currency) });
   // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
   // the fields and the map open, so it can be changed in place.
   const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
@@ -454,20 +481,34 @@ function CheckoutForm() {
               <p className="text-[14px] font-medium text-[var(--muted)]">{t("checkout.paymentNone")}</p>
             ) : (
               <div role="radiogroup" aria-label={t("checkout.payment")} className="flex flex-col gap-3">
-                {paymentOptions.map((o) => (
-                  <RadioCard
-                    key={o.id}
-                    selected={paymentId === o.id}
-                    onSelect={() => setPaymentId(o.id)}
-                    title={o.title}
-                    subtitle={
-                      o.requiresPrepayment && o.prepaymentMinor
-                        ? `${o.description ?? ""}${o.description ? " · " : ""}${t("checkout.prepay", { amount: fmt.money(o.prepaymentMinor, currency) })}`
-                        : o.description
-                    }
-                    icon={<CreditCard className="h-5 w-5" strokeWidth={2.5} />}
-                  />
-                ))}
+                {paymentOptions.map((o) => {
+                  const prepay = o.requiresPrepayment && !!o.prepaymentMinor;
+                  return (
+                    <RadioCard
+                      key={o.id}
+                      selected={paymentId === o.id}
+                      onSelect={() => setPaymentId(o.id)}
+                      title={o.title}
+                      subtitle={
+                        <>
+                          {prepay
+                            ? t("checkout.pay.prepay", { amount: fmt.money(o.prepaymentMinor, currency) })
+                            : t("checkout.pay.full")}
+                          {o.description && <span className="mt-0.5 block text-[12px] text-[var(--faint)]">{o.description}</span>}
+                        </>
+                      }
+                      icon={
+                        prepay ? <Wallet className="h-5 w-5" strokeWidth={2.5} /> : <CreditCard className="h-5 w-5" strokeWidth={2.5} />
+                      }
+                    />
+                  );
+                })}
+              </div>
+            )}
+            {paymentOptions.length > 0 && (
+              <div className="mt-4 flex flex-col gap-1.5">
+                <PaymentTrust />
+                <p className="text-[12px] font-medium text-[var(--faint)]">{t("checkout.pay.deadline")}</p>
               </div>
             )}
             {touched && !paymentOk && (

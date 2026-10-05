@@ -2,8 +2,9 @@
 
 /**
  * Order page (vinli-style): tiles Доставка / Оплата / Адрес, the status timeline, TTN, items with
- * totals, requisites + screenshot upload while unpaid, cancel (NEW/APPROVED and unpaid) and the
- * order chat at the bottom. Data and rules are the Mini App's (frontend/app/account/orders/[id]).
+ * totals, the online payment block (monobank: pay / checking / paid / cancelled for non-payment —
+ * see components/order/Payment.tsx), cancel (NEW/APPROVED and unpaid) and the order chat at the
+ * bottom. Data and rules are the Mini App's (frontend/app/account/orders/[id]).
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Ban, Check, CreditCard, MapPin, Store, Truck, WifiOff } from "lucide-react";
@@ -11,8 +12,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { paymentState, shortOrderId, type OrderDetail } from "@shop/shared";
 import { OrderChat } from "@/components/chat/OrderChat";
-import { CopyButton, hasAnyRequisite, PaymentClaimed, PaymentConfirmed, PaymentProof, RequisitesCard } from "@/components/order/Payment";
+import { isPaymentTimeout, OrderPayment } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
@@ -30,7 +32,7 @@ export function OrderDetailView({ id }: { id: string }) {
     queryFn: () => api.order(id),
   });
 
-  // Coming from the success page with #chat — scroll there once the page has content.
+  // A link to the order with #chat — scroll there once the page has content.
   useEffect(() => {
     if (data && window.location.hash === "#chat") {
       document.getElementById("chat")?.scrollIntoView({ block: "start" });
@@ -70,8 +72,8 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const fmt = useFmt();
   const qc = useQueryClient();
   const isPickup = order.deliveryMethod === "PICKUP";
+  // While a payment is being processed the server refuses to cancel; its message is shown below.
   const cancelable = !order.paid && (order.status === "NEW" || order.status === "APPROVED");
-  const showPay = !order.paid && order.status !== "REJECTED";
   const refresh = () => {
     onChange();
     void qc.invalidateQueries({ queryKey: ["me", "orders"] });
@@ -89,6 +91,9 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       <p className="-mt-3 text-[13px] font-semibold text-[var(--muted)]">
         {t("order.createdAt", { when: fmt.dateTime(order.createdAt) })}
       </p>
+
+      {/* payment comes first: while it is due, it is the one thing to do on this page */}
+      <OrderPayment order={order} onRefetch={refresh} />
 
       {/* tiles */}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-3">
@@ -119,7 +124,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       <section className="nb p-5">
         <h3 className="eyebrow mb-4 text-[11px]">{t("order.status")}</h3>
         <StatusTimeline order={order} />
-        {order.status === "REJECTED" && order.rejectReason && (
+        {order.status === "REJECTED" && order.rejectReason && !isPaymentTimeout(order) && (
           <div className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] px-4 py-3">
             <p className="nb-up text-[11px] font-semibold text-[var(--danger)]">{t("order.rejectReason")}</p>
             <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">{order.rejectReason}</p>
@@ -183,17 +188,6 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
           </p>
         )}
       </section>
-
-      {order.paid ? (
-        <PaymentConfirmed />
-      ) : (
-        showPay && (
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
-            {hasAnyRequisite(order.requisites) && <RequisitesCard requisites={order.requisites} />}
-            {order.paymentClaimed ? <PaymentClaimed /> : <PaymentProof orderId={order.id} onDone={refresh} />}
-          </div>
-        )
-      )}
 
       {cancelable && <CancelOrder orderId={order.id} onDone={refresh} />}
 

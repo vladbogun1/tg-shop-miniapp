@@ -38,9 +38,10 @@ class InboxRulesTest {
         Instant shipped;
         Instant rejected;
         Instant returned;
+        long received = 0;
         boolean paid;
-        boolean claimed;
-        Instant claimedAt;
+        Instant paidAt;
+        boolean paidOnline;
         String reason;
         String reasonCode;
 
@@ -80,20 +81,35 @@ class InboxRulesTest {
             return this;
         }
 
-        O claimed(Duration ago) {
-            claimed = true;
-            claimedAt = NOW.minus(ago);
+        /** Paid online (a monobank invoice credited) {@code ago}, {@code minor} received. */
+        O paidOnline(Duration ago, long minor) {
+            paid = true;
+            paidOnline = true;
+            paidAt = NOW.minus(ago);
+            received = minor;
             return this;
         }
 
-        O paid() {
+        O paidOnline(Duration ago) {
+            return paidOnline(ago, total);
+        }
+
+        /** Paid, but recorded by an admin (no monobank invoice). */
+        O paidByAdmin() {
             paid = true;
+            paidAt = NOW.minus(Duration.ofMinutes(10));
+            received = total;
+            return this;
+        }
+
+        O refunded(long minor) {
+            refunded = minor;
             return this;
         }
 
         OrderRow row() {
-            return new OrderRow(id, status, name, total, 0, prepayment, refunded, created, approved, shipped,
-                    rejected, returned, paid, claimed, claimedAt, reason, reasonCode);
+            return new OrderRow(id, status, name, total, received, prepayment, refunded, created, approved, shipped,
+                    rejected, returned, paid, paidAt, paidOnline, reason, reasonCode);
         }
     }
 
@@ -130,28 +146,55 @@ class InboxRulesTest {
     // ------------------------------------------------------------------ selection
 
     @Test
-    void paymentClaim_unpaidAndNotRejectedOnly() {
+    void paidOnline_newOrdersOnly() {
         Inbox inbox = InboxRules.build(orders(
-                order().id(id(1)).claimed(Duration.ofMinutes(20)).row(),
-                order().id(id(2)).claimed(Duration.ofMinutes(20)).paid().row(),
-                order().id(id(3)).claimed(Duration.ofMinutes(20)).status(OrderStatus.REJECTED).row(),
+                order().id(id(1)).paidOnline(Duration.ofMinutes(20)).row(),
+                order().id(id(2)).paidOnline(Duration.ofMinutes(20)).status(OrderStatus.APPROVED).row(),
+                order().id(id(3)).paidByAdmin().row(),
                 order().id(id(4)).row()), Map.of(), T);
 
         assertThat(ids(inbox, InboxItemType.PAYMENT)).containsExactly(id(1));
         Item it = group(inbox, InboxItemType.PAYMENT).items().get(0);
+        assertThat(it.subtitle()).isEqualTo(InboxRules.PAID_CONFIRM);
         assertThat(it.waitMinutes()).isEqualTo(20);
-        assertThat(it.version()).isEqualTo(String.valueOf(NOW.minus(Duration.ofMinutes(20)).toEpochMilli()));
+        assertThat(it.version()).isEqualTo("paid:" + NOW.minus(Duration.ofMinutes(20)).toEpochMilli());
+        assertThat(it.amountMinor()).isEqualTo(100_000);
+        assertThat(it.amountNote()).isEqualTo("оплачено");
         assertThat(it.shortId()).isEqualTo("00000001");
     }
 
     @Test
-    void paymentClaim_prepaymentAmountIsTheAmountToCheck() {
-        O o = order().claimed(Duration.ofMinutes(5));
+    void paidOnline_prepaymentShowsTheReceivedPart() {
+        O o = order().paidOnline(Duration.ofMinutes(5), 20_000);
         o.prepayment = 20_000;
         Item it = group(InboxRules.build(orders(o.row()), Map.of(), T), InboxItemType.PAYMENT).items().get(0);
 
         assertThat(it.amountMinor()).isEqualTo(20_000);
         assertThat(it.amountNote()).isEqualTo("предоплата");
+    }
+
+    @Test
+    void paidThenCancelled_untilTheMoneyIsBack() {
+        Inbox inbox = InboxRules.build(orders(
+                order().id(id(1)).paidOnline(Duration.ofHours(1)).status(OrderStatus.REJECTED)
+                        .rejected(Duration.ofMinutes(30)).row(),
+                order().id(id(2)).paidOnline(Duration.ofHours(1)).status(OrderStatus.REJECTED)
+                        .rejected(Duration.ofMinutes(30)).refunded(100_000).row(),
+                order().id(id(3)).paidOnline(Duration.ofHours(1)).status(OrderStatus.REJECTED)
+                        .rejected(Duration.ofMinutes(30)).refunded(40_000).row(),
+                // refused after shipping — that is the RETURN group's business
+                order().id(id(4)).paidOnline(Duration.ofDays(3)).status(OrderStatus.REJECTED)
+                        .shipped(Duration.ofDays(2)).rejected(Duration.ofHours(1)).row(),
+                order().id(id(5)).status(OrderStatus.REJECTED).rejected(Duration.ofMinutes(30)).row()),
+                Map.of(), T);
+
+        assertThat(ids(inbox, InboxItemType.PAYMENT)).containsExactlyInAnyOrder(id(1), id(3));
+        Item partial = group(inbox, InboxItemType.PAYMENT).items().stream()
+                .filter(i -> i.entityId().equals(id(3))).findFirst().orElseThrow();
+        assertThat(partial.subtitle()).isEqualTo(InboxRules.PAID_REFUND);
+        assertThat(partial.amountMinor()).isEqualTo(60_000);
+        assertThat(partial.amountNote()).isEqualTo("вернуть");
+        assertThat(ids(inbox, InboxItemType.RETURN)).containsExactly(id(4));
     }
 
     @Test
@@ -275,7 +318,7 @@ class InboxRulesTest {
     @Test
     void groupsAlwaysPresentInOrderOfUrgency_totalCountsVisibleRows() {
         Inbox inbox = InboxRules.build(orders(
-                order().id(id(1)).claimed(Duration.ofMinutes(5)).created(Duration.ofHours(4)).row()), Map.of(), T);
+                order().id(id(1)).paidOnline(Duration.ofMinutes(5)).created(Duration.ofHours(4)).row()), Map.of(), T);
 
         assertThat(inbox.groups()).extracting(Group::id).containsExactly(
                 "PAYMENT", "CHAT", "NEW_STALE", "APPROVED_STALE", "RETURN", "LOW_STOCK", "SITE_ERROR");
@@ -289,8 +332,8 @@ class InboxRulesTest {
 
     @Test
     void snooze_hidesUntilItEnds_andCountsAsSnoozed() {
-        OrderRow o = order().id(id(1)).claimed(Duration.ofMinutes(20)).row();
-        String version = InboxRules.version(o.paymentClaimedAt());
+        OrderRow o = order().id(id(1)).paidOnline(Duration.ofMinutes(20)).row();
+        String version = "paid:" + InboxRules.version(o.paidAt());
         Map<String, InboxMark> marks = Map.of(InboxMark.key(InboxItemType.PAYMENT, id(1)),
                 new InboxMark(InboxItemType.PAYMENT, id(1), version, InboxMark.Kind.SNOOZED, NOW.plus(Duration.ofHours(1))));
 

@@ -157,7 +157,7 @@ export const ru = {
 
   // ── оплата ────────────────────────────────────────────────────────────────
   "payment.paid": "Оплачен",
-  "payment.claimed": "На проверке",
+  "payment.awaiting": "Ждёт оплаты",
   "payment.partial": "Частично оплачен",
   "payment.unpaid": "Не оплачен",
 
@@ -195,19 +195,8 @@ export const ru = {
   "order.pickup": "Самовывоз",
   "order.payment": "Оплата",
   "order.comment": "Комментарий",
-  "order.requisites.card": "Карта",
-  "order.requisites.edrpou": "РНОКПП",
-  "order.requisites.purpose": "Назначение",
-  "order.requisites.note": "Примечание",
-  "order.paymentConfirmed": "Оплата подтверждена",
-  "order.paymentClaimed": "Оплата на проверке",
-  "order.paymentClaimedText": "Скрин получен. Менеджер проверит поступление и подтвердит оплату — статус обновится здесь.",
   "order.openChat": "Написать в чат",
   "order.copy": "Скопировать: {label}",
-  "order.proof.title": "Подтверждение перевода",
-  "order.proof.text": "Оплатили? Загрузите скриншот перевода — он попадёт в чат заказа, менеджер проверит поступление и подтвердит оплату.",
-  "order.proof.upload": "Загрузить скрин перевода",
-  "order.proof.failed": "Не удалось отправить скрин",
 
   // ── отмена заказа ─────────────────────────────────────────────────────────
   "cancel.button": "Отменить заказ",
@@ -221,7 +210,35 @@ export const ru = {
   "cancel.failed": "Не удалось отменить заказ",
   "order.giftBadge": "🎁 Подарок",
   "order.npDelivery": "Новая Почта · {city}",
-  "order.requisitesTitle": "Реквизиты оплаты",
+
+  // ── online payment (monobank) on the order page ──────────────────────────
+  "pay.title": "Оплата",
+  "pay.due": "К оплате",
+  "pay.button": "Оплатить {amount}",
+  "pay.hint": "Откроется страница monobank: карта, Apple Pay, Google Pay. Если она не открылась — нажмите кнопку ещё раз.",
+  "pay.prepayment": "Предоплата онлайн, остальное {amount} — при получении.",
+  "pay.until": "Оплатите до {when}",
+  "pay.left": "осталось {time}",
+  "pay.hm": "{h} ч {m} мин",
+  "pay.m": "{m} мин",
+  "pay.timeUp": "Время на оплату истекло",
+  "pay.failed": "Оплата не прошла: {reason}",
+  "pay.failedGeneric": "Оплата не прошла. Попробуйте ещё раз или другой картой.",
+  "pay.retry": "Попробовать ещё раз · {amount}",
+  "pay.checking": "Проверяем оплату…",
+  "pay.checkingText": "Обычно это несколько секунд.",
+  "pay.stillProcessing": "Банк ещё обрабатывает платёж. Статус обновится сам, а бот пришлёт сообщение.",
+  "pay.checkAgain": "Проверить ещё раз",
+  "pay.paid": "Оплачено {amount}",
+  "pay.method.card": "Карта •• {last4}",
+  "pay.method.apple": "Apple Pay",
+  "pay.method.google": "Google Pay",
+  "pay.method.monobank": "monobank",
+  "pay.cod": "При получении: {amount}",
+  "pay.willConfirm": "Мы проверим наличие и подтвердим заказ.",
+  "pay.timeout": "Отменён — не оплачен в течение суток",
+  "pay.unavailable": "Онлайн-оплата временно недоступна",
+  "pay.unavailableText": "Напишите нам в чат — поможем завершить заказ.",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
   "np.cat.all": "Все",
@@ -242,8 +259,9 @@ export const ru = {
   "checkout.step.payment": "Оплата",
   "checkout.step.done": "Готово",
   "checkout.emptyCart": "Корзина пуста.",
-  "checkout.submit": "Оформить · {total}",
   "checkout.failed": "Не удалось оформить заказ",
+  "checkout.submitPay": "Оформить и оплатить {amount}",
+  "checkout.redirecting": "Открываем оплату…",
   "checkout.promoDropped": "{message}. Промокод убран — оформите заказ ещё раз.",
 
   "checkout.contacts.intro": "Куда и кому доставить заказ — начнём с контактов.",
@@ -276,7 +294,10 @@ export const ru = {
 
   "checkout.payment.error": "Не удалось загрузить варианты оплаты.",
   "checkout.payment.none": "Варианты оплаты не настроены.",
-  "checkout.payment.prepay": "Предоплата {amount}",
+  "checkout.payment.full": "Вся сумма онлайн: карта, Apple Pay или Google Pay",
+  "checkout.payment.prepayOnline": "{amount} онлайн сейчас, остальное — наличными при получении",
+  "checkout.payment.trust": "Оплата через monobank — данные карты магазин не видит",
+  "checkout.payment.deadline": "Оплатите в течение 24 часов, иначе заказ отменится автоматически.",
 
   "checkout.confirm.items": "Состав",
   "checkout.confirm.sum": "Сумма",
@@ -288,13 +309,12 @@ export const ru = {
   "checkout.confirm.promoProblem": "Промокод «{code}»: {message}",
   "checkout.confirm.promoChecking": "проверяем…",
 
-  "checkout.success.title": "Заказ оформлен!",
-  "checkout.success.orderNumber": "Номер заказа",
-  "checkout.success.requisites": "Реквизиты · {payment}",
-  "checkout.success.payByRequisites": "Оплатите по реквизитам ниже. Подтверждение — в чате заказа.",
-  "checkout.success.claimed": "Скрин перевода отправлен в чат заказа. Менеджер проверит поступление и подтвердит оплату.",
-  "checkout.success.payLater": "Можно оплатить позже — со страницы заказа",
-  "checkout.success.openOrder": "Перейти к заказу",
+  // ── payment return page (opened in a browser, outside Telegram) ──────────
+  "payReturn.title": "Спасибо! Оплата принята в обработку",
+  "payReturn.text": "Закройте это окно — вы вернётесь в магазин в Telegram. Статус оплаты обновится автоматически, а бот пришлёт сообщение.",
+  "payReturn.order": "Заказ {id}",
+  "payReturn.back": "Вернуться в Telegram",
+  "payReturn.closeHint": "Окно не закрылось само — закройте его крестиком или кнопкой «Готово» вверху.",
 } satisfies Dictionary;
 
 /**

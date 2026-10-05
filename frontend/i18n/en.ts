@@ -145,7 +145,7 @@ export const en: RuDictionary = {
 
   // ── payment ───────────────────────────────────────────────────────────────
   "payment.paid": "Paid",
-  "payment.claimed": "Being checked",
+  "payment.awaiting": "Awaiting payment",
   "payment.partial": "Partly paid",
   "payment.unpaid": "Unpaid",
 
@@ -183,19 +183,8 @@ export const en: RuDictionary = {
   "order.pickup": "Pickup",
   "order.payment": "Payment",
   "order.comment": "Comment",
-  "order.requisites.card": "Card",
-  "order.requisites.edrpou": "Tax ID (RNOKPP)",
-  "order.requisites.purpose": "Payment reference",
-  "order.requisites.note": "Note",
-  "order.paymentConfirmed": "Payment confirmed",
-  "order.paymentClaimed": "Payment being checked",
-  "order.paymentClaimedText": "Screenshot received. A manager will check the transfer and confirm the payment — the status will update here.",
   "order.openChat": "Open chat",
   "order.copy": "Copy: {label}",
-  "order.proof.title": "Transfer confirmation",
-  "order.proof.text": "Paid already? Upload a screenshot of the transfer — it goes into the order chat, a manager will check it and confirm the payment.",
-  "order.proof.upload": "Upload transfer screenshot",
-  "order.proof.failed": "Couldn't send the screenshot",
 
   // ── order cancellation ────────────────────────────────────────────────────
   "cancel.button": "Cancel order",
@@ -209,7 +198,35 @@ export const en: RuDictionary = {
   "cancel.failed": "Couldn't cancel the order",
   "order.giftBadge": "🎁 Gift",
   "order.npDelivery": "Nova Poshta · {city}",
-  "order.requisitesTitle": "Payment details",
+
+  // ── online payment (monobank) on the order page ──────────────────────────
+  "pay.title": "Payment",
+  "pay.due": "To pay",
+  "pay.button": "Pay {amount}",
+  "pay.hint": "The monobank page opens: card, Apple Pay, Google Pay. If it did not open, tap the button again.",
+  "pay.prepayment": "Prepayment online, the remaining {amount} on delivery.",
+  "pay.until": "Pay by {when}",
+  "pay.left": "{time} left",
+  "pay.hm": "{h} h {m} min",
+  "pay.m": "{m} min",
+  "pay.timeUp": "The time to pay is over",
+  "pay.failed": "The payment failed: {reason}",
+  "pay.failedGeneric": "The payment failed. Try again or use another card.",
+  "pay.retry": "Try again · {amount}",
+  "pay.checking": "Checking the payment…",
+  "pay.checkingText": "This usually takes a few seconds.",
+  "pay.stillProcessing": "The bank is still processing the payment. The status will update by itself, and the bot will send you a message.",
+  "pay.checkAgain": "Check again",
+  "pay.paid": "Paid {amount}",
+  "pay.method.card": "Card •• {last4}",
+  "pay.method.apple": "Apple Pay",
+  "pay.method.google": "Google Pay",
+  "pay.method.monobank": "monobank",
+  "pay.cod": "On delivery: {amount}",
+  "pay.willConfirm": "We will check availability and confirm the order.",
+  "pay.timeout": "Cancelled — not paid within 24 hours",
+  "pay.unavailable": "Online payment is temporarily unavailable",
+  "pay.unavailableText": "Write to us in the chat — we will help you complete the order.",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
   "np.cat.all": "All",
@@ -230,8 +247,9 @@ export const en: RuDictionary = {
   "checkout.step.payment": "Payment",
   "checkout.step.done": "Done",
   "checkout.emptyCart": "Your cart is empty.",
-  "checkout.submit": "Place order · {total}",
   "checkout.failed": "Couldn't place the order",
+  "checkout.submitPay": "Place order and pay {amount}",
+  "checkout.redirecting": "Opening the payment…",
   "checkout.promoDropped": "{message}. The promo code was removed — please place the order again.",
 
   "checkout.contacts.intro": "Where and to whom we deliver — let's start with your contacts.",
@@ -264,7 +282,10 @@ export const en: RuDictionary = {
 
   "checkout.payment.error": "Couldn't load the payment options.",
   "checkout.payment.none": "No payment options are set up.",
-  "checkout.payment.prepay": "Prepayment {amount}",
+  "checkout.payment.full": "The full amount online: card, Apple Pay or Google Pay",
+  "checkout.payment.prepayOnline": "{amount} online now, the rest in cash on delivery",
+  "checkout.payment.trust": "Paid via monobank — the shop never sees your card details",
+  "checkout.payment.deadline": "Pay within 24 hours, otherwise the order is cancelled automatically.",
 
   "checkout.confirm.items": "Items",
   "checkout.confirm.sum": "Subtotal",
@@ -276,11 +297,10 @@ export const en: RuDictionary = {
   "checkout.confirm.promoProblem": "Promo code “{code}”: {message}",
   "checkout.confirm.promoChecking": "checking…",
 
-  "checkout.success.title": "Order placed!",
-  "checkout.success.orderNumber": "Order number",
-  "checkout.success.requisites": "Payment details · {payment}",
-  "checkout.success.payByRequisites": "Pay using the details below. Confirmation goes to the order chat.",
-  "checkout.success.claimed": "The transfer screenshot was sent to the order chat. A manager will check it and confirm the payment.",
-  "checkout.success.payLater": "You can pay later — from the order page",
-  "checkout.success.openOrder": "Go to the order",
+  // ── payment return page (opened in a browser, outside Telegram) ──────────
+  "payReturn.title": "Thank you! Your payment is being processed",
+  "payReturn.text": "Close this window to get back to the shop in Telegram. The payment status will update automatically, and the bot will send you a message.",
+  "payReturn.order": "Order {id}",
+  "payReturn.back": "Back to Telegram",
+  "payReturn.closeHint": "The window did not close by itself — close it with the ✕ or the “Done” button at the top.",
 };

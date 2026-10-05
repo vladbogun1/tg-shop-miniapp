@@ -3,24 +3,16 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
-import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
-import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.service.PaymentRequisitesRules;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.AdminPaymentOptionDto;
-import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,27 +30,21 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredAdmin
-@Tag(name = "Admin Payment", description = "Admin payment options and requisites")
+@Tag(name = "Admin Payment", description = "Admin payment options")
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminPaymentController {
 
     private final PaymentOptionRepository paymentOptionRepository;
-    private final PaymentRequisitesRepository requisitesRepository;
     private final AdminAuditService audit;
-    private final NotificationService notificationService;
     private final SiteRevalidator siteRevalidator;
     private final Validator validator;
 
     public AdminPaymentController(PaymentOptionRepository paymentOptionRepository,
-                                  PaymentRequisitesRepository requisitesRepository,
                                   AdminAuditService audit,
-                                  NotificationService notificationService,
                                   SiteRevalidator siteRevalidator,
                                   Validator validator) {
         this.paymentOptionRepository = paymentOptionRepository;
-        this.requisitesRepository = requisitesRepository;
         this.audit = audit;
-        this.notificationService = notificationService;
         this.siteRevalidator = siteRevalidator;
         this.validator = validator;
     }
@@ -162,66 +148,6 @@ public class AdminPaymentController {
         return options(true);
     }
 
-    @GetMapping("/payment-requisites")
-    @Operation(summary = "Get payment requisites")
-    public PaymentRequisitesDto requisites() {
-        return requisitesRepository.findById(1)
-                .map(AdminPaymentController::toReqDto)
-                .orElse(new PaymentRequisitesDto(null, null, null, null, null, null));
-    }
-
-    @PutMapping("/payment-requisites")
-    @Transactional
-    @Operation(summary = "Update payment requisites")
-    public PaymentRequisitesDto updateRequisites(@Valid @RequestBody PaymentRequisitesDto body) {
-        if (body == null) {
-            throw new BadRequestException("empty body");
-        }
-        PaymentRequisites r = requisitesRepository.findById(1).orElseGet(() -> {
-            PaymentRequisites n = new PaymentRequisites();
-            n.setId(1);
-            return n;
-        });
-        PaymentRequisitesDto before = toReqDto(r);
-        String problem = PaymentRequisitesRules.problem(before, body);
-        if (problem != null) {
-            throw new BadRequestException(problem);
-        }
-        r.setCardNumber(body.cardNumber());
-        r.setIban(body.iban());
-        r.setRecipient(body.recipient());
-        r.setEdrpou(body.edrpou());
-        r.setPurpose(body.purpose());
-        r.setNote(body.note());
-        PaymentRequisitesDto saved = toReqDto(requisitesRepository.save(r));
-
-        // Payment details are money-critical: the log gets a MASKED diff (never full numbers), and
-        // a swap of card/IBAN/recipient pings the seller's Telegram — after the commit only.
-        List<String> diff = PaymentRequisitesRules.diff(before, saved);
-        if (!diff.isEmpty()) {
-            audit.record("PAYMENT_REQUISITES", "PAYMENT", null, String.join("; ", diff));
-            if (PaymentRequisitesRules.moneyCritical(before, saved)) {
-                String admin = audit.currentAdminName();
-                afterCommit(() -> notificationService.onRequisitesChanged(admin, diff));
-            }
-        }
-        siteRevalidator.paymentChanged();
-        return saved;
-    }
-
-    private static void afterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
-        } else {
-            action.run();
-        }
-    }
-
     private AdminPaymentOptionDto toDto(PaymentOption p) {
         return new AdminPaymentOptionDto(
                 UuidUtil.toString(p.getId()),
@@ -231,11 +157,5 @@ public class AdminPaymentController {
                 p.getPrepaymentMinor(),
                 p.getSortOrder(),
                 p.isActive());
-    }
-
-    private static PaymentRequisitesDto toReqDto(PaymentRequisites r) {
-        return new PaymentRequisitesDto(
-                r.getCardNumber(), r.getIban(), r.getRecipient(),
-                r.getEdrpou(), r.getPurpose(), r.getNote());
     }
 }

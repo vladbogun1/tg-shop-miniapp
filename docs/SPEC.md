@@ -121,10 +121,10 @@ Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
 - `Order changeStatus(UUID, OrderStatus, trackingNumber?, reason?)` — диспетчер для админки/канбана.
 
 ## Customer API (ROLE_CUSTOMER)
-- POST `/api/orders` — body CreateOrderRequest { items:[{productId,variantId?,quantity}], customerName, phone, comment?, promoCode?, deliveryMethod(NOVA_POSHTA|PICKUP), npCityRef?, npCityName?, npWarehouseRef?, npWarehouseName?, paymentOptionId } → { orderId }.
+- POST `/api/orders` — body CreateOrderRequest { items:[{productId,variantId?,quantity}], customerName, phone, comment?, promoCode?, deliveryMethod(NOVA_POSHTA|PICKUP), npCityRef?, npCityName?, npWarehouseRef?, npWarehouseName?, paymentOptionId } → { orderId, amountDueMinor }. `paymentOptionId` обязателен (активный способ); заказу ставится `paymentDueAt` = сейчас + 24 ч (см. «Оплата онлайн» ниже).
 - GET `/api/me` → профиль + admin флаг.
 - GET `/api/me/orders` → [OrderSummaryDto{ id, status, totalMinor, currency, createdAt, itemsCount, unreadCount }].
-- GET `/api/me/orders/{id}` → OrderDetailDto{ id,status,subtotalMinor,discountMinor,totalMinor,currency,customerName,phone,comment,promoCode, deliveryMethod,npCityName,npWarehouseName, paymentOptionTitle, trackingNumber, rejectReason, items:[OrderItemDto], requisites:PaymentRequisitesDto, createdAt }.
+- GET `/api/me/orders/{id}` → OrderDetailDto{ id,status,subtotalMinor,discountMinor,totalMinor,currency,customerName,phone,comment,promoCode, deliveryMethod,npCityName,npWarehouseName, paymentOptionTitle, trackingNumber, rejectReason, items:[OrderItemDto], payment:OnlinePaymentDto, paymentDueAt, amountDueMinor, createdAt }.
 - GET `/api/me/orders/{id}/messages` → [MessageDto].
 - POST `/api/me/orders/{id}/messages` — { text?, type(TEXT|PHOTO|FILE), attachmentUrl?, fileName?, mimeType?, replyToMessageId? } → MessageDto (persists + broadcast WS; NOT ping bot — customer is sender).
 - POST `/api/me/orders/{id}/messages/read` → 204 (set read_at on ADMIN msgs).
@@ -143,7 +143,7 @@ Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
 - Promo: GET/POST `/api/admin/promocodes`, PATCH/DELETE `/api/admin/promocodes/{id}`.
 - Orders: GET `/api/admin/orders/board` → { columns: { NEW:[OrderCardDto], APPROVED:[...], SHIPPED:[...], DELIVERED:[...], REJECTED:[...] } }; GET `/api/admin/orders?status=&q=&page=&size=` (таблица); GET `/api/admin/orders/{id}` → OrderDetailDto (+ tg user); PATCH `/api/admin/orders/{id}/status` { status, trackingNumber?, rejectReason? }; DELETE `/api/admin/orders/{id}`.
 - Order chat (admin side): GET `/api/admin/orders/{id}/messages`, POST `/api/admin/orders/{id}/messages` (ADMIN sender → persists + WS broadcast + **ping customer via bot**), POST `/api/admin/orders/{id}/messages/read`.
-- Payment settings: GET `/api/admin/payment-options`, PUT `/api/admin/payment-options` (replace list), GET `/api/admin/payment-requisites`, PUT `/api/admin/payment-requisites`.
+- Payment settings: GET `/api/admin/payment-options`, PUT `/api/admin/payment-options` (replace list). (Реквизиты карты убраны вместе с ручной оплатой — см. «Оплата онлайн».)
 - OrderCardDto{ id, customerName, totalMinor, currency, itemsCount, deliveryMethod, paymentOptionTitle, unreadCount, createdAt, status }.
 
 ## WebSocket (realtime чат)
@@ -173,12 +173,24 @@ Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
 
 # Дополнения 2026-09 (приоритетнее текста выше)
 
-## Оплата — заявка ≠ подтверждение
-- `POST /api/me/orders/{id}/pay` постит скрин в чат и ставит `orders.payment_claimed` +
-  `payment_claimed_at`. **Не** меняет `paid` / `received_minor` / наложку.
-- Подтверждает только админ: `PATCH /api/admin/orders/{id}/paid { receivedMinor }` (0 = снять оплату).
-- `OrderSummaryDto`, `OrderCardDto`, `OrderDetailDto`, `DispatchOrderDto` отдают `paymentClaimed`
-  (в detail — ещё и `paymentClaimedAt`).
+## Оплата онлайн (monobank, с 2026-10; заменяет «перевод на карту + скриншот»)
+Подробно — `docs/MONOBANK-ACQUIRING.md`.
+- Каждый способ оплаты оплачивается онлайн: весь заказ или предоплата (`requiresPrepayment`,
+  остаток — наложкой). Заказ без оплаты через `PAYMENT_DUE_HOURS` (24 ч) отклоняется
+  автоматически (`rejectReasonCode = PAYMENT_TIMEOUT`), товар возвращается на склад.
+- `POST /api/me/orders/{id}/payment` → страница оплаты monobank на сумму `amountDueMinor`
+  (живая ссылка переиспользуется); `POST /api/me/orders/{id}/payment/refresh` — перечитать статус.
+- Деньги зачисляет только проверенный статус monobank (вебхук `POST /api/payments/mono/webhook`
+  с подписью `X-Sign` или опрос статуса): `received_minor` += сумма, `paid = true`.
+  **Статус заказа не меняется** — заказ подтверждает админ. Ручная правка
+  `PATCH /api/admin/orders/{id}/paid { receivedMinor }` осталась.
+- Админ: `GET /api/admin/orders/{id}/payments`, `POST …/payments/refresh`,
+  `POST …/payments/{invoiceId}/refund` (возврат на карту), `GET /api/admin/payments/monobank/status`.
+- `OrderSummaryDto`, `OrderCardDto` отдают `paymentDueAt` и `amountDueMinor`; `OrderDetailDto` —
+  ещё и `payment` (последний счёт). Поля `paymentClaimed*` и реквизиты (`/api/admin/payment-requisites`,
+  `requisites` в заказе) удалены.
+- «Внимание», группа `PAYMENT`: «Оплачен онлайн — подтвердите заказ» (NEW + оплачен онлайн) и
+  «Оплачен, но отменён — верните деньги» (отклонён до отправки, возвращено меньше полученного).
 
 ## Новые эндпоинты
 - `GET /api/promo-codes/preview?code=&subtotalMinor=` (публичный) → `{ valid, discountMinor, totalMinor, message }`.

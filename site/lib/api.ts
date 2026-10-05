@@ -11,6 +11,7 @@ import {
   ApiError,
   createHttpClient,
   type CartLineInput,
+  type CreateOrderResult,
   type ServerCart,
   newIdempotencyKey,
   type AuthUser,
@@ -20,7 +21,7 @@ import {
   type OrderDetail,
   type OrderSummary,
   type PaymentOption,
-  type PaymentRequisites,
+  type PaymentStart,
   type Product,
   type PromoPreview,
   type PublicCategory,
@@ -133,11 +134,6 @@ export interface CreateOrderRequest {
   paymentOptionId: string;
 }
 
-export interface CreateOrderResponse {
-  orderId: string;
-  requisites?: PaymentRequisites | null;
-}
-
 export interface NpBboxParams {
   minLat: number;
   maxLat: number;
@@ -236,7 +232,7 @@ export const api = {
     authed(() => http.post<ServerCart>("/api/me/cart/merge", { lines })),
   createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
     authed(() =>
-      http.post<CreateOrderResponse>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
+      http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
     ),
   orders: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
   order: (id: string) => authed(() => http.get<OrderDetail>(`/api/me/orders/${id}`)),
@@ -246,8 +242,18 @@ export const api = {
     ),
   sendMessage: (id: string, body: SendMessageRequest) =>
     authed(() => http.post<Message>(`/api/me/orders/${id}/messages`, body)),
-  submitPaymentProof: (id: string, body: SendMessageRequest) =>
-    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/pay`, body)),
+  /**
+   * Opens a monobank invoice for what is due now; the browser then goes to `pageUrl`. monobank
+   * sends the customer back to the order page with `?payment=return`. 409 + `code`:
+   * PAYMENT_UNAVAILABLE | NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED.
+   */
+  startPayment: (id: string, locale: string) =>
+    authed(() =>
+      http.post<PaymentStart>(`/api/me/orders/${id}/payment`, { returnTo: "SITE", locale })
+    ),
+  /** Asks monobank for the invoice status right now (server-side throttled to 1 per 5 s). */
+  refreshPayment: (id: string) =>
+    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
   markRead: (id: string) => authed(() => http.post<void>(`/api/me/orders/${id}/messages/read`)),
@@ -264,8 +270,9 @@ export type {
   NpWarehouse,
   OrderDetail,
   OrderSummary,
+  CreateOrderResult,
   PaymentOption,
-  PaymentRequisites,
+  PaymentStart,
   PromoPreview,
   PublicCategory,
   PublicProductPage,

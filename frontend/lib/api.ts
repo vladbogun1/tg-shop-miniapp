@@ -17,13 +17,14 @@ import {
   type AuthResponse,
   type CartLineInput,
   type Conversation,
+  type CreateOrderResult,
   type Message,
   type NpCity,
   type NpWarehouse,
   type OrderDetail,
   type OrderSummary,
   type PaymentOption,
-  type PaymentRequisites,
+  type PaymentStart,
   type Product,
   type PromoPreview,
   type SendMessageRequest,
@@ -35,13 +36,14 @@ export type {
   AuthResponse,
   CartLineInput,
   Conversation,
+  CreateOrderResult,
   Message,
   NpCity,
   NpWarehouse,
   OrderDetail,
   OrderSummary,
   PaymentOption,
-  PaymentRequisites,
+  PaymentStart,
   Product,
   PromoPreview,
   SendMessageRequest,
@@ -188,9 +190,11 @@ export interface CreateOrderRequest {
   paymentOptionId: string;
 }
 
-export interface CreateOrderResponse {
-  orderId: string;
-  requisites?: PaymentRequisites | null;
+/** GET /api/app-info — public, no sign-in needed (the payment return page uses it). */
+export interface AppInfo {
+  botUsername?: string | null;
+  webappBaseUrl?: string | null;
+  imageBaseUrl?: string | null;
 }
 
 export interface NpBboxParams {
@@ -210,6 +214,7 @@ export const customerApi = {
   getProducts: () => http.get<Product[]>("/api/products"),
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
   getPaymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+  getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   /** What a promo code is worth for this cart — read-only, does not consume a use. */
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(
@@ -264,9 +269,10 @@ export const customerApi = {
   /**
    * Places an order. The idempotency key makes a retry (lost response, double tap) return the
    * order already created instead of placing a second one with a second stock deduction.
+   * Next step: {@link startPayment} for the returned orderId.
    */
   createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
-    http.post<CreateOrderResponse>("/api/orders", body, { "Idempotency-Key": idempotencyKey }),
+    http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey }),
   getOrders: () => http.get<OrderSummary[]>("/api/me/orders"),
   getOrder: (id: string) => http.get<OrderDetail>(`/api/me/orders/${id}`),
   /**
@@ -280,11 +286,15 @@ export const customerApi = {
   sendMessage: (id: string, body: SendMessageRequest) =>
     http.post<Message>(`/api/me/orders/${id}/messages`, body),
   /**
-   * Submits a transfer screenshot. This only RECORDS A CLAIM: the order is not marked paid and the
-   * cash-on-delivery amount does not change until an admin confirms the money actually arrived.
+   * A monobank payment page for what is due now (the whole order or the prepayment). Reuses a live
+   * page, so calling it again just returns the same link. 409 with `code` PAYMENT_UNAVAILABLE |
+   * NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED when it cannot be paid.
+   * After paying, monobank sends the browser to the Mini App's /pay-return page.
    */
-  submitPaymentProof: (id: string, body: SendMessageRequest) =>
-    http.post<OrderDetail>(`/api/me/orders/${id}/pay`, body),
+  startPayment: (id: string, locale: string) =>
+    http.post<PaymentStart>(`/api/me/orders/${id}/payment`, { returnTo: "MINIAPP", locale }),
+  /** Asks monobank for the status right now (server-throttled to once per 5 s) → the order. */
+  refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   markRead: (id: string) => http.post<void>(`/api/me/orders/${id}/messages/read`),

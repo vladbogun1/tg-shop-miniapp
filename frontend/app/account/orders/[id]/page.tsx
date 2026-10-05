@@ -2,23 +2,22 @@
 
 /**
  * ORDER DETAIL (design doc §6ter.2 customer view): items, delivery, payment,
- * status timeline, tracking, requisites. Open-chat CTA «Написать в чат».
+ * status timeline, tracking, online payment (monobank, components/account/OrderPayment).
+ * Open-chat CTA «Написать в чат».
  * GET /api/me/orders/{id} (queryKey ["me","orders",id]).
  *
  * ChiSetup (v3): a sticky translucent header (back + title + status),
  * stacked `.nb` sections (status + StatusTimeline, items with thumbnails,
- * totals, delivery, payment + tracking, reject banner, copyable requisites) and
+ * totals, delivery, payment + tracking, reject banner, the payment block) and
  * a prominent sticky bottom "Написать в чат" button within thumb reach.
  * All data fields, routes and query keys are preserved.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Ban,
   Check,
-  CheckCircle2,
-  Clock,
   Copy,
   CreditCard,
   MapPin,
@@ -27,22 +26,18 @@ import {
   Receipt,
   Store,
   Truck,
-  Upload,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { IN_FLIGHT, OrderPayment } from "@/components/account/OrderPayment";
+import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
-import {
-  ApiError,
-  customerApi,
-  type OrderDetail,
-  type PaymentRequisites,
-} from "@/lib/api";
-import { paymentState, type PaymentState } from "@shop/shared";
+import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
+import { paymentState } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -57,6 +52,7 @@ export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const token = useAccessToken();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["me", "orders", id],
@@ -122,24 +118,44 @@ export default function OrderDetailPage() {
         </motion.div>
       )}
 
-      {data && <OrderBody order={data} id={id} onPaid={() => void refetch()} />}
+      {data && (
+        <OrderBody
+          order={data}
+          id={id}
+          onRefetch={() => void refetch()}
+          onOrder={(o) => queryClient.setQueryData(["me", "orders", id], o)}
+        />
+      )}
     </div>
   );
 }
 
+/** The server sends the reject reason code with the order; the shared type does not list it yet. */
+type OrderWithReasonCode = OrderDetail & { rejectReasonCode?: string | null };
+
 function OrderBody({
   order,
   id,
-  onPaid,
+  onRefetch,
+  onOrder,
 }: {
   order: OrderDetail;
   id: string;
-  onPaid: () => void;
+  onRefetch: () => void;
+  onOrder: (o: OrderDetail) => void;
 }) {
   const t = useT();
   const isPickup = order.deliveryMethod === "PICKUP";
+  const payState = paymentState(order);
+  // The backend refuses to cancel while the bank is charging the card — do not offer it then.
   const cancelable =
-    !order.paid && (order.status === "NEW" || order.status === "APPROVED");
+    !order.paid &&
+    (order.status === "NEW" || order.status === "APPROVED") &&
+    !IN_FLIGHT.includes(order.payment.status);
+  const paymentTimeout =
+    order.status === "REJECTED" &&
+    (order as OrderWithReasonCode).rejectReasonCode === "PAYMENT_TIMEOUT";
+  const payment = <OrderPayment order={order} onOrder={onOrder} onRefetch={onRefetch} />;
 
   return (
     <>
@@ -150,17 +166,24 @@ function OrderBody({
         // leave room for the sticky chat bar (button + safe area)
         className="flex flex-col gap-4 pb-28"
       >
+        {/* Payment still due: the action goes first, so it is the first thing seen on arrival. */}
+        {payState === "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
+
         {/* status + timeline */}
         <motion.section variants={riseItem} className="nb p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
               {t("order.status")}
             </h3>
-            <PaidBadge state={paymentState(order)} />
+            <PaymentBadge state={payState} />
           </div>
           <StatusTimeline status={order.status} />
 
-          {order.status === "REJECTED" && order.rejectReason && (
+          {paymentTimeout ? (
+            <div className="mt-3 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,var(--surface))] px-4 py-3">
+              <p className="nb-up text-[13px] font-bold text-[var(--danger)]">{t("pay.timeout")}</p>
+            </div>
+          ) : order.status === "REJECTED" && order.rejectReason && (
             <div className="mt-3 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,var(--surface))] px-4 py-3">
               <p className="nb-up text-[11px] font-bold text-[var(--danger)]">
                 {t("order.rejectReason")}
@@ -301,69 +324,13 @@ function OrderBody({
           )}
         </motion.section>
 
-        {/* requisites */}
-        {order.requisites && hasAnyRequisite(order.requisites) && (
-          <motion.section variants={riseItem} className="nb p-4">
-            <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em] mb-3">
-              <CreditCard className="h-4 w-4" strokeWidth={2.25} />{" "}
-              {t("order.requisitesTitle")}
-            </h3>
-            <div className="flex flex-col gap-3">
-              {order.requisites.cardNumber && (
-                <CopyRow label={t("order.requisites.card")} value={order.requisites.cardNumber} />
-              )}
-              {order.requisites.iban && (
-                <CopyRow label="IBAN" value={order.requisites.iban} />
-              )}
-              {order.requisites.recipient && (
-                <InfoRow label={t("order.recipient")} value={order.requisites.recipient} />
-              )}
-              {order.requisites.edrpou && (
-                <CopyRow label={t("order.requisites.edrpou")} value={order.requisites.edrpou} />
-              )}
-              {order.requisites.purpose && (
-                <InfoRow label={t("order.requisites.purpose")} value={order.requisites.purpose} />
-              )}
-              {order.requisites.note && (
-                <InfoRow label={t("order.requisites.note")} value={order.requisites.note} />
-              )}
-            </div>
-          </motion.section>
-        )}
-
-        {/* payment: confirmed / awaiting confirmation / upload a receipt */}
-        <motion.section variants={riseItem}>
-          {order.paid ? (
-            <div className="nb flex items-center gap-2 border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_12%,var(--surface))] p-4">
-              <CheckCircle2
-                className="h-5 w-5 shrink-0 text-[var(--ok)]"
-                strokeWidth={2.25}
-              />
-              <span className="nb-up text-[14px] font-bold text-[var(--ok)]">
-                {t("order.paymentConfirmed")}
-              </span>
-            </div>
-          ) : order.paymentClaimed ? (
-            <div className="nb flex items-start gap-2 border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,var(--surface))] p-4">
-              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2.25} />
-              <div>
-                <span className="nb-up block text-[14px] font-bold text-[var(--warn)]">
-                  {t("order.paymentClaimed")}
-                </span>
-                <p className="mt-1 text-[12px] text-[var(--ink)]">
-                  {t("order.paymentClaimedText")}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <PaymentProof orderId={order.id} onPaid={onPaid} />
-          )}
-        </motion.section>
+        {/* paid: amount, card / Apple Pay, what is left for the courier */}
+        {payState !== "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
 
         {/* cancel (only while unpaid + NEW/APPROVED) */}
         {cancelable && (
           <motion.section variants={riseItem}>
-            <CancelOrder orderId={order.id} onDone={onPaid} />
+            <CancelOrder orderId={order.id} onDone={onRefetch} />
           </motion.section>
         )}
       </motion.div>
@@ -458,23 +425,6 @@ function InfoRow({
   );
 }
 
-/** InfoRow with a copy-to-clipboard action (card/IBAN/edrpou). */
-function CopyRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-display text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-          {label}
-        </span>
-        <span className="font-display break-words text-[15px] font-semibold tracking-[0.02em] text-[var(--ink)]">
-          {value}
-        </span>
-      </div>
-      <CopyButton value={value} label={label} />
-    </div>
-  );
-}
-
 function CopyButton({ value, label }: { value: string; label: string }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -501,103 +451,6 @@ function CopyButton({ value, label }: { value: string; label: string }) {
         <Copy className="h-4 w-4 text-[var(--muted)]" strokeWidth={2.5} />
       )}
     </button>
-  );
-}
-
-/**
- * Payment badge. "Оплата на проверке" is its own state on purpose: uploading a screenshot is a
- * claim, and showing it as «ОПЛАЧЕН» is what let an unpaid order look settled.
- */
-function PaidBadge({ state }: { state: PaymentState }) {
-  const t = useT();
-  if (state === "PAID") {
-    return (
-      <span className="nb-up flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--ok)]">
-        <Check className="h-3 w-3" strokeWidth={3} />
-        {t("payment.paid")}
-      </span>
-    );
-  }
-  if (state === "PARTIAL" || state === "CLAIMED") {
-    return (
-      <span className="nb-up flex shrink-0 items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--warn)]">
-        <Clock className="h-3 w-3" strokeWidth={3} />
-        {state === "PARTIAL" ? t("payment.partial") : t("payment.claimed")}
-      </span>
-    );
-  }
-  return (
-    <span className="nb-up shrink-0 rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10.5px] font-semibold text-[var(--muted)]">
-      {t("payment.unpaid")}
-    </span>
-  );
-}
-
-/**
- * Upload a transfer screenshot.
- *
- * The screenshot goes into the order chat and flags the order as "payment claimed" — it does NOT
- * mark it paid. Only an admin who sees the money confirms it, so the cash-on-delivery amount on
- * the seller's dispatch card stays correct until then.
- */
-function PaymentProof({
-  orderId,
-  onPaid,
-}: {
-  orderId: string;
-  onPaid: () => void;
-}) {
-  const t = useT();
-  const [state, setState] = useState<"idle" | "uploading" | "error">("idle");
-  const [err, setErr] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setState("uploading");
-    setErr(null);
-    try {
-      const { url } = await customerApi.uploadAttachment(file);
-      await customerApi.submitPaymentProof(orderId, {
-        type: "PHOTO",
-        attachmentUrl: url,
-        fileName: file.name,
-        mimeType: file.type,
-      });
-      haptic();
-      setState("idle");
-      onPaid();
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : t("order.proof.failed"));
-      setState("error");
-    } finally {
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  return (
-    <div className="nb p-4 text-left">
-      <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
-        <Upload className="h-4 w-4" strokeWidth={2.25} /> {t("order.proof.title")}
-      </h3>
-      <p className="mt-1.5 mb-3 text-[12px] text-[var(--muted)]">
-        {t("order.proof.text")}
-      </p>
-      <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
-      <Button
-        variant="accent"
-        fullWidth
-        loading={state === "uploading"}
-        icon={<Upload className="h-4 w-4" strokeWidth={2.5} />}
-        onClick={() => inputRef.current?.click()}
-      >
-        {t("order.proof.upload")}
-      </Button>
-      {err && (
-        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
-      )}
-    </div>
   );
 }
 
@@ -727,11 +580,5 @@ function CancelOrder({ orderId, onDone }: { orderId: string; onDone: () => void 
         </button>
       </div>
     </div>
-  );
-}
-
-function hasAnyRequisite(r: PaymentRequisites): boolean {
-  return Boolean(
-    r.cardNumber || r.iban || r.recipient || r.edrpou || r.purpose || r.note
   );
 }

@@ -74,7 +74,7 @@ public class MetricsFactsLoader {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.source, o.total_minor, o.subtotal_minor, "
                 + "o.discount_minor, o.received_minor, " + refunded + " refunded_minor, "
                 + "o.created_at, o.approved_at, o.shipped_at, o.delivered_at, o.rejected_at, o.paid_at, "
-                + returnedAt + " returned_at, o.paid, o.payment_claimed, o.tg_user_id, o.customer_name, "
+                + returnedAt + " returned_at, o.paid, o.tg_user_id, o.customer_name, "
                 + "o.tg_username, o.delivery_method, o.payment_option_title, o.promo_code, o.reject_reason, "
                 + reasonCode + " reject_reason_code "
                 + "from orders o order by o.created_at";
@@ -95,7 +95,6 @@ public class MetricsFactsLoader {
                 ts(rs, "paid_at"),
                 ts(rs, "returned_at"),
                 rs.getBoolean("paid"),
-                rs.getBoolean("payment_claimed"),
                 nullableLong(rs, "tg_user_id"),
                 rs.getString("customer_name"),
                 rs.getString("tg_username"),

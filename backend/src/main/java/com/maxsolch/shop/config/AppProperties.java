@@ -60,7 +60,7 @@ public class AppProperties {
         private long jwtAccessTtlMinutes = 120;
         /**
          * Lifetime of an ADMIN token. Much shorter than the customer one (30 days): a leaked admin
-         * token can change payment requisites. The panel re-issues it quietly while it is in use
+         * token can refund payments and edit orders. The panel re-issues it quietly while it is in use
          * ({@code POST /api/admin/token/refresh}), so an active admin is never logged out.
          */
         private long adminTokenTtlMinutes = 720;

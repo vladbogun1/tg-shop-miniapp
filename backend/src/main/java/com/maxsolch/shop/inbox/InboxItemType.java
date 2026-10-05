@@ -6,8 +6,11 @@ package com.maxsolch.shop.inbox;
  */
 public enum InboxItemType {
 
-    /** «Я оплатил» claim the admin has not confirmed yet. */
-    PAYMENT("Подтвердить оплату", "Покупатель прислал подтверждение перевода — проверьте поступление.", "ORDER", false),
+    /**
+     * Money that needs an admin: an order paid online that still waits for confirmation, or a paid
+     * order cancelled before shipping whose money has not gone back yet.
+     */
+    PAYMENT("Оплаты", "Оплаченные онлайн заказы ждут подтверждения; по отменённым после оплаты верните деньги.", "ORDER", false),
     /** Unread customer messages in an order chat. */
     CHAT("Непрочитанные чаты", "Покупатели ждут ответа в чате заказа.", "ORDER", false),
     /** NEW order nobody approved within {@code inbox.newStaleHours}. */

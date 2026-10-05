@@ -125,8 +125,9 @@ public class OrderQueryService {
                 ctx.itemsFor(id),
                 ctx.unreadFor(id),
                 o.isPaid(),
-                o.isPaymentClaimed(),
-                receivedMinor(o));
+                receivedMinor(o),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o));
     }
 
     @Transactional(readOnly = true)
@@ -144,8 +145,9 @@ public class OrderQueryService {
                 o.getCreatedAt(),
                 o.getStatus().name(),
                 o.isPaid(),
-                o.isPaymentClaimed(),
                 receivedMinor(o),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o),
                 sourceOf(o));
     }
 
@@ -236,7 +238,7 @@ public class OrderQueryService {
                 o.getNpWarehouseRef());
     }
 
-    /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
+    /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
     public static long receivedMinor(Order o) {
         return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
     }
@@ -298,7 +300,6 @@ public class OrderQueryService {
                 received,
                 cod,
                 o.isPaid(),
-                o.isPaymentClaimed(),
                 o.getCurrency(),
                 o.getPaymentOptionTitle(),
                 o.getTrackingNumber(),

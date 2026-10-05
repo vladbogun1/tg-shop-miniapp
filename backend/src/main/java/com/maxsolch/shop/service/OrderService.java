@@ -47,9 +47,6 @@ import java.util.Optional;
 @Service
 public class OrderService {
 
-    /** A payment claim repeated after this long counts as a new claim (see {@link #claimPayment}). */
-    static final java.time.Duration RECLAIM_AFTER = java.time.Duration.ofMinutes(10);
-
     /**
      * Error code for "this promo code cannot be used". The cart validates codes before checkout, so
      * reaching this means the last use was taken in the meantime — the app drops the code and lets
@@ -403,32 +400,6 @@ public class OrderService {
             }
         }
         return posted;
-    }
-
-    /**
-     * Records the customer's CLAIM that they paid (a transfer screenshot). Deliberately does not
-     * touch {@code paid} / {@code receivedMinor}: an uploaded picture is not money in the account,
-     * and treating it as such let anyone zero out their cash-on-delivery amount and receive goods
-     * for free. Only {@link #markPaid} — admin-only — moves the actual figures.
-     */
-    @Transactional
-    public Order claimPayment(byte[] orderId) {
-        Order order = lock(orderId);
-        Instant now = Instant.now();
-        if (!order.isPaymentClaimed()) {
-            order.setPaymentClaimed(true);
-            order.setPaymentClaimedAt(now);
-        } else if (!order.isPaid() && (order.getPaymentClaimedAt() == null
-                || order.getPaymentClaimedAt().plus(RECLAIM_AFTER).isBefore(now))) {
-            // A repeated claim later on is a NEW claim (another transfer, a resent screenshot): the
-            // fresh time is the inbox row's version, so it comes back on «Внимание» even if snoozed.
-            // A double tap within RECLAIM_AFTER stays idempotent.
-            order.setPaymentClaimedAt(now);
-        }
-        Order saved = orderRepository.save(order);
-        // The dispatch card must show "заявлена, не подтверждена" so nothing ships as prepaid.
-        events.publishEvent(new OrderEvents.PaymentClaimed(saved.getId()));
-        return saved;
     }
 
     /**

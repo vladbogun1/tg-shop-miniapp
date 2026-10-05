@@ -178,6 +178,8 @@ export interface OrderDetail {
   paymentOptionTitle?: string | null;
   trackingNumber?: string | null;
   rejectReason?: string | null;
+  /** RejectReasonCode name (shared/orders.ts), e.g. PAYMENT_TIMEOUT; null = not specified. */
+  rejectReasonCode?: string | null;
   items: OrderItem[];
   /** Online payment (monobank) state. */
   payment: OnlinePayment;

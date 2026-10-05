@@ -39,7 +39,6 @@ final class Fx {
         Instant paidAt;
         Instant returnedAt;
         boolean paid;
-        boolean claimed;
         Long tg = 1L;
         String delivery = "NOVA_POSHTA";
         String payment;
@@ -84,11 +83,6 @@ final class Fx {
             return this;
         }
 
-        O claimed() {
-            claimed = true;
-            return this;
-        }
-
         O discount(long subtotalMinor, long discountMinor) {
             subtotal = subtotalMinor;
             discount = discountMinor;
@@ -121,7 +115,7 @@ final class Fx {
 
         OrderFact build() {
             return new OrderFact(id, status, source, total, subtotal, discount, received, refunded, created,
-                    approved, shipped, delivered, rejectedAt, paidAt, returnedAt, paid, claimed, tg, "Покупатель " + tg,
+                    approved, shipped, delivered, rejectedAt, paidAt, returnedAt, paid, tg, "Покупатель " + tg,
                     "user" + tg, delivery, payment, promo, reason, reasonCode);
         }
     }

@@ -5,9 +5,11 @@ import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -69,6 +71,8 @@ class OrderServiceTest {
 
     private String productUuid;
     private byte[] productId;
+    /** The active "pay in full online" option every checkout here picks. */
+    private PaymentOption fullPayment;
 
     @BeforeEach
     void setUp() {
@@ -80,6 +84,9 @@ class OrderServiceTest {
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
+        fullPayment = paymentOption("Полная оплата онлайн", 0);
+        lenient().when(paymentOptionRepository.findById(any())).thenAnswer(inv -> java.util.Arrays.equals(
+                (byte[]) inv.getArgument(0), fullPayment.getId()) ? Optional.of(fullPayment) : Optional.empty());
         // orderRepository.save returns the same instance with an id assigned (PrePersist not run here).
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
@@ -88,6 +95,16 @@ class OrderServiceTest {
             }
             return o;
         });
+    }
+
+    private static PaymentOption paymentOption(String title, long prepaymentMinor) {
+        PaymentOption po = new PaymentOption();
+        po.setId(UuidUtil.randomBytes());
+        po.setTitle(title);
+        po.setRequiresPrepayment(prepaymentMinor > 0);
+        po.setPrepaymentMinor(prepaymentMinor);
+        po.setActive(true);
+        return po;
     }
 
     private Product simpleProduct(int stock, long priceMinor) {
@@ -112,6 +129,10 @@ class OrderServiceTest {
     }
 
     private CreateOrderCommand cmd(List<CreateOrderCommand.Line> lines, String promoCode) {
+        return cmd(lines, promoCode, UuidUtil.toString(fullPayment.getId()));
+    }
+
+    private CreateOrderCommand cmd(List<CreateOrderCommand.Line> lines, String promoCode, String paymentOptionId) {
         return new CreateOrderCommand(
                 1L, 555L, "buyer",
                 lines,
@@ -119,7 +140,7 @@ class OrderServiceTest {
                 promoCode,
                 "PICKUP",
                 null, null, null, null,
-                null);
+                paymentOptionId);
     }
 
     // ---------- createOrder happy path ----------
@@ -155,6 +176,47 @@ class OrderServiceTest {
         verify(orderRepository).save(any(Order.class));
         // Telegram is notified from an after-commit listener now, so the service only publishes.
         verify(events).publishEvent(any(OrderEvents.Created.class));
+
+        // payment snapshot + the clock to pay online
+        assertThat(order.getPaymentOptionTitle()).isEqualTo("Полная оплата онлайн");
+        assertThat(order.getPrepaymentMinor()).isZero();
+        assertThat(order.getPaymentDueAt()).isBetween(Instant.now().plus(java.time.Duration.ofHours(23)),
+                Instant.now().plus(java.time.Duration.ofHours(25)));
+        assertThat(OrderService.amountDueMinor(order)).isEqualTo(5_000);
+    }
+
+    @Test
+    void createOrder_withoutPaymentOption_throws() {
+        CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null, null);
+
+        assertThatThrownBy(() -> service.createOrder(command))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("api.order.paymentRequired");
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrder_inactivePaymentOption_throws() {
+        fullPayment.setActive(false);
+        CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null);
+
+        assertThatThrownBy(() -> service.createOrder(command))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("unknown payment option");
+    }
+
+    @Test
+    void createOrder_prepaymentOption_onlyThePrepaymentIsDueOnline() {
+        PaymentOption prepay = paymentOption("Предоплата 100 грн + наложка", 10_000);
+        when(paymentOptionRepository.findById(any())).thenReturn(Optional.of(prepay));
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(simpleProduct(5, 50_000)));
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null,
+                UuidUtil.toString(prepay.getId())));
+
+        assertThat(order.getPrepaymentMinor()).isEqualTo(10_000);
+        assertThat(OrderService.dueOnlineMinor(order)).isEqualTo(10_000);
+        assertThat(OrderService.amountDueMinor(order)).isEqualTo(10_000);
     }
 
     @Test
@@ -544,61 +606,111 @@ class OrderServiceTest {
         assertThat(result.getApprovedAt()).isNotNull();
     }
 
-    // ---------- payment: a claim is not a confirmation ----------
+    // ---------- online payment ----------
 
     @Test
-    void claimPayment_marksTheClaimButTouchesNoMoney() {
-        // This is the whole point of the split: uploading a screenshot must not zero out the
-        // cash-on-delivery amount, or a customer gets goods shipped without paying.
-        Order o = persistedOrder(OrderStatus.APPROVED);
+    void recordOnlinePayment_creditsTheMoneyMarksPaidAndKeepsTheStatus() {
+        Order o = persistedOrder(OrderStatus.NEW);
         o.setTotalMinor(50_000);
+        o.setPrepaymentMinor(10_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order claimed = service.claimPayment(o.getId());
+        Order paid = service.recordOnlinePayment(o.getId(), 10_000);
 
-        assertThat(claimed.isPaymentClaimed()).isTrue();
-        assertThat(claimed.getPaymentClaimedAt()).isNotNull();
-        assertThat(claimed.isPaid()).isFalse();
-        assertThat(claimed.getReceivedMinor()).isZero();
-        assertThat(OrderQueryService.codMinor(claimed)).isEqualTo(50_000);
-        verify(events).publishEvent(any(OrderEvents.PaymentClaimed.class));
+        assertThat(paid.getStatus()).isEqualTo(OrderStatus.NEW); // an admin still confirms
+        assertThat(paid.isPaid()).isTrue();
+        assertThat(paid.getPaidAt()).isNotNull();
+        assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
+        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
+        assertThat(OrderService.amountDueMinor(paid)).isZero();
+        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
+        verify(events).publishEvent(event.capture());
+        assertThat(event.getValue()).isInstanceOf(OrderEvents.PaymentReceived.class);
+        assertThat(((OrderEvents.PaymentReceived) event.getValue()).amountMinor()).isEqualTo(10_000);
     }
 
     @Test
-    void claimPayment_isIdempotent() {
-        Order o = persistedOrder(OrderStatus.APPROVED);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-
-        Instant first = service.claimPayment(o.getId()).getPaymentClaimedAt();
-        Instant second = service.claimPayment(o.getId()).getPaymentClaimedAt();
-
-        assertThat(second).isEqualTo(first);
-    }
-
-    @Test
-    void claimPayment_repeatedLaterIsANewClaim() {
-        // The claim time is the version of the «Внимание» row: a new claim must resurface it.
-        Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setPaymentClaimed(true);
-        Instant old = Instant.now().minus(java.time.Duration.ofHours(2));
-        o.setPaymentClaimedAt(old);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-
-        Instant again = service.claimPayment(o.getId()).getPaymentClaimedAt();
-
-        assertThat(again).isAfter(old);
-    }
-
-    @Test
-    void claimPayment_onAPaidOrderKeepsTheOriginalClaimTime() {
-        Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setPaymentClaimed(true);
+    void recordOnlinePayment_receivedIsCappedAtTheTotal() {
+        // e.g. the total was lowered (a discount) after the customer had paid in full
+        Order o = persistedOrder(OrderStatus.NEW);
+        o.setTotalMinor(30_000);
+        o.setReceivedMinor(20_000);
         o.setPaid(true);
-        Instant old = Instant.now().minus(java.time.Duration.ofHours(2));
-        o.setPaymentClaimedAt(old);
+        Instant paidAt = Instant.now().minus(java.time.Duration.ofHours(1));
+        o.setPaidAt(paidAt);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThat(service.claimPayment(o.getId()).getPaymentClaimedAt()).isEqualTo(old);
+        Order paid = service.recordOnlinePayment(o.getId(), 20_000);
+
+        assertThat(paid.getReceivedMinor()).isEqualTo(30_000);
+        assertThat(paid.getPaidAt()).isEqualTo(paidAt); // the first payment time is kept
+        assertThat(OrderQueryService.codMinor(paid)).isZero();
+    }
+
+    @Test
+    void recordOnlineRefund_addsToRefunded() {
+        Order o = persistedOrder(OrderStatus.REJECTED);
+        o.setRefundedMinor(1_000);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        assertThat(service.recordOnlineRefund(o.getId(), 4_000).getRefundedMinor()).isEqualTo(5_000);
+    }
+
+    private Order unpaidOrderWithOneItem(Product p, int qty, Instant dueAt) {
+        Order o = persistedOrder(OrderStatus.NEW);
+        o.setTotalMinor(p.getPriceMinor() * qty);
+        o.setPaymentDueAt(dueAt);
+        OrderItem it = new OrderItem();
+        it.setProductId(p.getId());
+        it.setQuantity(qty);
+        it.setTitleSnapshot(p.getTitle());
+        o.getItems().add(it);
+        return o;
+    }
+
+    @Test
+    void expireUnpaid_rejectsWithPaymentTimeoutAndRestocks() {
+        Instant now = Instant.now();
+        Product p = simpleProduct(1, 1_000);
+        Order o = unpaidOrderWithOneItem(p, 2, now.minusSeconds(1));
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+
+        Order expired = service.expireUnpaid(o.getId(), now);
+
+        assertThat(expired).isNotNull();
+        assertThat(expired.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(expired.getRejectReasonCode()).isEqualTo(RejectReasonCode.PAYMENT_TIMEOUT.name());
+        assertThat(expired.getRejectedAt()).isEqualTo(now);
+        assertThat(expired.getRejectReason()).contains("24");
+        assertThat(p.getStock()).isEqualTo(3); // 1 + 2 back on the shelf
+        verify(events).publishEvent(any(OrderEvents.StatusChanged.class));
+    }
+
+    @Test
+    void expireUnpaid_skipsPaidNotYetDueLegacyAndMovedOnOrders() {
+        Instant now = Instant.now();
+        Product p = simpleProduct(1, 1_000);
+
+        Order paid = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
+        paid.setPaid(true);
+        paid.setReceivedMinor(1_000);
+        Order partlyPaid = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
+        partlyPaid.setReceivedMinor(100);
+        Order notDue = unpaidOrderWithOneItem(p, 1, now.plusSeconds(60));
+        Order legacy = unpaidOrderWithOneItem(p, 1, null); // placed before online payment existed
+        Order approved = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
+        approved.setStatus(OrderStatus.APPROVED);
+        for (Order o : List.of(paid, partlyPaid, notDue, legacy, approved)) {
+            when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+            assertThat(service.expireUnpaid(o.getId(), now)).isNull();
+        }
+
+        assertThat(p.getStock()).isEqualTo(1);
+        assertThat(notDue.getStatus()).isEqualTo(OrderStatus.NEW);
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(orderRepository, never()).save(any());
+        verify(events, never()).publishEvent(any());
     }
 
     @Test

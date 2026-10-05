@@ -67,15 +67,6 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void onPaymentClaimed(OrderEvents.PaymentClaimed event) {
-        withOrder(event.orderId(), order -> {
-            notificationService.onPaymentClaimed(order);
-            refreshDispatch(order);
-        });
-    }
-
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
             notificationService.onPaymentReceived(order, event.amountMinor());

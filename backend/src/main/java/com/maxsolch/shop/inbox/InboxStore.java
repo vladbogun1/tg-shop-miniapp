@@ -36,9 +36,12 @@ public class InboxStore {
     public List<OrderRow> candidateOrders(Instant newCutoff, Instant approvedCutoff, Instant returnsSince) {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.customer_name, o.total_minor, o.received_minor, "
                 + "o.prepayment_minor, o.refunded_minor, o.created_at, o.approved_at, o.shipped_at, o.rejected_at, "
-                + "o.returned_at, o.paid, o.payment_claimed, o.payment_claimed_at, o.reject_reason, o.reject_reason_code "
+                + "o.returned_at, o.paid, o.paid_at, o.reject_reason, o.reject_reason_code, "
+                + "exists (select 1 from payment_invoices pi where pi.order_id = o.id "
+                + "and pi.applied_at is not null) paid_online "
                 + "from orders o "
-                + "where (o.payment_claimed = true and o.paid = false and o.status <> 'REJECTED') "
+                + "where (o.status = 'NEW' and o.paid = true) "
+                + "or (o.status = 'REJECTED' and o.shipped_at is null and o.received_minor > o.refunded_minor) "
                 + "or (o.status = 'NEW' and o.created_at <= ?) "
                 + "or (o.status = 'APPROVED' and coalesce(o.approved_at, o.created_at) <= ?) "
                 + "or (o.status = 'REJECTED' and o.shipped_at is not null and o.rejected_at >= ?) "
@@ -59,8 +62,8 @@ public class InboxStore {
                         ts(rs, "rejected_at"),
                         ts(rs, "returned_at"),
                         rs.getBoolean("paid"),
-                        rs.getBoolean("payment_claimed"),
-                        ts(rs, "payment_claimed_at"),
+                        ts(rs, "paid_at"),
+                        rs.getBoolean("paid_online"),
                         rs.getString("reject_reason"),
                         rs.getString("reject_reason_code")),
                 Timestamp.from(newCutoff), Timestamp.from(approvedCutoff),

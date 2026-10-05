@@ -71,3 +71,12 @@ CREATE TABLE payment_webhook_log (
 -- The seeded "full payment" option said "to the card"; now everything is paid online.
 UPDATE payment_options SET title = 'Полная оплата онлайн'
  WHERE title = 'Полная оплата на карту';
+
+-- The translated note / purpose of the card requisites (V29) are no longer shown anywhere, and the
+-- backend enum no longer has PAYMENT_REQUISITES — without this an unknown entity_type would break
+-- loading the whole translation overlay. The ENUM value itself stays for a rollback.
+DELETE FROM content_translations WHERE entity_type = 'PAYMENT_REQUISITES';
+
+-- The seeded chat template "Реквизиты для оплаты" (V26) sent the card details and asked for a
+-- screenshot; the {requisites} placeholder is gone, so a template still built on it goes too.
+DELETE FROM reply_templates WHERE body_ru LIKE '%{requisites}%';

@@ -52,8 +52,8 @@ public final class MetricsDtos {
     }
 
     /**
-     * State right now (not period-bound): cash still travelling as cash-on-delivery, payment claims
-     * waiting for the admin, and refunds in the period.
+     * State right now (not period-bound): cash still travelling as cash-on-delivery, paid orders
+     * waiting for the admin's confirmation, and refunds in the period.
      */
     public record MoneyNow(long codInTransitMinor, long codInTransitOrders, long awaitingPaymentConfirm,
                            long refundedMinor) {
@@ -281,6 +281,7 @@ public final class MetricsDtos {
 
     /**
      * The board's "Today" strip: work queues and today's money vs yesterday.
+     * {@code awaitingPaymentConfirm} = orders paid online that are still NEW.
      *
      * @param soldYesterdaySameTime sold yesterday up to the current time of day (fair comparison)
      */

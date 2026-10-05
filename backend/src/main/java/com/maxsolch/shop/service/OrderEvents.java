@@ -25,10 +25,6 @@ public final class OrderEvents {
     public record StatusChanged(byte[] orderId) {
     }
 
-    /** The customer uploaded a transfer screenshot (claim only — no money recorded). */
-    public record PaymentClaimed(byte[] orderId) {
-    }
-
     /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
     public record PaymentReceived(byte[] orderId, long amountMinor) {
     }

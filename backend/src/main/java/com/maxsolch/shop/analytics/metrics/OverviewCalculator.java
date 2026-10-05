@@ -134,9 +134,12 @@ public final class OverviewCalculator {
                 giveaways(facts, period, channel));
     }
 
-    /** "I paid" pressed by the customer, not yet confirmed by the admin, order still alive. */
+    /**
+     * Money is in (an online payment) but the order is still NEW: payment does not move the
+     * status, an admin has to confirm the order.
+     */
     static boolean awaitingConfirmation(OrderFact o) {
-        return o.paymentClaimed() && !o.paid() && !o.rejected();
+        return o.status() == OrderStatus.NEW && o.paid() && o.receivedMinor() > 0;
     }
 
     List<SeriesPoint> series(List<OrderFact> orders, ChannelFilter channel, Instant from, Instant to,

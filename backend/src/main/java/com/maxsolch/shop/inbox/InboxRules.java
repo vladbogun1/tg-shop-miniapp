@@ -28,8 +28,13 @@ public final class InboxRules {
     /** Refusals and returns stay on the screen this long (unless marked «Разобрано»). */
     public static final int RETURNS_DAYS = 14;
 
-    /** A payment claim older than this is shown as overdue. */
+    /** An online payment unconfirmed (or a refund not made) for longer than this is shown as overdue. */
     static final Duration PAYMENT_OVERDUE = Duration.ofHours(3);
+
+    /** Subtitle of a {@link InboxItemType#PAYMENT} row: paid online, the order still waits for an admin. */
+    public static final String PAID_CONFIRM = "Оплачен онлайн — подтвердите заказ";
+    /** Subtitle of a {@link InboxItemType#PAYMENT} row: cancelled after payment, money not returned yet. */
+    public static final String PAID_REFUND = "Оплачен, но отменён — верните деньги";
     /** A customer waiting for an answer longer than this is shown as overdue. */
     static final Duration CHAT_OVERDUE = Duration.ofHours(2);
 
@@ -65,8 +70,10 @@ public final class InboxRules {
         Map<String, OrderRow> byId = new HashMap<>();
         for (OrderRow o : facts.orders()) {
             byId.put(o.id(), o);
-            if (isPaymentClaim(o)) {
-                all.get(InboxItemType.PAYMENT).add(payment(o, now));
+            if (isPaidAwaitingConfirm(o)) {
+                all.get(InboxItemType.PAYMENT).add(paidConfirm(o, now));
+            } else if (isPaidCancelled(o)) {
+                all.get(InboxItemType.PAYMENT).add(paidRefund(o, now));
             }
             if (isNewStale(o, now, t.newStaleHours())) {
                 all.get(InboxItemType.NEW_STALE).add(newStale(o, now, t.newStaleHours()));
@@ -128,8 +135,18 @@ public final class InboxRules {
 
     // ------------------------------------------------------------------ selection
 
-    static boolean isPaymentClaim(OrderRow o) {
-        return o.paymentClaimed() && !o.paid() && o.status() != OrderStatus.REJECTED;
+    /** Paid online (monobank) and still NEW: the payment does not move the status, an admin confirms. */
+    static boolean isPaidAwaitingConfirm(OrderRow o) {
+        return o.status() == OrderStatus.NEW && o.paidOnline() && o.paid() && o.receivedMinor() > 0;
+    }
+
+    /**
+     * Paid online, then cancelled before it shipped, and not all of the money went back. Refusals
+     * after shipping belong to {@link InboxItemType#RETURN}.
+     */
+    static boolean isPaidCancelled(OrderRow o) {
+        return o.status() == OrderStatus.REJECTED && o.paidOnline() && o.shippedAt() == null
+                && o.refundedMinor() < o.receivedMinor();
     }
 
     static boolean isNewStale(OrderRow o, Instant now, int hours) {
@@ -178,12 +195,19 @@ public final class InboxRules {
 
     // ------------------------------------------------------------------ rows
 
-    private static Item payment(OrderRow o, Instant now) {
-        Instant since = o.paymentClaimedAt() != null ? o.paymentClaimedAt() : o.createdAt();
-        boolean prepay = o.prepaymentMinor() > 0;
-        return orderItem(InboxItemType.PAYMENT, o, version(since),
-                "Прислал(а) подтверждение перевода — проверьте поступление",
-                prepay ? o.prepaymentMinor() : o.totalMinor(), prepay ? "предоплата" : "к оплате",
+    private static Item paidConfirm(OrderRow o, Instant now) {
+        Instant since = o.paidAt() != null ? o.paidAt() : o.createdAt();
+        boolean partial = o.receivedMinor() < o.totalMinor();
+        return orderItem(InboxItemType.PAYMENT, o, "paid:" + version(since), PAID_CONFIRM,
+                o.receivedMinor(), partial ? "предоплата" : "оплачено",
+                null, since, now, overdue(since, now, PAYMENT_OVERDUE));
+    }
+
+    private static Item paidRefund(OrderRow o, Instant now) {
+        Instant since = o.rejectedAt() != null ? o.rejectedAt() : o.createdAt();
+        // The version follows the refunded amount too: a partial refund brings the row back.
+        return orderItem(InboxItemType.PAYMENT, o, "refund:" + version(since) + ":" + o.refundedMinor(),
+                PAID_REFUND, o.receivedMinor() - Math.max(0, o.refundedMinor()), "вернуть",
                 null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 

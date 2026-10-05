@@ -339,42 +339,6 @@ public class NotificationService {
     }
 
     /**
-     * The customer uploaded a transfer screenshot. It is a claim, not a confirmation, so the admins
-     * are pinged to go and verify it — nothing about the order's money changes on its own.
-     */
-    public void onPaymentClaimed(Order order) {
-        if (!enabled()) {
-            return;
-        }
-        String chatId = props.getTelegram().getNotifyChatId();
-        if (chatId == null || chatId.isBlank()) {
-            return;
-        }
-        try {
-            String cur = nz(order.getCurrency());
-            String text = "🧾 <b>Клиент заявил об оплате</b>\n"
-                    + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
-                    + "Сумма заказа: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>\n"
-                    + "Скрин перевода — в чате заказа.\n"
-                    + "<i>Проверьте поступление и подтвердите оплату в админке — "
-                    + "до подтверждения наложка остаётся полной.</i>";
-            SendMessage msg = SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(adminButtons(order))
-                    .build();
-            int topic = props.getTelegram().getNotifyTopicChat();
-            if (topic > 0) {
-                msg.setMessageThreadId(topic);
-            }
-            bot.execute(msg);
-        } catch (Exception e) {
-            log.warn("onPaymentClaimed failed for order {}: {}", idStr(order), e.getMessage());
-        }
-    }
-
-    /**
      * Money arrived online (monobank). Admins get a note in the chat topic — the order still waits
      * for their manual confirmation — and the customer a DM that the payment went through.
      */
@@ -420,44 +384,10 @@ public class NotificationService {
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
+                    .replyMarkup(orderButton(order, locale))
                     .build());
         } catch (Exception e) {
             log.warn("onPaymentReceived (customer) failed for order {}: {}", idStr(order), e.getMessage());
-        }
-    }
-
-    /**
-     * The shop's card/IBAN/recipient changed (A11). Posted to the seller's service topic so a swap
-     * made with a stolen admin token does not go unnoticed. {@code changes} are already masked.
-     */
-    public void onRequisitesChanged(String adminName, List<String> changes) {
-        if (!enabled()) {
-            return;
-        }
-        String chatId = props.getTelegram().getNotifyChatId();
-        if (chatId == null || chatId.isBlank()) {
-            return;
-        }
-        try {
-            StringBuilder text = new StringBuilder("⚠️ <b>Изменены реквизиты оплаты</b>\n")
-                    .append("Кто: ").append(esc(nz(adminName))).append('\n');
-            for (String c : changes) {
-                text.append("• ").append(esc(c)).append('\n');
-            }
-            text.append("<i>Если это были не вы — смените пароль админки и верните реквизиты.</i>");
-            SendMessage msg = SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text.toString())
-                    .parseMode("HTML")
-                    .build();
-            int topic = props.getTelegram().getNotifyTopicChat();
-            if (topic > 0) {
-                msg.setMessageThreadId(topic);
-            }
-            bot.execute(msg);
-        } catch (Exception e) {
-            log.warn("onRequisitesChanged failed: {}", e.getMessage());
         }
     }
 
@@ -603,10 +533,6 @@ public class NotificationService {
         if (received > 0) {
             sb.append("✅ Уже оплачено: ").append(money(received)).append(' ').append(cur).append('\n');
         }
-        if (cod > 0 && order.isPaymentClaimed()) {
-            // A claim is not money: spell it out so the card is never mistaken for "paid".
-            sb.append("🧾 <i>Клиент прислал скрин перевода — НЕ подтверждён админом</i>\n");
-        }
         if (cod <= 0) {
             sb.append("\n🟢 <b>НАЛОЖКА: 0</b> — заказ оплачен, отправляем без наложенного платежа.");
         } else if (received > 0) {
@@ -639,6 +565,19 @@ public class NotificationService {
                 .url(adminBase + "/orders/" + idStr(order))
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(open))).build();
+    }
+
+    /** Opens the order page itself in the Mini App (deep link view_<id>). */
+    private InlineKeyboardMarkup orderButton(Order order, Locale locale) {
+        String webapp = props.getWebappBaseUrl();
+        if (!isHttps(webapp)) {
+            return null;
+        }
+        InlineKeyboardButton btn = InlineKeyboardButton.builder()
+                .text(messages.get(locale, "bot.openOrder"))
+                .webApp(WebAppInfo.builder().url(webapp + "?startapp=view_" + idStr(order)).build())
+                .build();
+        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }
 
     private InlineKeyboardMarkup chatButton(Order order, Locale locale) {

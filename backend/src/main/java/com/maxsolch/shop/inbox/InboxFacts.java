@@ -23,8 +23,7 @@ public record InboxFacts(Instant now, List<OrderRow> orders, List<ChatRow> chats
     public record OrderRow(String id, OrderStatus status, String customerName, long totalMinor, long receivedMinor,
                            long prepaymentMinor, long refundedMinor, Instant createdAt, Instant approvedAt,
                            Instant shippedAt, Instant rejectedAt, Instant returnedAt, boolean paid,
-                           boolean paymentClaimed, Instant paymentClaimedAt, String rejectReason,
-                           String rejectReasonCode) {
+                           Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode) {
     }
 
     /**

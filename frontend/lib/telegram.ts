@@ -194,8 +194,16 @@ interface WebAppMainButton {
 }
 interface WebApp {
   MainButton?: WebAppMainButton;
+  initData?: string;
   initDataUnsafe?: { start_param?: string };
-  HapticFeedback?: { impactOccurred?: (s: string) => void };
+  HapticFeedback?: {
+    impactOccurred?: (s: string) => void;
+    notificationOccurred?: (s: "error" | "success" | "warning") => void;
+  };
+  /** Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath. */
+  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  onEvent?: (event: string, cb: () => void) => void;
+  offEvent?: (event: string, cb: () => void) => void;
 }
 
 function webApp(): WebApp | null {
@@ -232,6 +240,13 @@ export function parseOrderDeepLink(param: string | null): string | null {
   return m ? m[1] : null;
 }
 
+/** `view_<id>` — open the order page itself (the bot's "payment received" message). */
+export function parseOrderViewDeepLink(param: string | null): string | null {
+  if (!param) return null;
+  const m = /^view[_-](.+)$/.exec(param);
+  return m ? m[1] : null;
+}
+
 /**
  * Keeps Telegram's native MainButton hidden.
  *
@@ -252,4 +267,70 @@ export function haptic(): void {
   } catch {
     /* noop */
   }
+}
+
+/** Best-effort "success" haptic (payment went through). */
+export function hapticSuccess(): void {
+  try {
+    webApp()?.HapticFeedback?.notificationOccurred?.("success");
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Opens an external page (the monobank payment page) without leaving the Mini App.
+ *
+ * Inside Telegram this is `WebApp.openLink`: the in-app / system browser slides OVER the Mini App,
+ * and closing it brings the customer straight back to the same screen — see {@link onAppResume}.
+ * Some clients only honour it from a user gesture, so callers also keep a button that calls this
+ * again. Outside Telegram (plain browser, the `?tgstub=` dev stub, which has no openLink) it falls
+ * back to a new tab, and to navigating this tab when a popup blocker eats that.
+ */
+export function openExternalLink(url: string): void {
+  const wa = webApp();
+  if (wa?.initData && typeof wa.openLink === "function") {
+    try {
+      wa.openLink(url, { try_instant_view: false });
+      return;
+    } catch {
+      /* fall through to the browser way */
+    }
+  }
+  if (typeof window === "undefined") return;
+  // No "noopener" feature: with it window.open always returns null and the blocked-popup check
+  // below could not tell success from failure. The opener is cut by hand instead.
+  const tab = window.open(url, "_blank");
+  if (tab) tab.opener = null;
+  else window.location.href = url;
+}
+
+/**
+ * Calls `cb` whenever the customer comes back to the Mini App — the browser opened by
+ * {@link openExternalLink} was closed, the app was brought back from the background, or Telegram
+ * re-activated the Mini App (Bot API 8.0 `activated`). Several of these fire for one return, so
+ * the callback must be cheap or debounced by the caller. Returns an unsubscribe function.
+ */
+export function onAppResume(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") cb();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("focus", cb);
+  const wa = webApp();
+  try {
+    wa?.onEvent?.("activated", cb);
+  } catch {
+    /* older clients: visibility/focus still cover it */
+  }
+  return () => {
+    document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("focus", cb);
+    try {
+      wa?.offEvent?.("activated", cb);
+    } catch {
+      /* noop */
+    }
+  };
 }

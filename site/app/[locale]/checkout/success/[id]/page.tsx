@@ -1,20 +1,15 @@
-import type { Metadata } from "next";
-import { SuccessView } from "@/components/checkout/SuccessView";
-import { makeT } from "@/i18n";
+import { redirect } from "next/navigation";
+import { localePath } from "@/i18n";
 import { localeOf } from "@/lib/route";
 
+/**
+ * The old "order placed" screen (requisites + transfer screenshot) is gone: payment is online now,
+ * and the order page shows everything about it. Kept as a redirect for links already sent out.
+ */
 type Params = Promise<{ locale: string; id: string }>;
 
-export function generateStaticParams() {
-  return [];
-}
-
-export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+export default async function SuccessRedirect({ params }: { params: Params }) {
   const locale = await localeOf(params);
-  return { title: makeT(locale)("success.title"), robots: { index: false, follow: false } };
-}
-
-export default async function SuccessPage({ params }: { params: Params }) {
   const { id } = await params;
-  return <SuccessView orderId={id} />;
+  redirect(localePath(locale, `/account/orders/${encodeURIComponent(id)}`));
 }

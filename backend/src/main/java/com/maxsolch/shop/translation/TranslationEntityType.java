@@ -13,15 +13,9 @@ public enum TranslationEntityType {
     /** Name + the SEO of the category page (V36). */
     TAG(List.of(TranslationEntityType.NAME, TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION,
             TranslationEntityType.H1, TranslationEntityType.INTRO_TEXT)),
-    PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION)),
-    /**
-     * The single shop requisites row (customer-facing note and transfer purpose). Its id is the
-     * fixed {@link #REQUISITES_ID} — {@code payment_requisites} has an int key, not a UUID.
-     */
-    PAYMENT_REQUISITES(List.of(TranslationEntityType.NOTE, TranslationEntityType.PURPOSE));
-
-    /** entity_id of the PAYMENT_REQUISITES rows (payment_requisites.id = 1). */
-    public static final String REQUISITES_ID = "00000000-0000-0000-0000-000000000001";
+    PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION));
+    // PAYMENT_REQUISITES (V29) is gone with the manual card transfer; V39 deletes its rows, so the
+    // overlay never meets a value this enum cannot map.
 
     public static final String TITLE = "title";
     public static final String DESCRIPTION = "description";
@@ -30,8 +24,6 @@ public enum TranslationEntityType {
     public static final String NAME = "name";
     public static final String H1 = "h1";
     public static final String INTRO_TEXT = "intro_text";
-    public static final String NOTE = "note";
-    public static final String PURPOSE = "purpose";
 
     private final List<String> fields;
 

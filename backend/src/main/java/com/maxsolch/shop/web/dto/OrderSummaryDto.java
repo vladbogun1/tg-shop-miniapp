@@ -11,8 +11,10 @@ public record OrderSummaryDto(
         int itemsCount,
         long unreadCount,
         boolean paid,
-        /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
-        boolean paymentClaimed,
-        /** Confirmed amount received (0 until an admin confirms the transfer). */
-        long receivedMinor) {
+        /** Amount received (online payments + admin-recorded). */
+        long receivedMinor,
+        /** Deadline to pay online; null for orders placed before online payment existed. */
+        Instant paymentDueAt,
+        /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
+        long amountDueMinor) {
 }

@@ -130,17 +130,6 @@ public class Order {
     @Column(name = "payment_due_at")
     private Instant paymentDueAt;
 
-    /**
-     * The customer uploaded a transfer screenshot ("я оплатил"). This is a CLAIM,
-     * not a confirmation: it never changes {@link #paid} / {@link #receivedMinor}.
-     * Only an admin confirms the money actually arrived.
-     */
-    @Column(name = "payment_claimed", nullable = false)
-    private boolean paymentClaimed = false;
-
-    @Column(name = "payment_claimed_at")
-    private Instant paymentClaimedAt;
-
     /** Prepayment amount snapshot for this order (0 for full-payment options). */
     @Column(name = "prepayment_minor", nullable = false)
     private long prepaymentMinor = 0;

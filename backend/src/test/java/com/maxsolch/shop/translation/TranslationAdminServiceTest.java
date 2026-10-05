@@ -79,7 +79,7 @@ class TranslationAdminServiceTest {
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
         service = new TranslationAdminService(repo, products, variants, tags, payments,
-                mock(com.maxsolch.shop.repository.PaymentRequisitesRepository.class), translationService,
+                translationService,
                 cacheManager);
     }
 
