@@ -33,12 +33,17 @@ function withLang(path: string, locale: Locale): string {
   return `${path}${path.includes("?") ? "&" : "?"}lang=${locale}`;
 }
 
-async function getJson<T>(path: string, locale: Locale | null, tags: string[] = ["catalog"]): Promise<T> {
+async function getJson<T>(
+  path: string,
+  locale: Locale | null,
+  tags: string[] = ["catalog"],
+  revalidate: number = REVALIDATE_SECONDS
+): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (locale) headers["Accept-Language"] = locale;
   const res = await fetch(`${apiBase()}${locale ? withLang(path, locale) : path}`, {
     headers,
-    next: { revalidate: REVALIDATE_SECONDS, tags },
+    next: { revalidate, tags },
   });
   if (res.status === 404) throw new NotFoundError(path);
   if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
@@ -58,6 +63,24 @@ export async function getCategories(locale: Locale): Promise<PublicCategory[]> {
 export async function getProducts(q: CatalogQuery, locale: Locale): Promise<PublicProductPage> {
   const sp = catalogSearchParams({ size: PAGE_SIZE, ...q });
   return getJson<PublicProductPage>(`/api/public/products?${sp.toString()}`, locale);
+}
+
+/** Largest page the backend serves (PublicCatalogService.MAX_PAGE_SIZE). */
+const MAX_PAGE_SIZE = 60;
+
+/**
+ * Every public (active, not archived) product, page by page — for the product feeds. Sorted by name,
+ * so the page boundaries do not move with sales. `revalidate` is the data-cache window; the
+ * "catalog" tag still drops it early after an admin edit.
+ */
+export async function getAllProducts(locale: Locale, revalidate: number): Promise<StorefrontProduct[]> {
+  const page = (n: number) =>
+    getJson<PublicProductPage>(`/api/public/products?sort=name&size=${MAX_PAGE_SIZE}&page=${n}`, locale, ["catalog"], revalidate);
+  const first = await page(0);
+  const pages = Math.ceil(first.total / MAX_PAGE_SIZE);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => page(i + 1)));
+  const seen = new Set<string>();
+  return [first, ...rest].flatMap((p) => p.items).filter((p) => !seen.has(p.id) && !!seen.add(p.id));
 }
 
 /** null when the product does not exist (or is not public). */

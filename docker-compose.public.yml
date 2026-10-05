@@ -96,6 +96,10 @@ services:
       INTERNAL_API_BASE: http://backend:8080
       SITE_INDEXABLE: ${SITE_INDEXABLE:-false}
       SITE_REVALIDATE_SECRET: ${SITE_REVALIDATE_SECRET:-}
+      # Product feeds (/feeds/*.xml, site/lib/feeds.ts): estimated Nova Poshta price for Google's
+      # g:shipping (empty = set shipping in Merchant Center) and the firm id Hotline assigns.
+      FEED_SHIPPING_PRICE_UAH: ${FEED_SHIPPING_PRICE_UAH:-}
+      HOTLINE_FIRM_ID: ${HOTLINE_FIRM_ID:-}
     networks:
       - tgshop
 
