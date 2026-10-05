@@ -76,6 +76,13 @@ public class OnlinePaymentService {
     // ------------------------------------------------------------------ start
 
     public StartedPayment start(byte[] orderId, ReturnTo returnTo, String locale) {
+        return start(orderId, returnTo, locale, false);
+    }
+
+    /**
+     * @param embedded the page is shown inside our modal (iframe) instead of a redirect / new window
+     */
+    public StartedPayment start(byte[] orderId, ReturnTo returnTo, String locale, boolean embedded) {
         if (!mono.isEnabled()) {
             throw new ConflictException(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE");
         }
@@ -83,14 +90,15 @@ public class OnlinePaymentService {
         Object lock = startLocks.computeIfAbsent(key, k -> new Object());
         try {
             synchronized (lock) {
-                return startLocked(orderId, returnTo, locale);
+                return startLocked(orderId, returnTo, locale, embedded);
             }
         } finally {
             startLocks.remove(key, lock);
         }
     }
 
-    private StartedPayment startLocked(byte[] orderId, ReturnTo returnTo, String locale) {
+    private StartedPayment startLocked(byte[] orderId, ReturnTo returnTo, String locale, boolean embedded) {
+        String display = embedded ? "iframe" : "page";
         Instant now = Instant.now();
         String key = UuidUtil.toString(orderId);
         Order order = orders.findWithItemsById(orderId)
@@ -112,7 +120,7 @@ public class OnlinePaymentService {
             if (PaymentInvoice.PROCESSING.equals(inv.getStatus()) || PaymentInvoice.HOLD.equals(inv.getStatus())) {
                 throw new ConflictException(messages.current("api.payment.inProgress"), "PAYMENT_IN_PROGRESS");
             }
-            if (inv.isPayable(now) && inv.getAmountMinor() == amount) {
+            if (inv.isPayable(now) && inv.getAmountMinor() == amount && display.equals(inv.getDisplayType())) {
                 return new StartedPayment(inv.getExternalId(), inv.getPageUrl(), inv.getAmountMinor(), inv.getExpiresAt());
             }
         }
@@ -137,9 +145,10 @@ public class OnlinePaymentService {
                     key,
                     "Оплата замовлення #" + shortId + " — ChiSetup",
                     basket(order, amount, shortId),
-                    redirectUrl(order, returnTo, locale),
+                    redirectUrl(order, returnTo, locale, embedded),
                     webhookUrl(),
-                    validity));
+                    validity,
+                    embedded));
         } catch (MonobankClient.MonobankException e) {
             log.warn("monobank invoice/create failed for order {}: {}", key, e.getMessage());
             throw new ConflictException(messages.current("api.payment.failed"), "PAYMENT_FAILED");
@@ -152,6 +161,7 @@ public class OnlinePaymentService {
         inv.setExternalId(created.invoiceId());
         inv.setAmountMinor(amount);
         inv.setPageUrl(created.pageUrl());
+        inv.setDisplayType(display);
         inv.setExpiresAt(now.plusSeconds(validity));
         inv.setStatus(PaymentInvoice.CREATED);
         invoices.save(inv);
@@ -187,13 +197,21 @@ public class OnlinePaymentService {
         return List.of(new MonobankClient.BasketItem(title, 1, amount, "order-" + shortId));
     }
 
-    private String redirectUrl(Order order, ReturnTo returnTo, String locale) {
+    /**
+     * Where monobank sends the browser after paying. Embedded (iframe): a tiny page that only tells
+     * the parent window "done" (postMessage) — the parent polls our API for the real status.
+     */
+    private String redirectUrl(Order order, ReturnTo returnTo, String locale, boolean embedded) {
         String id = UuidUtil.toString(order.getId());
-        String prefix = locale == null || locale.isBlank() || "uk".equals(locale) ? "" : "/" + locale;
+        String lang = locale == null || locale.isBlank() ? "uk" : locale;
+        String prefix = "uk".equals(lang) ? "" : "/" + lang;
+        String embed = embedded ? "&embedded=1" : "";
         if (returnTo == ReturnTo.MINIAPP) {
             // Opened from the Mini App in a browser: a small page that sends them back to Telegram.
-            return trimSlash(props.getWebappBaseUrl()) + "/pay-return?order=" + id
-                    + "&lang=" + (locale == null || locale.isBlank() ? "uk" : locale);
+            return trimSlash(props.getWebappBaseUrl()) + "/pay-return?order=" + id + "&lang=" + lang + embed;
+        }
+        if (embedded) {
+            return trimSlash(props.getSite().getBaseUrl()) + prefix + "/pay-return?order=" + id + embed;
         }
         return trimSlash(props.getSite().getBaseUrl()) + prefix + "/account/orders/" + id + "?payment=return";
     }

@@ -48,7 +48,7 @@ public class MonobankClient {
     }
 
     public record CreateInvoice(long amount, String reference, String destination, List<BasketItem> basket,
-                                String redirectUrl, String webHookUrl, long validitySeconds) {
+                                String redirectUrl, String webHookUrl, long validitySeconds, boolean iframe) {
     }
 
     public record CreatedInvoice(String invoiceId, String pageUrl) {
@@ -75,6 +75,10 @@ public class MonobankClient {
         body.put("webHookUrl", req.webHookUrl());
         body.put("validity", req.validitySeconds());
         body.put("paymentType", "debit");
+        if (req.iframe()) {
+            // Layout for embedding in our modal (<iframe allow="payment *">).
+            body.put("displayType", "iframe");
+        }
         JsonNode res = call("POST", "/api/merchant/invoice/create", body);
         return new CreatedInvoice(res.path("invoiceId").asText(null), res.path("pageUrl").asText(null));
     }

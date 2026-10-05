@@ -68,6 +68,10 @@ public class PaymentInvoice {
     @Column(name = "page_url", nullable = false, length = 512)
     private String pageUrl;
 
+    /** page | iframe — see V41. */
+    @Column(name = "display_type", nullable = false, length = 8)
+    private String displayType = "page";
+
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 

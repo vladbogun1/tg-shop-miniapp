@@ -229,7 +229,8 @@ public class MeController {
         }
         String lang = req != null && req.locale() != null && !req.locale().isBlank()
                 ? ContentLocale.normalize(Locale.forLanguageTag(req.locale())) : ContentLocale.normalize(locale);
-        OnlinePaymentService.StartedPayment p = onlinePayments.start(order.getId(), returnTo, lang);
+        boolean embedded = req != null && "IFRAME".equalsIgnoreCase(req.display());
+        OnlinePaymentService.StartedPayment p = onlinePayments.start(order.getId(), returnTo, lang, embedded);
         return new PaymentStartResponse(p.invoiceId(), p.pageUrl(), p.amountMinor(), p.expiresAt());
     }
 
