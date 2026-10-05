@@ -167,7 +167,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
                 <ProductLink productId={f.productId} title={f.productTitle} />
               ) : (
                 <span className="text-[12px] font-semibold text-[var(--text-muted)]">
-                  {f.entityType === "TAG" ? "Теги" : "Оплата"}
+                  {f.entityType === "TAG" ? (f.productTitle ? `Тег «${f.productTitle}»` : "Теги") : "Оплата"}
                 </span>
               )}
             </div>

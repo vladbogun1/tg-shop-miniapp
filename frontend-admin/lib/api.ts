@@ -58,13 +58,24 @@ export type AdminProduct = Product & {
   compareAtMinor?: number | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  /** schema.org brand; null = the site guesses it from the texts. */
+  brand?: string | null;
+  /** Article number (unique when set); null = the site uses the id. */
+  sku?: string | null;
 };
 
-/** Tag = a category on the public site: URL slug, menu position and visibility. */
+/**
+ * Tag = a category on the public site: URL slug, menu position and visibility, and the SEO of its
+ * page (Russian source; uk/en on the «Переводы» screen). Empty SEO field = the site's template.
+ */
 export type AdminTag = ProductTag & {
   slug?: string;
   sortOrder?: number;
   showInMenu?: boolean;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  h1?: string | null;
+  introText?: string | null;
 };
 
 export interface TagWriteRequest {
@@ -73,6 +84,11 @@ export interface TagWriteRequest {
   slug?: string;
   sortOrder?: number;
   showInMenu?: boolean;
+  /** SEO fields: omitted = keep, "" = clear. */
+  seoTitle?: string;
+  seoDescription?: string;
+  h1?: string;
+  introText?: string;
 }
 export type MessageDto = Message;
 export type ConversationDto = Conversation;
@@ -315,6 +331,10 @@ export interface ProductWriteRequest {
   compareAtMinor?: number;
   seoTitle?: string;
   seoDescription?: string;
+  /** "" clears; omitted keeps. */
+  brand?: string;
+  /** Unique among products; "" clears; omitted keeps. A taken one -> 400. */
+  sku?: string;
 }
 
 export interface PromoCode {
@@ -489,7 +509,10 @@ export interface TrExportItem {
   /** Current translation (outdated one for STALE), null for MISSING. */
   text: string | null;
   origin: TrOrigin | null;
-  /** Owning product of PRODUCT/VARIANT fields; null for tags and payment options. */
+  /**
+   * Owning product of PRODUCT/VARIANT fields; null for payment options and tag names. For the SEO
+   * fields of a TAG `productTitle` holds the category name (context; `productId` stays null).
+   */
   productId: string | null;
   productTitle: string | null;
 }
