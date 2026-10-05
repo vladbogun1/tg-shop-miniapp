@@ -12,13 +12,13 @@
  * and PROMO_REJECTED handled by dropping the code and asking for one more click. The difference is
  * the session: the website is signed in with cookies, so a guest is sent to /login first.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, Loader2, MapPin, Store, Truck } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { DeliveryMethod, NpWarehouse, OrderDetail } from "@shop/shared";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { DeliveryMethod, NpCity, NpWarehouse, OrderDetail } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { RadioCard } from "@/components/ui/RadioCard";
@@ -33,8 +33,9 @@ import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { useSession } from "@/lib/session";
+import { npCityBounds, npLatLng } from "@/lib/np-geo";
 import { useFmt } from "@/lib/use-fmt";
-import { CitySearch } from "./CitySearch";
+import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
 import { saveSuccess } from "./success-store";
@@ -123,6 +124,49 @@ function CheckoutForm() {
   const [warehouseFromLast, setWarehouseFromLast] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState(false);
   const [focus, setFocus] = useState<MapFocus | null>(null);
+  const [city, setCity] = useState<NpCity | null>(null);
+  const queryClient = useQueryClient();
+  // The city whose branches are being fetched to frame the map: a late answer for a city the
+  // customer has already moved on from must not move the map.
+  const framingCity = useRef<string | null>(null);
+  /** The customer has touched the city / branch fields or the map — the last-order prefill backs off. */
+  const touchedNp = useRef(false);
+
+  /** A city picked in the field (or dropped by typing over it). A different city drops the branch. */
+  function chooseCity(c: NpCity | null) {
+    touchedNp.current = true;
+    if (c?.ref !== city?.ref) {
+      setWarehouse(null);
+      setWarehouseFromLast(false);
+    }
+    setCity(c);
+    framingCity.current = c?.ref ?? null;
+    if (!c) return;
+    queryClient
+      .fetchQuery(npWarehousesQuery(c.ref))
+      .then((whs) => {
+        if (framingCity.current !== c.ref) return;
+        const bounds = npCityBounds(whs);
+        if (bounds) setFocus({ key: Date.now(), bounds });
+      })
+      .catch(() => {
+        /* the map still works by hand */
+      });
+  }
+
+  /** A branch picked in the field or on the map: select it, sync the city, fly to it. */
+  const chooseWarehouse = useCallback((w: NpWarehouse | null) => {
+    touchedNp.current = true;
+    setWarehouseFromLast(false);
+    setWarehouse(w);
+    if (!w) return;
+    if (w.cityRef) {
+      setCity((c) => (c?.ref === w.cityRef ? c : { ref: w.cityRef!, name: w.cityName ?? "" }));
+    }
+    framingCity.current = null; // a pending city framing must not pull the map off this branch
+    const p = npLatLng(w);
+    if (p) setFocus({ key: Date.now(), center: p });
+  }, []);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [touched, setTouched] = useState(false);
@@ -171,8 +215,10 @@ function CheckoutForm() {
           if (!city) return;
           const whs = await api.npWarehouses(city.ref, "");
           const w = whs.find((x) => x.description === o.npWarehouseName);
-          if (w) {
-            setWarehouse((cur) => cur ?? { ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name });
+          // ...unless the customer has already started picking by hand.
+          if (w && !touchedNp.current) {
+            setWarehouse({ ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name });
+            setCity(city);
             setWarehouseFromLast(true);
           }
         } catch {
@@ -260,7 +306,10 @@ function CheckoutForm() {
   }
 
   const submitLabel = needsRequisites ? t("checkout.submitRequisites") : t("checkout.submit");
-  const showMap = delivery === "NOVA_POSHTA" && (!warehouse || editingWarehouse);
+  // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
+  // the fields and the map open, so it can be changed in place.
+  const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
+  const showMap = delivery === "NOVA_POSHTA" && !collapsed;
 
   return (
     <div className="container-site pt-8">
@@ -327,7 +376,7 @@ function CheckoutForm() {
 
             {delivery === "NOVA_POSHTA" && (
               <div className="mt-5 flex flex-col gap-4">
-                {warehouse && !editingWarehouse && (
+                {warehouse && collapsed && (
                   <div className="flex flex-col gap-3 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">
                       <MapPin className="h-5 w-5 text-[var(--accent-hi)]" strokeWidth={2} />
@@ -346,25 +395,35 @@ function CheckoutForm() {
                         {warehouse.description}
                       </p>
                     </div>
-                    <Button type="button" variant="surface" size="sm" onClick={() => setEditingWarehouse(true)}>
+                    <Button
+                      type="button"
+                      variant="surface"
+                      size="sm"
+                      onClick={() => {
+                        setEditingWarehouse(true);
+                        const p = npLatLng(warehouse);
+                        if (p) setFocus({ key: Date.now(), center: p });
+                      }}
+                    >
                       {t("checkout.changeWarehouse")}
                     </Button>
                   </div>
                 )}
                 {showMap && (
                   <>
-                    <CitySearch onFocus={(f) => setFocus(f)} />
+                    <CitySearch city={city} onCity={chooseCity} />
+                    {city && (
+                      <WarehouseSearch
+                        key={city.ref}
+                        city={city}
+                        warehouse={warehouse}
+                        onWarehouse={chooseWarehouse}
+                        label={(w) => npLabel(w, t)}
+                      />
+                    )}
                     <p className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.mapHint")}</p>
-                    <NpWarehouseMap
-                      focus={focus}
-                      selectedRef={warehouse?.ref ?? null}
-                      onSelect={(w) => {
-                        setWarehouse(w);
-                        setWarehouseFromLast(false);
-                        setEditingWarehouse(false);
-                      }}
-                    />
-                    {warehouse && (
+                    <NpWarehouseMap focus={focus} selected={warehouse} onSelect={chooseWarehouse} />
+                    {warehouse && warehouseFromLast && (
                       <Button type="button" variant="surface" size="sm" onClick={() => setEditingWarehouse(false)} className="self-start">
                         {t("common.cancel")}
                       </Button>

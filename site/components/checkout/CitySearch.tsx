@@ -1,128 +1,145 @@
 "use client";
 
 /**
- * City search that jumps the Nova Poshta map to the chosen city. The map itself stays the way to
- * pick a branch (as in the Mini App); this only saves the pan-and-zoom across Ukraine.
+ * Nova Poshta city + branch inputs above the map.
+ *
+ * City: autocomplete over /api/np/cities. Picking one tells the parent, which frames the map on the
+ * city and opens the second field. Typing over a picked city drops it (and so the branch).
+ *
+ * Branch: autocomplete over the picked city's branches (/api/np/warehouses — one request per city,
+ * cached and shared with the map framing), searched locally by number and address. Picking one
+ * selects it; a branch picked on the map shows up here too.
  */
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, MapPin } from "lucide-react";
-import { useId, useState } from "react";
-import type { NpCity } from "@shop/shared";
+import { Box, MapPin, Store } from "lucide-react";
+import { useState } from "react";
+import type { NpCity, NpWarehouse } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
-import type { MapFocus } from "./NpWarehouseMap";
+import { searchWarehouses } from "@/lib/np-geo";
+import { NpCombobox } from "./NpCombobox";
 
-export function CitySearch({ onFocus }: { onFocus: (f: MapFocus, city: NpCity) => void }) {
+/** One cache entry per city: the branch field and the map framing read the same list. */
+export const npWarehousesQuery = (cityRef: string) => ({
+  queryKey: ["np-warehouses", cityRef] as const,
+  staleTime: 10 * 60_000,
+  queryFn: () => api.npWarehouses(cityRef, ""),
+});
+
+/**
+ * Text that follows `external` whenever it changes to something (a pick here, on the map, or from
+ * the last order), and is free to edit in between. Going back to "" is the user typing over a pick —
+ * that must not wipe what they typed. (A city change remounts the branch field instead.)
+ */
+function useSyncedText(external: string): [string, (v: string) => void] {
+  const [text, setText] = useState(external);
+  const [seen, setSeen] = useState(external);
+  if (seen !== external) {
+    setSeen(external);
+    if (external) setText(external);
+  }
+  return [text, setText];
+}
+
+export function CitySearch({
+  city,
+  onCity,
+}: {
+  city: NpCity | null;
+  onCity: (city: NpCity | null) => void;
+}) {
   const t = useT();
-  const id = useId();
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
-  const [busy, setBusy] = useState(false);
-  const term = useDebounced(q.trim(), 300);
+  const [q, setQ] = useSyncedText(city?.name ?? "");
+  const term = useDebounced(q.trim(), 250);
+  const searching = term.length >= 2 && term !== city?.name;
   const { data = [], isFetching } = useQuery({
     queryKey: ["np-cities", term],
-    enabled: term.length >= 2,
+    enabled: searching,
     staleTime: 5 * 60_000,
     queryFn: () => api.npCities(term),
   });
-  const items = term.length >= 2 ? data.slice(0, 8) : [];
-
-  async function pick(c: NpCity) {
-    setQ(c.name);
-    setOpen(false);
-    setBusy(true);
-    try {
-      const whs = await api.npWarehouses(c.ref);
-      const pts = whs.filter((w) => typeof w.lat === "number" && typeof w.lng === "number");
-      if (pts.length > 0) {
-        const lats = pts.map((w) => w.lat as number);
-        const lngs = pts.map((w) => w.lng as number);
-        onFocus(
-          {
-            key: Date.now(),
-            bounds: [
-              [Math.min(...lats), Math.min(...lngs)],
-              [Math.max(...lats), Math.max(...lngs)],
-            ],
-          },
-          c
-        );
-      }
-    } catch {
-      /* the map still works by hand */
-    } finally {
-      setBusy(false);
-    }
-  }
+  const items = searching ? data.slice(0, 8) : [];
 
   return (
-    <div className="relative">
-      <label htmlFor={id} className="eyebrow mb-1.5 block text-[11px]">
-        {t("checkout.city")}
-      </label>
-      <div className="flex h-12 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
-        <MapPin className="h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.25} />
-        <input
-          id={id}
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setOpen(true);
-            setActive(-1);
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onKeyDown={(e) => {
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setActive((a) => Math.min(items.length - 1, a + 1));
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setActive((a) => Math.max(0, a - 1));
-            } else if (e.key === "Enter") {
-              e.preventDefault();
-              const c = items[active >= 0 ? active : 0];
-              if (c) void pick(c);
-            } else if (e.key === "Escape") setOpen(false);
-          }}
-          placeholder={t("checkout.cityPlaceholder")}
-          role="combobox"
-          aria-expanded={open && items.length > 0}
-          aria-controls={`${id}-list`}
-          aria-autocomplete="list"
-          autoComplete="off"
-          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
-        />
-        {(isFetching || busy) && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" />}
-      </div>
-      {open && term.length >= 2 && (
-        <ul
-          id={`${id}-list`}
-          role="listbox"
-          className="absolute inset-x-0 top-full z-[1100] mt-1.5 max-h-72 overflow-y-auto rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] py-1 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
-        >
-          {items.length === 0 && !isFetching && (
-            <li className="px-3 py-2.5 text-[13px] font-medium text-[var(--muted)]">{t("checkout.cityNone")}</li>
-          )}
-          {items.map((c, i) => (
-            <li key={c.ref} role="option" aria-selected={i === active}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => void pick(c)}
-                className={`flex w-full flex-col items-start px-3 py-2 text-left hover:bg-[var(--surface-2)] ${
-                  i === active ? "bg-[var(--surface-2)]" : ""
-                }`}
-              >
-                <span className="text-[14px] font-medium text-[var(--ink)]">{c.name}</span>
-                {c.area && <span className="text-[12px] font-medium text-[var(--muted)]">{c.area}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <NpCombobox<NpCity>
+      label={t("checkout.city")}
+      placeholder={t("checkout.cityPlaceholder")}
+      icon={<MapPin className="h-4 w-4" strokeWidth={2.25} />}
+      value={q}
+      onText={(v) => {
+        setQ(v);
+        if (city) onCity(null);
+      }}
+      items={items}
+      itemKey={(c) => c.ref}
+      listOpen={searching}
+      loading={isFetching}
+      emptyText={t("checkout.cityNone")}
+      onPick={(c) => {
+        setQ(c.name);
+        onCity(c);
+      }}
+      renderItem={(c) => (
+        <>
+          <span className="text-[14px] font-medium text-[var(--ink)]">{c.name}</span>
+          {c.area && <span className="text-[12px] font-medium text-[var(--muted)]">{c.area}</span>}
+        </>
       )}
-    </div>
+    />
+  );
+}
+
+export function WarehouseSearch({
+  city,
+  warehouse,
+  onWarehouse,
+  label,
+}: {
+  city: NpCity;
+  warehouse: NpWarehouse | null;
+  onWarehouse: (w: NpWarehouse | null) => void;
+  label: (w: NpWarehouse) => string;
+}) {
+  const t = useT();
+  const [q, setQ] = useSyncedText(warehouse?.description ?? "");
+  const { data = [], isFetching } = useQuery(npWarehousesQuery(city.ref));
+  // While a picked branch is shown in the field, the list offers the whole city again.
+  const typed = warehouse && q === warehouse.description ? "" : q;
+  const items = searchWarehouses(data, typed);
+
+  return (
+    <NpCombobox<NpWarehouse>
+      label={t("checkout.warehouseField")}
+      placeholder={t("checkout.warehousePlaceholder")}
+      icon={<Store className="h-4 w-4" strokeWidth={2.25} />}
+      value={q}
+      onText={(v) => {
+        setQ(v);
+        if (warehouse) onWarehouse(null);
+      }}
+      items={items}
+      itemKey={(w) => w.ref}
+      listOpen
+      loading={isFetching}
+      emptyText={isFetching ? t("common.loading") : t("checkout.warehouseNone")}
+      onPick={(w) => {
+        setQ(w.description);
+        onWarehouse(w);
+      }}
+      renderItem={(w) => (
+        <span className="flex w-full items-start gap-2">
+          {w.category === "POSTOMAT" ? (
+            <Box className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-hi)]" strokeWidth={2.25} />
+          ) : (
+            <Store className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-hi)]" strokeWidth={2.25} />
+          )}
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[14px] font-medium text-[var(--ink)]">{label(w)}</span>
+            <span className="text-[12px] font-medium text-[var(--muted)]">{w.description}</span>
+          </span>
+        </span>
+      )}
+    />
   );
 }
