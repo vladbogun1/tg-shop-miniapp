@@ -765,7 +765,7 @@ export function ProductModal({ open, product, tags, onClose, onSaved }: Props) {
                   maxLength={255}
                   onChange={(e) => setSeoTitle(e.target.value)}
                   placeholder={title || "по умолчанию — название"}
-                  hint="Заголовок вкладки и поисковой выдачи. Пусто — название товара."
+                  hint="Заголовок вкладки и поисковой выдачи. Пусто — шаблон сайта: «название — тип товара, купить в Украине»."
                 />
                 <Textarea
                   label="SEO-описание"
