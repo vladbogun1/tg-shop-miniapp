@@ -16,6 +16,17 @@
  * pin-by-category, the detail sheet and "Выбрать" confirm — is unchanged. iOS
  * scroll handling preserved (scrollWheelZoom + isolated frame). Leaflet tiles
  * stay as-is.
+ *
+ * Picking by text is the checkout default now (NpSearch.tsx); this map is the "Обрати на карті"
+ * mode and keeps its old flow — tap a pin → the sheet → "Обрати це відділення". What it gained:
+ *   - `focus`: opens on (and later flies to) the picked branch or the picked city instead of the
+ *     whole country; `selected`: the picked branch is highlighted and named in the top pill;
+ *   - coordinates go through `withSaneCoords` (@shop/shared np-geo): the NP directory has pairs
+ *     with lat/lng swapped (Kharkiv's postomat №23338 — northern Iran) and zeros;
+ *   - only the newest bbox response lands (a slow one for an old viewport used to replace the pins
+ *     of the city the map had just moved to);
+ *   - `invalidateSize` whenever the frame changes size (dynamic import, the mode switch, the step
+ *     sliding in) — Leaflet measured too early otherwise and centred on the wrong point.
  */
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -24,17 +35,20 @@ import L from "leaflet";
 import "leaflet.markercluster";
 import { AnimatePresence, motion } from "framer-motion";
 import { Box, Store, MapPin, X, Check } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { useT } from "@/i18n/context";
+import { withSaneCoords, type NpCategoryFilter } from "@shop/shared";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
 
 const UA_CENTER: [number, number] = [49.0, 31.3];
 const UA_ZOOM = 6;
+/** Zoom a single picked branch is shown at (clustering is off from here on). */
+const BRANCH_ZOOM = 17;
 
-type Cat = "all" | "branch" | "postomat" | "point";
+type Cat = NpCategoryFilter;
 
 const CAT_TABS: { key: Cat; labelKey: string }[] = [
   { key: "all", labelKey: "np.cat.all" },
@@ -109,6 +123,8 @@ function ClusterLayer({
       chunkedLoading: true,
       maxClusterRadius: 55,
       showCoverageOnHover: false,
+      // A picked branch is shown at BRANCH_ZOOM — it must be its own pin there, not a cluster.
+      disableClusteringAtZoom: BRANCH_ZOOM,
     });
     groupRef.current = group;
     map.addLayer(group);
@@ -137,6 +153,54 @@ function ClusterLayer({
   return null;
 }
 
+export interface MapFocus {
+  /** Changes on every request so the same place can be focused twice. */
+  key: number;
+  center?: [number, number];
+  /** Defaults to BRANCH_ZOOM (or closer, if the map already is). */
+  zoom?: number;
+  bounds?: [[number, number], [number, number]];
+}
+
+/**
+ * Moves the map when the parent asks. The first focus (the one the map opens with) is applied
+ * without animation, so the map does not first show the whole country and then fly.
+ */
+function FocusController({ focus }: { focus: MapFocus | null }) {
+  const map = useMap();
+  const first = useRef(true);
+  useEffect(() => {
+    if (!focus) return;
+    const instant = first.current;
+    first.current = false;
+    // The frame may have been measured while it was still settling: fly with a stale size and
+    // Leaflet centres on the wrong point.
+    map.invalidateSize({ animate: false });
+    if (focus.bounds) {
+      if (instant) map.fitBounds(focus.bounds, { padding: [24, 24], maxZoom: 14, animate: false });
+      else map.flyToBounds(focus.bounds, { padding: [24, 24], maxZoom: 14, duration: 0.8 });
+    } else if (focus.center) {
+      const zoom = focus.zoom ?? Math.max(map.getZoom(), BRANCH_ZOOM);
+      if (instant) map.setView(focus.center, zoom, { animate: false });
+      else map.flyTo(focus.center, zoom, { duration: 0.8 });
+    }
+  }, [focus, map]);
+  return null;
+}
+
+/** Re-measures the map whenever its frame changes size (mode switch, dynamic import, step slide-in). */
+function SizeWatcher() {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [map]);
+  return null;
+}
+
 /** Reports the viewport bounds on move/zoom + once on mount. */
 function BoundsWatcher({
   onChange,
@@ -156,8 +220,15 @@ function BoundsWatcher({
 
 export default function NpWarehouseMap({
   onSelect,
+  focus = null,
+  selected = null,
 }: {
+  /** "Обрати це відділення" in the sheet. */
   onSelect: (w: NpWarehouse) => void;
+  /** Where to open / fly to (the picked branch or city). */
+  focus?: MapFocus | null;
+  /** The branch picked so far (in either mode) — highlighted on the map. */
+  selected?: NpWarehouse | null;
 }) {
   const t = useT();
   const [category, setCategory] = useState<Cat>("all");
@@ -168,6 +239,8 @@ export default function NpWarehouseMap({
   // document.body only exists once mounted; the detail sheet is portalled into it (see below).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // Only the newest bbox response may land (see the header).
+  const seq = useRef(0);
 
   const fetchBox = useCallback(
     (b: L.LatLngBounds) => {
@@ -176,6 +249,7 @@ export default function NpWarehouseMap({
       timer.current = setTimeout(() => {
         const sw = b.getSouthWest();
         const ne = b.getNorthEast();
+        const mine = ++seq.current;
         customerApi
           .getNpWarehousesBbox({
             minLat: sw.lat,
@@ -185,12 +259,31 @@ export default function NpWarehouseMap({
             category,
             limit: 1500,
           })
-          .then(setItems)
-          .catch(() => setItems([]));
+          .then((list) => {
+            if (mine === seq.current) setItems(list);
+          })
+          .catch(() => {
+            if (mine === seq.current) setItems([]);
+          });
       }, 350);
     },
     [category],
   );
+
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  // Repaired coordinates, plus the picked branch even before (or without) its viewport response,
+  // so it is highlighted the moment the map arrives.
+  const pins = useMemo(() => {
+    const list = items.map(withSaneCoords);
+    if (selected && !list.some((w) => w.ref === selected.ref)) list.push(withSaneCoords(selected));
+    return list;
+  }, [items, selected]);
 
   // Re-fetch the current viewport when the category filter changes.
   useEffect(() => {
@@ -222,8 +315,9 @@ export default function NpWarehouseMap({
       <div
         className="np-map relative isolate overflow-hidden rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] shadow-[0_8px_24px_-12px_var(--shadow)]"
         // Fit the map to what is actually left on screen (header ~60px, tabs ~40px, comment box
-        // and the action bar ~200px) instead of a flat 62vh that pushed everything below the fold.
-        style={{ height: "min(62vh, calc(100dvh - 320px))", minHeight: 300 }}
+        // and the action bar ~200px, the text/map switch ~50px) instead of a flat 62vh that pushed
+        // everything below the fold.
+        style={{ height: "min(62vh, calc(100dvh - 370px))", minHeight: 300 }}
       >
         <div className="relative h-full w-full overflow-hidden">
           <MapContainer
@@ -236,20 +330,32 @@ export default function NpWarehouseMap({
               attribution="&copy; OpenStreetMap"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            <SizeWatcher />
             <BoundsWatcher onChange={fetchBox} />
+            <FocusController focus={focus} />
             <ClusterLayer
-              items={items}
-              activeRef={active?.ref ?? null}
+              items={pins}
+              activeRef={active?.ref ?? selected?.ref ?? null}
               onPick={setActive}
             />
           </MapContainer>
 
-          {/* Hint pill (top), hidden once a pin is open */}
+          {/* Top pill: the hint, or the picked branch once there is one; hidden while a pin is open */}
           {!active && (
             <div className="pointer-events-none absolute inset-x-0 top-2 z-[1000] flex justify-center px-2">
-              <span className="font-display rounded-full border border-[var(--line-strong)] bg-[rgba(14,14,16,.85)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink)] shadow-[0_6px_18px_-6px_rgba(0,0,0,.6)] backdrop-blur-[4px]">
-                {t("np.hint")}
-              </span>
+              {selected ? (
+                <span className="font-display flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[rgba(14,14,16,.88)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink)] shadow-[0_6px_18px_-6px_rgba(0,0,0,.6)] backdrop-blur-[4px]">
+                  <Check className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" strokeWidth={3} />
+                  <span className="truncate">
+                    {t(catLabelKey(selected.category))}
+                    {selected.number != null ? ` ${t("np.number", { n: selected.number })}` : ""}
+                  </span>
+                </span>
+              ) : (
+                <span className="font-display rounded-full border border-[var(--line-strong)] bg-[rgba(14,14,16,.85)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--ink)] shadow-[0_6px_18px_-6px_rgba(0,0,0,.6)] backdrop-blur-[4px]">
+                  {t("np.hint")}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -308,7 +414,10 @@ export default function NpWarehouseMap({
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelect(active)}
+                  onClick={() => {
+                    onSelect(active);
+                    setActive(null);
+                  }}
                   className="nb-accent nb-up tap mt-3 flex w-full items-center justify-center gap-2 py-3 text-[14px]"
                 >
                   <Check className="h-5 w-5" strokeWidth={2.75} /> {t("np.confirm")}

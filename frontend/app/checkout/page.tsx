@@ -3,7 +3,10 @@
 /**
  * CHECKOUT STEPPER — ChiSetup restyle.
  *   1. Контакты  — name + masked phone (lib/phone)
- *   2. Доставка  — NOVA_POSHTA (warehouse picked on the MAP) | PICKUP
+ *   2. Доставка  — NOVA_POSHTA | PICKUP. The branch is picked BY TEXT by default (city → branch
+ *                  autocomplete, NpSearch) or on the map ("Обрати на карті", NpWarehouseMap); both
+ *                  modes share one city / branch. The last order prefills name, phone, delivery
+ *                  method and branch (card "Як у попередньому замовленні" → "Обрати інше").
  *   3. Оплата    — pick a payment option (RadioCard, from getPaymentOptions)
  *   4. Подтверждение — summary → POST /api/orders → success screen + requisites
  *
@@ -16,7 +19,7 @@
  * createOrder / getOrder), same per-step validation, same query keys, same
  * dynamic ssr:false map import, same cart clear.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -25,6 +28,8 @@ import {
   Clock,
   Copy,
   CreditCard,
+  Keyboard,
+  Map as MapIcon,
   MapPin,
   Store,
   Truck,
@@ -33,11 +38,16 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { npCityBounds, npLatLng, resolveNpWarehouse, type NpCity, type OrderDetail } from "@shop/shared";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
+import { CitySearch, WarehouseSearch, npWarehousesQuery } from "@/components/checkout/NpSearch";
+import type { MapFocus } from "@/components/checkout/NpWarehouseMap";
+import { useKeyboardOpen } from "@/lib/viewport";
+import { useAccessToken } from "@/lib/auth";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
 function MapLoading() {
@@ -99,16 +109,128 @@ export default function CheckoutPage() {
   const currency = lines[0]?.currency ?? "UAH";
 
   const [step, setStep] = useState(0);
+  const keyboardOpen = useKeyboardOpen();
 
   // step 1 — contacts
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [touched, setTouched] = useState(false);
 
-  // step 2 — delivery (warehouse carries its own city, so no separate city picker)
+  // step 2 — delivery. Nova Poshta is picked by text (city → branch fields) by default, or on the
+  // map; both modes edit the same city / branch, so a pick in one shows in the other. Lives here,
+  // not in DeliveryStep, so it survives going to the next step and back.
   const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
   const [warehouse, setWarehouse] = useState<NpWarehouse | null>(null);
+  const [city, setCity] = useState<NpCity | null>(null);
+  const [npMode, setNpMode] = useState<NpMode>("text");
+  const [focus, setFocus] = useState<MapFocus | null>(null);
+  /** The branch came from the last order — shown as a compact card until "Обрати інше". */
+  const [warehouseFromLast, setWarehouseFromLast] = useState(false);
   const [comment, setComment] = useState("");
+  const [prefilled, setPrefilled] = useState(false);
+  const queryClient = useQueryClient();
+  // The city whose branches are being fetched to frame the map: a late answer for a city the
+  // customer has already moved on from must not move the map.
+  const framingCity = useRef<string | null>(null);
+  /** The customer has touched the delivery choice — the last-order prefill backs off. */
+  const touchedNp = useRef(false);
+
+  /** A city picked in the field (or dropped by typing over it). A different city drops the branch. */
+  function chooseCity(c: NpCity | null) {
+    touchedNp.current = true;
+    if (c?.ref !== city?.ref) {
+      setWarehouse(null);
+      setWarehouseFromLast(false);
+    }
+    setCity(c);
+    framingCity.current = c?.ref ?? null;
+    if (!c) return;
+    // Frame the map on the city now, so it opens there when the customer switches to it.
+    queryClient
+      .fetchQuery(npWarehousesQuery(c.ref))
+      .then((whs) => {
+        if (framingCity.current !== c.ref) return;
+        const bounds = npCityBounds(whs);
+        if (bounds) setFocus({ key: Date.now(), bounds });
+      })
+      .catch(() => {
+        /* the map still works by hand */
+      });
+  }
+
+  /** A branch picked in the field or on the map: select it, sync the city, aim the map at it. */
+  const chooseWarehouse = useCallback((w: NpWarehouse | null) => {
+    touchedNp.current = true;
+    setWarehouseFromLast(false);
+    setWarehouse(w);
+    if (!w) return;
+    if (w.cityRef) {
+      setCity((c) => (c?.ref === w.cityRef ? c : { ref: w.cityRef!, name: w.cityName ?? "" }));
+    }
+    framingCity.current = null; // a pending city framing must not pull the map off this branch
+    const p = npLatLng(w);
+    if (p) setFocus({ key: Date.now(), center: p });
+  }, []);
+
+  function chooseDelivery(d: DeliveryMethod) {
+    touchedNp.current = true;
+    setDelivery(d);
+  }
+
+  // ---- prefill from the last order (same source as the website: /api/me/orders) ----------------
+  const token = useAccessToken();
+  const lastOrder = useQuery({
+    queryKey: ["me", "last-order"],
+    staleTime: Infinity,
+    retry: false,
+    // Wait for the Telegram sign-in: fired before the token, /api/me/orders answers 401 and the
+    // prefill is lost for this visit (same race the account page guards against).
+    enabled: !!token,
+    queryFn: async (): Promise<OrderDetail | null> => {
+      const list = await customerApi.getOrders();
+      const latest = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      return latest ? customerApi.getOrder(latest.id) : null;
+    },
+  });
+  const prefillDone = useRef(false);
+  useEffect(() => {
+    const o = lastOrder.data;
+    if (!o || prefillDone.current) return;
+    prefillDone.current = true;
+    let used = false;
+    if (o.customerName) {
+      setName((v) => v || o.customerName);
+      used = true;
+    }
+    if (o.phone) {
+      setPhone((v) => v || o.phone);
+      used = true;
+    }
+    if (used) setPrefilled(true);
+    if (touchedNp.current) return;
+    if (o.deliveryMethod === "PICKUP") {
+      setDelivery("PICKUP");
+      return;
+    }
+    if (o.npCityName && o.npWarehouseName) {
+      resolveNpWarehouse(o.npCityName, o.npWarehouseName, {
+        cities: (q) => customerApi.getNpCities(q),
+        warehouses: (ref) => queryClient.fetchQuery(npWarehousesQuery(ref)),
+      })
+        .then((found) => {
+          // ...unless the customer has already started picking by hand.
+          if (!found || touchedNp.current) return;
+          setWarehouse(found.warehouse);
+          setCity(found.city);
+          setWarehouseFromLast(true);
+          const p = npLatLng(found.warehouse);
+          if (p) setFocus({ key: Date.now(), center: p });
+        })
+        .catch(() => {
+          /* not critical: the customer picks again */
+        });
+    }
+  }, [lastOrder.data, queryClient]);
 
   // step 3 — payment
   const [paymentId, setPaymentId] = useState<string | null>(null);
@@ -310,14 +432,25 @@ export default function CheckoutPage() {
               phoneOk={phoneOk}
               onName={setName}
               onPhone={setPhone}
+              prefilled={prefilled}
             />
           )}
           {step === 1 && (
             <DeliveryStep
               delivery={delivery}
-              setDelivery={setDelivery}
+              setDelivery={chooseDelivery}
+              city={city}
+              onCity={chooseCity}
               warehouse={warehouse}
-              setWarehouse={setWarehouse}
+              onWarehouse={chooseWarehouse}
+              fromLast={warehouseFromLast}
+              onChangeLast={() => {
+                touchedNp.current = true;
+                setWarehouseFromLast(false);
+              }}
+              mode={npMode}
+              setMode={setNpMode}
+              focus={focus}
               comment={comment}
               setComment={setComment}
               touched={touched}
@@ -375,9 +508,12 @@ export default function CheckoutPage() {
         className="pointer-events-none fixed inset-x-0 z-30 mx-auto w-full max-w-[480px]"
         style={{ bottom: "calc(var(--tabbar-h) + var(--safe-bottom) + 12px)" }}
       >
+        {/* Out of the way while the keyboard is up (as in the cart): on Android the webview shrinks
+            and the bar would sit right over the city / branch suggestions. */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: keyboardOpen ? 0 : 1, y: keyboardOpen ? 24 : 0 }}
+          style={{ pointerEvents: keyboardOpen ? "none" : undefined }}
           transition={spring}
           className="pointer-events-auto mx-4 flex items-center gap-3 rounded-[16px] border border-[var(--line-strong)] bg-[rgba(26,26,26,.94)] p-3 shadow-[0_18px_40px_-12px_rgba(0,0,0,.8)] backdrop-blur-[12px]"
         >
@@ -414,6 +550,7 @@ function ContactsStep({
   phoneOk,
   onName,
   onPhone,
+  prefilled,
 }: {
   name: string;
   phone: string;
@@ -422,6 +559,8 @@ function ContactsStep({
   phoneOk: boolean;
   onName: (v: string) => void;
   onPhone: (v: string) => void;
+  /** Name / phone came from the last order. */
+  prefilled: boolean;
 }) {
   const t = useT();
   return (
@@ -429,6 +568,9 @@ function ContactsStep({
       <p className="px-0.5 text-[13px] text-[var(--muted)]">
         {t("checkout.contacts.intro")}
       </p>
+      {prefilled && (
+        <p className="-mt-2 px-0.5 text-[12px] font-semibold text-[var(--ok)]">{t("checkout.prefilled")}</p>
+      )}
       <Input
         label={t("checkout.contacts.name")}
         value={name}
@@ -455,7 +597,7 @@ function ContactsStep({
 }
 
 // ---------------------------------------------------------------------------
-// Step 2 — Delivery (2 tabs; Nova Poshta opens the full map, then a confirm card)
+// Step 2 — Delivery (2 tabs; Nova Poshta: city → branch fields, or the map)
 // ---------------------------------------------------------------------------
 function npLabel(w: NpWarehouse, t: (key: string, params?: Record<string, string | number>) => string): string {
   const cat = t(
@@ -507,26 +649,120 @@ function DeliveryTab({
   );
 }
 
+/** How Nova Poshta is picked: by text (city → branch fields, the default) or on the map. */
+type NpMode = "text" | "map";
+
+/** The picked branch as a card: the last order's one (badge + "Обрати інше") or the map pick. */
+function WarehouseCard({
+  warehouse,
+  badge,
+  action,
+}: {
+  warehouse: NpWarehouse;
+  badge?: string;
+  action?: React.ReactNode;
+}) {
+  const t = useT();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="flex flex-col gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]"
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">
+          <MapPin className="h-5 w-5 text-[var(--accent)]" strokeWidth={2.25} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-[15px] font-bold text-[var(--ink)]">{npLabel(warehouse, t)}</div>
+          {badge && (
+            <span className="font-display mt-1 inline-block rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+              {badge}
+            </span>
+          )}
+          <div className="mt-0.5 break-words text-[12px] font-medium text-[var(--muted)]">
+            {warehouse.cityName ? `${warehouse.cityName}, ` : ""}
+            {warehouse.description}
+          </div>
+        </div>
+      </div>
+      {action}
+    </motion.div>
+  );
+}
+
+/** "Ввести вручну" / "Обрати на карті" — a two-way segmented switch. */
+function NpModeSwitch({ mode, setMode }: { mode: NpMode; setMode: (m: NpMode) => void }) {
+  const t = useT();
+  const opts: { key: NpMode; label: string; icon: React.ReactNode }[] = [
+    { key: "text", label: t("checkout.np.modeText"), icon: <Keyboard className="h-4 w-4" strokeWidth={2.25} /> },
+    { key: "map", label: t("checkout.np.modeMap"), icon: <MapIcon className="h-4 w-4" strokeWidth={2.25} /> },
+  ];
+  return (
+    <div
+      role="tablist"
+      className="grid grid-cols-2 gap-1 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-1"
+    >
+      {opts.map((o) => {
+        const on = mode === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => setMode(o.key)}
+            className="tap flex min-h-[40px] min-w-0 items-center justify-center gap-1.5 rounded-[8px] border px-2 text-[13px] font-semibold transition-colors"
+            style={{
+              background: on ? "var(--accent-soft)" : "transparent",
+              borderColor: on ? "var(--accent)" : "transparent",
+              color: on ? "var(--accent-hi)" : "var(--muted)",
+            }}
+          >
+            <span className="shrink-0">{o.icon}</span>
+            <span className="truncate">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function DeliveryStep({
   delivery,
   setDelivery,
+  city,
+  onCity,
   warehouse,
-  setWarehouse,
+  onWarehouse,
+  fromLast,
+  onChangeLast,
+  mode,
+  setMode,
+  focus,
   comment,
   setComment,
   touched,
 }: {
   delivery: DeliveryMethod;
   setDelivery: (d: DeliveryMethod) => void;
+  city: NpCity | null;
+  onCity: (c: NpCity | null) => void;
   warehouse: NpWarehouse | null;
-  setWarehouse: (w: NpWarehouse | null) => void;
+  onWarehouse: (w: NpWarehouse | null) => void;
+  /** The branch is the last order's one — shown as a card until "Обрати інше". */
+  fromLast: boolean;
+  onChangeLast: () => void;
+  mode: NpMode;
+  setMode: (m: NpMode) => void;
+  focus: MapFocus | null;
   comment: string;
   setComment: (v: string) => void;
   touched: boolean;
 }) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
-  const showMap = delivery === "NOVA_POSHTA" && (!warehouse || editing);
+  const collapsed = !!warehouse && fromLast;
 
   return (
     <div className="flex flex-col gap-3">
@@ -549,55 +785,49 @@ function DeliveryStep({
       </div>
 
       {delivery === "NOVA_POSHTA" &&
-        (showMap ? (
-          <div className="flex flex-col gap-2">
-            <p className="px-0.5 text-[13px] text-[var(--muted)]">
-              {t("checkout.delivery.mapHint")}
-            </p>
-            <NpWarehouseMap
-              onSelect={(w) => {
-                setWarehouse(w);
-                setEditing(false);
-              }}
-            />
-            {warehouse && (
-              <Button variant="surface" onClick={() => setEditing(false)}>
-                {t("common.cancel")}
+        (collapsed && warehouse ? (
+          <WarehouseCard
+            warehouse={warehouse}
+            badge={t("checkout.np.lastWarehouse")}
+            action={
+              <Button
+                variant="surface"
+                onClick={onChangeLast}
+                icon={<MapPin className="h-4 w-4" strokeWidth={2.5} />}
+              >
+                {t("checkout.np.changeLast")}
               </Button>
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            <NpModeSwitch mode={mode} setMode={setMode} />
+            {mode === "text" ? (
+              <>
+                <CitySearch city={city} onCity={onCity} />
+                {city && (
+                  <WarehouseSearch
+                    key={city.ref}
+                    city={city}
+                    warehouse={warehouse}
+                    onWarehouse={onWarehouse}
+                    label={(w) => npLabel(w, t)}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <p className="px-0.5 text-[13px] text-[var(--muted)]">
+                  {t("checkout.delivery.mapHint")}
+                </p>
+                <NpWarehouseMap focus={focus} selected={warehouse} onSelect={onWarehouse} />
+                {warehouse && <WarehouseCard warehouse={warehouse} />}
+              </>
             )}
           </div>
-        ) : warehouse ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={spring}
-            className="flex flex-col gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]"
-          >
-            <div className="flex items-start gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">
-                <MapPin className="h-5 w-5 text-[var(--accent)]" strokeWidth={2.25} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-[15px] font-bold text-[var(--ink)]">
-                  {npLabel(warehouse, t)}
-                </div>
-                <div className="text-[12px] font-medium text-[var(--muted)]">
-                  {warehouse.cityName ? `${warehouse.cityName}, ` : ""}
-                  {warehouse.description}
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="surface"
-              onClick={() => setEditing(true)}
-              icon={<MapPin className="h-4 w-4" strokeWidth={2.5} />}
-            >
-              {t("checkout.delivery.change")}
-            </Button>
-          </motion.div>
-        ) : null)}
+        ))}
 
-      {touched && delivery === "NOVA_POSHTA" && !warehouse && !showMap && (
+      {touched && delivery === "NOVA_POSHTA" && !warehouse && (
         <p className="px-0.5 text-[12px] font-bold text-[var(--danger)]">
           {t("checkout.delivery.required")}
         </p>
