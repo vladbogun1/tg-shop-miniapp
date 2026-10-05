@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
-import { rememberUser, SESSION_KEY, useSession } from "@/lib/session";
+import { markSignedIn, rememberUser, SESSION_KEY, useSession } from "@/lib/session";
 
 type Phase =
   | { kind: "starting" }
@@ -62,7 +62,7 @@ export function LoginView() {
 
   const finish = useCallback(
     (user: Parameters<typeof rememberUser>[0]) => {
-      rememberUser(user);
+      markSignedIn(user);
       qc.setQueryData(SESSION_KEY, { authed: true, unread: 0 });
       void qc.invalidateQueries({ queryKey: SESSION_KEY });
       router.replace(nextRef.current);
