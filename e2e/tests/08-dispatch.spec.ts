@@ -1,6 +1,6 @@
 /**
  * «Отправка»: the ТТН field and «Отправлено» right on the order card (no drawer, no modal).
- * A NEW order still waiting for its prepayment cannot be shipped from here.
+ * A NEW order still waiting for its online prepayment cannot be shipped from here.
  */
 import type { Page } from "@playwright/test";
 import { CUSTOMER, ORDER } from "../lib/seed";
@@ -38,13 +38,13 @@ test("ТТН и «Отправлено» прямо в карточке", async 
   expect(order.trackingNumber).toBe("20450000000007");
 });
 
-test("новый заказ без подтверждённой предоплаты отправить нельзя", async ({ page, api }) => {
+test("новый заказ без онлайн-предоплаты отправить нельзя", async ({ page, api }) => {
   await page.goto("/dispatch");
   await expect(page.getByRole("heading", { name: /^Новые — можно отправить сразу · \d+$/ })).toBeVisible();
 
-  const c = card(page, ORDER.claimed);
-  await expect(c).toContainText("Ждём предоплату 150 ₴");
+  const c = card(page, ORDER.awaiting);
+  await expect(c).toContainText("Ждём онлайн-предоплату 150 ₴");
   await c.getByRole("textbox", { name: "Номер ТТН" }).fill("20450000000002");
   await expect(c.getByRole("button", { name: "Отправлено" })).toBeDisabled();
-  expect((await api.order(ORDER.claimed)).status).toBe("NEW");
+  expect((await api.order(ORDER.awaiting)).status).toBe("NEW");
 });

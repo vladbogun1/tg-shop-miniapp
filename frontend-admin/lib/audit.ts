@@ -17,6 +17,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ADMIN_ACCOUNT_FAIL: "Неверный пароль/код",
   ORDER_STATUS: "Статус заказа",
   ORDER_PAID: "Оплата заказа",
+  ORDER_REFUND_ONLINE: "Возврат на карту",
   ORDER_DISCOUNT: "Скидка в заказе",
   ORDER_GIFT: "Подарок в заказ",
   ORDER_ITEM_ADD: "Позиция добавлена",
@@ -34,6 +35,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   PROMO_UPDATE: "Промокод изменён",
   PROMO_DELETE: "Промокод удалён",
   PAYMENT_OPTIONS: "Способы оплаты",
+  /** Kept for old log entries: the requisites screen is gone (payment is online only). */
   PAYMENT_REQUISITES: "Реквизиты оплаты",
   BROADCAST_START: "Рассылка",
   BROADCAST_TEST: "Тест рассылки",
@@ -68,6 +70,7 @@ export const AUDIT_RISKY = new Set([
   "ADMIN_EMERGENCY_RESET",
   "ADMIN_ACCOUNT_FAIL",
   "ORDER_DELETE",
+  "ORDER_REFUND_ONLINE",
   "PAYMENT_REQUISITES",
   "PROMO_DELETE",
   "TAG_DELETE",

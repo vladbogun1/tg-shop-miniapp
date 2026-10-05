@@ -16,7 +16,7 @@ import {
   MoreHorizontal,
   Package,
   RefreshCw,
-  Wallet,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
@@ -25,11 +25,19 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type { OrderStatus } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { formatWait, SNOOZE_OPTIONS, type InboxItem, type InboxType, type SnoozePreset } from "@/lib/inbox";
+import {
+  formatWait,
+  isRefundRow,
+  knownType,
+  SNOOZE_OPTIONS,
+  type InboxItem,
+  type KnownInboxType,
+  type SnoozePreset,
+} from "@/lib/inbox";
 import { money } from "@/lib/money";
 
-const PRIMARY: Record<InboxType, { label: string; icon: LucideIcon }> = {
-  PAYMENT: { label: "Проверить оплату", icon: Wallet },
+const PRIMARY: Record<KnownInboxType, { label: string; icon: LucideIcon }> = {
+  PAYMENT: { label: "Открыть заказ", icon: ClipboardList },
   CHAT: { label: "Ответить", icon: MessageCircle },
   NEW_STALE: { label: "Открыть заказ", icon: ClipboardList },
   APPROVED_STALE: { label: "Открыть заказ", icon: ClipboardList },
@@ -37,6 +45,16 @@ const PRIMARY: Record<InboxType, { label: string; icon: LucideIcon }> = {
   LOW_STOCK: { label: "Открыть товар", icon: Package },
   SITE_ERROR: { label: "Повторить", icon: RefreshCw },
 };
+
+const OPEN_ORDER = { label: "Открыть заказ", icon: ClipboardList };
+const REFUND = { label: "Вернуть деньги", icon: Undo2 };
+
+/** Main action of a row; a kind the UI does not know yet opens its order (if it has one). */
+function primaryOf(item: InboxItem): { label: string; icon: LucideIcon } {
+  if (isRefundRow(item)) return REFUND;
+  const known = knownType(item.type);
+  return known ? PRIMARY[known] : OPEN_ORDER;
+}
 
 const ORDER_STATUSES = new Set(["NEW", "APPROVED", "SHIPPED", "DELIVERED", "REJECTED"]);
 
@@ -65,7 +83,7 @@ export function InboxRow({
   onDismiss: (item: InboxItem) => void;
 }) {
   const [sheet, setSheet] = useState(false);
-  const primary = PRIMARY[item.type];
+  const primary = primaryOf(item);
   const PrimaryIcon = primary.icon;
 
   const sheetActions: SheetAction[] = [

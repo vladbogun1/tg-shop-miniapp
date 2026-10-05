@@ -4,12 +4,21 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { AlertTriangle, Bug, CreditCard, Timer, Truck, XCircle } from "lucide-react";
 import { QueryState } from "@/components/ui/QueryState";
-import { DELIVERY_LABEL } from "@/lib/orders";
+import { DELIVERY_LABEL, REJECT_REASON_LABEL, type RejectReasonCode } from "@/lib/orders";
 import { staggerContainer } from "@/lib/motion";
 import { metricsApi, type Operations, type PeriodParams, type Violation } from "../api";
 import { RankBars } from "../charts";
 import { dateTime, duration, num, pct, shortId, uah } from "../format";
 import { Empty, Note, Panel, StatusChip, TableWrap } from "../ui";
+
+/**
+ * The server's label, unless it only echoed the code back (a reason it has no label for yet, e.g.
+ * the system PAYMENT_TIMEOUT) — then the shared Russian label.
+ */
+function reasonLabel(key: string, label: string): string {
+  const shared = REJECT_REASON_LABEL[key as RejectReasonCode];
+  return shared && (!label || label === key) ? shared : label;
+}
 
 export function OperationsTab({ params }: { params: PeriodParams }) {
   const q = useQuery({
@@ -68,7 +77,7 @@ function OperationsBody({ o }: { o: Operations }) {
         {r.byReason.length === 0 ? (
           <Empty>Отказов за период нет</Empty>
         ) : (
-          <RankBars rows={r.byReason.map((x) => ({ key: x.key, label: x.label, value: x.count }))} format={(v) => `${num(v)}`} />
+          <RankBars rows={r.byReason.map((x) => ({ key: x.key, label: reasonLabel(x.key, x.label), value: x.count }))} format={(v) => `${num(v)}`} />
         )}
         <div className="mt-3 flex flex-col gap-2">
           {!r.codes && (

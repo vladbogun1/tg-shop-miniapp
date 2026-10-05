@@ -2,8 +2,9 @@
 --  Admin e2e fixture. Applied by e2e/global-setup.ts AFTER Flyway (the backend is up), before
 --  every run, so a run always starts from the same state.
 --
---  Everything here is invented: names, phones, Telegram ids, card and IBAN (test card
---  4111 1111 1111 1111 passes Luhn; the IBAN only has a valid checksum). No production data.
+--  Everything here is invented: names, phones, Telegram ids, monobank invoice ids and card masks.
+--  No production data. Payment is online only (monobank); the legacy payment_claimed columns stay
+--  in the schema for a rollback and are always FALSE here.
 --
 --  Ids are readable on purpose: an order's short number on screen is the first 8 hex chars of
 --  its UUID, so order e2e00005-… shows up as #e2e00005. The same ids live in e2e/lib/seed.ts.
@@ -32,8 +33,9 @@ DELETE FROM client_events;
 DELETE FROM analytics_daily;
 DELETE FROM analytics_daily_visitors;
 DELETE FROM analytics_daily_runs;
+DELETE FROM payment_invoices;
+DELETE FROM payment_webhook_log;
 DELETE FROM payment_options;
-DELETE FROM payment_requisites;
 DELETE FROM inbox_marks;
 DELETE FROM shop_settings;
 DELETE FROM admin_audit_log;
@@ -41,18 +43,16 @@ DELETE FROM broadcasts;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ---------- Payment ----------
+-- ---------- Payment (all online via monobank) ----------
+-- Orders keep a snapshot of the option title, so the older orders below still say
+-- «Оплата при получении» — they were placed before online payment (payment_due_at NULL).
 INSERT INTO payment_options (id, title, description, requires_prepayment, prepayment_minor, sort_order, active) VALUES
   (UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴',
-   'Бронь товара, остаток — при получении.', TRUE, 15000, 1, TRUE),
-  (UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Оплата при получении',
-   'Наложенный платёж на почте.', FALSE, 0, 2, TRUE),
-  (UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата на карту',
-   'Вся сумма заказа на карту по реквизитам.', FALSE, 0, 3, TRUE);
-
-INSERT INTO payment_requisites (id, card_number, iban, recipient, edrpou, purpose, note) VALUES
-  (1, '4111111111111111', 'UA053220010000026001234567890', 'ФОП Тестовий Тест Тестович',
-   '1234567890', 'Оплата за товар (тест)', 'Тестовые реквизиты e2e.');
+   '150 ₴ онлайн сейчас, остаток — наложкой при получении.', TRUE, 15000, 1, TRUE),
+  (UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Предоплата 100 ₴',
+   '100 ₴ онлайн сейчас, остаток — наложкой при получении.', TRUE, 10000, 2, TRUE),
+  (UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   'Вся сумма заказа онлайн: карта, Apple Pay, Google Pay.', FALSE, 0, 3, TRUE);
 
 -- ---------- Catalog ----------
 INSERT INTO tags (id, name, slug, sort_order, show_in_menu) VALUES
@@ -101,11 +101,11 @@ INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, cu
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
    'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴',
    FALSE, NULL, FALSE, NULL, 15000, 0, 900000001, 'e2e_olena', 'MINIAPP', NOW() - INTERVAL 1 HOUR),
-  -- #e2e00002: NEW, customer pressed «я оплатил» (inbox «Подтвердить оплату»), 5 h old.
+  -- #e2e00002: NEW, 150 ₴ online prepayment still due (link issued), 5 h old — «Ждёт оплаты», dispatch.
   (UUID_TO_BIN('e2e00002-0000-4000-8000-000000000002'), NULL, 129900, 0, 129900, 'UAH', 'Петро Вигаданий', '+380000000002',
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
    'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴',
-   FALSE, NULL, TRUE, NOW() - INTERVAL 20 MINUTE, 15000, 0, NULL, NULL, 'WEB', NOW() - INTERVAL 5 HOUR),
+   FALSE, NULL, FALSE, NULL, 15000, 0, NULL, NULL, 'WEB', NOW() - INTERVAL 5 HOUR),
   -- #e2e00003: NEW with an unread customer message (inbox «Непрочитанные чаты», chat templates).
   (UUID_TO_BIN('e2e00003-0000-4000-8000-000000000003'), 900000003, 59900, 0, 59900, 'UAH', 'Марія Чатова', '+380000000003',
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
@@ -129,8 +129,8 @@ INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, cu
   -- #e2e00007: APPROVED, paid in full — shipped from «Отправка».
   (UUID_TO_BIN('e2e00007-0000-4000-8000-000000000007'), NULL, 129900, 0, 129900, 'UAH', 'Ганна Відправка', '+380000000007',
    'APPROVED', NOW() - INTERVAL 1 HOUR, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
-   'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата на карту',
-   TRUE, NOW() - INTERVAL 1 HOUR, TRUE, NOW() - INTERVAL 1 HOUR, 0, 129900, NULL, NULL, 'WEB', NOW() - INTERVAL 2 HOUR),
+   'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   TRUE, NOW() - INTERVAL 1 HOUR, FALSE, NULL, 0, 129900, NULL, NULL, 'WEB', NOW() - INTERVAL 2 HOUR),
   -- #e2e00008: NEW — rejected with a reason from the list.
   (UUID_TO_BIN('e2e00008-0000-4000-8000-000000000008'), NULL, 34900, 0, 34900, 'UAH', 'Богдан Відмова', '+380000000008',
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
@@ -140,8 +140,8 @@ INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, cu
   (UUID_TO_BIN('e2e00009-0000-4000-8000-000000000009'), NULL, 94800, 0, 94800, 'UAH', 'Світлана Повернення', '+380000000009',
    'DELIVERED', NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 1 DAY, NULL, '20450000000009', NULL, NULL,
    'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
-   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата на карту',
-   TRUE, NOW() - INTERVAL 1 DAY, TRUE, NOW() - INTERVAL 4 DAY, 0, 94800, NULL, NULL, 'MINIAPP', NOW() - INTERVAL 5 DAY),
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   TRUE, NOW() - INTERVAL 1 DAY, FALSE, NULL, 0, 94800, NULL, NULL, 'MINIAPP', NOW() - INTERVAL 5 DAY),
   -- #e2e0000a: refused at the post office after shipping — «Отказы и возвраты» (dismissible).
   (UUID_TO_BIN('e2e0000a-0000-4000-8000-00000000000a'), NULL, 34900, 0, 34900, 'UAH', 'Юрій Відмовник', '+380000000010',
    'REJECTED', NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 3 DAY, NULL, NOW() - INTERVAL 1 DAY, '20450000000010',
@@ -158,7 +158,35 @@ INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, cu
   (UUID_TO_BIN('e2e0000c-0000-4000-8000-00000000000c'), NULL, 34900, 0, 34900, 'UAH', 'Лариса Журнальна', '+380000000012',
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'PICKUP', NULL, NULL, NULL, NULL,
    UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Оплата при получении',
-   FALSE, NULL, FALSE, NULL, 0, 0, NULL, NULL, 'ADMIN', NOW() - INTERVAL 35 MINUTE);
+   FALSE, NULL, FALSE, NULL, 0, 0, NULL, NULL, 'ADMIN', NOW() - INTERVAL 35 MINUTE),
+  -- #e2e0000d: NEW, 150 ₴ prepayment paid online (monobank invoice below) — inbox «Оплаты»
+  -- («Оплачен онлайн — подтвердите заказ»), the online payment block and the refund dialog.
+  (UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'), NULL, 34900, 0, 34900, 'UAH', 'Віра Онлайн', '+380000000013',
+   'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
+   'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴',
+   TRUE, NOW() - INTERVAL 10 MINUTE, FALSE, NULL, 15000, 15000, NULL, NULL, 'WEB', NOW() - INTERVAL 15 MINUTE);
+
+-- Online payment deadlines (24 h after the order). Orders above without one were placed before
+-- online payment and are never cancelled automatically.
+UPDATE orders SET payment_due_at = created_at + INTERVAL 24 HOUR
+ WHERE id IN (UUID_TO_BIN('e2e00002-0000-4000-8000-000000000002'),
+              UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'));
+
+-- monobank invoices (invented ids). #e2e00002: link issued, not paid yet. #e2e0000d: paid by card,
+-- credited to the order (applied_at) — what makes it «оплачен онлайн» for the inbox.
+INSERT INTO payment_invoices (id, order_id, provider, external_id, amount_minor, final_amount_minor, refunded_minor,
+                              ccy, status, page_url, expires_at, provider_modified_at, failure_reason, err_code,
+                              masked_pan, payment_method, payment_system, rrn, approval_code, fee_minor, applied_at,
+                              refund_pending_until, created_at, updated_at) VALUES
+  (UUID_TO_BIN('e2e0f001-0000-4000-8000-000000000002'), UUID_TO_BIN('e2e00002-0000-4000-8000-000000000002'),
+   'MONOBANK', 'e2e-inv-awaiting-0002', 15000, NULL, 0, 980, 'created', 'https://pay.mbnk.biz/e2e-inv-awaiting-0002',
+   NOW() + INTERVAL 19 HOUR, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, NOW() - INTERVAL 5 HOUR, NOW() - INTERVAL 5 HOUR),
+  (UUID_TO_BIN('e2e0f001-0000-4000-8000-00000000000d'), UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'),
+   'MONOBANK', 'e2e-inv-paid-000d', 15000, 15000, 0, 980, 'success', 'https://pay.mbnk.biz/e2e-inv-paid-000d',
+   NOW() + INTERVAL 23 HOUR, NOW() - INTERVAL 10 MINUTE, NULL, NULL, '444403******1902', 'pan', 'visa',
+   '000000e2e0d1', '123456', 195, NOW() - INTERVAL 10 MINUTE,
+   NULL, NOW() - INTERVAL 15 MINUTE, NOW() - INTERVAL 10 MINUTE);
 
 INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snapshot, variant_id, variant_name_snapshot,
                          quantity, gift, returned_qty, restocked_qty) VALUES
@@ -180,7 +208,8 @@ INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snaps
   (UUID_TO_BIN('e2e0000a-0000-4000-8000-00000000000a'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 1),
   (UUID_TO_BIN('e2e0000b-0000-4000-8000-00000000000b'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), 'E2E Футболка базовая', 59900,
    UUID_TO_BIN('e2e0e001-0000-4000-8000-000000000002'), 'M', 1, FALSE, 0, 0),
-  (UUID_TO_BIN('e2e0000c-0000-4000-8000-00000000000c'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);
+  (UUID_TO_BIN('e2e0000c-0000-4000-8000-00000000000c'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);
 
 INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, type, text, created_at, delivered_at, read_at) VALUES
   (UUID_TO_BIN('e2e00003-0000-4000-8000-000000000003'), 'CUSTOMER', 900000003, 'Марія Чатова', 'TEXT',

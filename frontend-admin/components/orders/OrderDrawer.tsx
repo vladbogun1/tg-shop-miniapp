@@ -8,7 +8,7 @@
  * Every action has its own spinner; destructive ones ask first (own modal, not window.confirm).
  * The phone/browser "Назад" closes the card instead of leaving the page.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MessageSquare,
@@ -19,7 +19,6 @@ import {
   PackageCheck,
   Ban,
   Trash2,
-  Wallet,
   WalletMinimal,
   MoreHorizontal,
   Undo2,
@@ -58,7 +57,7 @@ interface Props {
   orderId: string | null;
   onClose: () => void;
   initialTab?: "details" | "chat";
-  /** Open a dialog right away once the order has loaded («Внимание»: «Проверить оплату»). */
+  /** Scroll to the «Онлайн-оплата» section once the order has loaded («Внимание» → «Оплаты»). */
   initialAction?: "payment";
   /** `onClose` navigates to another page (the /orders/{id} deep link) — see useBackToClose. */
   closeNavigates?: boolean;
@@ -119,17 +118,20 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   });
   const order: AdminOrderDetail | undefined = orderQ.data;
 
-  // initialAction: remember which order it was asked for, open the dialog once that order is loaded.
+  // initialAction: remember which order it was asked for, scroll to the payment once it is loaded.
+  const paymentRef = useRef<HTMLElement>(null);
   const [autoPaymentFor, setAutoPaymentFor] = useState<string | null>(null);
   useEffect(() => {
     setAutoPaymentFor(orderId && initialAction === "payment" ? orderId : null);
   }, [orderId, initialAction]);
   useEffect(() => {
-    if (autoPaymentFor && order && autoPaymentFor === orderId) {
-      setPayOpen(true);
+    if (autoPaymentFor && order && autoPaymentFor === orderId && tab === "details") {
+      // After the details have rendered (the section mounts with the order).
+      const t = window.setTimeout(() => paymentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
       setAutoPaymentFor(null);
+      return () => window.clearTimeout(t);
     }
-  }, [autoPaymentFor, order, orderId]);
+  }, [autoPaymentFor, order, orderId, tab]);
 
   // Unread customer messages for the "Чат" tab badge (the chat itself shares this cache entry).
   const messagesQ = useQuery({
@@ -313,13 +315,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
-  const payLabel = !order
-    ? ""
-    : order.paid
-      ? "Изменить оплату"
-      : order.paymentClaimed
-        ? "Проверить оплату"
-        : "Отметить оплаченным";
+  // Payments arrive online (monobank); this is only a manual correction (наложка, a mistake).
+  const payLabel = "Скорректировать оплату";
 
   const header = (
     <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 pointer-coarse:min-h-11">
@@ -334,19 +331,9 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
 
   const restockUnits = order?.items.reduce((s, it) => s + it.quantity - (it.returnedQty ?? 0), 0);
 
-  // A paid-claim waiting for review is the most urgent thing on a NEW order: make it the main button.
-  const mobilePrimaryIsPay = !!order && !order.paid && order.paymentClaimed && order.status === "NEW";
-  // ONE solid-orange action per view (v3): the next happy-path step, or the payment when it is the
-  // most urgent thing (claim to review) or nothing else is left to do; the rest are surface/danger.
-  const accentKey: string | undefined = !order
-    ? undefined
-    : mobilePrimaryIsPay
-      ? "pay"
-      : primary
-        ? primary
-        : !order.paid
-          ? "pay"
-          : undefined;
+  // ONE solid-orange action per view (v3): the next happy-path step; the rest are surface/danger.
+  // The manual payment correction is never the main action — payments come in online.
+  const accentKey: string | undefined = primary;
 
   // ---- action bar ----
   const statusButton = (target: OrderStatus, opts: { primary?: boolean; full?: boolean } = {}) => {
@@ -372,11 +359,11 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     order && (
       <Button
         size={full ? "md" : "sm"}
-        variant={full || accentKey === "pay" ? "accent" : "surface"}
+        variant="surface"
         loading={busyKey === "pay"}
         disabled={!!busyKey && busyKey !== "pay"}
         className={cn(full && "flex-1")}
-        icon={order.paid ? <WalletMinimal className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+        icon={<WalletMinimal className="h-4 w-4" />}
         onClick={() => setPayOpen(true)}
       >
         {payLabel}
@@ -388,7 +375,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         {
           key: "pay",
           label: payLabel,
-          icon: <Wallet className="h-4 w-4" />,
+          icon: <WalletMinimal className="h-4 w-4" />,
           onSelect: () => setPayOpen(true),
         },
         ...targets
@@ -477,6 +464,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onEditTracking: () => setTrackingOpen(true),
                       onOpenCustomer: order.tgUserId ? openCustomer : undefined,
                       onReturn: canReturn ? () => setReturnOpen(true) : undefined,
+                      onPaymentChanged: refreshLists,
+                      paymentRef,
                     }}
                   />
                 )}
@@ -507,11 +496,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                     className="flex shrink-0 items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-4 pt-3"
                     style={{ paddingBottom: "calc(12px + var(--safe-bottom, 0px))" }}
                   >
-                    {mobilePrimaryIsPay
-                      ? payButton(true)
-                      : primary
-                        ? statusButton(primary, { primary: true, full: true })
-                        : payButton(true)}
+                    {primary ? statusButton(primary, { primary: true, full: true }) : payButton(true)}
                     <Button
                       size="md"
                       variant="surface"
@@ -539,25 +524,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       <ActionSheet
         open={moreOpen && !isDesktop}
         title={order ? `Заказ ${shortId(order.id)}` : undefined}
-        actions={
-          mobilePrimaryIsPay
-            ? sheetActions
-                .filter((a) => a.key !== "pay")
-                .concat(
-                  primary
-                    ? [
-                        {
-                          key: `primary-${primary}`,
-                          label: STATUS_ACTION_LABEL[primary],
-                          onSelect: () => requestStatus(primary),
-                        },
-                      ]
-                    : []
-                )
-            : primary
-              ? sheetActions
-              : sheetActions.filter((a) => a.key !== "pay")
-        }
+        actions={primary ? sheetActions : sheetActions.filter((a) => a.key !== "pay")}
         onClose={() => setMoreOpen(false)}
       />
 

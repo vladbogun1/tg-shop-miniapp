@@ -48,6 +48,7 @@ public final class InboxRules {
             "OUT_OF_STOCK", "нет в наличии",
             "DUPLICATE", "дубль",
             "NOT_PAID", "не оплачен",
+            "PAYMENT_TIMEOUT", "не оплачен за сутки",
             "REFUSED_AT_POST", "отказ на почте",
             "RETURNED", "возврат",
             "OTHER", "другое");

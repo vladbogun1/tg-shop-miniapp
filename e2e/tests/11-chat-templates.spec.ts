@@ -19,14 +19,14 @@ test("шаблон ответа подставляется с данными з�
   await drawer.getByRole("button", { name: "Шаблоны ответов" }).click();
   const picker = dialog(page, "Управлять шаблонами");
   await expect(picker).toBeVisible();
-  await picker.getByRole("button", { name: /^Реквизиты для оплаты/ }).click();
+  // (The old «Реквизиты для оплаты» template is gone with the manual transfers — V39 deletes it.)
+  await expect(picker.getByRole("button", { name: /^Реквизиты для оплаты/ })).toHaveCount(0);
+  await picker.getByRole("button", { name: /^Отправим сегодня\/завтра/ }).click();
   await expect(picker).toBeHidden();
 
   // Customer locale is ru → the Russian text, placeholders replaced.
   const input = drawer.getByPlaceholder(/Сообщение клиенту/);
-  await expect(input).toHaveValue(/^Здравствуйте, Марія Чатова! Реквизиты для оплаты заказа #e2e00003 на сумму 599\s₴/);
-  await expect(input).toHaveValue(/4111/);
-  await expect(input).toHaveValue(/UA053220010000026001234567890/);
+  await expect(input).toHaveValue(/^Марія Чатова, ваш заказ #e2e00003 отправим сегодня или завтра\./);
   await expect(input).not.toHaveValue(/\{[a-zA-Z]+\}/);
 
   // The admin can still edit it before sending.
@@ -34,10 +34,10 @@ test("шаблон ответа подставляется с данными з�
   await input.pressSequentially(" Спасибо!");
   await drawer.getByRole("button", { name: "Отправить", exact: true }).click();
   await expect(input).toHaveValue("");
-  await expect(drawer.getByText(/Здравствуйте, Марія Чатова!/)).toBeVisible();
+  await expect(drawer.getByText(/Марія Чатова, ваш заказ #e2e00003/)).toBeVisible();
 
   const messages = await api.messages(ORDER.chat);
   const sent = messages.find((m) => m.senderType === "ADMIN");
-  expect(sent?.text).toMatch(/^Здравствуйте, Марія Чатова!/);
+  expect(sent?.text).toMatch(/^Марія Чатова, ваш заказ/);
   expect(sent?.text).toMatch(/Спасибо!$/);
 });

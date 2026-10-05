@@ -29,7 +29,11 @@ public record DispatchOrderDto(
         Instant createdAt,
         Instant approvedAt,
         /** APPROVED, or NEW when the list includes not-yet-approved orders (NEW → SHIPPED is allowed). */
-        String status) {
+        String status,
+        /** Pay online by then or the order is cancelled; null = placed before online payment. */
+        Instant paymentDueAt,
+        /** Still to pay online now; 0 = nothing to pay. */
+        long amountDueMinor) {
 
     public record DispatchItem(String title, String variantName, int quantity, long priceMinor) {
     }

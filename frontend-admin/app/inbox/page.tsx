@@ -2,20 +2,23 @@
 
 /**
  * «Внимание» (route "/inbox"): one screen with everything waiting for the owner, most urgent
- * group first — payment claims → unread chats → new orders nobody approved → approved but not
+ * group first — money (paid online → confirm; paid but cancelled → refund) → unread chats → new orders nobody approved → approved but not
  * shipped → refusals/returns → stock running out → a failed site rebuild.
  *
  *  - GET /api/admin/inbox, polled every 30 s and on focus; the order drawer and the chat refetch
  *    it after every action (there is no global order WebSocket topic to listen to).
- *  - An order opens in the OrderDrawer ON TOP of this page (payment rows straight into the
- *    payment dialog, chat rows into the chat), so the list stays where it was.
+ *  - An order opens in the OrderDrawer ON TOP of this page (payment rows scrolled to the
+ *    «Онлайн-оплата» block, chat rows into the chat), so the list stays where it was.
+ *  - A kind the UI does not know yet (the server added one) still renders: the server's group
+ *    title and hint, a neutral icon, «Открыть заказ».
  *  - «Отложить» (1 h / until 9:00 / 3 days) and «Разобрано» are optimistic, with «Отменить»
- *    in the toast. A newer event (another claim, a new message) brings a row back by itself.
+ *    in the toast. A newer event (a new payment, a new message) brings a row back by itself.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowRight,
+  BellDot,
   CheckCheck,
   Globe,
   Hourglass,
@@ -41,18 +44,20 @@ import { cn } from "@/lib/cn";
 import {
   INBOX_QUERY_KEY,
   inboxApi,
+  knownType,
   SNOOZE_OPTIONS,
   useInbox,
   type Inbox,
   type InboxGroup,
   type InboxItem,
   type InboxType,
+  type KnownInboxType,
   type SnoozePreset,
 } from "@/lib/inbox";
 import { useToast } from "@/lib/toast";
 import { useIsDesktop } from "@/lib/use-media";
 
-const GROUP_ICON: Record<InboxType, LucideIcon> = {
+const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   PAYMENT: Wallet,
   CHAT: MessageCircle,
   NEW_STALE: Hourglass,
@@ -63,7 +68,7 @@ const GROUP_ICON: Record<InboxType, LucideIcon> = {
 };
 
 /** Group hue (icon tile tint, icon, count): money and people first, information last. */
-const GROUP_TONE: Record<InboxType, string> = {
+const GROUP_TONE: Record<KnownInboxType, string> = {
   PAYMENT: "var(--ok)",
   CHAT: "var(--accent-hi)",
   NEW_STALE: "var(--st-new)",
@@ -72,6 +77,16 @@ const GROUP_TONE: Record<InboxType, string> = {
   LOW_STOCK: "var(--warn)",
   SITE_ERROR: "var(--text-muted)",
 };
+
+function groupIcon(type: InboxType): LucideIcon {
+  const k = knownType(type);
+  return k ? GROUP_ICON[k] : BellDot;
+}
+
+function groupTone(type: InboxType): string {
+  const k = knownType(type);
+  return k ? GROUP_TONE[k] : "var(--text-muted)";
+}
 
 /** Tinted tile in a group hue (v3: colour at 14% + hairline at 30%, icon in the colour). */
 function toneTile(tone: string): CSSProperties {
@@ -280,7 +295,7 @@ export default function InboxPage() {
             description={
               snoozedTotal > 0
                 ? `Отложено: ${snoozedTotal}. Они вернутся сами, когда подойдёт срок.`
-                : "Новые заявки об оплате, сообщения и застрявшие заказы появятся здесь."
+                : "Оплаченные заказы, сообщения и застрявшие заказы появятся здесь."
             }
           />
         ) : (
@@ -291,14 +306,14 @@ export default function InboxPage() {
               className="thin-scroll -mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-2 lg:mx-0 lg:flex-wrap lg:px-0"
             >
               {groups.map((g) => {
-                const Icon = GROUP_ICON[g.id];
+                const Icon = groupIcon(g.id);
                 return (
                   <a
                     key={g.id}
                     href={`#inbox-${g.id}`}
                     className="nb-chip nb-press focusable inline-flex h-9 shrink-0 items-center gap-2 pl-3 pr-2 text-[11.5px] uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
                   >
-                    <Icon className="h-4 w-4 shrink-0" style={{ color: GROUP_TONE[g.id] }} />
+                    <Icon className="h-4 w-4 shrink-0" style={{ color: groupTone(g.id) }} />
                     {g.title}
                     <span className="count-badge count-badge--muted">{g.count}</span>
                   </a>
@@ -364,7 +379,7 @@ function GroupSection({
   onDismiss: (item: InboxItem) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const Icon = GROUP_ICON[group.id];
+  const Icon = groupIcon(group.id);
   const shown = expanded ? group.items : group.items.slice(0, COLLAPSED);
   const hidden = group.items.length - shown.length;
 
@@ -379,7 +394,7 @@ function GroupSection({
       <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
         <div
           className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border"
-          style={toneTile(GROUP_TONE[group.id])}
+          style={toneTile(groupTone(group.id))}
         >
           <Icon className="h-[18px] w-[18px]" />
         </div>
@@ -389,8 +404,8 @@ function GroupSection({
             <span
               className="count-badge"
               style={{
-                background: `color-mix(in srgb, ${GROUP_TONE[group.id]} 18%, transparent)`,
-                color: GROUP_TONE[group.id],
+                background: `color-mix(in srgb, ${groupTone(group.id)} 18%, transparent)`,
+                color: groupTone(group.id),
               }}
             >
               {group.count}

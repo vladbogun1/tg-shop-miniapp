@@ -305,7 +305,9 @@ public class OrderQueryService {
                 o.getTrackingNumber(),
                 o.getCreatedAt(),
                 o.getApprovedAt(),
-                o.getStatus().name());
+                o.getStatus().name(),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o));
     }
 
     /** One query for all the line thumbnails instead of one per line. */

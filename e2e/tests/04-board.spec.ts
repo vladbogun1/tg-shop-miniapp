@@ -70,11 +70,11 @@ test("поиск по #короткому-номеру оставляет оди
   await expect(drawer).toBeHidden();
 });
 
-test("Esc закрывает только верхний слой: сначала модалку оплаты, потом карточку", async ({ page }) => {
+test("Esc закрывает только верхний слой: сначала корректировку оплаты, потом карточку", async ({ page }) => {
   const drawer = await openOrderFromBoard(page, ORDER.shipped, CUSTOMER.shipped);
 
-  await drawer.getByRole("button", { name: "Отметить оплаченным" }).click();
-  const pay = dialog(page, "Оплата заказа");
+  await drawer.getByRole("button", { name: "Скорректировать оплату" }).click();
+  const pay = dialog(page, "Корректировка оплаты");
   await expect(pay).toBeVisible();
 
   await page.keyboard.press("Escape");
