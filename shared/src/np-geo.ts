@@ -6,7 +6,7 @@
  * far outside its city. Fitting the map to min/max of such a list flew "Харків" to the Caucasus.
  * Everything here is pure and cheap so the city search and the map can share it.
  */
-import type { NpWarehouse } from "@shop/shared";
+import type { NpCity, NpWarehouse } from "./types";
 
 /** Ukraine with a margin — anything outside is a typo in the NP directory. */
 const UA = { minLat: 44, maxLat: 52.6, minLng: 22, maxLng: 40.5 };
@@ -96,4 +96,37 @@ function numOf(w: NpWarehouse): number {
 
 function sortByNumber(ws: NpWarehouse[]): NpWarehouse[] {
   return [...ws].sort((a, b) => numOf(a) - numOf(b));
+}
+
+/** The branch-type filter of the checkout pickers ("Усі / Відділення / Поштомати / Пункти"). */
+export type NpCategoryFilter = "all" | "branch" | "postomat" | "point";
+
+/** Keep only branches of the chosen type ("branch" = BRANCH and anything not a postomat / point). */
+export function filterWarehouses(warehouses: NpWarehouse[], cat: NpCategoryFilter): NpWarehouse[] {
+  if (cat === "all") return warehouses;
+  if (cat === "postomat") return warehouses.filter((w) => w.category === "POSTOMAT");
+  if (cat === "point") return warehouses.filter((w) => w.category === "POINT");
+  return warehouses.filter((w) => w.category !== "POSTOMAT" && w.category !== "POINT");
+}
+
+/**
+ * Find a past order's branch again. An order keeps only the city and branch NAMES, while a new
+ * order needs their refs: look the city up by name, then the branch by its description. Null when
+ * either is gone from the NP directory (the customer then simply picks again).
+ */
+export async function resolveNpWarehouse(
+  cityName: string,
+  warehouseName: string,
+  fetchers: {
+    cities: (q: string) => Promise<NpCity[]>;
+    warehouses: (cityRef: string) => Promise<NpWarehouse[]>;
+  }
+): Promise<{ city: NpCity; warehouse: NpWarehouse } | null> {
+  const cities = await fetchers.cities(cityName);
+  const city = cities.find((c) => c.name === cityName) ?? cities[0];
+  if (!city) return null;
+  const whs = await fetchers.warehouses(city.ref);
+  const w = whs.find((x) => x.description === warehouseName);
+  if (!w) return null;
+  return { city, warehouse: { ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name } };
 }

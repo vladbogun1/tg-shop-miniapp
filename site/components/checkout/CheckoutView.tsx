@@ -33,7 +33,7 @@ import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { useSession } from "@/lib/session";
-import { npCityBounds, npLatLng } from "@/lib/np-geo";
+import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/shared";
 import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
@@ -210,15 +210,14 @@ function CheckoutForm() {
     if (o.npCityName && o.npWarehouseName) {
       (async () => {
         try {
-          const cities = await api.npCities(o.npCityName!);
-          const city = cities.find((c) => c.name === o.npCityName) ?? cities[0];
-          if (!city) return;
-          const whs = await api.npWarehouses(city.ref, "");
-          const w = whs.find((x) => x.description === o.npWarehouseName);
+          const found = await resolveNpWarehouse(o.npCityName!, o.npWarehouseName!, {
+            cities: (q) => api.npCities(q),
+            warehouses: (ref) => api.npWarehouses(ref, ""),
+          });
           // ...unless the customer has already started picking by hand.
-          if (w && !touchedNp.current) {
-            setWarehouse({ ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name });
-            setCity(city);
+          if (found && !touchedNp.current) {
+            setWarehouse(found.warehouse);
+            setCity(found.city);
             setWarehouseFromLast(true);
           }
         } catch {

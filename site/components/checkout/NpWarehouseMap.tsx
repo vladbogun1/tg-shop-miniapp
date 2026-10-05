@@ -35,7 +35,7 @@ import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
 import type { NpCategory, NpWarehouse } from "@shop/shared";
 import { api } from "@/lib/api";
-import { withSaneCoords } from "@/lib/np-geo";
+import { withSaneCoords } from "@shop/shared";
 
 const UA_CENTER: [number, number] = [49.0, 31.3];
 const UA_ZOOM = 6;

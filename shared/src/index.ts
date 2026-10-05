@@ -13,6 +13,7 @@ export * from "./format";
 export * from "./http";
 export * from "./image";
 export * from "./money";
+export * from "./np-geo";
 export * from "./site";
 export * from "./tap";
 export * from "./orders";
