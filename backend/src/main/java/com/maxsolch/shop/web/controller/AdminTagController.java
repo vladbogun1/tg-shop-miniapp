@@ -4,7 +4,7 @@ import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.TagAdminService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.AdminTagDto;
 import com.maxsolch.shop.web.dto.TagUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -46,29 +46,34 @@ public class AdminTagController {
 
     @GetMapping
     @Operation(summary = "List tags")
-    public List<TagDto> list() {
+    public List<AdminTagDto> list() {
         return tagAdminService.list();
     }
 
     @PostMapping
     @Operation(summary = "Create tag")
-    public TagDto create(@Valid @RequestBody TagUpsertRequest req) {
-        TagDto saved = tagAdminService.create(req).tag();
+    public AdminTagDto create(@Valid @RequestBody TagUpsertRequest req) {
+        AdminTagDto saved = tagAdminService.create(req).tag();
         audit.record("TAG_CREATE", "TAG", saved.id(), saved.name());
         siteRevalidator.categoryChanged(saved.slug(), null);
         return saved;
     }
 
     @PatchMapping("/{id}")
-    @Operation(summary = "Edit tag (name, slug, menu order, menu visibility)")
-    public TagDto update(@PathVariable String id, @Valid @RequestBody TagUpsertRequest req) {
+    @Operation(summary = "Edit tag (name, slug, menu order, menu visibility, SEO of the category page)")
+    public AdminTagDto update(@PathVariable String id, @Valid @RequestBody TagUpsertRequest req) {
         TagAdminService.Saved result = tagAdminService.update(id, req);
-        TagDto saved = result.tag();
+        AdminTagDto saved = result.tag();
         audit.record("TAG_UPDATE", "TAG", id,
                 saved.name() + ", slug " + saved.slug() + ", order " + saved.sortOrder()
-                        + (saved.showInMenu() ? "" : ", скрыт из меню"));
+                        + (saved.showInMenu() ? "" : ", скрыт из меню") + seoNote(result.seoChanged()));
         siteRevalidator.categoryChanged(saved.slug(), result.previousSlug());
         return saved;
+    }
+
+    /** Journal note: which SEO fields changed (the texts themselves are too long to log). */
+    private static String seoNote(List<String> changed) {
+        return changed == null || changed.isEmpty() ? "" : ", изменено: " + String.join(", ", changed);
     }
 
     @DeleteMapping("/{id}")

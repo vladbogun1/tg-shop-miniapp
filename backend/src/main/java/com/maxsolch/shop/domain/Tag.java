@@ -35,6 +35,24 @@ public class Tag {
     @Column(name = "show_in_menu", nullable = false)
     private boolean showInMenu = true;
 
+    // ---- SEO of the category page (V36). Russian source; uk/en via content_translations (TAG). ----
+
+    /** {@code <title>} of the category page; null = the site's template. */
+    @Column(name = "seo_title", length = 255)
+    private String seoTitle;
+
+    /** Meta description; null = the site's template (product count, "from" price). */
+    @Column(name = "seo_description", length = 512)
+    private String seoDescription;
+
+    /** Page heading; null = the category name. */
+    @Column(name = "h1", length = 255)
+    private String h1;
+
+    /** SEO text of the category (300–600 words); the site does not render it yet. */
+    @Column(name = "intro_text", columnDefinition = "TEXT")
+    private String introText;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 

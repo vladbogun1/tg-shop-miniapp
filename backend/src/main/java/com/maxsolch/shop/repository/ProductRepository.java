@@ -52,6 +52,15 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
 
     boolean existsBySlugAndIdNot(String slug, byte[] id);
 
+    boolean existsBySku(String sku);
+
+    boolean existsBySkuAndIdNot(String sku, byte[] id);
+
+    /** Another product already has this article number ({@code id} null = a product being created). */
+    default boolean skuTaken(String sku, byte[] id) {
+        return id == null ? existsBySku(sku) : existsBySkuAndIdNot(sku, id);
+    }
+
     /** {@code [id, title]} of the given products (translated titles of customer order lines). */
     @Query("select p.id, p.title from Product p where p.id in :ids")
     List<Object[]> titlesByIds(@Param("ids") Collection<byte[]> ids);

@@ -3,6 +3,7 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.service.PublicCatalogService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductPage;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapDto;
@@ -37,6 +38,15 @@ public class PublicCatalogController {
     @Operation(summary = "Menu categories (tags with showInMenu) with active product counts")
     public List<CategoryDto> categories(Locale locale) {
         return service.categories(ContentLocale.normalize(locale));
+    }
+
+    @GetMapping("/categories/{slug}")
+    @Operation(summary = "One category by slug with the SEO of its page (seoTitle, seoDescription, h1, "
+            + "introText; null = site template), or 404")
+    public ResponseEntity<CategoryDetailDto> category(@PathVariable String slug, Locale locale) {
+        return service.category(slug, ContentLocale.normalize(locale))
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/products")

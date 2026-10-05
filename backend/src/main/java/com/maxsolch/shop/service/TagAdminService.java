@@ -7,13 +7,16 @@ import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
-import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.AdminTagDto;
 import com.maxsolch.shop.web.dto.TagUpsertRequest;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Tags = the site's categories. Besides the name the admin sets the URL slug (blank = generated
@@ -29,8 +32,11 @@ import java.util.List;
 @Service
 public class TagAdminService {
 
-    /** A saved tag plus the slug it had before (null for a new tag), for the site rebuild. */
-    public record Saved(TagDto tag, String previousSlug) {
+    /**
+     * A saved tag plus the slug it had before (null for a new tag), for the site rebuild, and the
+     * SEO fields whose text changed (for the journal).
+     */
+    public record Saved(AdminTagDto tag, String previousSlug, List<String> seoChanged) {
     }
 
     /** What a deleted tag was, for the journal and the site rebuild. */
@@ -49,9 +55,9 @@ public class TagAdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<TagDto> list() {
+    public List<AdminTagDto> list() {
         return tagRepository.findAllByOrderByNameAsc().stream()
-                .map(TagDto::of)
+                .map(AdminTagDto::of)
                 .toList();
     }
 
@@ -64,7 +70,8 @@ public class TagAdminService {
         Tag tag = new Tag();
         tag.setName(req.name().trim());
         applySiteFields(tag, req);
-        return new Saved(TagDto.of(tagRepository.save(tag)), null);
+        List<String> seo = applySeo(tag, req);
+        return new Saved(AdminTagDto.of(tagRepository.save(tag)), null, seo);
     }
 
     @Transactional
@@ -79,7 +86,8 @@ public class TagAdminService {
         String previousSlug = tag.getSlug();
         tag.setName(newName);
         applySiteFields(tag, req);
-        return new Saved(TagDto.of(tagRepository.save(tag)), previousSlug);
+        List<String> seo = applySeo(tag, req);
+        return new Saved(AdminTagDto.of(tagRepository.save(tag)), previousSlug, seo);
     }
 
     @Transactional
@@ -117,6 +125,43 @@ public class TagAdminService {
         if (req.showInMenu() != null) {
             tag.setShowInMenu(req.showInMenu());
         }
+    }
+
+    /**
+     * SEO of the category page: null = keep, blank = clear (the site falls back to its template).
+     * A changed source makes its uk/en translations stale — the site then shows the Russian text
+     * until they are redone on the «Переводы» screen (same rule as product texts).
+     *
+     * @return labels of the fields whose text actually changed
+     */
+    private static List<String> applySeo(Tag tag, TagUpsertRequest req) {
+        List<String> changed = new ArrayList<>();
+        if (req.seoTitle() != null && set(tag.getSeoTitle(), blankToNull(req.seoTitle()), tag::setSeoTitle)) {
+            changed.add("SEO title");
+        }
+        if (req.seoDescription() != null
+                && set(tag.getSeoDescription(), blankToNull(req.seoDescription()), tag::setSeoDescription)) {
+            changed.add("SEO description");
+        }
+        if (req.h1() != null && set(tag.getH1(), blankToNull(req.h1()), tag::setH1)) {
+            changed.add("H1");
+        }
+        if (req.introText() != null && set(tag.getIntroText(), blankToNull(req.introText()), tag::setIntroText)) {
+            changed.add("SEO-текст");
+        }
+        return changed;
+    }
+
+    private static boolean set(String current, String next, Consumer<String> setter) {
+        if (Objects.equals(current, next)) {
+            return false;
+        }
+        setter.accept(next);
+        return true;
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private Tag load(String id) {

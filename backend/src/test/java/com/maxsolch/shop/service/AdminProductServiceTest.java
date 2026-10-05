@@ -7,6 +7,7 @@ import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.TranslationService;
+import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.ConflictException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest;
@@ -63,7 +64,42 @@ class AdminProductServiceTest {
 
     private static ProductUpsertRequest req(Integer stock, Integer expected, List<VariantInput> variants) {
         return new ProductUpsertRequest("Mouse X", "new description", 90_000, null, stock, null,
-                null, null, variants, null, null, null, null, expected);
+                null, null, variants, null, null, null, null, null, null, expected);
+    }
+
+    private static ProductUpsertRequest seoReq(String brand, String sku) {
+        return new ProductUpsertRequest("Mouse X", "new description", 90_000, null, null, null,
+                null, null, null, null, null, null, null, brand, sku, null);
+    }
+
+    @Test
+    void brandAndSkuAreSavedTrimmedAndBlankClears() {
+        when(productRepository.skuTaken("MX-01", product.getId())).thenReturn(false);
+        AdminProductDto saved = service.update(id, seoReq("  Attack Shark ", " MX-01 "));
+        assertThat(saved.brand()).isEqualTo("Attack Shark");
+        assertThat(saved.sku()).isEqualTo("MX-01");
+
+        saved = service.update(id, seoReq(" ", ""));
+        assertThat(saved.brand()).isNull();
+        assertThat(saved.sku()).isNull();
+    }
+
+    @Test
+    void nullBrandAndSkuKeepTheStoredValues() {
+        product.setBrand("VGN");
+        product.setSku("V-1");
+        AdminProductDto saved = service.update(id, seoReq(null, null));
+        assertThat(saved.brand()).isEqualTo("VGN");
+        assertThat(saved.sku()).isEqualTo("V-1");
+    }
+
+    @Test
+    void skuOfAnotherProductIsRejected() {
+        when(productRepository.skuTaken("MX-01", product.getId())).thenReturn(true);
+        assertThatThrownBy(() -> service.update(id, seoReq(null, "MX-01")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("MX-01");
+        verify(productRepository, never()).save(any());
     }
 
     @Test

@@ -17,5 +17,7 @@ public record AdminProductDto(
         String slug,
         Long compareAtMinor,
         String seoTitle,
-        String seoDescription) {
+        String seoDescription,
+        String brand,
+        String sku) {
 }

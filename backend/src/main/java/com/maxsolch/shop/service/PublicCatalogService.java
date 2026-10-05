@@ -5,12 +5,14 @@ import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductPage;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapCategory;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapProduct;
 import com.maxsolch.shop.web.dto.TagDto;
+import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -121,6 +123,42 @@ public class PublicCatalogService {
 
     /** Menu categories ({@code showInMenu}), by sortOrder then name, with live product counts. */
     public List<CategoryDto> categories(String lang) {
+        Map<String, Long> counts = productCounts(lang);
+        Collator collator = collator();
+        return catalogService.listTags(lang).stream()
+                .filter(TagDto::showInMenu)
+                .sorted(Comparator.comparingInt(TagDto::sortOrder)
+                        .thenComparing(TagDto::name, collator))
+                .map(t -> new CategoryDto(t.id(), t.slug(), t.name(), t.sortOrder(),
+                        counts.getOrDefault(t.id(), 0L)))
+                .toList();
+    }
+
+    /**
+     * One category (any tag with that slug, in the menu or not — like the product filter) with the
+     * SEO of its page in the given language. Empty when there is no such slug.
+     */
+    public Optional<CategoryDetailDto> category(String slug, String lang) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        String s = slug.trim().toLowerCase(Locale.ROOT);
+        return catalogService.listTags(lang).stream()
+                .filter(t -> s.equals(t.slug()))
+                .findFirst()
+                .map(t -> {
+                    TagSeoDto seo = catalogService.tagSeo(lang).get(t.id());
+                    long count = productCounts(lang).getOrDefault(t.id(), 0L);
+                    return seo == null
+                            ? new CategoryDetailDto(t.id(), t.slug(), t.name(), t.sortOrder(), count, t.showInMenu(),
+                                    null, null, null, null)
+                            : new CategoryDetailDto(t.id(), t.slug(), t.name(), t.sortOrder(), count, t.showInMenu(),
+                                    seo.seoTitle(), seo.seoDescription(), seo.h1(), seo.introText());
+                });
+    }
+
+    /** Active products per tag id (the same cached list the menu and the filter use). */
+    private Map<String, Long> productCounts(String lang) {
         Map<String, Long> counts = new HashMap<>();
         for (ProductDto p : catalogService.listActiveProducts(lang)) {
             if (p.tags() == null) {
@@ -130,14 +168,7 @@ public class PublicCatalogService {
                 counts.merge(t.id(), 1L, Long::sum);
             }
         }
-        Collator collator = collator();
-        return catalogService.listTags(lang).stream()
-                .filter(TagDto::showInMenu)
-                .sorted(Comparator.comparingInt(TagDto::sortOrder)
-                        .thenComparing(TagDto::name, collator))
-                .map(t -> new CategoryDto(t.id(), t.slug(), t.name(), t.sortOrder(),
-                        counts.getOrDefault(t.id(), 0L)))
-                .toList();
+        return counts;
     }
 
     /**

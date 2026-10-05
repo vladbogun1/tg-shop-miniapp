@@ -185,6 +185,16 @@ public class AdminProductService {
         if (req.seoDescription() != null) {
             p.setSeoDescription(blankToNull(req.seoDescription()));
         }
+        if (req.brand() != null) {
+            p.setBrand(blankToNull(req.brand()));
+        }
+        if (req.sku() != null) {
+            String sku = blankToNull(req.sku());
+            if (sku != null && !sku.equalsIgnoreCase(p.getSku()) && productRepository.skuTaken(sku, p.getId())) {
+                throw new BadRequestException("артикул «" + sku + "» уже есть у другого товара");
+            }
+            p.setSku(sku);
+        }
     }
 
     private static String blankToNull(String s) {
@@ -386,6 +396,8 @@ public class AdminProductService {
                 p.getSlug(),
                 p.getCompareAtMinor(),
                 p.getSeoTitle(),
-                p.getSeoDescription());
+                p.getSeoDescription(),
+                p.getBrand(),
+                p.getSku());
     }
 }
