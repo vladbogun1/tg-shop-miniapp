@@ -116,6 +116,22 @@ export function startPwa(): void {
   if (!("serviceWorker" in navigator) || !SW_ENABLED) return;
   set({ controlled: !!navigator.serviceWorker.controller });
 
+  // Tells the worker whether this window is the installed app or a browser tab, so a tapped
+  // notification opens in the app rather than in Chrome (public/sw.js, notificationclick).
+  const standalone = () =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  navigator.serviceWorker.addEventListener("message", (e: MessageEvent) => {
+    if ((e.data as { type?: string } | null)?.type === "WHO_ARE_YOU") {
+      e.ports[0]?.postMessage({ standalone: standalone() });
+    }
+  });
+  if (standalone()) {
+    void navigator.serviceWorker.ready
+      .then((reg) => reg.active?.postMessage({ type: "APP_MODE", standalone: true }))
+      .catch(() => undefined);
+  }
+
   let reloading = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     set({ controlled: true });

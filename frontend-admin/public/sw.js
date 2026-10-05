@@ -61,6 +61,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "SKIP_WAITING") self.skipWaiting();
+  if (data.type === "APP_MODE" && data.standalone === true) event.waitUntil(rememberInstalled());
 });
 
 function isStatic(url) {
@@ -168,6 +169,59 @@ self.addEventListener("push", (event) => {
   event.waitUntil(Promise.all([self.registration.showNotification(title, options), setBadge(data.badge)]));
 });
 
+// ---- which window is the installed app ---------------------------------------------------------
+// A worker cannot see a window's display mode, so it asks: every page answers through a
+// MessageChannel whether it runs as the installed app (standalone) or as a browser tab (lib/pwa.ts).
+// «The app is installed» is remembered in the Cache Storage, so it survives the worker being stopped.
+
+const MODE_CACHE = "chisetup-mode"; // not "admin-*": activate() drops those
+const MODE_KEY = "/__installed";
+
+function askMode(client) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 400);
+    try {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = (e) => {
+        clearTimeout(timer);
+        resolve(e.data && typeof e.data.standalone === "boolean" ? e.data.standalone : null);
+      };
+      client.postMessage({ type: "WHO_ARE_YOU" }, [ch.port2]);
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
+  });
+}
+
+async function rememberInstalled() {
+  try {
+    const cache = await caches.open(MODE_CACHE);
+    await cache.put(MODE_KEY, new Response("1"));
+  } catch {
+    /* storage unavailable — fall back to the tab logic */
+  }
+}
+
+async function appInstalled() {
+  try {
+    const cache = await caches.open(MODE_CACHE);
+    return !!(await cache.match(MODE_KEY));
+  } catch {
+    return false;
+  }
+}
+
+async function openIn(client, target) {
+  // The open window navigates itself (keeps its state and the login); see components/pwa.
+  client.postMessage({ type: "OPEN_URL", url: target });
+  try {
+    await client.focus();
+  } catch {
+    /* focus not allowed — the message still arrives */
+  }
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "/inbox";
@@ -175,17 +229,17 @@ self.addEventListener("notificationclick", (event) => {
     (async () => {
       const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const own = all.filter((c) => new URL(c.url).origin === self.location.origin);
-      const client = own.find((c) => c.focused) || own[0];
-      if (client) {
-        // The open app navigates itself (keeps its state and the login); see components/pwa.
-        client.postMessage({ type: "OPEN_URL", url: target });
-        try {
-          await client.focus();
-        } catch {
-          /* focus not allowed — the message still arrives */
-        }
-        return;
-      }
+      const modes = await Promise.all(own.map(askMode));
+      if (modes.some((m) => m === true)) await rememberInstalled();
+      // 1) An open window of the installed app — always preferred over a browser tab.
+      const app = own.filter((_, i) => modes[i] === true);
+      if (app.length) return openIn(app.find((c) => c.focused) || app[0], target);
+      // 2) The app is installed but not open: openWindow() of an in-scope URL launches it
+      //    (Chrome on Android), instead of jumping into a stray browser tab.
+      if (await appInstalled()) return self.clients.openWindow(target);
+      // 3) No app: reuse an open tab, otherwise open one.
+      const tab = own.find((c) => c.focused) || own[0];
+      if (tab) return openIn(tab, target);
       await self.clients.openWindow(target);
     })()
   );
