@@ -21,9 +21,15 @@ import java.time.Duration;
  *   <tr><td>{@value #LOGIN_BIND}</td><td>{@value #AUTH_PATH}</td><td>login window (5 min)</td></tr>
  *   <tr><td>{@value #ACCESS}</td><td>/</td><td>15 min (CUSTOMER JWT, chn=web)</td></tr>
  *   <tr><td>{@value #REFRESH}</td><td>{@value #AUTH_PATH}</td><td>30 days (opaque, rotated)</td></tr>
+ *   <tr><td>{@value #SESSION_HINT}</td><td>/</td><td>same as {@value #REFRESH}</td></tr>
  * </table>
  *
- * <p>All are {@code HttpOnly} + {@code SameSite=Lax}. {@code Secure} comes from
+ * <p>{@value #SESSION_HINT} = "1" holds no secret: it only tells the site's JavaScript that this
+ * browser has a session, so a guest does not probe {@code /api/me/**} and {@code /refresh} on every
+ * page (two 401s in the console per visit). It is set and cleared together with the refresh cookie
+ * and is NOT {@code HttpOnly} (the page has to read it).
+ *
+ * <p>All the others are {@code HttpOnly} + {@code SameSite=Lax}. {@code Secure} comes from
  * {@code WEB_COOKIE_SECURE}; unset means true, except under the {@code dev} profile where the site
  * runs on plain-http localhost and a Secure cookie would simply never be sent back.
  */
@@ -34,6 +40,7 @@ public class WebCookies {
     public static final String LOGIN_BIND = "login_bind";
     public static final String ACCESS = "access";
     public static final String REFRESH = "refresh";
+    public static final String SESSION_HINT = "signed_in";
     public static final String AUTH_PATH = "/api/auth/web";
 
     private final boolean secure;
@@ -67,6 +74,7 @@ public class WebCookies {
 
     public void setRefresh(HttpServletResponse response, String token) {
         add(response, build(REFRESH, token, AUTH_PATH, Duration.ofDays(site.getSessionDays())));
+        add(response, hint("1", Duration.ofDays(site.getSessionDays())));
     }
 
     public void clearLoginBind(HttpServletResponse response) {
@@ -76,6 +84,7 @@ public class WebCookies {
     public void clearSession(HttpServletResponse response) {
         add(response, build(ACCESS, "", "/", Duration.ZERO));
         add(response, build(REFRESH, "", AUTH_PATH, Duration.ZERO));
+        add(response, hint("", Duration.ZERO));
     }
 
     /** Value of a cookie on the request, or null. */
@@ -98,6 +107,17 @@ public class WebCookies {
                 .secure(secure)
                 .sameSite("Lax")
                 .path(path)
+                .maxAge(maxAge)
+                .build();
+    }
+
+    /** The script-readable session flag (see the class comment). */
+    private ResponseCookie hint(String value, Duration maxAge) {
+        return ResponseCookie.from(SESSION_HINT, value)
+                .httpOnly(false)
+                .secure(secure)
+                .sameSite("Lax")
+                .path("/")
                 .maxAge(maxAge)
                 .build();
     }
