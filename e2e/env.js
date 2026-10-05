@@ -57,6 +57,21 @@ export const FRESH_ADMIN = {
   passwordHash: "$2a$10$LwdTaPGtMzeL.kvtV2bHXuLiJ2fM096j5aLSIuqY7PEDfzXDfqTAy",
 };
 
+/**
+ * Fourth admin (seeded): an ordinary ADMIN with 2FA for the «Админы» specs — no access to the
+ * section, then 2FA reset and block by the main admin.
+ */
+export const TEAM_ADMIN = {
+  id: 4,
+  login: "e2e-team",
+  password: "e2e-team-pass-12345",
+  passwordHash: "$2a$10$tDN0tlWPEdFxOZdOeirM8.ZVpE7zKZ.QEiVs8YHZS3txqb5UwDOFK",
+  totpSecret: "MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U",
+};
+
+/** Telegram ids the «Админы» specs invite (removed again by the global setup). */
+export const INVITED_TG_BASE = 990000;
+
 /** AES-256 key for the 2FA secrets at rest (base64 of 32 bytes) — test only. */
 export const ADMIN_2FA_KEY = "ZTJlLW9ubHktYWRtaW4tMmZhLWtleS0zMi1ieXRlcyE=";
 
