@@ -25,9 +25,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Buckets are fixed windows kept in Caffeine (single instance, so in-memory is the right scope —
  * a distributed limiter would need Redis and this deployment has none):
  * <ul>
- *   <li><b>admin auth</b> — {@value #AUTH_LIMIT} tries per {@value #AUTH_WINDOW_MINUTES} min for
- *       {@code /api/auth/admin/*}. On top of it {@code AuthService} caps failed passwords per
- *       username, whatever the IP.</li>
+ *   <li><b>admin auth</b> — {@code ADMIN_AUTH_RATE_LIMIT} (20) requests per {@value #AUTH_WINDOW_MINUTES}
+ *       min for {@code /api/auth/admin/*} (password/Telegram, then the 2FA step). On top of it
+ *       {@code AdminLockout} locks an account for 15 min after 5 wrong passwords/codes in a row,
+ *       whatever the IP; other {@code /api/auth/*} paths: {@value #AUTH_LIMIT}.</li>
  *   <li><b>customer auth</b> — {@value #CUSTOMER_AUTH_LIMIT} per {@value #AUTH_WINDOW_MINUTES} min
  *       for {@code /api/auth/telegram}: every Mini App launch calls it, and customers behind a
  *       mobile carrier's NAT share one address — they used to share the admin's strict bucket.</li>
@@ -46,9 +47,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Messages messages;
+    /** {@code app.security.admin-auth-rate-limit}: a sign-in with 2FA is 2–3 requests. */
+    private final int adminAuthLimit;
 
-    public RateLimitFilter(Messages messages) {
+    public RateLimitFilter(Messages messages, com.maxsolch.shop.config.AppProperties props) {
         this.messages = messages;
+        this.adminAuthLimit = Math.max(1, props.getSecurity().getAdminAuthRateLimit());
     }
 
     private static final int AUTH_LIMIT = 10;
@@ -128,6 +132,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         if (path.equals("/api/auth/telegram")) {
             return new Bucket(customerAuthAttempts, CUSTOMER_AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
+        if (path.startsWith("/api/auth/admin/")) {
+            return new Bucket(authAttempts, adminAuthLimit, AUTH_WINDOW_MINUTES * 60);
         }
         if (path.startsWith("/api/auth/")) {
             // Admin password / admin Telegram login (and anything new under /api/auth): strict.

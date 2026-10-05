@@ -97,6 +97,7 @@ app:
     bot-token: ${BOT_TOKEN:}
     bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
     init-data-ttl-seconds: ${INITDATA_TTL_SECONDS:86400}
+    admin-init-data-ttl-seconds: ${ADMIN_INITDATA_TTL_SECONDS:300}
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
     notify-chat-id: ${NOTIFY_CHAT_ID:0}
     notify-topic-new: ${NOTIFY_TOPIC_NEW:0}
@@ -114,6 +115,12 @@ app:
     admin-login: ${ADMIN_LOGIN:}
     admin-password: ${ADMIN_PASSWORD:}
     admin-bootstrap-tg-id: ${ADMIN_BOOTSTRAP_TG_ID:1}
+    # Admin 2FA (TOTP). Key for the secrets at rest: openssl rand -base64 32 (blank = derived from
+    # JWT_SECRET, with a warning). Emergency reset of the bootstrap admin: docs/ADMIN-2FA.md.
+    admin-2fa-key: ${ADMIN_2FA_KEY:}
+    admin-emergency-reset: ${ADMIN_EMERGENCY_RESET:false}
+    admin-auth-rate-limit: ${ADMIN_AUTH_RATE_LIMIT:20}
+    admin-trusted-device-days: ${ADMIN_TRUSTED_DEVICE_DAYS:30}
   s3:
     endpoint: ${S3_ENDPOINT:http://minio:9000}
     public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9000}

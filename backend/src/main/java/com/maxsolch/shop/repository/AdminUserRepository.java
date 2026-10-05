@@ -20,9 +20,42 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
 
     List<AdminUser> findAllByActiveTrue();
 
+    /** Is there an active admin who can sign in with a password? (AdminBootstrap) */
+    boolean existsByActiveTrueAndPasswordHashIsNotNull();
+
+    /**
+     * Accepts a TOTP step only if it is newer than the last accepted one — atomically, so two
+     * requests racing with the same code cannot both pass. 1 = accepted, 0 = replay.
+     */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update AdminUser a set a.totpLastStep = :step where a.telegramUserId = :id "
+            + "and (a.totpLastStep is null or a.totpLastStep < :step)")
+    int acceptTotpStep(@Param("id") Long telegramUserId, @Param("step") long step);
+
+    /** One more failure in a row; returns rows updated. */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update AdminUser a set a.failedAttempts = a.failedAttempts + 1 where a.telegramUserId = :id")
+    int incrementFailures(@Param("id") Long telegramUserId);
+
+    /** Locks the account until {@code until} and restarts the count. */
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update AdminUser a set a.lockedUntil = :until, a.failedAttempts = 0 where a.telegramUserId = :id")
+    int lockUntil(@Param("id") Long telegramUserId, @Param("until") java.time.Instant until);
+
+    @Transactional
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update AdminUser a set a.failedAttempts = 0 where a.telegramUserId = :id and a.failedAttempts <> 0")
+    int resetFailures(@Param("id") Long telegramUserId);
+
+    @Query("select a.failedAttempts from AdminUser a where a.telegramUserId = :id")
+    Optional<Integer> failuresOf(@Param("id") Long telegramUserId);
+
     /** «Выйти на всех устройствах»: every token issued so far stops matching. */
     @Transactional
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update AdminUser a set a.tokenVersion = a.tokenVersion + 1 where a.telegramUserId = :id")
     int bumpTokenVersion(@Param("id") Long telegramUserId);
 }

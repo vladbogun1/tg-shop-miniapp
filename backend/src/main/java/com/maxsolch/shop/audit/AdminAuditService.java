@@ -78,6 +78,26 @@ public class AdminAuditService {
     }
 
     /**
+     * An entry on behalf of an admin who is not the request's principal (sign-in steps, lockouts,
+     * «Заблокировать» pressed in Telegram, the startup emergency reset).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFor(long adminId, String action, String entityType, String entityId, String details) {
+        try {
+            AdminAuditEntry entry = new AdminAuditEntry();
+            entry.setAdminId(adminId);
+            entry.setAdminName(adminId == 0L ? null : displayName(adminId));
+            entry.setAction(action);
+            entry.setEntityType(entityType);
+            entry.setEntityId(entityId == null ? null : entityId.length() <= 64 ? entityId : entityId.substring(0, 64));
+            entry.setDetails(trim(details));
+            repository.save(entry);
+        } catch (Exception e) {
+            log.warn("Failed to write audit entry {} for admin {}: {}", action, adminId, e.getMessage());
+        }
+    }
+
+    /**
      * Human-readable name of the current admin, for the audit log and as the author of chat
      * messages (which used to be signed with a hardcoded "Менеджер" no matter who wrote them).
      */

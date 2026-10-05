@@ -50,4 +50,40 @@ public class AdminUser {
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
+
+    /** TOTP secret, AES-GCM encrypted ({@code v1:…}); null = 2FA not set up yet. */
+    @Column(name = "totp_secret_enc", length = 255)
+    private String totpSecretEnc;
+
+    @Column(name = "totp_enabled_at")
+    private Instant totpEnabledAt;
+
+    /** A new secret waiting for its first code (setup / re-setup). */
+    @Column(name = "totp_pending_enc", length = 255)
+    private String totpPendingEnc;
+
+    @Column(name = "totp_pending_at")
+    private Instant totpPendingAt;
+
+    /** Step of the last accepted code — the same code is never accepted twice. */
+    @Column(name = "totp_last_step")
+    private Long totpLastStep;
+
+    /** Wrong passwords / codes in a row. */
+    @Column(name = "failed_attempts", nullable = false)
+    private int failedAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
+
+    public boolean isTotpEnabled() {
+        return totpSecretEnc != null && !totpSecretEnc.isBlank();
+    }
+
+    public boolean isSuperAdmin() {
+        return role == AdminRole.SUPER_ADMIN;
+    }
 }

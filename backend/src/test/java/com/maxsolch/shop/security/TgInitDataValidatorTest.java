@@ -188,4 +188,69 @@ class TgInitDataValidatorTest {
                 .isInstanceOf(InitDataException.class)
                 .hasMessageContaining("no user");
     }
+
+    // --- admin sign-in hardening ---
+
+    private static String signed(long authDate) throws Exception {
+        Map<String, String> params = baseParams(authDate);
+        return toQuery(params, computeHash(params, BOT_TOKEN));
+    }
+
+    @Test
+    void adminLogin_acceptsAnInitDataOnlyOnce() throws Exception {
+        String initData = signed(Instant.now().getEpochSecond());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
+
+        assertThat(validator.validateForAdmin(initData).id()).isEqualTo(777L);
+        assertThatThrownBy(() -> validator.validateForAdmin(initData))
+                .isInstanceOf(InitDataException.class)
+                .hasMessageContaining("already used");
+        // The customer path is not single-use (every Mini App call re-sends the same initData).
+        assertThat(validator.validate(initData).id()).isEqualTo(777L);
+    }
+
+    @Test
+    void adminLogin_hasItsOwnShortTtl() throws Exception {
+        String tenMinutesOld = signed(Instant.now().getEpochSecond() - 600);
+        AppProperties p = props(false, 86400);
+        p.getTelegram().setAdminInitDataTtlSeconds(300);
+        TgInitDataValidator validator = new TgInitDataValidator(p);
+
+        assertThat(validator.validate(tenMinutesOld).id()).isEqualTo(777L); // customer: a day
+        assertThatThrownBy(() -> validator.validateForAdmin(tenMinutesOld))
+                .isInstanceOf(InitDataException.class)
+                .hasMessageContaining("expired");
+    }
+
+    @Test
+    void authDateFromTheFuture_fails() throws Exception {
+        String initData = signed(Instant.now().getEpochSecond() + 3600);
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
+
+        assertThatThrownBy(() -> validator.validate(initData))
+                .isInstanceOf(InitDataException.class)
+                .hasMessageContaining("future");
+    }
+
+    @Test
+    void repeatedKey_fails() throws Exception {
+        String initData = signed(Instant.now().getEpochSecond()) + "&user=" + enc("{\"id\":1}");
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
+
+        assertThatThrownBy(() -> validator.validate(initData))
+                .isInstanceOf(InitDataException.class)
+                .hasMessageContaining("repeated key");
+    }
+
+    @Test
+    void malformedHash_failsWithoutException() throws Exception {
+        Map<String, String> params = baseParams(Instant.now().getEpochSecond());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
+        for (String bad : new String[]{"zz", "not-hex-" + "0".repeat(56), computeHash(params, BOT_TOKEN).toUpperCase() + "0"}) {
+            String initData = toQuery(params, bad);
+            assertThatThrownBy(() -> validator.validate(initData))
+                    .isInstanceOf(InitDataException.class)
+                    .hasMessageContaining("hash mismatch");
+        }
+    }
 }

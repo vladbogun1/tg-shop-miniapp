@@ -23,7 +23,8 @@ import java.util.Locale;
 /**
  * Thin long-polling bot. Handles /start and /help, plus the website login: {@code /start
  * login_<nonce>} and the inline-button callbacks it produces (delegated to
- * {@link WebLoginBotHandler}). All rich notifications are sent out-of-band by
+ * {@link WebLoginBotHandler}) and [Заблокировать] under admin sign-in alerts
+ * ({@link AdminSecurityNotifier}). All rich notifications are sent out-of-band by
  * {@link NotificationService}. Registration happens in TelegramBotConfig and only when a token is
  * configured.
  */
@@ -36,15 +37,18 @@ public class ShopBot extends TelegramLongPollingBot {
     private final Messages messages;
     private final WebLoginBotHandler webLogin;
     private final SettingsService settings;
+    private final AdminSecurityNotifier adminSecurity;
 
     public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages,
-                   @Lazy WebLoginBotHandler webLogin, SettingsService settings) {
+                   @Lazy WebLoginBotHandler webLogin, SettingsService settings,
+                   @Lazy AdminSecurityNotifier adminSecurity) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
         this.authService = authService;
         this.messages = messages;
         this.webLogin = webLogin;
         this.settings = settings;
+        this.adminSecurity = adminSecurity;
     }
 
     @Override
@@ -104,7 +108,15 @@ public class ShopBot extends TelegramLongPollingBot {
     }
 
     private void onCallback(org.telegram.telegrambots.meta.api.objects.CallbackQuery cq) {
-        if (cq.getFrom() == null || !WebLoginBotHandler.handles(cq.getData())) {
+        if (cq.getFrom() == null) {
+            return;
+        }
+        if (AdminSecurityNotifier.handles(cq.getData())) {
+            // [Заблокировать] under an admin sign-in alert.
+            adminSecurity.onCallback(cq);
+            return;
+        }
+        if (!WebLoginBotHandler.handles(cq.getData())) {
             return;
         }
         recordUser(cq.getFrom());

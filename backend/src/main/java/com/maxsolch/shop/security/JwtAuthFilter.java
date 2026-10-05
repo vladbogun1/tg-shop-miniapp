@@ -1,5 +1,6 @@
 package com.maxsolch.shop.security;
 
+import com.maxsolch.shop.adminauth.PreAuthTokens;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,6 +30,9 @@ import java.util.List;
  *   <li>Site tokens ({@code chn=web}) need a live {@code web_sessions} row ({@link WebSessionValidator}).</li>
  *   <li>Cookie-authenticated state-changing requests must come from an allowed Origin/Referer,
  *       otherwise 403 ({@link CookieOriginGuard}) — the browser attaches the cookie by itself.</li>
+ *   <li>An admin pre-auth token (password/Telegram passed, 2FA not yet) is never a principal: sent as
+ *       a bearer token anywhere but the sign-in endpoints it gets 403 «2FA required»
+ *       ({@link PreAuthTokens}).</li>
  * </ul>
  */
 @Slf4j
@@ -36,20 +40,25 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    /** Where a pre-auth token is legitimately sent (in the body — never as a principal). */
+    private static final String ADMIN_AUTH_PREFIX = "/api/auth/admin/";
 
     private final JwtService jwtService;
     private final AdminTokenValidator adminTokenValidator;
     private final WebSessionValidator webSessionValidator;
     private final CookieOriginGuard originGuard;
+    private final PreAuthTokens preAuthTokens;
 
     public JwtAuthFilter(JwtService jwtService,
                          AdminTokenValidator adminTokenValidator,
                          WebSessionValidator webSessionValidator,
-                         CookieOriginGuard originGuard) {
+                         CookieOriginGuard originGuard,
+                         PreAuthTokens preAuthTokens) {
         this.jwtService = jwtService;
         this.adminTokenValidator = adminTokenValidator;
         this.webSessionValidator = webSessionValidator;
         this.originGuard = originGuard;
+        this.preAuthTokens = preAuthTokens;
     }
 
     @Override
@@ -70,13 +79,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             if (token != null && !token.isEmpty()) {
                 AuthPrincipal principal = parse(token);
+                if (principal == null && !fromCookie && !request.getRequestURI().startsWith(ADMIN_AUTH_PREFIX)
+                        && preAuthTokens.looksLikePreAuth(token)) {
+                    forbid(response, "TWO_FACTOR_REQUIRED",
+                            "Вход не завершён: нужен код двухфакторной защиты");
+                    return;
+                }
                 if (principal != null) {
                     if (fromCookie && CookieOriginGuard.isMutating(request)
                             && !originGuard.isTrustedOrigin(request)) {
                         log.warn("Cookie-auth {} {} refused: untrusted origin {} / referer {}",
                                 request.getMethod(), request.getRequestURI(),
                                 request.getHeader("Origin"), request.getHeader("Referer"));
-                        forbid(response);
+                        forbid(response, "ORIGIN_NOT_ALLOWED", "origin not allowed");
                         return;
                     }
                     var authorities = List.of(new SimpleGrantedAuthority(principal.role().authority()));
@@ -110,10 +125,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
     }
 
-    private static void forbid(HttpServletResponse response) throws IOException {
+    private static void forbid(HttpServletResponse response, String code, String message) throws IOException {
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"origin not allowed\"}");
+        response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"code\":\"" + code
+                + "\",\"message\":\"" + message + "\"}");
     }
 }

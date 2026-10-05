@@ -27,6 +27,26 @@ public final class UserAgents {
         return os == null ? browser : browser + ", " + os;
     }
 
+    /**
+     * "Windows · Chrome" — the admin sign-in's wording (history, Telegram alerts). Same detection as
+     * {@link #describe}, system first: that is what a person recognises ("my iPhone").
+     */
+    public static String osAndBrowser(String ua) {
+        if (ua == null || ua.isBlank()) {
+            return "Неизвестное устройство";
+        }
+        String s = ua.toLowerCase(Locale.ROOT);
+        String browser = browser(s);
+        String os = os(s);
+        if (browser == null && os == null) {
+            return ua.length() > 60 ? ua.substring(0, 60) + "…" : ua;
+        }
+        if (os == null) {
+            return browser;
+        }
+        return browser == null ? os : os + " · " + browser;
+    }
+
     private static String browser(String s) {
         // Order matters: most UAs also claim to be Chrome/Safari/Mozilla.
         if (s.contains("telegram")) {

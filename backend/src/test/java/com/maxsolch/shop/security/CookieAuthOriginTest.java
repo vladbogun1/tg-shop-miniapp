@@ -41,6 +41,8 @@ class CookieAuthOriginTest {
     @Mock
     WebSessionValidator webSessionValidator;
     @Mock
+    com.maxsolch.shop.adminauth.PreAuthTokens preAuthTokens;
+    @Mock
     FilterChain chain;
 
     CookieOriginGuard guard;
@@ -55,7 +57,7 @@ class CookieAuthOriginTest {
         MockEnvironment env = new MockEnvironment();
         env.setActiveProfiles("prod");
         guard = new CookieOriginGuard(new AllowedOrigins(props, env));
-        filter = new JwtAuthFilter(jwtService, adminTokenValidator, webSessionValidator, guard);
+        filter = new JwtAuthFilter(jwtService, adminTokenValidator, webSessionValidator, guard, preAuthTokens);
 
         lenient().when(jwtService.parse(anyString())).thenReturn(WEB_USER);
         lenient().when(adminTokenValidator.isValid(any())).thenReturn(true);

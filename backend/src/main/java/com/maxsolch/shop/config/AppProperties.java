@@ -32,6 +32,11 @@ public class AppProperties {
         private String botToken;
         private String botUsername;
         private long initDataTtlSeconds = 86400;
+        /**
+         * Max age of initData for the ADMIN Telegram login. The panel posts it right at launch, so
+         * minutes are plenty; the customer value (a day) made a leaked initData a day-long key.
+         */
+        private long adminInitDataTtlSeconds = 300;
         private boolean allowUnsignedInitData = false;
         /** Numeric chat id ("-100...") OR public channel username ("@maxsolch_chat"). */
         private String notifyChatId;
@@ -63,6 +68,24 @@ public class AppProperties {
         private String adminPassword;
         /** telegram_user_id the bootstrap admin row is attached to (PK). */
         private long adminBootstrapTgId = 1;
+        /**
+         * Base64 AES-256 key (32 bytes) for the admins' TOTP secrets at rest (env ADMIN_2FA_KEY).
+         * Blank = derived from the JWT secret via HKDF (a warning is logged). Must stay the same
+         * once 2FA is set up: a different key makes every stored secret unreadable.
+         */
+        private String admin2faKey;
+        /**
+         * One-shot emergency reset (env ADMIN_EMERGENCY_RESET=true): on startup the bootstrap
+         * admin gets ADMIN_PASSWORD back and loses 2FA / sessions / trusted devices. Runs once per
+         * ADMIN_PASSWORD value — see docs/ADMIN-2FA.md.
+         */
+        private boolean adminEmergencyReset = false;
+        /** /api/auth/admin/* requests per IP per 5 minutes (a login with 2FA is 2–3 requests). */
+        private int adminAuthRateLimit = 20;
+        /** Lifetime of a remembered device («Доверять этому устройству»). */
+        private int adminTrustedDeviceDays = 30;
+        /** Name shown in the authenticator app next to the account. */
+        private String admin2faIssuer = "ChiSetup Admin";
     }
 
     @Getter

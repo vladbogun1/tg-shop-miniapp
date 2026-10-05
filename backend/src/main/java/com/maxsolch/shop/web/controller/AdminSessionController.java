@@ -1,9 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.adminauth.AdminAccountService;
 import com.maxsolch.shop.security.AdminTokenRevocations;
-import com.maxsolch.shop.security.AdminTokenValidator;
 import com.maxsolch.shop.security.AuthPrincipal;
 import com.maxsolch.shop.security.JwtService;
 import com.maxsolch.shop.security.RequiredAdmin;
@@ -35,20 +33,14 @@ public class AdminSessionController {
 
     private final JwtService jwtService;
     private final AdminTokenRevocations revocations;
-    private final AdminTokenValidator adminTokenValidator;
-    private final AdminUserRepository adminUserRepository;
-    private final AdminAuditService audit;
+    private final AdminAccountService accountService;
 
     public AdminSessionController(JwtService jwtService,
                                   AdminTokenRevocations revocations,
-                                  AdminTokenValidator adminTokenValidator,
-                                  AdminUserRepository adminUserRepository,
-                                  AdminAuditService audit) {
+                                  AdminAccountService accountService) {
         this.jwtService = jwtService;
         this.revocations = revocations;
-        this.adminTokenValidator = adminTokenValidator;
-        this.adminUserRepository = adminUserRepository;
-        this.audit = audit;
+        this.accountService = accountService;
     }
 
     /**
@@ -74,16 +66,13 @@ public class AdminSessionController {
 
     /**
      * «Выйти на всех устройствах»: bumps {@code admin_users.token_version}, which invalidates every
-     * token issued to this admin so far — including the one making this call.
+     * token issued to this admin so far — including the one making this call — and every
+     * half-finished sign-in, and forgets every trusted device.
      */
     @PostMapping("/logout-all")
     @Operation(summary = "Revoke every token of the current admin (token_version + 1)")
     public ResponseEntity<Void> logoutAll() {
-        long adminId = SecurityUtil.currentUserId();
-        adminUserRepository.bumpTokenVersion(adminId);
-        adminTokenValidator.invalidate(adminId);
-        // The request is already authenticated, so the journal entry is still attributed to it.
-        audit.record("ADMIN_LOGOUT_ALL", "ADMIN", String.valueOf(adminId), "выход на всех устройствах");
+        accountService.logoutEverywhere(SecurityUtil.currentUserId());
         return ResponseEntity.noContent().build();
     }
 }
