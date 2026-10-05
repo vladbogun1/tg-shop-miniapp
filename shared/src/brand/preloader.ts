@@ -16,13 +16,28 @@
  * mounts with the layout and settles that case before paint (see settlePreloader).
  * Progress is real: milestones DOMContentLoaded, document.fonts.ready, React hydration
  * (`window.__csPreloader.hydrated()`, called from a client effect), window "load", then the
- * images in the first viewport. Shown at least MIN_MS, never longer than MAX_MS.
+ * images in the first viewport. Never longer than MAX_MS.
+ *
+ * Per-app tuning, as attributes on `<div id="cs-preloader">` (absent = the Mini App's behaviour):
+ *   data-grace="300"  the overlay starts INVISIBLE and only appears if the page is still not usable
+ *                     (DOM + fonts + hydration) after that many ms; a fast load never shows it. The
+ *                     website uses this: an overlay over the first paint pushed the LCP (the H1) back
+ *                     by ~1 s on a phone. Once shown it fades in and stays until the page is fully
+ *                     ready, as before. Without the attribute the overlay is on screen from the first
+ *                     paint — inside Telegram there is no LCP to protect, and a page appearing and
+ *                     then being covered would read as a flicker.
+ *   data-min="500"    minimum time on screen (default MIN_MS). The website sets 0: no holding a page
+ *                     that is already there. The Mini App keeps 500 so a quick load does not blink
+ *                     the logo for a few frames.
+ * Crawlers and audit tools (Googlebot, Lighthouse/PageSpeed, other bots) never get it.
  * No JS → a <noscript> style hides it (SEO / no-JS users never see it).
  */
 import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "./logo";
 
 const MIN_MS = 500;
 const MAX_MS = 4000;
+/** User agents that get no overlay: search crawlers, link previews, audit tools (Lighthouse, PSI). */
+const BOT_UA = "bot|crawl|spider|slurp|lighthouse|pagespeed|google-inspectiontool|googleother|storebot|adsbot|mediapartners|facebookexternalhit|bingpreview|gtmetrix|ptst";
 
 const stops = (s: typeof BRAND_WHITE_STOPS) =>
   s.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join("");
@@ -70,6 +85,9 @@ export const PRELOADER_CSS = `
 #cs-preloader .cspl-fill::after{content:"";position:absolute;top:0;bottom:0;left:0;width:38%;
  background:linear-gradient(90deg,transparent,rgba(255,230,200,.85),transparent);animation:cspl-crawl 1.1s linear infinite}
 @keyframes cspl-crawl{from{transform:translateX(-100%)}to{transform:translateX(270%)}}
+#cs-preloader[data-grace]{opacity:0;visibility:hidden}
+html[data-pl=on] #cs-preloader[data-grace]{opacity:1;visibility:visible}
+html[data-pl=out] #cs-preloader[data-grace]{visibility:visible}
 html[data-pl=out] #cs-preloader{opacity:0;pointer-events:none}
 html[data-pl=done] #cs-preloader{display:none}
 html:not([data-pl=out]):not([data-pl=done]){overflow:hidden;scrollbar-gutter:stable}
@@ -86,12 +104,17 @@ export const PRELOADER_NOSCRIPT_CSS = `#cs-preloader{display:none!important}html
 export const PRELOADER_SCRIPT = `(function(){
 var d=document,h=d.documentElement,el=d.getElementById("cs-preloader");
 if(!el||h.getAttribute("data-pl"))return;
-h.setAttribute("data-pl","on");
+if(new RegExp("${BOT_UA}","i").test(navigator.userAgent||"")){h.setAttribute("data-pl","done");return;}
+var num=function(a,def){var v=parseInt(el.getAttribute(a)||"",10);return isNaN(v)?def:Math.max(0,v)};
+var grace=num("data-grace",0),min=num("data-min",${MIN_MS}),shown=!grace,shownAt=0;
+h.setAttribute("data-pl",grace?"wait":"on");
 var t0=(window.performance&&performance.now)?performance.now():0,now=function(){return window.performance?performance.now():Date.now()};
 var W={dom:.2,fonts:.25,hyd:.25,load:.15,img:.15},got={},p=.06,fin=false;
 var bar=el.querySelector(".cspl-bar");
 function set(v){p=Math.max(p,v);h.style.setProperty("--cspl-p",String(p));if(bar)bar.setAttribute("aria-valuenow",String(Math.round(p*100)));}
+function usable(){return got.dom&&got.fonts&&got.hyd}
 function mark(k){if(got[k]||fin)return;got[k]=1;var s=.06;for(var x in got)s+=W[x]*.94;set(Math.min(s,.97));
+ if(!shown&&usable()){fin=true;h.setAttribute("data-pl","done");h.style.removeProperty("--cspl-p");return;}
  if(got.dom&&got.fonts&&got.hyd&&got.load&&!got.img){imgs();}
  if(got.img)done();}
 function imgs(){setTimeout(function(){var L=[],vh=innerHeight,a=d.images;
@@ -100,9 +123,13 @@ function imgs(){setTimeout(function(){var L=[],vh=innerHeight,a=d.images;
  var one=function(){if(--n<=0)mark("img");else set(p+.15/(L.length+1));};
  L.forEach(function(im){im.addEventListener("load",one,{once:true});im.addEventListener("error",one,{once:true});});
 },120);}
-function done(){if(fin)return;fin=true;var wait=Math.max(0,${MIN_MS}-(now()-t0));
+function done(){if(fin)return;fin=true;
+ if(!shown){h.setAttribute("data-pl","done");h.style.removeProperty("--cspl-p");return;}
+ var wait=Math.max(0,min-(now()-shownAt));
  setTimeout(function(){set(1);setTimeout(function(){h.setAttribute("data-pl","out");
   setTimeout(function(){h.setAttribute("data-pl","done");h.style.removeProperty("--cspl-p");},320);},220);},wait);}
+if(grace)setTimeout(function(){if(fin||usable())return;shown=true;shownAt=now();h.setAttribute("data-pl","on");},grace);
+else shownAt=t0;
 window.__csPreloader={hydrated:function(){mark("hyd")},finish:done,finished:function(){return fin}};
 if(d.readyState!=="loading")mark("dom");else d.addEventListener("DOMContentLoaded",function(){mark("dom")});
 if(d.fonts&&d.fonts.ready)d.fonts.ready.then(function(){mark("fonts")},function(){mark("fonts")});else mark("fonts");
