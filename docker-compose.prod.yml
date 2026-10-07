@@ -20,8 +20,8 @@
 #                   mysql minio imgproxy nginx backend \
 #                   frontend-public gateway frontend-admin-public gateway-admin caddy
 #
-#  PROD_CERT_DIR must point at a dir containing fullchain.pem + privkey.pem for maxsolkh.shop.
-#  Default reuses the existing old-app Let's Encrypt material.
+#  PROD_CERT_DIR must point at the certbot-managed maxsolkh.shop certs (live/maxsolkh.shop/…),
+#  used only by the legacy :666/:667 redirects in `caddy`.
 # ==========================================================
 
 services:
@@ -55,8 +55,8 @@ services:
     ports: !override
       - "127.0.0.1:8091:80"
 
-  # Public website gateway: loopback only, the TLS front for https://maxsolkh.shop proxies to it
-  # (port 443 on the host is owned by the existing edge proxy — see docs).
+  # Public website gateway: loopback only; the host's edge Caddy (80/443) serves
+  # https://chisetup.com.ua and reaches it over the compose network.
   gateway-site:
     ports: !override
       - "127.0.0.1:8092:80"

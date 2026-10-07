@@ -106,7 +106,6 @@ export function backendEnv() {
     SITE_REVALIDATE_URL: "",
     // Nothing listens there: MinIO and Nova Poshta calls fail fast instead of reaching the network.
     S3_ENDPOINT: "http://127.0.0.1:9",
-    S3_PUBLIC_ENDPOINT: "http://127.0.0.1:9",
     NOVAPOSHTA_API_KEY: "",
     NOVAPOSHTA_API_URL: "http://127.0.0.1:9/",
     APP_TIMEZONE: "Europe/Kyiv",
