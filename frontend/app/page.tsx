@@ -29,7 +29,7 @@ import { ProductView } from "@/components/catalog/ProductView";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
-import { getActiveTag } from "@/i18n/active";
+import { getActiveTag } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { customerApi, type Product, type ProductTag } from "@/lib/api";
 import { staggerContainer, riseItem } from "@/lib/motion";

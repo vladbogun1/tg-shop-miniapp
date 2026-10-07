@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Send, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Message, SendMessageRequest } from "@shop/shared";
+import { type Message, noFadeFlash, type SendMessageRequest } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/i18n/context";
 import { api, refreshSession } from "@/lib/api";
@@ -18,7 +18,6 @@ import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 import { connectOrderChat } from "@/lib/ws";
 import { MessageBubble } from "./MessageBubble";
-import { noFadeFlash } from "@/lib/motion";
 
 /** Must match MessageService.DEFAULT_PAGE on the backend. */
 const PAGE_SIZE = 50;

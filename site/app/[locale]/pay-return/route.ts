@@ -14,7 +14,7 @@
  */
 import { notFound } from "next/navigation";
 import { localePath, makeT } from "@/i18n";
-import { isLocale, LOCALE_TAG } from "@/i18n/locales";
+import { isLocale, LOCALE_TAG } from "@shop/shared";
 
 export const dynamic = "force-dynamic";
 

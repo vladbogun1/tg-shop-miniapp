@@ -254,3 +254,12 @@ export type OrderLimitCode = (typeof ORDER_LIMIT_CODES)[number];
 export function isOrderLimitCode(code: string | null | undefined): code is OrderLimitCode {
   return !!code && (ORDER_LIMIT_CODES as readonly string[]).includes(code);
 }
+
+/**
+ * Highest quantity a cart stepper may reach for a line with this stock, given the anti-bot
+ * `maxQtyPerProduct` (0 = no limit; `undefined` while the limits are loading).
+ */
+export function maxQty(stock: number, limits: { maxQtyPerProduct: number } | undefined): number {
+  const cap = limits && limits.maxQtyPerProduct > 0 ? limits.maxQtyPerProduct : Number.POSITIVE_INFINITY;
+  return Math.max(1, Math.min(stock, cap));
+}

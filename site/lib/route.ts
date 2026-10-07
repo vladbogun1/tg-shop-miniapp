@@ -1,4 +1,4 @@
-import { isLocale, type Locale } from "@/i18n/locales";
+import { isLocale, type Locale } from "@shop/shared";
 
 /** Route params as Next 15 passes them. */
 export type LocaleParams = Promise<{ locale: string }>;

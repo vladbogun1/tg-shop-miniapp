@@ -21,11 +21,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { shortOrderId, type OrderDetail } from "@shop/shared";
+import { noFadeFlash, type OrderDetail, shortOrderId } from "@shop/shared";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
-import { noFadeFlash } from "@/lib/motion";
 import { useFmt } from "@/lib/use-fmt";
 
 /** Why the modal closed: paid; payment may have happened (check for a while); just dismissed. */

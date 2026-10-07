@@ -11,7 +11,7 @@
  *  - `{placeholders}` are filled at call time; a phrase with several forms is an object and picks
  *    its form from `n`.
  */
-import type { Dictionary, PluralPhrase } from "./types";
+import type { Dictionary, PluralPhrase } from "@shop/shared";
 
 export const ru = {
   // ── common ────────────────────────────────────────────────────────────────

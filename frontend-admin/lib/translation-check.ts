@@ -3,7 +3,6 @@
  * Pure functions, no React — the format they read is described in `translation-prompt.ts`.
  */
 import type { TrExportItem, TrLocale, TrOrigin, TrStatus } from "@/lib/api";
-import { KIND_LABEL } from "@/lib/translation-prompt";
 
 export const LOCALES: TrLocale[] = ["uk", "en"];
 

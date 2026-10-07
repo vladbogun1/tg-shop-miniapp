@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
+import type { Locale } from "@shop/shared";
 
 /**
  * SEO text of a category (admin field `tags.intro_text`, translated like the name).

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import { useEscape, useScrollLock } from "@/lib/hooks";
 import { Image, resolveImageSrc } from "@/lib/image";
-import { noFadeFlash } from "@/lib/motion";
+import { noFadeFlash } from "@shop/shared";
 
 /** Lightbox photo size; warmed into the browser cache before the viewer opens. */
 const ZOOM_SIZE = 1600;

@@ -8,7 +8,7 @@
 import { Check, ShoppingBag, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { ProductVariant, StorefrontProduct } from "@shop/shared";
+import { maxQty, type ProductVariant, type StorefrontProduct } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { RatingLink } from "@/components/reviews/RatingLink";
 import { QtyStepper } from "@/components/ui/QtyStepper";
@@ -16,7 +16,7 @@ import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, stockOf, useCart } from "@/lib/cart";
-import { maxQty, useOrderLimits } from "@/lib/order-limits";
+import { useOrderLimits } from "@/lib/order-limits";
 import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";

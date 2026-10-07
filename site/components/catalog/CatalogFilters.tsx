@@ -11,12 +11,11 @@ import { Check, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useState, useTransition } from "react";
-import type { CatalogSort, PublicCategory } from "@shop/shared";
+import { type CatalogSort, noFadeFlash, type PublicCategory } from "@shop/shared";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
-import { noFadeFlash } from "@/lib/motion";
 
 const SORTS: CatalogSort[] = ["default", "price_asc", "price_desc", "new", "name"];
 

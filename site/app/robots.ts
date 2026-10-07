@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { localePath } from "@/i18n";
-import { LOCALES } from "@/i18n/locales";
+import { LOCALES } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 
 /** Closed to crawlers until launch: SITE_INDEXABLE=true opens it (read at request time). */

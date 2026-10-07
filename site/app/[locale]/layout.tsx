@@ -7,7 +7,7 @@ import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { makeT } from "@/i18n";
-import { isLocale, LOCALE_TAG, type Locale } from "@/i18n/locales";
+import { isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 import { pageMeta } from "@/lib/seo";
 import { getCategories, safe } from "@/lib/server-api";

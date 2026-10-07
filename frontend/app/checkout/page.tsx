@@ -2,7 +2,7 @@
 
 /**
  * CHECKOUT STEPPER — ChiSetup restyle.
- *   1. Контакты  — name + masked phone (lib/phone)
+ *   1. Контакты  — name + masked phone (phone helpers from @shop/shared)
  *   2. Доставка  — NOVA_POSHTA | PICKUP. The branch is picked BY TEXT by default (city → branch
  *                  autocomplete, NpSearch) or on the map ("Обрати на карті", NpWarehouseMap); both
  *                  modes share one city / branch. The last order prefills name, phone, delivery
@@ -39,13 +39,16 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  formatPhone,
   isOrderLimitCode,
+  isValidPhone,
+  type NpCity,
   npCityBounds,
   npLatLng,
-  resolveNpWarehouse,
-  type NpCity,
   type OrderDetail,
   type OrderLimitCode,
+  phoneE164,
+  resolveNpWarehouse,
   visiblePaymentOptions,
 } from "@shop/shared";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
@@ -90,7 +93,6 @@ import { useCart, useCartSubtotal } from "@/lib/cart";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { haptic } from "@/lib/telegram";
 
 const STEP_KEYS = [

@@ -11,7 +11,8 @@ import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useT } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, useCart } from "@/lib/cart";
-import { maxQty, useOrderLimits } from "@/lib/order-limits";
+import { maxQty } from "@shop/shared";
+import { useOrderLimits } from "@/lib/order-limits";
 import { haptic } from "@/lib/telegram";
 import type { Product, ProductVariant } from "@/lib/api";
 

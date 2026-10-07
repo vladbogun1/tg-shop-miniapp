@@ -10,10 +10,11 @@ import {
   formatDate as sharedFormatDate,
   formatDateTime as sharedFormatDateTime,
   formatTime as sharedFormatTime,
+  type Locale,
+  LOCALE_TAG,
   money as sharedMoney,
 } from "@shop/shared";
 import { makeT } from "@/i18n";
-import { LOCALE_TAG, type Locale } from "@/i18n/locales";
 
 export interface Fmt {
   money: (minor: number | null | undefined, currency?: string) => string;

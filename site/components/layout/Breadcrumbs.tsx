@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { localePath, makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
+import type { Locale } from "@shop/shared";
 
 export interface Crumb {
   label: string;

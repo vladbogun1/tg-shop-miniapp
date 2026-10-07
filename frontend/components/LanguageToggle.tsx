@@ -18,7 +18,7 @@ import { Check, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/i18n/context";
-import { LOCALES, LOCALE_NAME, LOCALE_SHORT, type Locale } from "@/i18n/locales";
+import { LOCALES, LOCALE_NAME, LOCALE_SHORT, type Locale } from "@shop/shared";
 import { backdrop, sheetVariants } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 

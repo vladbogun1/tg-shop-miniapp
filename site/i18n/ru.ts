@@ -9,7 +9,7 @@
  * things differently (a website has a header, breadcrumbs and a footer; a Mini App has tabs), and a
  * shared file would make every wording change a two-app regression risk.
  */
-import type { Dictionary, PluralPhrase } from "./types";
+import type { Dictionary, PluralPhrase } from "@shop/shared";
 
 export const ru = {
   // ── common ────────────────────────────────────────────────────────────────

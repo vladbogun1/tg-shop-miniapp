@@ -21,7 +21,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from "react-dom";
 import { localePath, stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
-import { LOCALE_NAME, LOCALE_SHORT, LOCALES, type Locale } from "@/i18n/locales";
+import { LOCALE_NAME, LOCALE_SHORT, LOCALES, type Locale } from "@shop/shared";
 
 interface Pos {
   top: number;

@@ -13,14 +13,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ImagePlus, Lock, Send, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Message, SendMessageRequest, SupportThread } from "@shop/shared";
+import {
+  type Message,
+  noFadeFlash,
+  type SendMessageRequest,
+  type SupportThread,
+} from "@shop/shared";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
 import { ApiError, refreshSession } from "@/lib/api";
 import { useEscape } from "@/lib/hooks";
 import { Image } from "@/lib/image";
-import { noFadeFlash } from "@/lib/motion";
 import {
   connectSupportChat,
   SUPPORT_DEFAULTS,

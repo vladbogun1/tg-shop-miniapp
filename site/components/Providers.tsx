@@ -11,7 +11,7 @@ import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { ToastHost } from "@/components/ui/Toast";
 import { I18nProvider } from "@/i18n/context";
-import type { Locale } from "@/i18n/locales";
+import type { Locale } from "@shop/shared";
 import { api } from "@/lib/api";
 import { CartSync } from "@/lib/cart-sync";
 import { useSession } from "@/lib/session";

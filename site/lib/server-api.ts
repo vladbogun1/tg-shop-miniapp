@@ -12,6 +12,7 @@
  */
 import type {
   CatalogSort,
+  Locale,
   PublicCategory,
   PublicCategoryDetail,
   PublicProductPage,
@@ -19,7 +20,6 @@ import type {
   ReviewPage,
   StorefrontProduct,
 } from "@shop/shared";
-import type { Locale } from "@/i18n/locales";
 import { catalogSearchParams, type CatalogQuery } from "./api";
 import { PAGE_SIZE, REVALIDATE_SECONDS } from "./config";
 

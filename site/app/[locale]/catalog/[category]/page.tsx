@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { breadcrumbJsonLd, JsonLd } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
+import type { Locale } from "@shop/shared";
 import { parseCatalogState, toApiQuery, type SearchParams } from "@/lib/catalog-params";
 import { SITE_URL } from "@/lib/config";
 import { localeOf } from "@/lib/route";

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/i18n/context";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
-import { noFadeFlash } from "@/lib/motion";
+import { noFadeFlash } from "@shop/shared";
 import { useSession } from "@/lib/session";
 import { useSupportConfig } from "@/lib/support";
 import { SupportQuestionForm } from "./SupportQuestionForm";
