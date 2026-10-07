@@ -9,8 +9,6 @@ import java.util.List;
 
 public interface NovaPoshtaCityRepository extends JpaRepository<NovaPoshtaCity, String> {
 
-    List<NovaPoshtaCity> findTop50ByNameContainingIgnoreCaseOrderByNameAsc(String name);
-
     /**
      * City search ranked the way a person expects. Names carry the region in brackets
      * ("Андріївка (Харківська обл., …)"), so a plain alphabetical "contains" put every village of the

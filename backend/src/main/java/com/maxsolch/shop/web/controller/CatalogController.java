@@ -3,7 +3,6 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
-import com.maxsolch.shop.web.dto.TagDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +16,9 @@ import java.util.Locale;
 
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Catalog", description = "Public catalog (products & tags)")
-// Content language: Accept-Language, or ?lang=uk|ru|en (wins) — titles/descriptions/variant and tag
-// names are translated for uk/en when a current translation exists (docs/CONTENT-I18N.md).
+@Tag(name = "Catalog", description = "Public catalog (Mini App products)")
+// Content language: Accept-Language, or ?lang=uk|ru|en (wins) — titles/descriptions/variant names
+// are translated for uk/en when a current translation exists (docs/CONTENT-I18N.md).
 public class CatalogController {
 
     private final CatalogService catalogService;
@@ -40,11 +39,5 @@ public class CatalogController {
         return catalogService.getProduct(id, ContentLocale.normalize(locale))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/tags")
-    @Operation(summary = "List all tags")
-    public List<TagDto> tags(Locale locale) {
-        return catalogService.listTags(ContentLocale.normalize(locale));
     }
 }

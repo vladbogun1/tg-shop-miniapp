@@ -538,14 +538,6 @@ public class NotificationService {
         }
     }
 
-    /** Order approved → post a dispatch card (what to ship + COD to collect) to the seller topic. */
-    public void onApprovedDispatch(Order order) {
-        if (!enabled()) {
-            return;
-        }
-        postDispatchCard(order);
-    }
-
     /**
      * Post a dispatch card to the seller's "Отправка" topic and remember its message id on the
      * order, so it can later be removed when the order ships. Idempotent: if the order already has

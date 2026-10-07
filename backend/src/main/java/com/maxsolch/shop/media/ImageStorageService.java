@@ -88,8 +88,8 @@ public class ImageStorageService {
     /**
      * Upload a customer's chat attachment under their own prefix: chat/u{userId}/{uuid}/{filename}.
      * The prefix is what lets a customer message reference only files that customer uploaded
-     * (see {@link #isCustomerAttachmentKey}) — otherwise any known key, e.g. someone else's payment
-     * screenshot, could be attached to one's own order and fetched back through a signed URL.
+     * (see {@link #isCustomerAttachmentKey}) — otherwise any known key, e.g. someone else's photo or
+     * document, could be attached to one's own order and fetched back through a signed URL.
      */
     public String uploadCustomerChatAttachment(MultipartFile file, long userId) {
         String filename = sanitize(file.getOriginalFilename());

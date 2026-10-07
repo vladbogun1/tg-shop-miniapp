@@ -45,7 +45,7 @@ class ContentLocaleResolverTest {
         assertThat(resolve("/api/public/categories", "en", "ru")).isEqualTo("ru");
         assertThat(resolve("/api/products", "ru", "uk")).isEqualTo("uk");
         assertThat(resolve("/api/products/abc", "ru", "EN")).isEqualTo("en");
-        assertThat(resolve("/api/tags", "ru", "en-GB")).isEqualTo("en");
+        assertThat(resolve("/api/public/tags", "ru", "en-GB")).isEqualTo("en");
         assertThat(resolve("/api/payment-options", "ru", "en")).isEqualTo("en");
     }
 

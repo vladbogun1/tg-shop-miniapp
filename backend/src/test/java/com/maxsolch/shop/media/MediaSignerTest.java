@@ -11,7 +11,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Chat attachments are customers' transfer screenshots, so the signed link is the only thing
+ * Chat attachments are customers' private photos and files, so the signed link is the only thing
  * standing between them and anyone who can guess or reuse a URL.
  */
 class MediaSignerTest {

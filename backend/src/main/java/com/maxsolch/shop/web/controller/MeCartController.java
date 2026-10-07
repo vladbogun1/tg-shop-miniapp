@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -54,11 +53,5 @@ public class MeCartController {
     @Operation(summary = "Merge a guest cart into mine (same line: the larger quantity)")
     public CartDto merge(@Valid @RequestBody CartWriteRequest req, Locale locale) {
         return cartService.merge(SecurityUtil.currentUserId(), req.lines(), ContentLocale.normalize(locale));
-    }
-
-    @DeleteMapping
-    @Operation(summary = "Empty my cart")
-    public CartDto clear(Locale locale) {
-        return cartService.clear(SecurityUtil.currentUserId(), ContentLocale.normalize(locale));
     }
 }

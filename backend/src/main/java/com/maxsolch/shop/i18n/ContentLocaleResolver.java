@@ -18,7 +18,7 @@ public class ContentLocaleResolver extends AcceptHeaderLocaleResolver {
 
     /** Paths where {@code lang} is honoured (prefix match on the path within the context). */
     static final List<String> LANG_PARAM_PATHS = List.of(
-            "/api/public/", "/api/products", "/api/tags", "/api/payment-options");
+            "/api/public/", "/api/products", "/api/payment-options");
 
     @Override
     public Locale resolveLocale(HttpServletRequest request) {

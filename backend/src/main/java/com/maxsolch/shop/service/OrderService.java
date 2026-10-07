@@ -786,7 +786,7 @@ public class OrderService {
      *       deliberately not), so only a DELIVERED one returns its units, and only when
      *       {@code restock} is true;</li>
      *   <li>promo usage — rejecting does not give the use back, so it is released here for both;</li>
-     *   <li>chat attachments ({@code chat/*}, customers' payment screenshots) and the seller's
+     *   <li>chat attachments ({@code chat/*}, customers' photos and files) and the seller's
      *       dispatch card — removed after the commit (see {@link OrderEvents.Deleted}).</li>
      * </ul>
      */

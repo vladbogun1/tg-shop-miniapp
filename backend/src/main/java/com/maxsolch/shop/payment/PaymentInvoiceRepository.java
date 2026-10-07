@@ -16,8 +16,6 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
     /** Newest first. */
     List<PaymentInvoice> findByOrderIdOrderByCreatedAtDesc(byte[] orderId);
 
-    List<PaymentInvoice> findByOrderIdInOrderByCreatedAtDesc(Collection<byte[]> orderIds);
-
     Optional<PaymentInvoice> findByProviderAndExternalId(String provider, String externalId);
 
     /** Webhooks and status polls for one invoice run one after another. */

@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Customer login (Telegram initData) and the two-step admin sign-in — see {@link AdminAuthService}.
- * The admin endpoints are served only by the admin gateway (:667).
+ * The admin endpoints are served only by the admin gateway (admin.chisetup.com.ua).
  */
 @RestController
 @RequestMapping("/api/auth")

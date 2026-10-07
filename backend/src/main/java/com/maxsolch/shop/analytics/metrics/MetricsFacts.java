@@ -3,7 +3,6 @@ package com.maxsolch.shop.analytics.metrics;
 import com.maxsolch.shop.domain.OrderStatus;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -291,14 +290,6 @@ public record MetricsFacts(List<OrderFact> orders,
         Map<String, OrderFact> map = new HashMap<>(orders.size() * 2);
         for (OrderFact o : orders) {
             map.put(o.id(), o);
-        }
-        return map;
-    }
-
-    public Map<String, List<ItemFact>> itemsByOrder() {
-        Map<String, List<ItemFact>> map = new HashMap<>();
-        for (ItemFact it : items) {
-            map.computeIfAbsent(it.orderId(), k -> new ArrayList<>()).add(it);
         }
         return map;
     }

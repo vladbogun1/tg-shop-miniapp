@@ -1,11 +1,9 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.BroadcastService;
 import com.maxsolch.shop.web.SecurityUtil;
-import com.maxsolch.shop.web.dto.AdminTargetDto;
 import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
 import com.maxsolch.shop.web.dto.BroadcastRequest;
 import com.maxsolch.shop.web.dto.BroadcastResult;
@@ -33,14 +31,11 @@ import java.util.Map;
 public class AdminBroadcastController {
 
     private final BroadcastService broadcastService;
-    private final AdminUserRepository adminUserRepository;
     private final AdminAuditService audit;
 
     public AdminBroadcastController(BroadcastService broadcastService,
-                                    AdminUserRepository adminUserRepository,
                                     AdminAuditService audit) {
         this.broadcastService = broadcastService;
-        this.adminUserRepository = adminUserRepository;
         this.audit = audit;
     }
 
@@ -48,14 +43,6 @@ public class AdminBroadcastController {
     @Operation(summary = "Reachable audience sizes (all/active/inactive/premium), optionally for one language")
     public Map<String, Long> audiences(@RequestParam(required = false) String lang) {
         return broadcastService.audienceCounts(lang);
-    }
-
-    @GetMapping("/admins")
-    @Operation(summary = "Active admins — quick targets for a test send")
-    public List<AdminTargetDto> admins() {
-        return adminUserRepository.findAllByActiveTrue().stream()
-                .map(a -> new AdminTargetDto(a.getTelegramUserId(), a.getName(), a.getUsername()))
-                .toList();
     }
 
     @GetMapping("/status")

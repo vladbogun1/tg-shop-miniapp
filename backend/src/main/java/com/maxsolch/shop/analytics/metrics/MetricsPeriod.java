@@ -126,10 +126,6 @@ public record MetricsPeriod(String token,
         return t != null && !t.isBefore(from) && t.isBefore(to);
     }
 
-    public boolean prevContains(Instant t) {
-        return t != null && !t.isBefore(prevFrom) && t.isBefore(prevTo);
-    }
-
     /** Whole days covered (at least 1) — divisor for per-day rates. */
     public double days() {
         return Math.max(1.0, Duration.between(from, to).toMinutes() / 1440.0);

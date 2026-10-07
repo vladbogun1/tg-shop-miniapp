@@ -102,12 +102,6 @@ public class CartService {
         return toDto(w.cart(), w.items(), lang);
     }
 
-    @Transactional
-    public CartDto clear(long userId, String lang) {
-        Written w = write(userId, current -> List.of(), true);
-        return toDto(w.cart(), w.items(), lang);
-    }
-
     /**
      * Drops the lines that were just ordered. Called by {@link OrderService#createOrder} inside the
      * order's transaction: the order and the emptied cart commit (or roll back) together. The whole

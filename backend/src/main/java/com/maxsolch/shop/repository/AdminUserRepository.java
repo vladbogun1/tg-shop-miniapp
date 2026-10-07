@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
@@ -17,8 +16,6 @@ public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
     boolean existsByTelegramUserIdAndActiveTrue(Long telegramUserId);
 
     Optional<AdminUser> findByUsername(String username);
-
-    List<AdminUser> findAllByActiveTrue();
 
     /**
      * Active SUPER_ADMINs with 2FA other than {@code exceptId} — the «Админы» section never lets this

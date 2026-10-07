@@ -12,8 +12,8 @@ import java.util.Base64;
 /**
  * Issues and verifies short-lived signed links for private objects (chat attachments).
  *
- * <p>Chat attachments are the customer's transfer screenshots — they contain card numbers, names
- * and balances — and they used to sit in a world-readable bucket, reachable by anyone who ever saw
+ * <p>Chat attachments are the photos and files customers send in order and support chats — they
+ * can carry names, phone numbers and addresses — and they used to sit in a world-readable bucket, reachable by anyone who ever saw
  * the URL, forever. They are now private, and the only way to read one is a link signed with this
  * key and valid for {@value #TTL_SECONDS} seconds.
  *

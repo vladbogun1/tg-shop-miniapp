@@ -84,28 +84,6 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                Pageable pageable);
 
     /**
-     * True count for one status — unbounded by the page cap, so a column can report "12 of 300"
-     * honestly.
-     */
-    @Query("select count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN)
-    long countByStatusSearch(@Param("status") OrderStatus status,
-                             @Param("q") String q,
-                             @Param("idLo") byte[] idLo,
-                       @Param("idHi") byte[] idHi,
-                             @Param("from") Instant from);
-
-    /**
-     * Per-status counts for every column in ONE query. The board used to issue a separate COUNT per
-     * status on every poll.
-     */
-    @Query("select o.status, count(o) from Order o" + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES
-            + "group by o.status")
-    List<Object[]> countsByStatus(@Param("q") String q,
-                                  @Param("idLo") byte[] idLo,
-                       @Param("idHi") byte[] idHi,
-                                  @Param("from") Instant from);
-
-    /**
      * Per-status count AND money total for the board columns in one query: rows of
      * {@code [status, count, sum(totalMinor)]}. The column sum used to be added up on the client
      * from the (capped) cards it had loaded.

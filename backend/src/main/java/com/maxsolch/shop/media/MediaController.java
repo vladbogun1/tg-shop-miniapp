@@ -54,7 +54,7 @@ public class MediaController {
 
     /**
      * @param w optional render width. Chat bubbles ask for a small variant instead of the stored
-     *          original — a phone screenshot is megabytes and was being downloaded in full for a
+     *          original — a phone photo is megabytes and was being downloaded in full for a
      *          260px bubble. Only {@link MediaThumbnailer} widths are honoured; anything else
      *          falls back to the original rather than failing the request.
      */

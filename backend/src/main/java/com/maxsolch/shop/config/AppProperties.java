@@ -93,7 +93,6 @@ public class AppProperties {
     @Setter
     public static class S3 {
         private String endpoint;
-        private String publicEndpoint;
         private String accessKey;
         private String secretKey;
         private String bucket;

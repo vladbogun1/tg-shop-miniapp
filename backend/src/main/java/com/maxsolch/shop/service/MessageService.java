@@ -141,18 +141,6 @@ public class MessageService {
         messageRepository.markRead(orderId, readSenderType, Instant.now());
     }
 
-    @Transactional(readOnly = true)
-    public long unreadForCustomer(byte[] orderId) {
-        // unread = ADMIN messages not yet read by the customer
-        return messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, SenderType.ADMIN);
-    }
-
-    @Transactional(readOnly = true)
-    public long unreadForAdmin(byte[] orderId) {
-        // unread = CUSTOMER messages not yet read by the admin
-        return messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, SenderType.CUSTOMER);
-    }
-
     /** Total unread ADMIN messages across a customer's orders (customer bell). */
     @Transactional(readOnly = true)
     public long totalUnreadForCustomer(long userId) {
@@ -167,23 +155,11 @@ public class MessageService {
 
     // ----- conversations inbox (notifications modal) -----
 
-    /** Orders with unread CUSTOMER messages, newest activity first (admin inbox). */
-    @Transactional(readOnly = true)
-    public List<ConversationDto> adminConversations() {
-        return messageRepository.orderIdsWithUnread(SenderType.CUSTOMER).stream()
-                .map(id -> buildConversation(id, SenderType.CUSTOMER))
-                .filter(java.util.Objects::nonNull)
-                .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
-                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
-                .limit(100)
-                .toList();
-    }
-
     /** A customer's orders with unread ADMIN messages, newest first (customer inbox). */
     @Transactional(readOnly = true)
     public List<ConversationDto> customerConversations(long userId) {
         return messageRepository.orderIdsWithUnreadForUser(userId, SenderType.ADMIN).stream()
-                .map(id -> buildConversation(id, SenderType.ADMIN, true))
+                .map(this::buildCustomerConversation)
                 .filter(java.util.Objects::nonNull)
                 .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
@@ -191,18 +167,14 @@ public class MessageService {
                 .toList();
     }
 
-    private ConversationDto buildConversation(byte[] orderId, SenderType unreadSender) {
-        return buildConversation(orderId, unreadSender, false);
-    }
-
-    /** {@code customer}: the preview of a photo/file is in the request's language (see ChatPreview). */
-    private ConversationDto buildConversation(byte[] orderId, SenderType unreadSender, boolean customer) {
+    /** One inbox row; the preview of a photo/file is in the request's language (see ChatPreview). */
+    private ConversationDto buildCustomerConversation(byte[] orderId) {
         Order o = orderRepository.findById(orderId).orElse(null);
         if (o == null) {
             return null;
         }
         OrderMessage last = messageRepository.findFirstByOrderIdOrderByCreatedAtDescIdDesc(orderId);
-        long unread = messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, unreadSender);
+        long unread = messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, SenderType.ADMIN);
         String shortId = UuidUtil.toString(orderId);
         if (shortId != null && shortId.length() >= 8) {
             shortId = shortId.substring(0, 8);
@@ -212,7 +184,7 @@ public class MessageService {
                 shortId,
                 o.getCustomerName(),
                 o.getStatus() == null ? null : o.getStatus().name(),
-                last == null ? "" : stripHtml(customer ? ChatPreview.current(previewOf(last), messages) : previewOf(last)),
+                last == null ? "" : stripHtml(ChatPreview.current(previewOf(last), messages)),
                 last == null ? null : last.getSenderType().name(),
                 last == null ? o.getCreatedAt() : last.getCreatedAt(),
                 unread);

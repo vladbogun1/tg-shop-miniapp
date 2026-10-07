@@ -329,16 +329,4 @@ class CartServiceTest {
         verify(cartRepository, never()).ensureExists(anyLong());
         verify(cartRepository, never()).findForUpdate(anyLong());
     }
-
-    @Test
-    void clear_removesEverything() {
-        Product a = product(5);
-        service.replace(USER, List.of(in(a, null, 2)), "ru");
-
-        CartDto dto = service.clear(USER, "ru");
-
-        assertThat(dto.lines()).isEmpty();
-        assertThat(rows).isEmpty();
-        assertThat(dto.version()).isEqualTo(2);
-    }
 }

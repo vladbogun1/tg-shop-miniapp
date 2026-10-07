@@ -13,8 +13,6 @@ import java.util.List;
 
 public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long> {
 
-    List<OrderMessage> findByOrderIdOrderByCreatedAtAsc(byte[] orderId);
-
     /**
      * Newest page of an order's chat, optionally everything before a given message id.
      *
@@ -44,11 +42,7 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
             + "where m.senderType = :senderType and m.readAt is null group by m.order.id")
     List<Object[]> unreadCountsBySender(@Param("senderType") SenderType senderType);
 
-    /** Order ids that have at least one unread message of the given sender type (admin inbox). */
-    @Query("select distinct m.order.id from OrderMessage m where m.senderType = :senderType and m.readAt is null")
-    List<byte[]> orderIdsWithUnread(@Param("senderType") SenderType senderType);
-
-    /** Same, scoped to one customer's orders (customer inbox). */
+    /** Order ids of one customer that have at least one unread message of the given sender type. */
     @Query("select distinct m.order.id from OrderMessage m "
             + "where m.senderType = :senderType and m.readAt is null and m.order.userId = :userId")
     List<byte[]> orderIdsWithUnreadForUser(@Param("userId") Long userId,

@@ -17,8 +17,8 @@ import java.util.Set;
  * Resized variants of private attachments, produced by the imgproxy that already sits in the stack
  * for product photos.
  *
- * <p>{@code /api/media} used to stream the stored original. A payment screenshot straight off a
- * phone is several megabytes, and the chat asked for that same file for a bubble barely 260px
+ * <p>{@code /api/media} used to stream the stored original. A photo straight off a phone is
+ * several megabytes, and the chat asked for that same file for a bubble barely 260px
  * wide — which is why photos took so long to appear, and sometimes appeared to not load at all.
  *
  * <p>imgproxy itself must stay out of reach for this bucket prefix: chat attachments are private
@@ -59,8 +59,8 @@ public class MediaThumbnailer {
         if (imgproxyUrl.isBlank()) {
             return null;
         }
-        // rs:fit keeps the whole screenshot readable; cropping a payment slip to a square would
-        // cut off exactly the part the shop needs to see.
+        // rs:fit keeps the whole picture readable; cropping it to a square could cut off exactly
+        // the part the shop needs to see.
         String url = imgproxyUrl + "/insecure/rs:fit:" + width + ":" + width
                 + "/plain/s3://" + bucket + "/" + objectKey + "@webp";
         try {

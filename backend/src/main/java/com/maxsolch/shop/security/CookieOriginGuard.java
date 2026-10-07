@@ -12,8 +12,8 @@ import java.util.Set;
  * CSRF protection for cookie-authenticated requests.
  *
  * <p>A bearer token is never attached by the browser on its own, so header auth needs no CSRF
- * defence. A cookie is: {@code SameSite=Lax} stops cross-SITE POSTs, but every port of
- * maxsolkh.shop counts as the same site. So a state-changing request authenticated by a cookie
+ * defence. A cookie is: {@code SameSite=Lax} stops cross-SITE POSTs, but chisetup.com.ua and
+ * all its subdomains (app., admin.) count as the same site. So a state-changing request authenticated by a cookie
  * must also prove where it came from: its {@code Origin} (or, failing that, {@code Referer}) has to
  * be one of {@link AllowedOrigins}. With neither header the request is refused — browsers always
  * send {@code Origin} on a fetch/XHR POST, so its absence means it did not come from our page.

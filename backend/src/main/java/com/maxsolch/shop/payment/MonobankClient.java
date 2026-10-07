@@ -261,17 +261,11 @@ public class MonobankClient {
 
     /** A monobank call failed: HTTP status (0 = no response), errCode, errText. */
     public static class MonobankException extends RuntimeException {
-        private final int httpStatus;
         private final String errCode;
 
         public MonobankException(int httpStatus, String errCode, String errText) {
             super("monobank " + (httpStatus == 0 ? "" : httpStatus + " ") + (errCode == null ? "" : errCode + ": ") + errText);
-            this.httpStatus = httpStatus;
             this.errCode = errCode;
-        }
-
-        public int getHttpStatus() {
-            return httpStatus;
         }
 
         public String getErrCode() {

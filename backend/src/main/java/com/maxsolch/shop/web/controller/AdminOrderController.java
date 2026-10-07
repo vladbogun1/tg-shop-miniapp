@@ -103,12 +103,6 @@ public class AdminOrderController {
         return Map.of("count", messageService.totalUnreadForAdmin());
     }
 
-    @GetMapping("/conversations")
-    @Operation(summary = "Orders with unread customer messages (notifications inbox)")
-    public List<com.maxsolch.shop.web.dto.ConversationDto> conversations() {
-        return messageService.adminConversations();
-    }
-
     @PostMapping("/read-all")
     @Operation(summary = "Mark ALL unread customer messages read")
     public Map<String, Integer> readAll() {
