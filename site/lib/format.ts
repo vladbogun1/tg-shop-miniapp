@@ -47,5 +47,3 @@ export function discountPercent(priceMinor: number, compareAtMinor?: number | nu
   if (!compareAtMinor || compareAtMinor <= priceMinor) return 0;
   return Math.round(((compareAtMinor - priceMinor) / compareAtMinor) * 100);
 }
-
-export { shortOrderId, ORDER_STATUS_COLOR, ORDER_TIMELINE } from "@shop/shared";

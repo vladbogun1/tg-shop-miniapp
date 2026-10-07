@@ -80,14 +80,6 @@ export function isNovaPoshtaTtn(value: string): boolean {
   return /^(20|59)\d{12}$/.test(value.replace(/\s+/g, ""));
 }
 
-export const STATUS_EMOJI: Record<OrderStatus, string> = {
-  NEW: "🆕",
-  APPROVED: "✅",
-  SHIPPED: "📦",
-  DELIVERED: "🎉",
-  REJECTED: "❌",
-};
-
 /** CSS custom property per status — the same identity in both apps' themes. */
 export const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
   NEW: "var(--st-new)",
@@ -261,14 +253,4 @@ export type OrderLimitCode = (typeof ORDER_LIMIT_CODES)[number];
 
 export function isOrderLimitCode(code: string | null | undefined): code is OrderLimitCode {
   return !!code && (ORDER_LIMIT_CODES as readonly string[]).includes(code);
-}
-
-/**
- * Clamp a cart quantity to the per-product limit (0 = no limit) and to the stock.
- */
-export function clampQty(qty: number, limits?: { maxQtyPerProduct?: number } | null, stock?: number | null): number {
-  let max = Number.POSITIVE_INFINITY;
-  if (limits?.maxQtyPerProduct && limits.maxQtyPerProduct > 0) max = limits.maxQtyPerProduct;
-  if (stock != null && stock >= 0) max = Math.min(max, stock);
-  return Math.max(1, Math.min(qty, max));
 }

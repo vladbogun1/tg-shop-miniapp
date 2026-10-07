@@ -54,14 +54,11 @@ export type {
 };
 export type {
   DeliveryMethod,
-  MessageType,
   NpCategory,
-  OrderItem,
   OrderStatus,
   ProductImage,
   ProductTag,
   ProductVariant,
-  SenderType as MessageSenderType,
 } from "@shop/shared";
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
@@ -262,9 +259,6 @@ export const customerApi = {
    */
   setLocale: (locale: string) =>
     http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`),
-  /** Buffered interaction journal, flushed in batches — see lib/analytics. */
-  sendAnalytics: (batch: { sessionId: string; events: unknown[] }) =>
-    http.post<void>("/api/me/analytics", batch),
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
   /** Server cart shared with the website (same Telegram account) — see lib/cart-sync. */
   getCart: () => http.get<ServerCart>("/api/me/cart"),

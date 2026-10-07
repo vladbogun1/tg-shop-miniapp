@@ -7,8 +7,6 @@
 import { money as sharedMoney } from "@shop/shared";
 import { getActiveTag } from "@/i18n/active";
 
-export { toMajor, toMinor } from "@shop/shared";
-
 export function money(minor: number | null | undefined, currency = "UAH"): string {
   return sharedMoney(minor, currency, getActiveTag());
 }

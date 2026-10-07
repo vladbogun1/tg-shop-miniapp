@@ -47,7 +47,3 @@ export function alternates(path: string, current: Locale) {
     },
   };
 }
-
-export function localeTag(locale: Locale): string {
-  return LOCALE_TAG[locale];
-}

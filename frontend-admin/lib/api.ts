@@ -12,7 +12,6 @@ import {
   type MonobankStatus,
   type Receipt,
   normalizeBaseUrl,
-  type Conversation,
   type DeliveryMethod,
   type Message,
   type OrderCard,
@@ -31,7 +30,6 @@ export { ApiError };
 export type {
   AdminInvoice,
   Receipt,
-  Conversation,
   DeliveryMethod,
   Message,
   MonobankStatus,
@@ -96,7 +94,6 @@ export interface TagWriteRequest {
   introText?: string;
 }
 export type MessageDto = Message;
-export type ConversationDto = Conversation;
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
@@ -648,12 +645,6 @@ export interface BroadcastResult {
   detail: string;
 }
 
-export interface AdminTarget {
-  telegramUserId: number;
-  name?: string | null;
-  username?: string | null;
-}
-
 // ---- content translations (docs/CONTENT-I18N.md) ---------------------------
 export type TrLocale = "uk" | "en";
 export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
@@ -831,8 +822,6 @@ export const adminApi = {
 
   /** GET /api/admin/orders/unread-count -> total unread messages across orders. */
   unreadCount: () => apiGet<{ count: number }>("/api/admin/orders/unread-count"),
-  /** GET /api/admin/orders/conversations -> orders with unread customer messages. */
-  conversations: () => apiGet<ConversationDto[]>("/api/admin/orders/conversations"),
   /** POST /api/admin/orders/read-all -> mark all customer messages read. */
   markAllRead: () => apiPost<{ marked: number }>("/api/admin/orders/read-all"),
 
@@ -907,7 +896,6 @@ export const adminApi = {
   // ---- broadcasts ----
   broadcastAudiences: () =>
     apiGet<Record<BroadcastAudience, number>>("/api/admin/broadcast/audiences"),
-  broadcastAdmins: () => apiGet<AdminTarget[]>("/api/admin/broadcast/admins"),
   broadcastStatus: () => apiGet<BroadcastStatus>("/api/admin/broadcast/status"),
   broadcast: (body: {
     text: string;
@@ -955,8 +943,6 @@ export const adminApi = {
     apiPost<{ ok: boolean; error?: string | null; status: SiteRevalidateStatus }>(
       "/api/admin/site/revalidate"
     ),
-  /** Last automatic/manual rebuild outcome. */
-  siteRevalidateStatus: () => apiGet<SiteRevalidateStatus>("/api/admin/site/revalidate/status"),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

@@ -15,7 +15,6 @@ export const en: RuDictionary = {
   "common.copy": "Copy: {label}",
   "common.copied": "Copied",
   "common.showAll": "See all",
-  "common.placeholder": "[to be confirmed]",
 
   "meta.title": "ChiSetup — gaming gear for your setup",
   "meta.description":
@@ -134,7 +133,6 @@ export const en: RuDictionary = {
   "error.global.text": "Try reloading the page.",
 
   "home.hero.kicker": "Mice · Keyboards · Headsets · Accessories",
-  "home.hero.title": "Gaming gear for your setup",
   "home.hero.text":
     "Mice, keyboards and mouse pads, checked before shipping. Nova Poshta across Ukraine and a chat with the shop for every order.",
   "home.hero.title.pre": "Gaming",
@@ -227,15 +225,12 @@ export const en: RuDictionary = {
   "cart.empty.title": "Your cart is empty",
   "cart.empty.text": "Add products from the catalogue and they will show up here.",
   "cart.remove": "Remove {title}",
-  "cart.subtotal": "Subtotal",
   "cart.total": "Total",
   "cart.checkout": "Checkout",
   "cart.continue": "Continue shopping",
-  "cart.openPage": "Open cart",
   "cart.deliveryNote": "Delivery is charged at Nova Poshta rates on collection.",
   "cart.priceChanged": "Price changed: was {old}",
   "cart.unavailable": "No longer in stock",
-  "cart.clamped": "Only {n} available — quantity reduced",
   "cart.hasProblems": "Remove the items that are out of stock first.",
 
   "login.title": "Sign in with Telegram",
@@ -281,7 +276,6 @@ export const en: RuDictionary = {
   "checkout.cityNone": "City not found",
   "checkout.mapHint": "Or find a branch on the map and tap it.",
   "checkout.mapLoading": "Loading map…",
-  "checkout.warehouse": "Branch",
   "checkout.warehouseField": "Branch / parcel locker",
   "checkout.warehousePlaceholder": "Number or address",
   "checkout.warehouseNone": "No such branch in this city",
@@ -309,7 +303,6 @@ export const en: RuDictionary = {
   "checkout.total": "Total",
   "checkout.dueNow": "Due now",
   "checkout.rest": "The remaining {amount} is paid on collection.",
-  "checkout.submitPay": "Place order & pay {amount}",
   "checkout.toPayment": "Opening the payment page…",
   "checkout.agree": "By pressing the button you agree to the",
   "checkout.agreeLink": "shop's terms",
@@ -340,7 +333,6 @@ export const en: RuDictionary = {
   "account.orders.number": "Order {id}",
   "account.orders.items": { one: "{n} item", other: "{n} items" },
   "account.orders.unread": { one: "{n} new message", other: "{n} new messages" },
-  "account.orders.open": "Details",
 
   "settings.language": "Site language",
   "settings.sessions": "Devices & sessions",
@@ -467,10 +459,7 @@ export const en: RuDictionary = {
   "chat.error": "Could not load the conversation.",
   "chat.empty": "No messages yet. Write to the shop about this order.",
   "chat.attachmentAlt": "Attachment",
-  "chat.reply": "Reply",
-  "chat.replyTo": "Reply · {name}",
   "chat.reply.fallbackSender": "Message",
-  "chat.cancelReply": "Cancel reply",
   "chat.attach": "Attach an image",
   "chat.attachment.photo": "Photo",
   "chat.attachment.file": "File",
@@ -572,6 +561,5 @@ export const en: RuDictionary = {
   "np.type.postomat": "Parcel locker",
   "np.type.point": "Point",
   "np.hint": "Click a branch on the map",
-  "np.confirm": "Choose this branch",
   "np.number": "No. {n}",
 };

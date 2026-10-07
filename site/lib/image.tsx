@@ -42,8 +42,6 @@ export function resolveImageSrc(value: string, size = 600, fit = false): string 
   return resolve(value, { imageBase: IMAGE_BASE, apiBase: "", size, fit });
 }
 
-export { imgproxyUrl } from "@shop/shared";
-
 /**
  * Neutral 1×1 placeholder in the graphite of `--surface-2`, so a loading photo blends into the dark
  * ChiSetup card instead of flashing a light tile (it was a light grey from the old light theme).

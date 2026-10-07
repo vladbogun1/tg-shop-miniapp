@@ -12,7 +12,6 @@
  */
 import type {
   CatalogSort,
-  PaymentOption,
   PublicCategory,
   PublicCategoryDetail,
   PublicProductPage,
@@ -126,10 +125,6 @@ export async function getProductReviews(slug: string, locale: Locale, size = 10)
 /** Slugs only — language-independent. */
 export async function getSitemap(): Promise<PublicSitemap> {
   return getJson<PublicSitemap>("/api/public/sitemap", null);
-}
-
-export async function getPaymentOptions(locale: Locale): Promise<PaymentOption[]> {
-  return getJson<PaymentOption[]>("/api/payment-options", locale, ["payment-options"]);
 }
 
 /** Same as the promise-returning getters, but resolves to a fallback instead of throwing. */

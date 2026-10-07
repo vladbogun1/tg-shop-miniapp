@@ -182,6 +182,3 @@ export const ordersApi = {
   renderedTemplates: (orderId: string) =>
     apiGet<RenderedTemplate[]>(`/api/admin/orders/${orderId}/reply-templates`),
 };
-
-/** Query keys the order screens invalidate after a change. */
-export const ORDER_LIST_KEYS = [["board"], ["orders-table"], ["dispatch"]] as const;

@@ -37,10 +37,8 @@ export const uk: RuDictionary = {
   "tabs.account": "Акаунт",
 
   // ── дрібні елементи ───────────────────────────────────────────────────────
-  "theme.toggle": "Змінити тему",
   "lang.title": "Мова",
   "lang.switch": "Змінити мову",
-  "soon.badge": "Скоро",
   "qty.decrease": "Зменшити",
   "qty.increase": "Збільшити",
 
@@ -211,7 +209,6 @@ export const uk: RuDictionary = {
 
   // ── скасування замовлення ─────────────────────────────────────────────────
   "cancel.button": "Скасувати замовлення",
-  "cancel.title": "Причина скасування",
   "cancel.reason.payment": "Проблема з оплатою / карткою",
   "cancel.reason.changedMind": "Передумав(ла)",
   "cancel.reason.mistake": "Оформив(ла) помилково",
@@ -229,7 +226,6 @@ export const uk: RuDictionary = {
   "cancel.reasonOptional": "Причина (необовʼязково)",
   "cancel.processing": "Банк обробляє платіж — скасування стане доступним за хвилину.",
   "cancel.returns.text": "Замовлення вже відправлено — скасувати його не можна. Якщо потрібно повернути товар — напишіть нам у чат.",
-  "cancel.toChat": "Написати в чат",
   "cancel.request.button": "Запросити скасування",
   "cancel.request.title": "Запит на скасування",
   "cancel.request.text": "Замовлення вже оплачене. Напишіть причину — менеджер розгляне запит і поверне гроші на картку.",
@@ -312,7 +308,6 @@ export const uk: RuDictionary = {
   "checkout.step.done": "Готово",
   "checkout.emptyCart": "Кошик порожній.",
   "checkout.failed": "Не вдалося оформити замовлення",
-  "checkout.submitPay": "Оформити та оплатити {amount}",
   "checkout.redirecting": "Відкриваємо оплату…",
   "checkout.promoDropped": "{message}. Промокод прибрано — оформіть замовлення ще раз.",
 
@@ -327,7 +322,6 @@ export const uk: RuDictionary = {
   "checkout.delivery.pickup": "Самовивіз",
   "checkout.delivery.pickupSubtitle": "З точки магазину",
   "checkout.delivery.mapHint": "Знайдіть відділення на карті та натисніть «Обрати».",
-  "checkout.delivery.change": "Змінити відділення",
   "checkout.delivery.required": "Оберіть відділення — у списку або на карті.",
   "checkout.delivery.pickupText": "Заберіть замовлення з точки магазину — ми зв'яжемося з вами щодо адреси та часу.",
   "checkout.delivery.mapLoading": "Завантаження карти…",

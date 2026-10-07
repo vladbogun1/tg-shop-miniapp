@@ -153,10 +153,6 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
   return { fields, strings, byId: new Map(strings.map((s) => [s.id, s])) };
 }
 
-export function kindLabel(kindKey: string): string {
-  return KIND_LABEL[kindKey] ?? kindKey;
-}
-
 // ============================================================================
 // Parsing the answer
 // ============================================================================
