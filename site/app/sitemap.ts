@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { localePath } from "@/i18n";
 import { LOCALES } from "@/i18n/locales";
 import { SITE_URL } from "@/lib/config";
-import { UK_ONLY_PATHS } from "@/lib/seo";
+import { untranslatedLegalPaths } from "@/lib/legal";
 import { getCategories, getSitemap, safe } from "@/lib/server-api";
 
 /** Built per request from /api/public/sitemap (the build has no backend); data cached for 60 s. */
@@ -14,12 +14,12 @@ const abs = (path: string, locale: (typeof LOCALES)[number]) => `${SITE_URL}${lo
 
 /**
  * One <url> per language version, each listing the full set of alternates + x-default (Google
- * wants every version as its own entry). Untranslated legal pages are listed in Ukrainian only —
- * their ru/en copies are canonical to it.
+ * wants every version as its own entry). A legal page missing a translation is listed in Ukrainian
+ * only — its untranslated copies are canonical to it (see legalPageMeta).
  */
 function entries(path: string, lastModified?: string | null): MetadataRoute.Sitemap {
   const lm = lastModified ? { lastModified } : {};
-  if (UK_ONLY_PATHS.includes(path)) {
+  if (untranslatedLegalPaths(LOCALES).includes(path)) {
     return [{ url: abs(path, "uk"), ...lm }];
   }
   const languages = {

@@ -94,7 +94,8 @@ export function OrderReceipts({ order }: { order: OrderDetail }) {
                 {meta && <p className="mt-0.5 text-[12px] text-[var(--muted)]">{meta}</p>}
                 {r.status !== "READY" && (
                   <p className="mt-0.5 text-[12px] text-[var(--muted)]">
-                    {r.status === "PENDING" ? t("receipts.pendingHint") : r.statusText || t("receipts.failedHint")}
+                    {/* statusText is monobank's own wording (Ukrainian/English) — the customer gets ours. */}
+                    {r.status === "PENDING" ? t("receipts.pendingHint") : t("receipts.failedHint")}
                   </p>
                 )}
               </div>

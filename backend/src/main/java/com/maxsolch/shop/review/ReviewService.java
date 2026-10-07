@@ -143,7 +143,7 @@ public class ReviewService {
 
     private byte[] resolveProduct(String idOrSlug) {
         if (idOrSlug == null || idOrSlug.isBlank()) {
-            throw new NotFoundException("product not found");
+            throw new NotFoundException(messages.current("api.product.notFound"));
         }
         String key = idOrSlug.trim();
         if (key.length() == 36) {
@@ -153,7 +153,7 @@ public class ReviewService {
                 // a slug that happens to be 36 characters long
             }
         }
-        return store.productIdBySlug(key).orElseThrow(() -> new NotFoundException("product not found"));
+        return store.productIdBySlug(key).orElseThrow(() -> new NotFoundException(messages.current("api.product.notFound")));
     }
 
     // ================================================================== customer

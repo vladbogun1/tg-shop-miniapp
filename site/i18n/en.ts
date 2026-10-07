@@ -90,7 +90,7 @@ export const en: RuDictionary = {
   "footer.contact": "Contact",
   "footer.bot": "Shop bot on Telegram",
   "footer.botText": "Orders, statuses and chat with the shop — on Telegram.",
-  "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
+  "footer.requisites": "Sole proprietor (FOP) Maksym Andriiovych Solokha · Tax ID 3547612413",
   "footer.rights": "© {year} ChiSetup",
 
   "info.delivery": "Delivery & payment",
@@ -102,6 +102,7 @@ export const en: RuDictionary = {
   "info.about": "About us",
   "info.ukOnly": "This text is currently available in Ukrainian only.",
   "info.updated": "Updated {date}",
+  "info.translationNote": "Translated from Ukrainian. If the versions differ, the Ukrainian one prevails.",
 
   "contacts.lead": "Telegram is the fastest way to reach us — every order has its own chat there.",
   "contacts.telegram": "Telegram bot",
@@ -114,6 +115,7 @@ export const en: RuDictionary = {
   "contacts.pickup": "Pickup point",
   "contacts.hours": "Opening hours",
   "contacts.seller": "Seller",
+  "contacts.sellerValue": "Sole proprietor (FOP) Maksym Andriiovych Solokha, tax ID (RNOKPP) {taxId}",
 
   "about.lead": "ChiSetup is a small gaming peripherals shop from Ukraine.",
   "about.text1":
@@ -129,6 +131,7 @@ export const en: RuDictionary = {
   "notFound.text": "This page does not exist — the product may have been removed or the link is outdated.",
   "error.title": "Something went wrong",
   "error.text": "The site tripped up. Try again — if that does not help, reload the page.",
+  "error.global.text": "Try reloading the page.",
 
   "home.hero.kicker": "Mice · Keyboards · Headsets · Accessories",
   "home.hero.title": "Gaming gear for your setup",

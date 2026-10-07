@@ -132,7 +132,7 @@ public class OnlinePaymentService {
         Instant now = Instant.now();
         String key = UuidUtil.toString(orderId);
         Order order = orders.findWithItemsById(orderId)
-                .orElseThrow(() -> new BadRequestException("order not found"));
+                .orElseThrow(() -> new BadRequestException(messages.current("api.order.notFound")));
         if (order.getStatus() == OrderStatus.REJECTED
                 && "PAYMENT_TIMEOUT".equals(order.getRejectReasonCode())) {
             throw new ConflictException(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");

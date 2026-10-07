@@ -317,7 +317,7 @@ public class MeController {
             throw new NotFoundException(messages.current("api.order.notFound"));
         }
         Order order = orderRepository.findById(key)
-                .orElseThrow(() -> new NotFoundException("order not found"));
+                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
         long userId = SecurityUtil.currentUserId();
         if (order.getUserId() == null || order.getUserId() != userId) {
             throw new ForbiddenException(messages.current("api.order.notYours"));

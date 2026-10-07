@@ -1,11 +1,15 @@
 import { Info } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
+import { FALLBACK_LOCALE, type Locale } from "@/i18n/locales";
 import { makeFmt } from "@/lib/format";
 import type { LegalDoc } from "@/lib/legal";
 
-/** A rendered legal page with breadcrumbs, a "Ukrainian only" note for ru/en and the update date. */
+/**
+ * A rendered legal page with breadcrumbs and the update date. A translated (ru/en) text ends with a
+ * note that the Ukrainian original prevails; a language without its own text shows the Ukrainian
+ * one with a "Ukrainian only" note on top.
+ */
 export function LegalView({ locale, title, doc }: { locale: Locale; title: string; doc: LegalDoc }) {
   const t = makeT(locale);
   const fmt = makeFmt(locale);
@@ -20,10 +24,11 @@ export function LegalView({ locale, title, doc }: { locale: Locale; title: strin
           </p>
         )}
         <div className="prose-nb" dangerouslySetInnerHTML={{ __html: doc.html }} />
-        {doc.updated && (
-          <p className="mt-8 border-t border-[var(--line)] pt-3 text-[12px] font-medium text-[var(--muted)]" lang={locale}>
-            {t("info.updated", { date: fmt.date(doc.updated) })}
-          </p>
+        {(doc.updated || doc.contentLocale !== FALLBACK_LOCALE) && (
+          <div className="mt-8 flex flex-col gap-1 border-t border-[var(--line)] pt-3 text-[12px] font-medium text-[var(--muted)]" lang={locale}>
+            {doc.updated && <p>{t("info.updated", { date: fmt.date(doc.updated) })}</p>}
+            {doc.contentLocale !== FALLBACK_LOCALE && <p>{t("info.translationNote")}</p>}
+          </div>
         )}
       </article>
     </div>

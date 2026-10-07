@@ -82,6 +82,7 @@ class OrderServiceTest {
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(messages.current(any(String.class), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         productUuid = UUID.randomUUID().toString();
         productId = UuidUtil.toBytes(productUuid);
         fullPayment = paymentOption("Полная оплата онлайн", 0);
@@ -202,7 +203,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("unknown payment option");
+                .hasMessageContaining("api.order.paymentUnknown");
     }
 
     @Test
@@ -280,7 +281,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("not enough stock");
+                .hasMessageContaining("api.order.outOfStock");
         verify(orderRepository, never()).save(any());
     }
 
@@ -295,7 +296,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("variant is required");
+                .hasMessageContaining("api.order.variantRequired");
     }
 
     @Test
@@ -310,7 +311,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("variant does not belong to product");
+                .hasMessageContaining("api.order.variantMismatch");
     }
 
     @Test
@@ -325,7 +326,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("not enough stock for variant");
+                .hasMessageContaining("api.order.outOfStock");
     }
 
     @Test
@@ -348,7 +349,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("not available");
+                .hasMessageContaining("api.order.unavailable");
     }
 
     // ---------- promo ----------
