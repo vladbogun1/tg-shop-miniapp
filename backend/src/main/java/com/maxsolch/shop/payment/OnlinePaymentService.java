@@ -90,7 +90,7 @@ public class OnlinePaymentService {
         String raw = settings.getString(com.maxsolch.shop.settings.SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
         List<Integer> out = new ArrayList<>();
         if (raw != null) {
-            for (String part : raw.split("[,;\s]+")) {
+            for (String part : raw.split("[,;\\s]+")) {
                 if (!part.isBlank()) {
                     try {
                         out.add(Integer.parseInt(part.trim()));
