@@ -29,6 +29,9 @@ import java.util.List;
 public class MeReviewController {
 
     private final ReviewService reviewService;
+    /** «Журнал → Бот и сайт». */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.maxsolch.shop.journal.ActivityLog activity;
 
     public MeReviewController(ReviewService reviewService) {
         this.reviewService = reviewService;
@@ -43,7 +46,31 @@ public class MeReviewController {
     @PostMapping("/reviews")
     @Operation(summary = "Review a line of my delivered order (or edit my review while it is PENDING)")
     public SubmitResult submit(@RequestBody SubmitRequest req) {
-        return reviewService.submit(SecurityUtil.currentUserId(), req);
+        SubmitResult result;
+        try {
+            result = reviewService.submit(SecurityUtil.currentUserId(), req);
+        } catch (RuntimeException e) {
+            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("REVIEW_FAILED")
+                    .text("Отзыв не принят: " + e.getMessage()).rejected(e));
+            throw e;
+        }
+        if (result != null && result.review() != null) {
+            var r = result.review();
+            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("REVIEW_SUBMITTED")
+                    .order(r.orderId())
+                    .text("Отзыв " + "★".repeat(Math.max(0, Math.min(5, r.rating()))) + " на «" + r.title() + "»"
+                            + (result.bonus() != null ? " · выдан бонус −" + result.bonus().percent() + "%" : ""))
+                    .detail("reviewId", r.id())
+                    .detail("rating", r.rating())
+                    .detail("status", r.status()));
+        }
+        return result;
+    }
+
+    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.record(entry);
+        }
     }
 
     @GetMapping("/reviews")

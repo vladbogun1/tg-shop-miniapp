@@ -4,6 +4,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxService;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.tg.ShopBot;
@@ -40,9 +41,11 @@ public class SupportNotifier {
     private final AdminPushService push;
     private final InboxService inbox;
     private final SupportThreadRepository threads;
+    private final ActivityLog activity;
 
     public SupportNotifier(@Lazy ShopBot bot, AppProperties props, Messages messages, AdminPushService push,
-                           @Lazy InboxService inbox, SupportThreadRepository threads) {
+                           @Lazy InboxService inbox, SupportThreadRepository threads, ActivityLog activity) {
+        this.activity = activity;
         this.bot = bot;
         this.props = props;
         this.messages = messages;
@@ -98,7 +101,8 @@ public class SupportNotifier {
                     .parseMode("HTML")
                     .replyMarkup(openThreadButton(t, locale))
                     .build();
-            bot.execute(msg);
+            activity.bot(ActivityLog.Entry.bot("SUPPORT_REPLY").toCustomer(tgUserId).text(msg.getText())
+                    .detail("thread", UuidUtil.toString(t.getId())), () -> bot.execute(msg));
         } catch (Exception e) {
             log.warn("Support DM failed for thread {}: {}", UuidUtil.toString(t.getId()), e.getMessage());
         }
@@ -149,7 +153,9 @@ public class SupportNotifier {
             if (topic > 0) {
                 msg.setMessageThreadId(topic);
             }
-            bot.execute(msg);
+            activity.bot(ActivityLog.Entry.bot("ADMIN_SUPPORT_PING").toAdmins(chatId).customer(t.getTgUserId())
+                    .text(newThread ? "Новый вопрос в поддержку" : "Новое сообщение в поддержке")
+                    .detail("thread", UuidUtil.toString(t.getId())), () -> bot.execute(msg));
         } catch (Exception e) {
             log.warn("Support admin ping failed for thread {}: {}", UuidUtil.toString(t.getId()), e.getMessage());
         }

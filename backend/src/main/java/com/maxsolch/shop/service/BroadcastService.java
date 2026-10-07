@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.Broadcast;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.repository.BroadcastRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.tg.ShopBot;
@@ -62,6 +63,7 @@ public class BroadcastService {
     private final AppProperties props;
     private final UserRepository userRepository;
     private final BroadcastRepository broadcastRepository;
+    private final ActivityLog activity;
 
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "broadcast");
@@ -71,11 +73,12 @@ public class BroadcastService {
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
     public BroadcastService(@Lazy ShopBot bot, AppProperties props, UserRepository userRepository,
-                            BroadcastRepository broadcastRepository) {
+                            BroadcastRepository broadcastRepository, ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.userRepository = userRepository;
         this.broadcastRepository = broadcastRepository;
+        this.activity = activity;
     }
 
     /** A RUNNING history row after a restart was cut off mid-send — say so instead of "running". */
@@ -194,7 +197,8 @@ public class BroadcastService {
                 String html = textFor(r.lang(), row.getText(), row.getTextUk(), row.getTextRu(), row.getTextEn());
                 InlineKeyboardMarkup markup = buttons.computeIfAbsent(String.valueOf(r.lang()),
                         k -> shopButton(withButton, buttonText, r.lang()));
-                Outcome o = sendOne(r.id(), html, markup);
+                Outcome o = sendOne(r.id(), html, markup, ActivityLog.Entry.bot("BROADCAST")
+                        .group(ActivityLog.broadcastGroup(row.getId())).detail("lang", r.lang()));
                 switch (o) {
                     case OK -> sent++;
                     case BLOCKED -> blocked++;
@@ -235,7 +239,8 @@ public class BroadcastService {
         if (!enabled()) {
             return new BroadcastResult(false, "Бот не настроен");
         }
-        Outcome o = sendOne(telegramUserId, text, shopButton(withButton, buttonText, null));
+        Outcome o = sendOne(telegramUserId, text, shopButton(withButton, buttonText, null),
+                ActivityLog.Entry.bot("BROADCAST_TEST"));
         return switch (o) {
             case OK -> new BroadcastResult(true, "Отправлено");
             case BLOCKED -> new BroadcastResult(false, "Получатель заблокировал бота или ещё не писал ему");
@@ -243,8 +248,15 @@ public class BroadcastService {
         };
     }
 
-    private Outcome sendOne(long id, String html, InlineKeyboardMarkup markup) {
+    /**
+     * Sends one message. {@code journal} (type + broadcast group) gets the recipient, the text and
+     * the outcome and is written to the «Бот и сайт» journal — per recipient, so the admin can see
+     * exactly who did not get the broadcast and why.
+     */
+    private Outcome sendOne(long id, String html, InlineKeyboardMarkup markup, ActivityLog.Entry journal) {
+        journal.toCustomer(id).text(html);
         if (id <= 0) {
+            activity.record(journal.failed("BAD_RECIPIENT", "некорректный Telegram id"));
             return Outcome.FAILED;
         }
         try {
@@ -255,7 +267,7 @@ public class BroadcastService {
                     .disableWebPagePreview(true)
                     .replyMarkup(markup)
                     .build();
-            bot.execute(msg);
+            activity.bot(journal, () -> bot.execute(msg));
             return Outcome.OK;
         } catch (Exception e) {
             String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase();

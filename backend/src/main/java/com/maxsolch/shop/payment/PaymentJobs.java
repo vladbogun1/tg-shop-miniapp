@@ -33,6 +33,10 @@ public class PaymentJobs {
     private final OrderService orderService;
     private final AtomicBoolean running = new AtomicBoolean();
 
+    /** «Журнал → Бот и сайт» (optional). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.maxsolch.shop.journal.ActivityLog activity;
+
     public PaymentJobs(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
                        OrderRepository orders, OrderService orderService) {
         this.payments = payments;
@@ -76,9 +80,22 @@ public class PaymentJobs {
                 if (orderService.expireUnpaid(orderId, now) != null) {
                     payments.closeOpenInvoices(orderId);
                     log.info("order {} rejected: not paid in time", id);
+                    if (activity != null) {
+                        activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
+                                        com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                                .order(orderId)
+                                .text("Заказ #" + id.substring(0, 8) + " автоматически отменён: не оплачен вовремя, "
+                                        + "товар вернулся на склад"));
+                    }
                 }
             } catch (Exception e) {
                 log.warn("auto-cancel of order {} failed: {}", id, e.getMessage());
+                if (activity != null) {
+                    activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
+                                    com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                            .order(orderId).text("Автоотмена неоплаченного заказа не удалась")
+                            .failed("ERROR", e.getMessage()));
+                }
             }
         }
     }

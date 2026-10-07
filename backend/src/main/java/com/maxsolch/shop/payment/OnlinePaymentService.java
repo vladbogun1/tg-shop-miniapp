@@ -78,6 +78,20 @@ public class OnlinePaymentService {
         this.settings = settings;
     }
 
+    /** «Журнал → Бот и сайт» (optional, like the settings above). */
+    private com.maxsolch.shop.journal.ActivityLog activity;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setActivity(com.maxsolch.shop.journal.ActivityLog activity) {
+        this.activity = activity;
+    }
+
+    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.record(entry);
+        }
+    }
+
     public boolean isEnabled() {
         return mono.isEnabled();
     }
@@ -182,6 +196,11 @@ public class OnlinePaymentService {
                     embedded));
         } catch (MonobankClient.MonobankException e) {
             log.warn("monobank invoice/create failed for order {}: {}", key, e.getMessage());
+            journal(com.maxsolch.shop.journal.ActivityLog.Entry.of(com.maxsolch.shop.journal.ActivityLog.PAYMENT,
+                            "INVOICE_CREATE_FAILED").order(orderId)
+                    .text("monobank не создал счёт на " + com.maxsolch.shop.common.MoneyFormat.amount(amount) + " грн")
+                    .detail("amountMinor", amount).detail("returnTo", returnTo)
+                    .failed("MONOBANK_ERROR", e.getMessage()));
             throw new ConflictException(messages.current("api.payment.failed"), "PAYMENT_FAILED");
         }
         if (created.invoiceId() == null || created.pageUrl() == null) {
@@ -198,6 +217,17 @@ public class OnlinePaymentService {
         inv.setStatus(PaymentInvoice.CREATED);
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
+        journal(com.maxsolch.shop.journal.ActivityLog.Entry.of(com.maxsolch.shop.journal.ActivityLog.PAYMENT,
+                        "INVOICE_CREATED").order(orderId)
+                .text("Счёт monobank на " + com.maxsolch.shop.common.MoneyFormat.amount(amount) + " грн"
+                        + (amount < order.getTotalMinor() ? " (предоплата)" : "")
+                        + " · " + (returnTo == ReturnTo.SITE ? "сайт" : "Mini App")
+                        + (embedded ? ", в окне" : ""))
+                .detail("invoice", created.invoiceId())
+                .detail("amountMinor", amount)
+                .detail("returnTo", returnTo)
+                .detail("display", display)
+                .detail("expiresAt", inv.getExpiresAt()));
         return new StartedPayment(inv.getExternalId(), inv.getPageUrl(), amount, inv.getExpiresAt());
     }
 

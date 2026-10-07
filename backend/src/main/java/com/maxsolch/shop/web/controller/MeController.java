@@ -4,6 +4,7 @@ import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -72,6 +73,9 @@ public class MeController {
     private com.maxsolch.shop.payment.CancelRequestService cancelRequests;
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.payment.ReceiptService receipts;
+    /** «Журнал → Бот и сайт»: what the customer did here (optional — tests build the controller bare). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.maxsolch.shop.journal.ActivityLog activity;
     /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
     private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -126,7 +130,17 @@ public class MeController {
     @Operation(summary = "Validate a promo code and hold it for this customer")
     public PromoPreviewDto reservePromo(@RequestParam String code,
                                         @RequestParam long subtotalMinor) {
-        return promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId());
+        PromoPreviewDto preview = promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId());
+        // Only accepted codes: the cart checks as the code is typed, so refusals are mostly half-typed words.
+        if (preview != null && preview.valid()) {
+            journal(ActivityLog.fromRequest("PROMO_APPLIED")
+                    .text("Промокод " + code.trim().toUpperCase(Locale.ROOT) + " принят: скидка "
+                            + com.maxsolch.shop.common.MoneyFormat.amount(preview.discountMinor()) + " грн")
+                    .detail("code", code.trim().toUpperCase(Locale.ROOT))
+                    .detail("discountMinor", preview.discountMinor())
+                    .detail("subtotalMinor", subtotalMinor));
+        }
+        return preview;
     }
 
     /**
@@ -143,8 +157,14 @@ public class MeController {
         if (parsed != null) {
             long userId = SecurityUtil.currentUserId();
             userRepository.findById(userId).ifPresent(user -> {
+                String before = user.getLocale();
                 user.setLocale(parsed.getLanguage());
                 userRepository.save(user);
+                if (!parsed.getLanguage().equals(before)) {
+                    journal(ActivityLog.fromRequest("LOCALE_CHANGED")
+                            .text("Язык: " + (before == null ? "—" : before) + " → " + parsed.getLanguage())
+                            .detail("from", before).detail("to", parsed.getLanguage()));
+                }
             });
         }
         return ResponseEntity.noContent().build();
@@ -210,7 +230,12 @@ public class MeController {
         Order order = ownedOrder(id);
         requireOwnAttachment(req);
         String name = order.getCustomerName();
-        return messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
+        MessageDto sent = messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
+        // The text itself stays in the chat — the journal only notes that the customer wrote.
+        journal(ActivityLog.fromRequest("CHAT_MESSAGE").order(order.getId())
+                .text("Покупатель написал в чат заказа #" + id.substring(0, Math.min(8, id.length())))
+                .detail("kind", req == null ? null : req.type()));
+        return sent;
     }
 
     @GetMapping("/orders/{id}/receipts")
@@ -241,7 +266,15 @@ public class MeController {
         String lang = req != null && req.locale() != null && !req.locale().isBlank()
                 ? ContentLocale.normalize(Locale.forLanguageTag(req.locale())) : ContentLocale.normalize(locale);
         boolean embedded = req != null && "IFRAME".equalsIgnoreCase(req.display());
-        OnlinePaymentService.StartedPayment p = onlinePayments.start(order.getId(), returnTo, lang, embedded);
+        OnlinePaymentService.StartedPayment p;
+        try {
+            p = onlinePayments.start(order.getId(), returnTo, lang, embedded);
+        } catch (RuntimeException e) {
+            journal(ActivityLog.fromRequest("PAYMENT_START_FAILED").order(order.getId())
+                    .text("Не удалось открыть оплату: " + e.getMessage())
+                    .detail("returnTo", returnTo).rejected(e));
+            throw e;
+        }
         return new PaymentStartResponse(p.invoiceId(), p.pageUrl(), p.amountMinor(), p.expiresAt());
     }
 
@@ -269,7 +302,16 @@ public class MeController {
         Order order = ownedOrder(id);
         // Refreshes the payment state first; 400 PAYMENT_IN_PROGRESS while the bank is charging,
         // 400 PAID_NEEDS_REQUEST once money arrived (→ cancel-request).
-        Order cancelled = cancelRequests.cancelUnpaid(order.getId(), req == null ? null : req.reason());
+        Order cancelled;
+        try {
+            cancelled = cancelRequests.cancelUnpaid(order.getId(), req == null ? null : req.reason());
+        } catch (RuntimeException e) {
+            journal(ActivityLog.fromRequest("ORDER_CANCEL_FAILED").order(order.getId())
+                    .text("Отмена заказа не прошла: " + e.getMessage()).rejected(e));
+            throw e;
+        }
+        journal(ActivityLog.fromRequest("ORDER_CANCELLED").order(order.getId())
+                .text("Покупатель отменил неоплаченный заказ" + reasonSuffix(req)));
         return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
     }
 
@@ -279,7 +321,16 @@ public class MeController {
     public OrderDetailDto cancelRequest(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
                                         Locale locale) {
         Order order = ownedOrder(id);
-        Order updated = cancelRequests.request(order.getId(), req == null ? null : req.reason());
+        Order updated;
+        try {
+            updated = cancelRequests.request(order.getId(), req == null ? null : req.reason());
+        } catch (RuntimeException e) {
+            journal(ActivityLog.fromRequest("CANCEL_REQUEST_FAILED").order(order.getId())
+                    .text("Заявка на отмену не принята: " + e.getMessage()).rejected(e));
+            throw e;
+        }
+        journal(ActivityLog.fromRequest("CANCEL_REQUESTED").order(order.getId())
+                .text("Заявка на отмену оплаченного заказа" + reasonSuffix(req)));
         return orderQueryService.toDetail(updated, ContentLocale.normalize(locale));
     }
 
@@ -323,5 +374,16 @@ public class MeController {
             throw new ForbiddenException(messages.current("api.order.notYours"));
         }
         return order;
+    }
+
+    private void journal(ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.record(entry);
+        }
+    }
+
+    private static String reasonSuffix(CancelOrderRequest req) {
+        String r = req == null || req.reason() == null ? "" : req.reason().trim();
+        return r.isEmpty() ? "" : ": " + (r.length() > 200 ? r.substring(0, 199) + "…" : r);
     }
 }

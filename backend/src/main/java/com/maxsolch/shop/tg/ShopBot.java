@@ -2,6 +2,7 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.security.TelegramUser;
 import com.maxsolch.shop.service.AuthService;
 import com.maxsolch.shop.settings.SettingsRegistry;
@@ -50,10 +51,11 @@ public class ShopBot extends TelegramLongPollingBot {
     private final WebLoginBotHandler webLogin;
     private final SettingsService settings;
     private final AdminSecurityNotifier adminSecurity;
+    private final ActivityLog activity;
 
     public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages,
                    @Lazy WebLoginBotHandler webLogin, SettingsService settings,
-                   @Lazy AdminSecurityNotifier adminSecurity) {
+                   @Lazy AdminSecurityNotifier adminSecurity, ActivityLog activity) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
         this.authService = authService;
@@ -61,6 +63,7 @@ public class ShopBot extends TelegramLongPollingBot {
         this.webLogin = webLogin;
         this.settings = settings;
         this.adminSecurity = adminSecurity;
+        this.activity = activity;
     }
 
     @Override
@@ -151,7 +154,7 @@ public class ShopBot extends TelegramLongPollingBot {
                     .keyboard(List.of(List.of(btn)))
                     .build());
         }
-        executeSafe(msg);
+        executeSafe("START", chatId, msg);
     }
 
     /** The admin's greeting for this language (Настройки → Бот), else the bundled one. */
@@ -165,7 +168,7 @@ public class ShopBot extends TelegramLongPollingBot {
                 .chatId(String.valueOf(chatId))
                 .text(messages.get(localeFor(chatId, languageCode), "bot.help.text"))
                 .build();
-        executeSafe(msg);
+        executeSafe("HELP", chatId, msg);
     }
 
     /**
@@ -203,9 +206,14 @@ public class ShopBot extends TelegramLongPollingBot {
         }
     }
 
-    private void executeSafe(SendMessage msg) {
+    private void executeSafe(String type, long chatId, SendMessage msg) {
         try {
-            execute(msg);
+            // Only private chats are journaled: /start in a group is not a customer.
+            if (chatId > 0) {
+                activity.bot(ActivityLog.Entry.bot(type).toCustomer(chatId).text(msg.getText()), () -> execute(msg));
+            } else {
+                execute(msg);
+            }
         } catch (TelegramApiException e) {
             log.warn("Failed to send message: {}", e.getMessage());
         }
