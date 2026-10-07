@@ -97,6 +97,13 @@ export const en: RuDictionary = {
   "promo.notFound": "Promo code not found",
   "promo.discount": "{discount} off {subtotal}",
   "promo.heldUntil": " · reserved for you until {time}",
+  "promo.bonus.title": "Review bonus: −{n}%",
+  "promo.bonus.until": "until {date}",
+  "promo.bonus.more": "{n} more in your profile",
+  "promo.bonus.expiresToday": "Expires within a day",
+  "promo.bonus.expiresIn": "Expires in {n} d",
+  "promo.bonus.apply": "Apply",
+  "promo.bonus.applied": "Review bonus",
 
   // ── catalogue ─────────────────────────────────────────────────────────────
   "catalog.tagline": "Pick it and add to cart",
@@ -392,7 +399,7 @@ export const en: RuDictionary = {
   "reviews.bonus.state.EXPIRED": "Expired",
   "reviews.bonus.copy": "Copy code {code}",
   "reviews.bonus.copied": "Copied",
-  "reviews.bonus.howTo": "Enter the code in the cart's promo code field. It is single-use and works only for you.",
+  "reviews.bonus.howTo": "In the cart, an Apply button will appear above the promo code field. The code is single-use and works only for you.",
   "reviews.order.title": "Leave a review — get a discount on your next order",
   "reviews.order.text": "Your first published review on an order earns a personal promo code for the next purchase.",
   "reviews.account.title": "Reviews",

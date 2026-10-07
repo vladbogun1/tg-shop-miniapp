@@ -35,6 +35,13 @@ export function formatDate(iso: string, locale = DEFAULT_LOCALE): string {
   return d.toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric" });
 }
 
+/** "10 окт." — day and short month, for tight spots where the year is obvious. */
+export function formatDayMonth(iso: string, locale = DEFAULT_LOCALE): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+}
+
 export function formatDateTime(iso: string, locale = DEFAULT_LOCALE): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;

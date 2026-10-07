@@ -97,6 +97,13 @@ export const uk: RuDictionary = {
   "promo.notFound": "Промокод не знайдено",
   "promo.discount": "Знижка {discount} з {subtotal}",
   "promo.heldUntil": " · закріплений за вами до {time}",
+  "promo.bonus.title": "Бонус за відгук: −{n}%",
+  "promo.bonus.until": "до {date}",
+  "promo.bonus.more": "ще {n} у профілі",
+  "promo.bonus.expiresToday": "Згорає протягом доби",
+  "promo.bonus.expiresIn": "Згорає через {n} дн.",
+  "promo.bonus.apply": "Застосувати",
+  "promo.bonus.applied": "Бонус за відгук",
 
   // ── каталог ───────────────────────────────────────────────────────────────
   "catalog.tagline": "Обирай і кидай у кошик",
@@ -392,7 +399,7 @@ export const uk: RuDictionary = {
   "reviews.bonus.state.EXPIRED": "Закінчився",
   "reviews.bonus.copy": "Скопіювати код {code}",
   "reviews.bonus.copied": "Скопійовано",
-  "reviews.bonus.howTo": "Введіть код у кошику в полі «Промокод». Код одноразовий і діє лише для вас.",
+  "reviews.bonus.howTo": "У кошику над полем «Промокод» з’явиться кнопка «Застосувати». Код одноразовий і діє лише для вас.",
   "reviews.order.title": "Залиште відгук — отримайте знижку на наступне замовлення",
   "reviews.order.text": "За перший опублікований відгук на замовлення — особистий промокод на наступну покупку.",
   "reviews.account.title": "Відгуки",

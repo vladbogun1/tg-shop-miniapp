@@ -8,6 +8,7 @@
 import {
   dayLabel as sharedDayLabel,
   formatDate as sharedFormatDate,
+  formatDayMonth as sharedFormatDayMonth,
   formatDateTime as sharedFormatDateTime,
   formatTime as sharedFormatTime,
   type Locale,
@@ -19,6 +20,8 @@ import { makeT } from "@/i18n";
 export interface Fmt {
   money: (minor: number | null | undefined, currency?: string) => string;
   date: (iso: string) => string;
+  /** "10 окт." — no year, for tight spots. */
+  dayMonth: (iso: string) => string;
   dateTime: (iso: string) => string;
   time: (iso: string) => string;
   dayLabel: (iso: string) => string;
@@ -37,6 +40,7 @@ export function makeFmt(locale: Locale): Fmt {
   return {
     money: (minor, currency = "UAH") => sharedMoney(minor, currency, tag),
     date: (iso) => sharedFormatDate(iso, tag),
+    dayMonth: (iso) => sharedFormatDayMonth(iso, tag),
     dateTime: (iso) => sharedFormatDateTime(iso, tag),
     time: (iso) => sharedFormatTime(iso, tag),
     dayLabel: (iso) => sharedDayLabel(iso, tag, labels),

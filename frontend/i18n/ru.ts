@@ -109,6 +109,13 @@ export const ru = {
   "promo.notFound": "Промокод не найден",
   "promo.discount": "Скидка {discount} из {subtotal}",
   "promo.heldUntil": " · закреплён за вами до {time}",
+  "promo.bonus.title": "Бонус за отзыв: −{n}%",
+  "promo.bonus.until": "до {date}",
+  "promo.bonus.more": "ещё {n} в профиле",
+  "promo.bonus.expiresToday": "Сгорает в течение суток",
+  "promo.bonus.expiresIn": "Сгорает через {n} дн.",
+  "promo.bonus.apply": "Применить",
+  "promo.bonus.applied": "Бонус за отзыв",
 
   // ── каталог ───────────────────────────────────────────────────────────────
   "catalog.tagline": "Выбирай и кидай в корзину",
@@ -404,7 +411,7 @@ export const ru = {
   "reviews.bonus.state.EXPIRED": "Истёк",
   "reviews.bonus.copy": "Скопировать код {code}",
   "reviews.bonus.copied": "Скопировано",
-  "reviews.bonus.howTo": "Введите код в корзине в поле «Промокод». Код одноразовый и работает только для вас.",
+  "reviews.bonus.howTo": "В корзине над полем «Промокод» появится кнопка «Применить». Код одноразовый и работает только для вас.",
   "reviews.order.title": "Оставьте отзыв — получите скидку на следующий заказ",
   "reviews.order.text": "За первый опубликованный отзыв по заказу — личный промокод на следующую покупку.",
   "reviews.account.title": "Отзывы",

@@ -16,7 +16,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isBonusCode } from "@shop/shared";
 import { useT } from "@/i18n/context";
+import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { ApiError, customerApi, type PromoPreview } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { money } from "@/lib/money";
@@ -40,6 +42,7 @@ export function PromoField({
   preview: { data: PromoPreview | null; loading: boolean };
 }) {
   const t = useT();
+  const bonuses = useMyBonuses();
   const trimmed = code.trim();
   const state: "empty" | "checking" | "ok" | "bad" = !trimmed
     ? "empty"
@@ -58,6 +61,7 @@ export function PromoField({
 
   return (
     <div className="mt-4">
+      <BonusOffer bonuses={bonuses} visible={state === "empty"} onApply={onChange} />
       <div
         className="flex items-center gap-2.5 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-4 py-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]"
         style={
@@ -97,18 +101,21 @@ export function PromoField({
         )}
       </div>
 
-      <PromoHint state={state} preview={preview.data} subtotal={subtotal} currency={currency} />
+      <PromoHint state={state} bonus={isBonusCode(code, bonuses)} preview={preview.data} subtotal={subtotal} currency={currency} />
     </div>
   );
 }
 
 function PromoHint({
   state,
+  bonus,
   preview,
   subtotal,
   currency,
 }: {
   state: "empty" | "checking" | "ok" | "bad";
+  /** The code is one of my review bonuses — said so, not just a bare discount. */
+  bonus: boolean;
   preview: PromoPreview | null;
   subtotal: number;
   currency: string;
@@ -139,6 +146,7 @@ function PromoHint({
   const discount = preview?.discountMinor ?? 0;
   return (
     <p className="mt-1.5 px-1 text-[12px] font-semibold text-[var(--ok)]">
+      {bonus ? `${t("promo.bonus.applied")} · ` : ""}
       {t("promo.discount", {
         discount: money(discount, currency),
         subtotal: money(subtotal, currency),

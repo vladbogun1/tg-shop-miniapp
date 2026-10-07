@@ -344,6 +344,13 @@ export const ru = {
   "promo.notFound": "Промокод не найден",
   "promo.discount": "Скидка {discount} из {subtotal}",
   "promo.heldUntil": " · закреплён за вами до {time}",
+  "promo.bonus.title": "Бонус за отзыв: −{n}%",
+  "promo.bonus.until": "до {date}",
+  "promo.bonus.more": "ещё {n} в профиле",
+  "promo.bonus.expiresToday": "Сгорает в течение суток",
+  "promo.bonus.expiresIn": "Сгорает через {n} дн.",
+  "promo.bonus.apply": "Применить",
+  "promo.bonus.applied": "Бонус за отзыв",
 
   // ── account ───────────────────────────────────────────────────────────────
   "account.title": "Личный кабинет",
@@ -573,7 +580,7 @@ export const ru = {
   "reviews.form.thanks": "Спасибо за отзыв!",
   "reviews.form.thanksModeration": "Спасибо! Отзыв появится на сайте после проверки.",
   "reviews.bonus.title": "Ваш бонус: −{n}% на следующий заказ",
-  "reviews.bonus.hint": "Введите промокод в корзине (нужно войти в аккаунт).",
+  "reviews.bonus.hint": "При оформлении заказа он появится над полем «Промокод» — останется нажать «Применить».",
   "reviews.bonus.code": "Промокод",
   "reviews.bonus.until": "Действует до {date}",
   "reviews.bonus.state.ACTIVE": "Активен",

@@ -8,6 +8,7 @@ import {
   dayLabel as sharedDayLabel,
   type Dictionary,
   formatDate as sharedFormatDate,
+  formatDayMonth as sharedFormatDayMonth,
   formatShortDateTime as sharedFormatDateTime,
   formatTime as sharedFormatTime,
   getActiveLocale,
@@ -42,6 +43,10 @@ function relativeLabels() {
 
 export function formatDate(iso: string): string {
   return sharedFormatDate(iso, getActiveTag());
+}
+
+export function formatDayMonth(iso: string): string {
+  return sharedFormatDayMonth(iso, getActiveTag());
 }
 
 export function formatDateTime(iso: string): string {

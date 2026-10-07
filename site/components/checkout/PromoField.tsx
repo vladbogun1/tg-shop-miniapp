@@ -21,7 +21,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isBonusCode } from "@shop/shared";
 import { useT } from "@/i18n/context";
+import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { api, isAuthFailure, type PromoPreview } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
 
@@ -43,6 +45,7 @@ export function PromoField({
   preview: { data: PromoPreview | null; loading: boolean };
 }) {
   const t = useT();
+  const bonuses = useMyBonuses();
   const trimmed = code.trim();
   const state: "empty" | "checking" | "ok" | "bad" = !trimmed
     ? "empty"
@@ -60,6 +63,7 @@ export function PromoField({
 
   return (
     <div>
+      <BonusOffer bonuses={bonuses} visible={state === "empty"} onApply={onChange} />
       <div
         className="flex items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 py-2.5 transition-colors focus-within:border-[var(--accent)]"
         style={
@@ -99,18 +103,21 @@ export function PromoField({
         )}
       </div>
 
-      <PromoHint state={state} preview={preview.data} subtotal={subtotal} currency={currency} />
+      <PromoHint state={state} bonus={isBonusCode(code, bonuses)} preview={preview.data} subtotal={subtotal} currency={currency} />
     </div>
   );
 }
 
 function PromoHint({
   state,
+  bonus,
   preview,
   subtotal,
   currency,
 }: {
   state: "empty" | "checking" | "ok" | "bad";
+  /** The code is one of my review bonuses — said so, not just a bare discount. */
+  bonus: boolean;
   preview: PromoPreview | null;
   subtotal: number;
   currency: string;
@@ -142,6 +149,7 @@ function PromoHint({
   const discount = preview?.discountMinor ?? 0;
   return (
     <p className="mt-1.5 px-1 text-[12px] font-semibold text-[var(--ok)]">
+      {bonus ? `${t("promo.bonus.applied")} · ` : ""}
       {t("promo.discount", {
         discount: fmt.money(discount, currency),
         subtotal: fmt.money(subtotal, currency),
