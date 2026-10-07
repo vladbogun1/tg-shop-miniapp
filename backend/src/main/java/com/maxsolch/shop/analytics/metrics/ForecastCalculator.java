@@ -54,7 +54,7 @@ public final class ForecastCalculator {
         int n = (int) ChronoUnit.DAYS.between(first, today) + 1;
         double[] v = new double[Math.max(1, n)];
         for (OrderFact o : facts.orders()) {
-            if (o.createdAt() == null || o.rejected() || !channel.matches(o.source())) {
+            if (o.createdAt() == null || !o.sold() || !channel.matches(o.source())) {
                 continue;
             }
             int i = (int) ChronoUnit.DAYS.between(first, LocalDate.ofInstant(o.createdAt(), zone));

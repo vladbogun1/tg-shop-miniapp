@@ -108,7 +108,7 @@ public final class FunnelCalculator {
         Map<String, Set<Long>> buyers = new HashMap<>();
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || !channel.matches(o.source())
+            if (o == null || !o.sold() || it.gift() || !channel.matches(o.source())
                     || !period.contains(o.createdAt())) {
                 continue;
             }

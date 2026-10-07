@@ -41,7 +41,15 @@ export interface SeriesPoint {
 export interface Overview {
   period: PeriodInfo;
   kpis: { soldMinor: Kpi; receivedMinor: Kpi; orders: Kpi; aovMinor: Kpi; rejectRatePct: Kpi };
-  money: { codInTransitMinor: number; codInTransitOrders: number; awaitingPaymentConfirm: number; refundedMinor: number };
+  money: {
+    codInTransitMinor: number;
+    codInTransitOrders: number;
+    awaitingPaymentConfirm: number;
+    refundedMinor: number;
+    /** Online orders not paid yet (within their 24 h) — not counted as sold. */
+    awaitingPaymentOrders: number;
+    awaitingPaymentMinor: number;
+  };
   series: SeriesPoint[];
   prevSeries: SeriesPoint[];
   categories: { name: string; units: number; revenueMinor: number; sharePct: number; liveProducts: number; unitsPerProduct: number }[];
@@ -57,6 +65,45 @@ export interface Overview {
   }[];
   heatmap: number[][];
   giveaways: { discountMinor: number; promoOrders: number; giftUnits: number; giftValueMinor: number };
+  /** Old manual transfers vs monobank, by payment scheme. */
+  schemes: SchemeRow[];
+  online: OnlinePayments;
+}
+
+export interface SchemeRow {
+  key: "ONLINE_FULL" | "ONLINE_PREPAY" | "CARD_FULL" | "CARD_PREPAY" | "NONE";
+  label: string;
+  online: boolean;
+  /** Sold orders placed in the period. */
+  orders: number;
+  soldMinor: number;
+  aovMinor: number;
+  /** Money that arrived in the period for orders of this scheme. */
+  receivedMinor: number;
+  rejected: number;
+  /** Cancelled automatically for non-payment (PAYMENT_TIMEOUT). */
+  timedOut: number;
+  /** Online orders still waiting for payment. */
+  awaiting: number;
+}
+
+export interface OnlinePayments {
+  /** First online order ever; null = none yet. */
+  since: string | null;
+  orders: number;
+  fullOrders: number;
+  prepayOrders: number;
+  paidOrders: number;
+  awaiting: number;
+  timedOut: number;
+  /** paid / (orders − awaiting). */
+  conversionPct: number | null;
+  invoices: number;
+  invoicesPaid: number;
+  invoicesFailed: number;
+  paidMinor: number;
+  refundedMinor: number;
+  feeMinor: number;
 }
 
 export interface ReorderRow {
@@ -230,6 +277,8 @@ export interface Operations {
     afterShipping: number;
     paidNotRefunded: number;
     paidNotRefundedMinor: number;
+    /** Online orders cancelled automatically for non-payment — listed by reason, not in the rate. */
+    timedOut: number;
   };
   deliveryMethods: CountRow[];
   paymentOptions: CountRow[];
@@ -241,6 +290,8 @@ export interface Today {
   toShip: number;
   /** Orders paid online that are still NEW (the admin has to confirm them). */
   awaitingPaymentConfirm: number;
+  /** Online orders not paid yet (within their 24 h); not in toApprove. */
+  awaitingPayment: number;
   soldTodayMinor: number;
   ordersToday: number;
   soldYesterdayMinor: number;

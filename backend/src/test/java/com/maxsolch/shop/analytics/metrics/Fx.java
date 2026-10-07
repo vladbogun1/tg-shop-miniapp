@@ -1,5 +1,6 @@
 package com.maxsolch.shop.analytics.metrics;
 
+import com.maxsolch.shop.analytics.metrics.MetricsFacts.InvoiceFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ItemFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ProductFact;
@@ -45,6 +46,11 @@ final class Fx {
         String promo;
         String reason;
         String reasonCode;
+        long prepayment;
+        Instant dueAt;
+        long onlinePaid;
+        Instant onlinePaidAt;
+        Instant onlineRefundAt;
 
         O(Instant created) {
             this.created = created;
@@ -113,10 +119,54 @@ final class Fx {
             return this;
         }
 
+        /** Placed with monobank payment (v3.9.0+): the 24 h deadline is set. */
+        O online(long prepaymentMinor) {
+            prepayment = prepaymentMinor;
+            dueAt = created.plusSeconds(24 * 3600);
+            return this;
+        }
+
+        /** Old manual prepayment (transfer to the card + COD). */
+        O prepayment(long minor) {
+            prepayment = minor;
+            return this;
+        }
+
+        /** A monobank invoice of {@code minor} credited at {@code at}. */
+        O paidOnline(Instant at, long minor) {
+            onlinePaid = minor;
+            onlinePaidAt = at;
+            return paid(at, received + minor);
+        }
+
+        O refundOnline(Instant at, long minor) {
+            onlineRefundAt = at;
+            refunded = minor;
+            return this;
+        }
+
+        O delivered(Instant at) {
+            status = OrderStatus.DELIVERED;
+            delivered = at;
+            received = total;
+            if (!paid) {
+                paid = true;
+                paidAt = at;
+            }
+            return this;
+        }
+
+        O rejectedAt(Instant at) {
+            status = OrderStatus.REJECTED;
+            rejectedAt = at;
+            return this;
+        }
+
         OrderFact build() {
             return new OrderFact(id, status, source, total, subtotal, discount, received, refunded, created,
                     approved, shipped, delivered, rejectedAt, paidAt, returnedAt, paid, tg, "Покупатель " + tg,
-                    "user" + tg, delivery, payment, promo, reason, reasonCode);
+                    "user" + tg, delivery, payment, promo, reason, reasonCode, prepayment, dueAt, onlinePaid,
+                    onlinePaidAt, onlineRefundAt);
         }
     }
 
@@ -155,5 +205,14 @@ final class Fx {
 
     static MetricsFacts facts(Instant now, List<OrderFact> orders, List<ItemFact> items, List<ProductFact> products) {
         return new MetricsFacts(new ArrayList<>(orders), new ArrayList<>(items), new ArrayList<>(products), List.of(), now);
+    }
+
+    static MetricsFacts facts(Instant now, List<OrderFact> orders, List<InvoiceFact> invoices) {
+        return new MetricsFacts(new ArrayList<>(orders), List.of(), List.of(), List.of(), new ArrayList<>(invoices), now);
+    }
+
+    static InvoiceFact invoice(OrderFact o, String status, long amount, Instant created, Instant applied) {
+        return new InvoiceFact(o.id(), status, amount, 0, applied == null ? 0 : amount / 100, created, applied,
+                applied != null ? applied : created);
     }
 }

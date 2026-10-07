@@ -7,6 +7,13 @@ export function uah(minor: number | null | undefined): string {
   return `${nf.format(Math.round((minor ?? 0) / 100))} ₴`;
 }
 
+/** Exact, with kopecks when there are any: "1 234,50 ₴" (bank fees, small refunds). */
+export function uahExact(minor: number | null | undefined): string {
+  const v = (minor ?? 0) / 100;
+  const digits = Math.round(minor ?? 0) % 100 === 0 ? 0 : 2;
+  return `${v.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits })} ₴`;
+}
+
 /** Compact for axes and tiles: "123 тыс ₴", "1,2 млн ₴". */
 export function uahShort(minor: number | null | undefined): string {
   const v = (minor ?? 0) / 100;

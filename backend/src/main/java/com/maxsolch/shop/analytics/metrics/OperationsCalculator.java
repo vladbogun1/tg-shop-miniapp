@@ -111,15 +111,26 @@ public final class OperationsCalculator {
 
     RejectStats rejects(List<OrderFact> inPeriod, boolean reasonCodes) {
         long rejected = 0;
+        long timedOut = 0;
+        long awaiting = 0;
         long afterShipping = 0;
         long paidNotRefunded = 0;
         long paidNotRefundedMinor = 0;
         Map<String, Long> byKey = new HashMap<>();
         for (OrderFact o : inPeriod) {
+            if (o.awaitingPayment()) {
+                awaiting++;
+                continue;
+            }
             if (!o.rejected()) {
                 continue;
             }
-            rejected++;
+            if (o.paymentTimedOut()) {
+                // an abandoned online payment, not a rejection: listed by reason, kept out of the rate
+                timedOut++;
+            } else {
+                rejected++;
+            }
             if (o.shippedAt() != null) {
                 afterShipping++;
             }
@@ -155,9 +166,9 @@ public final class OperationsCalculator {
                 rows.add(new CountRow("OTHER_TEXT", "Прочие формулировки", other));
             }
         }
-        long total = inPeriod.size();
+        long total = inPeriod.size() - timedOut - awaiting;
         return new RejectStats(rejected, total, total == 0 ? 0 : Stats.round1(rejected * 100.0 / total), reasonCodes,
-                rows, afterShipping, paidNotRefunded, paidNotRefundedMinor);
+                rows, afterShipping, paidNotRefunded, paidNotRefundedMinor, timedOut);
     }
 
     /** Free-text reason as a grouping key: lower-cased, trimmed, no punctuation; blanks are "unspecified". */

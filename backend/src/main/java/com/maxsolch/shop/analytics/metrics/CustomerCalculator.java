@@ -50,7 +50,7 @@ public final class CustomerCalculator {
 
     public Customers compute(MetricsFacts facts, MetricsPeriod period, ChannelFilter channel) {
         List<OrderFact> sold = facts.orders().stream()
-                .filter(o -> !o.rejected() && o.tgUserId() != null && o.createdAt() != null)
+                .filter(o -> o.sold() && o.tgUserId() != null && o.createdAt() != null)
                 .toList();
 
         // First order per buyer over the whole history and all channels: "new" means new to the shop.
@@ -200,11 +200,12 @@ public final class CustomerCalculator {
                 continue;
             }
             long[] a = null;
-            if (period.contains(o.paidAt())) {
+            long received = OverviewCalculator.receivedIn(o, period.from(), period.to());
+            if (received != 0) {
                 a = acc.computeIfAbsent(o.tgUserId(), k -> new long[3]);
-                a[1] += o.receivedMinor() - o.refundedMinor();
+                a[1] += received;
             }
-            if (!o.rejected() && period.contains(o.createdAt())) {
+            if (o.sold() && period.contains(o.createdAt())) {
                 a = a != null ? a : acc.computeIfAbsent(o.tgUserId(), k -> new long[3]);
                 a[0]++;
                 a[2] += o.totalMinor();
@@ -229,7 +230,7 @@ public final class CustomerCalculator {
         Map<String, long[]> acc = new HashMap<>(); // created, rejected, orders, discount, sold, newBuyers
         for (OrderFact o : orders) {
             if (o.promoCode() == null || o.promoCode().isBlank() || !channel.matches(o.source())
-                    || !period.contains(o.createdAt())) {
+                    || !period.contains(o.createdAt()) || o.awaitingPayment() || o.paymentTimedOut()) {
                 continue;
             }
             long[] a = acc.computeIfAbsent(o.promoCode().trim().toUpperCase(Locale.ROOT), k -> new long[6]);
@@ -255,7 +256,7 @@ public final class CustomerCalculator {
     List<AovBucket> aovBuckets(List<OrderFact> orders, MetricsPeriod period, ChannelFilter channel) {
         long[][] acc = new long[AOV_BOUNDS_UAH.length + 1][2];
         for (OrderFact o : orders) {
-            if (o.rejected() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
+            if (!o.sold() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
                 continue;
             }
             int i = 0;
@@ -281,7 +282,7 @@ public final class CustomerCalculator {
         long units = 0;
         for (ItemFact it : facts.items()) {
             OrderFact o = byId.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || !channel.matches(o.source())
+            if (o == null || !o.sold() || it.gift() || !channel.matches(o.source())
                     || !period.contains(o.createdAt())) {
                 continue;
             }

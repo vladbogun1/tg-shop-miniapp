@@ -2,14 +2,14 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarClock, Gift, Grid3x3, LineChart as LineIcon, Shapes, Split, TrendingUp } from "lucide-react";
+import { CalendarClock, CreditCard, Gift, Grid3x3, LineChart as LineIcon, Shapes, Split, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer } from "@/lib/motion";
-import { metricsApi, type Forecast, type Overview, type PeriodParams } from "../api";
+import { metricsApi, type Forecast, type OnlinePayments, type Overview, type PeriodParams, type SchemeRow } from "../api";
 import { ForecastChart, Heatmap, OrdersChart, RankBars, SalesChart } from "../charts";
-import { monthLabel, num, pct, uah, uahShort } from "../format";
+import { dateTime, monthLabel, num, pct, uah, uahExact, uahShort } from "../format";
 import { PREV_LABEL } from "../period";
 import { Empty, KpiTile, Note, Panel, TableWrap } from "../ui";
 
@@ -60,7 +60,7 @@ function OverviewBody({
           prevLabel={prevLabel}
           prevValue={uahShort(k.soldMinor.prev)}
           spark={o.series.map((p) => p.soldMinor)}
-          hint="Заказы, кроме отклонённых, по дате оформления"
+          hint="Заказы по дате оформления, кроме отклонённых и ещё не оплаченных онлайн (у них 24 ч на оплату)"
         />
         <KpiTile
           label="Получено"
@@ -69,7 +69,7 @@ function OverviewBody({
           prevLabel={prevLabel}
           prevValue={uahShort(k.receivedMinor.prev)}
           spark={o.series.map((p) => p.receivedMinor)}
-          hint="Деньги по дате оплаты, минус возвраты"
+          hint="Деньги по дате поступления: онлайн-оплата и предоплата — когда пришли, наложка — по отметке «Доставлен»; минус возвраты"
         />
         <KpiTile
           label="Заказов"
@@ -78,7 +78,7 @@ function OverviewBody({
           prevLabel={prevLabel}
           prevValue={num(k.orders.prev)}
           spark={o.series.map((p) => p.orders)}
-          hint="Без отклонённых"
+          hint="Без отклонённых и ещё не оплаченных онлайн"
         />
         <KpiTile label="Средний чек" value={uah(k.aovMinor.value)} kpi={k.aovMinor} prevLabel={prevLabel} prevValue={uah(k.aovMinor.prev)} />
         <KpiTile
@@ -88,7 +88,7 @@ function OverviewBody({
           goodWhenUp={false}
           prevLabel={prevLabel}
           prevValue={pct(k.rejectRatePct.prev)}
-          hint="Отклонённые от всех оформленных"
+          hint="Отклонённые от оформленных. Автоотмены за неоплату онлайн сюда не входят — они в блоке «Онлайн-оплата»"
         />
       </div>
 
@@ -100,11 +100,23 @@ function OverviewBody({
         <span>
           Оплачены, ждут подтверждения: <b className="text-[var(--text)] mx-num">{num(o.money.awaitingPaymentConfirm)}</b>
         </span>
+        {o.money.awaitingPaymentOrders > 0 && (
+          <span>
+            Ждут онлайн-оплаты (ещё не продано):{" "}
+            <b className="text-[var(--text)] mx-num">{num(o.money.awaitingPaymentOrders)}</b> на{" "}
+            <b className="text-[var(--text)] mx-num">{uah(o.money.awaitingPaymentMinor)}</b>
+          </span>
+        )}
         {o.money.refundedMinor > 0 && (
           <span>
             Возвраты за период: <b className="text-[var(--text)] mx-num">{uah(o.money.refundedMinor)}</b>
           </span>
         )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+        <SchemesPanel rows={o.schemes} />
+        <OnlinePanel p={o.online} />
       </div>
 
       <ForecastPanel forecast={forecast} error={forecastError} />
@@ -215,6 +227,94 @@ function OverviewBody({
         </Panel>
       </div>
     </motion.div>
+  );
+}
+
+function SchemesPanel({ rows }: { rows: SchemeRow[] }) {
+  return (
+    <Panel
+      title="Способы оплаты: старые и онлайн"
+      icon={Wallet}
+      hint="Перевод на карту — заказы до 07.10.2026 (v3.9.0), онлайн — через monobank. Заказы и продано — по дате оформления, получено — по дате поступления денег."
+    >
+      {rows.length === 0 ? (
+        <Empty>Заказов за период нет</Empty>
+      ) : (
+        <TableWrap>
+          <table className="mx-table">
+            <thead>
+              <tr>
+                <th>Способ</th>
+                <th className="r">Заказы</th>
+                <th className="r">Продано</th>
+                <th className="r">Чек</th>
+                <th className="r">Получено</th>
+                <th className="r">Отказы</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.key}>
+                  <td className={r.online ? "font-semibold" : undefined}>{r.label}</td>
+                  <td className="r">{num(r.orders)}</td>
+                  <td className="r">{uahShort(r.soldMinor)}</td>
+                  <td className="r">{r.orders > 0 ? uah(r.aovMinor) : "—"}</td>
+                  <td className="r">{uahShort(r.receivedMinor)}</td>
+                  <td
+                    className="r"
+                    title={r.online ? `${num(r.timedOut)} — автоотмена за неоплату, ${num(r.awaiting)} ещё ждут оплаты` : undefined}
+                  >
+                    {num(r.rejected)}
+                    {r.online && (r.timedOut > 0 || r.awaiting > 0) && (
+                      <span className="text-[var(--text-faint)]"> +{num(r.timedOut)} неопл.</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableWrap>
+      )}
+    </Panel>
+  );
+}
+
+function OnlinePanel({ p }: { p: OnlinePayments }) {
+  return (
+    <Panel
+      title="Онлайн-оплата (monobank)"
+      icon={CreditCard}
+      hint="После оплаты статус не меняется — заказ подтверждает админ. Не оплаченный за 24 ч отменяется автоматически."
+    >
+      {p.since == null ? (
+        <Empty>Онлайн-заказов ещё не было</Empty>
+      ) : p.orders === 0 && p.invoices === 0 && p.paidMinor === 0 ? (
+        <Empty>За период онлайн-заказов нет (первый — {dateTime(p.since)})</Empty>
+      ) : (
+        <div className="flex flex-col gap-3 text-[13px]">
+          <Row
+            label="Оформлено с онлайн-оплатой"
+            value={num(p.orders)}
+            sub={`полная оплата ${num(p.fullOrders)} · предоплата + наложка ${num(p.prepayOrders)}`}
+          />
+          <Row
+            label="Оплатили"
+            value={p.conversionPct != null ? pct(p.conversionPct) : "—"}
+            sub={`${num(p.paidOrders)} заказов · не оплатили за сутки ${num(p.timedOut)} · ещё ждут ${num(p.awaiting)}`}
+          />
+          <Row
+            label="Счета monobank"
+            value={num(p.invoices)}
+            sub={`оплачено ${num(p.invoicesPaid)} · отклонено или истекло ${num(p.invoicesFailed)}`}
+          />
+          <div className="border-t border-[var(--line)] pt-2 flex flex-col gap-3">
+            <Row label="Пришло онлайн" value={uah(p.paidMinor)} />
+            <Row label="Возвраты на карту" value={uahExact(p.refundedMinor)} />
+            <Row label="Комиссия банка" value={uahExact(p.feeMinor)} sub={p.paidMinor > 0 ? `${pct((p.feeMinor * 100) / p.paidMinor, 2)} от оплат` : undefined} />
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }
 

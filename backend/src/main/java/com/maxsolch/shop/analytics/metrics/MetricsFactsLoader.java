@@ -21,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>Columns that another work package adds ({@code orders.refunded_minor}, {@code returned_at},
  * {@code reject_reason_code}) are probed once in {@code information_schema}: until the migration
- * that adds them is deployed they read as 0/null instead of breaking the page.
+ * that adds them is deployed they read as 0/null instead of breaking the page. The same goes for
+ * the online-payment columns and {@code payment_invoices} (V39).
  *
  * <p>The snapshot is memoised for a few seconds: the metrics page fires several tab requests at
  * once and the board's "Today" strip polls, all reading the same rows.
@@ -47,10 +48,10 @@ public class MetricsFactsLoader {
         MetricsFacts cached = memo;
         if (cached != null && nowMs - memoAt < MEMO_MILLIS) {
             return new MetricsFacts(cached.orders(), cached.items(), cached.products(), cached.users(),
-                    Instant.now());
+                    cached.invoices(), Instant.now());
         }
         MetricsFacts fresh = new MetricsFacts(loadOrders(), loadItems(), loadProducts(), loadUsers(),
-                Instant.now());
+                loadInvoices(), Instant.now());
         memo = fresh;
         memoAt = nowMs;
         return fresh;
@@ -67,17 +68,41 @@ public class MetricsFactsLoader {
         });
     }
 
+    /** Whether {@code payment_invoices} exists (V39, online payments). */
+    boolean hasInvoices() {
+        return columnCache.computeIfAbsent("table:payment_invoices", c -> {
+            Integer n = jdbc.queryForObject(
+                    "select count(*) from information_schema.tables "
+                            + "where table_schema = database() and table_name = 'payment_invoices'",
+                    Integer.class);
+            return n != null && n > 0;
+        });
+    }
+
     private List<MetricsFacts.OrderFact> loadOrders() {
         String refunded = hasOrderColumn("refunded_minor") ? "o.refunded_minor" : "0";
         String returnedAt = hasOrderColumn("returned_at") ? "o.returned_at" : "null";
         String reasonCode = hasOrderColumn("reject_reason_code") ? "o.reject_reason_code" : "null";
+        String prepayment = hasOrderColumn("prepayment_minor") ? "o.prepayment_minor" : "0";
+        String dueAt = hasOrderColumn("payment_due_at") ? "o.payment_due_at" : "null";
+        boolean invoices = hasInvoices();
+        // Credited monobank invoices per order: how much came online, when, and the last refund.
+        String online = invoices
+                ? "left join (select order_id, sum(amount_minor) online_paid_minor, min(applied_at) online_paid_at, "
+                + "max(case when refunded_minor > 0 then updated_at end) online_refund_at "
+                + "from payment_invoices where applied_at is not null group by order_id) pi on pi.order_id = o.id "
+                : "";
         String sql = "select bin_to_uuid(o.id) id, o.status, o.source, o.total_minor, o.subtotal_minor, "
                 + "o.discount_minor, o.received_minor, " + refunded + " refunded_minor, "
                 + "o.created_at, o.approved_at, o.shipped_at, o.delivered_at, o.rejected_at, o.paid_at, "
                 + returnedAt + " returned_at, o.paid, o.tg_user_id, o.customer_name, "
                 + "o.tg_username, o.delivery_method, o.payment_option_title, o.promo_code, o.reject_reason, "
-                + reasonCode + " reject_reason_code "
-                + "from orders o order by o.created_at";
+                + reasonCode + " reject_reason_code, " + prepayment + " prepayment_minor, "
+                + dueAt + " payment_due_at, "
+                + (invoices ? "coalesce(pi.online_paid_minor, 0)" : "0") + " online_paid_minor, "
+                + (invoices ? "pi.online_paid_at" : "null") + " online_paid_at, "
+                + (invoices ? "pi.online_refund_at" : "null") + " online_refund_at "
+                + "from orders o " + online + "order by o.created_at";
         return jdbc.query(sql, (rs, i) -> new MetricsFacts.OrderFact(
                 rs.getString("id"),
                 OrderStatus.valueOf(rs.getString("status")),
@@ -102,7 +127,30 @@ public class MetricsFactsLoader {
                 rs.getString("payment_option_title"),
                 rs.getString("promo_code"),
                 rs.getString("reject_reason"),
-                rs.getString("reject_reason_code")));
+                rs.getString("reject_reason_code"),
+                rs.getLong("prepayment_minor"),
+                ts(rs, "payment_due_at"),
+                rs.getLong("online_paid_minor"),
+                ts(rs, "online_paid_at"),
+                ts(rs, "online_refund_at")));
+    }
+
+    private List<MetricsFacts.InvoiceFact> loadInvoices() {
+        if (!hasInvoices()) {
+            return List.of();
+        }
+        return jdbc.query("select bin_to_uuid(i.order_id) order_id, i.status, i.amount_minor, i.refunded_minor, "
+                        + "i.fee_minor, i.created_at, i.applied_at, i.updated_at from payment_invoices i "
+                        + "order by i.created_at",
+                (rs, i) -> new MetricsFacts.InvoiceFact(
+                        rs.getString("order_id"),
+                        rs.getString("status"),
+                        rs.getLong("amount_minor"),
+                        rs.getLong("refunded_minor"),
+                        rs.getLong("fee_minor"),
+                        ts(rs, "created_at"),
+                        ts(rs, "applied_at"),
+                        ts(rs, "updated_at")));
     }
 
     private List<MetricsFacts.ItemFact> loadItems() {

@@ -85,7 +85,7 @@ public final class ReorderCalculator {
         Map<String, Sales> byVariant = new HashMap<>();
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || o.createdAt() == null) {
+            if (o == null || !o.sold() || it.gift() || o.createdAt() == null) {
                 continue;
             }
             double age = Duration.between(o.createdAt(), now).toMinutes() / 1440.0;

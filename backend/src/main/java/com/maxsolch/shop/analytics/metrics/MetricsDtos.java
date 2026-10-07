@@ -7,11 +7,15 @@ import java.util.List;
  * Payloads of the metrics page tabs ({@code /api/admin/metrics/*}). Money is integer minor units
  * (kopecks); time buckets are cut in the shop's timezone. Definitions used throughout:
  * <ul>
- *   <li><b>sold</b> — {@code total_minor} (after the promo discount) of orders that are not REJECTED,
- *       by creation date;</li>
- *   <li><b>received</b> — {@code received_minor} by {@code paid_at}, minus refunds by return date;</li>
- *   <li>units/revenue per product exclude REJECTED orders and gift lines; item revenue is the line
- *       price scaled by the order's discount share.</li>
+ *   <li><b>sold</b> — {@code total_minor} (after the promo discount) of orders that are not REJECTED
+ *       and not an online (monobank) order still waiting for its payment, by creation date
+ *       ({@link MetricsFacts.OrderFact#sold()});</li>
+ *   <li><b>received</b> — money by the date it arrived: the online / prepaid part by the payment
+ *       date, the cash-on-delivery rest by the delivery date, minus refunds by their date;</li>
+ *   <li><b>rejections</b> — among decided orders; online orders cancelled automatically for
+ *       non-payment (PAYMENT_TIMEOUT) are abandoned payments, reported in {@link OnlinePayments};</li>
+ *   <li>units/revenue per product count sold orders only, without gift lines; item revenue is the
+ *       line price scaled by the order's discount share.</li>
  * </ul>
  */
 public final class MetricsDtos {
@@ -45,7 +49,9 @@ public final class MetricsDtos {
                            List<CategoryRow> categories,
                            List<ChannelRow> channels,
                            long[][] heatmap,
-                           Giveaways giveaways) {
+                           Giveaways giveaways,
+                           List<SchemeRow> schemes,
+                           OnlinePayments online) {
     }
 
     public record Kpis(Kpi soldMinor, Kpi receivedMinor, Kpi orders, Kpi aovMinor, Kpi rejectRatePct) {
@@ -53,10 +59,45 @@ public final class MetricsDtos {
 
     /**
      * State right now (not period-bound): cash still travelling as cash-on-delivery, paid orders
-     * waiting for the admin's confirmation, and refunds in the period.
+     * waiting for the admin's confirmation, online orders not paid yet (within their 24 h), and
+     * refunds in the period.
      */
     public record MoneyNow(long codInTransitMinor, long codInTransitOrders, long awaitingPaymentConfirm,
-                           long refundedMinor) {
+                           long refundedMinor, long awaitingPaymentOrders, long awaitingPaymentMinor) {
+    }
+
+    /**
+     * One way of paying in the period — the old manual transfer to the card and monobank apart.
+     *
+     * @param orders     sold orders placed in the period
+     * @param receivedMinor money that arrived in the period for orders of this scheme (any creation date)
+     * @param timedOut   cancelled automatically for non-payment
+     * @param awaiting   online orders still waiting for payment
+     */
+    public record SchemeRow(String key, String label, boolean online, long orders, long soldMinor, long aovMinor,
+                            long receivedMinor, long rejected, long timedOut, long awaiting) {
+    }
+
+    /**
+     * monobank in the period.
+     *
+     * @param since           first online order ever (null = none yet)
+     * @param orders          orders placed with online payment
+     * @param paidOrders      of them paid (online, or marked by the admin)
+     * @param awaiting        of them still within the 24 h and unpaid
+     * @param timedOut        of them cancelled automatically (PAYMENT_TIMEOUT)
+     * @param conversionPct   paid / (orders − awaiting); null without decided orders
+     * @param invoices        invoices issued in the period (one order may get several)
+     * @param invoicesPaid    invoices credited in the period
+     * @param invoicesFailed  issued in the period and ended unpaid (declined / expired)
+     * @param paidMinor       credited in the period (by credit date)
+     * @param refundedMinor   refunded through monobank in the period
+     * @param feeMinor        the bank's fee on the credited invoices
+     */
+    public record OnlinePayments(Instant since, long orders, long fullOrders, long prepayOrders, long paidOrders,
+                                 long awaiting, long timedOut, Double conversionPct, long invoices,
+                                 long invoicesPaid, long invoicesFailed, long paidMinor, long refundedMinor,
+                                 long feeMinor) {
     }
 
     public record SeriesPoint(String bucket, long orders, long soldMinor, long receivedMinor, long rejected) {
@@ -266,9 +307,15 @@ public final class MetricsDtos {
      *                           column exists, by the normalised free-text reason
      * @param afterShipping      rejected after being shipped (returned by the post)
      * @param paidNotRefundedMinor money received on rejected orders without a recorded refund
+     * @param rejected           rejected by the shop / the customer, without {@code timedOut}
+     * @param total              decided orders: without online orders still waiting for payment and
+     *                           without {@code timedOut}
+     * @param timedOut           online orders cancelled automatically for non-payment (PAYMENT_TIMEOUT);
+     *                           they are listed in {@code byReason} but kept out of the rate
      */
     public record RejectStats(long rejected, long total, double ratePct, boolean codes, List<CountRow> byReason,
-                              long afterShipping, long paidNotRefunded, long paidNotRefundedMinor) {
+                              long afterShipping, long paidNotRefunded, long paidNotRefundedMinor,
+                              long timedOut) {
     }
 
     public record CountRow(String key, String label, long count) {
@@ -281,11 +328,12 @@ public final class MetricsDtos {
 
     /**
      * The board's "Today" strip: work queues and today's money vs yesterday.
-     * {@code awaitingPaymentConfirm} = orders paid online that are still NEW.
+     * {@code awaitingPaymentConfirm} = orders paid online that are still NEW; {@code toApprove}
+     * leaves out online orders still waiting for payment, counted in {@code awaitingPayment}.
      *
      * @param soldYesterdaySameTime sold yesterday up to the current time of day (fair comparison)
      */
-    public record Today(long toApprove, long toShip, long awaitingPaymentConfirm,
+    public record Today(long toApprove, long toShip, long awaitingPaymentConfirm, long awaitingPayment,
                         long soldTodayMinor, long ordersToday, long soldYesterdayMinor,
                         long soldYesterdaySameTimeMinor, long receivedTodayMinor, long receivedYesterdayMinor,
                         long codInTransitMinor, long runningOut, List<ReorderRow> reorderTop,

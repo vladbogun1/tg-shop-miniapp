@@ -72,7 +72,9 @@ function OperationsBody({ o }: { o: Operations }) {
       <Panel
         title="Причины отказов"
         icon={XCircle}
-        hint={`${num(r.rejected)} из ${num(r.total)} заказов периода отклонены (${pct(r.ratePct)})`}
+        hint={`${num(r.rejected)} из ${num(r.total)} заказов периода отклонены (${pct(r.ratePct)})${
+          r.timedOut > 0 ? `; ещё ${num(r.timedOut)} отменены автоматически за неоплату онлайн — в процент не входят` : ""
+        }`}
       >
         {r.byReason.length === 0 ? (
           <Empty>Отказов за период нет</Empty>

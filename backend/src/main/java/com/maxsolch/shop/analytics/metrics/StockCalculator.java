@@ -46,7 +46,7 @@ public final class StockCalculator {
         Instant cut30 = now.minus(Duration.ofDays(30));
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || o.createdAt() == null) {
+            if (o == null || !o.sold() || it.gift() || o.createdAt() == null) {
                 continue;
             }
             lastSale.merge(it.productId(), o.createdAt(), (a, b) -> a.isAfter(b) ? a : b);
@@ -155,7 +155,7 @@ public final class StockCalculator {
         Map<String, String> snapshotTitle = new HashMap<>();
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || !channel.matches(o.source())
+            if (o == null || !o.sold() || it.gift() || !channel.matches(o.source())
                     || !period.contains(o.createdAt())) {
                 continue;
             }

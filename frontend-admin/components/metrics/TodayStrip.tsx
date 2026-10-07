@@ -46,7 +46,14 @@ function Strip({ t }: { t: Today }) {
     <div className="mx-root mb-4">
       <div className="thin-scroll -mx-1 overflow-x-auto px-1 pb-1">
         <div className="grid min-w-[760px] grid-cols-7 gap-2">
-          <Cell href="/?status=NEW" icon={Hourglass} label="К одобрению" value={num(t.toApprove)} alert={t.toApprove > 0} />
+          <Cell
+            href="/?status=NEW"
+            icon={Hourglass}
+            label="К одобрению"
+            value={num(t.toApprove)}
+            alert={t.toApprove > 0}
+            sub={t.awaitingPayment > 0 ? `ещё ${num(t.awaitingPayment)} ждут онлайн-оплаты` : undefined}
+          />
           <Cell href="/dispatch" icon={Send} label="К отправке" value={num(t.toShip)} alert={t.toShip > 0} />
           <Cell
             href="/?payment=paid"

@@ -6,10 +6,14 @@ import com.maxsolch.shop.analytics.metrics.MetricsDtos.Giveaways;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Kpi;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Kpis;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.MoneyNow;
+import com.maxsolch.shop.analytics.metrics.MetricsDtos.OnlinePayments;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Overview;
+import com.maxsolch.shop.analytics.metrics.MetricsDtos.SchemeRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.SeriesPoint;
+import com.maxsolch.shop.analytics.metrics.MetricsFacts.InvoiceFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ItemFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
+import com.maxsolch.shop.analytics.metrics.MetricsFacts.PaymentScheme;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ProductFact;
 import com.maxsolch.shop.domain.OrderStatus;
 
@@ -18,6 +22,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -36,12 +41,24 @@ public final class OverviewCalculator {
         this.zone = zone;
     }
 
-    /** Sum of money and counts over one period. */
-    record Totals(long sold, long received, long orders, long rejected, long created) {
+    /**
+     * Sum of money and counts over one period.
+     *
+     * @param created  orders placed that are decided: without online orders still waiting for
+     *                 payment and without automatic cancellations for non-payment
+     * @param awaiting online orders placed in the period and still unpaid (not a sale yet)
+     * @param timedOut online orders placed in the period and cancelled for non-payment (PAYMENT_TIMEOUT)
+     */
+    record Totals(long sold, long received, long orders, long rejected, long created, long awaiting,
+                  long timedOut) {
         long aov() {
             return orders == 0 ? 0 : sold / orders;
         }
 
+        /**
+         * Rejections by the shop or the customer among decided orders. An unpaid online checkout that
+         * expired is an abandoned payment, not a rejection — it is shown in the online-payment block.
+         */
         double rejectRate() {
             return created == 0 ? 0 : Stats.round1(rejected * 100.0 / created);
         }
@@ -53,35 +70,54 @@ public final class OverviewCalculator {
         long count = 0;
         long rejected = 0;
         long created = 0;
+        long awaiting = 0;
+        long timedOut = 0;
         for (OrderFact o : orders) {
             if (!channel.matches(o.source())) {
                 continue;
             }
             if (in(o.createdAt(), from, to)) {
-                created++;
-                if (o.rejected()) {
-                    rejected++;
+                if (o.awaitingPayment()) {
+                    awaiting++;
+                } else if (o.paymentTimedOut()) {
+                    timedOut++;
                 } else {
-                    sold += o.totalMinor();
-                    count++;
+                    created++;
+                    if (o.rejected()) {
+                        rejected++;
+                    } else {
+                        sold += o.totalMinor();
+                        count++;
+                    }
                 }
             }
-            if (in(o.paidAt(), from, to)) {
-                received += o.receivedMinor();
-            }
-            if (o.refundedMinor() > 0 && in(refundedAt(o), from, to)) {
-                received -= o.refundedMinor();
-            }
+            received += receivedIn(o, from, to);
         }
-        return new Totals(sold, received, count, rejected, created);
+        return new Totals(sold, received, count, rejected, created, awaiting, timedOut);
     }
 
-    /** When a refund happened: the return date, else the rejection, else the payment. */
-    static Instant refundedAt(OrderFact o) {
-        if (o.returnedAt() != null) {
-            return o.returnedAt();
+    /**
+     * Money of one order that arrived in [from, to): the online / prepaid part by its payment date,
+     * the cash-on-delivery rest by the delivery date, minus refunds by their date.
+     */
+    static long receivedIn(OrderFact o, Instant from, Instant to) {
+        long[] parts = o.receivedParts();
+        long sum = 0;
+        if (parts[0] != 0 && in(o.upfrontAt(), from, to)) {
+            sum += parts[0];
         }
-        return o.rejectedAt() != null ? o.rejectedAt() : o.paidAt();
+        if (parts[1] != 0 && in(o.deliveredAt(), from, to)) {
+            sum += parts[1];
+        }
+        if (o.refundedMinor() > 0 && in(o.refundedAt(), from, to)) {
+            sum -= o.refundedMinor();
+        }
+        return sum;
+    }
+
+    /** When a refund happened: the return date, the monobank refund, the rejection, the payment. */
+    static Instant refundedAt(OrderFact o) {
+        return o.refundedAt();
     }
 
     static boolean in(Instant t, Instant from, Instant to) {
@@ -93,7 +129,7 @@ public final class OverviewCalculator {
         List<OrderFact> orders = facts.orders();
         Totals cur = totals(orders, channel, period.from(), period.to());
         Totals prev = totals(orders, channel, period.prevFrom(), period.prevTo());
-        boolean prevData = prev.created() > 0 || prev.received() != 0;
+        boolean prevData = prev.created() > 0 || prev.received() != 0 || prev.awaiting() > 0;
 
         Kpis kpis = new Kpis(
                 Kpi.of(cur.sold(), prev.sold(), prevData),
@@ -106,6 +142,8 @@ public final class OverviewCalculator {
         long codOrders = 0;
         long awaiting = 0;
         long refunded = 0;
+        long unpaid = 0;
+        long unpaidMinor = 0;
         for (OrderFact o : orders) {
             if (!channel.matches(o.source())) {
                 continue;
@@ -117,7 +155,11 @@ public final class OverviewCalculator {
             if (awaitingConfirmation(o)) {
                 awaiting++;
             }
-            if (o.refundedMinor() > 0 && period.contains(refundedAt(o))) {
+            if (o.awaitingPayment()) {
+                unpaid++;
+                unpaidMinor += o.totalMinor();
+            }
+            if (o.refundedMinor() > 0 && period.contains(o.refundedAt())) {
                 refunded += o.refundedMinor();
             }
         }
@@ -125,13 +167,122 @@ public final class OverviewCalculator {
         return new Overview(
                 MetricsDtos.PeriodInfo.of(period, channel),
                 kpis,
-                new MoneyNow(codInTransit, codOrders, awaiting, refunded),
+                new MoneyNow(codInTransit, codOrders, awaiting, refunded, unpaid, unpaidMinor),
                 series(orders, channel, period.from(), period.to(), period.granularity()),
                 series(orders, channel, period.prevFrom(), period.prevTo(), period.granularity()),
                 categories(facts, period, channel),
                 channels(orders, period, visitorsByChannel),
                 heatmap(orders, period, channel),
-                giveaways(facts, period, channel));
+                giveaways(facts, period, channel),
+                schemes(orders, period, channel),
+                onlinePayments(facts, period, channel));
+    }
+
+    /**
+     * Old manual transfers vs monobank side by side: orders by creation date (sold / rejected /
+     * abandoned / still waiting) and money by the date it arrived.
+     */
+    static List<SchemeRow> schemes(List<OrderFact> orders, MetricsPeriod period, ChannelFilter channel) {
+        Map<PaymentScheme, long[]> acc = new EnumMap<>(PaymentScheme.class);
+        // sold orders, sold, received, rejected, timed out, awaiting payment
+        for (OrderFact o : orders) {
+            if (!channel.matches(o.source())) {
+                continue;
+            }
+            long received = receivedIn(o, period.from(), period.to());
+            boolean placed = period.contains(o.createdAt());
+            if (!placed && received == 0) {
+                continue;
+            }
+            long[] a = acc.computeIfAbsent(o.scheme(), k -> new long[6]);
+            a[2] += received;
+            if (!placed) {
+                continue;
+            }
+            if (o.awaitingPayment()) {
+                a[5]++;
+            } else if (o.paymentTimedOut()) {
+                a[4]++;
+            } else if (o.rejected()) {
+                a[3]++;
+            } else {
+                a[0]++;
+                a[1] += o.totalMinor();
+            }
+        }
+        List<SchemeRow> out = new ArrayList<>();
+        acc.forEach((scheme, a) -> out.add(new SchemeRow(scheme.name(), scheme.label, scheme.online(),
+                a[0], a[1], a[0] == 0 ? 0 : a[1] / a[0], a[2], a[3], a[4], a[5])));
+        return out;
+    }
+
+    /**
+     * monobank payments in the period: orders placed with online payment and how many got paid,
+     * invoices issued and how they ended, money credited, refunded and the bank's fee.
+     */
+    static OnlinePayments onlinePayments(MetricsFacts facts, MetricsPeriod period, ChannelFilter channel) {
+        Map<String, OrderFact> byId = facts.orderById();
+        long placed = 0;
+        long paidOrders = 0;
+        long awaiting = 0;
+        long timedOut = 0;
+        long full = 0;
+        long prepay = 0;
+        Instant since = null;
+        for (OrderFact o : facts.orders()) {
+            if (!o.online() || !channel.matches(o.source())) {
+                continue;
+            }
+            if (since == null || o.createdAt() != null && o.createdAt().isBefore(since)) {
+                since = o.createdAt();
+            }
+            if (!period.contains(o.createdAt())) {
+                continue;
+            }
+            placed++;
+            if (o.scheme() == PaymentScheme.ONLINE_PREPAY) {
+                prepay++;
+            } else {
+                full++;
+            }
+            if (o.onlinePaidMinor() > 0 || o.paid() || o.receivedMinor() > 0) {
+                paidOrders++;
+            } else if (o.awaitingPayment()) {
+                awaiting++;
+            } else if (o.paymentTimedOut()) {
+                timedOut++;
+            }
+        }
+        long invoices = 0;
+        long credited = 0;
+        long failed = 0;
+        long creditedMinor = 0;
+        long refundedMinor = 0;
+        long feeMinor = 0;
+        for (InvoiceFact inv : facts.invoices()) {
+            OrderFact o = byId.get(inv.orderId());
+            if (o != null && !channel.matches(o.source())) {
+                continue;
+            }
+            if (period.contains(inv.createdAt())) {
+                invoices++;
+                if (inv.failedOrExpired()) {
+                    failed++;
+                }
+            }
+            if (inv.credited() && period.contains(inv.appliedAt())) {
+                credited++;
+                creditedMinor += inv.amountMinor();
+                feeMinor += inv.feeMinor();
+            }
+            if (inv.refundedMinor() > 0 && period.contains(inv.updatedAt())) {
+                refundedMinor += inv.refundedMinor();
+            }
+        }
+        long decided = placed - awaiting;
+        Double conversion = decided == 0 ? null : Stats.round1(paidOrders * 100.0 / decided);
+        return new OnlinePayments(since, placed, full, prepay, paidOrders, awaiting, timedOut, conversion,
+                invoices, credited, failed, creditedMinor, refundedMinor, feeMinor);
     }
 
     /**
@@ -152,7 +303,7 @@ public final class OverviewCalculator {
             if (!channel.matches(o.source())) {
                 continue;
             }
-            if (in(o.createdAt(), from, to)) {
+            if (in(o.createdAt(), from, to) && !o.awaitingPayment() && !o.paymentTimedOut()) {
                 long[] a = acc.computeIfAbsent(Buckets.key(o.createdAt(), g, zone), k -> new long[4]);
                 if (o.rejected()) {
                     a[3]++;
@@ -161,10 +312,14 @@ public final class OverviewCalculator {
                     a[1] += o.totalMinor();
                 }
             }
-            if (in(o.paidAt(), from, to)) {
-                acc.computeIfAbsent(Buckets.key(o.paidAt(), g, zone), k -> new long[4])[2] += o.receivedMinor();
+            long[] parts = o.receivedParts();
+            if (parts[0] != 0 && in(o.upfrontAt(), from, to)) {
+                acc.computeIfAbsent(Buckets.key(o.upfrontAt(), g, zone), k -> new long[4])[2] += parts[0];
             }
-            Instant refundAt = refundedAt(o);
+            if (parts[1] != 0 && in(o.deliveredAt(), from, to)) {
+                acc.computeIfAbsent(Buckets.key(o.deliveredAt(), g, zone), k -> new long[4])[2] += parts[1];
+            }
+            Instant refundAt = o.refundedAt();
             if (o.refundedMinor() > 0 && in(refundAt, from, to)) {
                 acc.computeIfAbsent(Buckets.key(refundAt, g, zone), k -> new long[4])[2] -= o.refundedMinor();
             }
@@ -182,7 +337,7 @@ public final class OverviewCalculator {
         long totalRevenue = 0;
         for (ItemFact it : facts.items()) {
             OrderFact o = byId.get(it.orderId());
-            if (o == null || o.rejected() || it.gift() || !channel.matches(o.source())
+            if (o == null || !o.sold() || it.gift() || !channel.matches(o.source())
                     || !period.contains(o.createdAt())) {
                 continue;
             }
@@ -232,7 +387,8 @@ public final class OverviewCalculator {
             long rejected = 0;
             Set<Long> buyers = new HashSet<>();
             for (OrderFact o : orders) {
-                if (!source.equals(o.source()) || !period.contains(o.createdAt())) {
+                if (!source.equals(o.source()) || !period.contains(o.createdAt())
+                        || o.awaitingPayment() || o.paymentTimedOut()) {
                     continue;
                 }
                 created++;
@@ -274,7 +430,7 @@ public final class OverviewCalculator {
         long promoOrders = 0;
         Map<String, OrderFact> byId = facts.orderById();
         for (OrderFact o : facts.orders()) {
-            if (o.rejected() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
+            if (!o.sold() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
                 continue;
             }
             discount += o.discountMinor();
@@ -290,7 +446,7 @@ public final class OverviewCalculator {
                 continue;
             }
             OrderFact o = byId.get(it.orderId());
-            if (o == null || o.rejected() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
+            if (o == null || !o.sold() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
                 continue;
             }
             giftUnits += it.quantity();

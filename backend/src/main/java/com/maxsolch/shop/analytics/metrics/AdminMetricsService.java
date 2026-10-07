@@ -107,9 +107,12 @@ public class AdminMetricsService {
         long toApprove = 0;
         long toShip = 0;
         long awaiting = 0;
+        long unpaid = 0;
         long cod = 0;
         for (MetricsFacts.OrderFact o : facts.orders()) {
-            if (o.status() == OrderStatus.NEW) {
+            if (o.awaitingPayment()) {
+                unpaid++;
+            } else if (o.status() == OrderStatus.NEW) {
                 toApprove++;
             } else if (o.status() == OrderStatus.APPROVED) {
                 toShip++;
@@ -123,7 +126,7 @@ public class AdminMetricsService {
 
         List<ReorderRow> soon = runningOut(facts, interest30(now));
         MetricsDtos.MonthForecast month = new ForecastCalculator(zone).compute(facts, ChannelFilter.ALL).month();
-        return new MetricsDtos.Today(toApprove, toShip, awaiting,
+        return new MetricsDtos.Today(toApprove, toShip, awaiting, unpaid,
                 today.sold(), today.orders(), yesterday.sold(), ySameTime.sold(),
                 today.received(), yesterday.received(), cod, soon.size(),
                 soon.size() > 3 ? soon.subList(0, 3) : soon, month);
