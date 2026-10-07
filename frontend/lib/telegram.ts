@@ -202,6 +202,12 @@ interface WebApp {
   };
   /** Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath. */
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  /**
+   * Bot API 8.0+: the client's own "download file" dialog (https URL only). Older clients throw
+   * WebAppMethodUnsupported; `callback(accepted)` says whether the customer confirmed it.
+   */
+  downloadFile?: (params: { url: string; file_name: string }, callback?: (accepted: boolean) => void) => void;
+  isVersionAtLeast?: (version: string) => boolean;
   onEvent?: (event: string, cb: () => void) => void;
   offEvent?: (event: string, cb: () => void) => void;
   /** Bot API 6.1+: the native "back" arrow in the header (and Android's hardware back). */
@@ -310,6 +316,31 @@ export function openExternalLink(url: string): void {
   const tab = window.open(url, "_blank");
   if (tab) tab.opener = null;
   else window.location.href = url;
+}
+
+/**
+ * Downloads a file (a receipt PDF) from inside the Mini App.
+ *
+ * A webview ignores `<a download>`, and a link carrying an Authorization header is impossible here,
+ * so the URL must be self-authorising (a signed link). Telegram 8.0+ shows its native download
+ * dialog (`WebApp.downloadFile`); older clients — and anything that throws — get the URL opened
+ * in the browser over the Mini App ({@link openExternalLink}), which downloads it there.
+ */
+export function downloadFile(url: string, fileName: string): void {
+  const wa = webApp();
+  const supported =
+    !!wa?.initData &&
+    typeof wa.downloadFile === "function" &&
+    (typeof wa.isVersionAtLeast !== "function" || wa.isVersionAtLeast("8.0"));
+  if (supported && url.startsWith("https://")) {
+    try {
+      wa!.downloadFile!({ url, file_name: fileName });
+      return;
+    } catch {
+      /* unsupported after all — open it in the browser */
+    }
+  }
+  openExternalLink(url);
 }
 
 /**

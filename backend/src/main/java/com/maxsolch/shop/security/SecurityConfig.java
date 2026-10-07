@@ -78,6 +78,9 @@ public class SecurityConfig {
                         // Private attachments: the signed, expiring link in the query string IS the
                         // authorisation (an <img> tag cannot send a bearer token). See MediaSigner.
                         .requestMatchers(HttpMethod.GET, "/api/media").permitAll()
+                        // Receipt PDFs: same idea — a signed, 10-minute link (ReceiptSigner), so the
+                        // Mini App's downloadFile and a plain <a href> work without a token.
+                        .requestMatchers(HttpMethod.GET, "/api/receipts/file").permitAll()
                         // WebSocket handshake (STOMP auth happens in the ChannelInterceptor)
                         .requestMatchers("/ws/**").permitAll()
                         // Customer endpoints

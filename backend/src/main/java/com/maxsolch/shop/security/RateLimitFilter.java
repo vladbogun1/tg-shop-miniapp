@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li><b>uploads</b> — {@value #UPLOAD_LIMIT}/min, so nobody fills the object store.</li>
  *   <li><b>public reads</b> — {@value #PUBLIC_LIMIT}/min for the unauthenticated catalog and Nova
  *       Poshta endpoints (the bbox one can return 2000 rows per call).</li>
+ *   <li><b>receipt downloads</b> — {@value #RECEIPT_FILE_LIMIT}/min for {@code /api/receipts/file}
+ *       (each one is a call to monobank).</li>
  * </ul>
  *
  * <p>Counting is per client IP as resolved by {@link ClientIp}: the right-most untrusted address of
@@ -115,6 +117,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .expireAfterWrite(Duration.ofMinutes(ORDER_CREATE_WINDOW_MINUTES))
             .build();
 
+    /**
+     * GET /api/receipts/file per IP: every call fetches a PDF from monobank, whose own limits are
+     * tight. A person downloads a few receipts; this caps a loop on a still-valid link.
+     */
+    private static final int RECEIPT_FILE_LIMIT = 20;
+
+    private final Cache<String, AtomicInteger> receiptFiles = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(Duration.ofMinutes(1))
+            .build();
+
     /** POST /api/me/support/** per IP (questions, messages, read/close): {@value #SUPPORT_POST_LIMIT}/min. */
     private static final int SUPPORT_POST_LIMIT = 30;
 
@@ -169,6 +182,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (path.startsWith("/api/auth/")) {
             // Admin password / admin Telegram login (and anything new under /api/auth): strict.
             return new Bucket(authAttempts, AUTH_LIMIT, AUTH_WINDOW_MINUTES * 60);
+        }
+        if (path.equals("/api/receipts/file")) {
+            return new Bucket(receiptFiles, RECEIPT_FILE_LIMIT, 60);
         }
         if (path.startsWith("/api/me/support/") && "POST".equalsIgnoreCase(method)) {
             // Support: the per-customer limits (settings «Поддержка») sit behind this per-IP brake.

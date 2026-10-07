@@ -137,6 +137,66 @@ public class MonobankClient {
         call("POST", "/api/merchant/invoice/remove", Map.of("invoiceId", invoiceId));
     }
 
+    /**
+     * One fiscal receipt of an invoice (PRRO — Вчасно.Каса / Checkbox / monopay).
+     *
+     * @param type   sale | return
+     * @param status new | process | done | failed
+     * @param file   base64 PDF; usually only once {@code done}
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public record FiscalCheck(String id, String type, String status, String statusDescription, String taxUrl,
+                              String file, String fiscalizationSource) {
+
+        public boolean isDone() {
+            return "done".equalsIgnoreCase(status);
+        }
+
+        public boolean isFailed() {
+            return "failed".equalsIgnoreCase(status);
+        }
+
+        public boolean isReturn() {
+            return "return".equalsIgnoreCase(type);
+        }
+    }
+
+    /** {@code GET /api/merchant/invoice/fiscal-checks} — empty when fiscalisation is off. */
+    public List<FiscalCheck> fiscalChecks(String invoiceId) {
+        JsonNode res = call("GET", "/api/merchant/invoice/fiscal-checks?invoiceId=" + enc(invoiceId), null);
+        JsonNode checks = res.path("checks");
+        if (!checks.isArray()) {
+            return List.of();
+        }
+        List<FiscalCheck> out = new java.util.ArrayList<>();
+        for (JsonNode c : checks) {
+            out.add(mapper.convertValue(c, FiscalCheck.class));
+        }
+        return out;
+    }
+
+    /**
+     * {@code GET /api/merchant/invoice/receipt} — the bank's payment receipt (квитанція) as a PDF.
+     * Not a fiscal document; works without a PRRO. Null when monobank returned no file.
+     */
+    public byte[] bankReceipt(String invoiceId) {
+        String file = call("GET", "/api/merchant/invoice/receipt?invoiceId=" + enc(invoiceId), null)
+                .path("file").asText(null);
+        return decodePdf(file);
+    }
+
+    /** base64 → bytes; null for a missing or broken value. */
+    public static byte[] decodePdf(String base64) {
+        if (base64 == null || base64.isBlank()) {
+            return null;
+        }
+        try {
+            return java.util.Base64.getMimeDecoder().decode(base64);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     /** {@code GET /api/merchant/pubkey} — base64 of the PEM public key for webhook signatures. */
     public String pubkey() {
         return call("GET", "/api/merchant/pubkey", null).path("key").asText(null);

@@ -5,6 +5,7 @@ import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.payment.ReceiptKind;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderStatus;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -388,6 +391,50 @@ public class NotificationService {
                     .build());
         } catch (Exception e) {
             log.warn("onPaymentReceived (customer) failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** How sending a receipt to the customer went. */
+    public enum Delivery { SENT, BLOCKED, FAILED }
+
+    /** A bot token is configured: worth preparing anything for the customer's DMs at all. */
+    public boolean isBotEnabled() {
+        return enabled();
+    }
+
+    /**
+     * A payment receipt (fiscal check of a sale / refund, or the bank receipt) as a PDF document in
+     * the customer's DMs, with the tax-service link and the «open order» button. Unlike the other
+     * methods this one reports the outcome, so the caller can record it exactly once.
+     */
+    public Delivery sendReceipt(Order order, byte[] pdf, ReceiptKind kind, String taxUrl) {
+        Long tgUserId = order.getTgUserId();
+        if (!enabled() || tgUserId == null || tgUserId <= 0 || pdf == null || pdf.length == 0) {
+            return Delivery.FAILED;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            StringBuilder caption = new StringBuilder(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)));
+            if (taxUrl != null && isHttps(taxUrl)) {
+                caption.append('\n').append("<a href=\"").append(esc(taxUrl).replace("\"", "&quot;")).append("\">")
+                        .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
+            }
+            bot.execute(SendDocument.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .document(new InputFile(new java.io.ByteArrayInputStream(pdf), kind.fileName(shortId(order))))
+                    .caption(caption.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(orderButton(order, locale))
+                    .build());
+            return Delivery.SENT;
+        } catch (Exception e) {
+            String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
+            if (m.contains("blocked") || m.contains("deactivated") || m.contains("chat not found")
+                    || m.contains("bot can't initiate")) {
+                return Delivery.BLOCKED;
+            }
+            log.warn("sendReceipt {} failed for order {}: {}", kind, idStr(order), e.getMessage());
+            return Delivery.FAILED;
         }
     }
 

@@ -37,13 +37,14 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { OrderPayment } from "@/components/account/OrderPayment";
+import { OrderReceipts } from "@/components/account/OrderReceipts";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
-import { CANCEL_REASON_MAX, customerCancelMode, paymentState } from "@shop/shared";
+import { CANCEL_REASON_MAX, customerCancelMode, hasOnlinePayment, paymentState } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -355,6 +356,9 @@ function OrderBody({
 
         {/* paid: amount, card / Apple Pay, what is left for the courier */}
         {payState !== "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
+
+        {/* receipts: fiscal checks (sale / refunds) + the bank receipt, once money came in online */}
+        {hasOnlinePayment(order) && <OrderReceipts order={order} />}
 
         {/* cancel: unpaid → at once; paid → a request; shipped → the chat (shared customerCancelMode) */}
         {cancelMode !== "NONE" && (

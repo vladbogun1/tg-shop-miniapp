@@ -70,6 +70,8 @@ public class MeController {
     private final OnlinePaymentService onlinePayments;
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.payment.CancelRequestService cancelRequests;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.maxsolch.shop.payment.ReceiptService receipts;
     /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
     private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -209,6 +211,13 @@ public class MeController {
         requireOwnAttachment(req);
         String name = order.getCustomerName();
         return messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
+    }
+
+    @GetMapping("/orders/{id}/receipts")
+    @Operation(summary = "Payment receipts of the order: fiscal checks (sale / return) and the bank "
+            + "receipt per paid invoice, with short-lived signed download links. Empty on any failure")
+    public List<com.maxsolch.shop.web.dto.ReceiptDto> receipts(@PathVariable String id) {
+        return receipts.forOrder(ownedOrder(id).getId());
     }
 
     @PostMapping("/orders/{id}/payment")

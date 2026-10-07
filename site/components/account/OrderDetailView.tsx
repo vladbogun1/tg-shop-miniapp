@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { CANCEL_REASON_MAX, customerCancelMode, paymentState, shortOrderId, type OrderDetail } from "@shop/shared";
 import { OrderChat } from "@/components/chat/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/components/order/Payment";
+import { OrderReceipts } from "@/components/order/Receipts";
 import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -119,6 +120,8 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
         created={created}
         onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
       />
+
+      <OrderReceipts order={order} />
 
       <OrderReviewCta orderId={order.id} status={order.status} />
 

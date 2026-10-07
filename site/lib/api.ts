@@ -23,6 +23,7 @@ import {
   type OrderSummary,
   type PaymentOption,
   type PaymentStart,
+  type Receipt,
   type Product,
   type PromoPreview,
   type PublicCategory,
@@ -268,6 +269,8 @@ export const api = {
   /** Asks monobank for the invoice status right now (server-side throttled to 1 per 5 s). */
   refreshPayment: (id: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
+  /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and same-origin. */
+  receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

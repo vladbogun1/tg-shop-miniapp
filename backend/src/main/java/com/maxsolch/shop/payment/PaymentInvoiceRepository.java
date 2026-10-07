@@ -32,4 +32,12 @@ public interface PaymentInvoiceRepository extends JpaRepository<PaymentInvoice, 
                                                @Param("before") Instant before);
 
     List<PaymentInvoice> findByRefundPendingUntilAfter(Instant now);
+
+    /**
+     * Paid invoices whose receipts may still be on their way: paid since {@code since}, or refunded
+     * (a return check follows) and touched since then.
+     */
+    @Query("select i from PaymentInvoice i where i.appliedAt is not null and (i.appliedAt > :since "
+            + "or (i.refundedMinor > 0 and i.updatedAt > :since))")
+    List<PaymentInvoice> findReceiptCandidates(@Param("since") Instant since);
 }

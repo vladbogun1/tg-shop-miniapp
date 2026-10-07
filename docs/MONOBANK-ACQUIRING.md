@@ -323,6 +323,57 @@ CREATE TABLE payment_webhook_log (               -- сырые вебхуки, �
 
 ---
 
+## 5a. Чеки (фискальные и квитанция банка)
+
+В кабинете monobank подключена фискализация через **Вчасно.Каса**: на каждый оплаченный счёт пРРО сам
+выбивает **чек продажи**, на каждый возврат (с `items` в `cancel`) — **чек возврата**. Кроме них у
+каждого оплаченного счёта есть **квитанция банка** (не фискальный документ, есть и без пРРО).
+
+**API monobank** (`MonobankClient`): `GET /api/merchant/invoice/fiscal-checks?invoiceId=` →
+`fiscalChecks()` (`sale|return`, `new|process|done|failed`, `taxUrl`, `file` = base64 PDF);
+`GET /api/merchant/invoice/receipt?invoiceId=` → `bankReceipt()` (PDF).
+
+**Список чеков** — `ReceiptService.forOrder`: по всем счетам заказа с `applied_at` (деньги зачислены) —
+фискальные чеки + одна запись «квитанция банка». Ответ `ReceiptDto`:
+`{key, kind: FISCAL_SALE|FISCAL_RETURN|BANK, status: PENDING|READY|FAILED, statusText, taxUrl, createdAt, amountMinor, downloadUrl}`
+(`new/process` → PENDING, `done` → READY, `failed` → FAILED). Списки чеков кешируются в Caffeine
+(45 с, пока что-то не финально; 10 мин, когда все чеки done/failed; 60 с после ошибки), PDF в кеше не
+держим. monobank зовётся вне транзакций; любая ошибка → пустой список + warn в логе, страница заказа не падает.
+
+| Эндпоинт | Кто | Что |
+|---|---|---|
+| `GET /api/me/orders/{id}/receipts` | владелец заказа (та же проверка, что `ownedOrder`) | список |
+| `GET /api/admin/orders/{id}/receipts` | админ | тот же список |
+| `GET /api/receipts/file?inv=&kind=&check=&exp=&sig=` | **permitAll**, подпись | PDF (`attachment; filename="chisetup-<8 симв.>-check|return|receipt.pdf"`, `no-store`) |
+
+**Подписанные ссылки** (`ReceiptSigner`): HMAC-SHA256 на ключе `"receipt:" + JWT_SECRET` поверх
+`inv | kind | check | exp`. `inv` — id НАШЕЙ строки `payment_invoices` (не invoiceId monobank), `check` —
+id фискального чека. Срок 10–15 мин (exp прижат к 5-минутной сетке — повторный запрос даёт ту же
+ссылку). Подделка/истечение → 403, нет чека / не `done` / счёт не оплачен → 404. Без Authorization —
+иначе не работали бы `<a href>` на сайте и `downloadFile`/`openLink` в Mini App. Rate limit
+`/api/receipts/file` — 20/мин на IP (каждый вызов идёт в monobank).
+
+**Чеки в Telegram** — `ReceiptDeliveryJob` (каждые 90 с, `app.payment.receipts-ms`), настройка
+`payment.sendReceiptsToTelegram` (группа «Оплата и чеки», по умолчанию вкл.). Смотрит счета, оплаченные
+за последние 48 ч или с возвратом, тронутые за 48 ч; каждый чек в статусе `done` уходит покупателю
+(`order.tg_user_id`) документом `SendDocument` с подписью «🧾 Фіскальний чек до замовлення #…», ссылкой на
+ДПС и кнопкой «Відкрити замовлення» (`startapp=view_<id>`). Ровно один раз: таблица
+`payment_receipts_sent` (V46, PK = id чека; для квитанции — `bank:<id счёта>`) — строка
+захватывается `INSERT IGNORE` до отправки (`SENDING`), после — `SENT`/`BLOCKED`; временная ошибка
+Telegram удаляет захват, следующий проход повторит. `failed` не отправляется. Если через 30 мин после
+оплаты фискальных чеков нет вовсе (пРРО выключен) — один раз уходит квитанция банка. Ошибка monobank
+≠ «чеков нет»: фолбэк не срабатывает. Без tg-аккаунта или с заблокированным ботом — пропуск.
+
+**UI.** Сайт — блок «Чеки» под оплатой на странице заказа (`site/components/order/Receipts.tsx`):
+статус-чипы «готується… / готовий / помилка», «Завантажити PDF» (обычная ссылка), «Перевірити на сайті
+ДПС» (новая вкладка). Mini App — `frontend/components/account/OrderReceipts.tsx`: скачивание через
+`Telegram.WebApp.downloadFile` (Bot API 8.0+), иначе `openLink` (браузер скачает); список старше 8 мин
+перечитывается перед скачиванием. Оба опрашивают каждые 20 с, пока чек готовится (не дольше 5 мин;
+`receiptsPollMs` в `@shop/shared`). Админка — секция «Чеки» в «Онлайн-оплата» (`OnlinePaymentBlock`):
+«Скачать PDF», «Чек на сайте ДПС» + копирование ссылки ДПС (её можно отправить покупателю — она вечная).
+
+---
+
 ## 6. Сознательно НЕ делаем (в v1)
 
 - `hold`/`finalize` — товар на складе, подтверждать нечего; лишняя сложность.

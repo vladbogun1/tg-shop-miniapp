@@ -10,6 +10,7 @@ import {
   createHttpClient,
   type AdminInvoice,
   type MonobankStatus,
+  type Receipt,
   normalizeBaseUrl,
   type Conversation,
   type DeliveryMethod,
@@ -29,6 +30,7 @@ import {
 export { ApiError };
 export type {
   AdminInvoice,
+  Receipt,
   Conversation,
   DeliveryMethod,
   Message,
@@ -99,6 +101,12 @@ export type ConversationDto = Conversation;
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
 export const apiOrigin = API_BASE;
+
+/** A signed, server-relative receipt link (`/api/receipts/file?…`) → absolute, on the API origin. */
+export function receiptHref(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+}
 
 // ---- token store (localStorage) --------------------------------------------
 const TOKEN_KEY = "tgshop_admin_jwt";
@@ -838,6 +846,11 @@ export const adminApi = {
       `/api/admin/orders/${id}/payments/${encodeURIComponent(invoiceId)}/refund`,
       amountMinor === undefined ? {} : { amountMinor }
     ),
+  /**
+   * GET /api/admin/orders/{id}/receipts -> fiscal checks (sale / return) + the bank receipt of every
+   * paid invoice; `downloadUrl` is a signed, server-relative link valid ~10 min (see {@link receiptHref}).
+   */
+  getOrderReceipts: (id: string) => apiGet<Receipt[]>(`/api/admin/orders/${id}/receipts`),
   /** GET /api/admin/payments/monobank/status -> token configured, merchant, last webhook. */
   getMonobankStatus: () => apiGet<MonobankStatus>("/api/admin/payments/monobank/status"),
   /** Add a product line to the order (paid, or gift when gift=true). */

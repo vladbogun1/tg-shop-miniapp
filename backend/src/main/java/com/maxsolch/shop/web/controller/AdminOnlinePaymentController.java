@@ -6,9 +6,11 @@ import com.maxsolch.shop.payment.MonobankClient;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.payment.PaymentInvoice;
 import com.maxsolch.shop.payment.PaymentInvoiceRepository;
+import com.maxsolch.shop.payment.ReceiptService;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.AdminInvoiceDto;
+import com.maxsolch.shop.web.dto.ReceiptDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,9 +40,12 @@ public class AdminOnlinePaymentController {
     private final MonobankClient monobank;
     private final AdminAuditService audit;
     private final JdbcTemplate jdbc;
+    private final ReceiptService receipts;
 
     public AdminOnlinePaymentController(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
-                                        MonobankClient monobank, AdminAuditService audit, JdbcTemplate jdbc) {
+                                        MonobankClient monobank, AdminAuditService audit, JdbcTemplate jdbc,
+                                        ReceiptService receipts) {
+        this.receipts = receipts;
         this.payments = payments;
         this.invoices = invoices;
         this.monobank = monobank;
@@ -66,6 +71,12 @@ public class AdminOnlinePaymentController {
     @Operation(summary = "monobank invoices of the order, newest first")
     public List<AdminInvoiceDto> list(@PathVariable String id) {
         return invoices.findByOrderIdOrderByCreatedAtDesc(orderId(id)).stream().map(this::toDto).toList();
+    }
+
+    @GetMapping("/orders/{id}/receipts")
+    @Operation(summary = "Payment receipts of the order (fiscal checks + bank receipt) with signed download links")
+    public List<ReceiptDto> receipts(@PathVariable String id) {
+        return receipts.forOrder(orderId(id));
     }
 
     @PostMapping("/orders/{id}/payments/refresh")
