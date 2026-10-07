@@ -2,6 +2,7 @@ package com.maxsolch.shop.push;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.inbox.InboxService;
+import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.service.OrderEvents;
 import com.maxsolch.shop.site.SiteRevalidator;
@@ -22,8 +23,8 @@ import java.util.Locale;
  *
  * <p>Order events are handled after the commit (a rolled-back order never pings the phone), and
  * everything — even reading the order — happens on the push thread, so the request that placed
- * the order does not wait for it. Texts are short and carry no personal data beyond the order
- * number and amount: they show on a lock screen.
+ * the order does not wait for it. Order texts carry no personal data beyond the order number and
+ * amount; a chat ping shows the customer's first name and what they wrote, as a messenger would.
  */
 @Slf4j
 @Component
@@ -32,11 +33,16 @@ public class PushNotificationListener {
     private final AdminPushService push;
     private final JdbcTemplate jdbc;
     private final InboxService inbox;
+    private final MediaSigner media;
 
-    public PushNotificationListener(AdminPushService push, JdbcTemplate jdbc, InboxService inbox) {
+    /** Photo preview width: one of MediaThumbnailer's widths, plenty for a notification picture. */
+    static final int IMAGE_WIDTH = 480;
+
+    public PushNotificationListener(AdminPushService push, JdbcTemplate jdbc, InboxService inbox, MediaSigner media) {
         this.push = push;
         this.jdbc = jdbc;
         this.inbox = inbox;
+        this.media = media;
     }
 
     /** Amount + where the order came from, read fresh after the commit. */
@@ -67,12 +73,43 @@ public class PushNotificationListener {
             return;
         }
         byte[] id = event.orderId();
-        // The message text itself stays out of the notification: it can hold a phone number or
-        // an address, and the notification shows on a locked screen.
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
-                "Сообщение по заказу #" + o.shortId(),
-                "Клиент написал в чат — откройте, чтобы ответить",
-                "/orders/" + o.id() + "?tab=chat", "chat-" + o.id(), badge(), true))));
+        // The text itself is shown, like any messenger does: hiding it on a locked screen is the
+        // phone's own setting (Android «скрывать содержимое», iOS «Показ миниатюр»).
+        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(chatMessage(o, customerName(id), event))));
+    }
+
+    /** «💬 Иван П. · #467611ad» + what was written; a photo comes with its preview. */
+    PushMessage chatMessage(OrderInfo o, String customer, OrderEvents.ChatMessage event) {
+        String who = shortName(customer) + " · #" + o.shortId();
+        String text = oneLine(event.text());
+        String kind = event.kind() == null ? "TEXT" : event.kind();
+        String icon;
+        String body;
+        String line;
+        String image = null;
+        switch (kind) {
+            case "PHOTO" -> {
+                icon = "📷";
+                body = text.isEmpty() ? "Фото" : text;
+                line = "📷 " + body;
+                String signed = media.signedUrl(event.attachmentKey());
+                image = signed == null ? null : signed + "&w=" + IMAGE_WIDTH;
+            }
+            case "FILE" -> {
+                icon = "📎";
+                String name = blank(event.fileName()) ? "Файл" : event.fileName().trim();
+                body = text.isEmpty() ? name : name + " — " + text;
+                line = "📎 " + body;
+            }
+            default -> {
+                icon = "💬";
+                body = text.isEmpty() ? oneLine(event.preview()) : text;
+                line = body;
+            }
+        }
+        return new PushMessage(icon + " " + who, body,
+                "/orders/" + o.id() + "?tab=chat", "chat-" + o.id(), badge(), true,
+                image, new AdminPushService.Group("💬 " + who, line));
     }
 
     @EventListener
@@ -93,6 +130,36 @@ public class PushNotificationListener {
                 },
                 (Object) orderId);
         return rows.stream().findFirst();
+    }
+
+    String customerName(byte[] orderId) {
+        try {
+            List<String> names = jdbc.queryForList("select customer_name from orders where id = ?", String.class, (Object) orderId);
+            return names.isEmpty() ? null : names.get(0);
+        } catch (RuntimeException e) {
+            log.debug("Customer name for push failed: {}", e.toString());
+            return null;
+        }
+    }
+
+    /** «Иван Петров» → «Иван П.»: enough to recognise the customer, less to read over a shoulder. */
+    static String shortName(String name) {
+        if (blank(name)) {
+            return "Клиент";
+        }
+        String[] parts = name.trim().split("\\s+");
+        if (parts.length == 1) {
+            return parts[0];
+        }
+        return parts[0] + " " + parts[1].substring(0, 1).toUpperCase(Locale.ROOT) + ".";
+    }
+
+    static String oneLine(String s) {
+        return s == null ? "" : s.replaceAll("\\s+", " ").trim();
+    }
+
+    private static boolean blank(String s) {
+        return s == null || s.isBlank();
     }
 
     /** «Внимание» count for the app icon badge; null (badge untouched) if it cannot be computed. */

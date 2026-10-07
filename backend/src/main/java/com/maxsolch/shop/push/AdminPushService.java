@@ -36,8 +36,23 @@ import java.util.concurrent.Executors;
 @Service
 public class AdminPushService {
 
-    /** A notification as the service worker gets it (JSON, see frontend-admin/public/sw.js). */
-    public record PushMessage(String title, String body, String url, String tag, Integer badge, boolean urgent) {
+    /**
+     * A notification as the service worker gets it (JSON, see frontend-admin/public/sw.js).
+     *
+     * @param image relative link to a picture shown large in the notification (Android, Windows); null = none
+     * @param group when set, the worker merges this message into an already shown notification
+     *              with the same tag instead of replacing it (a run of chat messages)
+     */
+    public record PushMessage(String title, String body, String url, String tag, Integer badge, boolean urgent,
+                              String image, Group group) {
+
+        public PushMessage(String title, String body, String url, String tag, Integer badge, boolean urgent) {
+            this(title, body, url, tag, badge, urgent, null, null);
+        }
+    }
+
+    /** One line of a merged notification: {@code title} without the counter, {@code line} — this message. */
+    public record Group(String title, String line) {
     }
 
     /** Outcome of a send to one or more devices. */
@@ -260,6 +275,12 @@ public class AdminPushService {
         }
         if (m.badge() != null) {
             json.put("badge", m.badge());
+        }
+        if (m.image() != null && m.image().startsWith("/")) {
+            json.put("image", m.image());
+        }
+        if (m.group() != null) {
+            json.put("group", Map.of("title", cut(m.group().title(), 80), "line", cut(m.group().line(), 100)));
         }
         try {
             return objectMapper.writeValueAsString(json).getBytes(StandardCharsets.UTF_8);

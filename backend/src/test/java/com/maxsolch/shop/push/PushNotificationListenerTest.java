@@ -3,6 +3,7 @@ package com.maxsolch.shop.push;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxService;
+import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.service.OrderEvents;
 import com.maxsolch.shop.site.SiteRevalidator;
@@ -18,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -32,6 +34,7 @@ class PushNotificationListenerTest {
     AdminPushService push;
     JdbcTemplate jdbc;
     InboxService inbox;
+    MediaSigner media;
     PushNotificationListener listener;
 
     @BeforeEach
@@ -40,7 +43,10 @@ class PushNotificationListenerTest {
         push = mock(AdminPushService.class);
         jdbc = mock(JdbcTemplate.class);
         inbox = mock(InboxService.class);
-        listener = new PushNotificationListener(push, jdbc, inbox);
+        media = mock(MediaSigner.class);
+        listener = new PushNotificationListener(push, jdbc, inbox, media);
+        when(jdbc.queryForList(anyString(), eq(String.class), any(Object.class))).thenReturn(List.of("Иван Петров"));
+        when(media.signedUrl("chat/a.jpg")).thenReturn("/api/media?key=chat%2Fa.jpg&exp=1&sig=s");
         // The push thread runs inline in the test.
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
@@ -78,11 +84,46 @@ class PushNotificationListenerTest {
     }
 
     @Test
-    void customerChatOpensTheChatWithoutTheMessageText() {
-        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "мой телефон +380501234567"));
+    void customerTextShowsWhoAndWhat() {
+        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "а можно\n на НП 12?"));
         PushMessage m = sent();
+        assertThat(m.title()).isEqualTo("💬 Иван П. · #9a6feb7d");
+        assertThat(m.body()).isEqualTo("а можно на НП 12?");
         assertThat(m.url()).isEqualTo("/orders/" + ORDER + "?tab=chat");
-        assertThat(m.title() + m.body()).doesNotContain("+380501234567");
+        assertThat(m.tag()).isEqualTo("chat-" + ORDER);
+        assertThat(m.image()).isNull();
+        assertThat(m.group().title()).isEqualTo("💬 Иван П. · #9a6feb7d");
+        assertThat(m.group().line()).isEqualTo("а можно на НП 12?");
+    }
+
+    @Test
+    void customerPhotoCarriesASmallSignedPreview() {
+        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "📷 Фото",
+                "PHOTO", null, "chat/a.jpg", "a.jpg"));
+        PushMessage m = sent();
+        assertThat(m.title()).isEqualTo("📷 Иван П. · #9a6feb7d");
+        assertThat(m.body()).isEqualTo("Фото");
+        assertThat(m.image()).isEqualTo("/api/media?key=chat%2Fa.jpg&exp=1&sig=s&w=" + PushNotificationListener.IMAGE_WIDTH);
+        assertThat(m.group().line()).isEqualTo("📷 Фото");
+    }
+
+    @Test
+    void customerFileShowsItsName() {
+        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "оплата",
+                "FILE", "оплата", "chat/b.pdf", "schet.pdf"));
+        PushMessage m = sent();
+        assertThat(m.title()).startsWith("📎 ");
+        assertThat(m.body()).isEqualTo("schet.pdf — оплата");
+        assertThat(m.image()).isNull();
+    }
+
+    @Test
+    void customerNames() {
+        assertThat(PushNotificationListener.shortName("Иван Петров")).isEqualTo("Иван П.");
+        assertThat(PushNotificationListener.shortName("  иван  петров сидорович ")).isEqualTo("иван П.");
+        assertThat(PushNotificationListener.shortName("Иван")).isEqualTo("Иван");
+        assertThat(PushNotificationListener.shortName(" ")).isEqualTo("Клиент");
+        assertThat(PushNotificationListener.shortName(null)).isEqualTo("Клиент");
     }
 
     @Test

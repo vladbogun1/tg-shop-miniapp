@@ -175,6 +175,18 @@ class AdminPushServiceTest {
     }
 
     @Test
+    void payloadCarriesTheChatPreviewAndGroup() {
+        String json = new String(service.payload(new PushMessage("t", "b", "/orders/1", "chat-1", null, true,
+                        "/api/media?key=k&w=480", new AdminPushService.Group("💬 Иван П.", "привет"))),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(json).contains("\"image\":\"/api/media?key=k&w=480\"")
+                .contains("\"group\":{").contains("\"line\":\"привет\"");
+        String foreign = new String(service.payload(new PushMessage("t", "b", "/", null, null, false,
+                "https://evil.example.com/x.png", null)), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(foreign).doesNotContain("image").doesNotContain("group");
+    }
+
+    @Test
     void moneyAndSourceLabels() {
         assertThat(PushNotificationListener.money(130000, "UAH")).isEqualTo("1 300 ₴");
         assertThat(PushNotificationListener.money(99950, "UAH")).isEqualTo("999,50 ₴");

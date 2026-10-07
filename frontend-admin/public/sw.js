@@ -153,21 +153,74 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { title: "ChiSetup Admin", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "ChiSetup Admin";
-  const url = typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/inbox";
-  const options = {
-    body: data.body || "",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/badge-96.png",
-    tag: data.tag || undefined,
-    renotify: !!data.tag,
-    timestamp: Date.now(),
-    data: { url },
-  };
   // iOS revokes the subscription of a site that receives a push without showing a notification,
   // so a notification is shown for every push.
-  event.waitUntil(Promise.all([self.registration.showNotification(title, options), setBadge(data.badge)]));
+  event.waitUntil(Promise.all([showPush(data), setBadge(data.badge)]));
 });
+
+/** A run of chat messages stays one notification; it lists this many latest lines. */
+const GROUP_LINES = 4;
+/** An older notification is not continued: the chat has most likely been read since. */
+const GROUP_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+
+function messagesWord(n) {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return "сообщение";
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return "сообщения";
+  return "сообщений";
+}
+
+/** The notification with the same tag that is still on screen, if it was a chat group. */
+async function shownGroup(tag) {
+  if (!tag || !self.registration.getNotifications) return null;
+  try {
+    const shown = await self.registration.getNotifications({ tag });
+    const prev = shown.find((n) => n.data && Array.isArray(n.data.lines));
+    if (!prev || Date.now() - (prev.data.at || 0) > GROUP_MAX_AGE_MS) return null;
+    return prev.data;
+  } catch {
+    return null;
+  }
+}
+
+async function showPush(data) {
+  let title = data.title || "ChiSetup Admin";
+  let body = data.body || "";
+  const url = typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/inbox";
+  const tag = data.tag || undefined;
+  let image = typeof data.image === "string" && data.image.startsWith("/") ? data.image : undefined;
+  const extra = { url };
+
+  const group = data.group && typeof data.group.line === "string" ? data.group : null;
+  if (group) {
+    const prev = await shownGroup(tag);
+    const count = (prev ? prev.count : 0) + 1;
+    const lines = [...(prev ? prev.lines : []), group.line].slice(-GROUP_LINES);
+    // The latest photo of the run stays as the picture.
+    image = image || (prev && prev.image) || undefined;
+    Object.assign(extra, { lines, count, image, at: Date.now() });
+    if (count > 1) {
+      title = `${group.title} · ${count} ${messagesWord(count)}`;
+      body = lines.map((l) => "— " + l).join("\n");
+    }
+  }
+
+  const options = {
+    body,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/badge-96.png",
+    tag,
+    renotify: !!tag,
+    timestamp: Date.now(),
+    data: extra,
+  };
+  // Shown large on Android and desktop Chrome; Safari ignores it. A link that has expired
+  // (the phone was offline for hours) only costs the picture, the notification still shows.
+  if (image) options.image = image;
+  if (group) options.actions = [{ action: "open", title: "Открыть чат" }];
+  return self.registration.showNotification(title, options);
+}
 
 // ---- which window is the installed app ---------------------------------------------------------
 // A worker cannot see a window's display mode, so it asks: every page answers through a

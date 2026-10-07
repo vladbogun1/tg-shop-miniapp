@@ -74,7 +74,18 @@ public final class OrderEvents {
     public record Deleted(byte[] orderId, Integer dispatchMessageId, java.util.List<String> attachmentKeys) {
     }
 
-    /** A chat message was posted. Admin messages DM the customer; customer messages ping admins. */
-    public record ChatMessage(byte[] orderId, boolean fromAdmin, String preview) {
+    /**
+     * A chat message was posted. Admin messages DM the customer; customer messages ping admins.
+     *
+     * @param kind          TEXT / PHOTO / FILE
+     * @param text          the message text or photo caption (null when there is none)
+     * @param attachmentKey private object key of the photo or file (null for text)
+     */
+    public record ChatMessage(byte[] orderId, boolean fromAdmin, String preview,
+                              String kind, String text, String attachmentKey, String fileName) {
+
+        public ChatMessage(byte[] orderId, boolean fromAdmin, String preview) {
+            this(orderId, fromAdmin, preview, "TEXT", preview, null, null);
+        }
     }
 }

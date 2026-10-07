@@ -174,3 +174,15 @@ export function setAppBadge(count: number): void {
 export function badgeSupported(): boolean {
   return typeof navigator !== "undefined" && "setAppBadge" in navigator;
 }
+
+/**
+ * Takes the push of an order's chat off the screen once that chat has been read in the app, so
+ * the next message starts a fresh notification instead of continuing an already read run.
+ */
+export function closeChatNotifications(orderId: string): void {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.ready
+    .then((reg) => reg.getNotifications?.({ tag: "chat-" + orderId }))
+    .then((shown) => shown?.forEach((n) => n.close()))
+    .catch(() => undefined);
+}

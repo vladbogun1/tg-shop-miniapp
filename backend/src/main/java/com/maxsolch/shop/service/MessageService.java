@@ -87,7 +87,7 @@ public class MessageService {
         // Both the WebSocket fan-out and the Telegram ping happen after this transaction commits:
         // broadcasting earlier could push a message that a rollback then erases, and the customer
         // is the sender here so only the admins get notified.
-        afterCommit(orderId, dto, false, previewOf(saved));
+        afterCommit(orderId, dto, false, saved);
         return dto;
     }
 
@@ -97,7 +97,7 @@ public class MessageService {
         Order order = order(orderId);
         OrderMessage saved = persist(order, SenderType.ADMIN, senderId, senderName, req);
         MessageDto dto = toDto(saved);
-        afterCommit(orderId, dto, true, previewOf(saved));
+        afterCommit(orderId, dto, true, saved);
         return dto;
     }
 
@@ -106,7 +106,7 @@ public class MessageService {
      * the Telegram side (a DM to the customer for admin messages, a ping in the admins' topic for
      * customer messages) via {@link OrderEvents.ChatMessage}.
      */
-    private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, String preview) {
+    private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, OrderMessage saved) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -117,7 +117,8 @@ public class MessageService {
         } else {
             broadcast(orderId, dto);
         }
-        events.publishEvent(new OrderEvents.ChatMessage(orderId, fromAdmin, preview));
+        events.publishEvent(new OrderEvents.ChatMessage(orderId, fromAdmin, previewOf(saved),
+                saved.getType().name(), saved.getText(), saved.getAttachmentUrl(), saved.getFileName()));
     }
 
     /** Short preview of a message for notifications. */

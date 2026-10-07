@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { Paperclip, Send, FileText, Check, CheckCheck, Zap } from "lucide-react";
 import { adminApi, ApiError, type MessageDto } from "@/lib/api";
 import { CHAT_PAGE, ordersApi } from "@/lib/orders-api";
+import { closeChatNotifications } from "@/lib/push";
 import { useCoarsePointer } from "@/lib/use-media";
 import { subscribeOrderChat } from "@/lib/ws";
 import { resolveImageSrc, resolveImageFull } from "@/lib/image";
@@ -194,6 +195,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         qc.invalidateQueries({ queryKey: ["board"] });
         // «Внимание» (and its badge on the menu / bell) lists unread chats.
         qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
+        closeChatNotifications(orderId);
       })
       .catch(() => {});
   }, [orderId, qc, key]);
