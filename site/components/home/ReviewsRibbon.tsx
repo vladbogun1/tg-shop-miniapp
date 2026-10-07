@@ -43,6 +43,11 @@ const WEIGHT: Record<Tier, number> = { legend: 6, epic: 4, solid: 2, low: 1 };
 const GAP_MS = 900;
 /** A group must be wider than a 1920px screen for the loop to be seamless: 8 × (320 + 16)px. */
 const MIN_GROUP = 8;
+/**
+ * Two rows only when each can hold a full group of different reviews; with fewer, one row shows
+ * them all and a review never appears twice on a wide screen at once.
+ */
+const TWO_ROWS_FROM = MIN_GROUP * 2;
 /** Seconds a card needs to cross its own width — sets the marquee speed (~55 px/s). */
 const SEC_PER_CARD = 6;
 /** Spark particles of a 5★ card: angle (deg) and distance (px), fixed so SSR and client agree. */
@@ -78,7 +83,7 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
 
   // Desktop: alternate reviews between the rows so neighbours differ; phones: one row of all.
   const rows = useMemo(() => {
-    const two = items.length >= 6;
+    const two = items.length >= TWO_ROWS_FROM;
     const a = two ? items.filter((_, i) => i % 2 === 0) : items;
     const b = two ? items.filter((_, i) => i % 2 === 1) : [];
     return {

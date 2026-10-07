@@ -45,6 +45,7 @@
   isolation: isolate;
   display: block;
   width: 300px;
+  height: 100%;                       /* slots stretch to the tallest card of the row */
   padding: 1px;                       /* the 1px "border" is this padding over the background */
   border-radius: var(--r-card);
   background: var(--rv-ring);
@@ -91,7 +92,6 @@
   z-index: 1;
   display: flex;
   height: 100%;
-  min-height: 232px;
   flex-direction: column;
   gap: 12px;
   padding: 18px 18px 16px;
