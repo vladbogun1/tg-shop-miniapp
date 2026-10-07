@@ -260,9 +260,11 @@ class SupportServiceTest {
         assertThatThrownBy(() -> service.create(USER, "WEB", req)).isInstanceOf(BadRequestException.class);
 
         String own = ImageStorageService.customerChatPrefix(USER) + "x.png";
+        // The stored preview is the seller's Russian placeholder; the customer reads it in their language.
+        when(messages.get(any(java.util.Locale.class), eq("api.chat.photo"))).thenReturn("📷 Photo");
         ThreadDto ok = service.create(USER, "WEB",
                 new CreateThreadRequest(null, null, null, "PHOTO", own, "x.png", "image/png"));
-        assertThat(ok.lastPreview()).isEqualTo("📷 Фото");
+        assertThat(ok.lastPreview()).isEqualTo("📷 Photo");
     }
 
     @Test

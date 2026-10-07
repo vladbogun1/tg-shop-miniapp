@@ -6,6 +6,7 @@ import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.i18n.CustomerRejectReason;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
@@ -15,6 +16,7 @@ import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
@@ -48,6 +50,7 @@ public class OrderQueryService {
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
     private final UserRepository userRepository;
+    private final CustomerRejectReason customerRejectReason;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
@@ -56,7 +59,8 @@ public class OrderQueryService {
                              MonobankClient monobank,
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             CustomerRejectReason customerRejectReason) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -65,6 +69,7 @@ public class OrderQueryService {
         this.productImageRepository = productImageRepository;
         this.translationService = translationService;
         this.userRepository = userRepository;
+        this.customerRejectReason = customerRejectReason;
     }
 
     /**
@@ -174,16 +179,21 @@ public class OrderQueryService {
     /** Admin view: line titles are the Russian snapshots. */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o) {
-        return toDetail(o, ContentLocale.RU);
+        return detail(o, ContentLocale.RU, false);
     }
 
     /**
      * Customer view: a line shows the product's current translation for {@code lang} when there is
      * one, else the snapshot. {@code order_items.title_snapshot} itself stays Russian — the seller,
-     * the dispatch list and the channel read it.
+     * the dispatch list and the channel read it. The shop's own rejection reasons (cancelled by the
+     * customer, payment window ran out) are worded in the request's language too.
      */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o, String lang) {
+        return detail(o, lang, true);
+    }
+
+    private OrderDetailDto detail(Order o, String lang, boolean customer) {
         List<OrderItem> orderItems = o.getItems();
         Map<String, String> thumbnails = thumbnailsFor(orderItems);
         TranslationService.ItemNames names = ContentLocale.isTranslated(lang)
@@ -199,6 +209,13 @@ public class OrderQueryService {
         // The language the customer chose in the shop (users.locale): the admin answers in it.
         Long customerId = o.getUserId() != null ? o.getUserId() : o.getTgUserId();
         String customerLocale = customerId == null ? null : userRepository.localeOf(customerId).orElse(null);
+        // The payment method is a Russian snapshot; the customer gets its translation while the
+        // option still has the same title (content_translations, PAYMENT_OPTION/title).
+        String paymentTitle = o.getPaymentOptionTitle();
+        if (customer && o.getPaymentOptionId() != null && ContentLocale.isTranslated(lang)) {
+            paymentTitle = translationService.overlay(lang).text(TranslationEntityType.PAYMENT_OPTION,
+                    UuidUtil.toString(o.getPaymentOptionId()), TranslationEntityType.TITLE, paymentTitle);
+        }
         return new OrderDetailDto(
                 UuidUtil.toString(o.getId()),
                 o.getStatus().name(),
@@ -213,9 +230,9 @@ public class OrderQueryService {
                 o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name(),
                 o.getNpCityName(),
                 o.getNpWarehouseName(),
-                o.getPaymentOptionTitle(),
+                paymentTitle,
                 o.getTrackingNumber(),
-                o.getRejectReason(),
+                customer ? customerRejectReason.current(o.getRejectReason()) : o.getRejectReason(),
                 items,
                 payment,
                 o.getTgUserId(),

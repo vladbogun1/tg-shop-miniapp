@@ -6,6 +6,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.MediaSigner;
@@ -600,8 +601,8 @@ public class SupportService {
             return m.getText().replaceAll("\\s+", " ").trim();
         }
         return switch (m.getType()) {
-            case PHOTO -> "📷 Фото";
-            case FILE -> "📎 " + (m.getFileName() == null ? "Файл" : m.getFileName());
+            case PHOTO -> ChatPreview.PHOTO;
+            case FILE -> m.getFileName() == null ? ChatPreview.FILE : "📎 " + m.getFileName();
             default -> "";
         };
     }
@@ -625,7 +626,7 @@ public class SupportService {
                 t.getSource(),
                 t.getLastMessageAt(),
                 t.getLastSender() == null ? null : t.getLastSender().name(),
-                t.getLastPreview(),
+                admin ? t.getLastPreview() : ChatPreview.current(t.getLastPreview(), messages),
                 admin ? t.getAdminUnread() : t.getCustomerUnread(),
                 t.getAwaitingSince(),
                 t.getCreatedAt(),

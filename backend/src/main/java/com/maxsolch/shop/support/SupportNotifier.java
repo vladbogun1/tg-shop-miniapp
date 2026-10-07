@@ -2,6 +2,7 @@ package com.maxsolch.shop.support;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.push.AdminPushService;
@@ -89,7 +90,8 @@ public class SupportNotifier {
                 text.append(messages.get(locale, "bot.support.about", esc(trim(t.getProductTitle(), 120)))).append('\n');
             }
             if (preview != null && !preview.isBlank()) {
-                text.append("<blockquote>").append(esc(trim(preview, 300))).append("</blockquote>\n");
+                text.append("<blockquote>").append(esc(trim(ChatPreview.localize(preview, locale, messages), 300)))
+                        .append("</blockquote>\n");
             }
             text.append(messages.get(locale, "bot.support.cta"));
             SendMessage msg = SendMessage.builder()

@@ -13,6 +13,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.domain.RejectReasonCode;
+import com.maxsolch.shop.i18n.CustomerRejectReason;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
@@ -142,7 +143,7 @@ public class OrderService {
         }
         PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
                 .filter(PaymentOption::isActive)
-                .orElseThrow(() -> new BadRequestException("unknown payment option"));
+                .orElseThrow(() -> new BadRequestException(messages.current("api.order.paymentUnknown")));
         order.setPaymentOptionId(po.getId());
         order.setPaymentOptionTitle(po.getTitle());
         order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
@@ -158,9 +159,9 @@ public class OrderService {
             // FOR UPDATE: the stock check and the decrement below must not interleave with another
             // checkout, or both orders pass "one left in stock" and the shop oversells.
             Product product = productRepository.findByIdForUpdate(toBytes(line.productId, "productId"))
-                    .orElseThrow(() -> new BadRequestException("unknown product: " + line.productId));
+                    .orElseThrow(() -> new BadRequestException(messages.current("api.order.productUnknown")));
             if (!product.isActive() || product.isArchived()) {
-                throw new BadRequestException("product not available: " + product.getTitle());
+                throw new BadRequestException(messages.current("api.order.unavailable", product.getTitle()));
             }
 
             OrderItem item = new OrderItem();
@@ -175,12 +176,12 @@ public class OrderService {
             if (line.variantId != null && !line.variantId.isBlank()) {
                 variant = findVariant(product, line.variantId);
                 if (variant == null) {
-                    throw new BadRequestException("variant does not belong to product: " + line.variantId);
+                    throw new BadRequestException(messages.current("api.order.variantMismatch", product.getTitle()));
                 }
                 item.setVariantId(variant.getId());
                 item.setVariantNameSnapshot(variant.getName());
             } else if (hasVariants) {
-                throw new BadRequestException("variant is required for product: " + product.getTitle());
+                throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
             }
             reserveStock(product, variant, line.quantity);
 
@@ -293,7 +294,7 @@ public class OrderService {
         if (r.length() > 500) {
             r = r.substring(0, 500);
         }
-        order.setRejectReason(r.isBlank() ? "Отменён покупателем" : "Отменён покупателем: " + r);
+        order.setRejectReason(r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r);
         order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
         order.setCancelledByCustomer(true);
         return afterTransition(order);
@@ -364,7 +365,7 @@ public class OrderService {
         restoreStock(order);
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(now);
-        order.setRejectReason("Отменён по запросу покупателя: " + nz(order.getCancelRequestReason()));
+        order.setRejectReason(CustomerRejectReason.BY_REQUEST + ": " + nz(order.getCancelRequestReason()));
         order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
         order.setCancelledByCustomer(true);
         order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
@@ -602,7 +603,7 @@ public class OrderService {
         restoreStock(order);
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(now);
-        order.setRejectReason("Не оплачен в течение " + Math.max(1, paymentDueHours) + " ч");
+        order.setRejectReason(CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч");
         order.setRejectReasonCode(RejectReasonCode.PAYMENT_TIMEOUT.name());
         return afterTransition(order);
     }
@@ -840,13 +841,15 @@ public class OrderService {
     private void reserveStock(Product product, ProductVariant variant, int qty) {
         if (variant != null) {
             if (variant.getStock() < qty) {
-                throw new BadRequestException("not enough stock for variant: " + variant.getName());
+                throw new BadRequestException(messages.current("api.order.outOfStock",
+                        product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock())));
             }
             variant.setStock(variant.getStock() - qty);
             syncRollup(product);
         } else {
             if (product.getStock() < qty) {
-                throw new BadRequestException("not enough stock for product: " + product.getTitle());
+                throw new BadRequestException(messages.current("api.order.outOfStock",
+                        product.getTitle(), Math.max(0, product.getStock())));
             }
             product.setStock(product.getStock() - qty);
         }
@@ -1014,12 +1017,12 @@ public class OrderService {
 
     private DeliveryMethod parseDelivery(String value) {
         if (value == null || value.isBlank()) {
-            throw new BadRequestException("deliveryMethod is required");
+            throw new BadRequestException(messages.current("api.order.deliveryRequired"));
         }
         try {
             return DeliveryMethod.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("unknown deliveryMethod: " + value);
+            throw new BadRequestException(messages.current("api.order.deliveryUnknown", value));
         }
     }
 
@@ -1027,13 +1030,21 @@ public class OrderService {
         try {
             return UuidUtil.toBytes(uuid);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid " + field + ": " + uuid);
+            throw new BadRequestException(messages.current("api.order.fieldInvalid", fieldLabel(field)));
         }
+    }
+
+    /** The customer-facing name of a checkout field ("phone" → "телефон"); ids stay as they are. */
+    private String fieldLabel(String field) {
+        return switch (field) {
+            case "customerName", "phone" -> messages.current("api.order.field." + field);
+            default -> field;
+        };
     }
 
     private String required(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw new BadRequestException(field + " is required");
+            throw new BadRequestException(messages.current("api.order.fieldRequired", fieldLabel(field)));
         }
         return value.trim();
     }

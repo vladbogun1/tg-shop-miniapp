@@ -2,6 +2,8 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.i18n.ChatPreview;
+import com.maxsolch.shop.i18n.CustomerRejectReason;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -41,13 +43,15 @@ public class NotificationService {
     private final AppProperties props;
     private final Messages messages;
     private final SettingsService settings;
+    private final CustomerRejectReason customerRejectReason;
 
     public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages,
-                               SettingsService settings) {
+                               SettingsService settings, CustomerRejectReason customerRejectReason) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
         this.settings = settings;
+        this.customerRejectReason = customerRejectReason;
     }
 
     private boolean enabled() {
@@ -293,7 +297,8 @@ public class NotificationService {
             Locale locale = messages.localeOf(tgUserId);
             t.append(messages.get(locale, "bot.newMessage", shortId(order))).append('\n');
             if (preview != null && !preview.isBlank()) {
-                t.append("<blockquote>").append(esc(trim(preview, 160))).append("</blockquote>\n");
+                t.append("<blockquote>").append(esc(trim(ChatPreview.localize(preview, locale, messages), 160)))
+                        .append("</blockquote>\n");
             }
             t.append(messages.get(locale, "bot.newMessage.cta"));
             SendMessage msg = SendMessage.builder()
@@ -783,7 +788,8 @@ public class NotificationService {
                     : messages.get(locale, "bot.note.SHIPPED");
             case DELIVERED -> messages.get(locale, "bot.note.DELIVERED");
             case REJECTED -> order.getRejectReason() != null
-                    ? messages.get(locale, "bot.note.REJECTED.reason", esc(order.getRejectReason()))
+                    ? messages.get(locale, "bot.note.REJECTED.reason",
+                            esc(customerRejectReason.localize(order.getRejectReason(), locale)))
                     : messages.get(locale, "bot.note.REJECTED");
             default -> "";
         };

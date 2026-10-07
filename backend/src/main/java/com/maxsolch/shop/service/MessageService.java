@@ -5,6 +5,7 @@ import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.OrderMessageRepository;
@@ -127,8 +128,8 @@ public class MessageService {
             return m.getText();
         }
         return switch (m.getType()) {
-            case PHOTO -> "📷 Фото";
-            case FILE -> "📎 Файл";
+            case PHOTO -> ChatPreview.PHOTO;
+            case FILE -> ChatPreview.FILE;
             default -> "";
         };
     }
@@ -182,7 +183,7 @@ public class MessageService {
     @Transactional(readOnly = true)
     public List<ConversationDto> customerConversations(long userId) {
         return messageRepository.orderIdsWithUnreadForUser(userId, SenderType.ADMIN).stream()
-                .map(id -> buildConversation(id, SenderType.ADMIN))
+                .map(id -> buildConversation(id, SenderType.ADMIN, true))
                 .filter(java.util.Objects::nonNull)
                 .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
@@ -191,6 +192,11 @@ public class MessageService {
     }
 
     private ConversationDto buildConversation(byte[] orderId, SenderType unreadSender) {
+        return buildConversation(orderId, unreadSender, false);
+    }
+
+    /** {@code customer}: the preview of a photo/file is in the request's language (see ChatPreview). */
+    private ConversationDto buildConversation(byte[] orderId, SenderType unreadSender, boolean customer) {
         Order o = orderRepository.findById(orderId).orElse(null);
         if (o == null) {
             return null;
@@ -206,7 +212,7 @@ public class MessageService {
                 shortId,
                 o.getCustomerName(),
                 o.getStatus() == null ? null : o.getStatus().name(),
-                last == null ? "" : stripHtml(previewOf(last)),
+                last == null ? "" : stripHtml(customer ? ChatPreview.current(previewOf(last), messages) : previewOf(last)),
                 last == null ? null : last.getSenderType().name(),
                 last == null ? o.getCreatedAt() : last.getCreatedAt(),
                 unread);
