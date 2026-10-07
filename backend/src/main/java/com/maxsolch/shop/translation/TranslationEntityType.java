@@ -14,8 +14,8 @@ public enum TranslationEntityType {
     TAG(List.of(TranslationEntityType.NAME, TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION,
             TranslationEntityType.H1, TranslationEntityType.INTRO_TEXT)),
     PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION));
-    // PAYMENT_REQUISITES (V29) is gone with the manual card transfer; V39 deletes its rows, so the
-    // overlay never meets a value this enum cannot map.
+    // PAYMENT_REQUISITES (V29) went with the manual card transfer: rows deleted in V39, the ENUM value
+    // itself in V48.
 
     public static final String TITLE = "title";
     public static final String DESCRIPTION = "description";
