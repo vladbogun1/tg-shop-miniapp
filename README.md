@@ -1,10 +1,11 @@
 <div align="center">
 
-# 🛍️ Maxsolch 2.0 — Telegram Mini App магазин
+# ChiSetup — магазин игровых девайсов: сайт, Telegram Mini App и админка
 
-**Интернет-магазин внутри Telegram** — каталог, корзина, пошаговый заказ, чат с админом и
-полноценная веб-админка. Переписан с нуля: Java 21 / Spring Boot + Next.js 15, дизайн в стиле
-**Neo-Brutalism**, self-hosted инфраструктура без облаков.
+**[chisetup.com.ua](https://chisetup.com.ua)** — сайт · **app.chisetup.com.ua** — Mini App в Telegram
+(бот [@ChiSetupShop_bot](https://t.me/ChiSetupShop_bot)) · **admin.chisetup.com.ua** — админка.
+
+Java 21 / Spring Boot + Next.js 15, дизайн v3 ChiSetup (одна тёмная тема), self-hosted в Docker.
 
 [![CI](https://github.com/vladbogun1/tg-shop-miniapp/actions/workflows/ci.yml/badge.svg)](https://github.com/vladbogun1/tg-shop-miniapp/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-21-orange)
@@ -16,82 +17,79 @@
 
 ---
 
-## 📸 Скриншоты
+## Что есть
 
-<div align="center">
+**Сайт** (`site/`, SSR/ISR, uk по умолчанию + `/ru`, `/en`): каталог по категориям с фильтрами и
+поиском, страница товара, корзина, оформление заказа, кабинет с заказами и чатом, отзывы, вопросы
+до покупки, юридические страницы, SEO (метаданные, JSON-LD, sitemap, фиды Google/Hotline). Вход —
+только через бота (подтверждение в Telegram), заказ только после входа. Корзина после входа общая с
+Mini App.
 
-| Каталог | Карточка товара | Корзина / чекаут |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/catalog.png" width="240"/> | <img src="docs/screenshots/product.png" width="240"/> | <img src="docs/screenshots/cart-checkout.png" width="240"/> |
+**Telegram Mini App** (`frontend/`, mobile-first, uk/ru/en): каталог, карточка товара, корзина,
+пошаговое оформление (контакты → Нова Пошта с отделением на карте или самовывоз → оплата),
+заказы с таймлайном, чат с магазином в реальном времени (WebSocket), чеки, отзывы, поддержка.
 
-| Аккаунт + чат | Канбан-доска (админка) | Метрики (админка) |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/account-chat.png" width="240"/> | <img src="docs/screenshots/admin-board.png" width="240"/> | <img src="docs/screenshots/admin-metrics.png" width="240"/> |
+**Оплата** — monobank-эквайринг (с v3.9.0): полная оплата онлайн или предоплата 100 ₴ + наложенный
+платёж. 24 часа на оплату, иначе автоотмена с возвратом на склад. Оплата не подтверждает заказ —
+его подтверждает админ; возвраты — кнопкой из админки. Фискальные чеки — Вчасно.Каса через monobank.
+Подробно — [`docs/MONOBANK-ACQUIRING.md`](docs/MONOBANK-ACQUIRING.md).
 
-</div>
+**Админка** (`frontend-admin/`, русский интерфейс, PWA с push): вход паролем или через Telegram,
+затем обязательная 2FA (TOTP); главный админ управляет учётками и приглашениями. Разделы:
+«Внимание», канбан и таблица заказов (оплата, возвраты, отмены, скидки, подарки, чат с клиентом),
+поддержка, отправка, метрики, пользователи (с картой), рассылки, товары, отзывы, теги, промокоды,
+способы оплаты, переводы контента, журнал (действия админов и «Бот и сайт» — что бот кому отправил и
+доставлено ли, события сайта и Mini App), настройки.
 
-> Файлы скриншотов — в [`docs/screenshots/`](docs/screenshots/) (см. инструкцию там).
+**Бот** (часть бэкенда): вход в Mini App, вход на сайт, уведомления о заказах в админ-чат с темами
+по статусам, личные сообщения покупателю (статусы, ответы, оплата, чеки).
+Отдельный модуль `bots/invite-bot` — бот-приглашения в канал (свой CI и образ).
 
----
-
-## ✨ Возможности
-
-**Покупатель (Telegram Mini App, mobile-first):**
-- Каталог с поиском и фильтром по тегам, фото-галерея, варианты товара, остатки.
-- Карточка товара на весь экран; «В корзину» превращается в «− кол-во +».
-- Корзина + **пошаговый чекаут**: контакты → доставка (**Новая Почта** с выбором отделения / самовывоз) → выбор варианта оплаты → подтверждение.
-- Личный кабинет: история заказов, детальная карточка с таймлайном, **чат с админом в реальном времени** (WebSocket, в стиле Telegram), колокольчик новых сообщений.
-
-**Админ (веб, desktop-first, адаптив под мобилку):**
-- Вход по логину/паролю (Spring Security + BCrypt + JWT).
-- **Канбан-доска** заказов с drag&drop по статусам; разворот заказа с деталями, таймлайном и встроенным чатом с клиентом; хард-удаление терминальных заказов.
-- Таблица заказов с сортировкой и фильтрами по сроку (месяц/полгода/год/всё).
-- CRUD товаров (с загрузкой картинок), тегов, промокодов; настройки оплаты; **дашборд метрик** (выручка, заказы, статусы, топ-товары, скорость обработки).
-
-**Бот (тонкий):** кнопка-вход в Mini App, уведомления о заказах в мультигруппу с темами по статусам (карточка «переезжает» между темами), DM покупателю о смене статуса и новых сообщениях.
-
-**Картинки:** MinIO (хранилище) → imgproxy (ресайз/WebP/AVIF) → Nginx (disk-кэш) — быстрая отдача под устройство.
+**Картинки:** MinIO → imgproxy (ресайз, WebP/AVIF) → nginx (дисковый кэш).
 
 ---
 
-## 🏗️ Архитектура
+## Архитектура
 
 ```
-Telegram ──/start──▶ Bot (тонкий: вход + уведомления)
-                         │
- Mini App (Next.js) ─REST/WS─▶ Spring Boot API ──JPA──▶ MySQL
- Admin   (Next.js) ─REST/WS─▶  (Security+JWT,            │
-                               WebSocket-чат,        S3 │
-                               бот, Nova Poshta)        ▼
-                                          MinIO ◀─ imgproxy ◀─ Nginx (кэш) ◀─ браузер (картинки)
+браузер ── chisetup.com.ua ───────▶ gateway-site  ─┐
+Telegram ─ app.chisetup.com.ua ───▶ gateway       ─┼─▶ Next.js (site / frontend / frontend-admin)
+админ ──── admin.chisetup.com.ua ─▶ gateway-admin ─┘   /api, /ws ─▶ Spring Boot ──▶ MySQL
+                                                        /img ─────▶ nginx-кэш ◀─ imgproxy ◀─ MinIO
+Spring Boot ◀─▶ Telegram Bot API, monobank (вебхуки), Нова Пошта
 ```
 
-**Стек:** Java 21 · Spring Boot 3.4 (Security/JWT, WebSocket, Flyway, springdoc/Swagger, Actuator, Caffeine) · MySQL 8.4 · Next.js 15 + TypeScript + Tailwind v4 + TanStack Query · MinIO + imgproxy + Nginx · Docker Compose.
+На проде 80/443 держит edge Caddy хоста (TLS автоматически), за ним — gateway'и из
+`docker-compose.public.yml` / `docker-compose.prod.yml`. Старые адреса `maxsolkh.shop`, `:666`,
+`:667` отвечают только 301-редиректом.
 
-Фронтенды — один npm workspace: общий код (деньги, даты, правила статусов, HTTP-клиент, типы API, WebSocket) живёт в `shared/` и подключается обоими приложениями как `@shop/shared`.
+**Стек:** Java 21 · Spring Boot 3.4 (Security/JWT, WebSocket, Flyway, Actuator, Caffeine) ·
+MySQL 8.4 · Next.js 15 + TypeScript + Tailwind v4 + TanStack Query + framer-motion · MinIO +
+imgproxy + nginx · Docker Compose.
 
 ---
 
-## 📁 Структура
+## Структура
 
 ```
-backend/        Spring Boot API (package com.maxsolch.shop)
-shared/         @shop/shared — общий код обоих фронтов (деньги, даты, статусы, API-типы, WS)
-frontend/       Next.js — Mini App покупателя
-frontend-admin/ Next.js — админка
-migration/      тулза импорта старой БД (JDBC + картинки в MinIO)
-infra/          nginx-конфиги, gateway'и, скрипты
-docs/           SPEC.md (контракт API), SECURITY.md, screenshots/
-AUDIT-FIXES.md  чек-лист работ по аудиту
-docker-compose.yml           основной локальный стек
-docker-compose.public.yml    публичный релиз (gateway + туннель для Telegram)
+backend/         Spring Boot API + бот (package com.maxsolch.shop), миграции Flyway
+shared/          @shop/shared — общий код фронтов: деньги, даты, правила заказов, HTTP-клиент,
+                 типы API, WebSocket, i18n-ядро, маска телефона, геометрия логотипа
+site/            Next.js — сайт
+frontend/        Next.js — Telegram Mini App
+frontend-admin/  Next.js — админка
+bots/invite-bot/ отдельный бот-приглашения
+e2e/             Playwright-тесты
+infra/           gateway'и (nginx), Caddyfile старых адресов, служебные скрипты
+docs/            контракты и runbook'и; docs/archive/ — устаревшие документы
 ```
 
-Подробный контракт API — [`docs/SPEC.md`](docs/SPEC.md). Дизайн и история — `ДИЗАЙН-ДОКУМЕНТ-*.md`, `HANDOFF.md`.
+Фронты — один npm workspace; `shared/` подключается как TypeScript-исходник через
+`transpilePackages`, без отдельной сборки.
 
 ---
 
-## 🚀 Быстрый старт (локально)
+## Быстрый старт (локально)
 
 Требуется Docker.
 
@@ -100,52 +98,50 @@ cp .env.example .env          # заполнить секреты: JWT_SECRET, B
 docker compose up -d --build
 ```
 
-Для локальной разработки backend запускается с `SPRING_PROFILES_ACTIVE=dev` — вне этого профиля
-приложение откажется стартовать с небезопасными настройками (см. [`docs/SECURITY.md`](docs/SECURITY.md)).
+Backend локально — с `SPRING_PROFILES_ACTIVE=dev`: вне этого профиля он не стартует с небезопасными
+настройками (см. [`docs/SECURITY.md`](docs/SECURITY.md)). Подробно — [`docs/LOCAL-TESTING.md`](docs/LOCAL-TESTING.md).
 
-Фронты без Docker (порты из `package.json`):
+- Mini App: http://localhost:3000 · Админка: http://localhost:3001 · Сайт: http://localhost:3007
+- API: http://localhost:8080 · MinIO-консоль: http://localhost:9003 · Картинки: http://localhost:8082/img/...
+
+Фронты без Docker (один `npm install` из корня):
 
 ```bash
-npm install                   # один install на весь workspace из корня
-npm run dev -w frontend       # Mini App  → http://localhost:3004
-npm run dev -w frontend-admin # админка   → http://localhost:3005
+npm run dev -w frontend        # Mini App → http://localhost:3004
+npm run dev -w frontend-admin  # админка  → http://localhost:3005
+npm run dev -w site            # сайт     → http://localhost:3006
 ```
 
-- Mini App: http://localhost:3000
-- Админка: http://localhost:3001 (логин/пароль из `ADMIN_LOGIN`/`ADMIN_PASSWORD`)
-- API + Swagger: http://localhost:8080/swagger-ui.html · Home: http://localhost:8080/
-- MinIO консоль: http://localhost:9003 · Картинки: http://localhost:8082/img/...
-
-### Импорт старой базы (опционально)
-См. [`migration/README.md`](migration/README.md): JDBC переносит товары/заказы/чат и заливает картинки в MinIO, затем SQL-бэкфиллы таймингов и причин отказа.
-
-### Тест в Telegram
-Mini App требует HTTPS. Для локального теста — `cloudflared tunnel --url http://localhost:8090` (single-origin gateway, см. `docker-compose.public.yml`), затем вписать URL в `WEBAPP_BASE_URL`. В проде — Caddy + домен.
+Mini App требует HTTPS: для теста в Telegram — туннель на single-origin gateway
+(`docker-compose.public.yml`) и его URL в `WEBAPP_BASE_URL`.
 
 ---
 
-## ✅ Тесты и CI
+## Тесты и CI
 
-- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito — расчёт заказа/скидок/стока, переходы статусов, метрики, JWT, валидация initData, санитайз HTML рассылок).
-- Фронты: `npm run lint && npm run typecheck && npm run build` из корня (один workspace).
-- **CI** (GitHub Actions, [`.github/workflows/ci.yml`](.github/workflows/ci.yml)): на каждый push/PR — тесты бэкенда + lint/typecheck/сборка обоих фронтов.
-
----
-
-## 🔐 Конфигурация
-
-Всё — через `.env` (см. [`.env.example`](.env.example)). Ключевое: `DB_*`, `JWT_SECRET`, `ADMIN_LOGIN`/`ADMIN_PASSWORD`, `BOT_TOKEN`, `NOTIFY_CHAT_ID` + темы, `S3_*`, `IMGPROXY_*`, `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`. Админы задаются таблицей `admin_users` (не `.env`): `ADMIN_LOGIN`/`ADMIN_PASSWORD` только создают/обновляют первого админа при старте; отключить — `admin_users.active = 0`, выкинуть все сессии — кнопка «Выйти на всех устройствах» в админке. Admin-токен живёт `ADMIN_TOKEN_TTL_MINUTES` (12 ч) и тихо продлевается, пока админка открыта. Деньги — в минорных единицах (копейки). Секреты в репозиторий не коммитятся (`.env` в `.gitignore`).
+- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito).
+- Фронты: `npm run lint`, `npm run typecheck`, `npm run build` для каждого workspace (`-w frontend`,
+  `-w site`, `-w frontend-admin`).
+- E2E: `npm run e2e` (Playwright, `e2e/`).
+- CI — [`.github/workflows/ci.yml`](.github/workflows/ci.yml); образы для прода собирает
+  [`publish.yml`](.github/workflows/publish.yml) по тегу `v3.*`.
 
 ---
 
-## 📦 Деплой (прод)
+## Конфигурация и деплой
 
-Self-hosted на одном Linux-сервере в Docker: `docker compose up -d --build` + reverse-proxy (Caddy) с сертификатами на нужных портах, постоянные домены в `WEBAPP_BASE_URL`/`ADMIN_BASE_URL`, сильные секреты.
+Всё — через `.env` (см. [`.env.example`](.env.example)). Секреты (`JWT_SECRET`, `BOT_TOKEN`,
+`MONOBANK_TOKEN`, `ADMIN_2FA_KEY`, пароли) в репозиторий не коммитятся — **репозиторий публичный**.
+Админы живут в таблице `admin_users`: `ADMIN_LOGIN`/`ADMIN_PASSWORD` только создают первую учётку на
+пустой базе. Деньги — в минорных единицах (копейки).
 
-Обязательный чек-лист перед выкаткой — [`docs/SECURITY.md`](docs/SECURITY.md).
+- Деплой и эксплуатация — [`docs/DEPLOY-SERVER.md`](docs/DEPLOY-SERVER.md), TLS — [`docs/TLS-RENEWAL.md`](docs/TLS-RENEWAL.md).
+- Безопасность и чек-лист перед выкаткой — [`docs/SECURITY.md`](docs/SECURITY.md), вход админов и 2FA — [`docs/ADMIN-2FA.md`](docs/ADMIN-2FA.md).
+- Контракт API — [`docs/SPEC.md`](docs/SPEC.md), сайт — [`docs/SITE-SPEC.md`](docs/SITE-SPEC.md),
+  дизайн — [`docs/DESIGN-V3.md`](docs/DESIGN-V3.md), переводы контента — [`docs/CONTENT-I18N.md`](docs/CONTENT-I18N.md),
+  заказы/поддержка/отзывы — [`docs/ORDERS-SUPPORT-REVIEWS.md`](docs/ORDERS-SUPPORT-REVIEWS.md).
+- Отложенные дела — [`docs/TODO.md`](docs/TODO.md).
 
----
-
-<div align="center">
-Сделано с ❤️ для Telegram-коммерции.
-</div>
+Удалено при чистке 2026-10 ([`docs/CLEANUP-AUDIT-2026-10.md`](docs/CLEANUP-AUDIT-2026-10.md)):
+одноразовый модуль переноса старой БД `migration/`, «закрытый сайт» с кодом доступа, служебная
+Thymeleaf-страница бэкенда; таблицы старой оплаты на карту удаляет миграция V48.

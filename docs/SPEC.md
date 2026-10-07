@@ -1,6 +1,6 @@
 # tg-shop-v2 — технический контракт (canonical)
 
-Единый источник правды для всех подсистем (backend / frontend / infra / migration).
+Единый источник правды для всех подсистем (backend / frontend / site / frontend-admin / infra).
 Полное обоснование решений — в `archive/ДИЗАЙН-ДОКУМЕНТ-новый-проект.md` (архив, частично устарел).
 Настройки и требования безопасности — в [`SECURITY.md`](SECURITY.md).
 
@@ -22,7 +22,7 @@
 
 ## Java packages
 - backend: `com.maxsolch.shop`
-- migration tool: `com.maxsolch.migration`
+- (модуль переноса старой БД `com.maxsolch.migration` удалён в 2026-10 — перенос выполнен в июне 2026)
 
 ## Порты (docker-compose, infra)
 | сервис | внутр. | хост |
@@ -79,11 +79,6 @@ S3_BUCKET=product-images
 IMGPROXY_KEY=<hex>
 IMGPROXY_SALT=<hex>
 IMAGE_BASE_URL=http://localhost:8082/img
-
-# Old DB (для миграционной тулзы)
-OLD_DB_URL=jdbc:mysql://localhost:3330/tg_test
-OLD_DB_USER=root
-OLD_DB_PASSWORD=root
 ```
 
 ## REST API контракт (v1, базовый — расширяется)
@@ -94,7 +89,7 @@ OLD_DB_PASSWORD=root
 - Публичное (без токена): `GET /api/app-info`, `GET /api/products`, `GET /api/products/{id}`, `GET /api/tags`.
 - Картинки: фронт строит URL через imgproxy-loader на `IMAGE_BASE_URL`.
 
-Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
+Swagger: `/swagger-ui.html`. Actuator: `/actuator/*` (служебная Thymeleaf-страница `/` удалена в 2026-10).
 
 ## Деньги
 Целые минорные единицы (`*_minor`), валюта по умолчанию `UAH`.
