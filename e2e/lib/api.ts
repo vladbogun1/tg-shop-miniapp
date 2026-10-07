@@ -117,6 +117,15 @@ export class Api {
     return { status: res.status(), body };
   }
 
+  /** «Переводы» export: translatable fields with their status (missing | stale | translated | all). */
+  translationExport(locale: "uk" | "en", status: string, entityType?: string) {
+    const type = entityType ? `&entityType=${entityType}` : "";
+    return this.json<{ entityType: string; entityId: string; field: string; source: string; status: string; productTitle?: string | null }[]>(
+      "get",
+      `/api/admin/translations/export?locale=${locale}&status=${status}${type}`,
+    );
+  }
+
   order(id: string) {
     return this.json<OrderDetail>("get", `/api/admin/orders/${id}`);
   }

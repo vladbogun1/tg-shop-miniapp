@@ -4,10 +4,12 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
+import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.TranslationDtos.Counts;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
@@ -22,6 +24,7 @@ import com.maxsolch.shop.translation.TranslationDtos.Stats;
 import com.maxsolch.shop.translation.TranslationDtos.Status;
 import com.maxsolch.shop.translation.TranslationService.Key;
 import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.web.dto.ReplyTemplateDtos;
 import com.maxsolch.shop.web.dto.TagUpsertRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
@@ -86,13 +89,15 @@ public class TranslationAdminService {
             Map.entry("TAG:h1", 255),
             Map.entry("TAG:intro_text", TagUpsertRequest.INTRO_MAX_CHARS),
             Map.entry("PAYMENT_OPTION:title", 255),
-            Map.entry("PAYMENT_OPTION:description", 1024));
+            Map.entry("PAYMENT_OPTION:description", 1024),
+            Map.entry("REPLY_TEMPLATE:body", ReplyTemplateDtos.BODY_MAX_CHARS));
 
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final TagRepository tagRepository;
     private final PaymentOptionRepository paymentOptionRepository;
+    private final ReplyTemplateRepository replyTemplateRepository;
     private final TranslationService translationService;
     private final CacheManager cacheManager;
 
@@ -101,6 +106,7 @@ public class TranslationAdminService {
                                    ProductVariantRepository variantRepository,
                                    TagRepository tagRepository,
                                    PaymentOptionRepository paymentOptionRepository,
+                                   ReplyTemplateRepository replyTemplateRepository,
                                    TranslationService translationService,
                                    CacheManager cacheManager) {
         this.repository = repository;
@@ -108,6 +114,7 @@ public class TranslationAdminService {
         this.variantRepository = variantRepository;
         this.tagRepository = tagRepository;
         this.paymentOptionRepository = paymentOptionRepository;
+        this.replyTemplateRepository = replyTemplateRepository;
         this.translationService = translationService;
         this.cacheManager = cacheManager;
     }
@@ -492,6 +499,18 @@ public class TranslationAdminService {
                 }
                 return "OK";
             }
+            case REPLY_TEMPLATE -> {
+                Long templateId = ReplyTemplate.idOfTranslationId(id);
+                ReplyTemplate t = templateId == null ? null : replyTemplateRepository.findById(templateId).orElse(null);
+                if (t == null) {
+                    return "NOT_FOUND";
+                }
+                if (!matches(t.getBodyRu(), wantedHash, newHash)) {
+                    return "STALE";
+                }
+                t.setBodyRu(newSource);
+                return "OK";
+            }
             default -> {
                 return "INVALID_ENTITY_TYPE";
             }
@@ -585,7 +604,8 @@ public class TranslationAdminService {
         int removed = repository.deleteOrphanProducts()
                 + repository.deleteOrphanVariants()
                 + repository.deleteOrphanTags()
-                + repository.deleteOrphanPaymentOptions();
+                + repository.deleteOrphanPaymentOptions()
+                + repository.deleteOrphanReplyTemplates();
         if (removed > 0) {
             log.info("Removed {} orphaned content translation(s)", removed);
             invalidateAfterCommit();
@@ -627,6 +647,12 @@ public class TranslationAdminService {
                     put(out, TranslationEntityType.TAG, id, field, tagSeoField(t, field), true, null, t.getName());
                 }
             }
+        }
+        // Chat reply templates: admin-only texts, always in scope; the template's title is the
+        // context (productTitle) the «Переводы» screen and the AI prompt show next to the text.
+        for (ReplyTemplate t : replyTemplateRepository.findAll()) {
+            put(out, TranslationEntityType.REPLY_TEMPLATE, ReplyTemplate.translationKey(t.getId()),
+                    TranslationEntityType.BODY, t.getBodyRu(), true, null, t.getTitle());
         }
         for (PaymentOption p : paymentOptionRepository.findAll()) {
             String id = UuidUtil.toString(p.getId());
@@ -720,7 +746,7 @@ public class TranslationAdminService {
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
             throw new BadRequestException(
-                    "entityType must be one of PRODUCT, VARIANT, TAG, PAYMENT_OPTION");
+                    "entityType must be one of PRODUCT, VARIANT, TAG, PAYMENT_OPTION, REPLY_TEMPLATE");
         }
         return type;
     }

@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 
-const LOCALE_LABEL = { uk: "укр", ru: "рус", en: "eng" } as const;
+const LOCALE_LABEL = { ru: "рус", uk: "укр", en: "eng" } as const;
 
 export const PLACEHOLDERS: { key: string; hint: string }[] = [
   { key: "{name}", hint: "ФИО клиента" },
@@ -170,8 +170,18 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
                   <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap text-[12px] text-[var(--text-muted)]">{t.bodyRu}</p>
                   <div className="font-display mt-1.5 flex gap-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">
                     <span>рус ✓</span>
-                    <span className={cn(!t.bodyUk && "line-through opacity-60")}>укр</span>
-                    <span className={cn(!t.bodyEn && "line-through opacity-60")}>eng</span>
+                    <span
+                      className={cn(!t.bodyUk && "line-through opacity-60", t.ukStale && "text-[var(--warn,#F59E0B)]")}
+                      title={t.ukStale ? "Перевод устарел" : t.bodyUk ? undefined : "Нет перевода"}
+                    >
+                      укр
+                    </span>
+                    <span
+                      className={cn(!t.bodyEn && "line-through opacity-60", t.enStale && "text-[var(--warn,#F59E0B)]")}
+                      title={t.enStale ? "Перевод устарел" : t.bodyEn ? undefined : "Нет перевода"}
+                    >
+                      eng
+                    </span>
                   </div>
                 </div>
                 <button
@@ -224,7 +234,9 @@ function TemplateEditor({
   const [ru, setRu] = useState("");
   const [uk, setUk] = useState("");
   const [en, setEn] = useState("");
-  const [lang, setLang] = useState<"uk" | "ru" | "en">("uk");
+  // Russian first: the admin writes in Russian, the other languages are optional (typed here or
+  // translated later in «Переводы», where an empty one shows up as missing).
+  const [lang, setLang] = useState<"uk" | "ru" | "en">("ru");
 
   const id = template?.id ?? null;
   useEffect(() => {
@@ -233,7 +245,7 @@ function TemplateEditor({
     setRu(template?.bodyRu ?? "");
     setUk(template?.bodyUk ?? "");
     setEn(template?.bodyEn ?? "");
-    setLang("uk");
+    setLang("ru");
     // Reset only when a different template is opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, id]);
@@ -244,6 +256,10 @@ function TemplateEditor({
     uk !== (template?.bodyUk ?? "") ||
     en !== (template?.bodyEn ?? "");
   const value = lang === "ru" ? ru : lang === "uk" ? uk : en;
+  // A uk/en text made for an older Russian one is not used in the chat until it is redone.
+  const stale = (l: "uk" | "en") =>
+    (l === "uk" ? template?.ukStale && uk === (template?.bodyUk ?? "") : template?.enStale && en === (template?.bodyEn ?? "")) &&
+    ru === (template?.bodyRu ?? "");
   const setValue = lang === "ru" ? setRu : lang === "uk" ? setUk : setEn;
 
   return (
@@ -273,7 +289,7 @@ function TemplateEditor({
       <div className="flex flex-col gap-3">
         <Input label="Название (видите только вы)" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={128} />
         <div className="flex gap-1.5">
-          {(["uk", "ru", "en"] as const).map((l) => (
+          {(["ru", "uk", "en"] as const).map((l) => (
             <button
               key={l}
               type="button"
@@ -285,6 +301,7 @@ function TemplateEditor({
             >
               {LOCALE_LABEL[l]}
               {l === "ru" && " *"}
+              {l !== "ru" && stale(l) && <span className="ml-1 text-[var(--warn,#F59E0B)]" title="Перевод устарел">•</span>}
             </button>
           ))}
         </div>
@@ -293,14 +310,21 @@ function TemplateEditor({
             lang === "ru"
               ? "Текст на русском (обязательно)"
               : lang === "uk"
-                ? "Текст українською (если пусто — русский)"
-                : "Text in English (если пусто — украинский, затем русский)"
+                ? "Текст українською (необязательно)"
+                : "Text in English (необязательно)"
           }
           rows={7}
           value={value}
           maxLength={4000}
           onChange={(e) => setValue(e.target.value)}
         />
+        {lang !== "ru" && (
+          <p className={cn("-mt-1.5 text-[11.5px]", stale(lang) ? "text-[var(--warn,#F59E0B)]" : "text-[var(--text-faint)]")}>
+            {stale(lang)
+              ? "Перевод сделан для старого русского текста — в чате пока уходит русский. Обновите его здесь или во вкладке «Переводы»."
+              : "Можно не заполнять: пустой появится во вкладке «Переводы» вместе с товарами. Пока перевода нет, клиенту уходит русский текст."}
+          </p>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {PLACEHOLDERS.map((p) => (
             <button

@@ -4,6 +4,8 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.Tag;
+import com.maxsolch.shop.domain.ReplyTemplate;
+import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
@@ -48,6 +50,7 @@ class TranslationAdminServiceTest {
     ProductVariantRepository variants;
     TagRepository tags;
     PaymentOptionRepository payments;
+    ReplyTemplateRepository templates;
     TranslationService translationService;
     CacheManager cacheManager;
     TranslationAdminService service;
@@ -59,6 +62,7 @@ class TranslationAdminServiceTest {
         variants = mock(ProductVariantRepository.class);
         tags = mock(TagRepository.class);
         payments = mock(PaymentOptionRepository.class);
+        templates = mock(ReplyTemplateRepository.class);
         translationService = mock(TranslationService.class);
         cacheManager = new ConcurrentMapCacheManager("products", "productById", "tags");
 
@@ -78,7 +82,7 @@ class TranslationAdminServiceTest {
         when(payments.findAll()).thenReturn(List.of(inactive));
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
-        service = new TranslationAdminService(repo, products, variants, tags, payments,
+        service = new TranslationAdminService(repo, products, variants, tags, payments, templates,
                 translationService,
                 cacheManager);
     }
@@ -374,5 +378,35 @@ class TranslationAdminServiceTest {
         assertThat(r.invalid()).isEqualTo(1);
         assertThat(r.rejected()).extracting(TranslationDtos.Rejected::reason)
                 .containsExactly("INVALID_SOURCE_TOO_LONG");
+    }
+
+    @Test
+    void replyTemplatesAreExportedWithTheirTitle_andImportedLikeAnyField() {
+        ReplyTemplate t = new ReplyTemplate();
+        t.setId(7L);
+        t.setTitle("Товар выслан");
+        t.setBodyRu("{name}, заказ #{orderNo} отправлен.");
+        when(templates.findAll()).thenReturn(List.of(t));
+        when(templates.findById(7L)).thenReturn(Optional.of(t));
+        String key = ReplyTemplate.translationKey(7L);
+
+        List<ExportItem> items = service.export("uk", "missing", "reply_template");
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).entityId()).isEqualTo(key);
+        assertThat(items.get(0).field()).isEqualTo("body");
+        assertThat(items.get(0).productTitle()).isEqualTo("Товар выслан");
+        assertThat(items.get(0).productId()).isNull();
+
+        ImportResult r = service.importTranslations(new ImportRequest("uk", null, false, List.of(
+                new ImportItem("REPLY_TEMPLATE", key, "body", TranslationService.sha256Hex(t.getBodyRu()),
+                        "{name}, замовлення #{orderNo} відправлено."))), 1L);
+        assertThat(r.applied()).isEqualTo(1);
+
+        TranslationDtos.SourceFixResult fix = service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("REPLY_TEMPLATE", key, "body",
+                        TranslationService.sha256Hex(t.getBodyRu()))),
+                "{name}, ваш заказ #{orderNo} отправлен.", Map.of()), 1L);
+        assertThat(fix.updated()).isEqualTo(1);
+        assertThat(t.getBodyRu()).isEqualTo("{name}, ваш заказ #{orderNo} отправлен.");
     }
 }

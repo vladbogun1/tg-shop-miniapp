@@ -63,4 +63,15 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
     @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'PAYMENT_OPTION' "
             + "AND entity_id NOT IN (SELECT id FROM payment_options)")
     int deleteOrphanPaymentOptions();
+
+    @Modifying
+    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'REPLY_TEMPLATE' "
+            + "AND entity_id NOT IN (SELECT UNHEX(LPAD(HEX(id), 32, '0')) FROM reply_templates)")
+    int deleteOrphanReplyTemplates();
+
+    @Query("select t from ContentTranslation t where t.id.entityType = :type and t.id.entityId = :id")
+    List<ContentTranslation> findForEntity(@Param("type") TranslationEntityType type, @Param("id") byte[] id);
+
+    @Query("select t from ContentTranslation t where t.id.entityType = :type")
+    List<ContentTranslation> findByType(@Param("type") TranslationEntityType type);
 }

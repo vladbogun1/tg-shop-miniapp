@@ -81,6 +81,9 @@ export interface ReplyTemplate {
   bodyUk?: string | null;
   bodyEn?: string | null;
   sort: number;
+  /** The uk/en text was made for an older Russian one (not used in the chat until redone). */
+  ukStale?: boolean;
+  enStale?: boolean;
 }
 
 export interface ReplyTemplateWrite {

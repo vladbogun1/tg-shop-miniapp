@@ -7,6 +7,12 @@ import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
+import com.maxsolch.shop.translation.ContentTranslation;
+import com.maxsolch.shop.translation.ContentTranslationId;
+import com.maxsolch.shop.translation.ContentTranslationRepository;
+import com.maxsolch.shop.translation.TranslationEntityType;
+import com.maxsolch.shop.translation.TranslationOrigin;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.RenderedTemplateDto;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateDto;
@@ -15,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -31,6 +38,10 @@ import static com.maxsolch.shop.common.Texts.trimToNull;
  * is taken in the customer's language ({@code users.locale}, then their Telegram language), falling
  * back to Ukrainian and then to the required Russian text. The result is only a draft — the admin
  * sees it in the input and can edit it before sending.
+ *
+ * <p>Russian is the source; Ukrainian and English are content translations (REPLY_TEMPLATE) — filled
+ * in «Переводы» like product texts, or typed by hand in the template editor. A translation made for
+ * an older Russian text is stale and is not used until it is updated.
  */
 @Service
 public class ReplyTemplateService {
@@ -40,20 +51,27 @@ public class ReplyTemplateService {
     private final ReplyTemplateRepository repository;
     private final OrderRepository orderRepository;
     private final Messages messages;
+    private final ContentTranslationRepository translationRepository;
+    private final TranslationService translationService;
 
     public ReplyTemplateService(ReplyTemplateRepository repository,
                                 OrderRepository orderRepository,
-                                Messages messages) {
+                                Messages messages,
+                                ContentTranslationRepository translationRepository,
+                                TranslationService translationService) {
         this.repository = repository;
         this.orderRepository = orderRepository;
         this.messages = messages;
+        this.translationRepository = translationRepository;
+        this.translationService = translationService;
     }
 
     // ----- CRUD -----
 
     @Transactional(readOnly = true)
     public List<TemplateDto> list() {
-        return repository.findAllByOrderBySortAscIdAsc().stream().map(ReplyTemplateService::toDto).toList();
+        Map<String, ContentTranslation> rows = translations();
+        return repository.findAllByOrderBySortAscIdAsc().stream().map(t -> toDto(t, rows)).toList();
     }
 
     @Transactional
@@ -65,35 +83,103 @@ public class ReplyTemplateService {
             t.setSort(repository.findAllByOrderBySortAscIdAsc().stream()
                     .mapToInt(ReplyTemplate::getSort).max().orElse(0) + 10);
         }
-        return toDto(repository.save(t));
+        t = repository.save(t);
+        writeTranslations(t, req);
+        return toDto(t, translations());
     }
 
     @Transactional
     public TemplateDto update(long id, TemplateUpsertRequest req) {
         ReplyTemplate t = repository.findById(id).orElseThrow(() -> new NotFoundException("template not found"));
         apply(t, req);
-        return toDto(repository.save(t));
+        t = repository.save(t);
+        writeTranslations(t, req);
+        return toDto(t, translations());
     }
 
     @Transactional
     public String delete(long id) {
         ReplyTemplate t = repository.findById(id).orElseThrow(() -> new NotFoundException("template not found"));
         repository.delete(t);
+        translationRepository.deleteForEntities(TranslationEntityType.REPLY_TEMPLATE,
+                List.of(ReplyTemplate.translationId(t.getId())));
+        translationService.invalidate();
         return t.getTitle();
     }
 
     private static void apply(ReplyTemplate t, TemplateUpsertRequest req) {
         t.setTitle(req.title().trim());
         t.setBodyRu(req.bodyRu().trim());
-        t.setBodyUk(trimToNull(req.bodyUk()));
-        t.setBodyEn(trimToNull(req.bodyEn()));
         if (req.sort() != null) {
             t.setSort(req.sort());
         }
     }
 
-    private static TemplateDto toDto(ReplyTemplate t) {
-        return new TemplateDto(t.getId(), t.getTitle(), t.getBodyRu(), t.getBodyUk(), t.getBodyEn(), t.getSort());
+    /**
+     * The uk/en texts from the editor. Blank removes the translation; a text that differs from the
+     * stored one is the admin's own (MANUAL, made for the current Russian text); an unchanged one is
+     * left alone — after a Russian edit it stays stale and shows up in «Переводы» to be redone.
+     */
+    private void writeTranslations(ReplyTemplate t, TemplateUpsertRequest req) {
+        byte[] key = ReplyTemplate.translationId(t.getId());
+        Map<String, ContentTranslation> rows = new HashMap<>();
+        for (ContentTranslation row : translationRepository.findForEntity(TranslationEntityType.REPLY_TEMPLATE, key)) {
+            rows.put(row.getId().getLocale(), row);
+        }
+        String hash = TranslationService.sha256Hex(t.getBodyRu());
+        boolean changed = false;
+        for (String locale : List.of("uk", "en")) {
+            String wanted = trimToNull("uk".equals(locale) ? req.bodyUk() : req.bodyEn());
+            ContentTranslation row = rows.get(locale);
+            if (wanted == null) {
+                if (row != null) {
+                    translationRepository.delete(row);
+                    changed = true;
+                }
+                continue;
+            }
+            if (row != null && wanted.equals(row.getText())) {
+                continue;
+            }
+            if (row == null) {
+                row = new ContentTranslation(new ContentTranslationId(TranslationEntityType.REPLY_TEMPLATE, key,
+                        TranslationEntityType.BODY, locale));
+            }
+            row.setText(wanted);
+            row.setSourceHash(hash);
+            row.setOrigin(TranslationOrigin.MANUAL);
+            translationRepository.save(row);
+            changed = true;
+        }
+        if (changed) {
+            translationService.invalidate();
+        }
+    }
+
+    /** Every template translation, keyed {@code "<templateId>:<locale>"}. */
+    private Map<String, ContentTranslation> translations() {
+        Map<String, ContentTranslation> out = new HashMap<>();
+        for (ContentTranslation row : translationRepository.findByType(TranslationEntityType.REPLY_TEMPLATE)) {
+            Long id = ReplyTemplate.idOfTranslationId(row.getId().getEntityId());
+            if (id != null) {
+                out.put(id + ":" + row.getId().getLocale(), row);
+            }
+        }
+        return out;
+    }
+
+    private static TemplateDto toDto(ReplyTemplate t, Map<String, ContentTranslation> rows) {
+        String hash = TranslationService.sha256Hex(t.getBodyRu());
+        ContentTranslation uk = rows.get(t.getId() + ":uk");
+        ContentTranslation en = rows.get(t.getId() + ":en");
+        return new TemplateDto(t.getId(), t.getTitle(), t.getBodyRu(),
+                uk == null ? null : uk.getText(), en == null ? null : en.getText(), t.getSort(),
+                uk != null && !hash.equals(uk.getSourceHash()), en != null && !hash.equals(en.getSourceHash()));
+    }
+
+    /** A translation's text if it was made for this Russian text, else null (stale or missing). */
+    static String current(ContentTranslation row, String sourceHash) {
+        return row != null && sourceHash.equals(row.getSourceHash()) ? row.getText() : null;
     }
 
     // ----- rendering -----
@@ -105,9 +191,12 @@ public class ReplyTemplateService {
                 .orElseThrow(() -> new NotFoundException("order not found"));
         Locale locale = messages.localeOf(order.getTgUserId());
         Map<String, String> vars = variables(order, locale);
+        Map<String, ContentTranslation> rows = translations();
         List<RenderedTemplateDto> out = new ArrayList<>();
         for (ReplyTemplate t : repository.findAllByOrderBySortAscIdAsc()) {
-            Picked picked = pick(t, locale.getLanguage());
+            String hash = TranslationService.sha256Hex(t.getBodyRu());
+            Picked picked = pick(t.getBodyRu(), current(rows.get(t.getId() + ":uk"), hash),
+                    current(rows.get(t.getId() + ":en"), hash), locale.getLanguage());
             out.add(new RenderedTemplateDto(t.getId(), t.getTitle(), fill(picked.body(), vars), picked.lang()));
         }
         return out;
@@ -118,18 +207,18 @@ public class ReplyTemplateService {
     }
 
     /** Customer's language → Ukrainian (the shop's fallback) → Russian (always present). */
-    static Picked pick(ReplyTemplate t, String lang) {
+    static Picked pick(String ru, String uk, String en, String lang) {
         String want = lang == null ? "uk" : lang;
-        if ("en".equals(want) && notBlank(t.getBodyEn())) {
-            return new Picked(t.getBodyEn(), "en");
+        if ("en".equals(want) && notBlank(en)) {
+            return new Picked(en, "en");
         }
         if ("ru".equals(want)) {
-            return new Picked(t.getBodyRu(), "ru");
+            return new Picked(ru, "ru");
         }
-        if (notBlank(t.getBodyUk())) {
-            return new Picked(t.getBodyUk(), "uk");
+        if (notBlank(uk)) {
+            return new Picked(uk, "uk");
         }
-        return new Picked(t.getBodyRu(), "ru");
+        return new Picked(ru, "ru");
     }
 
     Map<String, String> variables(Order order, Locale locale) {

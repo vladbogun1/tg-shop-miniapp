@@ -647,7 +647,7 @@ export interface BroadcastResult {
 
 // ---- content translations (docs/CONTENT-I18N.md) ---------------------------
 export type TrLocale = "uk" | "en";
-export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
+export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
 export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
 export type TrOrigin = "AI" | "MANUAL";
 

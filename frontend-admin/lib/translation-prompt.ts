@@ -55,6 +55,8 @@ export const KIND_LABEL: Record<string, string> = {
   "TAG.intro_text": "SEO-текст страницы категории (несколько абзацев)",
   "PAYMENT_OPTION.title": "способ оплаты (название)",
   "PAYMENT_OPTION.description": "способ оплаты (пояснение покупателю)",
+  "REPLY_TEMPLATE.body":
+    "шаблон ответа покупателю в чате заказа (вежливо, как пишет магазин; плейсхолдеры {name}, {orderNo}, {total}, {cod}, {ttn}, {warehouse} оставить без изменений)",
 };
 
 /** Short Russian label for the admin UI. */
@@ -71,6 +73,7 @@ export const KIND_SHORT: Record<string, string> = {
   "TAG.intro_text": "Категория: SEO-текст",
   "PAYMENT_OPTION.title": "Оплата",
   "PAYMENT_OPTION.description": "Оплата: описание",
+  "REPLY_TEMPLATE.body": "Шаблон чата",
 };
 
 /** Glossary ru → uk | en (docs/i18n-glossary.md, «Термины»). */

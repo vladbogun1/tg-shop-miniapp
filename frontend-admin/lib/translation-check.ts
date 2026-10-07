@@ -47,7 +47,10 @@ export interface WorkSet {
   byId: Map<string, UniqueString>;
 }
 
-const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, PRODUCT: 2, VARIANT: 3 };
+/** `{name}`-style slots of chat templates (ReplyTemplateService fills them in). */
+const PLACEHOLDER = /\{[a-zA-Z]+\}/g;
+
+const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, REPLY_TEMPLATE: 2, PRODUCT: 3, VARIANT: 4 };
 const FIELD_ORDER: Record<string, number> = {
   title: 0,
   name: 0,
@@ -133,7 +136,10 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
         source: f.source,
         kindKey: `${f.entityType}.${f.field}`,
         // Context for the AI: the product of a variant name, the category of a category SEO text.
-        product: f.entityType === "VARIANT" || (f.entityType === "TAG" && f.field !== "name") ? f.productTitle : null,
+        product:
+          f.entityType === "VARIANT" || f.entityType === "REPLY_TEMPLATE" || (f.entityType === "TAG" && f.field !== "name")
+            ? f.productTitle
+            : null,
         fields: [],
         needs: { uk: false, en: false },
         hasMissing: false,
@@ -336,6 +342,19 @@ export function checkTranslation(source: string, lang: TrLocale, text: string): 
     if ((srcDigits.get(d) ?? 0) < n) extra.push(d);
   });
   if (extra.length) warn(`новое число: ${extra.slice(0, 5).join(", ")}`);
+
+  // Chat templates: {name}, {orderNo}… are filled in from the order — a translated or dropped one
+  // would reach the customer as is.
+  const srcSlots = countMap(source.match(PLACEHOLDER) ?? []);
+  const dstSlots = countMap(text.match(PLACEHOLDER) ?? []);
+  const badSlots: string[] = [];
+  srcSlots.forEach((n, k) => {
+    if ((dstSlots.get(k) ?? 0) !== n) badSlots.push(k);
+  });
+  dstSlots.forEach((_, k) => {
+    if (!srcSlots.has(k)) badSlots.push(k);
+  });
+  if (badSlots.length) err(`плейсхолдеры не совпадают: ${badSlots.slice(0, 5).join(", ")}`);
 
   const latin = Array.from(new Set(source.match(LATIN_TOKEN) ?? []));
   const lower = text.toLowerCase();
