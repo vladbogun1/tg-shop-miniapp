@@ -1,14 +1,19 @@
 "use client";
 
 /**
- * Журнал (route "/audit") — who did what in the admin panel (admin_audit_log, V14).
+ * Журнал (route "/audit"), two tabs (?tab=):
+ *  - «Админка» — who did what in the admin panel (admin_audit_log, V14);
+ *  - «Бот и сайт» (?tab=bot) — what the bot sent and whether it was delivered, what customers did
+ *    on the website / in the Mini App, payments and jobs (activity_log, V47 — ActivityTab).
  *
+ * «Админка»:
  * Filters: action, entity type, entity id, admin, period (calendar days in the shop timezone).
  * Newest first, 50 per page, «Ещё» loads the next page. Desktop: table; phone: cards.
  * Rows of orders/products link to the entity. Data: GET /api/admin/audit (+ /facets).
  */
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ExternalLink, RotateCcw, ScrollText, Search } from "lucide-react";
 import type { AuditEntry } from "@/lib/api";
@@ -23,6 +28,8 @@ import { formatDateTime } from "@/lib/orders";
 import { cn } from "@/lib/cn";
 import { useDebounced } from "@/lib/use-debounced";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ActivityTab } from "@/components/journal/ActivityTab";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,7 +39,51 @@ import { Select } from "@/components/ui/Select";
 
 const PAGE = 50;
 
+type JournalTab = "admin" | "bot";
+
 export default function AuditPage() {
+  return (
+    <Suspense>
+      <Journal />
+    </Suspense>
+  );
+}
+
+function Journal() {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const tab: JournalTab = sp.get("tab") === "bot" ? "bot" : "admin";
+
+  function setTab(t: JournalTab) {
+    router.replace(t === "bot" ? "/audit?tab=bot" : "/audit", { scroll: false });
+  }
+
+  return (
+    <div className="min-w-0">
+      <PageHeader
+        title="Журнал"
+        subtitle={
+          tab === "bot"
+            ? "Что бот кому отправил и дошло ли, что покупатели делали на сайте и в Mini App, оплаты."
+            : "Кто и когда что менял в админке: заказы, оплата и возвраты, товары, входы."
+        }
+      />
+      <div className="mb-4">
+        <SegmentedControl<JournalTab>
+          options={[
+            { value: "admin", label: "Админка" },
+            { value: "bot", label: "Бот и сайт" },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      </div>
+      {tab === "bot" ? <ActivityTab /> : <AdminAuditTab />}
+    </div>
+  );
+}
+
+function AdminAuditTab() {
   const [action, setAction] = useState("");
   const [entityType, setEntityType] = useState("");
   const [entityIdRaw, setEntityIdRaw] = useState("");
@@ -75,7 +126,6 @@ export default function AuditPage() {
   const facets = facetsQ.data;
   return (
     <div className="min-w-0">
-      <PageHeader title="Журнал" subtitle="Кто и когда что менял в админке: заказы, оплата и возвраты, товары, входы." />
 
       {/* Filters */}
       <div className="card mb-5 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
