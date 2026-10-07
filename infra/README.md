@@ -68,19 +68,3 @@ browser ──> nginx (disk cache, :8082) ──> imgproxy (:8080, resize/WebP/A
 
 Because originals live in MinIO (not MySQL LONGBLOBs), the DB stays small and
 image delivery never touches the app.
-
-## Running the migration tool
-
-The migration tool (`com.maxsolch.migration`, in `../migration`) is a one-off
-job run **after** the stack is up — it reads the old DB, pushes image blobs into
-MinIO and rewrites `product_images.url`. It is not part of `docker compose`.
-
-1. Make sure `mysql` and `minio` are healthy (`docker compose ps`).
-2. Point it at:
-   - Old DB via `OLD_DB_URL` / `OLD_DB_USER` / `OLD_DB_PASSWORD` (see `.env.example`).
-   - New DB on host port **3341** (`jdbc:mysql://localhost:3341/tgshop_v2`).
-   - MinIO via `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`) + `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET`.
-3. Run it from the `migration` module (e.g. `mvn -pl migration spring-boot:run`
-   or the produced jar) and verify rewritten URLs resolve through
-   `http://localhost:8082/img/...`.
-```
