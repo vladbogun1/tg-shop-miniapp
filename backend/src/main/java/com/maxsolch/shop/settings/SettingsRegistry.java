@@ -43,6 +43,7 @@ public final class SettingsRegistry {
     public static final String REVIEWS_BONUS_VALID_DAYS = "reviews.bonusValidDays";
     public static final String REVIEWS_MIN_LENGTH = "reviews.minLength";
     public static final String REVIEWS_REMINDER_DAYS = "reviews.reminderDays";
+    public static final String REVIEWS_BONUS_EXPIRY_REMINDER_DAYS = "reviews.bonusExpiryReminderDays";
     public static final String REVIEWS_MAX_PER_DAY = "reviews.maxPerDay";
     public static final String INBOX_NEW_STALE_HOURS = "inbox.newStaleHours";
     public static final String INBOX_APPROVED_STALE_HOURS = "inbox.approvedStaleHours";
@@ -152,6 +153,11 @@ public final class SettingsRegistry {
                     "Срок действия бонуса",
                     "Сколько дней действует бонусный промокод с момента выдачи.",
                     60, 1, 365, "дн."),
+            intSetting(REVIEWS_BONUS_EXPIRY_REMINDER_DAYS, "reviews",
+                    "Напомнить, что бонус сгорает, за",
+                    "За сколько дней до конца срока бот напомнит о неиспользованном бонусном промокоде "
+                            + "(один раз на код). 0 — не напоминать.",
+                    3, 0, 30, "дн."),
             intSetting(REVIEWS_MIN_LENGTH, "reviews",
                     "Минимальная длина отзыва",
                     "Короче — покупатель увидит просьбу написать подробнее.",

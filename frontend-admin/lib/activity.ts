@@ -133,6 +133,7 @@ export const TYPE_LABEL: Record<string, string> = {
   CANCEL_REQUEST_DECLINED: "Отмена отклонена",
   SUPPORT_REPLY: "Ответ поддержки",
   REVIEW_REMINDER: "Напоминание об отзыве",
+  REVIEW_BONUS_EXPIRING: "Бонус скоро сгорит",
   REVIEW_BONUS: "Бонус за отзыв",
   BROADCAST: "Рассылка",
   BROADCAST_TEST: "Тест рассылки",

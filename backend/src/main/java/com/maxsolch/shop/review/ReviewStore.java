@@ -148,6 +148,37 @@ public class ReviewStore {
                 Timestamp.from(deliveredFrom), Timestamp.from(deliveredTo), limit);
     }
 
+    /** A review bonus that runs out soon and has not been used. */
+    public record BonusExpiryCandidate(byte[] promoId, Long tgUserId, String code, int percent, Instant expiresAt) {
+    }
+
+    /**
+     * Unused, still valid review bonuses expiring in {@code (now, expiresBy]}, issued no later than
+     * {@code issuedBefore} (a code is not "about to run out" the day it was given), not reminded yet,
+     * whose owner has not blocked the bot; soonest first.
+     */
+    public List<BonusExpiryCandidate> bonusExpiryCandidates(Instant now, Instant expiresBy, Instant issuedBefore,
+                                                            int limit) {
+        return jdbc.query("select p.id, p.owner_user_id, p.code, p.discount_percent, p.expires_at from promo_codes p "
+                        + "left join users u on u.telegram_user_id = p.owner_user_id "
+                        + "where p.source = 'REVIEW_BONUS' and p.active = true and p.expiry_reminded_at is null "
+                        + "and p.owner_user_id is not null and p.owner_user_id > 0 "
+                        + "and p.expires_at > ? and p.expires_at <= ? and p.created_at <= ? "
+                        + "and (p.max_uses is null or p.uses_count < p.max_uses) "
+                        + "and coalesce(u.bot_blocked, false) = false "
+                        + "order by p.expires_at limit ?",
+                (rs, i) -> new BonusExpiryCandidate(rs.getBytes("id"), rs.getLong("owner_user_id"),
+                        rs.getString("code"), rs.getInt("discount_percent"),
+                        rs.getTimestamp("expires_at").toInstant()),
+                Timestamp.from(now), Timestamp.from(expiresBy), Timestamp.from(issuedBefore), limit);
+    }
+
+    /** Marks the expiry reminder of a code as sent; false when another run already took it. */
+    public boolean claimBonusExpiryReminder(byte[] promoId, Instant now) {
+        return jdbc.update("update promo_codes set expiry_reminded_at = ? "
+                + "where id = ? and expiry_reminded_at is null", Timestamp.from(now), promoId) == 1;
+    }
+
     /** Short ids of orders (first 8 chars of the UUID) — for admin rows. */
     public static String shortId(byte[] orderId) {
         String id = orderId == null ? null : UuidUtil.toString(orderId);

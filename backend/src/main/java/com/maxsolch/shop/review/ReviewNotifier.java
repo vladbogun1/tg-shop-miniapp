@@ -116,6 +116,38 @@ public class ReviewNotifier {
         }
     }
 
+    /**
+     * "Your −N% bonus runs out on …". The button opens the shop; at checkout the code is offered
+     * above the promo field, so the customer does not have to copy it.
+     *
+     * @return whether the message went out
+     */
+    public boolean bonusExpiring(Long tgUserId, String code, int percent, Instant expiresAt) {
+        if (!enabled() || tgUserId == null || tgUserId <= 0) {
+            return false;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String date = DATE.format(expiresAt.atZone(KYIV));
+            String text = messages.get(locale, "bot.review.bonusExpiring.title", String.valueOf(percent)) + "\n"
+                    + messages.get(locale, "bot.review.bonusExpiring.body", "<code>" + escHtml(code) + "</code>", date);
+            SendMessage msg = SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(button(messages.get(locale, "bot.review.bonus.open"), null))
+                    .build();
+            // As with the bonus itself, the journal keeps the size and the date, not the code.
+            activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS_EXPIRING").toCustomer(tgUserId)
+                    .text("Бонус −" + percent + "% сгорает " + date)
+                    .detail("percent", percent), () -> bot.execute(msg));
+            return true;
+        } catch (Exception e) {
+            log.warn("Bonus expiry DM failed for {}: {}", tgUserId, e.getMessage());
+            return false;
+        }
+    }
+
     /** Push to the admins' devices: a review waits for moderation. */
     public void pendingForModeration(String productTitle, int rating, long pendingCount) {
         try {
