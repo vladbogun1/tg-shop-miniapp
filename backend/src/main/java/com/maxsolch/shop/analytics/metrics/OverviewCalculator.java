@@ -86,7 +86,7 @@ public final class OverviewCalculator {
                     if (o.rejected()) {
                         rejected++;
                     } else {
-                        sold += o.totalMinor();
+                        sold += o.soldMinor();
                         count++;
                     }
                 }
@@ -207,7 +207,7 @@ public final class OverviewCalculator {
                 a[3]++;
             } else {
                 a[0]++;
-                a[1] += o.totalMinor();
+                a[1] += o.soldMinor();
             }
         }
         List<SchemeRow> out = new ArrayList<>();
@@ -309,7 +309,7 @@ public final class OverviewCalculator {
                     a[3]++;
                 } else {
                     a[0]++;
-                    a[1] += o.totalMinor();
+                    a[1] += o.soldMinor();
                 }
             }
             long[] parts = o.receivedParts();
@@ -341,7 +341,7 @@ public final class OverviewCalculator {
                     || !period.contains(o.createdAt())) {
                 continue;
             }
-            long revenue = Math.round(it.priceMinor() * it.quantity() * o.chargedShare());
+            long revenue = Math.round(it.priceMinor() * it.quantity() * o.soldShare());
             totalRevenue += revenue;
             ProductFact p = products.get(it.productId());
             List<String> tags = p == null || p.tags().isEmpty() ? List.of(NO_CATEGORY) : p.tags();
@@ -397,7 +397,7 @@ public final class OverviewCalculator {
                     continue;
                 }
                 count++;
-                sold += o.totalMinor();
+                sold += o.soldMinor();
                 if (o.tgUserId() != null) {
                     buyers.add(o.tgUserId());
                 }

@@ -588,53 +588,6 @@ export interface AuditEntry {
   createdAt: string;
 }
 
-// ---- metrics ---------------------------------------------------------------
-
-export interface RevenueByDay {
-  date: string; // yyyy-MM-dd
-  revenueMinor: number;
-  orders: number;
-}
-export interface OrdersByDay {
-  date: string; // yyyy-MM-dd
-  count: number;
-}
-export interface TopProduct {
-  title: string;
-  qty: number;
-  revenueMinor: number;
-}
-export interface PaymentOptionStat {
-  title: string;
-  count: number;
-}
-export interface DeliverySpeed {
-  avgApproveHours: number | null;
-  avgShipHours: number | null;
-  avgDeliverHours: number | null;
-  avgTotalHours: number | null;
-}
-
-export interface MetricsDto {
-  range: TimeRange;
-  currency: string;
-  totalOrders: number;
-  deliveredOrders: number;
-  rejectedOrders: number;
-  approvedOrders: number;
-  shippedOrders: number;
-  newOrders: number;
-  revenueMinor: number;
-  avgOrderValueMinor: number;
-  statusCounts: Record<OrderStatus, number>;
-  revenueByDay: RevenueByDay[];
-  ordersByDay: OrdersByDay[];
-  topProducts: TopProduct[];
-  deliveryMethods: Record<DeliveryMethod, number>;
-  paymentOptions: PaymentOptionStat[];
-  deliverySpeed: DeliverySpeed;
-}
-
 // ---- users -----------------------------------------------------------------
 export interface UserCardDto {
   telegramUserId: number;
@@ -815,9 +768,6 @@ export const adminApi = {
     if (params.sortDir) sp.set("sortDir", params.sortDir);
     return apiGet<OrderCardDto[]>(`/api/admin/orders?${sp.toString()}`);
   },
-  /** GET /api/admin/metrics?range= -> MetricsDto. */
-  metrics: (range: TimeRange = "month") =>
-    apiGet<MetricsDto>(`/api/admin/metrics?range=${range}`),
   order: (id: string) => apiGet<OrderDetailDto>(`/api/admin/orders/${id}`),
   changeStatus: (
     id: string,

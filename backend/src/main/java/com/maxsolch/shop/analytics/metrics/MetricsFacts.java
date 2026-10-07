@@ -126,11 +126,19 @@ public record MetricsFacts(List<OrderFact> orders,
         }
 
         /**
-         * An online order nobody has paid yet (within its 24 h): not a sale yet, it either gets paid
-         * or is cancelled automatically. An admin who approves / ships it anyway makes it a sale.
+         * An online order with nothing paid yet, whatever its status: not a sale. For online orders a
+         * sale starts with the money (owner's rule, 2026-10): the full amount, or the 100 грн
+         * prepayment for "prepay + COD". An admin approving / shipping it does not make it a sale;
+         * delivering it does (delivery records the whole amount as received). Old manual-transfer
+         * orders and orders without an online part are not affected.
          */
         public boolean awaitingPayment() {
-            return online() && status == OrderStatus.NEW && !paid && receivedMinor <= 0;
+            return online() && !rejected() && !paid && receivedMinor <= 0 && onlinePaidMinor <= 0;
+        }
+
+        /** Still NEW and unpaid online: within its 24 h, may yet be cancelled automatically. */
+        public boolean awaitingPaymentNew() {
+            return awaitingPayment() && status == OrderStatus.NEW;
         }
 
         /** Rejected automatically: the online payment deadline passed with nothing paid. */
@@ -186,6 +194,32 @@ public record MetricsFacts(List<OrderFact> orders,
                 return onlineRefundAt;
             }
             return rejectedAt != null ? rejectedAt : paidAt;
+        }
+
+        /**
+         * Sold amount net of refunds: {@code total − refunds}, where a refund that only gives back an
+         * overpayment does not count. An admin who removes an item from a paid order lowers the total
+         * AND refunds the difference — subtracting that refund again would count the removal twice.
+         * The overpayment is what was paid above the current total: the credited monobank invoices
+         * (exact, survive "Доставлен" resetting the received amount) or the received amount.
+         * Zero for orders that are not sold.
+         */
+        public long soldMinor() {
+            if (!sold()) {
+                return 0;
+            }
+            long total = Math.max(0, totalMinor);
+            long overpaid = Math.max(0, Math.max(receivedMinor, onlinePaidMinor) - total);
+            long returned = Math.max(0, refundedMinor - overpaid);
+            return Math.max(0, total - Math.min(total, returned));
+        }
+
+        /** Share of the order's item prices that stays sold: promo discount and refunds applied. */
+        public double soldShare() {
+            if (totalMinor <= 0) {
+                return sold() ? chargedShare() : 0;
+            }
+            return chargedShare() * soldMinor() / (double) totalMinor;
         }
 
         /** Share of the item prices actually charged after the promo discount (1 when unknown). */

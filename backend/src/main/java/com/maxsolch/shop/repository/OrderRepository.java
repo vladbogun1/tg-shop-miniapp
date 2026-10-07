@@ -2,7 +2,6 @@ package com.maxsolch.shop.repository;
 
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
-import com.maxsolch.shop.service.MetricsRow;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -117,15 +116,4 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                  @Param("idLo") byte[] idLo,
                                  @Param("idHi") byte[] idHi,
                                  @Param("from") Instant from);
-
-    /**
-     * Range-bounded analytics rows. Returns a flat projection rather than entities: the dashboard
-     * polls frequently and only needs these columns, so there is no reason to hydrate orders (and,
-     * previously, to lazily fetch each one's items — one extra query per order).
-     */
-    @Query("select new com.maxsolch.shop.service.MetricsRow("
-            + "o.status, o.totalMinor, o.currency, o.deliveryMethod, o.paymentOptionTitle, "
-            + "o.createdAt, o.approvedAt, o.shippedAt, o.deliveredAt) "
-            + "from Order o where (:from is null or o.createdAt >= :from) order by o.createdAt asc")
-    List<MetricsRow> findMetricsRows(@Param("from") Instant from);
 }

@@ -5,9 +5,6 @@ import com.maxsolch.shop.analytics.metrics.ChannelFilter;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos;
 import com.maxsolch.shop.analytics.metrics.MetricsPeriod;
 import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.service.MetricsService;
-import com.maxsolch.shop.service.TimeRange;
-import com.maxsolch.shop.web.dto.MetricsDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,8 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Admin analytics. {@code GET /api/admin/metrics?range=} is the original single-payload dashboard
- * (kept for compatibility); the tabbed metrics page uses the per-tab endpoints below, all taking
+ * Admin analytics: the tabbed metrics page and the board strip. All tab endpoints take
  * {@code period=today|7d|month|prevmonth|90d|year|custom} (+ {@code from}/{@code to} as yyyy-MM-dd for
  * custom) and {@code channel=all|miniapp|web}.
  */
@@ -29,18 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminMetricsController {
 
-    private final MetricsService metricsService;
     private final AdminMetricsService metrics;
 
-    public AdminMetricsController(MetricsService metricsService, AdminMetricsService metrics) {
-        this.metricsService = metricsService;
+    public AdminMetricsController(AdminMetricsService metrics) {
         this.metrics = metrics;
-    }
-
-    @GetMapping
-    @Operation(summary = "Order metrics/analytics for range=month|halfyear|year|all (default month)")
-    public MetricsDto metrics(@RequestParam(defaultValue = "month") String range) {
-        return metricsService.compute(TimeRange.parse(range));
     }
 
     @GetMapping("/overview")

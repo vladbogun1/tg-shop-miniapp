@@ -110,7 +110,7 @@ public class AdminMetricsService {
         long unpaid = 0;
         long cod = 0;
         for (MetricsFacts.OrderFact o : facts.orders()) {
-            if (o.awaitingPayment()) {
+            if (o.awaitingPaymentNew()) {
                 unpaid++;
             } else if (o.status() == OrderStatus.NEW) {
                 toApprove++;

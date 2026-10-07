@@ -59,7 +59,7 @@ public final class ForecastCalculator {
             }
             int i = (int) ChronoUnit.DAYS.between(first, LocalDate.ofInstant(o.createdAt(), zone));
             if (i >= 0 && i < v.length) {
-                v[i] += o.totalMinor();
+                v[i] += o.soldMinor();
             }
         }
         return new Daily(first, v);

@@ -60,7 +60,7 @@ function OverviewBody({
           prevLabel={prevLabel}
           prevValue={uahShort(k.soldMinor.prev)}
           spark={o.series.map((p) => p.soldMinor)}
-          hint="Заказы по дате оформления, кроме отклонённых и ещё не оплаченных онлайн (у них 24 ч на оплату)"
+          hint="Заказы по дате оформления минус возвраты, без отклонённых. Онлайн-заказ — продажа только после оплаты (полной или предоплаты 100 ₴), даже если уже одобрен"
         />
         <KpiTile
           label="Получено"
@@ -78,7 +78,7 @@ function OverviewBody({
           prevLabel={prevLabel}
           prevValue={num(k.orders.prev)}
           spark={o.series.map((p) => p.orders)}
-          hint="Без отклонённых и ещё не оплаченных онлайн"
+          hint="Без отклонённых и неоплаченных онлайн"
         />
         <KpiTile label="Средний чек" value={uah(k.aovMinor.value)} kpi={k.aovMinor} prevLabel={prevLabel} prevValue={uah(k.aovMinor.prev)} />
         <KpiTile

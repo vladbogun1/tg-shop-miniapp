@@ -74,11 +74,82 @@ class OnlinePaymentMetricsTest {
     }
 
     @Test
-    void approvedUnpaidOnlineOrder_isASale_theAdminTookIt() {
+    void approvedUnpaidOnlineOrder_isNotASale_untilItIsPaid() {
         OrderFact approved = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.APPROVED).total(400_00).online(0)
                 .build();
-        assertThat(approved.awaitingPayment()).isFalse();
-        assertThat(approved.sold()).isTrue();
+        assertThat(approved.awaitingPayment()).isTrue();
+        assertThat(approved.awaitingPaymentNew()).isFalse();
+        assertThat(approved.sold()).isFalse();
+        assertThat(approved.soldMinor()).isZero();
+
+        OrderFact shippedUnpaid = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.SHIPPED).total(400_00)
+                .online(100_00).build();
+        assertThat(shippedUnpaid.sold()).isFalse();
+
+        Overview o = calc.compute(facts(now, List.of(approved, shippedUnpaid), List.of(), List.of()),
+                october, ChannelFilter.ALL, Map.of());
+        assertThat(o.kpis().soldMinor().value()).isZero();
+        assertThat(o.money().awaitingPaymentOrders()).isEqualTo(2);
+    }
+
+    @Test
+    void prepaymentPaid_makesTheWholeOrderASale() {
+        OrderFact prepaid = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.APPROVED).total(1500_00)
+                .online(100_00).paidOnline(kyiv("2026-10-10T10:03:00"), 100_00).build();
+        assertThat(prepaid.sold()).isTrue();
+        assertThat(prepaid.soldMinor()).isEqualTo(1500_00);
+        // delivered without the online part (cash at the post office) is a sale too
+        OrderFact delivered = order(kyiv("2026-10-10T10:00:00")).total(500_00).online(100_00)
+                .delivered(kyiv("2026-10-14T10:00:00")).build();
+        assertThat(delivered.sold()).isTrue();
+    }
+
+    @Test
+    void oldOrdersWithoutAnOnlinePart_areSoldAsBefore() {
+        OrderFact oldNewUnpaid = order(kyiv("2026-10-02T10:00:00")).status(OrderStatus.NEW)
+                .payment("Передоплата 100 грн").prepayment(100_00).build();
+        assertThat(oldNewUnpaid.sold()).isTrue();
+    }
+
+    @Test
+    void sold_isNetOfReturns() {
+        // delivered 1000, 300 refunded for a returned item
+        OrderFact returned = order(kyiv("2026-10-05T10:00:00")).total(1000_00).online(0)
+                .paidOnline(kyiv("2026-10-05T10:01:00"), 1000_00).delivered(kyiv("2026-10-08T10:00:00"))
+                .refund(kyiv("2026-10-12T10:00:00"), 300_00).build();
+        assertThat(returned.soldMinor()).isEqualTo(700_00);
+
+        Overview o = calc.compute(facts(now, List.of(returned), List.of(), List.of()),
+                october, ChannelFilter.ALL, Map.of());
+        assertThat(o.kpis().soldMinor().value()).isEqualTo(700_00);
+        assertThat(o.kpis().aovMinor().value()).isEqualTo(700_00);
+        assertThat(o.kpis().receivedMinor().value()).isEqualTo(700_00);
+    }
+
+    @Test
+    void editedPaidOrder_refundOfTheDifference_isNotSubtractedTwice() {
+        // paid 1000 online, admin removed an item: total 800, the 200 difference refunded via monobank
+        OrderFact edited = order(kyiv("2026-10-05T10:00:00")).total(800_00).online(0)
+                .paidOnline(kyiv("2026-10-05T10:01:00"), 1000_00).refundOnline(kyiv("2026-10-06T10:00:00"), 200_00)
+                .build();
+        assertThat(edited.soldMinor()).isEqualTo(800_00);
+        // still right after "Доставлен" resets received to the total: the invoices remember 1000
+        OrderFact delivered = order(kyiv("2026-10-05T10:00:00")).total(800_00).online(0)
+                .paidOnline(kyiv("2026-10-05T10:01:00"), 1000_00).refundOnline(kyiv("2026-10-06T10:00:00"), 200_00)
+                .delivered(kyiv("2026-10-09T10:00:00")).build();
+        assertThat(delivered.soldMinor()).isEqualTo(800_00);
+        // and a later real return of 100 on top of it is subtracted once
+        OrderFact plusReturn = order(kyiv("2026-10-05T10:00:00")).total(800_00).online(0)
+                .paidOnline(kyiv("2026-10-05T10:01:00"), 1000_00).refundOnline(kyiv("2026-10-10T10:00:00"), 300_00)
+                .build();
+        assertThat(plusReturn.soldMinor()).isEqualTo(700_00);
+    }
+
+    @Test
+    void categoryRevenue_followsTheNetSold() {
+        OrderFact returned = order(kyiv("2026-10-05T10:00:00")).total(1000_00)
+                .paid(kyiv("2026-10-05T10:01:00"), 1000_00).refund(kyiv("2026-10-12T10:00:00"), 500_00).build();
+        assertThat(returned.soldShare()).isEqualTo(0.5);
     }
 
     @Test

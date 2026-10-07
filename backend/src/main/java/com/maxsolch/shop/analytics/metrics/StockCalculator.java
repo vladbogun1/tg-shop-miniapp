@@ -51,7 +51,7 @@ public final class StockCalculator {
             }
             lastSale.merge(it.productId(), o.createdAt(), (a, b) -> a.isAfter(b) ? a : b);
             if (!o.createdAt().isBefore(cut30)) {
-                sold30Value.merge(it.productId(), Math.round(it.priceMinor() * it.quantity() * o.chargedShare()),
+                sold30Value.merge(it.productId(), Math.round(it.priceMinor() * it.quantity() * o.soldShare()),
                         Long::sum);
             }
         }
@@ -161,7 +161,7 @@ public final class StockCalculator {
             }
             long[] a = acc.computeIfAbsent(it.productId(), k -> new long[2]);
             a[0] += it.quantity();
-            a[1] += Math.round(it.priceMinor() * it.quantity() * o.chargedShare());
+            a[1] += Math.round(it.priceMinor() * it.quantity() * o.soldShare());
             orderSets.computeIfAbsent(it.productId(), k -> new HashSet<>()).add(it.orderId());
             snapshotTitle.putIfAbsent(it.productId(), it.title());
         }

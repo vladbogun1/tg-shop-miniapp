@@ -61,7 +61,7 @@ public final class CustomerCalculator {
             firstOrder.merge(o.tgUserId(), o.createdAt(), (a, b) -> a.isBefore(b) ? a : b);
             if (channel.matches(o.source())) {
                 orderCount.merge(o.tgUserId(), 1, Integer::sum);
-                lifetime.merge(o.tgUserId(), o.totalMinor(), Long::sum);
+                lifetime.merge(o.tgUserId(), o.soldMinor(), Long::sum);
             }
         }
 
@@ -208,7 +208,7 @@ public final class CustomerCalculator {
             if (o.sold() && period.contains(o.createdAt())) {
                 a = a != null ? a : acc.computeIfAbsent(o.tgUserId(), k -> new long[3]);
                 a[0]++;
-                a[2] += o.totalMinor();
+                a[2] += o.soldMinor();
             }
             if (a != null) {
                 latest.merge(o.tgUserId(), o, (x, y) -> x.createdAt().isAfter(y.createdAt()) ? x : y);
@@ -241,7 +241,7 @@ public final class CustomerCalculator {
             }
             a[2]++;
             a[3] += o.discountMinor();
-            a[4] += o.totalMinor();
+            a[4] += o.soldMinor();
             if (o.tgUserId() != null && o.createdAt().equals(firstOrder.get(o.tgUserId()))) {
                 a[5]++;
             }
@@ -260,11 +260,11 @@ public final class CustomerCalculator {
                 continue;
             }
             int i = 0;
-            while (i < AOV_BOUNDS_UAH.length && o.totalMinor() >= AOV_BOUNDS_UAH[i] * 100) {
+            while (i < AOV_BOUNDS_UAH.length && o.soldMinor() >= AOV_BOUNDS_UAH[i] * 100) {
                 i++;
             }
             acc[i][0]++;
-            acc[i][1] += o.totalMinor();
+            acc[i][1] += o.soldMinor();
         }
         List<AovBucket> out = new ArrayList<>();
         for (int i = 0; i < acc.length; i++) {
