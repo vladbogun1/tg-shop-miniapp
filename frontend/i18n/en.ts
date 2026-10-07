@@ -289,6 +289,8 @@ export const en: RuDictionary = {
   "pay.sheetTitle": "Payment · {amount}",
   "pay.sheetLoading": "Loading the monobank form…",
   "pay.openBrowser": "Open in browser (Apple Pay / Google Pay)",
+  "pay.walletTitle": "Google Pay / Apple Pay — open in browser",
+  "pay.walletHint": "Wallets don’t work inside Telegram. Card or monobank — in the form below.",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
   "np.cat.all": "All",

@@ -46,6 +46,7 @@ import {
   type NpCity,
   type OrderDetail,
   type OrderLimitCode,
+  visiblePaymentOptions,
 } from "@shop/shared";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useI18n, useT } from "@/i18n/context";
@@ -251,8 +252,6 @@ export default function CheckoutPage() {
     queryKey: ["payment-options"],
     queryFn: () => customerApi.getPaymentOptions(),
   });
-  const paymentOptions = paymentQuery.data ?? [];
-  const chosenPayment = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
   // Same check the cart runs, so the two screens cannot disagree about the price — and it keeps
   // refreshing the hold on a limited code while the customer works through the steps.
@@ -261,6 +260,20 @@ export default function CheckoutPage() {
   const discount = promo.discount;
   const promoValid = promo.data?.valid === true;
   const total = Math.max(0, subtotal - discount);
+
+  // A prepayment option is hidden when the whole order costs no more than the prepayment. If the
+  // customer had picked one and the total then dropped (promo, quantity), the choice moves to the
+  // first full-payment option — derived here so the summary never shows a hidden option, and
+  // synced into state below so it sticks.
+  const paymentOptions = visiblePaymentOptions(paymentQuery.data ?? [], total);
+  const chosenPayment =
+    paymentOptions.find((p) => p.id === paymentId) ??
+    (paymentId ? paymentOptions.find((p) => !p.requiresPrepayment) ?? null : null);
+  const chosenPaymentId = chosenPayment?.id ?? null;
+  const optionsLoaded = !!paymentQuery.data;
+  useEffect(() => {
+    if (optionsLoaded && chosenPaymentId !== paymentId) setPaymentId(chosenPaymentId);
+  }, [optionsLoaded, chosenPaymentId, paymentId]);
   // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
   const dueNow =
     chosenPayment?.requiresPrepayment && chosenPayment.prepaymentMinor
@@ -273,7 +286,7 @@ export default function CheckoutPage() {
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
     delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!warehouse);
-  const step3Ok = !!paymentId;
+  const step3Ok = !!chosenPayment;
 
   const stepOk = [step1Ok, step2Ok, step3Ok, true][step];
 
@@ -314,7 +327,7 @@ export default function CheckoutPage() {
       npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
       npWarehouseName:
         delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
-      paymentOptionId: paymentId!,
+      paymentOptionId: chosenPayment!.id,
     };
     try {
       // A quantity change still in its debounce must reach the server cart BEFORE the order removes
@@ -468,7 +481,7 @@ export default function CheckoutPage() {
               options={paymentOptions}
               loading={paymentQuery.isLoading}
               error={paymentQuery.isError}
-              selected={paymentId}
+              selected={chosenPaymentId}
               onSelect={setPaymentId}
               currency={currency}
             />

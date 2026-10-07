@@ -121,6 +121,9 @@ export function OrderPayment({
     if (celebrated.current) return;
     celebrated.current = true;
     hapticSuccess();
+    // The page leads with the paid block now — bring it into view. After a beat, so the sheet has
+    // released its scroll lock.
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 120);
   }, []);
 
   const poll = useCallback(async () => {

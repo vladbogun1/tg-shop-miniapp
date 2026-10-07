@@ -172,6 +172,40 @@ export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   UNPAID: "Не оплачен",
 };
 
+// ---- checkout payment options -------------------------------------------------
+
+/**
+ * Payment options worth offering for an order of `totalMinor` (after the promo discount).
+ * A prepayment option makes no sense when the whole order costs no more than the prepayment —
+ * the customer would pay everything online anyway — so such options are dropped. When nothing but
+ * prepayment options is configured they stay (the backend caps the online amount at the total).
+ */
+export function visiblePaymentOptions<
+  T extends { requiresPrepayment: boolean; prepaymentMinor?: number | null },
+>(options: T[], totalMinor: number): T[] {
+  const isCheapPrepay = (o: T) =>
+    o.requiresPrepayment && !!o.prepaymentMinor && totalMinor <= o.prepaymentMinor;
+  const filtered = options.filter((o) => !isCheapPrepay(o));
+  return filtered.some((o) => !o.requiresPrepayment) ? filtered : options;
+}
+
+/**
+ * Whether the payment block (and receipts) should lead the customer's order page: while payment
+ * is still the point (NEW / APPROVED — paid or awaiting) and for a day after the money arrived, so
+ * the customer sees right away that the payment went through.
+ */
+export const PAYMENT_FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function paymentFirst(
+  order: { status: OrderStatus; paidAt?: string | null },
+  now: number = Date.now(),
+): boolean {
+  if (order.status === "NEW" || order.status === "APPROVED") return true;
+  if (order.status === "REJECTED" || !order.paidAt) return false;
+  const paidAt = Date.parse(order.paidAt);
+  return Number.isFinite(paidAt) && now - paidAt < PAYMENT_FIRST_WINDOW_MS;
+}
+
 // ---- customer cancellation (phase A) ----------------------------------------
 
 /**

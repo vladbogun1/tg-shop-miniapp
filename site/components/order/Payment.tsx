@@ -145,6 +145,17 @@ export function OrderPayment({
     onRefetch();
   });
 
+  // Paid while this page was open (the modal, or the check after coming back): the block sits
+  // right under the order heading, so scrolling to the top puts «Оплачено» in view — on a phone
+  // the customer is usually far down after closing the form. Delayed past the modal's exit.
+  const wasPaid = useRef(order.paid);
+  useEffect(() => {
+    if (order.paid && !wasPaid.current) {
+      window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 350);
+    }
+    wasPaid.current = order.paid;
+  }, [order.paid]);
+
   const inFlight = IN_FLIGHT.has(p.status);
   // While the form is open the modal polls on its own.
   const shouldCheck = !order.paid && order.status !== "REJECTED" && (returning || inFlight) && !stalled && !payUrl;

@@ -22,7 +22,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DeliveryMethod, NpCity, NpWarehouse, OrderDetail } from "@shop/shared";
+import { visiblePaymentOptions, type DeliveryMethod, type NpCity, type NpWarehouse, type OrderDetail } from "@shop/shared";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -254,13 +254,27 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
 
   // ---- payment --------------------------------------------------------------------------------
   const paymentQuery = useQuery({ queryKey: ["payment-options", locale], queryFn: () => api.paymentOptions() });
-  const paymentOptions = useMemo(() => paymentQuery.data ?? [], [paymentQuery.data]);
-  const chosen = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
   const promo = usePromoPreview(promoCode, subtotal);
   const promoValid = promo.data?.valid === true;
   const discount = promo.discount;
   const total = Math.max(0, subtotal - discount);
+
+  // A prepayment option is hidden when the whole order costs no more than the prepayment. If it
+  // was picked and the total then dropped (promo, quantity), the choice moves to the first
+  // full-payment option — derived so the summary never shows a hidden option, synced into state.
+  const paymentOptions = useMemo(
+    () => visiblePaymentOptions(paymentQuery.data ?? [], total),
+    [paymentQuery.data, total],
+  );
+  const chosen =
+    paymentOptions.find((p) => p.id === paymentId) ??
+    (paymentId ? paymentOptions.find((p) => !p.requiresPrepayment) ?? null : null);
+  const chosenId = chosen?.id ?? null;
+  const optionsLoaded = !!paymentQuery.data;
+  useEffect(() => {
+    if (optionsLoaded && chosenId !== paymentId) setPaymentId(chosenId);
+  }, [optionsLoaded, chosenId, paymentId]);
   // Every option is paid online through monobank acquiring: either the whole order, or the
   // prepayment now and the rest as cash on delivery (Nova Poshta COD). The server answers with the
   // same amountDueMinor; this one is for the button and the summary.
@@ -271,7 +285,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const nameOk = name.trim().length >= 2;
   const phoneOk = isValidPhone(phone);
   const deliveryOk = delivery === "PICKUP" || !!warehouse;
-  const paymentOk = !!paymentId;
+  const paymentOk = !!chosen;
   const hasProblems = lines.some((l) => l.stock <= 0);
   const formOk = nameOk && phoneOk && deliveryOk && paymentOk && !hasProblems && subtotal > 0;
 
@@ -300,7 +314,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
       npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
       npWarehouseName: delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
-      paymentOptionId: paymentId!,
+      paymentOptionId: chosen!.id,
     };
     try {
       // A quantity change still in its debounce must reach the server cart BEFORE the order removes
@@ -485,7 +499,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   return (
                     <RadioCard
                       key={o.id}
-                      selected={paymentId === o.id}
+                      selected={chosenId === o.id}
                       onSelect={() => setPaymentId(o.id)}
                       title={o.title}
                       subtitle={

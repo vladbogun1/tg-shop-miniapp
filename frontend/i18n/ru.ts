@@ -301,6 +301,8 @@ export const ru = {
   "pay.sheetTitle": "Оплата · {amount}",
   "pay.sheetLoading": "Загружаем форму monobank…",
   "pay.openBrowser": "Открыть в браузере (Apple Pay / Google Pay)",
+  "pay.walletTitle": "Google Pay / Apple Pay — открыть в браузере",
+  "pay.walletHint": "В Telegram кошельки не работают. Карта или monobank — в форме ниже.",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
   "np.cat.all": "Все",

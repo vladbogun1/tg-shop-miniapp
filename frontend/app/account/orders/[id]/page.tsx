@@ -44,7 +44,13 @@ import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
-import { CANCEL_REASON_MAX, customerCancelMode, hasOnlinePayment, paymentState } from "@shop/shared";
+import {
+  CANCEL_REASON_MAX,
+  customerCancelMode,
+  hasOnlinePayment,
+  paymentFirst,
+  paymentState,
+} from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -174,6 +180,11 @@ function OrderBody({
     setCancelOpen(true);
     window.setTimeout(() => cancelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   };
+  // While the order is fresh (NEW / APPROVED, or paid within the last day) the payment block and
+  // its receipts lead the page: a customer who has just paid must see «Оплачено» without scrolling
+  // past the timeline, items and recipient. Older orders keep it below the details.
+  const payFirst = payState === "AWAITING" || paymentFirst(order);
+  const receipts = hasOnlinePayment(order) ? <OrderReceipts order={order} /> : null;
   const payment = (
     <OrderPayment
       order={order}
@@ -193,8 +204,13 @@ function OrderBody({
         // leave room for the sticky chat bar (button + safe area)
         className="flex flex-col gap-4 pb-28"
       >
-        {/* Payment still due: the action goes first, so it is the first thing seen on arrival. */}
-        {payState === "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
+        {/* Payment due or just paid: the action / «Оплачено» goes first, receipts right under it. */}
+        {payFirst && (
+          <motion.div variants={riseItem} className="flex flex-col gap-4">
+            {payment}
+            {receipts}
+          </motion.div>
+        )}
 
         {/* status + timeline */}
         <motion.section variants={riseItem} className="nb p-4">
@@ -355,10 +371,10 @@ function OrderBody({
         </motion.section>
 
         {/* paid: amount, card / Apple Pay, what is left for the courier */}
-        {payState !== "AWAITING" && <motion.div variants={riseItem}>{payment}</motion.div>}
+        {!payFirst && <motion.div variants={riseItem}>{payment}</motion.div>}
 
         {/* receipts: fiscal checks (sale / refunds) + the bank receipt, once money came in online */}
-        {hasOnlinePayment(order) && <OrderReceipts order={order} />}
+        {!payFirst && receipts}
 
         {/* cancel: unpaid → at once; paid → a request; shipped → the chat (shared customerCancelMode) */}
         {cancelMode !== "NONE" && (

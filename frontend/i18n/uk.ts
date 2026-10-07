@@ -289,6 +289,8 @@ export const uk: RuDictionary = {
   "pay.sheetTitle": "Оплата · {amount}",
   "pay.sheetLoading": "Завантажуємо форму monobank…",
   "pay.openBrowser": "Відкрити в браузері (Apple Pay / Google Pay)",
+  "pay.walletTitle": "Google Pay / Apple Pay — відкрити в браузері",
+  "pay.walletHint": "У Telegram гаманці не працюють. Картка або monobank — у формі нижче.",
 
   // ── карта відділень Нової Пошти ───────────────────────────────────────────
   "np.cat.all": "Усі",

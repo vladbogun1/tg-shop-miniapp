@@ -5,9 +5,12 @@
  * iframe (an invoice created with displayType=iframe — customerApi.startPayment(…, "IFRAME")), so
  * the customer never leaves Telegram.
  *
- * Layout: a thin header "Оплата · {amount}" with ✕, the frame filling the rest, and a footer link
- * "Відкрити в браузері (Apple Pay / Google Pay)" — wallets usually do not work inside Telegram's
- * webview, so that link falls back to the regular page in the browser (the caller's openLink flow).
+ * Layout: a thin header "Оплата · {amount}" with ✕, then a prominent row «Google Pay / Apple Pay —
+ * відкрити в браузері», then the frame filling the rest (card / monobank app). Wallets do not work
+ * inside Telegram's webview — pay.google.com answers "Something went wrong" in the frame and the
+ * attempt never reaches monobank — so the row sits ABOVE the form, where it is seen before the
+ * customer taps the wallet button inside it. It falls back to the regular page in the browser
+ * (the caller's openLink flow).
  * The sheet sits above the TabBar and the notifications modal, respects the safe-area insets,
  * locks the page scroll and routes Telegram's back button (and Android's hardware back) to close.
  *
@@ -168,7 +171,43 @@ export function PaymentSheet({
             </motion.button>
           </div>
 
-          <div className="relative min-h-0 flex-1 px-2 pt-2">
+          {/* Wallets: only in a real browser — say so before the form, not under it. */}
+          <div className="shrink-0 px-3 pt-2.5">
+            <motion.button
+              type="button"
+              disabled={browserLoading}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.07 }}
+              onClick={() => {
+                haptic();
+                onBrowser();
+              }}
+              className="tap flex w-full items-center gap-3 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2.5 text-left hover:border-[var(--accent)] disabled:opacity-60"
+            >
+              <span className="flex shrink-0 flex-col gap-1" aria-hidden>
+                <WalletMark>G Pay</WalletMark>
+                <WalletMark>Apple Pay</WalletMark>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13.5px] font-bold leading-tight text-[var(--ink)]">
+                  {t("pay.walletTitle")}
+                </span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-[var(--muted)]">
+                  {t("pay.walletHint")}
+                </span>
+              </span>
+              {browserLoading ? (
+                <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[var(--accent)]" strokeWidth={2.5} />
+              ) : (
+                <ExternalLink className="h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
+              )}
+            </motion.button>
+          </div>
+
+          <div
+            className="relative min-h-0 flex-1 px-2 pt-2"
+            style={{ paddingBottom: "calc(8px + var(--safe-bottom))" }}
+          >
             {!loaded && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-[var(--muted)]">
                 <Loader2 className="h-7 w-7 animate-spin text-[var(--accent)]" strokeWidth={2.5} />
@@ -188,33 +227,18 @@ export function PaymentSheet({
               style={{ borderRadius: 24, opacity: loaded ? 1 : 0 }}
             />
           </div>
-
-          <div
-            className="shrink-0 px-4 pt-2"
-            style={{ paddingBottom: "calc(8px + var(--safe-bottom))" }}
-          >
-            <button
-              type="button"
-              disabled={browserLoading}
-              onClick={() => {
-                haptic();
-                onBrowser();
-              }}
-              className="tap flex min-h-[40px] w-full items-center justify-center gap-2 text-[12.5px] font-semibold text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60"
-            >
-              {browserLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />
-              ) : (
-                <ExternalLink className="h-4 w-4" strokeWidth={2.25} />
-              )}
-              <span className="underline decoration-[var(--line-strong)] underline-offset-4">
-                {t("pay.openBrowser")}
-              </span>
-            </button>
-          </div>
         </motion.div>
       )}
     </AnimatePresence>,
     document.body
+  );
+}
+
+/** A wallet name as a small badge — the project's icon set has no payment-brand marks. */
+function WalletMark({ children }: { children: string }) {
+  return (
+    <span className="font-display rounded-[6px] border border-[var(--line-strong)] bg-[var(--bg)] px-1.5 py-px text-center text-[10px] font-bold leading-[16px] tracking-[0.02em] text-[var(--ink)]">
+      {children}
+    </span>
   );
 }
