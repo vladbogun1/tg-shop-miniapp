@@ -29,6 +29,9 @@ import static org.assertj.core.api.Assertions.within;
 
 class StockAndReorderTest {
 
+    /** Default of the setting metrics.lowStockDays. */
+    private static final int LOW_STOCK_DAYS = 14;
+
     private final Instant now = Instant.parse("2026-10-20T09:00:00Z");
     private final Instant longAgo = now.minus(Duration.ofDays(200));
     private final MetricsPeriod month = MetricsPeriod.parse("month", null, null, KYIV, now);
@@ -75,7 +78,7 @@ class StockAndReorderTest {
         orders.add(s1);
         items.add(item(s1, "slow", 1000_00, 1));
 
-        Reorder r = new ReorderCalculator().compute(facts(now, orders, items, List.of(fast, slow)),
+        Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(facts(now, orders, items, List.of(fast, slow)),
                 Map.of("fast", new ReorderCalculator.Interest(40, 30, 6)), 30);
 
         assertThat(r.rows()).extracting(ReorderRow::productId).containsExactly("fast");
@@ -99,7 +102,7 @@ class StockAndReorderTest {
                 variantItem(rejected, "kb", "black", 3000_00, 30),
                 new ItemFact(ok.id(), "kb", "black", "kb", "Чёрная", 0, 30, true));
 
-        Reorder r = new ReorderCalculator().compute(facts(now, List.of(ok, rejected), items, List.of(p)), Map.of(), 30);
+        Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(facts(now, List.of(ok, rejected), items, List.of(p)), Map.of(), 30);
 
         assertThat(r.rows()).extracting(ReorderRow::variantId).containsExactly("white");
     }
@@ -109,7 +112,7 @@ class StockAndReorderTest {
         var gone = hidden("gone", 500_00, 0, false);
         var nobody = hidden("nobody", 500_00, 0, false);
 
-        Reorder r = new ReorderCalculator().compute(facts(now, List.of(), List.of(), List.of(gone, nobody)),
+        Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(facts(now, List.of(), List.of(), List.of(gone, nobody)),
                 Map.of("gone", new ReorderCalculator.Interest(25, 20, 4)), 30);
 
         assertThat(r.missedDemand()).extracting(MetricsDtos.DemandRow::productId).containsExactly("gone");
@@ -183,7 +186,7 @@ class StockAndReorderTest {
     }
 
     private Stock stock(MetricsFacts f, int deadDays) {
-        Reorder r = new ReorderCalculator().compute(f, Map.of(), 30);
-        return new StockCalculator().compute(f, month, ChannelFilter.ALL, deadDays, Map.of(), r);
+        Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(f, Map.of(), 30);
+        return new StockCalculator().compute(f, month, ChannelFilter.ALL, deadDays, LOW_STOCK_DAYS, Map.of(), r);
     }
 }

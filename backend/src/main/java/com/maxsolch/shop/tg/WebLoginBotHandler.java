@@ -29,6 +29,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.maxsolch.shop.common.Texts.escHtml;
+
 /**
  * The bot's half of the website login (see {@link WebAuthService}).
  *
@@ -98,7 +100,7 @@ public class WebLoginBotHandler {
                 .build();
         SendMessage msg = SendMessage.builder()
                 .chatId(String.valueOf(chatId))
-                .text(messages.get(locale, "bot.login.prompt", esc(p.deviceLabel())))
+                .text(messages.get(locale, "bot.login.prompt", escHtml(p.deviceLabel())))
                 .parseMode("HTML")
                 .replyMarkup(InlineKeyboardMarkup.builder()
                         .keyboard(List.of(numbers, List.of(notMe)))
@@ -151,7 +153,7 @@ public class WebLoginBotHandler {
             Optional<String> ended = parts.length == 2 && "end".equals(parts[1])
                     ? webAuthService.revokeFromBot(parts[0], fromId)
                     : Optional.empty();
-            text = ended.map(device -> messages.get(locale, "bot.login.sessionEnded", esc(device)))
+            text = ended.map(device -> messages.get(locale, "bot.login.sessionEnded", escHtml(device)))
                     .orElse(null);
             ended.ifPresent(device -> activity.record(ActivityLog.Entry.of(ActivityLog.SITE, "SESSION_ENDED")
                     .customer(fromId).text("Сеанс на сайте завершён из бота: " + device)));
@@ -179,7 +181,7 @@ public class WebLoginBotHandler {
                     .build();
             send("LOGIN_DONE", e.telegramUserId(), SendMessage.builder()
                     .chatId(String.valueOf(e.telegramUserId()))
-                    .text(messages.get(locale, "bot.login.done", esc(e.deviceLabel())))
+                    .text(messages.get(locale, "bot.login.done", escHtml(e.deviceLabel())))
                     .parseMode("HTML")
                     .replyMarkup(InlineKeyboardMarkup.builder().keyboard(List.of(List.of(end))).build())
                     .build());
@@ -222,13 +224,6 @@ public class WebLoginBotHandler {
         } catch (TelegramApiException e) {
             log.debug("answerCallbackQuery failed: {}", e.getMessage());
         }
-    }
-
-    static String esc(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     @PreDestroy

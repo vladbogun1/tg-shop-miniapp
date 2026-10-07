@@ -29,6 +29,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * Admin product CRUD + tag/variant/image management. Mutations evict the public catalog caches.
  */
@@ -180,25 +182,21 @@ public class AdminProductService {
             p.setCompareAtMinor(req.compareAtMinor() > 0 ? req.compareAtMinor() : null);
         }
         if (req.seoTitle() != null) {
-            p.setSeoTitle(blankToNull(req.seoTitle()));
+            p.setSeoTitle(trimToNull(req.seoTitle()));
         }
         if (req.seoDescription() != null) {
-            p.setSeoDescription(blankToNull(req.seoDescription()));
+            p.setSeoDescription(trimToNull(req.seoDescription()));
         }
         if (req.brand() != null) {
-            p.setBrand(blankToNull(req.brand()));
+            p.setBrand(trimToNull(req.brand()));
         }
         if (req.sku() != null) {
-            String sku = blankToNull(req.sku());
+            String sku = trimToNull(req.sku());
             if (sku != null && !sku.equalsIgnoreCase(p.getSku()) && productRepository.skuTaken(sku, p.getId())) {
                 throw new BadRequestException("артикул «" + sku + "» уже есть у другого товара");
             }
             p.setSku(sku);
         }
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 
     /**

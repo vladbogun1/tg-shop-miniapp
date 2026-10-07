@@ -21,6 +21,10 @@ import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import java.util.List;
 import java.util.Locale;
 
+import static com.maxsolch.shop.common.Texts.ellipsize;
+import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.common.Texts.nullToEmpty;
+
 /**
  * Support notifications, after the commit and best-effort (a Telegram or push hiccup never fails
  * the message):
@@ -90,10 +94,10 @@ public class SupportNotifier {
             StringBuilder text = new StringBuilder();
             text.append(messages.get(locale, "bot.support.reply")).append('\n');
             if (t.getProductTitle() != null && !t.getProductTitle().isBlank()) {
-                text.append(messages.get(locale, "bot.support.about", esc(trim(t.getProductTitle(), 120)))).append('\n');
+                text.append(messages.get(locale, "bot.support.about", escHtml(ellipsize(t.getProductTitle(), 120)))).append('\n');
             }
             if (preview != null && !preview.isBlank()) {
-                text.append("<blockquote>").append(esc(trim(ChatPreview.localize(preview, locale, messages), 300)))
+                text.append("<blockquote>").append(escHtml(ellipsize(ChatPreview.localize(preview, locale, messages), 300)))
                         .append("</blockquote>\n");
             }
             text.append(messages.get(locale, "bot.support.cta"));
@@ -137,13 +141,13 @@ public class SupportNotifier {
         try {
             StringBuilder text = new StringBuilder();
             text.append(newThread ? "🛟 <b>Поддержка · новый вопрос</b>\n" : "🛟 <b>Поддержка · новое сообщение</b>\n");
-            text.append(esc(t.getCustomerName() == null ? "Покупатель" : t.getCustomerName()));
+            text.append(escHtml(t.getCustomerName() == null ? "Покупатель" : t.getCustomerName()));
             text.append(t.getProductTitle() != null && !t.getProductTitle().isBlank()
-                    ? " · товар: <b>" + esc(trim(t.getProductTitle(), 120)) + "</b>"
+                    ? " · товар: <b>" + escHtml(ellipsize(t.getProductTitle(), 120)) + "</b>"
                     : " · общий вопрос");
             text.append('\n');
             if (preview != null && !preview.isBlank()) {
-                text.append("<blockquote>").append(esc(trim(preview, 300))).append("</blockquote>");
+                text.append("<blockquote>").append(escHtml(ellipsize(preview, 300))).append("</blockquote>");
             }
             SendMessage msg = SendMessage.builder()
                     .chatId(chatId)
@@ -179,7 +183,7 @@ public class SupportNotifier {
     void notifyAdminsPush(SupportThread t, boolean newThread) {
         String id = UuidUtil.toString(t.getId());
         String about = t.getProductTitle() != null && !t.getProductTitle().isBlank()
-                ? "о товаре «" + trim(t.getProductTitle(), 60) + "»"
+                ? "о товаре «" + ellipsize(nullToEmpty(t.getProductTitle()), 60) + "»"
                 : "общий вопрос";
         String title = newThread ? "Вопрос в поддержку" : "Сообщение в поддержку";
         push.runAsync(() -> push.notifyAdmins(new PushMessage(
@@ -205,19 +209,5 @@ public class SupportNotifier {
 
     private static boolean isHttps(String url) {
         return url != null && url.startsWith("https://");
-    }
-
-    private static String esc(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
-    private static String trim(String s, int max) {
-        if (s == null) {
-            return "";
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 }

@@ -23,6 +23,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.maxsolch.shop.common.Texts.ellipsize;
+import static com.maxsolch.shop.common.Texts.nullToEmpty;
+
 /**
  * Web Push to the admin's devices (the installed admin PWA / a desktop browser).
  *
@@ -293,8 +296,8 @@ public class AdminPushService {
 
     byte[] payload(PushMessage m) {
         Map<String, Object> json = new LinkedHashMap<>();
-        json.put("title", cut(m.title(), 80));
-        json.put("body", cut(m.body(), 180));
+        json.put("title", ellipsize(nullToEmpty(m.title()), 80));
+        json.put("body", ellipsize(nullToEmpty(m.body()), 180));
         json.put("url", m.url() == null || !m.url().startsWith("/") ? "/" : m.url());
         if (m.tag() != null) {
             json.put("tag", m.tag());
@@ -306,7 +309,7 @@ public class AdminPushService {
             json.put("image", m.image());
         }
         if (m.group() != null) {
-            json.put("group", Map.of("title", cut(m.group().title(), 80), "line", cut(m.group().line(), 100)));
+            json.put("group", Map.of("title", ellipsize(nullToEmpty(m.group().title()), 80), "line", ellipsize(nullToEmpty(m.group().line()), 100)));
         }
         try {
             return objectMapper.writeValueAsString(json).getBytes(StandardCharsets.UTF_8);
@@ -337,13 +340,6 @@ public class AdminPushService {
             throw new BadRequestException("Неизвестный push-сервис", "PUSH_BAD_ENDPOINT");
         }
         return uri;
-    }
-
-    private static String cut(String s, int max) {
-        if (s == null) {
-            return "";
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     private static boolean blank(String s) {

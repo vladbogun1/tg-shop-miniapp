@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import static com.maxsolch.shop.common.Texts.blankToNull;
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * IP address -> approximate place (country, city, coordinates), from an offline {@code .mmdb} file.
  *
@@ -86,9 +89,9 @@ public class GeoIpLookup {
             BigDecimal lat = loc == null || loc.getLatitude() == null ? null : round(loc.getLatitude());
             BigDecimal lon = loc == null || loc.getLongitude() == null ? null : round(loc.getLongitude());
             return Optional.of(new Place(
-                    cut(r.getCountry() == null ? null : r.getCountry().getIsoCode(), 2),
-                    cut(r.getCountry() == null ? null : r.getCountry().getName(), 100),
-                    cut(r.getCity() == null ? null : r.getCity().getName(), 120),
+                    cut(blankToNull(r.getCountry() == null ? null : r.getCountry().getIsoCode()), 2),
+                    cut(blankToNull(r.getCountry() == null ? null : r.getCountry().getName()), 100),
+                    cut(blankToNull(r.getCity() == null ? null : r.getCity().getName()), 120),
                     lat, lon));
         } catch (Exception e) {
             log.debug("GeoIP lookup failed for {}: {}", ip, e.toString());
@@ -123,13 +126,6 @@ public class GeoIpLookup {
 
     private static BigDecimal round(double v) {
         return BigDecimal.valueOf(v).setScale(4, RoundingMode.HALF_UP);
-    }
-
-    private static String cut(String v, int max) {
-        if (v == null || v.isBlank()) {
-            return null;
-        }
-        return v.length() <= max ? v : v.substring(0, max);
     }
 
     @PreDestroy

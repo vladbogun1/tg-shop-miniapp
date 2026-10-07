@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * monobank posts invoice status changes here (up to 3 attempts until it gets 200). Public — the
  * {@code X-Sign} ECDSA signature over the raw body is the authentication. Every call is logged raw.
@@ -89,9 +91,5 @@ public class MonobankWebhookController {
         } catch (Exception e) {
             log.warn("monobank webhook log failed: {}", e.getMessage());
         }
-    }
-
-    private static String cut(String s, int max) {
-        return s == null ? null : s.length() <= max ? s : s.substring(0, max);
     }
 }

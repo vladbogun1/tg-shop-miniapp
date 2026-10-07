@@ -12,6 +12,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * Admin sign-in history ({@code admin_login_log}, V37): every attempt — success or not — with the
  * place (offline GeoIP, see {@link GeoIpLookup}), the device ("Windows · Chrome") and whether that
@@ -116,12 +118,5 @@ public class AdminLoginLogService {
             return country;
         }
         return "место неизвестно";
-    }
-
-    private static String cut(String v, int max) {
-        if (v == null) {
-            return null;
-        }
-        return v.length() <= max ? v : v.substring(0, max);
     }
 }

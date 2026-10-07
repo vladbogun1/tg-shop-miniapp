@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * Online payment of orders through monobank acquiring.
  *
@@ -435,9 +437,5 @@ public class OnlinePaymentService {
             return "";
         }
         return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
-    }
-
-    private static String cut(String s, int max) {
-        return s == null ? null : s.length() <= max ? s : s.substring(0, max);
     }
 }

@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static com.maxsolch.shop.common.Texts.ellipsize;
+
 /**
  * Support threads: customer questions that are not about an order (a product before buying it, or
  * a general one). Persistence, the customer limits from «Настройки → Поддержка», realtime fan-out on
@@ -190,13 +192,13 @@ public class SupportService {
         t.setLastMessageAt(now);
         if (product != null) {
             t.setProductId(product.getId());
-            t.setProductTitle(cut(product.getTitle(), 255));
-            t.setProductSlug(cut(product.getSlug(), 255));
+            t.setProductTitle(ellipsize(product.getTitle(), 255));
+            t.setProductSlug(ellipsize(product.getSlug(), 255));
             t.setProductImageUrl(firstImage(product));
-            t.setSubject(cut(product.getTitle(), SUBJECT_MAX));
+            t.setSubject(ellipsize(product.getTitle(), SUBJECT_MAX));
         } else {
             String subject = req.subject() == null ? null : req.subject().strip();
-            t.setSubject(subject == null || subject.isEmpty() ? null : cut(subject, SUBJECT_MAX));
+            t.setSubject(subject == null || subject.isEmpty() ? null : ellipsize(subject, SUBJECT_MAX));
         }
         threads.saveAndFlush(t);
         postCustomer(t, userId, first, now, true);
@@ -283,7 +285,7 @@ public class SupportService {
         }
         t.setLastMessageAt(now);
         t.setLastSender(SenderType.ADMIN);
-        t.setLastPreview(cut(previewOf(m), PREVIEW_MAX));
+        t.setLastPreview(ellipsize(previewOf(m), PREVIEW_MAX));
         t.setCustomerUnread(t.getCustomerUnread() + 1);
         t.setAdminUnread(0);
         t.setAwaitingSince(null);
@@ -438,7 +440,7 @@ public class SupportService {
         }
         t.setLastMessageAt(now);
         t.setLastSender(SenderType.CUSTOMER);
-        t.setLastPreview(cut(previewOf(m), PREVIEW_MAX));
+        t.setLastPreview(ellipsize(previewOf(m), PREVIEW_MAX));
         t.setAdminUnread(t.getAdminUnread() + 1);
         if (t.getAwaitingSince() == null) {
             t.setAwaitingSince(now);
@@ -456,7 +458,7 @@ public class SupportService {
         m.setThreadId(threadId);
         m.setSenderType(sender);
         m.setSenderId(senderId);
-        m.setSenderName(senderName == null ? null : cut(senderName, 255));
+        m.setSenderName(senderName == null ? null : ellipsize(senderName, 255));
         boolean hasAttachment = req.attachmentUrl() != null && !req.attachmentUrl().isBlank();
         MessageType type = parseType(req.type());
         if (type == MessageType.TEXT && hasAttachment) {
@@ -464,10 +466,10 @@ public class SupportService {
         }
         m.setType(type);
         String text = req.text() == null ? null : req.text().strip();
-        m.setText(text == null || text.isEmpty() ? null : cut(text, 8192));
+        m.setText(text == null || text.isEmpty() ? null : ellipsize(text, 8192));
         m.setAttachmentUrl(hasAttachment ? req.attachmentUrl().trim() : null);
-        m.setFileName(req.fileName() == null ? null : cut(req.fileName(), 512));
-        m.setMimeType(req.mimeType() == null ? null : cut(req.mimeType(), 128));
+        m.setFileName(req.fileName() == null ? null : ellipsize(req.fileName(), 512));
+        m.setMimeType(req.mimeType() == null ? null : ellipsize(req.mimeType(), 128));
         m.setReplyToMessageId(req.replyToMessageId());
         m.setCreatedAt(now);
         return messageRepository.saveAndFlush(m);
@@ -566,7 +568,7 @@ public class SupportService {
         String full = ((u.getFirstName() == null ? "" : u.getFirstName().trim()) + " "
                 + (u.getLastName() == null ? "" : u.getLastName().trim())).trim();
         if (!full.isEmpty()) {
-            return cut(full, 255);
+            return ellipsize(full, 255);
         }
         return u.getUsername() == null || u.getUsername().isBlank() ? null : "@" + u.getUsername().trim();
     }
@@ -605,13 +607,6 @@ public class SupportService {
             case FILE -> m.getFileName() == null ? ChatPreview.FILE : "📎 " + m.getFileName();
             default -> "";
         };
-    }
-
-    private static String cut(String s, int max) {
-        if (s == null) {
-            return null;
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     ThreadDto toDto(SupportThread t, boolean admin) {

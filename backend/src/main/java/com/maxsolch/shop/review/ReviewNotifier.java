@@ -20,6 +20,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
+import static com.maxsolch.shop.common.Texts.ellipsize;
+import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.common.Texts.nullToEmpty;
+
 /**
  * Best-effort Telegram DMs of the reviews feature (bonus code, "leave a review" reminder) and the
  * admins' push about a review waiting for moderation. Never throws — a bot hiccup must not undo a
@@ -61,7 +65,7 @@ public class ReviewNotifier {
         try {
             Locale locale = messages.localeOf(tgUserId);
             String text = messages.get(locale, "bot.review.bonus.title") + "\n"
-                    + messages.get(locale, "bot.review.bonus.body", "<code>" + esc(code) + "</code>",
+                    + messages.get(locale, "bot.review.bonus.body", "<code>" + escHtml(code) + "</code>",
                             String.valueOf(percent), DATE.format(expiresAt.atZone(KYIV)));
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
@@ -117,7 +121,7 @@ public class ReviewNotifier {
         try {
             push.notifyAdmins(new AdminPushService.PushMessage(
                     "Новый отзыв на модерации",
-                    "★".repeat(Math.max(1, Math.min(5, rating))) + " " + trim(productTitle, 80),
+                    "★".repeat(Math.max(1, Math.min(5, rating))) + " " + ellipsize(nullToEmpty(productTitle), 80),
                     "/reviews", "reviews", (int) Math.min(Integer.MAX_VALUE, pendingCount), false));
         } catch (RuntimeException e) {
             log.warn("Review push failed: {}", e.toString());
@@ -135,16 +139,5 @@ public class ReviewNotifier {
                 .webApp(WebAppInfo.builder().url(url).build())
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
-    }
-
-    private static String esc(String s) {
-        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
-    private static String trim(String s, int max) {
-        if (s == null) {
-            return "";
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 }

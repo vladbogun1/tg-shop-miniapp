@@ -35,6 +35,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.maxsolch.shop.common.Texts.blankToNull;
+
 /**
  * Sends HTML-formatted Telegram broadcasts to a chosen audience. One broadcast runs at a time
  * on a single background thread; progress is exposed via {@link #status()} for the admin UI to poll.
@@ -347,10 +349,6 @@ public class BroadcastService {
         }
         String l = lang.trim().toLowerCase(Locale.ROOT);
         return DEFAULT_BUTTON.containsKey(l) ? l : null;
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 
     private static void sleep(long ms) {

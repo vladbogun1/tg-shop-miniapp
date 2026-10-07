@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * Catalog queries for the public site: filter / sort / paginate, product by slug, menu
  * categories with counts, sitemap.
@@ -62,11 +64,11 @@ public class PublicCatalogService {
     public ProductPage search(Query query, String lang) {
         List<ProductDto> all = catalogService.listActiveProducts(lang);
 
-        String category = blankToNull(query.category());
+        String category = trimToNull(query.category());
         if (category != null && catalogService.listTags(lang).stream().noneMatch(t -> category.equals(t.slug()))) {
             throw new NotFoundException("category not found");
         }
-        String needle = blankToNull(query.q());
+        String needle = trimToNull(query.q());
         String q = needle == null ? null : needle.toLowerCase(Locale.ROOT);
         Set<String> matching = q == null ? null : matchingIds(q);
         boolean inStockOnly = Boolean.TRUE.equals(query.inStock());
@@ -249,9 +251,5 @@ public class PublicCatalogService {
         Collator c = Collator.getInstance(Locale.forLanguageTag("uk"));
         c.setStrength(Collator.SECONDARY);
         return c;
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 }

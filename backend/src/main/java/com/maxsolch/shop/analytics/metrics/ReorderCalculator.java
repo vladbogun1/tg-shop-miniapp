@@ -29,8 +29,12 @@ import java.util.Map;
  */
 public final class ReorderCalculator {
 
-    /** "Running out" threshold in days of stock left. // TODO settings: metrics.lowStockDays */
-    public static final int LOW_STOCK_DAYS = 14;
+    /** "Running out" threshold in days of stock left (setting {@code metrics.lowStockDays}). */
+    private final int lowStockDays;
+
+    public ReorderCalculator(int lowStockDays) {
+        this.lowStockDays = lowStockDays;
+    }
 
     static final String METHOD = "Скорость продаж: 50% — последние 14 дн., 30% — дни 15–30, 20% — дни 31–90 "
             + "(шт./день, без отказов и подарков). Дней до нуля = остаток / скорость. "
@@ -144,7 +148,7 @@ public final class ReorderCalculator {
             return; // enough for the whole horizon: not a reorder candidate
         }
         int recommend = (int) Math.max(0, Math.ceil(velocity * coverDays - stock));
-        String urgency = daysToZero <= 7 ? "critical" : daysToZero <= LOW_STOCK_DAYS ? "soon" : "plan";
+        String urgency = daysToZero <= 7 ? "critical" : daysToZero <= lowStockDays ? "soon" : "plan";
         rows.add(new ReorderRow(p.id(), v == null ? null : v.id(), p.title(), v == null ? null : v.name(), stock,
                 s.sold30(), s.sold90(), Stats.round2(velocity), Stats.round1(daysToZero), recommend,
                 in.views(), in.cartAdds(), p.live(), urgency));

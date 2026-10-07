@@ -29,14 +29,17 @@ import java.util.Set;
  */
 public final class StockCalculator {
 
-    /** Dead-stock thresholds offered by the page. // TODO settings: metrics.deadStockDays (60) */
+    /**
+     * Dead-stock thresholds offered by the page; any other request falls back to the setting
+     * {@code metrics.deadStockDays} (see AdminMetricsService#stock).
+     */
     public static final List<Integer> DEAD_DAYS = List.of(30, 60, 90);
-    public static final int DEFAULT_DEAD_DAYS = 60;
     private static final int TOP_LIMIT = 50;
     private static final int DEAD_LIMIT = 200;
 
+    /** @param lowStockDays "running out" threshold, days of stock left ({@code metrics.lowStockDays}) */
     public Stock compute(MetricsFacts facts, MetricsPeriod period, ChannelFilter channel, int deadDays,
-                         Map<String, ReorderCalculator.Interest> interest30, Reorder reorder) {
+                         int lowStockDays, Map<String, ReorderCalculator.Interest> interest30, Reorder reorder) {
         Instant now = facts.now();
         Map<String, OrderFact> orders = facts.orderById();
 
@@ -126,7 +129,7 @@ public final class StockCalculator {
         categories.sort(Comparator.comparingLong(CategoryStock::valueMinor).reversed());
 
         long runningOut = reorder.rows().stream()
-                .filter(r -> r.daysToZero() != null && r.daysToZero() <= ReorderCalculator.LOW_STOCK_DAYS)
+                .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
                 .count();
 
         StockKpis kpis = new StockKpis(stockValue, stockUnits, live, cover(stockValue, totalSold30),

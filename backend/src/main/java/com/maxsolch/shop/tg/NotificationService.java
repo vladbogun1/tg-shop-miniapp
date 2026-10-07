@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static com.maxsolch.shop.common.Texts.escHtml;
+
 /**
  * Best-effort Telegram notifications. Every method swallows failures (try/catch + log) so the
  * order/chat transaction never fails because of a bot/network hiccup.
@@ -214,9 +216,9 @@ public class NotificationService {
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.gift.title")).append('\n');
             t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
-            t.append(messages.get(locale, "bot.gift.body", esc(nz(productTitle))));
+            t.append(messages.get(locale, "bot.gift.body", escHtml(nz(productTitle))));
             if (variantName != null && !variantName.isBlank()) {
-                t.append(" <i>(").append(esc(variantName)).append(")</i>");
+                t.append(" <i>(").append(escHtml(variantName)).append(")</i>");
             }
             if (qty > 1) {
                 t.append(" × ").append(qty);
@@ -301,7 +303,7 @@ public class NotificationService {
         try {
             Locale locale = messages.localeOf(tgUserId);
             String text = messages.get(locale, "bot.tracking.changed",
-                    shortId(order), esc(order.getTrackingNumber()));
+                    shortId(order), escHtml(order.getTrackingNumber()));
             dm("ORDER_TRACKING", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
@@ -327,7 +329,7 @@ public class NotificationService {
             Locale locale = messages.localeOf(tgUserId);
             t.append(messages.get(locale, "bot.newMessage", shortId(order))).append('\n');
             if (preview != null && !preview.isBlank()) {
-                t.append("<blockquote>").append(esc(trim(ChatPreview.localize(preview, locale, messages), 160)))
+                t.append("<blockquote>").append(escHtml(trim(ChatPreview.localize(preview, locale, messages), 160)))
                         .append("</blockquote>\n");
             }
             t.append(messages.get(locale, "bot.newMessage.cta"));
@@ -356,9 +358,9 @@ public class NotificationService {
             StringBuilder t = new StringBuilder();
             t.append("💬 <b>Новое сообщение от клиента</b>\n");
             t.append("Заказ <b>#").append(shortId(order)).append("</b> · ")
-                    .append(esc(nz(order.getCustomerName()))).append('\n');
+                    .append(escHtml(nz(order.getCustomerName()))).append('\n');
             if (preview != null && !preview.isBlank()) {
-                t.append("<blockquote>").append(esc(trim(preview, 200))).append("</blockquote>");
+                t.append("<blockquote>").append(escHtml(trim(preview, 200))).append("</blockquote>");
             }
             SendMessage msg = SendMessage.builder()
                     .chatId(chatId)
@@ -390,7 +392,7 @@ public class NotificationService {
             try {
                 long cod = Math.max(0, order.getTotalMinor() - Math.min(order.getReceivedMinor(), order.getTotalMinor()));
                 String text = "💳 <b>Оплачено онлайн (monobank)</b>\n"
-                        + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                        + "Заказ <b>#" + shortId(order) + "</b> · " + escHtml(nz(order.getCustomerName())) + "\n"
                         + "Поступило: <b>" + money(amountMinor) + " " + cur + "</b>"
                         + (cod > 0 ? " · наложка <b>" + money(cod) + " " + cur + "</b>" : " · оплачен полностью") + "\n"
                         + "<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>";
@@ -451,7 +453,7 @@ public class NotificationService {
             Locale locale = messages.localeOf(tgUserId);
             StringBuilder caption = new StringBuilder(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)));
             if (taxUrl != null && isHttps(taxUrl)) {
-                caption.append('\n').append("<a href=\"").append(esc(taxUrl).replace("\"", "&quot;")).append("\">")
+                caption.append('\n').append("<a href=\"").append(escHtml(taxUrl).replace("\"", "&quot;")).append("\">")
                         .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
             }
             SendDocument doc = SendDocument.builder()
@@ -490,9 +492,9 @@ public class NotificationService {
             String cur = nz(order.getCurrency());
             long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
             String text = "🛑 <b>Запрос отмены</b>\n"
-                    + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                    + "Заказ <b>#" + shortId(order) + "</b> · " + escHtml(nz(order.getCustomerName())) + "\n"
                     + "Оплачено: <b>" + money(received) + " " + cur + "</b>\n"
-                    + "<blockquote>" + esc(trim(nz(order.getCancelRequestReason()), 300)) + "</blockquote>\n"
+                    + "<blockquote>" + escHtml(trim(nz(order.getCancelRequestReason()), 300)) + "</blockquote>\n"
                     + "<i>Одобрите (отмена + возврат денег на карту) или отклоните в карточке заказа.</i>";
             SendMessage msg = SendMessage.builder()
                     .chatId(chatId)
@@ -526,7 +528,7 @@ public class NotificationService {
                     ? messages.get(locale, "bot.cancelRequest.approved", shortId(order),
                             money(received) + " " + nz(order.getCurrency()))
                     : messages.get(locale, "bot.cancelRequest.declined", shortId(order),
-                            esc(nz(order.getCancelRequestAdminComment())));
+                            escHtml(nz(order.getCancelRequestAdminComment())));
             dm(approved ? "CANCEL_REQUEST_APPROVED" : "CANCEL_REQUEST_DECLINED", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
@@ -648,15 +650,15 @@ public class NotificationService {
         StringBuilder sb = new StringBuilder();
         sb.append("📦 <b>К ОТПРАВКЕ</b> · #").append(shortId(order)).append('\n');
         sb.append("➖➖➖➖➖➖➖➖➖➖\n");
-        sb.append("👤 ").append(esc(nz(order.getCustomerName()))).append('\n');
-        sb.append("📞 ").append(esc(nz(order.getPhone()))).append('\n');
+        sb.append("👤 ").append(escHtml(nz(order.getCustomerName()))).append('\n');
+        sb.append("📞 ").append(escHtml(nz(order.getPhone()))).append('\n');
         sb.append("🚚 ").append(deliveryLabel(order)).append('\n');
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             sb.append("\n<b>🛒 Отправить:</b>\n");
             for (OrderItem it : order.getItems()) {
-                sb.append(it.isGift() ? "• 🎁 " : "• ").append(esc(it.getTitleSnapshot()));
+                sb.append(it.isGift() ? "• 🎁 " : "• ").append(escHtml(it.getTitleSnapshot()));
                 if (it.getVariantNameSnapshot() != null) {
-                    sb.append(" <i>(").append(esc(it.getVariantNameSnapshot())).append(")</i>");
+                    sb.append(" <i>(").append(escHtml(it.getVariantNameSnapshot())).append(")</i>");
                 }
                 sb.append(" × ").append(it.getQuantity());
                 if (it.isGift()) {
@@ -667,7 +669,7 @@ public class NotificationService {
         }
         sb.append("\n💰 Сумма заказа: <b>").append(money(order.getTotalMinor())).append(' ').append(cur).append("</b>\n");
         if (order.getPaymentOptionTitle() != null) {
-            sb.append("💳 ").append(esc(order.getPaymentOptionTitle())).append('\n');
+            sb.append("💳 ").append(escHtml(order.getPaymentOptionTitle())).append('\n');
         }
         if (received > 0) {
             sb.append("✅ Уже оплачено: ").append(money(received)).append(' ').append(cur).append('\n');
@@ -742,18 +744,18 @@ public class NotificationService {
         }
         sb.append("➖➖➖➖➖➖➖➖➖➖\n");
         // customer
-        sb.append("👤 ").append(esc(nz(order.getCustomerName()))).append('\n');
-        sb.append("📞 ").append(esc(nz(order.getPhone()))).append('\n');
+        sb.append("👤 ").append(escHtml(nz(order.getCustomerName()))).append('\n');
+        sb.append("📞 ").append(escHtml(nz(order.getPhone()))).append('\n');
         if (order.getTgUsername() != null && !order.getTgUsername().isBlank()) {
-            sb.append("✈️ @").append(esc(order.getTgUsername().replace("@", ""))).append('\n');
+            sb.append("✈️ @").append(escHtml(order.getTgUsername().replace("@", ""))).append('\n');
         }
         // items
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             sb.append("\n<b>🛒 Состав</b>\n");
             for (OrderItem it : order.getItems()) {
-                sb.append("• ").append(esc(it.getTitleSnapshot()));
+                sb.append("• ").append(escHtml(it.getTitleSnapshot()));
                 if (it.getVariantNameSnapshot() != null) {
-                    sb.append(" <i>(").append(esc(it.getVariantNameSnapshot())).append(")</i>");
+                    sb.append(" <i>(").append(escHtml(it.getVariantNameSnapshot())).append(")</i>");
                 }
                 long line = it.getPriceMinorSnapshot() * (long) it.getQuantity();
                 sb.append(" × ").append(it.getQuantity())
@@ -767,17 +769,17 @@ public class NotificationService {
         }
         sb.append('\n');
         if (order.getPaymentOptionTitle() != null) {
-            sb.append("💳 ").append(esc(order.getPaymentOptionTitle())).append('\n');
+            sb.append("💳 ").append(escHtml(order.getPaymentOptionTitle())).append('\n');
         }
         sb.append("🚚 ").append(deliveryLabel(order)).append('\n');
         if (order.getComment() != null && !order.getComment().isBlank()) {
-            sb.append("📝 ").append(esc(order.getComment())).append('\n');
+            sb.append("📝 ").append(escHtml(order.getComment())).append('\n');
         }
         if (order.getTrackingNumber() != null && !order.getTrackingNumber().isBlank()) {
-            sb.append("📦 ТТН: <code>").append(esc(order.getTrackingNumber())).append("</code>\n");
+            sb.append("📦 ТТН: <code>").append(escHtml(order.getTrackingNumber())).append("</code>\n");
         }
         if (order.getRejectReason() != null && !order.getRejectReason().isBlank()) {
-            sb.append("\n❌ <b>Причина отклонения:</b> ").append(esc(order.getRejectReason())).append('\n');
+            sb.append("\n❌ <b>Причина отклонения:</b> ").append(escHtml(order.getRejectReason())).append('\n');
         }
         return sb.toString();
     }
@@ -824,12 +826,12 @@ public class NotificationService {
         return switch (s) {
             case APPROVED -> messages.get(locale, "bot.note.APPROVED");
             case SHIPPED -> order.getTrackingNumber() != null
-                    ? messages.get(locale, "bot.note.SHIPPED.tracking", esc(order.getTrackingNumber()))
+                    ? messages.get(locale, "bot.note.SHIPPED.tracking", escHtml(order.getTrackingNumber()))
                     : messages.get(locale, "bot.note.SHIPPED");
             case DELIVERED -> messages.get(locale, "bot.note.DELIVERED");
             case REJECTED -> order.getRejectReason() != null
                     ? messages.get(locale, "bot.note.REJECTED.reason",
-                            esc(customerRejectReason.localize(order.getRejectReason(), locale)))
+                            escHtml(customerRejectReason.localize(order.getRejectReason(), locale)))
                     : messages.get(locale, "bot.note.REJECTED");
             default -> "";
         };
@@ -849,9 +851,9 @@ public class NotificationService {
         }
         StringBuilder d = new StringBuilder("Новая Почта");
         if (order.getNpCityName() != null) {
-            d.append(" — ").append(esc(order.getNpCityName()));
+            d.append(" — ").append(escHtml(order.getNpCityName()));
             if (order.getNpWarehouseName() != null) {
-                d.append(", ").append(esc(order.getNpWarehouseName()));
+                d.append(", ").append(escHtml(order.getNpWarehouseName()));
             }
         }
         return d.toString();
@@ -864,13 +866,6 @@ public class NotificationService {
      */
     private String money(long minor) {
         return com.maxsolch.shop.common.MoneyFormat.amount(minor);
-    }
-
-    private String esc(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private String nz(String s) {

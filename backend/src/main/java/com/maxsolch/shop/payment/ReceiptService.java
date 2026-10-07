@@ -14,6 +14,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import static com.maxsolch.shop.common.Texts.blankToNull;
+
 /**
  * Payment receipts of an order: the fiscal checks monobank's PRRO (Вчасно.Каса) issued for each
  * paid invoice — a sale, and a return per refund — plus the bank's own квитанція per paid invoice.
@@ -209,9 +211,5 @@ public class ReceiptService {
     public static String orderShort(byte[] orderId) {
         String id = UuidUtil.toString(orderId);
         return id == null ? "order" : id.substring(0, 8);
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 }

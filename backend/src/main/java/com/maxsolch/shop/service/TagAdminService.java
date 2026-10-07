@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * Tags = the site's categories. Besides the name the admin sets the URL slug (blank = generated
  * from the name), the menu position and whether the category shows in the site menu.
@@ -136,17 +138,17 @@ public class TagAdminService {
      */
     private static List<String> applySeo(Tag tag, TagUpsertRequest req) {
         List<String> changed = new ArrayList<>();
-        if (req.seoTitle() != null && set(tag.getSeoTitle(), blankToNull(req.seoTitle()), tag::setSeoTitle)) {
+        if (req.seoTitle() != null && set(tag.getSeoTitle(), trimToNull(req.seoTitle()), tag::setSeoTitle)) {
             changed.add("SEO title");
         }
         if (req.seoDescription() != null
-                && set(tag.getSeoDescription(), blankToNull(req.seoDescription()), tag::setSeoDescription)) {
+                && set(tag.getSeoDescription(), trimToNull(req.seoDescription()), tag::setSeoDescription)) {
             changed.add("SEO description");
         }
-        if (req.h1() != null && set(tag.getH1(), blankToNull(req.h1()), tag::setH1)) {
+        if (req.h1() != null && set(tag.getH1(), trimToNull(req.h1()), tag::setH1)) {
             changed.add("H1");
         }
-        if (req.introText() != null && set(tag.getIntroText(), blankToNull(req.introText()), tag::setIntroText)) {
+        if (req.introText() != null && set(tag.getIntroText(), trimToNull(req.introText()), tag::setIntroText)) {
             changed.add("SEO-текст");
         }
         return changed;
@@ -158,10 +160,6 @@ public class TagAdminService {
         }
         setter.accept(next);
         return true;
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private Tag load(String id) {

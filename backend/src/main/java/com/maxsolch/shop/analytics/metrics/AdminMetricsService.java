@@ -65,10 +65,11 @@ public class AdminMetricsService {
     public MetricsDtos.Stock stock(MetricsPeriod period, ChannelFilter channel, int deadDays, int coverDays) {
         MetricsFacts facts = loader.load();
         Map<String, ReorderCalculator.Interest> interest = interest30(facts.now());
-        Reorder reorder = new ReorderCalculator().compute(facts, interest, normaliseCover(coverDays));
+        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, normaliseCover(coverDays));
         int dead = StockCalculator.DEAD_DAYS.contains(deadDays) ? deadDays
                 : settings.getInt(SettingsRegistry.METRICS_DEAD_STOCK_DAYS);
-        return new StockCalculator().compute(facts, period, channel, dead, interest, reorder);
+        return new StockCalculator().compute(facts, period, channel, dead, lowStockDays, interest, reorder);
     }
 
     public MetricsDtos.Customers customers(MetricsPeriod period, ChannelFilter channel) {
@@ -143,8 +144,8 @@ public class AdminMetricsService {
     }
 
     private List<ReorderRow> runningOut(MetricsFacts facts, Map<String, ReorderCalculator.Interest> interest) {
-        Reorder reorder = new ReorderCalculator().compute(facts, interest, 30);
         int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, 30);
         return reorder.rows().stream()
                 .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
                 .toList();

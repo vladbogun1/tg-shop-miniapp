@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.maxsolch.shop.common.Texts.escHtml;
+
 /**
  * Personal Telegram alerts about an admin's own account, from the shop bot:
  * <ul>
@@ -93,8 +95,8 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
 
     @Override
     public void newDeviceLogin(long adminId, LoginMethod method, String place, String device, String ip, Instant at) {
-        String text = "🔐 <b>Вход в админку</b>: " + esc(place) + ", " + esc(device) + ", " + time(at) + "\n"
-                + "Способ: " + esc(method.label()) + ", IP " + esc(ip) + "\n\n"
+        String text = "🔐 <b>Вход в админку</b>: " + escHtml(place) + ", " + escHtml(device) + ", " + time(at) + "\n"
+                + "Способ: " + escHtml(method.label()) + ", IP " + escHtml(ip) + "\n\n"
                 + "Это не вы? Нажмите «Заблокировать» — все сессии и доверенные устройства будут завершены.";
         send(adminId, text);
     }
@@ -102,8 +104,8 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     @Override
     public void accountLocked(long adminId, String place, String device, String ip, Instant until) {
         String text = "⛔ <b>Вход в админку заблокирован до " + time(until) + "</b>\n"
-                + "5 неверных паролей или кодов подряд. Последняя попытка: " + esc(place) + ", " + esc(device)
-                + ", IP " + esc(ip) + "\n\n"
+                + "5 неверных паролей или кодов подряд. Последняя попытка: " + escHtml(place) + ", " + escHtml(device)
+                + ", IP " + escHtml(ip) + "\n\n"
                 + "Если это не вы — нажмите «Заблокировать» и смените пароль.";
         send(adminId, text);
     }
@@ -115,12 +117,12 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
             return false;
         }
         String what = switch (kind) {
-            case NEW -> "🔑 <b>Вас пригласили в админку ChiSetup</b> (роль: " + esc(roleLabel) + ").\n"
-                    + "Пригласил: " + esc(inviterName) + ".\n\n"
+            case NEW -> "🔑 <b>Вас пригласили в админку ChiSetup</b> (роль: " + escHtml(roleLabel) + ").\n"
+                    + "Пригласил: " + escHtml(inviterName) + ".\n\n"
                     + "Нажмите кнопку, придумайте логин и пароль и подключите приложение-аутентификатор "
                     + "(Google Authenticator, 1Password, Authy).";
             case CREDENTIALS -> "🔑 <b>Вход в админку ChiSetup по логину и паролю</b>\n"
-                    + esc(inviterName) + " выдал вам логин. Нажмите кнопку, придумайте логин и пароль"
+                    + escHtml(inviterName) + " выдал вам логин. Нажмите кнопку, придумайте логин и пароль"
                     + " (и подключите приложение-аутентификатор, если ещё не подключено).";
             case PASSWORD_RESET -> "🔑 <b>Пароль от админки ChiSetup сброшен</b> главным админом.\n"
                     + "Старый пароль больше не действует, все сессии завершены. Нажмите кнопку и задайте новый.";
@@ -212,7 +214,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         answer(cq.getId(), "Все сессии завершены");
         MaybeInaccessibleMessage m = cq.getMessage();
         if (m != null) {
-            String original = m instanceof Message msg && msg.getText() != null ? esc(msg.getText()) + "\n\n" : "";
+            String original = m instanceof Message msg && msg.getText() != null ? escHtml(msg.getText()) + "\n\n" : "";
             try {
                 bot.execute(EditMessageText.builder()
                         .chatId(String.valueOf(m.getChatId()))
@@ -241,13 +243,6 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
 
     private String time(Instant at) {
         return HHMM.format(at.atZone(zone));
-    }
-
-    static String esc(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     @PreDestroy

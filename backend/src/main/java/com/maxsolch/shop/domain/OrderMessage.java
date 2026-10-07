@@ -57,12 +57,6 @@ public class OrderMessage {
     @Column(name = "mime_type", length = 128)
     private String mimeType;
 
-    @Column(name = "width")
-    private Integer width;
-
-    @Column(name = "height")
-    private Integer height;
-
     @Column(name = "reply_to_message_id")
     private Long replyToMessageId;
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.push;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.media.MediaSigner;
@@ -12,8 +13,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
 
@@ -183,12 +182,9 @@ public class PushNotificationListener {
     }
 
     static String money(long minor, String currency) {
-        DecimalFormatSymbols sym = DecimalFormatSymbols.getInstance(Locale.ROOT);
-        sym.setGroupingSeparator(' ');
-        sym.setDecimalSeparator(',');
-        DecimalFormat f = new DecimalFormat(minor % 100 == 0 ? "#,##0" : "#,##0.00", sym);
-        String sign = currency == null || "UAH".equalsIgnoreCase(currency) ? "₴" : currency;
-        return f.format(minor / 100.0) + " " + sign;
+        return currency == null || "UAH".equalsIgnoreCase(currency)
+                ? MoneyFormat.uah(minor)
+                : MoneyFormat.amount(minor) + " " + currency;
     }
 
     static String sourceLabel(String source) {

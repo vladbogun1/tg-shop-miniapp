@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Optional;
 
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * The single place where a monobank invoice state (webhook body or status poll) changes our data.
  * Its own bean so the transaction applies when {@link OnlinePaymentService} calls it.
@@ -170,8 +172,4 @@ public class PaymentStatusApplier {
         return st.cancelList() != null && st.cancelList().stream().anyMatch(c -> "processing".equals(c.status()));
     }
 
-
-    private static String cut(String s, int max) {
-        return s == null ? null : s.length() <= max ? s : s.substring(0, max);
-    }
 }

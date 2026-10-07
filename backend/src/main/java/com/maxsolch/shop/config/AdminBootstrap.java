@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * First admin and the emergency door, driven by {@code ADMIN_LOGIN} / {@code ADMIN_PASSWORD} /
  * {@code ADMIN_BOOTSTRAP_TG_ID}.
@@ -145,9 +147,5 @@ public class AdminBootstrap implements CommandLineRunner {
         a.setActive(true);
         a.setName("Bootstrap admin");
         return a;
-    }
-
-    private static String trimToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 }

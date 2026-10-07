@@ -23,6 +23,8 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * Read-only view of the admin action log. There is deliberately no way to edit or delete rows.
  *
@@ -65,7 +67,7 @@ public class AdminAuditController {
         int capped = Math.min(Math.max(1, size), 200);
         Instant fromTs = day(from, false);
         Instant toTs = day(to, true);
-        return repository.search(blankToNull(action), blankToNull(entityType), blankToNull(entityId), adminId,
+        return repository.search(trimToNull(action), trimToNull(entityType), trimToNull(entityId), adminId,
                         fromTs, toTs, PageRequest.of(Math.max(0, page), capped))
                 .stream()
                 .map(AdminAuditController::toDto)
@@ -97,10 +99,6 @@ public class AdminAuditController {
         } catch (DateTimeParseException e) {
             throw new BadRequestException("date must be yyyy-MM-dd");
         }
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private static AuditEntryDto toDto(AdminAuditEntry e) {

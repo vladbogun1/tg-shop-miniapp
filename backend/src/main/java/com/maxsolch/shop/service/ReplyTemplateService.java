@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * Chat reply templates: CRUD for the admin and filling one in for an order.
  *
@@ -83,8 +85,8 @@ public class ReplyTemplateService {
     private static void apply(ReplyTemplate t, TemplateUpsertRequest req) {
         t.setTitle(req.title().trim());
         t.setBodyRu(req.bodyRu().trim());
-        t.setBodyUk(blankToNull(req.bodyUk()));
-        t.setBodyEn(blankToNull(req.bodyEn()));
+        t.setBodyUk(trimToNull(req.bodyUk()));
+        t.setBodyEn(trimToNull(req.bodyEn()));
         if (req.sort() != null) {
             t.setSort(req.sort());
         }
@@ -179,9 +181,5 @@ public class ReplyTemplateService {
 
     private static boolean notBlank(String s) {
         return s != null && !s.isBlank();
-    }
-
-    private static String blankToNull(String s) {
-        return notBlank(s) ? s.trim() : null;
     }
 }

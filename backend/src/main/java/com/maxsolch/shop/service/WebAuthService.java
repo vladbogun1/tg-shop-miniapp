@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.maxsolch.shop.common.Texts.cut;
+
 /**
  * Logging in to the public site through the Telegram bot, and the site sessions that follow.
  *
@@ -563,12 +565,5 @@ public class WebAuthService {
             return false;
         }
         return MessageDigest.isEqual(a.getBytes(StandardCharsets.US_ASCII), b.getBytes(StandardCharsets.US_ASCII));
-    }
-
-    private static String cut(String s, int max) {
-        if (s == null) {
-            return null;
-        }
-        return s.length() > max ? s.substring(0, max) : s;
     }
 }

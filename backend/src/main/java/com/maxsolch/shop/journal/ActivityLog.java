@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
+import static com.maxsolch.shop.common.Texts.ellipsize;
+
 /**
  * Журнал «Бот и сайт» ({@code activity_log}, V47): what the bot sent and to whom — delivered or
  * not, and why — plus what customers did on the website / in the Mini App, payment events and
@@ -176,16 +178,16 @@ public class ActivityLog {
             jdbc.update(INSERT,
                     Timestamp.from(e.at),
                     e.source,
-                    cut(e.type, 48),
+                    ellipsize(e.type, 48),
                     e.result == null ? OK : e.result,
                     e.recipient,
                     tgUserId,
                     e.chatId,
                     e.orderId,
-                    cut(e.groupId, 64),
-                    cut(e.summary, 500),
-                    cut(e.errorCode, 32),
-                    cut(e.error, 500),
+                    ellipsize(e.groupId, 64),
+                    ellipsize(e.summary, 500),
+                    ellipsize(e.errorCode, 32),
+                    ellipsize(e.error, 500),
                     detailsJson(e.details));
         } catch (Exception ex) {
             log.warn("Activity log write failed ({} {}): {}", e.source, e.type, ex.getMessage());
@@ -332,7 +334,7 @@ public class ActivityLog {
         if (s == null) {
             return null;
         }
-        return cut(BOT_TOKEN.matcher(s).replaceAll("bot***"), 500);
+        return ellipsize(BOT_TOKEN.matcher(s).replaceAll("bot***"), 500);
     }
 
     /** HTML message → one line of plain text for the preview. */
@@ -343,14 +345,7 @@ public class ActivityLog {
         String s = HTML_TAG.matcher(html).replaceAll(" ")
                 .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&amp;", "&");
         s = s.replaceAll("\\s+", " ").trim();
-        return s.isEmpty() ? null : cut(s, 500);
-    }
-
-    static String cut(String s, int max) {
-        if (s == null) {
-            return null;
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
+        return s.isEmpty() ? null : ellipsize(s, 500);
     }
 
     // ------------------------------------------------------------------ entry

@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 @RestController
 @RequestMapping("/api/orders")
 @Tag(name = "Orders", description = "Customer order placement")
@@ -67,7 +69,7 @@ public class OrderController {
             journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("ORDER_FAILED")
                     .text("Заказ не оформлен: " + e.getMessage())
                     .detail("items", req.items().size())
-                    .detail("promoCode", blankToNull(req.promoCode()))
+                    .detail("promoCode", trimToNull(req.promoCode()))
                     .rejected(e));
             throw e;
         }
@@ -123,9 +125,5 @@ public class OrderController {
         if (activity != null) {
             activity.record(entry);
         }
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
     }
 }

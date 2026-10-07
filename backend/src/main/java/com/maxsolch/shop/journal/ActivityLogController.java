@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static com.maxsolch.shop.common.Texts.trimToNull;
+
 /**
  * «Журнал → Бот и сайт»: what the bot sent (delivered or not, and why), what customers did on the
  * website and in the Mini App, payments and background jobs ({@code activity_log}, V47).
@@ -87,7 +89,7 @@ public class ActivityLogController {
         int p = Math.max(0, page);
         ActivityLogStore.Filter f = new ActivityLogStore.Filter(
                 upper(source), upper(type), upper(result), upper(recipient), tgUserId,
-                blankToNull(order), blankToNull(group), upper(errorCode), blankToNull(q),
+                trimToNull(order), trimToNull(group), upper(errorCode), trimToNull(q),
                 day(from, false), day(to, true));
         List<ActivityLogStore.Row> items = store.search(f, p, capped);
         return new Page(items, p == 0 ? store.countByResult(f) : null);
@@ -171,12 +173,8 @@ public class ActivityLogController {
         }
     }
 
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s.trim();
-    }
-
     private static String upper(String s) {
-        String v = blankToNull(s);
+        String v = trimToNull(s);
         return v == null ? null : v.toUpperCase(Locale.ROOT);
     }
 }
