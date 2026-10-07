@@ -63,13 +63,52 @@ interface Slot {
   dup: boolean;
 }
 
-/** Repeats the list until a group is wide enough, then appends the looping copy. */
+/**
+ * Orders reviews so that two neighbours are never about the same product — the ribbon is a loop,
+ * so the last one also differs from the first when possible. Greedy: always take from the product
+ * with the most reviews left (newest first within a product) that is not the previous one.
+ */
+export function spread(list: FeedReview[]): FeedReview[] {
+  const buckets = new Map<string, FeedReview[]>();
+  for (const r of list) {
+    const b = buckets.get(r.productSlug);
+    if (b) b.push(r);
+    else buckets.set(r.productSlug, [r]);
+  }
+  const out: FeedReview[] = [];
+  while (out.length < list.length) {
+    const prev = out[out.length - 1]?.productSlug;
+    const last = out.length === list.length - 1;
+    let best: FeedReview[] | null = null;
+    let bestScore = -1;
+    for (const [slug, b] of buckets) {
+      if (b.length === 0 || (slug === prev && buckets.size > 1)) continue;
+      // Prefer not to close the loop on the first card's product.
+      const score = b.length * 2 + (last && slug === out[0]?.productSlug ? -1 : 0);
+      if (score > bestScore) {
+        best = b;
+        bestScore = score;
+      }
+    }
+    if (!best) best = buckets.get(prev ?? "") ?? [];
+    out.push(best.shift()!);
+  }
+  return out;
+}
+
+/**
+ * Repeats the list until a group is wide enough, then appends the looping copy. Whole repeats only
+ * (a multiple of the list length), so at every seam the last card is followed by the first one —
+ * never by itself.
+ */
 function track(list: FeedReview[], row: string): Slot[] {
   if (list.length === 0) return [];
+  const ordered = spread(list);
+  const size = ordered.length * Math.ceil(MIN_GROUP / ordered.length);
   const group: Slot[] = [];
-  for (let i = 0; group.length < Math.max(MIN_GROUP, list.length); i++) {
-    const review = list[i % list.length];
-    group.push({ review, key: `${row}-${i}-${review.id}`, dup: i >= list.length });
+  for (let i = 0; i < size; i++) {
+    const review = ordered[i % ordered.length];
+    group.push({ review, key: `${row}-${i}-${review.id}`, dup: i >= ordered.length });
   }
   return [...group, ...group.map((s) => ({ ...s, key: `${s.key}-loop`, dup: true }))];
 }
@@ -86,14 +125,11 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
     const two = items.length >= TWO_ROWS_FROM;
     const a = two ? items.filter((_, i) => i % 2 === 0) : items;
     const b = two ? items.filter((_, i) => i % 2 === 1) : [];
-    return {
-      all: track(items, "m"),
-      top: track(a, "a"),
-      bottom: track(b, "b"),
-      allCount: Math.max(MIN_GROUP, items.length),
-      topCount: Math.max(MIN_GROUP, a.length),
-      bottomCount: Math.max(MIN_GROUP, b.length),
-    };
+    const all = track(items, "m");
+    const top = track(a, "a");
+    const bottom = track(b, "b");
+    // A track is the group twice; the group size drives the speed.
+    return { all, top, bottom, allCount: all.length / 2, topCount: top.length / 2, bottomCount: bottom.length / 2 };
   }, [items]);
 
   // Surfacing loop: only while the ribbon is on screen, the tab is visible and motion is allowed.
