@@ -10,7 +10,7 @@
  * normally: the new-tab fallback returns to the order page itself) it goes to the order page.
  *
  * The only page of the site that may be framed, and only by the site itself: see next.config.ts and
- * infra/gateway-site.conf.template (`frame-ancestors 'self'`, no X-Frame-Options DENY here).
+ * infra/gateway-site.conf (`frame-ancestors 'self'`, no X-Frame-Options DENY here).
  */
 import { notFound } from "next/navigation";
 import { localePath, makeT } from "@/i18n";

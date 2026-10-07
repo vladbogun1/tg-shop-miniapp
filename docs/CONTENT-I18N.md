@@ -51,7 +51,7 @@ CREATE TABLE content_translations (
 
 - Язык запроса — `Accept-Language` (оба фронта уже шлют его), через существующий `LocaleResolver`.
   `uk`/`en` → оверлей, иначе оригинал.
-- Публичные эндпоинты: `/api/products`, `/api/products/{id}`, `/api/tags`, `/api/public/**`,
+- Публичные эндпоинты: `/api/products`, `/api/products/{id}`, `/api/public/**`,
   `/api/payment-options` — названия, описания, имена вариантов и тегов.
 - Кабинет покупателя (`/api/me/orders/**`): название позиции — перевод товара, если он есть и
   актуален, иначе снимок. **`order_items.title_snapshot` остаётся русским** — его видит продавец,

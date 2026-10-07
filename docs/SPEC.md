@@ -53,7 +53,7 @@ JWT_ACCESS_TTL_MINUTES=120
 
 # Telegram
 BOT_TOKEN=
-BOT_USERNAME=@ChannelCheckerBot
+BOT_USERNAME=<username бота, без дефолта>
 INITDATA_TTL_SECONDS=86400
 ALLOW_UNSIGNED_INIT_DATA=false
 
@@ -86,7 +86,7 @@ IMAGE_BASE_URL=http://localhost:8082/img
 - Роли: `CUSTOMER`, `ADMIN`.
 - Покупатель: `POST /api/auth/telegram` { initData } → { accessToken, user }. Остальные покупательские эндпоинты требуют CUSTOMER-JWT.
 - Админ: `POST /api/auth/admin/telegram` { initData } (или Login Widget) → { accessToken } с ролью ADMIN. Админ-эндпоинты помечены `@RequiredAdmin`.
-- Публичное (без токена): `GET /api/app-info`, `GET /api/products`, `GET /api/products/{id}`, `GET /api/tags`.
+- Публичное (без токена): `GET /api/app-info`, `GET /api/products`, `GET /api/products/{id}` (`GET /api/tags` удалён в 2026-10).
 - Картинки: фронт строит URL через imgproxy-loader на `IMAGE_BASE_URL`.
 
 Swagger: `/swagger-ui.html`. Actuator: `/actuator/*` (служебная Thymeleaf-страница `/` удалена в 2026-10).
@@ -126,7 +126,7 @@ Swagger: `/swagger-ui.html`. Actuator: `/actuator/*` (служебная Thymele
 - POST `/api/me/uploads` (multipart) → { url:key } — customer chat attachment upload to MinIO.
 
 ## Public API
-- GET `/api/app-info`, `/api/products`, `/api/products/{id}`, `/api/tags` (как в Фазе 1).
+- GET `/api/app-info`, `/api/products`, `/api/products/{id}` (как в Фазе 1).
 - GET `/api/payment-options` → [PaymentOptionDto{ id,title,description,requiresPrepayment,prepaymentMinor }].
 - GET `/api/np/cities?q=` → [{ ref, name, area }] (из локальной БД/кэша).
 - GET `/api/np/warehouses?cityRef=&q=` → [{ ref, number, description, type }].

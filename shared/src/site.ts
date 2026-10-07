@@ -2,7 +2,7 @@
  * Contract of the public website (`site/`) — see docs/SITE-SPEC.md.
  *
  * Kept apart from `types.ts` so the Mini App and the admin panel do not change shape: every field
- * here is additive, and the existing `/api/products` / `/api/tags` DTOs stay exactly as they were.
+ * here is additive, and the existing `/api/products` DTOs stay exactly as they were.
  */
 import type { Product, ProductTag } from "./types";
 

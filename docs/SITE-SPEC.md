@@ -83,7 +83,7 @@
   `size` ≤ 60. `priceMaxAvailable` — максимум цены в выборке без учёта `priceMax` (для слайдера).
 - `GET /api/public/products/by-slug/{slug}` → `ProductDto` или 404.
 - `GET /api/public/sitemap` → `{ products: [{slug, updatedAt}], categories: [{slug}] }`.
-- Существующие `/api/products`, `/api/tags` остаются без изменений (Mini App).
+- Существующий `/api/products` остаётся без изменений (Mini App); `/api/tags` удалён в 2026-10 (никто не вызывал).
 
 ### Вход на сайт через бота
 
@@ -175,7 +175,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
   (hreflang), JSON-LD `Product` + `BreadcrumbList` на товаре, `Organization` на главной.
   До публичного запуска — `robots: noindex` через env `SITE_INDEXABLE=false`.
 - Docker: `site/Dockerfile` (standalone, сборка из корня репо `-f site/Dockerfile .`), сервис `site`
-  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf.template` (вход по коду `SITE_GATE_CODE` до запуска — удалён в 2026-10)
+  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf` (до 2026-10 — `.template` с входом по коду `SITE_GATE_CODE`; гейт удалён)
   (`/` → site, `/api` и `/ws` → backend, `/img` → nginx-кэш; resolver 127.0.0.11 + переменные,
   как в `gateway.conf`), `gateway-site` в `docker-compose.prod.yml` на `127.0.0.1:8092`.
 - CI: джоба `site` (typecheck + build) в `ci.yml`; образ `vladbogun1/maxsolch2-site` в `publish.yml`.
@@ -209,7 +209,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
   целиком, last-write-wins. Дубли в запросе суммируются, кол-во зажимается до 99, кривые id и
   `quantity ≤ 0` отбрасываются, несуществующие товары / чужие варианты отбрасываются. > 100 строк → 400.
 - `POST /api/me/cart/merge` (тело то же) → `CartDto` — слияние гостевой корзины.
-- `DELETE /api/me/cart` → `CartDto` (пустая).
+- ~~`DELETE /api/me/cart`~~ — удалён в 2026-10 (клиенты его не вызывали).
 
 ```jsonc
 // CartDto
