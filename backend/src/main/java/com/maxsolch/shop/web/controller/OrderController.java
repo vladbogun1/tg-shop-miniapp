@@ -33,6 +33,9 @@ public class OrderController {
     private final OrderIdempotencyService idempotency;
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.service.OrderGuard orderGuard;
+    /** «Журнал → Бот и сайт»: placed orders and refused checkouts. */
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.maxsolch.shop.journal.ActivityLog activity;
 
     public OrderController(OrderService orderService, UserRepository userRepository,
                            OrderIdempotencyService idempotency) {
@@ -57,6 +60,35 @@ public class OrderController {
                     OrderService.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
         }
 
+        Order order;
+        try {
+            order = place(req, userId);
+        } catch (RuntimeException e) {
+            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("ORDER_FAILED")
+                    .text("Заказ не оформлен: " + e.getMessage())
+                    .detail("items", req.items().size())
+                    .detail("promoCode", blankToNull(req.promoCode()))
+                    .rejected(e));
+            throw e;
+        }
+        String orderId = UuidUtil.toString(order.getId());
+        idempotency.remember(userId, idempotencyKey, orderId);
+        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("ORDER_CREATED")
+                .order(order.getId())
+                .text("Заказ #" + orderId.substring(0, 8) + " на " + com.maxsolch.shop.common.MoneyFormat.amount(
+                        order.getTotalMinor()) + " " + order.getCurrency()
+                        + (order.getPromoCode() != null ? " · промокод " + order.getPromoCode() : ""))
+                .detail("totalMinor", order.getTotalMinor())
+                .detail("discountMinor", order.getDiscountMinor() > 0 ? order.getDiscountMinor() : null)
+                .detail("promoCode", order.getPromoCode())
+                .detail("items", order.getItems().size())
+                .detail("payment", order.getPaymentOptionTitle())
+                .detail("delivery", order.getDeliveryMethod()));
+        // Next step for the app: POST /api/me/orders/{id}/payment → monobank payment page.
+        return new CreateOrderResponse(orderId, OrderService.amountDueMinor(order));
+    }
+
+    private Order place(CreateOrderRequest req, long userId) {
         // Anti-bot / anti-hoarding limits (settings «Защита от ботов и спама»): 400/429 with a code.
         orderGuard.check(userId, req.items().stream()
                 .map(i -> new CreateOrderCommand.Line(i.productId(), i.variantId(), i.quantity()))
@@ -84,10 +116,16 @@ public class OrderController {
                 req.paymentOptionId(),
                 // A site token (cookie, chn=web) marks the order as placed on the website.
                 SecurityUtil.currentPrincipal().isWeb() ? OrderSource.WEB : OrderSource.MINIAPP);
-        Order order = orderService.createOrder(cmd);
-        String orderId = UuidUtil.toString(order.getId());
-        idempotency.remember(userId, idempotencyKey, orderId);
-        // Next step for the app: POST /api/me/orders/{id}/payment → monobank payment page.
-        return new CreateOrderResponse(orderId, OrderService.amountDueMinor(order));
+        return orderService.createOrder(cmd);
+    }
+
+    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.record(entry);
+        }
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 }

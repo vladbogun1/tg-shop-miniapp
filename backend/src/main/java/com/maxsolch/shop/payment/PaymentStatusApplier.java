@@ -1,6 +1,8 @@
 package com.maxsolch.shop.payment;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -36,6 +38,26 @@ public class PaymentStatusApplier {
         this.orderService = orderService;
     }
 
+    /** «Журнал → Бот и сайт» (optional: tests build the applier without it). */
+    private ActivityLog activity;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setActivity(ActivityLog activity) {
+        this.activity = activity;
+    }
+
+    private void journal(ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.recordAfterCommit(entry);
+        }
+    }
+
+    private static ActivityLog.Entry payment(String type, PaymentInvoice inv) {
+        return ActivityLog.Entry.of(ActivityLog.PAYMENT, type).order(inv.getOrderId())
+                .detail("invoice", inv.getExternalId())
+                .detail("amountMinor", inv.getAmountMinor());
+    }
+
     /**
      * Applies a monobank invoice state (webhook body or status poll). Returns false for an invoice
      * we do not know.
@@ -60,11 +82,17 @@ public class PaymentStatusApplier {
                 || st.ccy() != null && st.ccy() != inv.getCcy()) {
             log.error("monobank: invoice {} amount/ccy mismatch: ours {} {}, theirs {} {} — NOT applied",
                     st.invoiceId(), inv.getAmountMinor(), inv.getCcy(), st.amount(), st.ccy());
+            journal(payment("AMOUNT_MISMATCH", inv)
+                    .text("monobank прислал другую сумму/валюту — статус НЕ применён")
+                    .detail("theirAmount", st.amount()).detail("theirCcy", st.ccy())
+                    .failed("AMOUNT_MISMATCH", "ours " + inv.getAmountMinor() + "/" + inv.getCcy()
+                            + ", theirs " + st.amount() + "/" + st.ccy()));
             return true;
         }
         if (modified != null) {
             inv.setProviderModifiedAt(modified);
         }
+        String before = inv.getStatus();
         // A later "created/processing" must never overwrite a final state of the same timestamp.
         if (!(inv.getAppliedAt() != null && PaymentInvoice.OPEN.contains(st.status()))) {
             inv.setStatus(st.status());
@@ -90,6 +118,21 @@ public class PaymentStatusApplier {
             orderService.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor());
             log.info("monobank: invoice {} paid, {} kop credited to order {}", inv.getExternalId(),
                     inv.getAmountMinor(), UuidUtil.toString(inv.getOrderId()));
+            journal(payment("PAYMENT_SUCCESS", inv)
+                    .text("Оплата получена: " + MoneyFormat.amount(inv.getAmountMinor()) + " грн"
+                            + (inv.getPaymentMethod() != null ? " · " + inv.getPaymentMethod() : "")
+                            + (inv.getPaymentSystem() != null ? " " + inv.getPaymentSystem() : ""))
+                    .detail("method", inv.getPaymentMethod())
+                    .detail("system", inv.getPaymentSystem()));
+        } else if (PaymentInvoice.FAILURE.equals(st.status()) && !PaymentInvoice.FAILURE.equals(before)) {
+            journal(payment("PAYMENT_FAILURE", inv)
+                    .text("Оплата не прошла: " + (st.failureReason() == null ? "без причины" : st.failureReason()))
+                    .failed(st.errCode() == null || st.errCode().isBlank() ? "FAILURE" : "MONO_" + st.errCode(),
+                            st.failureReason()));
+        } else if (PaymentInvoice.EXPIRED.equals(st.status()) && !PaymentInvoice.EXPIRED.equals(before)
+                && inv.getAppliedAt() == null) {
+            journal(payment("INVOICE_EXPIRED", inv)
+                    .text("Ссылка на оплату истекла неоплаченной").skipped("EXPIRED"));
         }
         if (inv.getAppliedAt() != null) {
             long refundedNow = refundedFrom(st, inv);
@@ -98,6 +141,9 @@ public class PaymentStatusApplier {
                 inv.setRefundedMinor(refundedNow);
                 orderService.recordOnlineRefund(inv.getOrderId(), delta);
                 log.info("monobank: invoice {} refund {} kop booked", inv.getExternalId(), delta);
+                journal(payment("REFUND", inv)
+                        .text("Возврат на карту: " + MoneyFormat.amount(delta) + " грн")
+                        .detail("refundMinor", delta).detail("refundedTotalMinor", refundedNow));
             }
         }
         if (inv.getRefundPendingUntil() != null && !hasPendingCancel(st)) {

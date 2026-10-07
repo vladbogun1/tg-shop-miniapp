@@ -1,5 +1,7 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.journal.ActivityLog;
+
 import com.maxsolch.shop.adminauth.AdminInvite;
 import com.maxsolch.shop.adminauth.AdminSecurityAlerts;
 import com.maxsolch.shop.adminauth.AdminTeamMessenger;
@@ -57,6 +59,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     private final AdminUserRepository adminUserRepository;
     private final AdminAuditService audit;
     private final ZoneId zone;
+    private final ActivityLog activity;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "admin-security-alerts");
         t.setDaemon(true);
@@ -64,13 +67,24 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     });
 
     public AdminSecurityNotifier(@Lazy ShopBot bot, AppProperties props, @Lazy AdminSessions sessions,
-                                 AdminUserRepository adminUserRepository, AdminAuditService audit) {
+                                 AdminUserRepository adminUserRepository, AdminAuditService audit,
+                                 ActivityLog activity) {
+        this.activity = activity;
         this.bot = bot;
         this.props = props;
         this.sessions = sessions;
         this.adminUserRepository = adminUserRepository;
         this.audit = audit;
         this.zone = ZoneId.of(props.getTimezone());
+    }
+
+    /** First line of an alert, for the journal (the rest carries IPs and places). */
+    private static String firstLine(String html) {
+        if (html == null) {
+            return null;
+        }
+        int nl = html.indexOf('\n');
+        return nl < 0 ? html : html.substring(0, nl);
     }
 
     public static boolean handles(String callbackData) {
@@ -114,7 +128,9 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         String text = what + "\n\nСсылка одноразовая, действует до " + DAY_TIME.format(expiresAt.atZone(zone))
                 + ". Никому её не пересылайте.";
         try {
-            bot.execute(SendMessage.builder()
+            // The link is a one-time credential: the journal gets only what kind of invite it was.
+            activity.bot(ActivityLog.Entry.bot("ADMIN_INVITE").toAdmins(String.valueOf(telegramUserId))
+                    .text("Приглашение в админку: " + kind + ", роль " + roleLabel), () -> bot.execute(SendMessage.builder()
                     .chatId(String.valueOf(telegramUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -124,7 +140,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
                                     .url(link)
                                     .build())))
                             .build())
-                    .build());
+                    .build()));
             return true;
         } catch (Exception e) {
             log.info("Admin invite to {} not delivered: {}", telegramUserId, e.getMessage());
@@ -139,7 +155,9 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         }
         executor.execute(() -> {
             try {
-                bot.execute(SendMessage.builder().chatId(String.valueOf(adminId)).text(html).parseMode("HTML").build());
+                activity.bot(ActivityLog.Entry.bot("ADMIN_NOTICE").toAdmins(String.valueOf(adminId)).text(firstLine(html)),
+                        () -> bot.execute(SendMessage.builder().chatId(String.valueOf(adminId)).text(html)
+                                .parseMode("HTML").build()));
             } catch (Exception e) {
                 log.info("Admin account notice to {} not delivered: {}", adminId, e.getMessage());
             }
@@ -152,7 +170,8 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         }
         executor.execute(() -> {
             try {
-                bot.execute(SendMessage.builder()
+                activity.bot(ActivityLog.Entry.bot("ADMIN_SECURITY_ALERT").toAdmins(String.valueOf(adminId))
+                        .text(firstLine(text)), () -> bot.execute(SendMessage.builder()
                         .chatId(String.valueOf(adminId))
                         .text(text)
                         .parseMode("HTML")
@@ -162,7 +181,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
                                         .callbackData(BLOCK_PREFIX + adminId)
                                         .build())))
                                 .build())
-                        .build());
+                        .build()));
             } catch (Exception e) {
                 // Typically: the admin never pressed /start in the bot. Nothing to do about it here.
                 log.info("Admin security alert to {} not delivered: {}", adminId, e.getMessage());

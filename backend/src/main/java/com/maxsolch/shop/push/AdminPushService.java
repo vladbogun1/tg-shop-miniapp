@@ -142,6 +142,32 @@ public class AdminPushService {
         return privateKey != null;
     }
 
+    /** «Журнал → Бот и сайт» (optional: tests build the service without it). */
+    private com.maxsolch.shop.journal.ActivityLog activity;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setActivity(com.maxsolch.shop.journal.ActivityLog activity) {
+        this.activity = activity;
+    }
+
+    /** One row per push: the title only (the body may quote a customer's message) and how it went. */
+    private void journal(PushMessage message, SendResult r) {
+        if (activity == null || r == null) {
+            return;
+        }
+        com.maxsolch.shop.journal.ActivityLog.Entry e = com.maxsolch.shop.journal.ActivityLog.Entry
+                .of(com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ADMIN_PUSH")
+                .text("Push админам: " + message.title())
+                .detail("tag", message.tag())
+                .detail("sent", r.sent()).detail("failed", r.failed()).detail("removed", r.removed());
+        if (r.sent() == 0 && r.failed() > 0) {
+            e.failed("PUSH_FAILED", "не доставлено ни на одно устройство");
+        } else if (r.sent() == 0) {
+            e.skipped("NO_DEVICES");
+        }
+        activity.record(e);
+    }
+
     public PushConfig config(long adminId) {
         return new PushConfig(enabled(), publicKeyB64, enabled() ? store.countByAdmin(adminId) : 0);
     }
@@ -193,7 +219,7 @@ public class AdminPushService {
             try {
                 List<Subscription> subs = store.all();
                 if (!subs.isEmpty()) {
-                    sendTo(subs, message);
+                    journal(message, sendTo(subs, message));
                 }
             } catch (RuntimeException e) {
                 log.warn("Admin push failed: {}", e.toString());

@@ -5,6 +5,7 @@ import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.CustomerRejectReason;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.payment.ReceiptKind;
@@ -44,14 +45,36 @@ public class NotificationService {
     private final Messages messages;
     private final SettingsService settings;
     private final CustomerRejectReason customerRejectReason;
+    private final ActivityLog activity;
 
     public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages,
-                               SettingsService settings, CustomerRejectReason customerRejectReason) {
+                               SettingsService settings, CustomerRejectReason customerRejectReason,
+                               ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
         this.settings = settings;
         this.customerRejectReason = customerRejectReason;
+        this.activity = activity;
+    }
+
+    /**
+     * Sends a DM to the order's customer and records it in the «Бот и сайт» journal (delivered, or
+     * not and why). The exception is re-thrown for the caller's own handling.
+     */
+    private Message dm(String type, Order order, SendMessage msg) throws org.telegram.telegrambots.meta.exceptions.TelegramApiException {
+        return activity.bot(ActivityLog.Entry.bot(type).toCustomer(order.getTgUserId()).order(order.getId())
+                .text(msg.getText()), () -> bot.execute(msg));
+    }
+
+    /**
+     * Sends a message to the admins' chat and records it. {@code summary} replaces the text in the
+     * journal: the seller's cards carry the customer's phone and address, which do not belong there.
+     */
+    private Message toAdmins(String type, Order order, SendMessage msg, String summary)
+            throws org.telegram.telegrambots.meta.exceptions.TelegramApiException {
+        return activity.bot(ActivityLog.Entry.bot(type).toAdmins(msg.getChatId()).order(order.getId())
+                .customer(order.getTgUserId()).text(summary), () -> bot.execute(msg));
     }
 
     private boolean enabled() {
@@ -91,7 +114,8 @@ public class NotificationService {
             msg.setMessageThreadId(topic);
         }
         try {
-            Message sent = bot.execute(msg);
+            Message sent = toAdmins("ADMIN_ORDER_CARD", order, msg,
+                    "Карточка заказа #" + shortId(order) + " → тема «" + statusTopicName(order.getStatus()) + "»");
             if (sent != null && sent.getChatId() != null) {
                 order.setNotifyChatId(sent.getChatId());
             }
@@ -146,11 +170,17 @@ public class NotificationService {
     /** DM the customer about a status change (only if tg_user_id is present and > 0). */
     public void notifyCustomerStatus(Order order) {
         // Admin switch (Настройки → Уведомления), e.g. while bulk-fixing statuses.
-        if (!enabled() || !settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)) {
+        if (!enabled()) {
             return;
         }
         Long tgUserId = order.getTgUserId();
         if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        if (!settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)) {
+            activity.record(ActivityLog.Entry.bot("ORDER_STATUS").toCustomer(tgUserId).order(order.getId())
+                    .text("Статус " + order.getStatus() + " — уведомления покупателям выключены в настройках")
+                    .skipped("NOTIFICATIONS_OFF"));
             return;
         }
         try {
@@ -164,7 +194,7 @@ public class NotificationService {
                     .parseMode("HTML")
                     .replyMarkup(chatButton(order, locale))
                     .build();
-            bot.execute(msg);
+            dm("ORDER_STATUS", order, msg);
         } catch (Exception e) {
             log.warn("notifyCustomerStatus failed for order {}: {}", idStr(order), e.getMessage());
         }
@@ -192,7 +222,7 @@ public class NotificationService {
                 t.append(" × ").append(qty);
             }
             t.append(messages.get(locale, "bot.gift.enjoy"));
-            bot.execute(SendMessage.builder()
+            dm("ORDER_GIFT", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(t.toString())
                     .parseMode("HTML")
@@ -221,7 +251,7 @@ public class NotificationService {
                             money(order.getDiscountMinor()) + " " + cur) + "\n"
                     + messages.get(locale, "bot.discount.newTotal",
                             money(order.getTotalMinor()) + " " + cur);
-            bot.execute(SendMessage.builder()
+            dm("ORDER_DISCOUNT", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -248,7 +278,7 @@ public class NotificationService {
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.changed.newTotal",
                             money(order.getTotalMinor()) + " " + cur);
-            bot.execute(SendMessage.builder()
+            dm("ORDER_CHANGED", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -272,7 +302,7 @@ public class NotificationService {
             Locale locale = messages.localeOf(tgUserId);
             String text = messages.get(locale, "bot.tracking.changed",
                     shortId(order), esc(order.getTrackingNumber()));
-            bot.execute(SendMessage.builder()
+            dm("ORDER_TRACKING", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -307,7 +337,7 @@ public class NotificationService {
                     .parseMode("HTML")
                     .replyMarkup(chatButton(order, locale))
                     .build();
-            bot.execute(msg);
+            dm("CHAT_REPLY", order, msg);
         } catch (Exception e) {
             log.warn("onAdminChatMessage failed for order {}: {}", idStr(order), e.getMessage());
         }
@@ -340,7 +370,7 @@ public class NotificationService {
             if (topic > 0) {
                 msg.setMessageThreadId(topic);
             }
-            bot.execute(msg);
+            toAdmins("ADMIN_CHAT_PING", order, msg, "Сообщение покупателя в чате заказа #" + shortId(order));
         } catch (Exception e) {
             log.warn("onCustomerChatMessage failed for order {}: {}", idStr(order), e.getMessage());
         }
@@ -374,7 +404,7 @@ public class NotificationService {
                 if (topic > 0) {
                     msg.setMessageThreadId(topic);
                 }
-                bot.execute(msg);
+                toAdmins("ADMIN_PAYMENT", order, msg, "Оплачено онлайн по заказу #" + shortId(order) + ": " + money(amountMinor) + " " + cur);
             } catch (Exception e) {
                 log.warn("onPaymentReceived (admins) failed for order {}: {}", idStr(order), e.getMessage());
             }
@@ -388,7 +418,7 @@ public class NotificationService {
             String text = messages.get(locale, "bot.paid.title") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.paid.body", money(amountMinor) + " " + cur);
-            bot.execute(SendMessage.builder()
+            dm("PAYMENT_RECEIVED", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -424,13 +454,17 @@ public class NotificationService {
                 caption.append('\n').append("<a href=\"").append(esc(taxUrl).replace("\"", "&quot;")).append("\">")
                         .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
             }
-            bot.sendDocument(SendDocument.builder()
+            SendDocument doc = SendDocument.builder()
                     .chatId(String.valueOf(tgUserId))
                     .document(new InputFile(new java.io.ByteArrayInputStream(pdf), kind.fileName(shortId(order))))
                     .caption(caption.toString())
                     .parseMode("HTML")
                     .replyMarkup(orderButton(order, locale))
-                    .build());
+                    .build();
+            activity.bot(ActivityLog.Entry.bot("RECEIPT").toCustomer(tgUserId).order(order.getId())
+                    .text(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)))
+                    .detail("kind", kind.name())
+                    .detail("file", kind.fileName(shortId(order))), () -> bot.sendDocument(doc));
             return Delivery.SENT;
         } catch (Exception e) {
             String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
@@ -470,7 +504,7 @@ public class NotificationService {
             if (topic > 0) {
                 msg.setMessageThreadId(topic);
             }
-            bot.execute(msg);
+            toAdmins("ADMIN_CANCEL_REQUEST", order, msg, "Запрос отмены заказа #" + shortId(order));
         } catch (Exception e) {
             log.warn("onCancelRequested failed for order {}: {}", idStr(order), e.getMessage());
         }
@@ -493,7 +527,7 @@ public class NotificationService {
                             money(received) + " " + nz(order.getCurrency()))
                     : messages.get(locale, "bot.cancelRequest.declined", shortId(order),
                             esc(nz(order.getCancelRequestAdminComment())));
-            bot.execute(SendMessage.builder()
+            dm(approved ? "CANCEL_REQUEST_APPROVED" : "CANCEL_REQUEST_DECLINED", order, SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
@@ -535,7 +569,7 @@ public class NotificationService {
             if (topic > 0) {
                 msg.setMessageThreadId(topic);
             }
-            Message sent = bot.execute(msg);
+            Message sent = toAdmins("ADMIN_DISPATCH_CARD", order, msg, "Карточка «К отправке» #" + shortId(order));
             if (sent != null) {
                 order.setDispatchMessageId(sent.getMessageId());
                 return true;
@@ -754,6 +788,20 @@ public class NotificationService {
             sb.append("\n❌ <b>Причина отклонения:</b> ").append(esc(order.getRejectReason())).append('\n');
         }
         return sb.toString();
+    }
+
+    /** Name of the seller's forum topic a card of this status goes to (for the journal). */
+    private static String statusTopicName(OrderStatus status) {
+        if (status == null) {
+            return "Новые";
+        }
+        return switch (status) {
+            case NEW -> "Новые";
+            case APPROVED -> "В работе";
+            case SHIPPED -> "Высланы";
+            case DELIVERED -> "Закрытые";
+            case REJECTED -> "Отклонённые";
+        };
     }
 
     private String statusHeader(Order order) {

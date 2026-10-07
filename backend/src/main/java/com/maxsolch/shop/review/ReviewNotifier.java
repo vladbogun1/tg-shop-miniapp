@@ -3,6 +3,7 @@ package com.maxsolch.shop.review;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.tg.ShopBot;
 import lombok.extern.slf4j.Slf4j;
@@ -35,12 +36,15 @@ public class ReviewNotifier {
     private final AppProperties props;
     private final Messages messages;
     private final AdminPushService push;
+    private final ActivityLog activity;
 
-    public ReviewNotifier(@Lazy ShopBot bot, AppProperties props, Messages messages, AdminPushService push) {
+    public ReviewNotifier(@Lazy ShopBot bot, AppProperties props, Messages messages, AdminPushService push,
+                          ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
         this.push = push;
+        this.activity = activity;
     }
 
     /** Is there a bot to write with at all? */
@@ -59,12 +63,17 @@ public class ReviewNotifier {
             String text = messages.get(locale, "bot.review.bonus.title") + "\n"
                     + messages.get(locale, "bot.review.bonus.body", "<code>" + esc(code) + "</code>",
                             String.valueOf(percent), DATE.format(expiresAt.atZone(KYIV)));
-            bot.execute(SendMessage.builder()
+            SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
                     .replyMarkup(button(messages.get(locale, "bot.review.bonus.open"), null))
-                    .build());
+                    .build();
+            // The code itself is the customer's personal discount — the journal keeps only its size.
+            activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS").toCustomer(tgUserId)
+                    .text("Бонус за отзыв: персональный промокод −" + percent + "% до "
+                            + DATE.format(expiresAt.atZone(KYIV)))
+                    .detail("percent", percent), () -> bot.execute(msg));
         } catch (Exception e) {
             log.warn("Review bonus DM failed for {}: {}", tgUserId, e.getMessage());
         }
@@ -88,12 +97,14 @@ public class ReviewNotifier {
                     + (bonusPercent > 0
                     ? messages.get(locale, "bot.review.reminder.bodyBonus", String.valueOf(bonusPercent))
                     : messages.get(locale, "bot.review.reminder.body"));
-            bot.execute(SendMessage.builder()
+            SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
                     .parseMode("HTML")
                     .replyMarkup(button(messages.get(locale, "bot.review.reminder.button"), "view_" + id))
-                    .build());
+                    .build();
+            activity.bot(ActivityLog.Entry.bot("REVIEW_REMINDER").toCustomer(tgUserId).order(orderId)
+                    .text(text).detail("bonusPercent", bonusPercent), () -> bot.execute(msg));
             return true;
         } catch (Exception e) {
             log.warn("Review reminder DM failed for {}: {}", tgUserId, e.getMessage());

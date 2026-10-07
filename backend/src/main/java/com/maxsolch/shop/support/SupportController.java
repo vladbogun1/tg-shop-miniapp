@@ -35,6 +35,10 @@ public class SupportController {
 
     private final SupportService support;
 
+    /** «Журнал → Бот и сайт»: questions to support (not their text). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.maxsolch.shop.journal.ActivityLog activity;
+
     public SupportController(SupportService support) {
         this.support = support;
     }
@@ -61,7 +65,13 @@ public class SupportController {
     @Operation(summary = "Ask a question (optionally about a product); an open thread about the same product is reused")
     public ThreadDto create(@RequestBody CreateThreadRequest req) {
         String source = SecurityUtil.currentPrincipal().isWeb() ? SupportService.SOURCE_WEB : SupportService.SOURCE_MINIAPP;
-        return support.create(SecurityUtil.currentUserId(), source, req);
+        ThreadDto thread = support.create(SecurityUtil.currentUserId(), source, req);
+        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("SUPPORT_REQUEST")
+                .text(thread.productTitle() != null && !thread.productTitle().isBlank()
+                        ? "Вопрос в поддержку о товаре «" + thread.productTitle() + "»"
+                        : "Вопрос в поддержку")
+                .detail("thread", thread.id()));
+        return thread;
     }
 
     @GetMapping("/threads/{id}")
@@ -81,7 +91,10 @@ public class SupportController {
     @PostMapping("/threads/{id}/messages")
     @Operation(summary = "Write to my thread (reopens a closed one)")
     public MessageDto send(@PathVariable String id, @RequestBody SendMessageRequest req) {
-        return support.sendAsCustomer(SecurityUtil.currentUserId(), id, req);
+        MessageDto sent = support.sendAsCustomer(SecurityUtil.currentUserId(), id, req);
+        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("SUPPORT_MESSAGE")
+                .text("Сообщение в поддержку").detail("thread", id));
+        return sent;
     }
 
     @PostMapping("/threads/{id}/read")
@@ -95,5 +108,11 @@ public class SupportController {
     @Operation(summary = "Close my thread (question answered)")
     public ThreadDto close(@PathVariable String id) {
         return support.closeByCustomer(SecurityUtil.currentUserId(), id);
+    }
+
+    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+        if (activity != null) {
+            activity.record(entry);
+        }
     }
 }

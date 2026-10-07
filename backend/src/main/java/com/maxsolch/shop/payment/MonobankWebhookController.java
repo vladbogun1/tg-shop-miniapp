@@ -28,6 +28,9 @@ public class MonobankWebhookController {
     private final OnlinePaymentService payments;
     private final ObjectMapper mapper;
     private final JdbcTemplate jdbc;
+    /** «Журнал → Бот и сайт»: rejected (forged / broken) webhooks. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.maxsolch.shop.journal.ActivityLog activity;
 
     public MonobankWebhookController(MonobankSignatureVerifier verifier, OnlinePaymentService payments,
                                      ObjectMapper mapper, JdbcTemplate jdbc) {
@@ -54,6 +57,14 @@ public class MonobankWebhookController {
         logRaw(st, ok, body);
         if (!ok) {
             log.warn("monobank webhook with a bad signature rejected (invoice {})", st == null ? "?" : st.invoiceId());
+            if (activity != null) {
+                activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
+                                com.maxsolch.shop.journal.ActivityLog.PAYMENT, "WEBHOOK_REJECTED")
+                        .text("Вебхук monobank с неверной подписью отклонён")
+                        .detail("invoice", st == null ? null : st.invoiceId())
+                        .detail("status", st == null ? null : st.status())
+                        .failed("BAD_SIGNATURE", "X-Sign не прошёл проверку"));
+            }
             return ResponseEntity.status(401).build();
         }
         if (st == null) {
