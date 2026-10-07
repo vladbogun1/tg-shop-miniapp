@@ -319,7 +319,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       customerName: name.trim(),
       phone: phoneE164(phone),
       comment: comment.trim() || undefined,
-      // ONLY a code the server has just confirmed (see UI-FIXES §6).
+      // ONLY a code the server has just confirmed (see docs/archive/UI-FIXES.md §6).
       promoCode: promoValid ? promoCode.trim() : undefined,
       deliveryMethod: delivery,
       npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,

@@ -7,7 +7,7 @@
  *
  * ChiSetup (v3): graphite cards, Exo 2 headings, tinted status/payment pills. Behaviour, query keys (["me","orders"]) and routes are
  * unchanged. Order cards animate in DIRECTLY (initial/animate + delay i*0.05),
- * not via variant propagation (see NEO.md framer-motion caveat).
+ * not via variant propagation (see docs/archive/NEO-frontend.md framer-motion caveat).
  */
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";

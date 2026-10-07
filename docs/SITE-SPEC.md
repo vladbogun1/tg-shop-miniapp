@@ -247,7 +247,7 @@ max идемпотентен — повторённый (ретрай) merge н�
 
 **Mini App** (`frontend/lib/cart-sync.ts`, `startCartSync()` в Providers; стор `tgshop-cart-v1`
 получил `migrated`):
-- до обмена initData → JWT к `/api/me/cart` не ходим (правило UI-FIXES), показывается сохранённая копия;
+- до обмена initData → JWT к `/api/me/cart` не ходим (правило из `archive/UI-FIXES.md`), показывается сохранённая копия;
 - первый запуск после релиза (`migrated=false`): локальная корзина один раз сливается `merge`, дальше
   истина — сервер. Правки, сделанные до появления токена, тоже уходят через `merge` (ничего не теряется);
 - запись/перечитывание — как на сайте (400 мс, `visibilitychange`, `keepalive`), новый токен → `GET`;

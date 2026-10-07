@@ -9,7 +9,7 @@
  *
  * The menu is portalled into <body>: the sticky header is its own stacking context (z-40), and a
  * dropdown trapped inside one ends up under whatever the page raises above it (see the portal
- * lesson in UI-FIXES.md §3). It keeps the header's chrome tokens so it reads as part of the header.
+ * lesson in docs/archive/UI-FIXES.md §3). It keeps the header's chrome tokens so it reads as part of the header.
  *
  * Keyboard: Enter / Space / ↓ open on the current language, ↑ opens on the last one; inside, ↑ ↓
  * Home End move, Enter / Space choose, Esc closes and returns focus, Tab closes.

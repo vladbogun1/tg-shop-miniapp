@@ -4,7 +4,7 @@
  * Keeps the Mini App cart in step with the customer's server cart — the same one the website shows
  * when they sign in there with this Telegram account (docs/SITE-SPEC.md, «Серверная корзина»).
  *
- * - Nothing goes to `/api/me/**` before the initData → JWT exchange is done (UI-FIXES: requests that
+ * - Nothing goes to `/api/me/**` before the initData → JWT exchange is done (docs/archive/UI-FIXES.md: requests that
  *   beat the token got 403). Until then the store shows its persisted copy.
  * - First run after this release (`migrated` not set): the cart that lived only on this device is
  *   MERGED into the server cart once (same line → the larger quantity), then the server is the truth.

@@ -10,7 +10,7 @@ The coordinate space is the one of docs/brand/v3/reference/logo-target.png (1155
 geometry can be overlaid on the reference 1:1 while tuning.
 
 Outputs (run from the repo root: `python docs/brand/v3/tools/gen_brand.py`):
-  shared/src/brand/logo.ts        path data for the React <Logo>/<LogoMark> in frontend/ and site/
+  shared/src/brand/logo.ts        path data for the React <Logo> in frontend/, site/ and frontend-admin/
   docs/brand/v3/logo-full.svg     wordmark + HUD brackets + tagline
   docs/brand/v3/logo-compact.svg  wordmark only
   docs/brand/v3/mark.svg          CS app icon (rounded tile)
