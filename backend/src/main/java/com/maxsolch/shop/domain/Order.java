@@ -124,15 +124,11 @@ public class Order {
     private Instant paidAt;
 
     /**
-     * The customer uploaded a transfer screenshot ("я оплатил"). This is a CLAIM,
-     * not a confirmation: it never changes {@link #paid} / {@link #receivedMinor}.
-     * Only an admin confirms the money actually arrived.
+     * Deadline to pay online (created + 24 h); an order still unpaid past it is rejected
+     * automatically and restocked. Null = placed before online payment existed.
      */
-    @Column(name = "payment_claimed", nullable = false)
-    private boolean paymentClaimed = false;
-
-    @Column(name = "payment_claimed_at")
-    private Instant paymentClaimedAt;
+    @Column(name = "payment_due_at")
+    private Instant paymentDueAt;
 
     /** Prepayment amount snapshot for this order (0 for full-payment options). */
     @Column(name = "prepayment_minor", nullable = false)
@@ -141,6 +137,27 @@ public class Order {
     /** How much money has actually been received for this order (drives наложка/COD). */
     @Column(name = "received_minor", nullable = false)
     private long receivedMinor = 0;
+
+    /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
+    @Column(name = "cancel_request_status", length = 16)
+    private String cancelRequestStatus;
+
+    @Column(name = "cancel_request_reason", length = 500)
+    private String cancelRequestReason;
+
+    @Column(name = "cancel_requested_at")
+    private Instant cancelRequestedAt;
+
+    @Column(name = "cancel_request_resolved_at")
+    private Instant cancelRequestResolvedAt;
+
+    /** Why the request was declined (shown to the customer), or a note on approval. */
+    @Column(name = "cancel_request_admin_comment", length = 1000)
+    private String cancelRequestAdminComment;
+
+    /** Cancelled on the customer's initiative (feeds antibot.maxSelfCancelsPerDay). */
+    @Column(name = "cancelled_by_customer", nullable = false)
+    private boolean cancelledByCustomer = false;
 
     @Column(name = "tg_user_id")
     private Long tgUserId;

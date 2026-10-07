@@ -1,6 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderSource;
@@ -47,9 +48,6 @@ import java.util.Optional;
 @Service
 public class OrderService {
 
-    /** A payment claim repeated after this long counts as a new claim (see {@link #claimPayment}). */
-    static final java.time.Duration RECLAIM_AFTER = java.time.Duration.ofMinutes(10);
-
     /**
      * Error code for "this promo code cannot be used". The cart validates codes before checkout, so
      * reaching this means the last use was taken in the meantime — the app drops the code and lets
@@ -67,6 +65,10 @@ public class OrderService {
     private final CartService cartService;
     private final Messages messages;
     private final EntityManager entityManager;
+
+    /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
+    @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
+    private int paymentDueHours = 24;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
@@ -133,14 +135,18 @@ public class OrderService {
             order.setNpWarehouseName(cmd.npWarehouseName());
         }
 
-        // Payment option snapshot.
-        if (cmd.paymentOptionId() != null && !cmd.paymentOptionId().isBlank()) {
-            PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
-                    .orElseThrow(() -> new BadRequestException("unknown payment option"));
-            order.setPaymentOptionId(po.getId());
-            order.setPaymentOptionTitle(po.getTitle());
-            order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
+        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
+        if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
+            throw new BadRequestException(messages.current("api.order.paymentRequired"));
         }
+        PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
+                .filter(PaymentOption::isActive)
+                .orElseThrow(() -> new BadRequestException("unknown payment option"));
+        order.setPaymentOptionId(po.getId());
+        order.setPaymentOptionTitle(po.getTitle());
+        order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        order.setPaymentDueAt(Instant.now().plus(java.time.Duration.ofHours(Math.max(1, paymentDueHours))));
 
         long subtotal = 0;
         List<Product> toSave = new ArrayList<>();
@@ -273,19 +279,130 @@ public class OrderService {
     @Transactional
     public Order cancelByCustomer(byte[] orderId, String reason) {
         Order order = lock(orderId);
-        if (order.isPaid()) {
-            throw new BadRequestException("оплаченный заказ нельзя отменить — напишите в чат");
+        if (order.isPaid() || order.getReceivedMinor() > 0) {
+            // Paid orders go through a cancellation request (requestCancel) instead.
+            throw new BadRequestException(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
         }
         if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
-            throw new BadRequestException("этот заказ уже нельзя отменить");
+            throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         restoreStock(order);
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(Instant.now());
         String r = reason == null ? "" : reason.trim();
+        if (r.length() > 500) {
+            r = r.substring(0, 500);
+        }
         order.setRejectReason(r.isBlank() ? "Отменён покупателем" : "Отменён покупателем: " + r);
         order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
+        order.setCancelledByCustomer(true);
         return afterTransition(order);
+    }
+
+    /** Error code: the order is paid — the customer has to file a cancellation request. */
+    public static final String PAID_NEEDS_REQUEST = "PAID_NEEDS_REQUEST";
+    /** Error code: the order is past the point where the customer may cancel it (shipped, closed). */
+    public static final String CANNOT_CANCEL = "CANNOT_CANCEL";
+    /** Error code: a cancellation request already exists for this order (pending or resolved). */
+    public static final String CANCEL_REQUEST_EXISTS = "CANCEL_REQUEST_EXISTS";
+    /** Error code: the order is not paid — cancel it directly instead of requesting. */
+    public static final String CANCEL_REQUEST_UNPAID = "CANCEL_REQUEST_UNPAID";
+    /** Error code: the admin action needs a PENDING request. */
+    public static final String NO_PENDING_REQUEST = "NO_PENDING_REQUEST";
+
+    /**
+     * The customer asks to cancel a PAID order that has not shipped yet. Nothing changes in the
+     * order itself until an admin decides (approve = reject + restock + refund, decline = comment).
+     * One request per order: a declined one cannot be filed again.
+     */
+    @Transactional
+    public Order requestCancel(byte[] orderId, String reason) {
+        Order order = lock(orderId);
+        String r = reason == null ? "" : reason.trim();
+        if (r.isEmpty()) {
+            throw new BadRequestException(messages.current("api.cancelRequest.reasonRequired"));
+        }
+        if (r.length() > 500) {
+            throw new BadRequestException(messages.current("api.cancelRequest.reasonTooLong", 500));
+        }
+        if (order.getCancelRequestStatus() != null) {
+            throw new BadRequestException(messages.current(
+                    CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus())
+                            ? "api.cancelRequest.declinedBefore" : "api.cancelRequest.exists"),
+                    CANCEL_REQUEST_EXISTS);
+        }
+        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+            throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
+        }
+        if (!order.isPaid() && order.getReceivedMinor() <= 0) {
+            throw new BadRequestException(messages.current("api.cancelRequest.unpaid"), CANCEL_REQUEST_UNPAID);
+        }
+        order.setCancelRequestStatus(CancelRequestStatus.PENDING.name());
+        order.setCancelRequestReason(r);
+        order.setCancelRequestedAt(Instant.now());
+        order.setCancelRequestResolvedAt(null);
+        order.setCancelRequestAdminComment(null);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.CancelRequested(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * Admin approves a pending cancellation request: the order is rejected (CHANGED_MIND), the
+     * goods go back to stock and the request is closed. The refund itself is made by the caller
+     * after this transaction commits (monobank is never called inside a transaction).
+     */
+    @Transactional
+    public Order approveCancelRequest(byte[] orderId, String comment) {
+        Order order = lock(orderId);
+        requirePendingRequest(order);
+        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+            throw new BadRequestException("заказ уже " + order.getStatus() + " — отмена по запросу невозможна",
+                    CANNOT_CANCEL);
+        }
+        Instant now = Instant.now();
+        restoreStock(order);
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(now);
+        order.setRejectReason("Отменён по запросу покупателя: " + nz(order.getCancelRequestReason()));
+        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
+        order.setCancelledByCustomer(true);
+        order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
+        order.setCancelRequestResolvedAt(now);
+        order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
+        Order saved = afterTransition(order);
+        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        return saved;
+    }
+
+    /** Admin declines a pending request; the comment (required) is shown to the customer. */
+    @Transactional
+    public Order declineCancelRequest(byte[] orderId, String comment) {
+        Order order = lock(orderId);
+        requirePendingRequest(order);
+        String c = comment == null ? "" : comment.trim();
+        if (c.isEmpty()) {
+            throw new BadRequestException("напишите покупателю, почему отмена невозможна");
+        }
+        if (c.length() > 1000) {
+            throw new BadRequestException("комментарий длиннее 1000 символов");
+        }
+        order.setCancelRequestStatus(CancelRequestStatus.DECLINED.name());
+        order.setCancelRequestResolvedAt(Instant.now());
+        order.setCancelRequestAdminComment(c);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), false));
+        return saved;
+    }
+
+    private static void requirePendingRequest(Order order) {
+        if (!CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            throw new BadRequestException("нет активного запроса отмены", NO_PENDING_REQUEST);
+        }
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
     }
 
     /**
@@ -316,6 +433,12 @@ public class OrderService {
         order.setRejectedAt(Instant.now());
         order.setRejectReason(reason == null || reason.isBlank() ? null : reason.trim());
         order.setRejectReasonCode(reasonCode == null ? null : reasonCode.name());
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Rejected by hand while the customer's request was open: the request is fulfilled
+            // (the refund, if any, stays the admin's call — the inbox keeps reminding).
+            order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
+            order.setCancelRequestResolvedAt(Instant.now());
+        }
         return afterTransition(order);
     }
 
@@ -398,32 +521,6 @@ public class OrderService {
     }
 
     /**
-     * Records the customer's CLAIM that they paid (a transfer screenshot). Deliberately does not
-     * touch {@code paid} / {@code receivedMinor}: an uploaded picture is not money in the account,
-     * and treating it as such let anyone zero out their cash-on-delivery amount and receive goods
-     * for free. Only {@link #markPaid} — admin-only — moves the actual figures.
-     */
-    @Transactional
-    public Order claimPayment(byte[] orderId) {
-        Order order = lock(orderId);
-        Instant now = Instant.now();
-        if (!order.isPaymentClaimed()) {
-            order.setPaymentClaimed(true);
-            order.setPaymentClaimedAt(now);
-        } else if (!order.isPaid() && (order.getPaymentClaimedAt() == null
-                || order.getPaymentClaimedAt().plus(RECLAIM_AFTER).isBefore(now))) {
-            // A repeated claim later on is a NEW claim (another transfer, a resent screenshot): the
-            // fresh time is the inbox row's version, so it comes back on «Внимание» even if snoozed.
-            // A double tap within RECLAIM_AFTER stays idempotent.
-            order.setPaymentClaimedAt(now);
-        }
-        Order saved = orderRepository.save(order);
-        // The dispatch card must show "заявлена, не подтверждена" so nothing ships as prepaid.
-        events.publishEvent(new OrderEvents.PaymentClaimed(saved.getId()));
-        return saved;
-    }
-
-    /**
      * Sets the amount actually received (admin-only: the payment dialog, or an automatic
      * settlement on delivery). {@code 0} clears the payment.
      */
@@ -448,6 +545,66 @@ public class OrderService {
         // COD on the seller's card changes with the received amount — keep it in sync.
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return saved;
+    }
+
+    /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */
+    public static long dueOnlineMinor(Order order) {
+        long total = order.getTotalMinor();
+        return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
+    }
+
+    /** Still to pay online right now (0 once the online part is covered). */
+    public static long amountDueMinor(Order order) {
+        return Math.max(0, dueOnlineMinor(order) - Math.max(0, order.getReceivedMinor()));
+    }
+
+    /**
+     * Money arrived online (a monobank invoice succeeded). Adds it to the received amount — which
+     * drives наложка — and marks the order paid. The status is NOT moved: an admin still confirms
+     * the order by hand (if the goods turn out unavailable, the money is refunded).
+     */
+    @Transactional
+    public Order recordOnlinePayment(byte[] orderId, long amountMinor) {
+        Order order = lock(orderId);
+        long received = Math.min(order.getTotalMinor(), Math.max(0, order.getReceivedMinor()) + amountMinor);
+        order.setReceivedMinor(received);
+        if (received > 0 && !order.isPaid()) {
+            order.setPaid(true);
+            order.setPaidAt(Instant.now());
+        }
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
+        return saved;
+    }
+
+    /** A refund went through at monobank: book it as money given back to the customer. */
+    @Transactional
+    public Order recordOnlineRefund(byte[] orderId, long amountMinor) {
+        Order order = lock(orderId);
+        order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * The online payment deadline passed with nothing paid: reject the order (reason
+     * PAYMENT_TIMEOUT) and put the goods back on the shelf. Re-checked under the row lock, so a
+     * payment that landed meanwhile wins. Returns null when the order no longer qualifies.
+     */
+    @Transactional
+    public Order expireUnpaid(byte[] orderId, Instant now) {
+        Order order = lock(orderId);
+        if (order.getStatus() != OrderStatus.NEW || order.isPaid() || order.getReceivedMinor() > 0
+                || order.getPaymentDueAt() == null || order.getPaymentDueAt().isAfter(now)) {
+            return null;
+        }
+        restoreStock(order);
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(now);
+        order.setRejectReason("Не оплачен в течение " + Math.max(1, paymentDueHours) + " ч");
+        order.setRejectReasonCode(RejectReasonCode.PAYMENT_TIMEOUT.name());
+        return afterTransition(order);
     }
 
     // ----- admin order editing: gifts & discounts -----
@@ -584,7 +741,8 @@ public class OrderService {
         } else if (promoCode != null && !promoCode.isBlank()) {
             // An admin applying a code by hand is a deliberate decision, so customers' half-hour
             // holds do not stand in their way — only the code's own usage limit does.
-            PromoCode p = resolvePromo(promoCode, null, false);
+            // The order's customer is passed for the owner check of personal codes (V44).
+            PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
             discount = discountFor(p, subtotal);
             p.setUsesCount(p.getUsesCount() + 1);
             promoCodeRepository.save(p);
@@ -820,6 +978,11 @@ public class OrderService {
             throw new BadRequestException(messages.current("api.promo.rejected"), PROMO_REJECTED);
         }
         PromoCode promo = opt.get();
+        // Personal codes (review bonus, V44): only the owner, and only until they expire.
+        String personal = PromoService.personalRejection(promo, tgUserId, Instant.now());
+        if (personal != null) {
+            throw new BadRequestException(messages.current(personal), PROMO_REJECTED);
+        }
         // Remaining uses minus other customers' live holds: a code someone reserved from their cart
         // must not be taken by a checkout that merely submitted first.
         long left = respectHolds

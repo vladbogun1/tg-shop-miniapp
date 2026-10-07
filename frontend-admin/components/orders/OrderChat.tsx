@@ -35,7 +35,8 @@ function timeOf(iso: string): string {
     : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Bubble({
+/** Exported for the support chat (components/support/SupportChat.tsx) — same bubbles. */
+export function Bubble({
   m,
   onOpenImage,
 }: {

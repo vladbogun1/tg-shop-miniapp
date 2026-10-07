@@ -156,7 +156,9 @@ public class CatalogService {
                 p.getSeoDescription(),
                 p.getCreatedAt(),
                 p.getBrand(),
-                p.getSku());
+                p.getSku(),
+                p.getRatingAvg() == null ? null : p.getRatingAvg().doubleValue(),
+                p.getRatingCount());
     }
 
     private TagDto toTagDto(Tag t) {

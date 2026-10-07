@@ -197,6 +197,13 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # Online payment via monobank acquiring (docs/MONOBANK-ACQUIRING.md). Empty token = off.
+      # Numbers and the API URL carry real defaults: an empty value would override Spring's own.
+      MONOBANK_TOKEN: ${MONOBANK_TOKEN:-}
+      MONOBANK_WEBHOOK_URL: ${MONOBANK_WEBHOOK_URL:-}
+      MONOBANK_API_URL: ${MONOBANK_API_URL:-https://api.monobank.ua}
+      PAYMENT_DUE_HOURS: ${PAYMENT_DUE_HOURS:-24}
+      PAYMENT_INVOICE_TTL_MINUTES: ${PAYMENT_INVOICE_TTL_MINUTES:-60}
     ports:
       - "8080:8080"
     networks:

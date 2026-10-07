@@ -6,14 +6,38 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, isAuthenticated } from "@/lib/api";
 
-export type InboxType =
-  | "PAYMENT"
-  | "CHAT"
-  | "NEW_STALE"
-  | "APPROVED_STALE"
-  | "RETURN"
-  | "LOW_STOCK"
-  | "SITE_ERROR";
+/** Kinds the UI knows (icon, colour, main action). The server may add more — see `knownType`. */
+export const INBOX_TYPES = [
+  "PAYMENT",
+  "CHAT",
+  "NEW_STALE",
+  "APPROVED_STALE",
+  "RETURN",
+  "LOW_STOCK",
+  "SITE_ERROR",
+  "REVIEW",
+  /** Support question waiting for an answer: entityId = thread id, no orderId. */
+  "SUPPORT",
+] as const;
+export type KnownInboxType = (typeof INBOX_TYPES)[number];
+/** A kind from the server: one of the known ones, or a newer one rendered with its own title. */
+export type InboxType = KnownInboxType | (string & {});
+
+export function knownType(type: InboxType): KnownInboxType | null {
+  return (INBOX_TYPES as readonly string[]).includes(type) ? (type as KnownInboxType) : null;
+}
+
+/**
+ * PAYMENT rows come in two flavours (the server tells them apart by the version prefix):
+ * «Оплачен онлайн — подтвердите заказ» (`paid:…`) and «Оплачен, но отменён — верните деньги»
+ * (`refund:…`). Falls back to the subtitle wording.
+ */
+export function isRefundRow(item: Pick<InboxItem, "type" | "version" | "subtitle">): boolean {
+  if (item.type !== "PAYMENT") return false;
+  if (item.version.startsWith("refund:")) return true;
+  if (item.version.startsWith("paid:")) return false;
+  return /верните деньги/i.test(item.subtitle ?? "");
+}
 
 export interface InboxItem {
   /** `TYPE:entityId` */

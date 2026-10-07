@@ -85,32 +85,34 @@ export default function BoardPage() {
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
   });
-  // «Сегодня» links land here as /?status=NEW or /?payment=claimed. Read once from the URL (no
+  // «Сегодня» links land here as /?status=NEW or /?payment=paid. Read once from the URL (no
   // useSearchParams: it would force a Suspense boundary around the whole board).
-  const [claimedOnly, setClaimedOnly] = useState(false);
+  const [paidNewOnly, setPaidNewOnly] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status") as OrderStatus | null;
     if (status && STATUS_ORDER.includes(status)) setMobileTab(status);
-    if (params.get("payment") === "claimed") setClaimedOnly(true);
+    // "claimed" = an old bookmark from the manual-transfer days; the closest thing now is the same.
+    const payment = params.get("payment");
+    if (payment === "paid" || payment === "claimed") setPaidNewOnly(true);
   }, []);
-  function clearClaimed() {
-    setClaimedOnly(false);
+  function clearPaidNew() {
+    setPaidNewOnly(false);
     window.history.replaceState(null, "", window.location.pathname);
   }
 
   const rawBoard = boardQ.data;
-  // "Ждут подтверждения оплаты": the customer sent a screenshot that nobody has verified yet.
+  // "Оплачены, ждут подтверждения": paid online, still NEW — the admin has to approve them.
   const board = useMemo<AdminBoard | undefined>(() => {
-    if (!rawBoard || !claimedOnly) return rawBoard;
+    if (!rawBoard || !paidNewOnly) return rawBoard;
     const columns = Object.fromEntries(
-      Object.entries(rawBoard.columns).map(([k, v]) => [k, (v ?? []).filter((o) => o.paymentClaimed && !o.paid)])
+      Object.entries(rawBoard.columns).map(([k, v]) => [k, (v ?? []).filter((o) => o.paid && o.status === "NEW")])
     ) as AdminBoard["columns"];
     const counts = Object.fromEntries(
       Object.entries(columns).map(([k, v]) => [k, v?.length ?? 0])
     ) as AdminBoard["counts"];
     return { ...rawBoard, columns, counts, sums: undefined };
-  }, [rawBoard, claimedOnly]);
+  }, [rawBoard, paidNewOnly]);
 
   const findCard = useMemo(() => {
     return (id: string | null): OrderCardDto | undefined => {
@@ -261,10 +263,10 @@ export default function BoardPage() {
       ) : (
         <>
           <TodayStrip />
-          {claimedOnly && (
+          {paidNewOnly && (
             <div className="mb-3 flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-[var(--text)]">Показаны только заказы, где ждут подтверждения оплаты</span>
-              <Button variant="ghost" icon={<X className="h-4 w-4" />} onClick={clearClaimed}>
+              <span className="text-[13px] font-semibold text-[var(--text)]">Показаны только оплаченные новые заказы — подтвердите их</span>
+              <Button variant="ghost" icon={<X className="h-4 w-4" />} onClick={clearPaidNew}>
                 Сбросить
               </Button>
             </div>

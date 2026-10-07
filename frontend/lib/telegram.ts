@@ -8,7 +8,7 @@
  * insets into CSS variables. Gracefully no-ops in a plain browser (dev) so `npm run dev` works
  * outside Telegram.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export interface TgUser {
   id: number;
@@ -194,8 +194,29 @@ interface WebAppMainButton {
 }
 interface WebApp {
   MainButton?: WebAppMainButton;
+  initData?: string;
   initDataUnsafe?: { start_param?: string };
-  HapticFeedback?: { impactOccurred?: (s: string) => void };
+  HapticFeedback?: {
+    impactOccurred?: (s: string) => void;
+    notificationOccurred?: (s: "error" | "success" | "warning") => void;
+  };
+  /** Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath. */
+  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  /**
+   * Bot API 8.0+: the client's own "download file" dialog (https URL only). Older clients throw
+   * WebAppMethodUnsupported; `callback(accepted)` says whether the customer confirmed it.
+   */
+  downloadFile?: (params: { url: string; file_name: string }, callback?: (accepted: boolean) => void) => void;
+  isVersionAtLeast?: (version: string) => boolean;
+  onEvent?: (event: string, cb: () => void) => void;
+  offEvent?: (event: string, cb: () => void) => void;
+  /** Bot API 6.1+: the native "back" arrow in the header (and Android's hardware back). */
+  BackButton?: {
+    show: () => void;
+    hide: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
 }
 
 function webApp(): WebApp | null {
@@ -232,6 +253,13 @@ export function parseOrderDeepLink(param: string | null): string | null {
   return m ? m[1] : null;
 }
 
+/** `view_<id>` — open the order page itself (the bot's "payment received" message). */
+export function parseOrderViewDeepLink(param: string | null): string | null {
+  if (!param) return null;
+  const m = /^view[_-](.+)$/.exec(param);
+  return m ? m[1] : null;
+}
+
 /**
  * Keeps Telegram's native MainButton hidden.
  *
@@ -251,5 +279,160 @@ export function haptic(): void {
     webApp()?.HapticFeedback?.impactOccurred?.("light");
   } catch {
     /* noop */
+  }
+}
+
+/** Best-effort "success" haptic (payment went through). */
+export function hapticSuccess(): void {
+  try {
+    webApp()?.HapticFeedback?.notificationOccurred?.("success");
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Opens an external page (the monobank payment page) without leaving the Mini App.
+ *
+ * Inside Telegram this is `WebApp.openLink`: the in-app / system browser slides OVER the Mini App,
+ * and closing it brings the customer straight back to the same screen — see {@link onAppResume}.
+ * Some clients only honour it from a user gesture, so callers also keep a button that calls this
+ * again. Outside Telegram (plain browser, the `?tgstub=` dev stub, which has no openLink) it falls
+ * back to a new tab, and to navigating this tab when a popup blocker eats that.
+ */
+export function openExternalLink(url: string): void {
+  const wa = webApp();
+  if (wa?.initData && typeof wa.openLink === "function") {
+    try {
+      wa.openLink(url, { try_instant_view: false });
+      return;
+    } catch {
+      /* fall through to the browser way */
+    }
+  }
+  if (typeof window === "undefined") return;
+  // No "noopener" feature: with it window.open always returns null and the blocked-popup check
+  // below could not tell success from failure. The opener is cut by hand instead.
+  const tab = window.open(url, "_blank");
+  if (tab) tab.opener = null;
+  else window.location.href = url;
+}
+
+/**
+ * Downloads a file (a receipt PDF) from inside the Mini App.
+ *
+ * A webview ignores `<a download>`, and a link carrying an Authorization header is impossible here,
+ * so the URL must be self-authorising (a signed link). Telegram 8.0+ shows its native download
+ * dialog (`WebApp.downloadFile`); older clients — and anything that throws — get the URL opened
+ * in the browser over the Mini App ({@link openExternalLink}), which downloads it there.
+ */
+export function downloadFile(url: string, fileName: string): void {
+  const wa = webApp();
+  const supported =
+    !!wa?.initData &&
+    typeof wa.downloadFile === "function" &&
+    (typeof wa.isVersionAtLeast !== "function" || wa.isVersionAtLeast("8.0"));
+  if (supported && url.startsWith("https://")) {
+    try {
+      wa!.downloadFile!({ url, file_name: fileName });
+      return;
+    } catch {
+      /* unsupported after all — open it in the browser */
+    }
+  }
+  openExternalLink(url);
+}
+
+/**
+ * Calls `cb` whenever the customer comes back to the Mini App — the browser opened by
+ * {@link openExternalLink} was closed, the app was brought back from the background, or Telegram
+ * re-activated the Mini App (Bot API 8.0 `activated`). Several of these fire for one return, so
+ * the callback must be cheap or debounced by the caller. Returns an unsubscribe function.
+ */
+export function onAppResume(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") cb();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("focus", cb);
+  const wa = webApp();
+  try {
+    wa?.onEvent?.("activated", cb);
+  } catch {
+    /* older clients: visibility/focus still cover it */
+  }
+  return () => {
+    document.removeEventListener("visibilitychange", onVisibility);
+    window.removeEventListener("focus", cb);
+    try {
+      wa?.offEvent?.("activated", cb);
+    } catch {
+      /* noop */
+    }
+  };
+}
+
+/**
+ * While `active`, shows Telegram's native back button and routes it — and Android's hardware back,
+ * which would otherwise close the whole Mini App — to `onBack`. Used by full-screen overlays (the
+ * payment sheet). No-op outside Telegram.
+ */
+export function useBackButton(active: boolean, onBack: () => void): void {
+  const cb = useRef(onBack);
+  useEffect(() => {
+    cb.current = onBack;
+  });
+  useEffect(() => {
+    if (!active) return;
+    const bb = webApp()?.initData ? webApp()?.BackButton : undefined;
+    if (!bb) return;
+    const handler = () => cb.current();
+    try {
+      bb.onClick(handler);
+      bb.show();
+    } catch {
+      return;
+    }
+    return () => {
+      try {
+        bb.offClick(handler);
+        bb.hide();
+      } catch {
+        /* noop */
+      }
+    };
+  }, [active]);
+}
+
+/** Schemes a payment page may never make us navigate to. */
+const UNSAFE_SCHEMES = new Set(["javascript:", "data:", "vbscript:", "file:", "blob:", "about:", "http:"]);
+
+/**
+ * Opens a link the embedded monobank page asks for (`monopay-link`: pay in the monobank app).
+ *
+ * `WebApp.openLink` accepts http(s) only — telegram-web-app.js throws on anything else — so a
+ * universal https link goes through {@link openExternalLink} (the OS hands it to the bank app when
+ * it is installed), while a custom scheme (`monobank://…`, Android `intent:`) is navigated to
+ * directly: the webview passes it to the OS and the Mini App page stays where it is. Script-ish and
+ * plain-http URLs are ignored.
+ */
+export function openAppLink(raw: string): void {
+  if (typeof window === "undefined") return;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return;
+  }
+  if (url.protocol === "https:") {
+    openExternalLink(url.href);
+    return;
+  }
+  if (UNSAFE_SCHEMES.has(url.protocol)) return;
+  try {
+    window.location.href = url.href;
+  } catch {
+    /* the webview refused the scheme */
   }
 }

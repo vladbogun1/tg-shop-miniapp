@@ -85,7 +85,27 @@ public class InboxService {
                 store.unreadChats(),
                 runningOut(),
                 site.status());
-        return InboxRules.build(facts, store.marks(), t);
+        return InboxRules.build(facts, store.marks(), t, extraItems(now));
+    }
+
+    /** Rows from other modules (support threads); optional, so tests can build the service bare. */
+    private List<InboxExtraSource> extraSources = List.of();
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setExtraSources(List<InboxExtraSource> sources) {
+        this.extraSources = sources == null ? List.of() : List.copyOf(sources);
+    }
+
+    private List<InboxDtos.Item> extraItems(Instant now) {
+        List<InboxDtos.Item> out = new java.util.ArrayList<>();
+        for (InboxExtraSource source : extraSources) {
+            try {
+                out.addAll(source.items(now));
+            } catch (Exception e) {
+                log.warn("Inbox: extra rows unavailable from {}: {}", source.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+        return out;
     }
 
     /** «Отложить»: hides the row until the preset time, or until its event changes. */

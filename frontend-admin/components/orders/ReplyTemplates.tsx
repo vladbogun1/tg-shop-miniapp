@@ -27,7 +27,6 @@ export const PLACEHOLDERS: { key: string; hint: string }[] = [
   { key: "{cod}", hint: "наложка" },
   { key: "{ttn}", hint: "ТТН" },
   { key: "{warehouse}", hint: "город и отделение" },
-  { key: "{requisites}", hint: "реквизиты для оплаты" },
 ];
 
 /** ⚡ — list of templates rendered for this order; choosing one hands its text to the chat input. */

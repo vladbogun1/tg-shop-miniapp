@@ -24,6 +24,7 @@ import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
+import { maxQty, useOrderLimits } from "@/lib/order-limits";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
@@ -34,6 +35,7 @@ export default function CartPage() {
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const setQty = useCart((s) => s.setQty);
+  const limits = useOrderLimits();
   const remove = useCart((s) => s.remove);
   const promoCode = useCart((s) => s.promoCode);
   const setPromoCode = useCart((s) => s.setPromoCode);
@@ -148,13 +150,18 @@ export default function CartPage() {
                     size="sm"
                     value={l.quantity}
                     min={1}
-                    max={l.stock}
+                    max={maxQty(l.stock, limits)}
                     onChange={(n) => setQty(l.key, n)}
                   />
                   <span className="font-display text-[16px] font-bold tabular-nums text-[var(--ink)]">
                     {money(l.priceMinor * l.quantity, l.currency)}
                   </span>
                 </div>
+                {limits && limits.maxQtyPerProduct > 0 && limits.maxQtyPerProduct < l.stock && l.quantity >= limits.maxQtyPerProduct && (
+                  <p className="mt-1 text-[11px] font-semibold text-[var(--muted)]">
+                    {t("cart.qtyLimit", { n: limits.maxQtyPerProduct })}
+                  </p>
+                )}
               </div>
             </motion.div>
           ))}

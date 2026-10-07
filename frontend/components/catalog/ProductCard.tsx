@@ -9,6 +9,7 @@
  */
 import { SlidersHorizontal } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
+import { RatingBadge } from "@/components/reviews/Stars";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -64,6 +65,9 @@ export function ProductCard({
           <span className="font-display text-[17px] font-bold tabular-nums leading-none text-[var(--ink)]">
             {money(product.priceMinor, product.currency)}
           </span>
+          {(product.ratingCount ?? 0) > 0 && (
+            <RatingBadge avg={product.ratingAvg} count={product.ratingCount} />
+          )}
         </div>
       </button>
 

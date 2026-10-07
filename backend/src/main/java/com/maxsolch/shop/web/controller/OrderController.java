@@ -3,19 +3,14 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderSource;
-import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.CreateOrderCommand;
 import com.maxsolch.shop.service.OrderIdempotencyService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.translation.ContentLocale;
-import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CreateOrderRequest;
 import com.maxsolch.shop.web.dto.CreateOrderResponse;
-import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,19 +30,15 @@ public class OrderController {
 
     private final OrderService orderService;
     private final UserRepository userRepository;
-    private final PaymentRequisitesRepository requisitesRepository;
     private final OrderIdempotencyService idempotency;
-    private final TranslationService translationService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.maxsolch.shop.service.OrderGuard orderGuard;
 
     public OrderController(OrderService orderService, UserRepository userRepository,
-                           PaymentRequisitesRepository requisitesRepository,
-                           OrderIdempotencyService idempotency,
-                           TranslationService translationService) {
+                           OrderIdempotencyService idempotency) {
         this.orderService = orderService;
         this.userRepository = userRepository;
-        this.requisitesRepository = requisitesRepository;
         this.idempotency = idempotency;
-        this.translationService = translationService;
     }
 
     @PostMapping
@@ -55,16 +46,21 @@ public class OrderController {
     @Operation(summary = "Place an order. Send an Idempotency-Key header to make retries safe.")
     public CreateOrderResponse create(
             @Valid @RequestBody CreateOrderRequest req,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            java.util.Locale locale) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         long userId = SecurityUtil.currentUserId();
 
         // A retried checkout (lost response, double tap) must not become a second order with a
         // second stock deduction — return the one already created under this key.
         String existingOrderId = idempotency.previousOrderId(userId, idempotencyKey);
         if (existingOrderId != null) {
-            return new CreateOrderResponse(existingOrderId, requisitesDto(locale));
+            return new CreateOrderResponse(existingOrderId,
+                    OrderService.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
         }
+
+        // Anti-bot / anti-hoarding limits (settings «Защита от ботов и спама»): 400/429 with a code.
+        orderGuard.check(userId, req.items().stream()
+                .map(i -> new CreateOrderCommand.Line(i.productId(), i.variantId(), i.quantity()))
+                .toList());
 
         // Snapshot the customer's Telegram @username (from the users row, populated at auth)
         // so the admin order card can deep-link to their Telegram DM.
@@ -91,22 +87,7 @@ public class OrderController {
         Order order = orderService.createOrder(cmd);
         String orderId = UuidUtil.toString(order.getId());
         idempotency.remember(userId, idempotencyKey, orderId);
-        return new CreateOrderResponse(orderId, requisitesDto(locale));
-    }
-
-    /**
-     * Shop requisites for the success screen, so it needs no second round trip. The note and the
-     * transfer purpose come in the customer's language when translated (PAYMENT_REQUISITES).
-     */
-    private PaymentRequisitesDto requisitesDto(java.util.Locale locale) {
-        return requisitesRepository.findById(1)
-                .map(OrderController::toReqDto)
-                .map(translationService.overlay(ContentLocale.normalize(locale))::requisites)
-                .orElse(null);
-    }
-
-    private static PaymentRequisitesDto toReqDto(PaymentRequisites r) {
-        return new PaymentRequisitesDto(r.getCardNumber(), r.getIban(), r.getRecipient(),
-                r.getEdrpou(), r.getPurpose(), r.getNote());
+        // Next step for the app: POST /api/me/orders/{id}/payment → monobank payment page.
+        return new CreateOrderResponse(orderId, OrderService.amountDueMinor(order));
     }
 }

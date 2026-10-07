@@ -75,7 +75,7 @@ export default function AuditPage() {
   const facets = facetsQ.data;
   return (
     <div className="min-w-0">
-      <PageHeader title="Журнал" subtitle="Кто и когда что менял в админке: заказы, оплата, товары, реквизиты, входы." />
+      <PageHeader title="Журнал" subtitle="Кто и когда что менял в админке: заказы, оплата и возвраты, товары, входы." />
 
       {/* Filters */}
       <div className="card mb-5 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

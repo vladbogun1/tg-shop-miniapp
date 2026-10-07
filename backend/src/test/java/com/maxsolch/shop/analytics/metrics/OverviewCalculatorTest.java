@@ -66,13 +66,16 @@ class OverviewCalculatorTest {
     }
 
     @Test
-    void codInTransit_andPaymentClaimsAwaitingTheAdmin() {
+    void codInTransit_andPaidOrdersAwaitingTheAdmin() {
         OrderFact shippedCod = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.SHIPPED).total(2000_00)
                 .paid(kyiv("2026-10-10T11:00:00"), 100_00).build();
-        OrderFact claimed = order(kyiv("2026-10-11T10:00:00")).status(OrderStatus.NEW).claimed().build();
-        OrderFact claimedButRejected = order(kyiv("2026-10-11T10:00:00")).status(OrderStatus.REJECTED).claimed().build();
+        OrderFact paidNew = order(kyiv("2026-10-11T10:00:00")).status(OrderStatus.NEW)
+                .paid(kyiv("2026-10-11T10:05:00"), 100_00).build();
+        OrderFact unpaidNew = order(kyiv("2026-10-11T10:00:00")).status(OrderStatus.NEW).build();
+        OrderFact paidButRejected = order(kyiv("2026-10-11T10:00:00")).status(OrderStatus.REJECTED)
+                .paid(kyiv("2026-10-11T10:05:00"), 100_00).build();
 
-        Overview o = calc.compute(facts(now, List.of(shippedCod, claimed, claimedButRejected), List.of(), List.of()),
+        Overview o = calc.compute(facts(now, List.of(shippedCod, paidNew, unpaidNew, paidButRejected), List.of(), List.of()),
                 october, ChannelFilter.ALL, Map.of());
 
         assertThat(o.money().codInTransitMinor()).isEqualTo(1900_00);

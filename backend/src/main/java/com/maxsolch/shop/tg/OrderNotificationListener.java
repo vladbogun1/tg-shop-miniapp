@@ -67,9 +67,9 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void onPaymentClaimed(OrderEvents.PaymentClaimed event) {
+    public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
-            notificationService.onPaymentClaimed(order);
+            notificationService.onPaymentReceived(order, event.amountMinor());
             refreshDispatch(order);
         });
     }
@@ -102,6 +102,18 @@ public class OrderNotificationListener {
                 }
             }
         });
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onCancelRequested(OrderEvents.CancelRequested event) {
+        withOrder(event.orderId(), notificationService::onCancelRequested);
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onCancelRequestResolved(OrderEvents.CancelRequestResolved event) {
+        withOrder(event.orderId(), order -> notificationService.notifyCustomerCancelRequest(order, event.approved()));
     }
 
     @TransactionalEventListener

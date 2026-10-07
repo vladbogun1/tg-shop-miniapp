@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * PaymentModal — record how much was ACTUALLY received for an order so наложка (COD) is exact.
- * Presets: prepayment (if the order has one) / full / custom amount, plus "Снять оплату".
+ * PaymentModal — manual CORRECTION of how much was actually received («Скорректировать оплату»).
+ * Online payments (monobank) are credited by the server on their own; this is for the rest:
+ * cash on delivery collected, a mistake to fix. Presets: prepayment (if the order has one) /
+ * full / custom amount, plus "Снять оплату".
  *
  * Money safety:
  *  - the choice is reset on every open and for every order (it used to be picked once, when the
  *    drawer mounted with no order yet, so it was stuck on "Полная оплата" — one hasty tap recorded
  *    the full amount on a prepaid order and the parcel left with no COD);
- *  - default is "Предоплата" when the order has one; a pending customer claim starts with NO choice,
- *    so the admin has to look at the transfer and pick;
+ *  - default is "Предоплата" when the order has one (and nothing has been received yet);
  *  - "Полная оплата" needs a second, explicit confirmation of the amount;
  *  - "Снять оплату" asks first.
  */
@@ -45,13 +46,13 @@ export function PaymentModal({
 
   const orderId = order?.id ?? null;
   const hasPrepay = !!order && order.prepaymentMinor > 0;
-  const claimPending = !!order && order.paymentClaimed && !order.paid;
+  const nothingYet = !!order && order.receivedMinor <= 0;
   useEffect(() => {
     if (!open) return;
-    setMode(hasPrepay && !claimPending ? "prepayment" : null);
+    setMode(hasPrepay && nothingYet ? "prepayment" : null);
     setCustom("");
     setConfirmFull(false);
-  }, [open, orderId, hasPrepay, claimPending]);
+  }, [open, orderId, hasPrepay, nothingYet]);
 
   if (!order) return null;
   const cur = order.currency;
@@ -133,7 +134,7 @@ export function PaymentModal({
         onClose={onClose}
         closeOnBackdrop={false}
         dirty={mode === "custom" && custom.trim() !== ""}
-        title="💳 Оплата заказа"
+        title="💳 Корректировка оплаты"
         footer={
           <>
             {order.receivedMinor > 0 && (
@@ -159,11 +160,11 @@ export function PaymentModal({
         }
       >
         <div className="flex flex-col gap-2.5">
-          {claimPending && (
-            <p className="rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--text)]">
-              Клиент сообщил об оплате. Проверьте поступление на счёт и выберите, сколько пришло.
-            </p>
-          )}
+          <p className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5 text-[12.5px] text-[var(--text-muted)]">
+            Онлайн-оплаты monobank засчитываются сами. Здесь — ручная правка: получили наложку, нужно
+            исправить сумму. Деньги покупателю отсюда не возвращаются — для этого «Вернуть деньги» в блоке
+            «Онлайн-оплата».
+          </p>
           <p className="text-[13px] text-[var(--text-muted)]">
             Сколько фактически получено от клиента? Наложка = сумма заказа ({money(order.totalMinor, cur)}) −
             полученное.

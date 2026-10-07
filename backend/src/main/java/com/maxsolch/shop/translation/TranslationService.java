@@ -6,7 +6,6 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.web.dto.PaymentOptionDto;
-import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
@@ -240,7 +239,9 @@ public class TranslationService {
                     text(TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, p.seoDescription()),
                     p.createdAt(),
                     p.brand(),
-                    p.sku());
+                    p.sku(),
+                    p.ratingAvg(),
+                    p.ratingCount());
         }
 
         public List<ProductDto> products(List<ProductDto> list) {
@@ -295,17 +296,6 @@ public class TranslationService {
                     text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.TITLE, p.title()),
                     text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.DESCRIPTION, p.description()),
                     p.requiresPrepayment(), p.prepaymentMinor());
-        }
-
-        /** Shop requisites: only the customer-facing note and transfer purpose are translated. */
-        public PaymentRequisitesDto requisites(PaymentRequisitesDto r) {
-            if (!active() || r == null) {
-                return r;
-            }
-            String id = TranslationEntityType.REQUISITES_ID;
-            return new PaymentRequisitesDto(r.cardNumber(), r.iban(), r.recipient(), r.edrpou(),
-                    text(TranslationEntityType.PAYMENT_REQUISITES, id, TranslationEntityType.PURPOSE, r.purpose()),
-                    text(TranslationEntityType.PAYMENT_REQUISITES, id, TranslationEntityType.NOTE, r.note()));
         }
     }
 }

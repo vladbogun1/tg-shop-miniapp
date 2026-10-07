@@ -134,7 +134,7 @@ public class SiteRevalidator {
     }
 
     /**
-     * Payment methods / requisites changed. The site route drops the {@code payment-options} data
+     * Payment methods changed. The site route drops the {@code payment-options} data
      * tag on every call, so any path will do — the home page is the cheapest one to rebuild.
      */
     public void paymentChanged() {

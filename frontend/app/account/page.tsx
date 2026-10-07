@@ -12,8 +12,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Check,
-  Clock,
   ChevronRight,
   MessageCircle,
   PackageOpen,
@@ -24,10 +22,14 @@ import { Logo } from "@/components/Logo";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { PaymentBadge } from "@/components/account/PaymentBadge";
+import { paymentState } from "@shop/shared";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { LanguageSegments } from "@/components/LanguageToggle";
+import { SupportEntry } from "@/components/account/SupportEntry";
+import { AccountReviewsLink } from "@/components/reviews/AccountReviewsLink";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { spring } from "@/lib/motion";
@@ -110,6 +112,10 @@ export default function AccountPage() {
         <LanguageSegments />
       </div>
 
+      <AccountReviewsLink />
+
+      <SupportEntry />
+
       <h2 className="eyebrow mb-3 px-0.5">
         {t("account.myOrders")}
       </h2>
@@ -191,23 +197,7 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
               {shortOrderId(order.id)}
             </span>
             <StatusChip status={order.status} />
-            {/* A screenshot the customer sent is "на проверке", not "оплачен" — only an admin
-                confirming the transfer flips it to paid. */}
-            {order.paid ? (
-              <span className="nb-up flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_16%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ok)]">
-                <Check className="h-3 w-3" strokeWidth={3} />
-                {t("payment.paid")}
-              </span>
-            ) : order.paymentClaimed ? (
-              <span className="nb-up flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_16%,transparent)] px-2 py-0.5 text-[10px] font-semibold text-[var(--warn)]">
-                <Clock className="h-3 w-3" strokeWidth={3} />
-                {t("payment.claimed")}
-              </span>
-            ) : (
-              <span className="nb-up rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
-                {t("payment.unpaid")}
-              </span>
-            )}
+            <PaymentBadge state={paymentState(order)} size="sm" />
           </div>
           <p className="mt-1.5 text-[13px] text-[var(--muted)]">
             {formatDate(order.createdAt)} · {t("account.itemsCount", { n: order.itemsCount })}

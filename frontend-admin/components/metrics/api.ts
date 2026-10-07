@@ -239,6 +239,7 @@ export interface Operations {
 export interface Today {
   toApprove: number;
   toShip: number;
+  /** Orders paid online that are still NEW (the admin has to confirm them). */
   awaitingPaymentConfirm: number;
   soldTodayMinor: number;
   ordersToday: number;

@@ -5,6 +5,7 @@ import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.payment.ReceiptKind;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderStatus;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -339,25 +342,119 @@ public class NotificationService {
     }
 
     /**
-     * The customer uploaded a transfer screenshot. It is a claim, not a confirmation, so the admins
-     * are pinged to go and verify it — nothing about the order's money changes on its own.
+     * Money arrived online (monobank). Admins get a note in the chat topic — the order still waits
+     * for their manual confirmation — and the customer a DM that the payment went through.
      */
-    public void onPaymentClaimed(Order order) {
+    public void onPaymentReceived(Order order, long amountMinor) {
+        if (!enabled()) {
+            return;
+        }
+        String cur = nz(order.getCurrency());
+        String chatId = props.getTelegram().getNotifyChatId();
+        if (chatId != null && !chatId.isBlank() && !"0".equals(chatId.trim())) {
+            try {
+                long cod = Math.max(0, order.getTotalMinor() - Math.min(order.getReceivedMinor(), order.getTotalMinor()));
+                String text = "💳 <b>Оплачено онлайн (monobank)</b>\n"
+                        + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
+                        + "Поступило: <b>" + money(amountMinor) + " " + cur + "</b>"
+                        + (cod > 0 ? " · наложка <b>" + money(cod) + " " + cur + "</b>" : " · оплачен полностью") + "\n"
+                        + "<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>";
+                SendMessage msg = SendMessage.builder()
+                        .chatId(chatId)
+                        .text(text)
+                        .parseMode("HTML")
+                        .replyMarkup(adminButtons(order))
+                        .build();
+                int topic = props.getTelegram().getNotifyTopicChat();
+                if (topic > 0) {
+                    msg.setMessageThreadId(topic);
+                }
+                bot.execute(msg);
+            } catch (Exception e) {
+                log.warn("onPaymentReceived (admins) failed for order {}: {}", idStr(order), e.getMessage());
+            }
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String text = messages.get(locale, "bot.paid.title") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, "bot.paid.body", money(amountMinor) + " " + cur);
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(orderButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("onPaymentReceived (customer) failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** How sending a receipt to the customer went. */
+    public enum Delivery { SENT, BLOCKED, FAILED }
+
+    /** A bot token is configured: worth preparing anything for the customer's DMs at all. */
+    public boolean isBotEnabled() {
+        return enabled();
+    }
+
+    /**
+     * A payment receipt (fiscal check of a sale / refund, or the bank receipt) as a PDF document in
+     * the customer's DMs, with the tax-service link and the «open order» button. Unlike the other
+     * methods this one reports the outcome, so the caller can record it exactly once.
+     */
+    public Delivery sendReceipt(Order order, byte[] pdf, ReceiptKind kind, String taxUrl) {
+        Long tgUserId = order.getTgUserId();
+        if (!enabled() || tgUserId == null || tgUserId <= 0 || pdf == null || pdf.length == 0) {
+            return Delivery.FAILED;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            StringBuilder caption = new StringBuilder(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)));
+            if (taxUrl != null && isHttps(taxUrl)) {
+                caption.append('\n').append("<a href=\"").append(esc(taxUrl).replace("\"", "&quot;")).append("\">")
+                        .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
+            }
+            bot.sendDocument(SendDocument.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .document(new InputFile(new java.io.ByteArrayInputStream(pdf), kind.fileName(shortId(order))))
+                    .caption(caption.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(orderButton(order, locale))
+                    .build());
+            return Delivery.SENT;
+        } catch (Exception e) {
+            String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
+            if (m.contains("blocked") || m.contains("deactivated") || m.contains("chat not found")
+                    || m.contains("bot can't initiate")) {
+                return Delivery.BLOCKED;
+            }
+            log.warn("sendReceipt {} failed for order {}: {}", kind, idStr(order), e.getMessage());
+            return Delivery.FAILED;
+        }
+    }
+
+    /** The customer asked to cancel a paid order → admins, in the chat topic, with an open button. */
+    public void onCancelRequested(Order order) {
         if (!enabled()) {
             return;
         }
         String chatId = props.getTelegram().getNotifyChatId();
-        if (chatId == null || chatId.isBlank()) {
+        if (chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
             return;
         }
         try {
             String cur = nz(order.getCurrency());
-            String text = "🧾 <b>Клиент заявил об оплате</b>\n"
+            long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+            String text = "🛑 <b>Запрос отмены</b>\n"
                     + "Заказ <b>#" + shortId(order) + "</b> · " + esc(nz(order.getCustomerName())) + "\n"
-                    + "Сумма заказа: <b>" + money(order.getTotalMinor()) + " " + cur + "</b>\n"
-                    + "Скрин перевода — в чате заказа.\n"
-                    + "<i>Проверьте поступление и подтвердите оплату в админке — "
-                    + "до подтверждения наложка остаётся полной.</i>";
+                    + "Оплачено: <b>" + money(received) + " " + cur + "</b>\n"
+                    + "<blockquote>" + esc(trim(nz(order.getCancelRequestReason()), 300)) + "</blockquote>\n"
+                    + "<i>Одобрите (отмена + возврат денег на карту) или отклоните в карточке заказа.</i>";
             SendMessage msg = SendMessage.builder()
                     .chatId(chatId)
                     .text(text)
@@ -370,41 +467,35 @@ public class NotificationService {
             }
             bot.execute(msg);
         } catch (Exception e) {
-            log.warn("onPaymentClaimed failed for order {}: {}", idStr(order), e.getMessage());
+            log.warn("onCancelRequested failed for order {}: {}", idStr(order), e.getMessage());
         }
     }
 
-    /**
-     * The shop's card/IBAN/recipient changed (A11). Posted to the seller's service topic so a swap
-     * made with a stolen admin token does not go unnoticed. {@code changes} are already masked.
-     */
-    public void onRequisitesChanged(String adminName, List<String> changes) {
+    /** The admin answered the customer's cancellation request → DM the customer in their language. */
+    public void notifyCustomerCancelRequest(Order order, boolean approved) {
         if (!enabled()) {
             return;
         }
-        String chatId = props.getTelegram().getNotifyChatId();
-        if (chatId == null || chatId.isBlank()) {
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
             return;
         }
         try {
-            StringBuilder text = new StringBuilder("⚠️ <b>Изменены реквизиты оплаты</b>\n")
-                    .append("Кто: ").append(esc(nz(adminName))).append('\n');
-            for (String c : changes) {
-                text.append("• ").append(esc(c)).append('\n');
-            }
-            text.append("<i>Если это были не вы — смените пароль админки и верните реквизиты.</i>");
-            SendMessage msg = SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text.toString())
+            Locale locale = messages.localeOf(tgUserId);
+            long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+            String text = approved
+                    ? messages.get(locale, "bot.cancelRequest.approved", shortId(order),
+                            money(received) + " " + nz(order.getCurrency()))
+                    : messages.get(locale, "bot.cancelRequest.declined", shortId(order),
+                            esc(nz(order.getCancelRequestAdminComment())));
+            bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
                     .parseMode("HTML")
-                    .build();
-            int topic = props.getTelegram().getNotifyTopicChat();
-            if (topic > 0) {
-                msg.setMessageThreadId(topic);
-            }
-            bot.execute(msg);
+                    .replyMarkup(approved ? orderButton(order, locale) : chatButton(order, locale))
+                    .build());
         } catch (Exception e) {
-            log.warn("onRequisitesChanged failed: {}", e.getMessage());
+            log.warn("notifyCustomerCancelRequest failed for order {}: {}", idStr(order), e.getMessage());
         }
     }
 
@@ -550,10 +641,6 @@ public class NotificationService {
         if (received > 0) {
             sb.append("✅ Уже оплачено: ").append(money(received)).append(' ').append(cur).append('\n');
         }
-        if (cod > 0 && order.isPaymentClaimed()) {
-            // A claim is not money: spell it out so the card is never mistaken for "paid".
-            sb.append("🧾 <i>Клиент прислал скрин перевода — НЕ подтверждён админом</i>\n");
-        }
         if (cod <= 0) {
             sb.append("\n🟢 <b>НАЛОЖКА: 0</b> — заказ оплачен, отправляем без наложенного платежа.");
         } else if (received > 0) {
@@ -586,6 +673,19 @@ public class NotificationService {
                 .url(adminBase + "/orders/" + idStr(order))
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(open))).build();
+    }
+
+    /** Opens the order page itself in the Mini App (deep link view_<id>). */
+    private InlineKeyboardMarkup orderButton(Order order, Locale locale) {
+        String webapp = props.getWebappBaseUrl();
+        if (!isHttps(webapp)) {
+            return null;
+        }
+        InlineKeyboardButton btn = InlineKeyboardButton.builder()
+                .text(messages.get(locale, "bot.openOrder"))
+                .webApp(WebAppInfo.builder().url(webapp + "?startapp=view_" + idStr(order)).build())
+                .build();
+        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }
 
     private InlineKeyboardMarkup chatButton(Order order, Locale locale) {
@@ -717,8 +817,7 @@ public class NotificationService {
      * different totals for the same order whenever kopecks were involved.
      */
     private String money(long minor) {
-        long whole = Math.round(minor / 100.0);
-        return String.format("%,d", whole).replace(',', ' ');
+        return com.maxsolch.shop.common.MoneyFormat.amount(minor);
     }
 
     private String esc(String s) {

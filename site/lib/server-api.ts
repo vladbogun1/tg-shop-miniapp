@@ -17,6 +17,7 @@ import type {
   PublicCategoryDetail,
   PublicProductPage,
   PublicSitemap,
+  ReviewPage,
   StorefrontProduct,
 } from "@shop/shared";
 import type { Locale } from "@/i18n/locales";
@@ -101,6 +102,20 @@ export async function getProductBySlug(slug: string, locale: Locale): Promise<St
       `/api/public/products/by-slug/${encodeURIComponent(slug)}`,
       locale,
       ["catalog", `product:${slug}`]
+    );
+  } catch (e) {
+    if (e instanceof NotFoundError) return null;
+    throw e;
+  }
+}
+
+/** First page of a product's published reviews (V44); null when unavailable. */
+export async function getProductReviews(slug: string, locale: Locale, size = 10): Promise<ReviewPage | null> {
+  try {
+    return await getJson<ReviewPage>(
+      `/api/public/products/${encodeURIComponent(slug)}/reviews?page=0&size=${size}`,
+      locale,
+      ["catalog", "reviews", `product:${slug}`]
     );
   } catch (e) {
     if (e instanceof NotFoundError) return null;

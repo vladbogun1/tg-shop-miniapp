@@ -8,6 +8,9 @@
 import {
   ApiError,
   createHttpClient,
+  type AdminInvoice,
+  type MonobankStatus,
+  type Receipt,
   normalizeBaseUrl,
   type Conversation,
   type DeliveryMethod,
@@ -15,7 +18,6 @@ import {
   type OrderCard,
   type OrderDetail,
   type OrderStatus,
-  type PaymentRequisites,
   type Product,
   type ProductImage,
   type ProductTag,
@@ -27,9 +29,12 @@ import {
 
 export { ApiError };
 export type {
+  AdminInvoice,
+  Receipt,
   Conversation,
   DeliveryMethod,
   Message,
+  MonobankStatus,
   OrderStatus,
   Product,
   ProductImage,
@@ -92,11 +97,16 @@ export interface TagWriteRequest {
 }
 export type MessageDto = Message;
 export type ConversationDto = Conversation;
-export type PaymentRequisitesDto = PaymentRequisites;
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
 export const apiOrigin = API_BASE;
+
+/** A signed, server-relative receipt link (`/api/receipts/file?…`) → absolute, on the API origin. */
+export function receiptHref(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+}
 
 // ---- token store (localStorage) --------------------------------------------
 const TOKEN_KEY = "tgshop_admin_jwt";
@@ -479,8 +489,7 @@ export interface DispatchItem {
 
 /**
  * Seller dispatch row for an APPROVED order: what to ship and how much cash to collect.
- * `paymentClaimed` without `paid` means the customer sent a screenshot nobody has verified —
- * the COD amount stays full until an admin confirms it.
+ * `receivedMinor` is what actually arrived (online via monobank, or recorded by an admin).
  */
 export interface DispatchOrder {
   id: string;
@@ -496,7 +505,9 @@ export interface DispatchOrder {
   receivedMinor: number;
   codMinor: number;
   paid: boolean;
-  paymentClaimed: boolean;
+  /** Online payment deadline — for «Ждёт оплаты» on the card (optional: older backends omit it). */
+  paymentDueAt?: string | null;
+  amountDueMinor?: number;
   currency: string;
   paymentOptionTitle?: string | null;
   trackingNumber?: string | null;
@@ -692,7 +703,7 @@ export interface AdminTarget {
 
 // ---- content translations (docs/CONTENT-I18N.md) ---------------------------
 export type TrLocale = "uk" | "en";
-export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "PAYMENT_REQUISITES";
+export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION";
 export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
 export type TrOrigin = "AI" | "MANUAL";
 
@@ -812,10 +823,36 @@ export const adminApi = {
     id: string,
     body: { status: OrderStatus; trackingNumber?: string; rejectReason?: string; restock?: boolean }
   ) => apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/status`, body),
-  /** PATCH /api/admin/orders/{id}/paid { paid } -> updated OrderDetailDto. */
-  /** PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment. */
+  /**
+   * PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment.
+   * A manual correction (cash on delivery, a mistake); online payments are credited by monobank.
+   */
   setPaid: (id: string, receivedMinor: number) =>
     apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { receivedMinor }),
+
+  // ---- online payment (monobank) ----
+  /** GET /api/admin/orders/{id}/payments -> the order's invoices, newest first. */
+  getOrderPayments: (id: string) => apiGet<AdminInvoice[]>(`/api/admin/orders/${id}/payments`),
+  /** POST /api/admin/orders/{id}/payments/refresh -> asks monobank for the current state. */
+  refreshOrderPayments: (id: string) =>
+    apiPost<AdminInvoice[]>(`/api/admin/orders/${id}/payments/refresh`),
+  /**
+   * POST /api/admin/orders/{id}/payments/{invoiceId}/refund -> money back to the card.
+   * `amountMinor` omitted = everything left on that invoice. Settles asynchronously
+   * (`refundPending` until monobank confirms).
+   */
+  refundOrderPayment: (id: string, invoiceId: string, amountMinor?: number) =>
+    apiPost<AdminInvoice[]>(
+      `/api/admin/orders/${id}/payments/${encodeURIComponent(invoiceId)}/refund`,
+      amountMinor === undefined ? {} : { amountMinor }
+    ),
+  /**
+   * GET /api/admin/orders/{id}/receipts -> fiscal checks (sale / return) + the bank receipt of every
+   * paid invoice; `downloadUrl` is a signed, server-relative link valid ~10 min (see {@link receiptHref}).
+   */
+  getOrderReceipts: (id: string) => apiGet<Receipt[]>(`/api/admin/orders/${id}/receipts`),
+  /** GET /api/admin/payments/monobank/status -> token configured, merchant, last webhook. */
+  getMonobankStatus: () => apiGet<MonobankStatus>("/api/admin/payments/monobank/status"),
   /** Add a product line to the order (paid, or gift when gift=true). */
   addOrderItem: (
     id: string,
@@ -975,8 +1012,4 @@ export const adminApi = {
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),
   putPaymentOptions: (list: PaymentOption[]) =>
     apiPut<PaymentOption[]>("/api/admin/payment-options", list),
-  paymentRequisites: () =>
-    apiGet<PaymentRequisitesDto>("/api/admin/payment-requisites"),
-  putPaymentRequisites: (body: PaymentRequisitesDto) =>
-    apiPut<PaymentRequisitesDto>("/api/admin/payment-requisites", body),
 };

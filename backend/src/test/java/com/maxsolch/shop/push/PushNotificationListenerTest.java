@@ -75,12 +75,12 @@ class PushNotificationListenerTest {
     }
 
     @Test
-    void paymentClaim() {
-        listener.onPaymentClaimed(new OrderEvents.PaymentClaimed(UuidUtil.toBytes(ORDER)));
+    void onlinePayment() {
+        listener.onPaymentReceived(new OrderEvents.PaymentReceived(UuidUtil.toBytes(ORDER), 100_00));
         PushMessage m = sent();
-        assertThat(m.title()).contains("#9a6feb7d");
-        assertThat(m.body()).contains("1 300 ₴");
-        assertThat(m.tag()).isEqualTo("pay-" + ORDER);
+        assertThat(m.title()).isEqualTo("Оплачено онлайн #9a6feb7d");
+        assertThat(m.body()).contains("100 ₴");
+        assertThat(m.tag()).isEqualTo("paid-" + ORDER);
     }
 
     @Test

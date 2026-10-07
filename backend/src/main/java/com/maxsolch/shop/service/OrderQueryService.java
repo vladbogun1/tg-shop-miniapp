@@ -4,13 +4,14 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
-import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.repository.PaymentRequisitesRepository;
+import com.maxsolch.shop.payment.MonobankClient;
+import com.maxsolch.shop.payment.PaymentInvoice;
+import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.translation.ContentLocale;
@@ -20,7 +21,7 @@ import com.maxsolch.shop.web.dto.OrderCardDto;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 import com.maxsolch.shop.web.dto.OrderItemDto;
 import com.maxsolch.shop.web.dto.OrderSummaryDto;
-import com.maxsolch.shop.web.dto.PaymentRequisitesDto;
+import com.maxsolch.shop.web.dto.OnlinePaymentDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +43,8 @@ public class OrderQueryService {
     private final OrderRepository orderRepository;
     private final OrderMessageRepository messageRepository;
     private final OrderItemRepository orderItemRepository;
-    private final PaymentRequisitesRepository requisitesRepository;
+    private final PaymentInvoiceRepository invoiceRepository;
+    private final MonobankClient monobank;
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
     private final UserRepository userRepository;
@@ -50,14 +52,16 @@ public class OrderQueryService {
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
-                             PaymentRequisitesRepository requisitesRepository,
+                             PaymentInvoiceRepository invoiceRepository,
+                             MonobankClient monobank,
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
                              UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
-        this.requisitesRepository = requisitesRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.monobank = monobank;
         this.productImageRepository = productImageRepository;
         this.translationService = translationService;
         this.userRepository = userRepository;
@@ -121,8 +125,10 @@ public class OrderQueryService {
                 ctx.itemsFor(id),
                 ctx.unreadFor(id),
                 o.isPaid(),
-                o.isPaymentClaimed(),
-                receivedMinor(o));
+                receivedMinor(o),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o),
+                o.getCancelRequestStatus());
     }
 
     @Transactional(readOnly = true)
@@ -140,9 +146,11 @@ public class OrderQueryService {
                 o.getCreatedAt(),
                 o.getStatus().name(),
                 o.isPaid(),
-                o.isPaymentClaimed(),
                 receivedMinor(o),
-                sourceOf(o));
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o),
+                sourceOf(o),
+                o.getCancelRequestStatus());
     }
 
     private static String sourceOf(Order o) {
@@ -187,10 +195,7 @@ public class OrderQueryService {
         List<OrderItemDto> items = orderItems.stream()
                 .map(it -> toItemDto(it, thumbnails, names))
                 .toList();
-        PaymentRequisitesDto requisites = requisitesRepository.findById(1)
-                .map(this::toRequisitesDto)
-                .map(translationService.overlay(lang)::requisites) // ru (admin) = no-op
-                .orElse(null);
+        OnlinePaymentDto payment = onlinePayment(o);
         // The language the customer chose in the shop (users.locale): the admin answers in it.
         Long customerId = o.getUserId() != null ? o.getUserId() : o.getTgUserId();
         String customerLocale = customerId == null ? null : userRepository.localeOf(customerId).orElse(null);
@@ -212,7 +217,7 @@ public class OrderQueryService {
                 o.getTrackingNumber(),
                 o.getRejectReason(),
                 items,
-                requisites,
+                payment,
                 o.getTgUserId(),
                 o.getTgUsername(),
                 o.getCreatedAt(),
@@ -224,18 +229,23 @@ public class OrderQueryService {
                 o.getPaidAt(),
                 o.getPrepaymentMinor(),
                 receivedMinor(o),
-                o.isPaymentClaimed(),
-                o.getPaymentClaimedAt(),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o),
                 sourceOf(o),
                 customerLocale,
                 o.getRejectReasonCode(),
                 Math.max(0, o.getRefundedMinor()),
                 o.getReturnedAt(),
                 o.getNpCityRef(),
-                o.getNpWarehouseRef());
+                o.getNpWarehouseRef(),
+                o.getCancelRequestStatus(),
+                o.getCancelRequestReason(),
+                o.getCancelRequestedAt(),
+                o.getCancelRequestResolvedAt(),
+                o.getCancelRequestAdminComment());
     }
 
-    /** Exact amount actually received for the order (admin "mark paid" dialog / customer proof). */
+    /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
     public static long receivedMinor(Order o) {
         return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
     }
@@ -297,13 +307,14 @@ public class OrderQueryService {
                 received,
                 cod,
                 o.isPaid(),
-                o.isPaymentClaimed(),
                 o.getCurrency(),
                 o.getPaymentOptionTitle(),
                 o.getTrackingNumber(),
                 o.getCreatedAt(),
                 o.getApprovedAt(),
-                o.getStatus().name());
+                o.getStatus().name(),
+                o.getPaymentDueAt(),
+                OrderService.amountDueMinor(o));
     }
 
     /** One query for all the line thumbnails instead of one per line. */
@@ -342,10 +353,18 @@ public class OrderQueryService {
                 it.getReturnedQty());
     }
 
-    private PaymentRequisitesDto toRequisitesDto(PaymentRequisites r) {
-        return new PaymentRequisitesDto(
-                r.getCardNumber(), r.getIban(), r.getRecipient(),
-                r.getEdrpou(), r.getPurpose(), r.getNote());
+    /** Latest monobank invoice of the order, as the customer apps need it. */
+    public OnlinePaymentDto onlinePayment(Order o) {
+        List<PaymentInvoice> list = invoiceRepository.findByOrderIdOrderByCreatedAtDesc(o.getId());
+        if (list.isEmpty()) {
+            return new OnlinePaymentDto(monobank.isEnabled(), "none", null, null, 0, null, null, null);
+        }
+        // A paid invoice wins over a newer abandoned one (the card/method is what the customer wants to see).
+        PaymentInvoice inv = list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
+        boolean live = inv.isPayable(java.time.Instant.now());
+        return new OnlinePaymentDto(monobank.isEnabled(), inv.getStatus(), live ? inv.getPageUrl() : null,
+                inv.getExpiresAt(), inv.getAmountMinor(), inv.getMaskedPan(), inv.getPaymentMethod(),
+                inv.getFailureReason());
     }
 
     // expose for board grouping convenience

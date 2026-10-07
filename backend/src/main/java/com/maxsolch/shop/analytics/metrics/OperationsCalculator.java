@@ -40,6 +40,7 @@ public final class OperationsCalculator {
         REASON_LABELS.put("OUT_OF_STOCK", "Нет в наличии");
         REASON_LABELS.put("DUPLICATE", "Дубль");
         REASON_LABELS.put("NOT_PAID", "Не оплатил");
+        REASON_LABELS.put("PAYMENT_TIMEOUT", "Не оплатил за сутки");
         REASON_LABELS.put("REFUSED_AT_POST", "Отказ на почте");
         REASON_LABELS.put("RETURNED", "Возврат");
         REASON_LABELS.put("OTHER", "Другое");

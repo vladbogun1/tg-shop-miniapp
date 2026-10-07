@@ -19,9 +19,10 @@ import { I18nProvider } from "@/i18n/context";
 import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
 import { startCartSync } from "@/lib/cart-sync";
+import { parseSupportDeepLink } from "@/lib/support";
 import {
   getStartParam,
-  parseOrderDeepLink,
+  parseOrderDeepLink, parseOrderViewDeepLink,
   useHideMainButton,
   useTelegram,
 } from "@/lib/telegram";
@@ -87,7 +88,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!tg.ready || deepLinked.current) return;
     deepLinked.current = true;
-    const orderId = parseOrderDeepLink(getStartParam());
+    const param = getStartParam();
+    const viewId = parseOrderViewDeepLink(param);
+    if (viewId) {
+      router.push(`/account/orders/${viewId}`);
+      return;
+    }
+    // support_<threadId>: the bot's "support replied" button → that support thread.
+    const supportId = parseSupportDeepLink(param);
+    if (supportId) {
+      router.push(`/account/support/${supportId}/chat`);
+      return;
+    }
+    const orderId = parseOrderDeepLink(param);
     if (orderId) {
       router.push(`/account/orders/${orderId}/chat`);
     }

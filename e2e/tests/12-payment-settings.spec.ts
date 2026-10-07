@@ -1,48 +1,58 @@
 /**
- * «Оплата» settings: a card number failing Luhn or an IBAN with a wrong checksum cannot be saved
- * (customers would pay into nowhere), and switching off every payment option is refused (checkout
- * would stop). Both checked in the UI and on the server.
+ * «Оплата» settings. Payment is online only (monobank): the screen shows whether the acquiring is
+ * connected and lists the payment options (full online, or an online prepayment + наложка). The
+ * old card/IBAN requisites are gone. Switching off every option is refused (checkout would stop),
+ * and a prepayment option needs its amount. Checked in the UI and on the server.
  */
 import { expect, test } from "../lib/test";
 
-const CARD = "4111111111111111";
-const IBAN = "UA053220010000026001234567890";
-
-test("невалидная карта или IBAN не сохраняются", async ({ page, api }) => {
+test("статус monobank вверху, реквизитов больше нет", async ({ page, api }) => {
   await page.goto("/payment");
-  const card = page.getByLabel("Номер карты");
-  // By role: once an error shows, it becomes part of the label text.
-  const iban = page.getByRole("textbox", { name: /^IBAN/ });
+  const card = page.getByRole("region", { name: "Эквайринг monobank" });
+  await expect(card).toBeVisible();
+
+  const status = (await api.raw("get", "/api/admin/payments/monobank/status")).body as unknown as {
+    enabled: boolean;
+    merchantName?: string | null;
+    error?: string | null;
+    lastWebhookAt?: string | null;
+  };
+  if (!status.enabled) {
+    // The e2e stack runs without MONOBANK_TOKEN.
+    await expect(card).toContainText("Не настроено");
+    await expect(card).toContainText("MONOBANK_TOKEN");
+  } else if (status.error) {
+    await expect(card).toContainText("Ошибка");
+  } else {
+    await expect(card).toContainText("Подключено");
+    if (status.merchantName) await expect(card).toContainText(status.merchantName);
+  }
+  await expect(card).toContainText(status.lastWebhookAt ? "Последний вебхук" : "Вебхуков от monobank ещё не было");
+
+  // Every option is paid online; the requisites editor is gone (and so is its endpoint).
+  await expect(page.getByText("Вся сумма заказа онлайн через monobank.")).toHaveCount(1);
+  await expect(page.getByText(/остаток — наложкой при получении/)).toHaveCount(2);
+  await expect(page.getByLabel("Номер карты")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /^IBAN/ })).toHaveCount(0);
+  expect((await api.raw("get", "/api/admin/payment-requisites")).status).not.toBe(200);
+});
+
+test("предоплате нужна сумма", async ({ page }) => {
+  await page.goto("/payment");
   const save = page.getByRole("button", { name: "Сохранить" });
-  await expect(card).toHaveValue(CARD);
+  const prepay = page.getByRole("switch", { name: "Предоплата + наложка", exact: true });
+  await expect(prepay).toHaveCount(3);
   await expect(page.getByText("Все изменения сохранены")).toBeVisible();
 
-  await card.fill("4111111111111112");
-  await expect(page.getByText("Номер карты с ошибкой (не прошёл проверку Luhn)").first()).toBeVisible();
+  // «Полная оплата онлайн» → prepayment without an amount: cannot be saved.
+  await prepay.nth(2).click();
+  await expect(
+    page.getByText("Укажите сумму предоплаты — её покупатель оплатит онлайн")
+  ).toBeVisible();
   await expect(save).toBeDisabled();
-  await card.fill("4111 1111");
-  await expect(page.getByText("Номер карты — 16 цифр (допустимо 13–19)").first()).toBeVisible();
-  await expect(save).toBeDisabled();
-  await card.fill(CARD);
 
-  await iban.fill("UA053220010000026001234567891");
-  await expect(page.getByText("IBAN с ошибкой (не сходится контрольная сумма)").first()).toBeVisible();
-  await expect(save).toBeDisabled();
-  await iban.fill("UA05322001");
-  await expect(page.getByText("IBAN: UA и 27 цифр (29 символов)").first()).toBeVisible();
-  await expect(save).toBeDisabled();
-  await iban.fill(IBAN);
+  await prepay.nth(2).click();
   await expect(page.getByText("Все изменения сохранены")).toBeVisible();
-
-  // The server refuses the same values (a stale or bypassed UI must not get them through).
-  const current = (await api.raw("get", "/api/admin/payment-requisites")).body;
-  const badCard = await api.raw("put", "/api/admin/payment-requisites", { ...current, cardNumber: "4111111111111112" });
-  expect(badCard.status).toBe(400);
-  const badIban = await api.raw("put", "/api/admin/payment-requisites", { ...current, iban: "UA053220010000026001234567891" });
-  expect(badIban.status).toBe(400);
-  const after = (await api.raw("get", "/api/admin/payment-requisites")).body;
-  expect(after.cardNumber).toBe(CARD);
-  expect(after.iban).toBe(IBAN);
 });
 
 test("нельзя выключить все способы оплаты", async ({ page, api }) => {

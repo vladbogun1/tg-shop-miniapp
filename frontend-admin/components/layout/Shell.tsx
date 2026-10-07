@@ -33,6 +33,8 @@ import {
   BellRing,
   UserRound,
   UsersRound,
+  Star,
+  LifeBuoy,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
@@ -45,17 +47,20 @@ import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { accountApi, ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useInbox } from "@/lib/inbox";
+import { useSupportUnread } from "@/lib/support-api";
 import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 
 const NAV = [
   { href: "/inbox", label: "Внимание", icon: BellRing, badge: "inbox" as const },
   { href: "/", label: "Заказы", icon: LayoutDashboard, exact: true },
+  { href: "/support", label: "Поддержка", icon: LifeBuoy, badge: "support" as const },
   { href: "/dispatch", label: "Отправка", icon: Truck },
   { href: "/metrics", label: "Метрики", icon: BarChart3 },
   { href: "/users", label: "Пользователи", icon: Users },
   { href: "/broadcasts", label: "Рассылки", icon: Send },
   { href: "/products", label: "Товары", icon: Package },
+  { href: "/reviews", label: "Отзывы", icon: Star, badge: "reviews" as const },
   { href: "/tags", label: "Теги", icon: Tags },
   { href: "/promocodes", label: "Промокоды", icon: Ticket },
   { href: "/payment", label: "Оплата", icon: CreditCard },
@@ -69,11 +74,13 @@ const NAV = [
 const TITLE: Record<string, string> = {
   "/inbox": "Внимание",
   "/": "Заказы",
+  "/support": "Поддержка",
   "/dispatch": "Отправка",
   "/metrics": "Метрики",
   "/users": "Пользователи",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
+  "/reviews": "Отзывы",
   "/tags": "Теги",
   "/promocodes": "Промокоды",
   "/payment": "Оплата",
@@ -120,6 +127,11 @@ function NavLinks({
   // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
+  // Reviews waiting for moderation — the «Отзывы на модерации» group of the same inbox answer.
+  const reviewsPending = inbox?.groups.find((g) => g.id === "REVIEW")?.count ?? 0;
+  // Support questions waiting for an answer (GET /api/admin/support/unread-count, every 30 s).
+  const { data: supportUnread } = useSupportUnread();
+  const supportWaiting = supportUnread?.count ?? 0;
   const superAdmin = useIsSuperAdmin();
   return (
     <nav className="flex flex-col gap-0.5">
@@ -128,6 +140,8 @@ function NavLinks({
         const Icon = item.icon;
         const inboxBadge = "badge" in item && item.badge === "inbox" && inboxTotal > 0;
         const trBadge = "badge" in item && item.badge === "translations" && trPending > 0;
+        const reviewsBadge = "badge" in item && item.badge === "reviews" && reviewsPending > 0;
+        const supportBadge = "badge" in item && item.badge === "support" && supportWaiting > 0;
         return (
           <Link
             key={item.href}
@@ -159,12 +173,12 @@ function NavLinks({
                 strokeWidth={active ? 2.25 : 2}
               />
               {/* Collapsed rail: the count shrinks to a dot on the icon. */}
-              {collapsed && (inboxBadge || trBadge) && (
+              {collapsed && (inboxBadge || trBadge || supportBadge) && (
                 <span
                   aria-hidden
                   className={cn(
                     "absolute -right-1 -top-1 h-2 w-2 rounded-full ring-2 ring-[var(--surface)]",
-                    inboxBadge ? "bg-[var(--accent)]" : "bg-[var(--text-muted)]"
+                    inboxBadge || supportBadge ? "bg-[var(--accent)]" : "bg-[var(--text-muted)]"
                   )}
                 />
               )}
@@ -182,6 +196,19 @@ function NavLinks({
                 className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
               >
                 {trPending > 999 ? "999+" : trPending}
+              </span>
+            )}
+            {reviewsBadge && (
+              <span
+                aria-label={`Отзывов на модерации: ${reviewsPending}`}
+                className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
+              >
+                {reviewsPending > 99 ? "99+" : reviewsPending}
+              </span>
+            )}
+            {supportBadge && (
+              <span aria-label={`Ждут ответа в поддержке: ${supportWaiting}`} className={cn("count-badge ml-auto", collapsed && "sr-only")}>
+                {supportWaiting > 99 ? "99+" : supportWaiting}
               </span>
             )}
           </Link>

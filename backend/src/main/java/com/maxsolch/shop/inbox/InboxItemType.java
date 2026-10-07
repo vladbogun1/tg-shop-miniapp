@@ -6,16 +6,23 @@ package com.maxsolch.shop.inbox;
  */
 public enum InboxItemType {
 
-    /** «Я оплатил» claim the admin has not confirmed yet. */
-    PAYMENT("Подтвердить оплату", "Покупатель прислал подтверждение перевода — проверьте поступление.", "ORDER", false),
+    /**
+     * Money that needs an admin: an order paid online that still waits for confirmation, or a paid
+     * order cancelled before shipping whose money has not gone back yet.
+     */
+    PAYMENT("Оплаты", "Оплаченные онлайн заказы ждут подтверждения; запросы отмены ждут решения; по отменённым после оплаты верните деньги.", "ORDER", false),
     /** Unread customer messages in an order chat. */
     CHAT("Непрочитанные чаты", "Покупатели ждут ответа в чате заказа.", "ORDER", false),
+    /** Support threads (questions not tied to an order) waiting for a shop answer. */
+    SUPPORT("Вопросы в поддержку", "Покупатели спрашивают о товарах или магазине и ждут ответа в «Поддержке».", "SUPPORT", false),
     /** NEW order nobody approved within {@code inbox.newStaleHours}. */
     NEW_STALE("Новые без одобрения", "Заказ ждёт одобрения дольше порога из «Настроек».", "ORDER", false),
     /** APPROVED order not shipped within {@code inbox.approvedStaleHours}. */
     APPROVED_STALE("Одобрены, не отправлены", "Заказ одобрен, но не отправлен дольше порога из «Настроек».", "ORDER", false),
     /** Refused at the post office after shipping, or a registered return (last 14 days). */
     RETURN("Отказы и возвраты", "Отказ после отправки или зарегистрированный возврат за 14 дней — проверьте посылку и деньги.", "ORDER", true),
+    /** A product review waits for moderation (reviews.premoderation on); rows from {@code ReviewInboxSource}. */
+    REVIEW("Отзывы на модерации", "Покупатели оставили отзывы — опубликуйте или скройте их в разделе «Отзывы».", "REVIEW", false),
     /** Runs out within {@code metrics.lowStockDays} at the current pace. */
     LOW_STOCK("Заканчиваются", "Запаса хватит меньше чем на порог из «Настроек» — пора дозаказать.", "PRODUCT", true),
     /** The last public-site rebuild failed. */

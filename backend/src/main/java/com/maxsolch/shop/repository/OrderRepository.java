@@ -42,6 +42,16 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             + "order by o.createdAt desc")
     List<Order> findWithItemsByStatus(@Param("status") OrderStatus status);
 
+    /** One order with its lines (online payment builds the basket outside a transaction). */
+    @Query("select distinct o from Order o left join fetch o.items where o.id = :id")
+    Optional<Order> findWithItemsById(@Param("id") byte[] id);
+
+    /** Unpaid orders whose online payment deadline has passed (auto-cancel candidates). */
+    @Query("select o.id from Order o where o.status = com.maxsolch.shop.domain.OrderStatus.NEW "
+            + "and o.paid = false and o.receivedMinor = 0 "
+            + "and o.paymentDueAt is not null and o.paymentDueAt < :now")
+    List<byte[]> findOverdueUnpaidIds(@Param("now") java.time.Instant now);
+
     /** Writes back the dispatch card's message id in its own short transaction. */
     @Transactional
     @Modifying

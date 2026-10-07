@@ -5,8 +5,8 @@
  * Self-contained (own query, own styles) so the board only renders <TodayStrip />.
  * Every counter is a link: to the board filtered by status, to dispatch, or to the metrics tabs.
  *
- * Board deep links used here: `/?status=NEW` and `/?payment=claimed` — the board (package B)
- * reads those query parameters; without that support the links simply open the board.
+ * Board deep links used here: `/?status=NEW` and `/?payment=paid` (paid online, still NEW) — the
+ * board reads those query parameters; without that support the links simply open the board.
  */
 import { cn } from "@/lib/cn";
 import { useQuery } from "@tanstack/react-query";
@@ -49,12 +49,12 @@ function Strip({ t }: { t: Today }) {
           <Cell href="/?status=NEW" icon={Hourglass} label="К одобрению" value={num(t.toApprove)} alert={t.toApprove > 0} />
           <Cell href="/dispatch" icon={Send} label="К отправке" value={num(t.toShip)} alert={t.toShip > 0} />
           <Cell
-            href="/?payment=claimed"
+            href="/?payment=paid"
             icon={CircleDollarSign}
-            label="Проверить оплату"
+            label="Оплачены — подтвердить"
             value={num(t.awaitingPaymentConfirm)}
             alert={t.awaitingPaymentConfirm > 0}
-            sub="клиент нажал «оплатил»"
+            sub="оплачены онлайн, ещё новые"
           />
           <Cell
             href="/metrics?tab=overview"

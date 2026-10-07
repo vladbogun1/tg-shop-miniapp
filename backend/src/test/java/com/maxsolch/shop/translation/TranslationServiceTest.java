@@ -64,7 +64,7 @@ class TranslationServiceTest {
         return new ProductDto(PRODUCT, title, description, 10_000, "UAH", 3, true, 0, List.of(),
                 List.of(new ProductVariantDto(VARIANT, "Красный", 3, 0)),
                 List.of(new TagDto(TAG, "Ковры", "kovry", 0, true)),
-                "kover", null, seoTitle, null, Instant.EPOCH, "Attack Shark", "AS-1");
+                "kover", null, seoTitle, null, Instant.EPOCH, "Attack Shark", "AS-1", null, 0);
     }
 
     @Test

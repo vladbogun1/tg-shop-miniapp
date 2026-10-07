@@ -30,6 +30,9 @@ ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 ARG NEXT_PUBLIC_IMAGE_BASE_URL=http://localhost:8082/img
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_PUBLIC_IMAGE_BASE_URL=${NEXT_PUBLIC_IMAGE_BASE_URL}
+# Public website origin for "open on the site" links (support, products). Default = prod.
+ARG NEXT_PUBLIC_SITE_URL=https://chisetup.com.ua
+ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -w frontend-admin
 

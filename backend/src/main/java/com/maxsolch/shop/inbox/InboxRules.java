@@ -28,8 +28,15 @@ public final class InboxRules {
     /** Refusals and returns stay on the screen this long (unless marked «Разобрано»). */
     public static final int RETURNS_DAYS = 14;
 
-    /** A payment claim older than this is shown as overdue. */
+    /** An online payment unconfirmed (or a refund not made) for longer than this is shown as overdue. */
     static final Duration PAYMENT_OVERDUE = Duration.ofHours(3);
+
+    /** Subtitle of a {@link InboxItemType#PAYMENT} row: paid online, the order still waits for an admin. */
+    public static final String PAID_CONFIRM = "Оплачен онлайн — подтвердите заказ";
+    /** Subtitle of a {@link InboxItemType#PAYMENT} row: cancelled after payment, money not returned yet. */
+    public static final String PAID_REFUND = "Оплачен, но отменён — верните деньги";
+    /** Subtitle prefix of a {@link InboxItemType#PAYMENT} row: the customer asks to cancel a paid order. */
+    public static final String CANCEL_REQUEST = "Запрос отмены — одобрите или отклоните";
     /** A customer waiting for an answer longer than this is shown as overdue. */
     static final Duration CHAT_OVERDUE = Duration.ofHours(2);
 
@@ -43,6 +50,7 @@ public final class InboxRules {
             "OUT_OF_STOCK", "нет в наличии",
             "DUPLICATE", "дубль",
             "NOT_PAID", "не оплачен",
+            "PAYMENT_TIMEOUT", "не оплачен за сутки",
             "REFUSED_AT_POST", "отказ на почте",
             "RETURNED", "возврат",
             "OTHER", "другое");
@@ -56,17 +64,36 @@ public final class InboxRules {
      * @param marks owner's marks keyed by {@link InboxMark#key}
      */
     public static Inbox build(InboxFacts facts, Map<String, InboxMark> marks, Thresholds t) {
+        return build(facts, marks, t, List.of());
+    }
+
+    /**
+     * Same, plus rows built elsewhere (support threads — {@code SupportInboxSource}); they go into
+     * the group of their {@code type} and obey the same marks, sorting and counting.
+     */
+    public static Inbox build(InboxFacts facts, Map<String, InboxMark> marks, Thresholds t, List<Item> extra) {
         Instant now = facts.now();
         Map<InboxItemType, List<Item>> all = new EnumMap<>(InboxItemType.class);
         for (InboxItemType type : InboxItemType.values()) {
             all.put(type, new ArrayList<>());
         }
+        for (Item it : extra == null ? List.<Item>of() : extra) {
+            InboxItemType type = InboxItemType.parse(it.type());
+            if (type != null) {
+                all.get(type).add(it);
+            }
+        }
 
         Map<String, OrderRow> byId = new HashMap<>();
         for (OrderRow o : facts.orders()) {
             byId.put(o.id(), o);
-            if (isPaymentClaim(o)) {
-                all.get(InboxItemType.PAYMENT).add(payment(o, now));
+            if (isCancelRequested(o)) {
+                // Takes the place of "paid — confirm": the customer no longer wants the order.
+                all.get(InboxItemType.PAYMENT).add(cancelRequest(o, now));
+            } else if (isPaidAwaitingConfirm(o)) {
+                all.get(InboxItemType.PAYMENT).add(paidConfirm(o, now));
+            } else if (isPaidCancelled(o)) {
+                all.get(InboxItemType.PAYMENT).add(paidRefund(o, now));
             }
             if (isNewStale(o, now, t.newStaleHours())) {
                 all.get(InboxItemType.NEW_STALE).add(newStale(o, now, t.newStaleHours()));
@@ -128,8 +155,24 @@ public final class InboxRules {
 
     // ------------------------------------------------------------------ selection
 
-    static boolean isPaymentClaim(OrderRow o) {
-        return o.paymentClaimed() && !o.paid() && o.status() != OrderStatus.REJECTED;
+    /** The customer asked to cancel a paid order that has not shipped: an admin approves or declines. */
+    static boolean isCancelRequested(OrderRow o) {
+        return "PENDING".equals(o.cancelRequestStatus())
+                && (o.status() == OrderStatus.NEW || o.status() == OrderStatus.APPROVED);
+    }
+
+    /** Paid online (monobank) and still NEW: the payment does not move the status, an admin confirms. */
+    static boolean isPaidAwaitingConfirm(OrderRow o) {
+        return o.status() == OrderStatus.NEW && o.paidOnline() && o.paid() && o.receivedMinor() > 0;
+    }
+
+    /**
+     * Paid online, then cancelled before it shipped, and not all of the money went back. Refusals
+     * after shipping belong to {@link InboxItemType#RETURN}.
+     */
+    static boolean isPaidCancelled(OrderRow o) {
+        return o.status() == OrderStatus.REJECTED && o.paidOnline() && o.shippedAt() == null
+                && o.refundedMinor() < o.receivedMinor();
     }
 
     static boolean isNewStale(OrderRow o, Instant now, int hours) {
@@ -178,12 +221,27 @@ public final class InboxRules {
 
     // ------------------------------------------------------------------ rows
 
-    private static Item payment(OrderRow o, Instant now) {
-        Instant since = o.paymentClaimedAt() != null ? o.paymentClaimedAt() : o.createdAt();
-        boolean prepay = o.prepaymentMinor() > 0;
-        return orderItem(InboxItemType.PAYMENT, o, version(since),
-                "Прислал(а) подтверждение перевода — проверьте поступление",
-                prepay ? o.prepaymentMinor() : o.totalMinor(), prepay ? "предоплата" : "к оплате",
+    private static Item paidConfirm(OrderRow o, Instant now) {
+        Instant since = o.paidAt() != null ? o.paidAt() : o.createdAt();
+        boolean partial = o.receivedMinor() < o.totalMinor();
+        return orderItem(InboxItemType.PAYMENT, o, "paid:" + version(since), PAID_CONFIRM,
+                o.receivedMinor(), partial ? "предоплата" : "оплачено",
+                null, since, now, overdue(since, now, PAYMENT_OVERDUE));
+    }
+
+    private static Item cancelRequest(OrderRow o, Instant now) {
+        Instant since = o.cancelRequestedAt() != null ? o.cancelRequestedAt() : o.createdAt();
+        String reason = o.cancelRequestReason() == null || o.cancelRequestReason().isBlank()
+                ? "" : " · " + shorten(o.cancelRequestReason(), 100);
+        return orderItem(InboxItemType.PAYMENT, o, "cancel:" + version(since), CANCEL_REQUEST + reason,
+                o.receivedMinor(), "оплачено", null, since, now, overdue(since, now, PAYMENT_OVERDUE));
+    }
+
+    private static Item paidRefund(OrderRow o, Instant now) {
+        Instant since = o.rejectedAt() != null ? o.rejectedAt() : o.createdAt();
+        // The version follows the refunded amount too: a partial refund brings the row back.
+        return orderItem(InboxItemType.PAYMENT, o, "refund:" + version(since) + ":" + o.refundedMinor(),
+                PAID_REFUND, o.receivedMinor() - Math.max(0, o.refundedMinor()), "вернуть",
                 null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 

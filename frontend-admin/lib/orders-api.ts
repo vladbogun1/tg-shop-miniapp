@@ -33,6 +33,18 @@ export type AdminOrderDetail = Omit<OrderDetailDto, "items"> & {
   items: (OrderDetailDto["items"][number] & { returnedQty?: number })[];
 };
 
+/** POST …/cancel-request/approve — what happened to the money. */
+export interface CancelApproveResult {
+  order: AdminOrderDetail;
+  /** Sent to monobank for refund (booked when the bank confirms). */
+  refundRequestedMinor: number;
+  refundedInvoices: number;
+  /** Invoices monobank refused to refund — return those by hand. */
+  refundErrors: string[];
+  /** Money recorded by hand (not via monobank) — return it by hand too. */
+  manualRefundMinor: number;
+}
+
 /** Board + true per-column money totals from the server. */
 export type AdminBoard = BoardDto & { sums?: Record<OrderStatus, number> };
 
@@ -116,6 +128,14 @@ export const ordersApi = {
   /** POST /api/admin/orders/{id}/return — (partial) return + refund. */
   registerReturn: (id: string, body: ReturnBody) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return`, body),
+
+  /** Customer's cancellation request: cancel (CHANGED_MIND) + restock + full monobank refund. */
+  approveCancelRequest: (id: string, comment?: string) =>
+    apiPost<CancelApproveResult>(`/api/admin/orders/${id}/cancel-request/approve`, { comment }),
+
+  /** Decline the customer's cancellation request; the comment (required) goes to the customer. */
+  declineCancelRequest: (id: string, comment: string) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/cancel-request/decline`, { comment }),
 
   dispatch: (includeNew = true) =>
     apiGet<AdminDispatchOrder[]>(`/api/admin/orders/dispatch${includeNew ? "?includeNew=true" : ""}`),

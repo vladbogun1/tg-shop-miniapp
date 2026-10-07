@@ -2,34 +2,41 @@
 
 /**
  * Payment settings (route "/payment").
+ *  - monobank status: is the acquiring token set and accepted, the merchant, the last webhook and
+ *    whether its signature was valid (GET /api/admin/payments/monobank/status).
  *  - Payment options: GET ?includeInactive=true / PUT /api/admin/payment-options (the whole list,
- *    in checkout order). Each option can be switched off (kept for old orders) and moved up/down.
- *  - Requisites: GET/PUT /api/admin/payment-requisites, with a live customer preview.
+ *    in checkout order). Every option is paid ONLINE through monobank: the whole amount, or a
+ *    prepayment now + the rest cash on delivery (наложка). The customer has 24 h to pay, then the
+ *    order is cancelled automatically. Each option can be switched off (kept for old orders) and
+ *    moved up/down.
  *
- * Nothing can be saved until both loads succeeded (A7: a failed load used to leave an empty form
- * whose «Сохранить» switched every payment option off and wiped the requisites). One «Сохранить»
- * writes whatever changed; leaving with unsaved edits asks first. Card and IBAN are checked
- * (Luhn, UA + 27 digits) before they reach customers.
+ * Nothing can be saved until the options loaded (A7: a failed load used to leave an empty form
+ * whose «Сохранить» switched every payment option off). Leaving with unsaved edits asks first.
  */
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowDown,
   ArrowUp,
+  CircleAlert,
+  CircleCheck,
+  CircleDashed,
+  Clock,
   CreditCard,
-  Languages,
   Plus,
-  ReceiptText,
+  RefreshCw,
   Save,
+  ShieldAlert,
+  ShieldCheck,
   Trash2,
+  Truck,
   Wallet,
 } from "lucide-react";
-import { adminApi, ApiError, type PaymentRequisitesDto } from "@/lib/api";
+import { adminApi, ApiError, type MonobankStatus } from "@/lib/api";
 import { extApi, type PaymentOptionFull } from "@/lib/api-extra";
-import { toMajor, toMinor } from "@/lib/money";
-import { cardProblem, ibanProblem } from "@/lib/requisites";
+import { money, toMajor, toMinor } from "@/lib/money";
+import { formatDateTime, timeAgo } from "@/lib/orders";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -39,7 +46,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { QueryState } from "@/components/ui/QueryState";
-import { Textarea } from "@/components/ui/Textarea";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Toggle } from "@/components/ui/Toggle";
 import { ease } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
@@ -76,10 +83,11 @@ function optionsSnapshot(rows: OptionRow[]): string {
   );
 }
 
-const EMPTY_REQ: PaymentRequisitesDto = {};
-function reqSnapshot(r: PaymentRequisitesDto): string {
-  const n = (s?: string | null) => (s ?? "").trim();
-  return JSON.stringify([n(r.cardNumber), n(r.iban), n(r.recipient), n(r.edrpou), n(r.purpose), n(r.note)]);
+/** Prepayment in minor units; 0 when it is empty or not a positive number. */
+function prepayMinor(o: OptionRow): number {
+  const raw = o.prepaymentMajor.trim().replace(",", ".");
+  const v = parseFloat(raw);
+  return Number.isFinite(v) && v > 0 ? toMinor(raw) : 0;
 }
 
 export default function PaymentPage() {
@@ -89,15 +97,14 @@ export default function PaymentPage() {
     queryKey: ["payment-options", "all"],
     queryFn: () => extApi.paymentOptionsAll(),
   });
-  const reqQ = useQuery({
-    queryKey: ["payment-requisites"],
-    queryFn: () => adminApi.paymentRequisites(),
+  const monoQ = useQuery({
+    queryKey: ["monobank-status"],
+    queryFn: () => adminApi.getMonobankStatus(),
+    staleTime: 30_000,
   });
 
   const [options, setOptions] = useState<OptionRow[]>([]);
   const [baseOptions, setBaseOptions] = useState("");
-  const [req, setReq] = useState<PaymentRequisitesDto>(EMPTY_REQ);
-  const [baseReq, setBaseReq] = useState<PaymentRequisitesDto | null>(null);
   const [showHidden, setShowHidden] = useState(true);
   const [toDelete, setToDelete] = useState<OptionRow | null>(null);
   const [saving, setSaving] = useState(false);
@@ -109,32 +116,24 @@ export default function PaymentPage() {
     setOptions(rows);
     setBaseOptions(optionsSnapshot(rows));
   }, [optionsQ.data]);
-  useEffect(() => {
-    if (!reqQ.data) return;
-    setReq(reqQ.data);
-    setBaseReq(reqQ.data);
-  }, [reqQ.data]);
 
-  const loaded = !!optionsQ.data && !!reqQ.data && baseReq !== null;
-  const optionsDirty = loaded && optionsSnapshot(options) !== baseOptions;
-  const reqDirty = loaded && reqSnapshot(req) !== reqSnapshot(baseReq ?? EMPTY_REQ);
-  const dirty = optionsDirty || reqDirty;
+  const loaded = !!optionsQ.data;
+  const dirty = loaded && optionsSnapshot(options) !== baseOptions;
   useUnsavedGuard(dirty);
 
-  // Checked only when changed: an old value that predates the rule must not block other edits.
-  const cardErr =
-    (req.cardNumber ?? "").trim() !== (baseReq?.cardNumber ?? "").trim() ? cardProblem(req.cardNumber) : null;
-  const ibanErr = (req.iban ?? "").trim() !== (baseReq?.iban ?? "").trim() ? ibanProblem(req.iban) : null;
   const named = options.filter((o) => o.title.trim());
   const activeCount = named.filter((o) => o.active).length;
   const blankTitles = options.some((o) => !o.title.trim() && (o.description.trim() || o.id));
+  const noPrepayAmount = named.some((o) => o.requiresPrepayment && prepayMinor(o) <= 0);
   const blocker = !loaded
     ? "Настройки не загружены"
     : activeCount === 0
       ? "Включите хотя бы один способ оплаты — иначе покупатели не смогут оформить заказ"
       : blankTitles
         ? "У каждого способа оплаты должно быть название"
-        : cardErr || ibanErr;
+        : noPrepayAmount
+          ? "Укажите сумму предоплаты — её покупатель оплатит онлайн"
+          : null;
 
   function patchOption(key: string, patch: Partial<OptionRow>) {
     setOptions((prev) => prev.map((o) => (o.key === key ? { ...o, ...patch } : o)));
@@ -173,26 +172,19 @@ export default function PaymentPage() {
     }
     setSaving(true);
     try {
-      if (optionsDirty) {
-        const payload: PaymentOptionFull[] = named.map((o) => ({
-          id: o.id,
-          title: o.title.trim(),
-          description: o.description.trim() || undefined,
-          requiresPrepayment: o.requiresPrepayment,
-          prepaymentMinor: o.requiresPrepayment && o.prepaymentMajor ? toMinor(o.prepaymentMajor) : null,
-          active: o.active,
-        }));
-        const saved = await extApi.putPaymentOptions(payload);
-        const rows = toRows(saved);
-        setOptions(rows);
-        setBaseOptions(optionsSnapshot(rows));
-      }
-      if (reqDirty) {
-        const saved = await adminApi.putPaymentRequisites(req);
-        setReq(saved);
-        setBaseReq(saved);
-      }
-      push("Настройки оплаты сохранены", "ok");
+      const payload: PaymentOptionFull[] = named.map((o) => ({
+        id: o.id,
+        title: o.title.trim(),
+        description: o.description.trim() || undefined,
+        requiresPrepayment: o.requiresPrepayment,
+        prepaymentMinor: o.requiresPrepayment ? prepayMinor(o) : null,
+        active: o.active,
+      }));
+      const saved = await extApi.putPaymentOptions(payload);
+      const rows = toRows(saved);
+      setOptions(rows);
+      setBaseOptions(optionsSnapshot(rows));
+      push("Способы оплаты сохранены", "ok");
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
     } finally {
@@ -208,19 +200,27 @@ export default function PaymentPage() {
 
   return (
     <div className="min-w-0">
-      <PageHeader title="Оплата" subtitle="Варианты оплаты и реквизиты, которые видит покупатель." />
+      <PageHeader
+        title="Оплата"
+        subtitle="Покупатель платит онлайн через monobank: всю сумму или предоплату, остаток — наложкой."
+      />
+
+      <MonobankCard
+        status={monoQ.data}
+        loading={monoQ.isLoading}
+        error={monoQ.isError ? monoQ.error : null}
+        fetching={monoQ.isFetching}
+        onRefresh={() => monoQ.refetch()}
+      />
 
       <QueryState
-        isLoading={optionsQ.isLoading || reqQ.isLoading}
-        isError={optionsQ.isError || reqQ.isError}
-        error={optionsQ.error ?? reqQ.error}
-        refetch={() => {
-          optionsQ.refetch();
-          reqQ.refetch();
-        }}
+        isLoading={optionsQ.isLoading}
+        isError={optionsQ.isError}
+        error={optionsQ.error}
+        refetch={() => optionsQ.refetch()}
         loadingLabel="Загрузка настроек оплаты"
       >
-        <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* ===================== Payment options ===================== */}
           <motion.section
             initial={{ opacity: 0, y: 16 }}
@@ -231,14 +231,12 @@ export default function PaymentPage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
-                  <Wallet className="h-5 w-5" />
+                  <CreditCard className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="section-title !text-[15px] text-[var(--ink)]">
-                    Варианты оплаты
-                  </h2>
+                  <h2 className="section-title !text-[15px] text-[var(--ink)]">Способы оплаты</h2>
                   <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">
-                    Покупатель выбирает один из них. Порядок — как в оформлении.
+                    Покупатель выбирает один из них; каждый оплачивается онлайн. Порядок — как в оформлении.
                   </p>
                 </div>
               </div>
@@ -260,11 +258,11 @@ export default function PaymentPage() {
             {options.length === 0 ? (
               <EmptyState
                 icon={Wallet}
-                title="Нет вариантов оплаты"
-                description="Добавьте хотя бы один способ оплаты, чтобы покупатели могли оформить заказ."
+                title="Нет способов оплаты"
+                description="Добавьте хотя бы один — например «Полная оплата онлайн» или «Предоплата 100 ₴, остаток наложкой»."
                 action={
                   <Button size="sm" variant="accent" icon={<Plus className="h-4 w-4" />} onClick={addOption}>
-                    Добавить вариант
+                    Добавить способ
                   </Button>
                 }
               />
@@ -313,7 +311,7 @@ export default function PaymentPage() {
                       </div>
 
                       <Input
-                        label="Описание"
+                        label="Описание для покупателя"
                         className="max-w-full"
                         value={o.description}
                         onChange={(e) => patchOption(o.key, { description: e.target.value })}
@@ -323,18 +321,20 @@ export default function PaymentPage() {
                         <Toggle
                           checked={o.requiresPrepayment}
                           onChange={(v) => patchOption(o.key, { requiresPrepayment: v })}
-                          label="Предоплата"
+                          label="Предоплата + наложка"
                         />
                         {o.requiresPrepayment && (
                           <Input
-                            label="Сумма, ₴"
+                            label="Предоплата онлайн, ₴"
                             inputMode="decimal"
                             className="max-w-full"
                             value={o.prepaymentMajor}
+                            error={o.title.trim() && prepayMinor(o) <= 0 ? "Укажите сумму" : undefined}
                             onChange={(e) => patchOption(o.key, { prepaymentMajor: e.target.value })}
                           />
                         )}
                       </div>
+                      <OptionSummary row={o} />
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
                         <Toggle
                           checked={o.active}
@@ -355,114 +355,8 @@ export default function PaymentPage() {
             )}
           </motion.section>
 
-          {/* ===================== Requisites + preview ===================== */}
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...ease, delay: 0.06 }}
-            className="panel min-w-0 p-5"
-          >
-            <div className="mb-4 flex min-w-0 items-center gap-3">
-              <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
-                <ReceiptText className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="section-title !text-[15px] text-[var(--ink)]">Реквизиты</h2>
-                <p className="text-[12px] text-[var(--text-muted)]">
-                  Отображаются покупателю для оплаты заказа. Каждая смена карты/IBAN пишется в журнал и
-                  приходит уведомлением в Telegram.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-              <Input
-                label="Номер карты"
-                className="max-w-full"
-                inputMode="numeric"
-                value={req.cardNumber ?? ""}
-                error={cardErr ?? undefined}
-                onChange={(e) => setReq({ ...req, cardNumber: e.target.value })}
-              />
-              <Input
-                label="IBAN"
-                className="max-w-full"
-                value={req.iban ?? ""}
-                error={ibanErr ?? undefined}
-                onChange={(e) => setReq({ ...req, iban: e.target.value })}
-              />
-              <Input
-                label="Получатель"
-                className="max-w-full"
-                value={req.recipient ?? ""}
-                onChange={(e) => setReq({ ...req, recipient: e.target.value })}
-              />
-              <Input
-                label="РНОКПП / ЕДРПОУ"
-                className="max-w-full"
-                value={req.edrpou ?? ""}
-                onChange={(e) => setReq({ ...req, edrpou: e.target.value })}
-              />
-              <div className="min-w-0 sm:col-span-2">
-                <Input
-                  label="Назначение платежа"
-                  className="max-w-full"
-                  value={req.purpose ?? ""}
-                  onChange={(e) => setReq({ ...req, purpose: e.target.value })}
-                />
-              </div>
-              <div className="min-w-0 sm:col-span-2">
-                <Textarea
-                  label="Примечание (необязательно)"
-                  rows={2}
-                  className="max-w-full"
-                  value={req.note ?? ""}
-                  onChange={(e) => setReq({ ...req, note: e.target.value })}
-                />
-              </div>
-            </div>
-            <p className="mt-2 flex items-start gap-1.5 text-[12px] text-[var(--text-muted)]">
-              <Languages className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                Назначение и примечание покупатель видит на своём языке — переводы uk/en в{" "}
-                <Link href="/translations" className="hit font-semibold text-[var(--accent-hi)] hover:underline">
-                  «Переводах»
-                </Link>
-                . Правка русского текста сбрасывает перевод, пока его не обновят.
-              </span>
-            </p>
-
-            {/* Live preview — matches what the customer sees */}
-            <div className="mt-4 min-w-0">
-              <div className="field-label mb-2">
-                Превью (как у клиента)
-              </div>
-              <div className="card-2 min-w-0 rounded-[var(--r-md)] p-4">
-                <div className="mb-3 flex items-center gap-2 font-display text-[14px] font-bold text-[var(--ink)]">
-                  <CreditCard className="h-4 w-4 text-[var(--accent)]" />
-                  Реквизиты для оплаты
-                </div>
-                {req.cardNumber || req.iban || req.recipient || req.edrpou || req.purpose ? (
-                  <div className="flex min-w-0 flex-col gap-2.5">
-                    {req.cardNumber && <ReqRow label="Карта" value={req.cardNumber} mono />}
-                    {req.iban && <ReqRow label="IBAN" value={req.iban} mono />}
-                    {req.recipient && <ReqRow label="Получатель" value={req.recipient} />}
-                    {req.edrpou && <ReqRow label="РНОКПП / ЕДРПОУ" value={req.edrpou} mono />}
-                    {req.purpose && <ReqRow label="Назначение" value={req.purpose} />}
-                  </div>
-                ) : (
-                  <p className="text-[13px] text-[var(--text-faint)]">
-                    Заполните поля выше — здесь появится превью.
-                  </p>
-                )}
-                {req.note && (
-                  <p className="mt-3 whitespace-pre-wrap break-words text-[12px] text-[var(--text-faint)]">
-                    {req.note}
-                  </p>
-                )}
-              </div>
-            </div>
-          </motion.section>
+          {/* ===================== How it works ===================== */}
+          <HowItWorks />
         </div>
 
         {/* One save for the whole page, pinned so it is reachable on a phone. */}
@@ -530,7 +424,7 @@ function OrderBtn({
   label: string;
   disabled: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
@@ -546,13 +440,213 @@ function OrderBtn({
   );
 }
 
-function ReqRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+/** One line under an option: what the customer pays online and what is left for the post office. */
+function OptionSummary({ row }: { row: OptionRow }) {
+  const pre = prepayMinor(row);
   return (
-    <div className="min-w-0">
-      <div className="field-label !text-[10.5px] !text-[var(--text-faint)]">{label}</div>
-      <div className={`break-words text-[14px] text-[var(--text)] ${mono ? "font-mono tracking-wide" : ""}`}>
-        {value}
+    <p className="flex items-start gap-1.5 text-[12px] leading-snug text-[var(--text-muted)]">
+      {row.requiresPrepayment ? (
+        <>
+          <Truck className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>
+            Онлайн сейчас: <b className="tabular font-semibold text-[var(--text)]">{pre > 0 ? money(pre) : "—"}</b>,
+            остаток — наложкой при получении.
+          </span>
+        </>
+      ) : (
+        <>
+          <CreditCard className="mt-px h-3.5 w-3.5 shrink-0" />
+          <span>Вся сумма заказа онлайн через monobank.</span>
+        </>
+      )}
+    </p>
+  );
+}
+
+/** Static explainer next to the options: the rules every option follows. */
+function HowItWorks() {
+  const steps: { icon: typeof Clock; text: ReactNode }[] = [
+    {
+      icon: CreditCard,
+      text: <>После оформления покупатель попадает на страницу monobank: карта, Apple Pay, Google Pay или приложение mono.</>,
+    },
+    {
+      icon: Clock,
+      text: (
+        <>
+          На оплату — <b className="text-[var(--text)]">24 часа</b>. Не оплатил — заказ отменяется сам (причина
+          «Не оплатил за сутки»), товар возвращается на склад.
+        </>
+      ),
+    },
+    {
+      icon: CircleCheck,
+      text: (
+        <>
+          Оплаченный заказ остаётся <b className="text-[var(--text)]">«Новым»</b> — одобряете вы. Нет товара —
+          «Вернуть деньги» в карточке заказа.
+        </>
+      ),
+    },
+    {
+      icon: Truck,
+      text: <>При предоплате остаток покупатель платит наложкой на почте.</>,
+    },
+  ];
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...ease, delay: 0.06 }}
+      className="panel h-fit min-w-0 p-5"
+    >
+      <h2 className="section-title mb-3 !text-[15px] text-[var(--ink)]">Как работает оплата</h2>
+      <ul className="flex flex-col gap-3">
+        {steps.map(({ icon: Icon, text }, i) => (
+          <li key={i} className="flex items-start gap-2.5 text-[13px] leading-snug text-[var(--text-muted)]">
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-hi)]" />
+            <span>{text}</span>
+          </li>
+        ))}
+      </ul>
+    </motion.section>
+  );
+}
+
+type MonoState = { tone: "ok" | "warn" | "danger"; label: string; icon: typeof Clock; text: ReactNode };
+
+function monoState(s: MonobankStatus): MonoState {
+  if (!s.enabled) {
+    return {
+      tone: "warn",
+      label: "Не настроено",
+      icon: CircleDashed,
+      text: (
+        <>
+          <span className="font-mono text-[12px]">MONOBANK_TOKEN</span> на сервере пуст — покупатели не смогут
+          оплатить заказ. Токен выдаётся в web.monobank.ua → «Інтернет-еквайринг» и прописывается в .env сервера.
+        </>
+      ),
+    };
+  }
+  if (s.error) {
+    return { tone: "danger", label: "Ошибка", icon: CircleAlert, text: <>monobank ответил ошибкой: {s.error}</> };
+  }
+  return {
+    tone: "ok",
+    label: "Подключено",
+    icon: CircleCheck,
+    text: s.merchantName ? (
+      <>
+        Магазин в monobank: <b className="font-semibold text-[var(--text)]">{s.merchantName}</b>
+      </>
+    ) : (
+      <>Токен принят monobank.</>
+    ),
+  };
+}
+
+const TONE_VAR: Record<MonoState["tone"] | "neutral", string> = {
+  ok: "var(--ok)",
+  warn: "var(--warn)",
+  danger: "#F87171",
+  neutral: "var(--text-muted)",
+};
+
+/** monobank acquiring: connected / not configured / error, and the last webhook. */
+function MonobankCard({
+  status,
+  loading,
+  error,
+  fetching,
+  onRefresh,
+}: {
+  status?: MonobankStatus;
+  loading: boolean;
+  error: unknown;
+  fetching: boolean;
+  onRefresh: () => void;
+}) {
+  const st = status ? monoState(status) : null;
+  const toneVar = TONE_VAR[st?.tone ?? "neutral"];
+  const StIcon = st?.icon;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={ease}
+      aria-label="Эквайринг monobank"
+      className="panel mb-6 min-w-0 p-4 sm:p-5"
+    >
+      <div className="flex flex-wrap items-start gap-3">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border"
+          style={{
+            color: toneVar,
+            background: `color-mix(in srgb, ${toneVar} 14%, transparent)`,
+            borderColor: `color-mix(in srgb, ${toneVar} 30%, transparent)`,
+          }}
+        >
+          <Wallet className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="section-title !text-[15px] text-[var(--ink)]">Эквайринг monobank</h2>
+            {st && StIcon && (
+              <Badge tone={st.tone}>
+                <StIcon className="h-3 w-3" />
+                {st.label}
+              </Badge>
+            )}
+          </div>
+          {loading ? (
+            <Skeleton className="mt-2 h-10 max-w-md rounded-[var(--r-md)]" />
+          ) : error || !status || !st ? (
+            <p className="mt-1 text-[13px] text-[var(--danger-ink)]">
+              Статус не загрузился{error instanceof ApiError ? `: ${error.message}` : ""}.
+            </p>
+          ) : (
+            <div className="mt-1 flex flex-col gap-1.5 text-[13px] leading-snug text-[var(--text-muted)]">
+              <p className="break-words">{st.text}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {status.lastWebhookAt ? (
+                  <>
+                    <span>
+                      Последний вебхук:{" "}
+                      <span className="tabular text-[var(--text)]">{formatDateTime(status.lastWebhookAt)}</span>{" "}
+                      <span className="text-[var(--text-faint)]">({timeAgo(status.lastWebhookAt)})</span>
+                    </span>
+                    {status.lastWebhookSignatureOk === true && (
+                      <Badge tone="ok">
+                        <ShieldCheck className="h-3 w-3" />
+                        подпись верна
+                      </Badge>
+                    )}
+                    {status.lastWebhookSignatureOk === false && (
+                      <Badge tone="danger">
+                        <ShieldAlert className="h-3 w-3" />
+                        подпись не сошлась
+                      </Badge>
+                    )}
+                  </>
+                ) : (
+                  <span>Вебхуков от monobank ещё не было.</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<RefreshCw className={cn("h-4 w-4", fetching && "animate-spin")} />}
+          onClick={onRefresh}
+          disabled={fetching}
+        >
+          Проверить
+        </Button>
       </div>
-    </div>
+    </motion.section>
   );
 }

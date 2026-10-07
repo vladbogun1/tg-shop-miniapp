@@ -3,11 +3,9 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.RenderedTemplateDto;
 import org.junit.jupiter.api.Test;
@@ -21,8 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,8 +28,6 @@ class ReplyTemplateServiceTest {
     ReplyTemplateRepository repository;
     @Mock
     OrderRepository orderRepository;
-    @Mock
-    PaymentRequisitesRepository requisitesRepository;
     @Mock
     Messages messages;
 
@@ -78,7 +72,7 @@ class ReplyTemplateServiceTest {
     @Test
     void renderForOrder_fillsOrderValuesInCustomerLanguage() {
         ReplyTemplateService service =
-                new ReplyTemplateService(repository, orderRepository, requisitesRepository, messages);
+                new ReplyTemplateService(repository, orderRepository, messages);
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
         o.setTgUserId(42L);
@@ -89,20 +83,16 @@ class ReplyTemplateServiceTest {
         o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
         o.setNpCityName("Київ");
         o.setNpWarehouseName("Відділення №1");
-        PaymentRequisites req = new PaymentRequisites();
-        req.setCardNumber("5375 0000 0000 0000");
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
         when(messages.localeOf(42L)).thenReturn(Locale.forLanguageTag("uk"));
-        when(messages.get(any(Locale.class), anyString())).thenAnswer(inv -> "Картка");
-        when(requisitesRepository.findById(1)).thenReturn(Optional.of(req));
         when(repository.findAllByOrderBySortAscIdAsc()).thenReturn(List.of(
-                template("RU {name}", "{name}: {total}, наложка {cod}, ТТН {ttn}, {warehouse}\n{requisites}", null)));
+                template("RU {name}", "{name}: {total}, наложка {cod}, ТТН {ttn}, {warehouse}", null)));
 
         List<RenderedTemplateDto> out = service.renderForOrder(o.getId());
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).locale()).isEqualTo("uk");
         assertThat(out.get(0).text()).isEqualTo(
-                "Іван: 1 000 ₴, наложка 800 ₴, ТТН 20450000000001, Київ, Відділення №1\nКартка: 5375 0000 0000 0000");
+                "Іван: 1 000 ₴, наложка 800 ₴, ТТН 20450000000001, Київ, Відділення №1");
     }
 }

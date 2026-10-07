@@ -6,13 +6,16 @@ import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
 import { BuyBox } from "@/components/product/BuyBox";
+import { AskProductButton } from "@/components/support/AskProductButton";
 import { Gallery } from "@/components/product/Gallery";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { toCardProducts } from "@/lib/card";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { stockOf } from "@/lib/stock";
 import { localeOf } from "@/lib/route";
-import { getProductBySlug, getProducts, safe } from "@/lib/server-api";
+import { getProductBySlug, getProductReviews, getProducts, safe } from "@/lib/server-api";
+import { ProductReviews } from "@/components/reviews/ProductReviews";
+import { reviewsLd } from "@/lib/reviews-ld";
 import {
   ORG_ID,
   pageMeta,
@@ -98,6 +101,7 @@ export default async function ProductPage({ params }: { params: Params }) {
     ? await safe(getProducts({ category: category.slug, inStock: true, size: 9 }, locale), null)
     : null;
   const relatedItems = (related?.items ?? []).filter((p) => p.id !== product.id).slice(0, 8);
+  const reviewPage = await safe(getProductReviews(product.slug, locale), null);
 
   const crumbs: Crumb[] = [
     { label: t("catalog.title"), path: "/catalog" },
@@ -133,6 +137,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       hasMerchantReturnPolicy: returnPolicyLd(markdown),
       seller: { "@type": "OnlineStore", "@id": ORG_ID, name: "ChiSetup", url: SITE_URL },
     },
+    ...reviewsLd(product, reviewPage, t("reviews.customer")),
   };
 
   return (
@@ -145,6 +150,7 @@ export default async function ProductPage({ params }: { params: Params }) {
         <Gallery images={images} alt={product.title} />
         <div className="min-w-0">
           <BuyBox product={product} />
+          <AskProductButton productId={product.id} productTitle={product.title} />
           <TrackProductView productId={product.id} />
           <ul className="mt-6 grid gap-3 sm:grid-cols-2">
             {PROMISES.map(({ icon: Icon, title, text, href }) => (
@@ -181,6 +187,8 @@ export default async function ProductPage({ params }: { params: Params }) {
           )}
         </div>
       </section>
+
+      <ProductReviews slug={product.slug} initial={reviewPage} />
 
       {relatedItems.length > 0 && (
         <section className="mt-14" aria-labelledby="pd-related">

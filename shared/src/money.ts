@@ -1,5 +1,6 @@
 /**
  * Money is stored and transported as integer minor units (kopecks); UAH by default.
+ * The backend formats the same way: com.maxsolch.shop.common.MoneyFormat.
  *
  * <p>Both apps and the Telegram cards must agree on rounding — they used to disagree
  * (the backend truncated, the frontends rounded), so an order with kopecks showed a different
@@ -10,10 +11,16 @@ export function money(
   currency = "UAH",
   locale = "ru-RU"
 ): string {
-  const major = Math.round((minor ?? 0) / 100);
+  const kop = Math.round(minor ?? 0);
   const symbol = currency === "UAH" ? "₴" : currency;
-  // Grouping differs by language (1 030 vs 1,030); the currency sign does not.
-  return `${major.toLocaleString(locale)} ${symbol}`;
+  // Kopecks are shown whenever there are any (0,95 ₴ — never "1 ₴" for 95 kopecks: rounding a
+  // price up or down misleads the customer); whole amounts stay without decimals (1 030 ₴).
+  // Grouping and the decimal sign follow the language; the currency sign does not.
+  const text =
+    kop % 100 === 0
+      ? (kop / 100).toLocaleString(locale, { maximumFractionDigits: 0 })
+      : (kop / 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${text} ${symbol}`;
 }
 
 /** Major units typed into a form (UAH) → minor units for the API. */

@@ -35,6 +35,10 @@ export type PromoCodeFull = PromoCode & {
   usesCount?: number | null;
   /** Live 30-min holds of customers with the code in the cart. */
   reservedCount?: number | null;
+  /** Personal code: only this customer (users.id) may use it (V44 review bonus). */
+  ownerUserId?: number | null;
+  expiresAt?: string | null;
+  source?: "REVIEW_BONUS" | null;
 };
 export interface PromoOrder {
   id: string;

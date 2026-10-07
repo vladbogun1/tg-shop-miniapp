@@ -50,6 +50,132 @@ export interface Product {
   images?: ProductImage[];
   variants?: ProductVariant[];
   tags?: ProductTag[];
+  /** Average of the published reviews (V44); null/absent while there are none. */
+  ratingAvg?: number | null;
+  /** Number of published reviews (V44). */
+  ratingCount?: number;
+}
+
+// ---- reviews (V44) ------------------------------------------------------------
+
+export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
+
+/** Rating summary; `distribution[0]` = number of 1★ reviews … `[4]` = 5★. */
+export interface ReviewSummary {
+  avg: number | null;
+  count: number;
+  distribution: number[];
+}
+
+/** A published review. Empty `author` = show a localized "Customer". */
+export interface PublicReview {
+  id: number;
+  author: string;
+  rating: number;
+  text: string;
+  variantName?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+  adminReply?: string | null;
+  adminReplyAt?: string | null;
+}
+
+/** `GET /api/public/products/{idOrSlug}/reviews?page=&size=` (page is 0-based). */
+export interface ReviewPage {
+  productId: string;
+  summary: ReviewSummary;
+  items: PublicReview[];
+  page: number;
+  size: number;
+  totalPages: number;
+  total: number;
+}
+
+/** `GET /api/me/reviews/pending[?orderId=]` — a delivered order line still waiting for a review. */
+export interface PendingReviewLine {
+  orderItemId: number;
+  orderId: string;
+  productId: string;
+  productSlug?: string | null;
+  title: string;
+  variantName?: string | null;
+  imageUrl?: string | null;
+  deliveredAt?: string | null;
+}
+
+/** `GET /api/me/reviews` — one of my reviews. `editable` = still PENDING (may be re-submitted). */
+export interface MyReview {
+  id: number;
+  orderItemId: number;
+  orderId?: string | null;
+  productId: string;
+  productSlug?: string | null;
+  title: string;
+  variantName?: string | null;
+  imageUrl?: string | null;
+  rating: number;
+  text: string;
+  status: ReviewStatus;
+  editable: boolean;
+  adminReply?: string | null;
+  createdAt: string;
+  publishedAt?: string | null;
+}
+
+/** `GET /api/me/bonuses` — a personal promo code (review bonus). */
+export interface BonusCode {
+  code: string;
+  percent: number;
+  expiresAt?: string | null;
+  state: "ACTIVE" | "USED" | "EXPIRED";
+  orderId?: string | null;
+  createdAt?: string | null;
+}
+
+/** `POST /api/me/reviews` body. */
+export interface SubmitReviewRequest {
+  orderItemId: number;
+  rating: number;
+  text: string;
+}
+
+/** `POST /api/me/reviews` answer; `bonus` is set when this review earned the code right away. */
+export interface SubmitReviewResult {
+  review: MyReview;
+  bonus?: BonusCode | null;
+}
+
+/** Admin `GET /api/admin/reviews?status=&productId=&page=&size=` row. */
+export interface AdminReview {
+  id: number;
+  status: ReviewStatus;
+  rating: number;
+  text: string;
+  author: string;
+  productId: string;
+  productTitle?: string | null;
+  productSlug?: string | null;
+  variantName?: string | null;
+  orderId?: string | null;
+  orderShortId?: string | null;
+  userId?: number | null;
+  customerName?: string | null;
+  adminReply?: string | null;
+  adminReplyAt?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  publishedAt?: string | null;
+}
+
+export interface AdminReviewPage {
+  items: AdminReview[];
+  page: number;
+  size: number;
+  totalPages: number;
+  total: number;
+  pendingCount: number;
+  publishedCount: number;
+  hiddenCount: number;
 }
 
 // ---- orders -----------------------------------------------------------------
@@ -68,13 +194,79 @@ export interface OrderItem {
   gift?: boolean;
 }
 
-export interface PaymentRequisites {
-  cardNumber?: string;
-  iban?: string;
-  recipient?: string;
-  edrpou?: string;
-  purpose?: string;
-  note?: string;
+/** Latest monobank invoice state: "none" = the customer never opened the payment page. */
+export type OnlinePaymentStatus =
+  | "none"
+  | "created"
+  | "processing"
+  | "hold"
+  | "success"
+  | "failure"
+  | "reversed"
+  | "expired";
+
+/** Online payment (monobank) of an order — OrderDetail.payment. */
+export interface OnlinePayment {
+  /** Online payment is configured on the server (token set). */
+  enabled: boolean;
+  status: OnlinePaymentStatus;
+  /** Live payment page; only while it can still be paid. */
+  pageUrl?: string | null;
+  expiresAt?: string | null;
+  amountMinor: number;
+  /** e.g. "444403******1902" */
+  maskedPan?: string | null;
+  /** pan | apple | google | monobank | wallet | direct */
+  paymentMethod?: string | null;
+  failureReason?: string | null;
+}
+
+/** POST /api/me/orders/{id}/payment — send the customer to pageUrl. */
+export interface PaymentStart {
+  invoiceId: string;
+  pageUrl: string;
+  amountMinor: number;
+  expiresAt: string;
+}
+
+/** POST /api/orders. Next step: start the payment for orderId. */
+export interface CreateOrderResult {
+  orderId: string;
+  /** What has to be paid online now (the whole order or the prepayment). */
+  amountDueMinor: number;
+}
+
+/** GET /api/admin/orders/{id}/payments — one monobank invoice. */
+export interface AdminInvoice {
+  invoiceId: string;
+  status: OnlinePaymentStatus;
+  amountMinor: number;
+  finalAmountMinor?: number | null;
+  refundedMinor: number;
+  pageUrl?: string | null;
+  expiresAt?: string | null;
+  maskedPan?: string | null;
+  paymentMethod?: string | null;
+  paymentSystem?: string | null;
+  rrn?: string | null;
+  approvalCode?: string | null;
+  feeMinor?: number | null;
+  failureReason?: string | null;
+  errCode?: string | null;
+  /** When the payment was credited to the order. */
+  appliedAt?: string | null;
+  refundPending: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/admin/payments/monobank/status */
+export interface MonobankStatus {
+  enabled: boolean;
+  merchantName?: string | null;
+  error?: string | null;
+  lastWebhookAt?: string | null;
+  lastWebhookSignatureOk?: boolean | null;
 }
 
 export interface OrderSummary {
@@ -85,12 +277,29 @@ export interface OrderSummary {
   createdAt: string;
   itemsCount: number;
   unreadCount: number;
-  /** Payment confirmed by an admin. */
+  /** Money arrived (online payment or settled on delivery). */
   paid: boolean;
-  /** Customer uploaded a transfer screenshot; awaiting confirmation. */
-  paymentClaimed: boolean;
-  /** Confirmed amount received (0 until an admin confirms the transfer). */
+  /** Amount received so far. */
   receivedMinor: number;
+  /** Pay online by then or the order is cancelled; null = placed before online payment. */
+  paymentDueAt?: string | null;
+  /** Still to pay online now; 0 = nothing to pay. */
+  amountDueMinor?: number;
+  /** My cancellation request of a paid order; null = none. */
+  cancelRequestStatus?: CancelRequestStatus | null;
+}
+
+/** Customer's request to cancel a PAID order (one per order). */
+export type CancelRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
+
+/** GET /api/public/order-limits — anti-bot limits; 0 = no limit. */
+export interface OrderLimits {
+  maxQtyPerProduct: number;
+  maxUnitsPerOrder: number;
+  maxUnpaidOrders: number;
+  orderCooldownSec: number;
+  maxOrdersPerDay: number;
+  maxSelfCancelsPerDay: number;
 }
 
 export interface OrderDetail {
@@ -110,19 +319,31 @@ export interface OrderDetail {
   paymentOptionTitle?: string | null;
   trackingNumber?: string | null;
   rejectReason?: string | null;
+  /** RejectReasonCode name (shared/orders.ts), e.g. PAYMENT_TIMEOUT; null = not specified. */
+  rejectReasonCode?: string | null;
   items: OrderItem[];
-  requisites?: PaymentRequisites | null;
+  /** Online payment (monobank) state. */
+  payment: OnlinePayment;
   paid: boolean;
   paidAt?: string | null;
   prepaymentMinor: number;
   receivedMinor: number;
-  paymentClaimed: boolean;
-  paymentClaimedAt?: string | null;
+  /** Pay online by then or the order is cancelled; null = placed before online payment. */
+  paymentDueAt?: string | null;
+  /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
+  amountDueMinor: number;
   createdAt: string;
   approvedAt?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
   rejectedAt?: string | null;
+  /** Cancellation request of a paid order (POST /api/me/orders/{id}/cancel-request); null = none. */
+  cancelRequestStatus?: CancelRequestStatus | null;
+  cancelRequestReason?: string | null;
+  cancelRequestedAt?: string | null;
+  cancelRequestResolvedAt?: string | null;
+  /** The shop's answer — shown to the customer when DECLINED. */
+  cancelRequestAdminComment?: string | null;
   /** Admin-only extras (GET /api/admin/orders/{id}). */
   tgUserId?: number | null;
   tgUsername?: string | null;
@@ -140,9 +361,12 @@ export interface OrderCard {
   createdAt: string;
   status: OrderStatus;
   paid: boolean;
-  paymentClaimed: boolean;
-  /** Confirmed amount received, so a partial payment is distinguishable on the board. */
+  /** Amount received, so a partial payment is distinguishable on the board. */
   receivedMinor: number;
+  paymentDueAt?: string | null;
+  amountDueMinor?: number;
+  /** PENDING = the customer asks to cancel this paid order. */
+  cancelRequestStatus?: CancelRequestStatus | null;
 }
 
 // ---- chat -------------------------------------------------------------------

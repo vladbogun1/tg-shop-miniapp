@@ -71,11 +71,16 @@ public class SecurityConfig {
                         // Website event journal (package C): anonymous visitors too, per-IP limited
                         .requestMatchers(HttpMethod.POST, "/api/public/analytics").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payment-options").permitAll()
+                        // monobank webhook: authenticated by its X-Sign ECDSA signature, not a token
+                        .requestMatchers(HttpMethod.POST, "/api/payments/mono/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/promo-codes/preview").permitAll()
                         .requestMatchers("/api/np/**").permitAll()
                         // Private attachments: the signed, expiring link in the query string IS the
                         // authorisation (an <img> tag cannot send a bearer token). See MediaSigner.
                         .requestMatchers(HttpMethod.GET, "/api/media").permitAll()
+                        // Receipt PDFs: same idea — a signed, 10-minute link (ReceiptSigner), so the
+                        // Mini App's downloadFile and a plain <a href> work without a token.
+                        .requestMatchers(HttpMethod.GET, "/api/receipts/file").permitAll()
                         // WebSocket handshake (STOMP auth happens in the ChannelInterceptor)
                         .requestMatchers("/ws/**").permitAll()
                         // Customer endpoints

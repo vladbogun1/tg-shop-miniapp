@@ -18,6 +18,8 @@ export * from "./site";
 export * from "./tap";
 export * from "./orders";
 export * from "./product-brand";
+export * from "./receipts";
 export * from "./telegram-html";
+export * from "./support";
 export * from "./types";
 export * from "./ws";

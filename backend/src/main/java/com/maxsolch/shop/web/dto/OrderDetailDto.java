@@ -21,7 +21,8 @@ public record OrderDetailDto(
         String trackingNumber,
         String rejectReason,
         List<OrderItemDto> items,
-        PaymentRequisitesDto requisites,
+        /** Online payment (monobank) state — latest invoice; never null. */
+        OnlinePaymentDto payment,
         Long tgUserId,
         String tgUsername,
         Instant createdAt,
@@ -33,9 +34,10 @@ public record OrderDetailDto(
         Instant paidAt,
         long prepaymentMinor,
         long receivedMinor,
-        /** Customer uploaded a transfer screenshot — awaiting admin confirmation. */
-        boolean paymentClaimed,
-        Instant paymentClaimedAt,
+        /** Pay online by then or the order is cancelled; null = order placed before online payment. */
+        Instant paymentDueAt,
+        /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
+        long amountDueMinor,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
         String source,
         /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
@@ -47,5 +49,12 @@ public record OrderDetailDto(
         Instant returnedAt,
         /** Nova Poshta refs — the admin's delivery editor needs them to keep the address valid. */
         String npCityRef,
-        String npWarehouseRef) {
+        String npWarehouseRef,
+        /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
+        String cancelRequestStatus,
+        String cancelRequestReason,
+        Instant cancelRequestedAt,
+        Instant cancelRequestResolvedAt,
+        /** Admin's answer (decline reason) shown to the customer. */
+        String cancelRequestAdminComment) {
 }

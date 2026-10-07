@@ -25,8 +25,8 @@ public final class OrderEvents {
     public record StatusChanged(byte[] orderId) {
     }
 
-    /** The customer uploaded a transfer screenshot (claim only — no money recorded). */
-    public record PaymentClaimed(byte[] orderId) {
+    /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
+    public record PaymentReceived(byte[] orderId, long amountMinor) {
     }
 
     /** What changed in an order an admin edited, for the customer-facing message. */
@@ -72,6 +72,14 @@ public final class OrderEvents {
      * attachments ({@code chat/...} object keys) to remove from storage.
      */
     public record Deleted(byte[] orderId, Integer dispatchMessageId, java.util.List<String> attachmentKeys) {
+    }
+
+    /** The customer asked to cancel a paid order: Telegram topic + push to the admins. */
+    public record CancelRequested(byte[] orderId) {
+    }
+
+    /** An admin approved (rejected + refund) or declined the customer's cancellation request: DM the customer. */
+    public record CancelRequestResolved(byte[] orderId, boolean approved) {
     }
 
     /**

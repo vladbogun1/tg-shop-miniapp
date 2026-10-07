@@ -25,7 +25,20 @@ export interface OrderDetail {
   receivedMinor: number;
   refundedMinor?: number;
   paid: boolean;
+  /** Pay online by then or the order is cancelled (PAYMENT_TIMEOUT); null = before online payment. */
+  paymentDueAt?: string | null;
+  amountDueMinor?: number;
   items: { id: number; title: string; quantity: number; returnedQty?: number }[];
+}
+
+/** One monobank invoice of an order (GET /api/admin/orders/{id}/payments). */
+export interface Invoice {
+  invoiceId: string;
+  status: string;
+  amountMinor: number;
+  refundedMinor: number;
+  refundPending: boolean;
+  maskedPan?: string | null;
 }
 
 export interface AdminProduct {
@@ -47,7 +60,14 @@ export interface InboxGroup {
   title: string;
   count: number;
   dismissible: boolean;
-  items: { key: string; type: string; entityId: string; version: string; shortId?: string | null }[];
+  items: {
+    key: string;
+    type: string;
+    entityId: string;
+    version: string;
+    shortId?: string | null;
+    subtitle?: string | null;
+  }[];
 }
 export interface Inbox {
   total: number;
@@ -99,6 +119,10 @@ export class Api {
 
   order(id: string) {
     return this.json<OrderDetail>("get", `/api/admin/orders/${id}`);
+  }
+
+  payments(orderId: string) {
+    return this.json<Invoice[]>("get", `/api/admin/orders/${orderId}/payments`);
   }
 
   board(range = "month") {

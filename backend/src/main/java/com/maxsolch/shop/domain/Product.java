@@ -81,6 +81,17 @@ public class Product {
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
+    /**
+     * Average of the published reviews (V44), null while there are none. Written only by
+     * {@code ReviewStore.recomputeRating} with SQL — the entity never writes it back.
+     */
+    @Column(name = "rating_avg", precision = 3, scale = 2, insertable = false, updatable = false)
+    private java.math.BigDecimal ratingAvg;
+
+    /** Number of published reviews (V44); maintained like {@link #ratingAvg}. */
+    @Column(name = "rating_count", nullable = false, insertable = false, updatable = false)
+    private int ratingCount = 0;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC, id ASC")
     private List<ProductImage> images = new ArrayList<>();

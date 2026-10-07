@@ -205,7 +205,7 @@ export function DevicePanel() {
       <div className="mt-5 border-t border-[var(--line)] pt-4">
         <h3 className="section-title mb-2">Уведомления на этом устройстве</h3>
         <p className="mb-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
-          Новый заказ, «я оплатил», сообщение клиента в чате, сбой обновления сайта. Нажатие открывает заказ, чат или «Внимание».
+          Новый заказ, онлайн-оплата заказа, сообщение клиента в чате, сбой обновления сайта. Нажатие открывает заказ, чат или «Внимание».
         </p>
 
         <div className="mb-3">

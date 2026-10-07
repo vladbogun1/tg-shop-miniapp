@@ -98,7 +98,7 @@ function OverviewBody({
           {o.money.codInTransitOrders > 0 && <> ({num(o.money.codInTransitOrders)} зак.)</>}
         </span>
         <span>
-          Ждут подтверждения оплаты: <b className="text-[var(--text)] mx-num">{num(o.money.awaitingPaymentConfirm)}</b>
+          Оплачены, ждут подтверждения: <b className="text-[var(--text)] mx-num">{num(o.money.awaitingPaymentConfirm)}</b>
         </span>
         {o.money.refundedMinor > 0 && (
           <span>

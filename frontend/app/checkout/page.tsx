@@ -7,41 +7,49 @@
  *                  autocomplete, NpSearch) or on the map ("Обрати на карті", NpWarehouseMap); both
  *                  modes share one city / branch. The last order prefills name, phone, delivery
  *                  method and branch (card "Як у попередньому замовленні" → "Обрати інше").
- *   3. Оплата    — pick a payment option (RadioCard, from getPaymentOptions)
- *   4. Подтверждение — summary → POST /api/orders → success screen + requisites
+ *   3. Оплата    — pick an online payment option (RadioCard, from getPaymentOptions): the whole
+ *                  amount, or a prepayment now and the rest in cash on delivery. All of it is paid
+ *                  through monobank (card, Apple Pay, Google Pay) within 24 h.
+ *   4. Подтверждение — summary → POST /api/orders → POST /api/me/orders/{id}/payment → the
+ *                  monobank page opens over the Mini App (WebApp.openLink) → the order page, which
+ *                  has the "Оплатити" button again (in case the client blocked the automatic open)
+ *                  and catches up with the payment when the customer comes back.
  *
  * ChiSetup chrome: graphite cards with hairline borders, Exo 2 headings, one orange CTA.
  * A compact StepProgress at the top and a FIXED bottom bar driving
- * "Назад / Далее / Оформить заказ" above the TabBar. The success
- * screen still shows the returned requisites and clears the cart as before.
- *
- * Behaviour is unchanged: same API calls (customerApi.getPaymentOptions /
- * createOrder / getOrder), same per-step validation, same query keys, same
- * dynamic ssr:false map import, same cart clear.
+ * "Назад / Далее / Оформить и оплатить" above the TabBar.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
-  Clock,
-  Copy,
   CreditCard,
   Keyboard,
+  Loader2,
   Map as MapIcon,
   MapPin,
+  ShieldCheck,
   Store,
   Truck,
-  Upload,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { npCityBounds, npLatLng, resolveNpWarehouse, type NpCity, type OrderDetail } from "@shop/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  isOrderLimitCode,
+  npCityBounds,
+  npLatLng,
+  resolveNpWarehouse,
+  type NpCity,
+  type OrderDetail,
+  type OrderLimitCode,
+  visiblePaymentOptions,
+} from "@shop/shared";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
-import { useT } from "@/i18n/context";
+import { useI18n, useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "@/components/checkout/NpSearch";
@@ -77,7 +85,6 @@ import {
   type DeliveryMethod,
   type NpWarehouse,
   type PaymentOption,
-  type PaymentRequisites,
 } from "@/lib/api";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
@@ -93,14 +100,8 @@ const STEP_KEYS = [
   "checkout.step.done",
 ];
 
-interface SuccessState {
-  orderId: string;
-  paymentTitle: string;
-  requisites?: PaymentRequisites | null;
-}
-
 export default function CheckoutPage() {
-  const t = useT();
+  const { t } = useI18n();
   const router = useRouter();
   const lines = useCart((s) => s.lines);
   const promoCode = useCart((s) => s.promoCode);
@@ -242,14 +243,15 @@ export default function CheckoutPage() {
   const idempotencyKey = useRef(newIdempotencyKey());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<SuccessState | null>(null);
+  /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
+  const [limitCode, setLimitCode] = useState<OrderLimitCode | null>(null);
+  /** The order went through — on the way to its page (the cart is already empty by then). */
+  const [placedId, setPlacedId] = useState<string | null>(null);
 
   const paymentQuery = useQuery({
     queryKey: ["payment-options"],
     queryFn: () => customerApi.getPaymentOptions(),
   });
-  const paymentOptions = paymentQuery.data ?? [];
-  const chosenPayment = paymentOptions.find((p) => p.id === paymentId) ?? null;
 
   // Same check the cart runs, so the two screens cannot disagree about the price — and it keeps
   // refreshing the hold on a limited code while the customer works through the steps.
@@ -258,6 +260,20 @@ export default function CheckoutPage() {
   const discount = promo.discount;
   const promoValid = promo.data?.valid === true;
   const total = Math.max(0, subtotal - discount);
+
+  // A prepayment option is hidden when the whole order costs no more than the prepayment. If the
+  // customer had picked one and the total then dropped (promo, quantity), the choice moves to the
+  // first full-payment option — derived here so the summary never shows a hidden option, and
+  // synced into state below so it sticks.
+  const paymentOptions = visiblePaymentOptions(paymentQuery.data ?? [], total);
+  const chosenPayment =
+    paymentOptions.find((p) => p.id === paymentId) ??
+    (paymentId ? paymentOptions.find((p) => !p.requiresPrepayment) ?? null : null);
+  const chosenPaymentId = chosenPayment?.id ?? null;
+  const optionsLoaded = !!paymentQuery.data;
+  useEffect(() => {
+    if (optionsLoaded && chosenPaymentId !== paymentId) setPaymentId(chosenPaymentId);
+  }, [optionsLoaded, chosenPaymentId, paymentId]);
   // What the customer pays right now: the prepayment for prepay options, otherwise the full total.
   const dueNow =
     chosenPayment?.requiresPrepayment && chosenPayment.prepaymentMinor
@@ -270,12 +286,12 @@ export default function CheckoutPage() {
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
     delivery === "PICKUP" || (delivery === "NOVA_POSHTA" && !!warehouse);
-  const step3Ok = !!paymentId;
+  const step3Ok = !!chosenPayment;
 
   const stepOk = [step1Ok, step2Ok, step3Ok, true][step];
 
   // Cart guard — redirect handled by render below.
-  const emptyCart = lines.length === 0 && !success;
+  const emptyCart = lines.length === 0 && !placedId;
 
   // Funnel step "started checkout": once per visit of this screen, only with something to buy.
   const checkoutTracked = useRef(false);
@@ -288,6 +304,7 @@ export default function CheckoutPage() {
   async function submit() {
     if (submitting) return;
     setSubmitError(null);
+    setLimitCode(null);
     setSubmitting(true);
     const body: CreateOrderRequest = {
       items: lines.map((l) => ({
@@ -310,7 +327,7 @@ export default function CheckoutPage() {
       npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
       npWarehouseName:
         delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
-      paymentOptionId: paymentId!,
+      paymentOptionId: chosenPayment!.id,
     };
     try {
       // A quantity change still in its debounce must reach the server cart BEFORE the order removes
@@ -319,24 +336,17 @@ export default function CheckoutPage() {
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       trackOrderCreated(orderId);
-      // Requisites come straight back with the order; fall back to the detail fetch.
-      let requisites: PaymentRequisites | null | undefined = created.requisites;
-      if (!requisites) {
-        try {
-          const detail = await customerApi.getOrder(orderId);
-          requisites = detail.requisites;
-        } catch {
-          /* show without requisites */
-        }
-      }
       haptic();
       cartAfterOrder(lines.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
-      setSuccess({
-        orderId,
-        paymentTitle: chosenPayment?.title ?? "",
-        requisites,
-      });
+      setPlacedId(orderId);
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      // The "order created" step: the order page shows the amount, the 24 h countdown,
+      // «Оплатити» (the in-app monobank sheet) and «Скасувати» (`?created=1`,
+      // components/account/OrderPayment). Nothing opens by itself any more.
+      router.replace(
+        created.amountDueMinor > 0 ? `/account/orders/${orderId}?created=1` : `/account/orders/${orderId}`
+      );
     } catch (e) {
       // The cart validated the code, so a rejection here means somebody took the last use in the
       // meantime. Drop it and let them place the order again at the price without it, instead of
@@ -345,9 +355,12 @@ export default function CheckoutPage() {
         setPromoCode("");
         setSubmitError(t("checkout.promoDropped", { message: e.message }));
       } else {
+        // Anti-bot limits (TOO_MANY_UNPAID, ORDER_COOLDOWN, ORDER_DAILY_LIMIT, QTY_LIMIT,
+        // CANCEL_LIMIT) come with a localized message that says what to do.
         setSubmitError(
           e instanceof ApiError ? e.message : t("checkout.failed")
         );
+        setLimitCode(e instanceof ApiError && isOrderLimitCode(e.code) ? e.code : null);
       }
     } finally {
       setSubmitting(false);
@@ -389,12 +402,19 @@ export default function CheckoutPage() {
     );
   }
 
-  if (success) {
-    return <SuccessScreen state={success} />;
+  if (placedId) {
+    return (
+      <div className="flex flex-col items-center gap-3 pt-24 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--accent)]" strokeWidth={2.5} />
+        <p className="font-display text-[13px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+          {t("checkout.redirecting")}
+        </p>
+      </div>
+    );
   }
 
   const primaryLabel =
-    step < 3 ? t("common.next") : t("checkout.submit", { total: money(total, currency) });
+    step < 3 ? t("common.next") : t("checkout.submit");
 
   return (
     <div className="pt-1">
@@ -461,7 +481,7 @@ export default function CheckoutPage() {
               options={paymentOptions}
               loading={paymentQuery.isLoading}
               error={paymentQuery.isError}
-              selected={paymentId}
+              selected={chosenPaymentId}
               onSelect={setPaymentId}
               currency={currency}
             />
@@ -492,9 +512,23 @@ export default function CheckoutPage() {
         </motion.div>
       </AnimatePresence>
 
+      {step === 3 && dueNow > 0 && (
+        <p className="mt-4 text-center text-[12px] font-semibold text-[var(--muted)]">
+          {t("checkout.submitHint", { amount: money(dueNow, currency) })}
+        </p>
+      )}
+
       {submitError && (
         <p className="mt-4 rounded-[var(--r-card)] border border-[var(--danger)] bg-[var(--surface)] px-3 py-2 text-[13px] font-bold text-[var(--danger)] shadow-[0_8px_24px_-12px_var(--shadow)]">
           {submitError}
+          {limitCode === "TOO_MANY_UNPAID" && (
+            <>
+              {" "}
+              <Link href="/account" className="underline">
+                {t("checkout.toOrders")}
+              </Link>
+            </>
+          )}
         </p>
       )}
 
@@ -894,20 +928,46 @@ function PaymentStep({
   }
   return (
     <div className="flex flex-col gap-3">
-      {options.map((o) => (
-        <RadioCard
-          key={o.id}
-          selected={selected === o.id}
-          onSelect={() => onSelect(o.id)}
-          title={o.title}
-          subtitle={
-            o.requiresPrepayment && o.prepaymentMinor
-              ? `${o.description ?? ""}${o.description ? " · " : ""}${t("checkout.payment.prepay", { amount: money(o.prepaymentMinor, currency) })}`
-              : o.description
-          }
-          icon={<CreditCard className="h-5 w-5" strokeWidth={2.5} />}
-        />
-      ))}
+      {options.map((o) => {
+        const prepay = o.requiresPrepayment && !!o.prepaymentMinor;
+        return (
+          <RadioCard
+            key={o.id}
+            selected={selected === o.id}
+            onSelect={() => onSelect(o.id)}
+            title={o.title}
+            // Our own wording rather than the option description: every option is paid online
+            // now, and older descriptions still talk about a transfer to a card.
+            subtitle={
+              prepay
+                ? t("checkout.payment.prepayOnline", { amount: money(o.prepaymentMinor!, currency) })
+                : t("checkout.payment.full")
+            }
+            icon={
+              prepay ? (
+                <Wallet className="h-5 w-5" strokeWidth={2.5} />
+              ) : (
+                <CreditCard className="h-5 w-5" strokeWidth={2.5} />
+              )
+            }
+          />
+        );
+      })}
+      <PaymentTrust />
+    </div>
+  );
+}
+
+/** "Оплата через monobank" + the 24-hour rule — under the options and on the summary. */
+function PaymentTrust() {
+  const t = useT();
+  return (
+    <div className="flex items-start gap-2.5 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3">
+      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold text-[var(--ink)]">{t("checkout.payment.trust")}</p>
+        <p className="mt-0.5 text-[12px] text-[var(--muted)]">{t("checkout.payment.deadline")}</p>
+      </div>
     </div>
   );
 }
@@ -1035,6 +1095,8 @@ function ConfirmStep({
         <SummaryRow label={t("order.payment")} value={payment?.title ?? "—"} />
         {comment && <SummaryRow label={t("order.comment")} value={comment} />}
       </section>
+
+      <PaymentTrust />
     </div>
   );
 }
@@ -1047,212 +1109,5 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       </span>
       <span className="text-[14px] font-medium text-[var(--ink)]">{value}</span>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Success screen
-// ---------------------------------------------------------------------------
-function SuccessScreen({ state }: { state: SuccessState }) {
-  const t = useT();
-  const router = useRouter();
-
-  const r = state.requisites;
-  const reqRows = useMemo(
-    () =>
-      r
-        ? ([
-            [t("order.requisites.card"), r.cardNumber],
-            ["IBAN", r.iban],
-            [t("order.recipient"), r.recipient],
-            [t("order.requisites.edrpou"), r.edrpou],
-            [t("order.requisites.purpose"), r.purpose],
-            [t("order.requisites.note"), r.note],
-          ].filter(([, v]) => !!v) as [string, string][])
-        : [],
-    [r, t]
-  );
-
-  return (
-    <div className="flex flex-col items-center pt-8 text-center">
-      <div className="hud-frame flex w-full flex-col items-center rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-8">
-      <motion.div
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 320, damping: 22 }}
-        className="grid h-20 w-20 place-items-center rounded-full border border-[var(--ok)] bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] shadow-[0_0_28px_-4px_rgba(34,197,94,.5)]"
-      >
-        <CheckCircle2 className="h-10 w-10 text-[var(--ok)]" strokeWidth={2.25} />
-      </motion.div>
-      <h1 className="font-display mt-5 text-[24px] font-extrabold uppercase tracking-[0.02em] text-[var(--ink)]">
-        {t("checkout.success.title")}
-      </h1>
-      <p className="mt-1 text-[14px] text-[var(--muted)]">
-        {t("checkout.success.orderNumber")}{" "}
-        <span className="font-display font-bold text-[var(--accent)]">
-          #{state.orderId.slice(0, 8)}
-        </span>
-      </p>
-      </div>
-
-      {reqRows.length > 0 && (
-        <section className="mt-6 w-full rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[0_8px_24px_-12px_var(--shadow)]">
-          <h3 className="mb-1 text-[14px] font-bold font-display uppercase tracking-[0.08em] text-[var(--ink)]">
-            {t("checkout.success.requisites", { payment: state.paymentTitle })}
-          </h3>
-          <p className="mb-3 text-[12px] font-medium text-[var(--muted)]">
-            {t("checkout.success.payByRequisites")}
-          </p>
-          <div className="flex flex-col gap-2">
-            {reqRows.map(([label, value]) => (
-              <CopyRow key={label} label={label} value={value} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <PaymentProof orderId={state.orderId} />
-
-      <div className="mt-6 flex w-full flex-col gap-3">
-        <Button
-          variant="accent"
-          fullWidth
-          onClick={() => router.push(`/account/orders/${state.orderId}`)}
-        >
-          {t("checkout.success.openOrder")}
-        </Button>
-        <Link href="/" className="w-full">
-          <Button variant="ghost" fullWidth>
-            {t("common.toCatalog")}
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Payment confirmation — upload a transfer screenshot.
- *
- * The screenshot is posted into the order chat and flags the order as "payment claimed". It does
- * NOT mark the order paid: a picture is not money, and treating it as proof used to zero out the
- * cash-on-delivery amount on the seller's dispatch card. An admin checks the transfer and confirms.
- */
-function PaymentProof({ orderId }: { orderId: string }) {
-  const t = useT();
-  const [state, setState] = useState<"idle" | "uploading" | "done" | "error">("idle");
-  const [err, setErr] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setState("uploading");
-    setErr(null);
-    try {
-      const { url } = await customerApi.uploadAttachment(file);
-      await customerApi.submitPaymentProof(orderId, {
-        type: "PHOTO",
-        attachmentUrl: url,
-        fileName: file.name,
-        mimeType: file.type,
-      });
-      haptic();
-      setState("done");
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : t("order.proof.failed"));
-      setState("error");
-    } finally {
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  if (state === "done") {
-    return (
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mt-6 w-full rounded-[var(--r-card)] border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_12%,var(--surface))] p-4 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-[var(--ok)]" strokeWidth={2.25} />
-          <span className="font-display text-[14px] font-bold uppercase tracking-[0.06em] text-[var(--ok)]">
-            {t("order.paymentClaimed")}
-          </span>
-        </div>
-        <p className="mt-1 text-[12px] font-medium text-[var(--ink)]">
-          {t("checkout.success.claimed")}
-        </p>
-      </motion.section>
-    );
-  }
-
-  return (
-    <section className="mt-6 w-full rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 text-left shadow-[0_8px_24px_-12px_var(--shadow)]">
-      <h3 className="text-[14px] font-bold font-display uppercase tracking-[0.08em] text-[var(--ink)]">
-        {t("order.proof.title")}
-      </h3>
-      <p className="mt-1 mb-3 text-[12px] font-medium text-[var(--muted)]">
-        {t("order.proof.text")}
-      </p>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={onFile}
-      />
-      <Button
-        variant="accent"
-        fullWidth
-        loading={state === "uploading"}
-        icon={<Upload className="h-4 w-4" strokeWidth={2.5} />}
-        onClick={() => inputRef.current?.click()}
-      >
-        {t("order.proof.upload")}
-      </Button>
-      {err && (
-        <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">{err}</p>
-      )}
-      <p className="mt-2 text-center text-[11px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)]">
-        {t("checkout.success.payLater")}
-      </p>
-    </section>
-  );
-}
-
-function CopyRow({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        haptic();
-        navigator.clipboard?.writeText(value).then(
-          () => {
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1400);
-          },
-          () => {}
-        );
-      }}
-      className="tap flex items-center justify-between gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-left transition-transform active:scale-[.98]"
-    >
-      <span className="min-w-0">
-        <span className="block text-[10px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)]">
-          {label}
-        </span>
-        <span className="block break-all text-[14px] font-semibold text-[var(--ink)]">
-          {value}
-        </span>
-      </span>
-      <span className="shrink-0 text-[var(--muted)]">
-        {copied ? (
-          <CheckCircle2 className="h-4 w-4 text-[var(--ok)]" strokeWidth={2.5} />
-        ) : (
-          <Copy className="h-4 w-4" strokeWidth={2.5} />
-        )}
-      </span>
-    </button>
   );
 }

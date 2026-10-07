@@ -3,10 +3,10 @@
  * products, so specs do not depend on each other's side effects.
  */
 export const ORDER = {
-  /** NEW, 150 ₴ prepayment, nothing paid — payment modal. */
+  /** NEW, 150 ₴ prepayment, nothing paid, no online deadline — manual payment correction. */
   prepay: "e2e00001-0000-4000-8000-000000000001",
-  /** NEW, «я оплатил» pending, 5 h old — inbox PAYMENT + NEW_STALE. */
-  claimed: "e2e00002-0000-4000-8000-000000000002",
+  /** NEW, 150 ₴ online prepayment due (invoice «Ссылка выдана»), 5 h old — «Ждёт оплаты», NEW_STALE, dispatch. */
+  awaiting: "e2e00002-0000-4000-8000-000000000002",
   /** NEW, unread customer message, customer locale ru — inbox CHAT, reply templates. */
   chat: "e2e00003-0000-4000-8000-000000000003",
   /** NEW, 6 h old — inbox NEW_STALE (snooze). */
@@ -27,11 +27,13 @@ export const ORDER = {
   shipped: "e2e0000b-0000-4000-8000-00000000000b",
   /** NEW — status changed through the API by the journal spec. */
   audit: "e2e0000c-0000-4000-8000-00000000000c",
+  /** NEW, 150 ₴ prepayment paid online (monobank invoice, card •••• 1902) — inbox PAYMENT, refund dialog. */
+  paidOnline: "e2e0000d-0000-4000-8000-00000000000d",
 } as const;
 
 export const CUSTOMER: Record<keyof typeof ORDER, string> = {
   prepay: "Олена Тестова",
-  claimed: "Петро Вигаданий",
+  awaiting: "Петро Вигаданий",
   chat: "Марія Чатова",
   stale: "Іван Застряглий",
   flow: "Оксана Статусна",
@@ -42,6 +44,7 @@ export const CUSTOMER: Record<keyof typeof ORDER, string> = {
   refused: "Юрій Відмовник",
   shipped: "Андрій Посилка",
   audit: "Лариса Журнальна",
+  paidOnline: "Віра Онлайн",
 };
 
 export const PRODUCT = {

@@ -53,15 +53,29 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
+    const common = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    ];
     return [
       {
-        source: "/:path*",
+        // Everything except /pay-return (Next merges every matching rule, so it is excluded here,
+        // not overridden below). Matched against the address the visitor sees (before rewrites).
+        source: "/:path((?!(?:(?:uk|ru|en)/)?pay-return(?:/|$)).*)",
         headers: [
           // A shop page has no reason to be framed by anyone.
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          ...common,
+        ],
+      },
+      {
+        // The one page shown inside our own payment modal's frame (monobank sends the frame there,
+        // see app/[locale]/pay-return/route.ts): framable by this site only.
+        source: "/:locale(uk|ru|en)?/pay-return",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          ...common,
         ],
       },
     ];

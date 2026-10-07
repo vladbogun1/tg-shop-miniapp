@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * "Детали" tab of the order card: customer, items, money, delivery, requisites, timeline.
+ * "Детали" tab of the order card: customer, delivery + money, online payment (monobank), items, timeline.
  * Everything the admin types into the Nova Poshta form has a copy button; the phone is a `tel:` link.
  */
-import { useState } from "react";
+import type { Ref } from "react";
 import {
   Phone,
   User,
@@ -17,7 +17,6 @@ import {
   Plus,
   Percent,
   Pencil,
-  ChevronDown,
   Undo2,
   Wallet,
 } from "lucide-react";
@@ -36,6 +35,8 @@ import { Image } from "@/lib/image";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { CopyButton } from "./CopyButton";
+import { CancelRequestBlock } from "./CancelRequestBlock";
+import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
 
 export interface DetailHandlers {
   busyKey: string | null;
@@ -47,6 +48,10 @@ export interface DetailHandlers {
   onEditTracking: () => void;
   onOpenCustomer?: () => void;
   onReturn?: () => void;
+  /** Invoices refreshed or refunded — reload the order and the lists. */
+  onPaymentChanged?: () => void;
+  /** The «Онлайн-оплата» section, to scroll to it («Внимание» → «Оплаты»). */
+  paymentRef?: Ref<HTMLElement>;
 }
 
 export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
@@ -185,6 +190,10 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         </div>
       </Section>
 
+      <CancelRequestBlock order={order} onChanged={h.onPaymentChanged} />
+
+      <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
+
       {/* Items */}
       <Section title="Состав">
         <div className="flex flex-col gap-3">
@@ -283,9 +292,6 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         )}
       </Section>
 
-      {/* The shop's own requisites — one line, expandable (they used to take a third of the card). */}
-      {order.requisites && hasRequisites(order.requisites) && <Requisites r={order.requisites} />}
-
       {/* Timeline */}
       <Section title="Таймлайн">
         {order.status === "REJECTED" && (order.rejectReasonCode || order.rejectReason) && (
@@ -307,38 +313,6 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         )}
       </Section>
     </div>
-  );
-}
-
-function Requisites({ r }: { r: NonNullable<AdminOrderDetail["requisites"]> }) {
-  const [open, setOpen] = useState(false);
-  const card = r.cardNumber?.replace(/\s+/g, "");
-  const short = card ? `карта …${card.slice(-4)}` : r.iban ? `IBAN …${r.iban.slice(-4)}` : "показать";
-  return (
-    <section className="card px-4 py-2.5">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 text-left pointer-coarse:min-h-10"
-      >
-        <span className="section-title !text-[12px] !text-[var(--text-muted)]">
-          Реквизиты магазина:{" "}
-          <span className="text-[13px] font-normal normal-case tracking-normal text-[var(--text)] [font-family:var(--font-body)]">{short}</span>
-        </span>
-        <ChevronDown className={cn("h-4 w-4 text-[var(--text-faint)] transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="mt-2.5 flex flex-col gap-1.5 text-[13px]">
-          {r.cardNumber && <ReqRow label="Карта" value={r.cardNumber} mono />}
-          {r.iban && <ReqRow label="IBAN" value={r.iban} mono />}
-          {r.recipient && <ReqRow label="Получатель" value={r.recipient} />}
-          {r.edrpou && <ReqRow label="ЕДРПОУ" value={r.edrpou} mono />}
-          {r.purpose && <ReqRow label="Назначение" value={r.purpose} />}
-          {r.note && <ReqRow label="Примечание" value={r.note} />}
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -394,19 +368,6 @@ function QtyBtn({ onClick, disabled, children }: { onClick: () => void; disabled
     >
       {children}
     </button>
-  );
-}
-
-function hasRequisites(r: NonNullable<AdminOrderDetail["requisites"]>): boolean {
-  return Boolean(r.cardNumber || r.iban || r.recipient || r.edrpou || r.purpose || r.note);
-}
-
-function ReqRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-[var(--text-faint)]">{label}</span>
-      <span className={cn("text-right text-[var(--text)]", mono && "tabular")}>{value}</span>
-    </div>
   );
 }
 

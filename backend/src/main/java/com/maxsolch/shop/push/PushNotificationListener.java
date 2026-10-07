@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Turns shop events into admin push notifications: a new order, a «я оплатил» claim, a customer
+ * Turns shop events into admin push notifications: a new order, an online payment, a customer
  * chat message, the public site failing to rebuild.
  *
  * <p>Order events are handled after the commit (a rolled-back order never pings the phone), and
@@ -59,12 +59,22 @@ public class PushNotificationListener {
     }
 
     @TransactionalEventListener(fallbackExecution = true)
-    public void onPaymentClaimed(OrderEvents.PaymentClaimed event) {
+    public void onPaymentReceived(OrderEvents.PaymentReceived event) {
+        byte[] id = event.orderId();
+        long amount = event.amountMinor();
+        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+                "Оплачено онлайн #" + o.shortId(),
+                money(amount, o.currency()) + " через monobank — подтвердите заказ",
+                "/orders/" + o.id(), "paid-" + o.id(), badge(), true))));
+    }
+
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onCancelRequested(OrderEvents.CancelRequested event) {
         byte[] id = event.orderId();
         push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
-                "Клиент оплатил #" + o.shortId(),
-                "«Я оплатил» · " + money(o.totalMinor(), o.currency()) + " — проверьте поступление",
-                "/orders/" + o.id(), "pay-" + o.id(), badge(), true))));
+                "Запрос отмены #" + o.shortId(),
+                "Покупатель просит отменить оплаченный заказ — одобрите или отклоните",
+                "/orders/" + o.id(), "cancel-" + o.id(), badge(), true))));
     }
 
     @TransactionalEventListener(fallbackExecution = true)

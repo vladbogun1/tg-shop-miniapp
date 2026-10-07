@@ -53,6 +53,8 @@ export type RejectReasonCode =
   | "OUT_OF_STOCK"
   | "DUPLICATE"
   | "NOT_PAID"
+  /** Set automatically: not paid online within the deadline (24 h). Not offered in the picker. */
+  | "PAYMENT_TIMEOUT"
   | "REFUSED_AT_POST"
   | "RETURNED"
   | "OTHER";
@@ -64,6 +66,7 @@ export const REJECT_REASON_LABEL: Record<RejectReasonCode, string> = {
   OUT_OF_STOCK: "Нет в наличии",
   DUPLICATE: "Дубль заказа",
   NOT_PAID: "Не оплатил",
+  PAYMENT_TIMEOUT: "Не оплатил за сутки",
   REFUSED_AT_POST: "Отказ на почте",
   RETURNED: "Возврат после получения",
   OTHER: "Другое",
@@ -125,29 +128,36 @@ export function codMinor(order: { totalMinor: number; receivedMinor?: number }):
   return Math.max(0, order.totalMinor - Math.max(0, order.receivedMinor ?? 0));
 }
 
-/** How an order's payment stands — a claim is not a confirmation. */
-export type PaymentState = "PAID" | "PARTIAL" | "CLAIMED" | "UNPAID";
+/**
+ * How an order's payment stands. AWAITING = placed, online payment still due before the deadline
+ * (paymentDueAt); UNPAID = nothing received and nothing pending (old orders, cancelled ones).
+ */
+export type PaymentState = "PAID" | "PARTIAL" | "AWAITING" | "UNPAID";
 
 export function paymentState(order: {
   paid: boolean;
-  paymentClaimed?: boolean;
+  status?: OrderStatus;
   totalMinor?: number;
   receivedMinor?: number;
+  amountDueMinor?: number;
+  paymentDueAt?: string | null;
 }): PaymentState {
-  // `paid` is the admin's confirmation and always wins: a confirmed order is never "на проверке",
-  // whatever the claim flag says (every historical order carries claimed=true from the V12
-  // backfill). Treating an absent receivedMinor as 0 previously made every paid order look
-  // unconfirmed on the board, where the card payload does not carry the amount.
   if (order.paid) {
     const total = order.totalMinor ?? 0;
     const received = order.receivedMinor;
-    // Only claim "partial" when the amount is actually known and falls short.
+    // Only claim "partial" when the amount is actually known and falls short (prepayment + COD).
     if (received !== undefined && total > 0 && received > 0 && received < total) {
       return "PARTIAL";
     }
     return "PAID";
   }
-  if (order.paymentClaimed) return "CLAIMED";
+  if (
+    order.paymentDueAt &&
+    (order.amountDueMinor ?? 1) > 0 &&
+    (order.status === undefined || order.status === "NEW" || order.status === "APPROVED")
+  ) {
+    return "AWAITING";
+  }
   return "UNPAID";
 }
 
@@ -158,6 +168,107 @@ export function paymentState(order: {
 export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   PAID: "Оплачен",
   PARTIAL: "Частично оплачен",
-  CLAIMED: "Оплата на проверке",
+  AWAITING: "Ждёт оплаты",
   UNPAID: "Не оплачен",
 };
+
+// ---- checkout payment options -------------------------------------------------
+
+/**
+ * Payment options worth offering for an order of `totalMinor` (after the promo discount).
+ * A prepayment option makes no sense when the whole order costs no more than the prepayment —
+ * the customer would pay everything online anyway — so such options are dropped. When nothing but
+ * prepayment options is configured they stay (the backend caps the online amount at the total).
+ */
+export function visiblePaymentOptions<
+  T extends { requiresPrepayment: boolean; prepaymentMinor?: number | null },
+>(options: T[], totalMinor: number): T[] {
+  const isCheapPrepay = (o: T) =>
+    o.requiresPrepayment && !!o.prepaymentMinor && totalMinor <= o.prepaymentMinor;
+  const filtered = options.filter((o) => !isCheapPrepay(o));
+  return filtered.some((o) => !o.requiresPrepayment) ? filtered : options;
+}
+
+/**
+ * Whether the payment block (and receipts) should lead the customer's order page: while payment
+ * is still the point (NEW / APPROVED — paid or awaiting) and for a day after the money arrived, so
+ * the customer sees right away that the payment went through.
+ */
+export const PAYMENT_FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function paymentFirst(
+  order: { status: OrderStatus; paidAt?: string | null },
+  now: number = Date.now(),
+): boolean {
+  if (order.status === "NEW" || order.status === "APPROVED") return true;
+  if (order.status === "REJECTED" || !order.paidAt) return false;
+  const paidAt = Date.parse(order.paidAt);
+  return Number.isFinite(paidAt) && now - paidAt < PAYMENT_FIRST_WINDOW_MS;
+}
+
+// ---- customer cancellation (phase A) ----------------------------------------
+
+/**
+ * What the customer can do about cancelling an order:
+ * - CANCEL — unpaid NEW/APPROVED: cancel at once (POST /api/me/orders/{id}/cancel);
+ * - REQUEST — paid NEW/APPROVED, no request yet: file a request with a reason (…/cancel-request);
+ * - PENDING / DECLINED / APPROVED — the request's state (DECLINED: no new request, write to the chat);
+ * - PROCESSING — the bank is charging the card right now: wait;
+ * - RETURNS — shipped / delivered: no cancel, returns page (site) or the order chat (Mini App);
+ * - NONE — closed (rejected) or nothing applies.
+ */
+export type CustomerCancelMode =
+  | "CANCEL"
+  | "REQUEST"
+  | "PENDING"
+  | "DECLINED"
+  | "APPROVED"
+  | "PROCESSING"
+  | "RETURNS"
+  | "NONE";
+
+export function customerCancelMode(order: {
+  status: OrderStatus;
+  paid: boolean;
+  receivedMinor?: number;
+  cancelRequestStatus?: string | null;
+  payment?: { status?: string | null } | null;
+}): CustomerCancelMode {
+  const req = order.cancelRequestStatus;
+  if (req === "APPROVED") return "APPROVED";
+  if (order.status === "SHIPPED" || order.status === "DELIVERED") return "RETURNS";
+  if (order.status !== "NEW" && order.status !== "APPROVED") return "NONE";
+  if (req === "PENDING") return "PENDING";
+  if (req === "DECLINED") return "DECLINED";
+  const ps = order.payment?.status;
+  if (ps === "processing" || ps === "hold") return "PROCESSING";
+  const paid = order.paid || (order.receivedMinor ?? 0) > 0;
+  return paid ? "REQUEST" : "CANCEL";
+}
+
+/** Longest cancellation-request reason the server accepts. */
+export const CANCEL_REASON_MAX = 500;
+
+/** Stable error codes of POST /api/orders (anti-bot limits) — `ApiError.code`. */
+export const ORDER_LIMIT_CODES = [
+  "TOO_MANY_UNPAID",
+  "ORDER_COOLDOWN",
+  "ORDER_DAILY_LIMIT",
+  "QTY_LIMIT",
+  "CANCEL_LIMIT",
+] as const;
+export type OrderLimitCode = (typeof ORDER_LIMIT_CODES)[number];
+
+export function isOrderLimitCode(code: string | null | undefined): code is OrderLimitCode {
+  return !!code && (ORDER_LIMIT_CODES as readonly string[]).includes(code);
+}
+
+/**
+ * Clamp a cart quantity to the per-product limit (0 = no limit) and to the stock.
+ */
+export function clampQty(qty: number, limits?: { maxQtyPerProduct?: number } | null, stock?: number | null): number {
+  let max = Number.POSITIVE_INFINITY;
+  if (limits?.maxQtyPerProduct && limits.maxQtyPerProduct > 0) max = limits.maxQtyPerProduct;
+  if (stock != null && stock >= 0) max = Math.min(max, stock);
+  return Math.max(1, Math.min(qty, max));
+}

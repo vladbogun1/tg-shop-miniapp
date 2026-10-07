@@ -15,7 +15,9 @@ import {
   BellRing,
   Bot,
   Boxes,
+  LifeBuoy,
   Save,
+  ShieldAlert,
   SlidersHorizontal,
   Ticket,
   Truck,
@@ -50,6 +52,8 @@ const GROUP_ICON: Record<string, LucideIcon> = {
   bot: Bot,
   novaposhta: Truck,
   inbox: BellRing,
+  antibot: ShieldAlert,
+  support: LifeBuoy,
 };
 
 const BOT_TEXT_PREFIX = "bot.startText.";

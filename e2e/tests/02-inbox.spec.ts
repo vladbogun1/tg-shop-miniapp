@@ -39,8 +39,15 @@ test("группы и счётчики совпадают с сервером", 
   // The menu badge shows the same total.
   await expect(page.getByLabel(`Требует внимания: ${inbox.total}`).first()).toBeVisible();
 
-  // Seeded rows sit in their groups, with the right main action.
-  await expect(row(page, "Подтвердить оплату", ORDER.claimed).getByRole("button", { name: "Проверить оплату" })).toBeVisible();
+  // Seeded rows sit in their groups, with the right main action. The money group: an order paid
+  // online that still waits for the admin («Оплачен онлайн — подтвердите заказ»).
+  const money = shown.find((g) => g.id === "PAYMENT")!;
+  expect(money.items.map((i) => i.entityId)).toContain(ORDER.paidOnline);
+  const paidRow = row(page, money.title, ORDER.paidOnline);
+  await expect(paidRow).toContainText("Оплачен онлайн — подтвердите заказ");
+  await expect(paidRow.getByRole("button", { name: "Открыть заказ" })).toBeVisible();
+  // Not paid yet = not in the money group (the customer still has time to pay).
+  expect(money.items.map((i) => i.entityId)).not.toContain(ORDER.awaiting);
   await expect(row(page, "Непрочитанные чаты", ORDER.chat).getByRole("button", { name: "Ответить" })).toBeVisible();
   await expect(row(page, "Новые без одобрения", ORDER.stale)).toBeVisible();
   await expect(row(page, "Отказы и возвраты", ORDER.refused)).toBeVisible();

@@ -100,6 +100,14 @@ public class StartupSecurityCheck {
             log.warn("SITE_BASE_URL не задан — запросы сайта с cookie-авторизацией будут отклоняться (403).");
         }
 
+        // Payment is online-only: without a monobank token orders can be placed but never paid
+        // (and they are cancelled automatically once the payment deadline passes).
+        if (!dev && !props.getPayment().getMonobank().isEnabled()) {
+            log.warn("MONOBANK_TOKEN не задан — online payment disabled — customers cannot pay. "
+                    + "Заказы будут создаваться и через {} ч отменяться как неоплаченные.",
+                    props.getPayment().getDueHours());
+        }
+
         if (!fatal.isEmpty()) {
             String details = String.join("\n  • ", fatal);
             throw new IllegalStateException("Небезопасная конфигурация, запуск остановлен:\n  • "

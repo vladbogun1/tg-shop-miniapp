@@ -14,7 +14,13 @@ public record PromoCodeDto(
          * Live 30-minute holds of customers with the code in their cart (Р11): with a limit, these
          * slots are taken too, so "2/3 + резерв 1" explains why the next customer is refused.
          */
-        long reservedCount) {
+        long reservedCount,
+        /** Personal code (V44): the only customer allowed to use it; null = anyone. */
+        Long ownerUserId,
+        /** Last moment the code is valid (V44); null = no expiry. */
+        Instant expiresAt,
+        /** {@code REVIEW_BONUS} for a review bonus; null = made by an admin. */
+        String source) {
 
     /** An order placed with the code (the «Заказы с кодом» list). */
     public record PromoOrderDto(

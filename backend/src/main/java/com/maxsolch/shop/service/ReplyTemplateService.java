@@ -3,11 +3,9 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.PaymentRequisites;
 import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.repository.PaymentRequisitesRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.RenderedTemplateDto;
@@ -27,7 +25,7 @@ import java.util.regex.Pattern;
 /**
  * Chat reply templates: CRUD for the admin and filling one in for an order.
  *
- * <p>Placeholders: {@code {name} {orderNo} {total} {cod} {ttn} {warehouse} {requisites}}. The text
+ * <p>Placeholders: {@code {name} {orderNo} {total} {cod} {ttn} {warehouse}}. The text
  * is taken in the customer's language ({@code users.locale}, then their Telegram language), falling
  * back to Ukrainian and then to the required Russian text. The result is only a draft — the admin
  * sees it in the input and can edit it before sending.
@@ -39,16 +37,13 @@ public class ReplyTemplateService {
 
     private final ReplyTemplateRepository repository;
     private final OrderRepository orderRepository;
-    private final PaymentRequisitesRepository requisitesRepository;
     private final Messages messages;
 
     public ReplyTemplateService(ReplyTemplateRepository repository,
                                 OrderRepository orderRepository,
-                                PaymentRequisitesRepository requisitesRepository,
                                 Messages messages) {
         this.repository = repository;
         this.orderRepository = orderRepository;
-        this.requisitesRepository = requisitesRepository;
         this.messages = messages;
     }
 
@@ -107,8 +102,7 @@ public class ReplyTemplateService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("order not found"));
         Locale locale = messages.localeOf(order.getTgUserId());
-        PaymentRequisites req = requisitesRepository.findById(1).orElse(null);
-        Map<String, String> vars = variables(order, req, locale);
+        Map<String, String> vars = variables(order, locale);
         List<RenderedTemplateDto> out = new ArrayList<>();
         for (ReplyTemplate t : repository.findAllByOrderBySortAscIdAsc()) {
             Picked picked = pick(t, locale.getLanguage());
@@ -136,7 +130,7 @@ public class ReplyTemplateService {
         return new Picked(t.getBodyRu(), "ru");
     }
 
-    Map<String, String> variables(Order order, PaymentRequisites req, Locale locale) {
+    Map<String, String> variables(Order order, Locale locale) {
         Map<String, String> v = new LinkedHashMap<>();
         v.put("name", firstName(order.getCustomerName()));
         String id = UuidUtil.toString(order.getId());
@@ -152,27 +146,7 @@ public class ReplyTemplateService {
             String wh = order.getNpWarehouseName() == null ? "" : order.getNpWarehouseName();
             v.put("warehouse", (city + (city.isEmpty() || wh.isEmpty() ? "" : ", ") + wh).trim());
         }
-        v.put("requisites", requisites(req, locale));
         return v;
-    }
-
-    private String requisites(PaymentRequisites r, Locale locale) {
-        if (r == null) {
-            return "";
-        }
-        List<String> lines = new ArrayList<>();
-        addLine(lines, messages.get(locale, "reply.req.card"), r.getCardNumber());
-        addLine(lines, messages.get(locale, "reply.req.iban"), r.getIban());
-        addLine(lines, messages.get(locale, "reply.req.recipient"), r.getRecipient());
-        addLine(lines, messages.get(locale, "reply.req.edrpou"), r.getEdrpou());
-        addLine(lines, messages.get(locale, "reply.req.purpose"), r.getPurpose());
-        return String.join("\n", lines);
-    }
-
-    private static void addLine(List<String> lines, String label, String value) {
-        if (notBlank(value)) {
-            lines.add(label + ": " + value.trim());
-        }
     }
 
     /**
@@ -198,10 +172,9 @@ public class ReplyTemplateService {
         return full == null ? "" : full.trim();
     }
 
-    /** Whole hryvnias with a thin-space thousands separator, the way the cards print money. */
+    /** Hryvnias the way the cards print money — kopecks shown when there are any. */
     static String money(long minor) {
-        long whole = Math.round(minor / 100.0);
-        return String.format(Locale.ROOT, "%,d", whole).replace(',', ' ') + " ₴";
+        return com.maxsolch.shop.common.MoneyFormat.uah(minor);
     }
 
     private static boolean notBlank(String s) {

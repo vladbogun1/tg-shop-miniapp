@@ -161,7 +161,7 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
       {waitPay && (
         <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--text)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
-          Ждём предоплату {money(o.prepaymentMinor, o.currency)} — не отправляйте, пока она не подтверждена.
+          Ждём онлайн-предоплату {money(o.prepaymentMinor, o.currency)} — не отправляйте, пока она не придёт.
         </div>
       )}
 
@@ -309,7 +309,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
         disabled={!clean || waitPay}
         icon={<Send className="h-4 w-4" />}
         onClick={ship}
-        title={waitPay ? "Сначала подтвердите предоплату" : undefined}
+        title={waitPay ? "Сначала должна прийти онлайн-предоплата" : undefined}
       >
         Отправлено
       </Button>
@@ -348,14 +348,12 @@ function CodCallout({ o }: { o: AdminDispatchOrder }) {
         <div className={big} style={{ color: ink }}>
           Наложка: {money(o.codMinor, o.currency)}
         </div>
-        <CopyButton value={String(Math.round(o.codMinor / 100))} label="Скопировать сумму наложки" />
+        <CopyButton value={o.codMinor % 100 === 0 ? String(o.codMinor / 100) : (o.codMinor / 100).toFixed(2)} label="Скопировать сумму наложки" />
       </div>
       <div className={sub}>
         {o.receivedMinor > 0
           ? `(сумма ${money(o.totalMinor, o.currency)} − получено ${money(o.receivedMinor, o.currency)})`
-          : o.paymentClaimed && !o.paid
-            ? "Оплата заявлена, но не подтверждена"
-            : "Не оплачено"}
+          : "Не оплачено"}
       </div>
     </div>
   );

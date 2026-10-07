@@ -11,6 +11,7 @@ import {
   ApiError,
   createHttpClient,
   type CartLineInput,
+  type CreateOrderResult,
   type ServerCart,
   newIdempotencyKey,
   type AuthUser,
@@ -18,13 +19,21 @@ import {
   type NpCity,
   type NpWarehouse,
   type OrderDetail,
+  type OrderLimits,
   type OrderSummary,
   type PaymentOption,
-  type PaymentRequisites,
+  type PaymentStart,
+  type Receipt,
   type Product,
   type PromoPreview,
   type PublicCategory,
   type PublicProductPage,
+  type BonusCode,
+  type MyReview,
+  type PendingReviewLine,
+  type ReviewPage,
+  type SubmitReviewRequest,
+  type SubmitReviewResult,
   type SendMessageRequest,
   type StorefrontProduct,
   type WebLoginStart,
@@ -133,11 +142,6 @@ export interface CreateOrderRequest {
   paymentOptionId: string;
 }
 
-export interface CreateOrderResponse {
-  orderId: string;
-  requisites?: PaymentRequisites | null;
-}
-
 export interface NpBboxParams {
   minLat: number;
   maxLat: number;
@@ -180,6 +184,8 @@ export const api = {
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
   paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+  /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
+  orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(
       `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
@@ -236,7 +242,7 @@ export const api = {
     authed(() => http.post<ServerCart>("/api/me/cart/merge", { lines })),
   createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
     authed(() =>
-      http.post<CreateOrderResponse>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
+      http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
     ),
   orders: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
   order: (id: string) => authed(() => http.get<OrderDetail>(`/api/me/orders/${id}`)),
@@ -246,13 +252,50 @@ export const api = {
     ),
   sendMessage: (id: string, body: SendMessageRequest) =>
     authed(() => http.post<Message>(`/api/me/orders/${id}/messages`, body)),
-  submitPaymentProof: (id: string, body: SendMessageRequest) =>
-    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/pay`, body)),
+  /**
+   * Opens a monobank invoice for what is due now. `IFRAME`: `pageUrl` is shown inside our payment
+   * modal and monobank ends on /pay-return (which tells the modal "done"); `PAGE` (default): a normal
+   * page — the new-tab fallback — that sends the customer back to the order page with
+   * `?payment=return`. One open invoice per order: starting the other kind closes the previous one.
+   * 409 + `code`: PAYMENT_UNAVAILABLE | NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED.
+   */
+  startPayment: (id: string, locale: string, display: "IFRAME" | "PAGE" = "PAGE") =>
+    authed(() =>
+      http.post<PaymentStart>(
+        `/api/me/orders/${id}/payment`,
+        display === "IFRAME" ? { returnTo: "SITE", locale, display } : { returnTo: "SITE", locale }
+      )
+    ),
+  /** Asks monobank for the invoice status right now (server-side throttled to 1 per 5 s). */
+  refreshPayment: (id: string) =>
+    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
+  /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and same-origin. */
+  receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
+  /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
+  requestCancel: (id: string, reason: string) =>
+    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel-request`, { reason })),
   markRead: (id: string) => authed(() => http.post<void>(`/api/me/orders/${id}/messages/read`)),
   uploadAttachment: (file: File) =>
     authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
+
+  // reviews (V44)
+  /** Public: published reviews of a product, newest first (page is 0-based). */
+  productReviews: (idOrSlug: string, page = 0, size = 10) =>
+    http.get<ReviewPage>(`/api/public/products/${encodeURIComponent(idOrSlug)}/reviews?page=${page}&size=${size}`),
+  /** Lines of my DELIVERED orders still waiting for a review (optionally one order). */
+  pendingReviews: (orderId?: string) =>
+    authed(() =>
+      http.get<PendingReviewLine[]>(
+        `/api/me/reviews/pending${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ""}`
+      )
+    ),
+  myReviews: () => authed(() => http.get<MyReview[]>("/api/me/reviews")),
+  /** Create, or edit while still PENDING (same orderItemId). 400 = localized message. */
+  submitReview: (body: SubmitReviewRequest) =>
+    authed(() => http.post<SubmitReviewResult>("/api/me/reviews", body)),
+  myBonuses: () => authed(() => http.get<BonusCode[]>("/api/me/bonuses")),
 };
 
 export type {
@@ -264,8 +307,9 @@ export type {
   NpWarehouse,
   OrderDetail,
   OrderSummary,
+  CreateOrderResult,
   PaymentOption,
-  PaymentRequisites,
+  PaymentStart,
   PromoPreview,
   PublicCategory,
   PublicProductPage,

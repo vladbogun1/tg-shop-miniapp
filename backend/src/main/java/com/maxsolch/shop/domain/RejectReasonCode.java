@@ -16,6 +16,8 @@ public enum RejectReasonCode {
     DUPLICATE,
     /** The prepayment never arrived. */
     NOT_PAID,
+    /** Not paid online within the payment deadline — rejected automatically. */
+    PAYMENT_TIMEOUT,
     /** The parcel was refused at Nova Poshta. */
     REFUSED_AT_POST,
     /** The goods came back after delivery. */

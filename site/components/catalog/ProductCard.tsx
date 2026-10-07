@@ -14,6 +14,7 @@ import { trackAddToCart } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
+import { RatingMini } from "@/components/reviews/RatingLink";
 import { useFmt } from "@/lib/use-fmt";
 
 export function ProductCard({ product, priority = false }: { product: StorefrontProduct; priority?: boolean }) {
@@ -58,6 +59,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
           <h3 className="line-clamp-2 min-h-[2.7em] font-sans text-[14px] font-semibold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-hi)]">
             {product.title}
           </h3>
+          <RatingMini avg={product.ratingAvg} count={product.ratingCount} />
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="font-display text-[18px] font-bold tabular-nums text-[var(--ink)]">
               {fmt.money(product.priceMinor, product.currency)}

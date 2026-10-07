@@ -35,6 +35,11 @@ export interface ChatOptions {
    * website). No Authorization header is sent and a missing token does not stop the connection.
    */
   cookieAuth?: boolean;
+  /**
+   * Destination to subscribe to instead of the order chat (`/topic/orders/{orderId}/chat`) —
+   * e.g. a support thread, `supportTopic(threadId)`. The payload is parsed as JSON either way.
+   */
+  topic?: string;
 }
 
 export function connectOrderChat(options: ChatOptions): ChatConnection {
@@ -66,7 +71,7 @@ export function connectOrderChat(options: ChatOptions): ChatConnection {
   client.onConnect = () => {
     if (closed) return;
     onStatus?.(true);
-    client.subscribe(`/topic/orders/${orderId}/chat`, (frame: IMessage) => {
+    client.subscribe(options.topic ?? `/topic/orders/${orderId}/chat`, (frame: IMessage) => {
       try {
         onMessage(JSON.parse(frame.body) as Message);
       } catch {
