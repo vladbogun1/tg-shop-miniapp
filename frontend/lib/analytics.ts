@@ -16,7 +16,7 @@
  *
  * It records what was tapped and where, never what was typed: field values never enter the buffer.
  */
-import { describeTap } from "@shop/shared";
+import { describeError, describeTap, reportable } from "@shop/shared";
 import { getAccessToken, getApiBase } from "@/lib/api";
 
 const BUFFER_KEY = "analytics-buffer";
@@ -147,6 +147,17 @@ export async function flush(keepalive = false): Promise<void> {
   }
 }
 
+/** Telegram client the Mini App runs in (ios / android / tdesktop… and the Bot API version). */
+function telegramRuntime(): Record<string, unknown> {
+  try {
+    const wa = (window as { Telegram?: { WebApp?: { platform?: string; version?: string } } })
+      .Telegram?.WebApp;
+    return { tg: wa?.platform, tgv: wa?.version };
+  } catch {
+    return {};
+  }
+}
+
 /** Installs the listeners once. Safe to call from every mount. */
 export function startAnalytics(): () => void {
   if (started || typeof window === "undefined") return () => {};
@@ -162,9 +173,19 @@ export function startAnalytics(): () => void {
       /* never let instrumentation break a screen */
     }
   };
-  const onError = (e: ErrorEvent) => track("error", e.message?.slice(0, 120));
-  const onRejection = (e: PromiseRejectionEvent) =>
-    track("error", String(e.reason).slice(0, 120));
+  // Message + where it broke + which Telegram client: on prod every row used to read just
+  // "Script error." with nothing to tell Android from iOS (shared/src/client-error.ts).
+  const onFailure = (e: ErrorEvent | PromiseRejectionEvent) => {
+    try {
+      const err = describeError(e, telegramRuntime());
+      if (!reportable(err)) return;
+      track("error", err.message, err.meta);
+    } catch {
+      /* never let instrumentation break a screen */
+    }
+  };
+  const onError = (e: ErrorEvent) => onFailure(e);
+  const onRejection = (e: PromiseRejectionEvent) => onFailure(e);
   const onHide = () => {
     if (document.visibilityState === "hidden") void flush(true);
   };

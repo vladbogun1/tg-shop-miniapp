@@ -96,10 +96,14 @@ export default function RootLayout({
           />
         )}
         {/* Official Telegram WebApp SDK — guarantees window.Telegram.WebApp (initData,
-            theme, MainButton) in any Telegram client (mobile + desktop). */}
+            theme, MainButton) in any Telegram client (mobile + desktop).
+            crossOrigin: telegram.org answers with `Access-Control-Allow-Origin: *`; without the
+            attribute the browser masks every error from this script as a bare "Script error."
+            (that is all the error journal held on prod, ~20% of Android sessions). */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
+          crossOrigin="anonymous"
         />
         {/* Reveal the webview ASAP: call WebApp.ready()/expand() as soon as the SDK
             exists, INDEPENDENT of React/initData. On iOS the Telegram loading

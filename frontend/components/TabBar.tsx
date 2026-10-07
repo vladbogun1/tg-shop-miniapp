@@ -61,6 +61,13 @@ export function TabBar() {
           <Link
             key={href}
             href={href}
+            onClick={(e) => {
+              // Tapping the tab you are already on did nothing — prod shows people tapping "Shop"
+              // on the shop again and again. Like native apps, it now scrolls back to the top.
+              if (pathname !== href) return;
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2"
           >
             {active && (

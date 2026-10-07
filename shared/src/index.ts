@@ -19,6 +19,7 @@ export * from "./motion";
 export * from "./np-geo";
 export * from "./site";
 export * from "./tap";
+export * from "./client-error";
 export * from "./orders";
 export * from "./phone";
 export * from "./product-brand";

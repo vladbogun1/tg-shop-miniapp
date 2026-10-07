@@ -14,7 +14,7 @@
  * Nothing here may break a page: every path is wrapped, failures are dropped.
  */
 
-import { describeTap } from "@shop/shared";
+import { describeError, describeTap, reportable } from "@shop/shared";
 
 const BUFFER_KEY = "mx-analytics-buffer";
 const ANON_KEY = "mx-aid";
@@ -160,15 +160,29 @@ export function startAnalytics(): () => void {
       /* never let instrumentation break a page */
     }
   };
+  // The site had no error journal at all — only the Mini App did.
+  const onFailure = (e: ErrorEvent | PromiseRejectionEvent) => {
+    try {
+      const err = describeError(e);
+      if (!reportable(err)) return;
+      track("error", err.meta, err.message);
+    } catch {
+      /* never let instrumentation break a page */
+    }
+  };
   document.addEventListener("click", onClick, { capture: true, passive: true });
   document.addEventListener("visibilitychange", onHide);
   window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("error", onFailure);
+  window.addEventListener("unhandledrejection", onFailure);
   const timer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
   return () => {
     clearInterval(timer);
     document.removeEventListener("click", onClick, { capture: true });
     document.removeEventListener("visibilitychange", onHide);
     window.removeEventListener("pagehide", onPageHide);
+    window.removeEventListener("error", onFailure);
+    window.removeEventListener("unhandledrejection", onFailure);
     started = false;
   };
 }

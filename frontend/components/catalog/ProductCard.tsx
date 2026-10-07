@@ -45,8 +45,10 @@ export function ProductCard({
             sizes="50vw"
             className={`h-full w-full ${inStock ? "" : "opacity-60 grayscale-[.85]"}`}
           />
+          {/* Solid fill, no backdrop-blur: one blurred layer per card meant ~200 of them in the
+              catalog, which the iOS webview pays for on every scroll frame. */}
           <span
-            className="font-display absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[rgba(14,14,16,.78)] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] backdrop-blur-[4px]"
+            className="font-display absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em]"
             style={{ color: inStock ? "var(--ok)" : "var(--muted)" }}
           >
             <span

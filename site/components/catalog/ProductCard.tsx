@@ -42,7 +42,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
             imgClassName="group-hover:scale-[1.04]"
           />
           <span
-            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.78)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] backdrop-blur-sm ${
+            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] ${
               inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
             }`}
           >

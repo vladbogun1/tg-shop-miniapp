@@ -32,8 +32,11 @@ import { Toast } from "@/components/ui/Toast";
 import { getActiveTag } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { customerApi, type Product, type ProductTag } from "@/lib/api";
-import { staggerContainer, riseItem } from "@/lib/motion";
+import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+
+/** Cards that rise in on mount — a first screenful; the rest just appear. */
+const ANIMATED_CARDS = 6;
 
 type SortKey = "popular" | "price_asc" | "price_desc" | "name";
 
@@ -262,19 +265,29 @@ export default function CatalogPage() {
         )}
 
         {!isLoading && !isError && sorted.length > 0 && (
-          <motion.div
-            key={`${activeTag ?? "all"}::${search.trim().toLowerCase()}::${sort}`}
-            variants={staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="grid grid-cols-2 gap-x-4 gap-y-5"
-          >
-            {sorted.map((p) => (
-              <motion.div key={p.id} variants={riseItem} className="flex">
-                <ProductCard product={p} onOpen={setSelected} />
-              </motion.div>
-            ))}
-          </motion.div>
+          // No `key` on the grid: re-keying it per filter used to remount all ~216 cards and replay
+          // a 0.05 s stagger over every one of them (~10 s of spring animations, mostly off
+          // screen) on each chip tap. On iPhones that kept the main thread busy long enough for the
+          // next taps to be lost — prod data showed 4× more repeated chip taps than on Android.
+          // Now cards keep their identity across filters and only the first screenful animates in.
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+            {sorted.map((p, i) =>
+              i < ANIMATED_CARDS ? (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring, delay: 0.03 + i * 0.04 } }}
+                  className="catalog-cell flex"
+                >
+                  <ProductCard product={p} onOpen={setSelected} />
+                </motion.div>
+              ) : (
+                <div key={p.id} className="catalog-cell flex">
+                  <ProductCard product={p} onOpen={setSelected} />
+                </div>
+              ),
+            )}
+          </div>
         )}
       </div>
 
