@@ -2,7 +2,7 @@
   "name": "tg-shop-v2-frontend",
   "version": "0.3.0",
   "private": true,
-  "description": "tg-shop-v2 — customer Mini App (Neo-Brutalism)",
+  "description": "tg-shop-v2 — customer Telegram Mini App app.chisetup.com.ua (ChiSetup v3 dark theme, mobile-first)",
   "scripts": {
     "dev": "next dev -p 3004",
     "build": "next build",

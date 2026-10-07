@@ -11,7 +11,7 @@
  *  - `{placeholders}` are filled at call time; a phrase with several forms is an object and picks
  *    its form from `n`.
  */
-import type { Dictionary, PluralPhrase } from "./types";
+import type { Dictionary, PluralPhrase } from "@shop/shared";
 
 export const ru = {
   // ── common ────────────────────────────────────────────────────────────────
@@ -49,10 +49,8 @@ export const ru = {
   "tabs.account": "Аккаунт",
 
   // ── мелкие элементы ───────────────────────────────────────────────────────
-  "theme.toggle": "Сменить тему",
   "lang.title": "Язык",
   "lang.switch": "Сменить язык",
-  "soon.badge": "Скоро",
   "qty.decrease": "Уменьшить",
   "qty.increase": "Увеличить",
 
@@ -223,7 +221,6 @@ export const ru = {
 
   // ── отмена заказа ─────────────────────────────────────────────────────────
   "cancel.button": "Отменить заказ",
-  "cancel.title": "Причина отмены",
   "cancel.reason.payment": "Проблема с оплатой / картой",
   "cancel.reason.changedMind": "Передумал(а)",
   "cancel.reason.mistake": "Оформил(а) по ошибке",
@@ -241,7 +238,6 @@ export const ru = {
   "cancel.reasonOptional": "Причина (необязательно)",
   "cancel.processing": "Банк обрабатывает платёж — отмена станет доступна через минуту.",
   "cancel.returns.text": "Заказ уже отправлен — отменить его нельзя. Если нужно вернуть товар — напишите нам в чат.",
-  "cancel.toChat": "Написать в чат",
   "cancel.request.button": "Запросить отмену",
   "cancel.request.title": "Запрос на отмену",
   "cancel.request.text": "Заказ уже оплачен. Напишите причину — менеджер рассмотрит запрос и вернёт деньги на карту.",
@@ -324,7 +320,6 @@ export const ru = {
   "checkout.step.done": "Готово",
   "checkout.emptyCart": "Корзина пуста.",
   "checkout.failed": "Не удалось оформить заказ",
-  "checkout.submitPay": "Оформить и оплатить {amount}",
   "checkout.redirecting": "Открываем оплату…",
   "checkout.promoDropped": "{message}. Промокод убран — оформите заказ ещё раз.",
 
@@ -339,7 +334,6 @@ export const ru = {
   "checkout.delivery.pickup": "Самовывоз",
   "checkout.delivery.pickupSubtitle": "Из точки магазина",
   "checkout.delivery.mapHint": "Найдите отделение на карте и нажмите «Выбрать».",
-  "checkout.delivery.change": "Изменить отделение",
   "checkout.delivery.required": "Выберите отделение — в списке или на карте.",
   "checkout.delivery.pickupText": "Заберите заказ из точки магазина — мы свяжемся с вами насчёт адреса и времени.",
   "checkout.delivery.mapLoading": "Загрузка карты…",

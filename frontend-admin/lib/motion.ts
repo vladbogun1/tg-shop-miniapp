@@ -3,17 +3,10 @@
  * Keep transitions springy but quick; motion serves the UX, never distracts.
  */
 import type { Variants, Transition } from "framer-motion";
+import { spring } from "@shop/shared";
 
-export const spring: Transition = { type: "spring", stiffness: 380, damping: 32 };
-export const springSoft: Transition = { type: "spring", stiffness: 260, damping: 30 };
+export { spring };
 export const ease: Transition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
-
-/** Page-level fade + slight rise. */
-export const pageVariants: Variants = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
-};
 
 /** Stagger container for lists/grids. */
 export const staggerContainer: Variants = {
@@ -53,10 +46,4 @@ export const backdropVariants: Variants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.18 } },
-};
-
-/** Subtle hover lift for interactive cards. */
-export const hoverLift = {
-  whileHover: { y: -3, transition: spring },
-  whileTap: { scale: 0.985 },
 };

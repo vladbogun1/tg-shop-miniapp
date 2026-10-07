@@ -1,10 +1,9 @@
-import type { CatalogSort, PublicCategory, PublicProductPage } from "@shop/shared";
+import type { CatalogSort, Locale, PublicCategory, PublicProductPage } from "@shop/shared";
 import { ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
 import { toCardProducts } from "@/lib/card";
 import { PAGE_SIZE } from "@/lib/config";
 import { CatalogFilters, CatalogSortSelect, MobileFiltersButton } from "./CatalogFilters";

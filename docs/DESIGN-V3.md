@@ -4,8 +4,9 @@
 Mini App (`frontend/`) и админки (`frontend-admin/`, §8). Референсы лежат в `docs/brand/v3/reference/`: брендборд (`brandboard.png`),
 вывеска (`storefront.webp`) и баннер (`banner.webp`).
 
-Ветка `v3`, первая выкатка — только на тестовый стенд `demo.maxsolkh.shop` (сервер №3).
-Прод (`maxsolkh.shop`, сервер №1) не трогаем.
+**Статус: в проде** с v3.0.0 (04.10.2026) — сайт, Mini App и админка; с v3.1.0 магазин живёт на
+`chisetup.com.ua` (`app.` — Mini App, `admin.` — админка). Остатки дизайна v2 (токены `--c2/--c4/--c5`,
+`--glow`, неиспользуемые классы) вычищены в 2026-10; архив v2 — ветка `design-v2` и `docs/archive/`.
 
 ---
 
@@ -58,13 +59,9 @@ Mini App (`frontend/`) и админки (`frontend-admin/`, §8). Рефере�
   --accent-lo:   #E65C00;   /* pressed */
   --accent-ink:  #0E0E10;   /* текст на оранжевом: тёмный (контраст 6.3:1); белый на #FF6600 = 2.9:1, нельзя */
   --accent-soft: rgba(255,102,0,.12);  /* фон активного чипа/пункта */
-  --glow:        0 0 0 1px rgba(255,102,0,.55), 0 0 24px rgba(255,102,0,.35);
 
-  /* Бывшие цветные акценты: схлопываются в бренд */
-  --c2: #A1A1AA;   /* было синий: вторичные метки → нейтральный стальной */
-  --c3: #FF8533;   /* было жёлтый: выделения/бейджи → светлый оранжевый */
-  --c4: #22C55E;   /* было зелёный: остаётся «успех» */
-  --c5: #FF6600;   /* было розовый → акцент */
+  /* Бывшие цветные акценты схлопнулись в бренд; остался только --c3 (Mini App и админка) */
+  --c3: #FF8533;   /* было жёлтый: выделения/бейджи → светлый оранжевый, текст на нём тёмный */
 
   --ok: #22C55E;  --warn: #F59E0B;  --danger: #EF4444;
 
@@ -112,6 +109,7 @@ CSS-переменные: `--font-display` (Exo 2) и `--font-body` (Inter). У�
   экран «заказ оформлен» и блок итога.
 - `.chamfer`: `clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer))`.
   Применяется к главным CTA («В корзину», «Оформить», «Перейти в каталог») и к плашке-иконке CS.
+  Отдельный класс есть на сайте и в админке; в Mini App срез встроен в `.nb-accent`.
   У элемента с clip-path обрежется box-shadow, поэтому свечение у таких кнопок делается
   через `filter: drop-shadow(...)` на обёртке или не делается вовсе.
 - Тонкие «тех-метки» (декор): короткие оранжевые штрихи 24×2px и точечные ряды у заголовков
@@ -126,8 +124,8 @@ CSS-переменные: `--font-display` (Exo 2) и `--font-body` (Inter). У�
 |---|---|
 | `.nb` | `--surface`, рамка 1px `--line`, радиус `--r-card`, тень `0 8px 24px -12px var(--shadow)` |
 | `.nb-lg` | то же + `--surface` чуть светлее при hover; тень глубже |
-| `.nb-flat` | `--surface`, рамка 1px, без тени |
-| `.nb-accent` | фон `--accent`, текст `--accent-ink`, Exo 2 700, без рамки; hover `--accent-hi` + `--glow`; срез углов |
+| `.nb-flat` (сайт) | `--surface`, рамка 1px, без тени |
+| `.nb-accent` | фон `--accent`, текст `--accent-ink`, Exo 2 700, без рамки; hover `--accent-hi`; срез углов |
 | `.nb-press` | `transition: transform .12s, box-shadow .12s, background .12s`; `:active { transform: scale(.98) }` |
 | `.nb-chip` | `--surface-2`, рамка 1px `--line`, радиус 999px, Exo 2 600 |
 | `.nb-chip-active` | фон `--accent-soft`, рамка `--accent`, текст `--accent-hi` |
@@ -197,7 +195,7 @@ backdrop `rgba(0,0,0,.6)` + blur 6px.
 - favicon, apple-icon, `icon.svg`: монограмма CS.
 - `docs/brand/v3/` (новые ассеты): `logo-full.svg`, `logo-compact.svg`, `mark.svg`,
   `bot-avatar.png` (640×640, монограмма), `miniapp-cover.png` (640×360, баннер для BotFather).
-- Юридические тексты не трогаем, ФОП тот же. Домен прежний, `maxsolkh.shop`.
+- Юридические тексты не трогаем, ФОП тот же. Домен с v3.1.0 — `chisetup.com.ua` (старый `maxsolkh.shop` отвечает 301).
 
 ---
 
@@ -209,10 +207,10 @@ backdrop `rgba(0,0,0,.6)` + blur 6px.
 чек-лист и инвентаризация остатков v2 лежат в `.devdata/v3/admin/FOUNDATION.md`.
 
 **Тема и токены** (`frontend-admin/app/globals.css`). Одна тёмная тема: светлая тема, переключатель
-и `data-theme` удалены. Имена токенов админки сохранены (`--text`, `--line`, `--border*`, `--r-sm…xl`,
-`--shadow-1…3`, `--ring-accent`, `--c3`, `--accent-2` …), поменялись только значения. Общие с
-Mini App и сайтом имена (`--bg`, `--surface*`, `--accent*`, `--st-*`, `--r`, `--r-card`, `--chamfer`,
-`--ink/--muted/--faint`) имеют те же значения. Своё у админки:
+и `data-theme` удалены. Имена токенов админки сохранены (`--text`, `--line`, `--border-2`, `--r-sm…xl`,
+`--shadow-1…3`, `--ring-accent`, `--c3` …), поменялись только значения. Общие с
+Mini App и сайтом имена (`--bg`, `--surface*`, `--accent*`, `--st-*`, `--chamfer`,
+`--ink/--muted`) имеют те же значения. Своё у админки:
 
 | токен | значение | зачем |
 |---|---|---|
@@ -241,12 +239,12 @@ Exo 2 (`--font-display`) для заголовков страниц (`.page-titl
 Топбар `rgba(14,14,16,.85)` + blur, на телефоне слева марк CS. Таб-бар телефона `--surface` .92 + blur.
 Активный таб, как в Mini App, получает оранжевые иконку и подпись и полоску 2px сверху со свечением.
 
-**Примитивы.** Классы (`.card`, `.panel`, `.elevated`, `.card-2`, `.accent-fill`, `.nb-press`,
+**Примитивы.** Классы (`.card`, `.panel`, `.elevated`, `.card-2`, `.glass`, `.nb-press`,
 `.shimmer` …) сохранили имена, теперь это графит + 1px. Новые классы: `.card-hover`, `.accent-tint`,
 `.nb-accent`, `.nb-chip(-active)`, `.chip-tint` (тонированный чип: `--chip` 16% + текст цветом),
 `.count-badge`, `.eyebrow`, `.field-label`, `.page-title`, `.section-title`, `.kpi-num`,
 `.data-table` (компактная таблица), `.chamfer`, `.hud-frame` (та же исправленная реализация, что во
-фронте и на сайте: углы хоста срезаны под скобки) + `.hud-frame--sm`. React-компоненты
+фронте и на сайте: углы хоста срезаны под скобки). React-компоненты
 `components/ui/*`:
 - `Button`: варианты accent / surface / outline / ghost / danger, Exo 2 700 КАПС, проп `chamfer` для
   одной главной CTA;
@@ -305,13 +303,15 @@ HUD-рамкой, «Войти» оранжевая со срезом.
 
 | адрес | что |
 |---|---|
-| `https://demo.maxsolkh.shop` | сайт |
-| `https://app.demo.maxsolkh.shop` | Mini App (кнопка меню тест-бота @maxsolch_bot) |
-| `https://admin.demo.maxsolkh.shop` | админка |
+| `https://demo.chisetup.com.ua` | сайт |
+| `https://app.demo.chisetup.com.ua` | Mini App (кнопка меню тест-бота @maxsolch_bot) |
+| `https://admin.demo.chisetup.com.ua` | админка |
+
+Старые адреса `*.demo.maxsolkh.shop` отвечают 301.
 
 - Бот: тестовый **@maxsolch_bot** (его токен нельзя одновременно запускать локально — 409).
 - **Админский чат в Telegram выключен**: `NOTIFY_CHAT_ID` пустой (все темы пустые), уведомления
   о заказах и сообщениях никуда не уходят. Web Push (VAPID) выключен.
 - Данные: копия прод-БД и бакета картинок на момент развёртывания. Сайт стенда закрыт от индексации
   (`SITE_INDEXABLE=false` + `X-Robots-Tag: noindex`).
-- Образы собираются на самом сервере из ветки `v3` (arm64, место есть). Прод-CI не трогаем.
+- Образы собираются на самом сервере из выбранной ветки (`demo.sh build`, arm64). Прод-CI не трогаем.

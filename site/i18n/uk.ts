@@ -15,7 +15,6 @@ export const uk: RuDictionary = {
   "common.copy": "Скопіювати: {label}",
   "common.copied": "Скопійовано",
   "common.showAll": "Дивитися всі",
-  "common.placeholder": "[уточнюється]",
 
   "meta.title": "ChiSetup — ігрові девайси для твого сетапу",
   "meta.description":
@@ -134,7 +133,6 @@ export const uk: RuDictionary = {
   "error.global.text": "Спробуйте оновити сторінку.",
 
   "home.hero.kicker": "Мишки · Клавіатури · Навушники · Аксесуари",
-  "home.hero.title": "Ігрові девайси для твого сетапу",
   "home.hero.text":
     "Мишки, клавіатури й килимки з перевіркою перед відправкою. Нова Пошта по всій Україні, чат із магазином щодо кожного замовлення.",
   "home.hero.title.pre": "Ігрові",
@@ -227,15 +225,12 @@ export const uk: RuDictionary = {
   "cart.empty.title": "Кошик порожній",
   "cart.empty.text": "Додайте товари з каталогу — і вони з'являться тут.",
   "cart.remove": "Видалити {title}",
-  "cart.subtotal": "Сума",
   "cart.total": "Разом",
   "cart.checkout": "Оформити",
   "cart.continue": "Продовжити покупки",
-  "cart.openPage": "Відкрити кошик",
   "cart.deliveryNote": "Доставка — за тарифами Нової Пошти, сплачується при отриманні.",
   "cart.priceChanged": "Ціна змінилася: було {old}",
   "cart.unavailable": "Товару більше немає в наявності",
-  "cart.clamped": "Доступно лише {n} шт. — кількість зменшено",
   "cart.hasProblems": "Приберіть із кошика товари, яких немає в наявності.",
 
   "login.title": "Вхід через Telegram",
@@ -281,7 +276,6 @@ export const uk: RuDictionary = {
   "checkout.cityNone": "Місто не знайдено",
   "checkout.mapHint": "Або знайдіть відділення на карті й натисніть на нього.",
   "checkout.mapLoading": "Завантаження карти…",
-  "checkout.warehouse": "Відділення",
   "checkout.warehouseField": "Відділення / поштомат",
   "checkout.warehousePlaceholder": "Номер або адреса",
   "checkout.warehouseNone": "У цьому місті такого відділення немає",
@@ -309,7 +303,6 @@ export const uk: RuDictionary = {
   "checkout.total": "Разом",
   "checkout.dueNow": "До сплати зараз",
   "checkout.rest": "Решта {amount} — при отриманні.",
-  "checkout.submitPay": "Оформити та оплатити {amount}",
   "checkout.toPayment": "Переходимо до оплати…",
   "checkout.agree": "Натискаючи кнопку, ви погоджуєтеся з",
   "checkout.agreeLink": "умовами магазину",
@@ -340,7 +333,6 @@ export const uk: RuDictionary = {
   "account.orders.number": "Замовлення {id}",
   "account.orders.items": { one: "{n} товар", few: "{n} товари", many: "{n} товарів", other: "{n} товару" },
   "account.orders.unread": { one: "{n} нове повідомлення", few: "{n} нові повідомлення", many: "{n} нових повідомлень", other: "{n} нового повідомлення" },
-  "account.orders.open": "Детальніше",
 
   "settings.language": "Мова сайту",
   "settings.sessions": "Пристрої та сеанси",
@@ -467,10 +459,7 @@ export const uk: RuDictionary = {
   "chat.error": "Не вдалося завантажити листування.",
   "chat.empty": "Повідомлень поки немає. Напишіть магазину щодо цього замовлення.",
   "chat.attachmentAlt": "Вкладення",
-  "chat.reply": "Відповісти",
-  "chat.replyTo": "Відповідь · {name}",
   "chat.reply.fallbackSender": "Повідомлення",
-  "chat.cancelReply": "Скасувати відповідь",
   "chat.attach": "Прикріпити зображення",
   "chat.attachment.photo": "Фото",
   "chat.attachment.file": "Файл",
@@ -572,6 +561,5 @@ export const uk: RuDictionary = {
   "np.type.postomat": "Поштомат",
   "np.type.point": "Пункт",
   "np.hint": "Натисніть на відділення на карті",
-  "np.confirm": "Обрати це відділення",
   "np.number": "№ {n}",
 };

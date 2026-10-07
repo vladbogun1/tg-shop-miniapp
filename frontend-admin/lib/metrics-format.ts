@@ -19,13 +19,6 @@ export function moneyShort(minor: number | null | undefined, currency = "UAH"): 
   return `${major.toLocaleString("ru-RU")} ${symbol}`;
 }
 
-/** Hours value -> "12.5 ч" or "—" when null/0. */
-export function hoursLabel(h: number | null | undefined): string {
-  if (h == null || h === 0) return "—";
-  const rounded = Math.round(h * 10) / 10;
-  return `${rounded.toLocaleString("ru-RU")} ч`;
-}
-
 /**
  * Chart palette for JS-only places (recharts props that can't read CSS vars, e.g. <Cell fill>,
  * gradient <stop>s). Literal mirror of the --mx-* tokens in components/metrics/metrics.css and
@@ -49,15 +42,6 @@ export const CHART_COLORS = {
   /** Tooltip cursor band / hover fill. */
   cursor: "rgba(255,255,255,0.04)",
 } as const;
-
-/** Status -> chart color, matching the kanban accents. */
-export const STATUS_COLOR: Record<string, string> = {
-  NEW: CHART_COLORS.new,
-  APPROVED: CHART_COLORS.approved,
-  SHIPPED: CHART_COLORS.shipped,
-  DELIVERED: CHART_COLORS.delivered,
-  REJECTED: CHART_COLORS.rejected,
-};
 
 /**
  * Categorical order for part-of-whole charts (sources, languages, payment methods). Fixed order,

@@ -8,9 +8,14 @@
  * {@link CATEGORY_SEO} as the wording.
  */
 import type { Metadata } from "next";
-import { guessProductBrand, type StorefrontProduct } from "@shop/shared";
+import {
+  guessProductBrand,
+  type Locale,
+  LOCALE_TAG,
+  LOCALES,
+  type StorefrontProduct,
+} from "@shop/shared";
 import { alternates, localePath, makeT } from "@/i18n";
-import { LOCALE_TAG, LOCALES, type Locale } from "@/i18n/locales";
 import { BOT_URL, OWNER_TELEGRAM, SELLER, SITE_URL } from "./config";
 
 export const SITE_NAME = "ChiSetup";

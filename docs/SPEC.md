@@ -1,7 +1,7 @@
 # tg-shop-v2 — технический контракт (canonical)
 
-Единый источник правды для всех подсистем (backend / frontend / infra / migration).
-Полное обоснование решений — в `../ДИЗАЙН-ДОКУМЕНТ-новый-проект.md`.
+Единый источник правды для всех подсистем (backend / frontend / site / frontend-admin / infra).
+Полное обоснование решений — в `archive/ДИЗАЙН-ДОКУМЕНТ-новый-проект.md` (архив, частично устарел).
 Настройки и требования безопасности — в [`SECURITY.md`](SECURITY.md).
 
 > **Актуальность.** Разделы ниже описывают Фазы 1–2 и местами отстают от кода.
@@ -22,7 +22,7 @@
 
 ## Java packages
 - backend: `com.maxsolch.shop`
-- migration tool: `com.maxsolch.migration`
+- (модуль переноса старой БД `com.maxsolch.migration` удалён в 2026-10 — перенос выполнен в июне 2026)
 
 ## Порты (docker-compose, infra)
 | сервис | внутр. | хост |
@@ -53,7 +53,7 @@ JWT_ACCESS_TTL_MINUTES=120
 
 # Telegram
 BOT_TOKEN=
-BOT_USERNAME=@ChannelCheckerBot
+BOT_USERNAME=<username бота, без дефолта>
 INITDATA_TTL_SECONDS=86400
 ALLOW_UNSIGNED_INIT_DATA=false
 
@@ -79,11 +79,6 @@ S3_BUCKET=product-images
 IMGPROXY_KEY=<hex>
 IMGPROXY_SALT=<hex>
 IMAGE_BASE_URL=http://localhost:8082/img
-
-# Old DB (для миграционной тулзы)
-OLD_DB_URL=jdbc:mysql://localhost:3330/tg_test
-OLD_DB_USER=root
-OLD_DB_PASSWORD=root
 ```
 
 ## REST API контракт (v1, базовый — расширяется)
@@ -91,10 +86,10 @@ OLD_DB_PASSWORD=root
 - Роли: `CUSTOMER`, `ADMIN`.
 - Покупатель: `POST /api/auth/telegram` { initData } → { accessToken, user }. Остальные покупательские эндпоинты требуют CUSTOMER-JWT.
 - Админ: `POST /api/auth/admin/telegram` { initData } (или Login Widget) → { accessToken } с ролью ADMIN. Админ-эндпоинты помечены `@RequiredAdmin`.
-- Публичное (без токена): `GET /api/app-info`, `GET /api/products`, `GET /api/products/{id}`, `GET /api/tags`.
+- Публичное (без токена): `GET /api/app-info`, `GET /api/products`, `GET /api/products/{id}` (`GET /api/tags` удалён в 2026-10).
 - Картинки: фронт строит URL через imgproxy-loader на `IMAGE_BASE_URL`.
 
-Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
+Swagger: `/swagger-ui.html`. Actuator: `/actuator/*` (служебная Thymeleaf-страница `/` удалена в 2026-10).
 
 ## Деньги
 Целые минорные единицы (`*_minor`), валюта по умолчанию `UAH`.
@@ -131,7 +126,7 @@ Swagger: `/swagger-ui.html`. Home (Thymeleaf): `/`. Actuator: `/actuator/*`.
 - POST `/api/me/uploads` (multipart) → { url:key } — customer chat attachment upload to MinIO.
 
 ## Public API
-- GET `/api/app-info`, `/api/products`, `/api/products/{id}`, `/api/tags` (как в Фазе 1).
+- GET `/api/app-info`, `/api/products`, `/api/products/{id}` (как в Фазе 1).
 - GET `/api/payment-options` → [PaymentOptionDto{ id,title,description,requiresPrepayment,prepaymentMinor }].
 - GET `/api/np/cities?q=` → [{ ref, name, area }] (из локальной БД/кэша).
 - GET `/api/np/warehouses?cityRef=&q=` → [{ ref, number, description, type }].

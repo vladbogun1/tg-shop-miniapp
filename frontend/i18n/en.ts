@@ -37,10 +37,8 @@ export const en: RuDictionary = {
   "tabs.account": "Account",
 
   // ── small bits ────────────────────────────────────────────────────────────
-  "theme.toggle": "Switch theme",
   "lang.title": "Language",
   "lang.switch": "Switch language",
-  "soon.badge": "Soon",
   "qty.decrease": "Decrease",
   "qty.increase": "Increase",
 
@@ -211,7 +209,6 @@ export const en: RuDictionary = {
 
   // ── order cancellation ────────────────────────────────────────────────────
   "cancel.button": "Cancel order",
-  "cancel.title": "Reason for cancelling",
   "cancel.reason.payment": "Problem with payment / card",
   "cancel.reason.changedMind": "Changed my mind",
   "cancel.reason.mistake": "Ordered by mistake",
@@ -229,7 +226,6 @@ export const en: RuDictionary = {
   "cancel.reasonOptional": "Reason (optional)",
   "cancel.processing": "The bank is processing the payment — cancelling will be possible in a minute.",
   "cancel.returns.text": "The order has already shipped — it can no longer be cancelled. To return the goods, message us in the chat.",
-  "cancel.toChat": "Message us",
   "cancel.request.button": "Request cancellation",
   "cancel.request.title": "Cancellation request",
   "cancel.request.text": "The order is already paid. Tell us why — a manager will review the request and refund the money to your card.",
@@ -312,7 +308,6 @@ export const en: RuDictionary = {
   "checkout.step.done": "Done",
   "checkout.emptyCart": "Your cart is empty.",
   "checkout.failed": "Couldn't place the order",
-  "checkout.submitPay": "Place order and pay {amount}",
   "checkout.redirecting": "Opening the payment…",
   "checkout.promoDropped": "{message}. The promo code was removed — please place the order again.",
 
@@ -327,7 +322,6 @@ export const en: RuDictionary = {
   "checkout.delivery.pickup": "Pickup",
   "checkout.delivery.pickupSubtitle": "From the shop's point",
   "checkout.delivery.mapHint": "Find a branch on the map and tap “Choose”.",
-  "checkout.delivery.change": "Change branch",
   "checkout.delivery.required": "Pick a branch — from the list or on the map.",
   "checkout.delivery.pickupText": "Collect your order from the shop's point — we will contact you about the address and time.",
   "checkout.delivery.mapLoading": "Loading the map…",

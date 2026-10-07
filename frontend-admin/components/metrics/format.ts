@@ -73,16 +73,6 @@ export function dateTime(iso: string): string {
   });
 }
 
-/** Inclusive date range of a period for the subtitle, e.g. "01.10 — 04.10.2026". */
-export function rangeLabel(fromIso: string, toIso: string): string {
-  const opts: Intl.DateTimeFormatOptions = { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit" };
-  const from = new Date(fromIso);
-  // "to" is exclusive; step back a minute so a whole-day range ends on its last day.
-  const to = new Date(new Date(toIso).getTime() - 60_000);
-  const y = to.toLocaleDateString("ru-RU", { timeZone: "Europe/Kyiv", year: "numeric" });
-  return `${from.toLocaleDateString("ru-RU", opts)} — ${to.toLocaleDateString("ru-RU", opts)}.${y}`;
-}
-
 export function shortId(id: string): string {
   return id.slice(0, 8);
 }

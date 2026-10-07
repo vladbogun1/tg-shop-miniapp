@@ -31,13 +31,9 @@
   --accent-lo: #E65C00;
   --accent-ink: #0E0E10;   /* text on orange is always dark: white on #FF6600 is only 2.9:1 */
   --accent-soft: rgba(255, 102, 0, .12);
-  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
 
-  /* Former multicolour accents collapse into the brand */
-  --c2: #A1A1AA;
+  /* Light orange for "highlight" fills (the former multicolour accents collapsed into the brand) */
   --c3: #FF8533;
-  --c4: #22C55E;
-  --c5: #FF6600;
 
   --ok: #22C55E;
   --warn: #F59E0B;
@@ -60,19 +56,6 @@
   /* Height the bottom tab-bar occupies. TabBar rewrites it (0px when it hides itself), and
      every bottom-docked block reads it instead of repeating a magic 84px. */
   --tabbar-h: 84px;
-}
-
-@theme inline {
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-ink: var(--ink);
-  --color-ink-muted: var(--muted);
-  --color-ink-faint: var(--faint);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
-  --radius-nb: var(--r);
-  --radius-card: var(--r-card);
 }
 
 /* Exo 2 (display): headings, buttons, prices, tabs, chips, labels. `--font-display` is set by
@@ -168,11 +151,6 @@ body {
     border-radius: var(--r-card);
     box-shadow: 0 18px 40px -16px var(--shadow), 0 2px 6px -2px rgba(0, 0, 0, .4);
   }
-  .nb-flat {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-card);
-  }
   /* Primary CTA: solid orange, dark text, chamfered corners. A clip-path clips box-shadow, so
      the "glow" here is a brighter fill rather than a halo. */
   .nb-accent {
@@ -220,10 +198,6 @@ body {
     text-transform: uppercase;
     letter-spacing: .28em;
     color: var(--muted);
-  }
-
-  .chamfer {
-    clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer));
   }
 
   /* HUD bracket frame (DESIGN-V3 §4), like the brackets around the logo: white top-left,

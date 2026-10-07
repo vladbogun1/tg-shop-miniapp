@@ -11,20 +11,21 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import {
+  type ChatConnection,
   connectOrderChat as connect,
   createHttpClient,
-  supportAsChatMessage,
-  supportTopic,
-  type ChatConnection,
   type CreateSupportThreadRequest,
+  getActiveLocale,
+  getActiveTag,
   type Message,
   type SendMessageRequest,
+  supportAsChatMessage,
   type SupportConfig,
   type SupportMessage,
   type SupportThread,
+  supportTopic,
 } from "@shop/shared";
 import { makeT, type TFunction } from "@/i18n";
-import { getActiveLocale, getActiveTag } from "@/i18n/active";
 import { ApiError, isAuthFailure, refreshSession } from "./api";
 import { useSession } from "./session";
 

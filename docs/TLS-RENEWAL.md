@@ -1,64 +1,59 @@
-# TLS / HTTPS для maxsolkh.shop — как устроено и как продлевать
+# TLS / HTTPS — как устроено и как продлевать
 
-> Прод-сервер: `ubuntu@132.145.132.80` (SSH-ключ `C:/Users/nikto/oracleserver.key`).
-> Магазин: `https://maxsolkh.shop:666` (клиент) / `:667` (админка).
-> TLS терминирует **Caddy** (`tgshop_v2_caddy`) на нестандартных портах, потому что 80/443
-> на сервере заняты контейнером `edge_proxy` (nginx) для других сайтов.
+> Прод-сервер: `ubuntu@132.145.132.80` (сервер №1).
+> Магазин: сайт `https://chisetup.com.ua`, Mini App `https://app.chisetup.com.ua`,
+> админка `https://admin.chisetup.com.ua`. Старые адреса `maxsolkh.shop` (+ порты `:666`/`:667`)
+> отвечают только **301-редиректом** на новые — их оставляют ради старых кнопок бота и закладок.
 
 ## TL;DR
-- Сертификат Let's Encrypt, **продлевается автоматически** (Метод A, HTTP-01 через edge_proxy).
-- Пока работает — трогать не надо. Проверка: `curl -I https://maxsolkh.shop:666` (ждём `200`).
-- Резервный/переносной способ, когда нет edge_proxy — **Метод B** (ручной DNS-01).
+- С **05.10.2026** порты 80/443 сервера держит **Caddy `edge_caddy`** (каталог `~/edge`) вместе с
+  панелью **EdgeDeck** (`~/edgedeck`). Caddy сам выпускает и продлевает сертификаты всех сайтов на
+  80/443, в том числе `chisetup.com.ua`, `www.`, `app.`, `admin.`. Руками ничего делать не надо.
+  Хранилище сертификатов — docker-том `edge_caddy_data`: **никогда не удалять**.
+- Единственный сертификат, который продлевает certbot по cron, — `maxsolkh.shop` для редиректов
+  на портах `:666`/`:667` (контейнер `tgshop_v2_caddy`, `infra/Caddyfile.prod`). См. «Метод A».
+- Проверка: `curl -I https://chisetup.com.ua` (ждём `200`), `curl -I https://maxsolkh.shop:666`
+  (ждём `301` на `app.chisetup.com.ua`).
 
 ## Где что лежит (прод)
 | Что | Путь |
 |---|---|
 | Магазин (compose) | `/home/ubuntu/TELEGRAM_BOTS/maxsolch-v2` |
-| Caddy читает cert | `.env` → `PROD_CERT_DIR` (сейчас `/home/ubuntu/edge-proxy/letsencrypt`), Caddyfile `infra/Caddyfile.prod` (`tls /certs/live/maxsolkh.shop/{fullchain,privkey}.pem`) |
-| edge_proxy (nginx, :80/:443) | `/home/ubuntu/edge-proxy` (`nginx.conf`, `letsencrypt/`, `maxsolch-stub/`) |
-| Cert-хранилище (активное) | `/home/ubuntu/edge-proxy/letsencrypt/live/maxsolkh.shop/` |
+| Edge Caddy (80/443) | `~/edge` (`sites/*.caddy`, `routes.yaml`; перечитать — `~/edge/bin/reload </dev/null`), подробности — `~/edge/README.md` |
+| Сайты магазина на edge | `~/edge/sites/chisetup.com.ua.caddy`, `~/edge/sites/maxsolkh.shop.caddy` (301 + webroot certbot) |
+| Caddy редиректов `:666`/`:667` | контейнер `tgshop_v2_caddy`, `infra/Caddyfile.prod`; cert через `.env` → `PROD_CERT_DIR` (`/home/ubuntu/edge-proxy/letsencrypt`) |
+| Webroot для HTTP-01 certbot | `/home/ubuntu/edge-proxy/maxsolch-stub` |
 | Бэкапы сертификатов | `~/BACKUPS/tls-certs-*.tar.gz` |
+
+Старый nginx `edge_proxy` (`~/edge-proxy`) остановлен, но не удалён: откат на него —
+`~/edge/bin/rollback-to-nginx` (`--back` возвращает Caddy).
+
+> `~/edge/bin/reload` делает `docker compose exec` и съедает stdin — в `ssh 'bash -s' <<EOF`
+> всё после него не выполнится; вызывать с `</dev/null`.
 
 ---
 
-## Метод A — ТЕКУЩИЙ: автоматический HTTP-01 через edge_proxy
-Работает, когда домен `maxsolkh.shop` (A-запись) приходит на этот сервер **и** порт 80 обслуживает
-`edge_proxy`, который отдаёт ACME-challenge.
-
-**Как устроено**
-1. `edge_proxy` nginx на :80 для `maxsolkh.shop` проксирует `/.well-known/acme-challenge/`
-   в контейнер `maxsolch_stub` (webroot `/home/ubuntu/edge-proxy/maxsolch-stub`). Блок в
-   `/home/ubuntu/edge-proxy/nginx.conf`:
-   ```nginx
-   server {
-       listen 80;
-       server_name maxsolkh.shop www.maxsolkh.shop;
-       location /.well-known/acme-challenge/ { proxy_pass http://maxsolch_stub:80; }
-       location / { return 404; }
-   }
-   ```
+## Метод A — ТЕКУЩИЙ для `maxsolkh.shop:666/:667`: certbot HTTP-01 через edge_caddy
+1. `edge_caddy` на :80 для `maxsolkh.shop` отдаёт `/.well-known/acme-challenge/*` из
+   `/srv/certbot-webroot` (это примонтированный `~/edge-proxy/maxsolch-stub`); остальное — 301 на
+   `chisetup.com.ua`. Свои ACME-токены Caddy перехватывает раньше маршрутов, конфликта нет.
 2. Cert выпущен по webroot в `/home/ubuntu/edge-proxy/letsencrypt` (`authenticator = webroot`).
-3. Caddy читает его через `PROD_CERT_DIR=/home/ubuntu/edge-proxy/letsencrypt`.
-4. **Автопродление** — root-cron дважды в день вызывает скрипт-обёртку:
+3. `tgshop_v2_caddy` читает его через `PROD_CERT_DIR` (монтируется `:ro` в `/certs`).
+4. **Автопродление** — root-cron дважды в день:
    ```
    17 3,15 * * * /usr/local/bin/renew-maxsolkh-certs.sh >/dev/null 2>&1
    ```
-   Скрипт `renew-maxsolkh-certs.sh`: гоняет `certbot renew --webroot`, всегда делает
-   `nginx -s reload` (дёшево, перечитывает все certs), и — **только при фактическом
-   продлении** cert'а maxsolkh.shop (сравнивает sha256 fullchain до/после) —
-   **`docker restart tgshop_v2_caddy`**.
+   Скрипт гоняет `certbot renew --cert-name maxsolkh.shop --webroot` и **только при фактическом
+   продлении** (сравнивает sha256 fullchain до/после) делает **`docker restart tgshop_v2_caddy`**.
 
-   > ⚠️ ВАЖНО: Caddy с `tls <file>` **кэширует** сертификат и `caddy reload` **НЕ
-   > перечитывает** файл с тем же путём — обновлённый cert подхватывается **только
-   > рестартом** контейнера. Поэтому в проде именно `docker restart`, а не `caddy reload`.
-   > (Историческая грабля: cron с `caddy reload` продлевал cert на диске, но Caddy
-   > продолжал отдавать старый из памяти.)
+   > ⚠️ Caddy с `tls <file>` **кэширует** сертификат, `caddy reload` файл с тем же путём **не
+   > перечитывает** — только рестарт контейнера.
 
-**Проверить продление без риска (LE staging):**
+**Проверить продление без риска (LE staging, идёт несколько минут — certbot делает случайную паузу):**
 ```bash
-docker run --rm -v /home/ubuntu/edge-proxy/letsencrypt:/etc/letsencrypt \
-  -v /home/ubuntu/edge-proxy/maxsolch-stub:/var/www/certbot \
-  certbot/certbot renew --webroot -w /var/www/certbot --cert-name maxsolkh.shop --dry-run
+sudo docker run --rm -v ~/edge-proxy/letsencrypt:/etc/letsencrypt \
+  -v ~/edge-proxy/maxsolch-stub:/var/www/certbot \
+  certbot/certbot renew --cert-name maxsolkh.shop --webroot -w /var/www/certbot --dry-run
 ```
 
 **Перевыпустить вручную (боевой):**
@@ -67,7 +62,7 @@ docker run --rm -v /home/ubuntu/edge-proxy/letsencrypt:/etc/letsencrypt \
   -v /home/ubuntu/edge-proxy/maxsolch-stub:/var/www/certbot \
   certbot/certbot certonly --webroot -w /var/www/certbot \
   -d maxsolkh.shop --cert-name maxsolkh.shop --non-interactive --agree-tos
-docker restart tgshop_v2_caddy   # НЕ reload — Caddy перечитывает file-cert только при рестарте
+docker restart tgshop_v2_caddy   # НЕ reload
 ```
 
 **Если challenge не проходит** — проверь, что файл отдаётся снаружи:
@@ -76,14 +71,16 @@ echo ok | sudo tee /home/ubuntu/edge-proxy/maxsolch-stub/.well-known/acme-challe
 curl http://maxsolkh.shop/.well-known/acme-challenge/t     # ждём: ok
 sudo rm -f /home/ubuntu/edge-proxy/maxsolch-stub/.well-known/acme-challenge/t
 ```
-Если не `ok` — проверь A-запись домена (→ IP сервера), наличие nginx-блока выше и
-`docker exec edge_proxy nginx -t && docker exec edge_proxy nginx -s reload`.
+Если не `ok` — проверь A-запись `maxsolkh.shop` и блок `http://maxsolkh.shop` в
+`~/edge/sites/maxsolkh.shop.caddy`, затем `~/edge/bin/reload </dev/null`.
+
+Когда редиректы со старого домена станут не нужны — `:666`/`:667`, `tgshop_v2_caddy`, cron и
+certbot можно убрать целиком.
 
 ---
 
-## Метод B — РЕЗЕРВНЫЙ: ручной DNS-01 (когда НЕТ edge_proxy / :80 недоступен)
-Подходит для нового сервера, где 80/443 заняты и нет webroot-фронта. Требует доступ к DNS домена.
-Это исходный способ (см. старый файл `maxsolch-mini-app/CERTIFICAT`).
+## Метод B — РЕЗЕРВНЫЙ: ручной DNS-01 (когда :80 недоступен)
+Подходит для сервера, где 80/443 заняты и нет webroot-фронта. Требует доступ к DNS домена.
 
 ```bash
 mkdir -p ~/certs-maxsolkh && cd ~/certs-maxsolkh
@@ -94,52 +91,36 @@ sudo certbot certonly --manual --preferred-challenges dns \
   -d maxsolkh.shop
 ```
 1. certbot покажет: `_acme-challenge.maxsolkh.shop  TXT  <значение>`.
-2. Добавь TXT-запись в DNS (Hostinger → hPanel → DNS Zone Editor): имя `_acme-challenge`, тип TXT, значение из вывода.
-3. Дождись видимости: `dig +short TXT _acme-challenge.maxsolkh.shop @1.1.1.1` — должно показать значение.
+2. Добавь TXT-запись в DNS домена.
+3. Дождись видимости: `dig +short TXT _acme-challenge.maxsolkh.shop @1.1.1.1`.
 4. Нажми Enter → cert появится в `~/certs-maxsolkh/letsencrypt/live/maxsolkh.shop/`.
-5. Направь Caddy на него: в `~/TELEGRAM_BOTS/maxsolch-v2/.env` поставь
-   `PROD_CERT_DIR=/home/ubuntu/certs-maxsolkh/letsencrypt`, затем пересоздай Caddy (см. ниже).
+5. В `~/TELEGRAM_BOTS/maxsolch-v2/.env` поставь
+   `PROD_CERT_DIR=/home/ubuntu/certs-maxsolkh/letsencrypt` и пересоздай Caddy (ниже).
 
-⚠️ Минус: **не автопродляется** (`--manual` DNS-01). Повторять каждые ~60–90 дней вручную.
-Полностью автоматический DNS-01 возможен только у DNS-провайдера с API (напр. Cloudflare) +
-`certbot-dns-<provider>` плагин. У Hostinger публичного API для редактирования зоны нет.
+⚠️ `--manual` DNS-01 **не автопродляется** — повторять каждые ~60–90 дней.
 
 ---
 
-## Пересоздать Caddy (после смены PROD_CERT_DIR)
+## Пересоздать Caddy редиректов (после смены PROD_CERT_DIR)
 ```bash
 cd ~/TELEGRAM_BOTS/maxsolch-v2
 docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml up -d --no-build caddy
-# проверка:
 curl -I https://maxsolkh.shop:666
 echo | openssl s_client -connect maxsolkh.shop:666 -servername maxsolkh.shop 2>/dev/null | openssl x509 -noout -dates
 ```
 
-## Бэкап / восстановление сертификатов
-**Бэкап (делать перед любыми изменениями):**
+## Бэкап / восстановление сертификата certbot
 ```bash
 TS=$(date +%F-%H%M)
-sudo tar czf ~/BACKUPS/tls-certs-$TS.tar.gz -C / \
-  home/ubuntu/edge-proxy/letsencrypt \
-  home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt 2>/dev/null
+sudo tar czf ~/BACKUPS/tls-certs-$TS.tar.gz -C / home/ubuntu/edge-proxy/letsencrypt
+# восстановить:
+sudo tar xzf ~/BACKUPS/tls-certs-<TS>.tar.gz -C / && docker restart tgshop_v2_caddy
 ```
-**Восстановить из бэкапа:**
-```bash
-sudo tar xzf ~/BACKUPS/tls-certs-<TS>.tar.gz -C /
-docker restart tgshop_v2_caddy
-```
-
-## Откат с Метода A (быстрый возврат, если автоспособ сломался)
-1. Распакуй последний бэкап (см. выше) — вернёт и старый cert-каталог.
-2. Верни `PROD_CERT_DIR` на старый каталог (если нужно):
-   `PROD_CERT_DIR=/home/ubuntu/TELEGRAM_BOTS/maxsolch-mini-app/caddy/letsencrypt` в `.env`.
-3. Пересоздай Caddy (команда выше).
-4. Если cert протух — перевыпусти по Методу B (ручной DNS-01).
+Сертификаты `edge_caddy` живут в томе `edge_caddy_data`; при переносе сервера Caddy выпустит их
+заново сам, как только A-записи укажут на новый IP и откроются 80/443.
 
 ## Перенос магазина на другой сервер
-- **Порт 80 домена свободен/приходит на сервер** → подними лёгкий nginx (аналог `edge_proxy`)
-  с acme-challenge webroot + cron из Метода A. Самый надёжный автоспособ.
-- **80/443 заняты и фронта нет** → временно Метод B (ручной DNS-01); для автоматизации
-  перенеси DNS на Cloudflare (бесплатно, есть API) и настрой `certbot-dns-cloudflare`.
-- Не забыть: A-запись домена → новый IP; открыть 666/667 (ufw + firewall облака);
-  выставить `PROD_CERT_DIR`; перезапустить Caddy.
+- A-записи `chisetup.com.ua`, `www`, `app`, `admin` → новый IP; на новом сервере edge-Caddy с теми
+  же `sites/*.caddy` — сертификаты выпустятся сами.
+- Если старые редиректы ещё нужны — перенести `tgshop_v2_caddy`, cert `maxsolkh.shop` (Метод A
+  или B), открыть 666/667 (ufw + firewall облака), выставить `PROD_CERT_DIR`.

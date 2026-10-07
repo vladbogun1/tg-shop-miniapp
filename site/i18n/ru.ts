@@ -9,7 +9,7 @@
  * things differently (a website has a header, breadcrumbs and a footer; a Mini App has tabs), and a
  * shared file would make every wording change a two-app regression risk.
  */
-import type { Dictionary, PluralPhrase } from "./types";
+import type { Dictionary, PluralPhrase } from "@shop/shared";
 
 export const ru = {
   // ── common ────────────────────────────────────────────────────────────────
@@ -26,7 +26,6 @@ export const ru = {
   "common.copy": "Скопировать: {label}",
   "common.copied": "Скопировано",
   "common.showAll": "Смотреть все",
-  "common.placeholder": "[уточняется]",
 
   "meta.title": "ChiSetup — игровые девайсы для твоего сетапа",
   "meta.description":
@@ -151,7 +150,6 @@ export const ru = {
 
   // ── home ──────────────────────────────────────────────────────────────────
   "home.hero.kicker": "Мышки · Клавиатуры · Наушники · Аксессуары",
-  "home.hero.title": "Игровые девайсы для твоего сетапа",
   "home.hero.text":
     "Мышки, клавиатуры и коврики с проверкой перед отправкой. Новая Почта по всей Украине, чат с магазином по каждому заказу.",
   "home.hero.title.pre": "Игровые",
@@ -247,15 +245,12 @@ export const ru = {
   "cart.empty.title": "Корзина пуста",
   "cart.empty.text": "Добавьте товары из каталога — и они появятся здесь.",
   "cart.remove": "Удалить {title}",
-  "cart.subtotal": "Сумма",
   "cart.total": "Итого",
   "cart.checkout": "Оформить",
   "cart.continue": "Продолжить покупки",
-  "cart.openPage": "Открыть корзину",
   "cart.deliveryNote": "Доставка — по тарифам Новой Почты, оплачивается при получении.",
   "cart.priceChanged": "Цена изменилась: было {old}",
   "cart.unavailable": "Товара больше нет в наличии",
-  "cart.clamped": "Доступно только {n} шт. — количество уменьшено",
   "cart.hasProblems": "Уберите из корзины товары, которых нет в наличии.",
 
   // ── login ─────────────────────────────────────────────────────────────────
@@ -303,7 +298,6 @@ export const ru = {
   "checkout.cityNone": "Город не найден",
   "checkout.mapHint": "Или найдите отделение на карте и нажмите на него.",
   "checkout.mapLoading": "Загрузка карты…",
-  "checkout.warehouse": "Отделение",
   "checkout.warehouseField": "Отделение / почтомат",
   "checkout.warehousePlaceholder": "Номер или адрес",
   "checkout.warehouseNone": "В этом городе такого отделения нет",
@@ -331,7 +325,6 @@ export const ru = {
   "checkout.total": "Итого",
   "checkout.dueNow": "К оплате сейчас",
   "checkout.rest": "Остаток {amount} — при получении.",
-  "checkout.submitPay": "Оформить и оплатить {amount}",
   "checkout.toPayment": "Переходим к оплате…",
   "checkout.agree": "Нажимая кнопку, вы соглашаетесь с",
   "checkout.agreeLink": "условиями магазина",
@@ -363,7 +356,6 @@ export const ru = {
   "account.orders.number": "Заказ {id}",
   "account.orders.items": { one: "{n} товар", few: "{n} товара", many: "{n} товаров", other: "{n} товара" },
   "account.orders.unread": { one: "{n} новое сообщение", few: "{n} новых сообщения", many: "{n} новых сообщений", other: "{n} новых сообщения" },
-  "account.orders.open": "Подробнее",
 
   "settings.language": "Язык сайта",
   "settings.sessions": "Устройства и сеансы",
@@ -492,10 +484,7 @@ export const ru = {
   "chat.error": "Не удалось загрузить переписку.",
   "chat.empty": "Сообщений пока нет. Напишите магазину по этому заказу.",
   "chat.attachmentAlt": "Вложение",
-  "chat.reply": "Ответить",
-  "chat.replyTo": "Ответ · {name}",
   "chat.reply.fallbackSender": "Сообщение",
-  "chat.cancelReply": "Отменить ответ",
   "chat.attach": "Прикрепить изображение",
   "chat.attachment.photo": "Фото",
   "chat.attachment.file": "Файл",
@@ -600,7 +589,6 @@ export const ru = {
   "np.type.postomat": "Почтомат",
   "np.type.point": "Пункт",
   "np.hint": "Нажмите на отделение на карте",
-  "np.confirm": "Выбрать это отделение",
   "np.number": "№ {n}",
 } satisfies Dictionary;
 

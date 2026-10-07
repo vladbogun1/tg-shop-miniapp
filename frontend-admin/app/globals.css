@@ -11,8 +11,8 @@
 
    Token NAMES are the ones the admin always used (--text, --line, --r-md, --shadow-1 …) —
    only the values changed, so every component that reads var(--…) restyles by itself.
-   Names shared with frontend/ and site/ (--bg, --surface*, --accent*, --st-*, --r, --r-card,
-   --chamfer, --ink/--muted/--faint) carry the SAME values there.
+   Names shared with frontend/ and site/ (--bg, --surface*, --accent*, --st-*,
+   --chamfer, --ink/--muted) carry the SAME values there.
    ============================================================================ */
 
 :root {
@@ -29,9 +29,7 @@
   /* Hairlines. `--line` is THE border colour; the others are stronger steps of it. */
   --line: rgba(255, 255, 255, .08);
   --line-strong: rgba(255, 255, 255, .16);
-  --border: var(--line);
   --border-2: rgba(255, 255, 255, .12);
-  --border-strong: var(--line-strong);
   --shadow: rgba(0, 0, 0, .55);
 
   /* Text. --text is a hair softer than pure white: long tables in pure #FFF glare. */
@@ -41,26 +39,19 @@
   /* Aliases with the Mini App / site names, so markup can move between apps unchanged. */
   --ink: #FFFFFF;
   --muted: var(--text-muted);
-  --faint: var(--text-faint);
 
   /* Brand */
   --accent: #FF6600;
   --accent-hi: #FF8533;     /* hover, links on dark, "Setup" gradient */
   --accent-lo: #E65C00;     /* pressed */
-  --accent-2: var(--accent-hi); /* was the blue second accent → collapses into the brand */
   --accent-ink: #0E0E10;    /* text on orange (and on any bright fill) is ALWAYS dark: white on #FF6600 is 2.9:1 */
   --accent-soft: rgba(255, 102, 0, .12);   /* active chip / nav item / selected row */
   --accent-soft-2: rgba(255, 102, 0, .22); /* focus ring, stronger selection */
-  --grad-accent: linear-gradient(180deg, #FF8533, #FF6600 55%, #F25500);
-  --grad-accent-soft: linear-gradient(180deg, rgba(255, 102, 0, .16), rgba(255, 102, 0, .06));
-  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
   --glow-sm: 0 0 10px rgba(255, 102, 0, .55);
 
-  /* Former multicolour accents collapse into the brand (same as frontend/site). */
-  --c2: #A1A1AA;
-  --c3: #FF8533;            /* "highlight" fills — light orange, text on it forced dark below */
-  --c4: #22C55E;
-  --c5: #FF6600;
+  /* "Highlight" fills — light orange (the former multicolour accents collapsed into the brand);
+     text on it is forced dark below. */
+  --c3: #FF8533;
 
   /* Functional colours — status only, never decoration. */
   --ok: #22C55E;
@@ -77,21 +68,17 @@
   --st-delivered: #22C07D;
   --st-rejected: #F0503C;
 
-  /* Radii. --r / --r-card / --chamfer = frontend names; the --r-* scale is the admin's. */
-  --r: 6px;
-  --r-card: 12px;
+  /* Radii. --chamfer = the frontend name; the --r-* scale is the admin's. */
   --chamfer: 10px;
   --r-sm: 4px;     /* small chips, tags, inner buttons */
   --r-md: 6px;     /* controls: buttons, fields, segmented, nav items */
   --r-lg: 12px;    /* cards, panels, popovers */
   --r-xl: 16px;    /* modals, drawers, sheets */
-  --r-pill: 999px;
 
   /* Soft depth (no hard offset shadows any more). */
   --shadow-1: 0 8px 24px -12px var(--shadow);
   --shadow-2: 0 18px 40px -16px var(--shadow), 0 2px 6px -2px rgba(0, 0, 0, .4);
   --shadow-3: 0 24px 64px -16px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .04);
-  --shadow-accent: var(--glow);
   --ring-accent: 0 0 0 3px var(--accent-soft-2);
 
   --safe-top: env(safe-area-inset-top, 0px);
@@ -110,30 +97,6 @@
   :root { --bottom-nav: 0px; }
 }
 html.kb-open { --bottom-nav: 0px; }
-
-@theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-2: var(--accent-2);
-  --color-accent-ink: var(--accent-ink);
-  --color-ink: var(--text);
-  --color-ink-muted: var(--text-muted);
-  --color-ink-faint: var(--text-faint);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
-  --color-info: var(--info);
-  --radius-sm: var(--r-sm);
-  --radius-md: var(--r-md);
-  --radius-lg: var(--r-lg);
-  --radius-xl: var(--r-xl);
-  --radius-nb: var(--r);
-  --radius-card: var(--r-card);
-}
 
 /* Exo 2 (display): page titles, KPI numbers, nav, buttons, badges, tabs. `--font-display` is
    set by next/font on <html>; Inter (`--font-body`) carries tables, fields and running text. */
@@ -167,9 +130,8 @@ body {
 /* ".aurora" (the fixed layer under the app, kept by name) = the ChiSetup scene: graphite, a
    faint HUD grid fading out towards the centre, a soft orange spot at the top and two dim orange
    diagonal "neon" strips in the corners. Dimmer than the shop's (.35 → .22): the admin is a work
-   tool. Static on purpose — animated fixed layers stutter in iOS webviews. `.scene` = alias. */
-.aurora,
-.scene {
+   tool. Static on purpose — animated fixed layers stutter in iOS webviews. */
+.aurora {
   position: fixed;
   inset: 0;
   z-index: -1;
@@ -178,8 +140,7 @@ body {
   background-color: var(--bg);
   background-image: radial-gradient(ellipse 60% 32% at 50% -8%, rgba(255, 102, 0, .08), transparent 70%);
 }
-.aurora::before,
-.scene::before {
+.aurora::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -190,8 +151,7 @@ body {
   -webkit-mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
   mask-image: radial-gradient(ellipse at center, transparent 18%, #000 78%);
 }
-.aurora::after,
-.scene::after {
+.aurora::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -256,18 +216,7 @@ body {
     border-radius: var(--r-lg);
     box-shadow: var(--shadow-1);
   }
-  .glass--strong { background-color: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow-2); }
-  .glass--floating { box-shadow: var(--shadow-3); }
 
-  /* Solid orange (icon tiles, accent blocks). Text/icons on it are dark. */
-  .accent-fill,
-  .glossy {
-    background-color: var(--accent);
-    background-image: none;
-    color: var(--accent-ink);
-    border: 0;
-    box-shadow: none;
-  }
   /* Orange-tinted tile: icon tiles that should not shout (KPI icons, banners). */
   .accent-tint {
     background-color: var(--accent-soft);
@@ -327,12 +276,6 @@ body {
     text-transform: uppercase;
     color: var(--chip);
     background: color-mix(in srgb, var(--chip) 16%, transparent);
-  }
-
-  .nb-up {
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    font-family: var(--font-display), "Exo 2", system-ui, sans-serif;
   }
 
   /* Eyebrow / meta label: "GAMING GEAR & SETUP" style. */
@@ -444,8 +387,6 @@ body {
     background: var(--accent);
     clip-path: polygon(100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 calc(100% - var(--hud-w)), calc(100% - var(--hud-c) - var(--hud-w) * .4142) calc(100% - var(--hud-w)), calc(100% - var(--hud-w)) calc(100% - var(--hud-c) - var(--hud-w) * .4142), calc(100% - var(--hud-w)) 0);
   }
-  /* Smaller brackets for KPI tiles / compact empty states. */
-  .hud-frame--sm { --hud-c: 8px; --hud-x: 28px; --hud-y: 18px; }
 
   /* Compact data table (orders list, audit, users, metrics tables): Inter 13px, Exo 2 caps
      header on --bg-2, hairline rows, hover row tint, `.r` right-aligned tabular cells. */
@@ -502,13 +443,6 @@ body {
   clip-path: polygon(var(--hud-c) 0, 100% 0, 100% calc(100% - var(--hud-c)), calc(100% - var(--hud-c)) 100%, 0 100%, 0 var(--hud-c));
 }
 
-.text-gradient {
-  background: linear-gradient(180deg, #FF8533, #FF6600 55%, #F25500);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 /* Light-orange fills (--c3) stay light → text/icons on them must be dark, never --text (white). */
 .bg-\[var\(--c3\)\] { color: var(--accent-ink) !important; }
 
@@ -529,9 +463,6 @@ body {
 }
 .thin-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .24); }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
-
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .focusable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
 

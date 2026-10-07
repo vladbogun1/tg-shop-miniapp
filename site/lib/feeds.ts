@@ -18,9 +18,14 @@
  *
  * Nothing here is rendered on the site.
  */
-import { imgproxyUrl, type PublicCategory, type StorefrontProduct, type StorefrontTag } from "@shop/shared";
+import {
+  imgproxyUrl,
+  type Locale,
+  type PublicCategory,
+  type StorefrontProduct,
+  type StorefrontTag,
+} from "@shop/shared";
 import { localePath, makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
 import { IMAGE_BASE, SITE_URL } from "./config";
 import { categoryWords, productBrand, SITE_NAME } from "./seo";
 import { stockOf } from "./stock";

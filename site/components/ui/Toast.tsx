@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import { create } from "zustand";
-import { noFadeFlash } from "@/lib/motion";
+import { noFadeFlash } from "@shop/shared";
 
 interface ToastState {
   message: string | null;

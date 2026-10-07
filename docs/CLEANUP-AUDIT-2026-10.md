@@ -1,5 +1,37 @@
 # Аудит мёртвого и легаси-кода — 2026-10-07
 
+> **Статус: выполнено в ветке `cleanup-2026-10`** (фронты и документация — ветка `cln-fe`, бэкенд и
+> инфраструктура — параллельно другим исполнителем). Ниже — исходный аудит, этот блок — итог.
+>
+> **Сделано (фронты, shared, docs):**
+> - Реквизиты (карта, IBAN) вырезаны из `ДИЗАЙН-ДОКУМЕНТ-новый-проект.md` и `HANDOFF.md`. В истории
+>   git и в `backend/.../V2__seed.sql` (накатанная миграция, править нельзя) они остаются — считать раскрытыми.
+> - P1: удалены методы API-клиентов без вызовов (`sendAnalytics`, `conversations`, `broadcastAdmins`,
+>   `siteRevalidateStatus`, сайт `getPaymentOptions`), файлы `SoonPanel`, `ui/Chip`, `lib/cn` (Mini App, сайт),
+>   `@dnd-kit/sortable`, все функции из списка + найденное knip'ом (`STATUS_EMOJI`, неиспользуемые
+>   ре-экспорты `imgproxyUrl`, `toMajor/toMinor`, `MessageType/OrderItem` и др.), ключи i18n — Mini App 6
+>   (сверх списка `soon.badge`), сайт 12 (сверх списка `chat.replyTo`), из всех трёх языков.
+> - P2 CSS: токены `--glow`, `--c2/--c4/--c5` (на сайте и `--c3`), все неиспользуемые `@theme`-утилиты,
+>   классы `.scene`/`.glass--*`/`.accent-fill`/`.glossy`/`.nb-up`/`.hud-frame--sm`/`.text-gradient`/`.no-scrollbar`
+>   в админке, `.nb-flat`/`.chamfer` в Mini App; в админке сверх списка — `--grad-accent*`, `--r-pill`,
+>   `--shadow-accent`, `--border*`, `--accent-2`, `--r`, `--r-card`, `--faint`. Проверено сравнением
+>   собранного CSS до/после: исчезли только эти правила.
+> - Дубли → `@shop/shared`: `phone.ts`, i18n-ядро (`locales` + `types` + `active` → `shared/src/i18n.ts`),
+>   `spring`/`noFadeFlash` (`shared/src/motion.ts`, `site/lib/motion.ts` удалён), `maxQty`.
+> - Документы архивированы в `docs/archive/` (с README), README и docs обновлены под chisetup.com.ua,
+>   edge Caddy, monobank v3.9.0, 2FA, дизайн v3; упомянуты удалённые `migration/`, «закрытый сайт»,
+>   Thymeleaf-страница и V48 (точка невозврата для отката).
+>
+> **Оставлено сознательно:**
+> - Хук `useOrderLimits` (`lib/order-limits.ts`) — у Mini App и сайта свой: зависит от своего api и
+>   стора корзины, а React-хук в barrel `@shop/shared` попал бы в граф серверных компонентов сайта.
+>   В shared вынесен только чистый `maxQty`.
+> - Варианты анимаций Mini App и админки (`lib/motion.ts`) — значения у приложений разные.
+> - knip: «неиспользуемые» экспорты, которые используются внутри своего файла, `public/sw.js`,
+>   `scripts/build-pwa-icons.mjs`, `eslint-config-next` — не мёртвые.
+> - РНОКПП в юридических страницах и футере сайта — обязательные реквизиты продавца.
+
+
 Срез: `v3.10.0` (5e48091). Только чтение, ничего не удалено. Два прохода: бэкенд (`backend/`, `bots/`, `migration/`, `infra/`) и фронты (`frontend/`, `site/`, `frontend-admin/`, `shared/`, `e2e/`, docs).
 
 **Итог в одну строку:** старая оплата на карту, старый домен и старый вход в админку из кода вычищены, остались хвосты в БД, документации и мелкий мёртвый код. Срочное — одно: **реальный номер карты и IBAN лежат в публичном репо** (`ДИЗАЙН-ДОКУМЕНТ-новый-проект.md:241`), и в проде в таблице `payment_requisites`.

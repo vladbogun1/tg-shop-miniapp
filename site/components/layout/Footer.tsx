@@ -1,8 +1,7 @@
 import { Send } from "lucide-react";
 import Link from "next/link";
-import type { PublicCategory } from "@shop/shared";
+import type { Locale, PublicCategory } from "@shop/shared";
 import { localePath, makeT } from "@/i18n";
-import type { Locale } from "@/i18n/locales";
 import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
 import { SupportGate } from "@/components/support/SupportGate";

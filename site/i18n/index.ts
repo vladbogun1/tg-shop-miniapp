@@ -4,10 +4,9 @@
  * Server components call `makeT(locale)` with the locale from the route; client components use
  * `useT()` from `./context`, which is the same function bound by the provider.
  */
+import { FALLBACK_LOCALE, translate, type Dictionary, type Locale, type Params } from "@shop/shared";
 import { en } from "./en";
-import { LOCALE_TAG, FALLBACK_LOCALE, type Locale } from "./locales";
 import { ru, type MessageKey } from "./ru";
-import { translate, type Dictionary, type Params } from "./types";
 import { uk } from "./uk";
 
 export type { MessageKey };
@@ -46,8 +45,4 @@ export function alternates(path: string, current: Locale) {
       "x-default": localePath("uk", path),
     },
   };
-}
-
-export function localeTag(locale: Locale): string {
-  return LOCALE_TAG[locale];
 }

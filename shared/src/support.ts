@@ -74,14 +74,6 @@ export interface SupportConfig {
   maxMessagesPerHour: number;
 }
 
-/** Stable error codes of the support endpoints (ApiError.code). */
-export type SupportErrorCode =
-  | "SUPPORT_DISABLED"
-  | "SUPPORT_COOLDOWN"
-  | "SUPPORT_HOURLY_LIMIT"
-  | "SUPPORT_TOO_MANY_THREADS"
-  | "SUPPORT_TOO_LONG";
-
 /** STOMP destination of a thread. */
 export function supportTopic(threadId: string): string {
   return `/topic/support/${threadId}`;

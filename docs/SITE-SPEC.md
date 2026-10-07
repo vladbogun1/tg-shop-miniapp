@@ -6,14 +6,27 @@
 **Основа:** ветка `site` от `master` (прод v2.8.1). Последняя миграция на master — V17.
 Ветку `catalog-cleanup` НЕ используем (варианты = имя + остаток, цена/фото на товаре).
 
+> **Актуальное состояние (2026-10).** Сайт открыт с v2.9.0 и живёт на `https://chisetup.com.ua`
+> (Mini App — `app.chisetup.com.ua`, админка — `admin.chisetup.com.ua`, старый `maxsolkh.shop` → 301).
+> Часть решений ниже с тех пор изменилась:
+> - оплата — **онлайн через monobank-эквайринг** (с v3.9.0), реквизиты карты и скриншоты перевода
+>   убраны, см. [`MONOBANK-ACQUIRING.md`](MONOBANK-ACQUIRING.md);
+> - дизайн — v3 ChiSetup, одна тёмная тема ([`DESIGN-V3.md`](DESIGN-V3.md)), neo-brutalism удалён;
+> - «закрытый сайт» (вход по коду `SITE_GATE_CODE`, заглушка) удалён — сайт открыт;
+> - отзывы и вопросы до покупки есть ([`ORDERS-SUPPORT-REVIEWS.md`](ORDERS-SUPPORT-REVIEWS.md)),
+>   переводы контента — [`CONTENT-I18N.md`](CONTENT-I18N.md).
+>
+> Остальной текст — исходный контракт этапа 1, оставлен как история решений.
+
 ## Решения владельца (не менять)
 
 - Заказ только после входа через Telegram. Гостевого заказа нет.
-- Домен сайта — корень `https://maxsolkh.shop` (443). Mini App остаётся на :666, админка на :667.
-- Оплата как в боте: варианты из `payment_options` (предоплата 100 грн + наложка / полная оплата
-  на ФОП), реквизиты, загрузка скрина перевода, подтверждает админ. Эквайринга НЕТ.
+- Домен сайта — корень домена (сейчас `https://chisetup.com.ua`). Mini App и админка — на своих поддоменах.
+- ~~Оплата как в боте: реквизиты, загрузка скрина перевода, эквайринга нет~~ — заменено:
+  варианты из `payment_options` (предоплата 100 ₴ онлайн + наложка / полная оплата онлайн),
+  оплата через monobank-эквайринг, заказ подтверждает админ.
 - Доставка как в боте: Нова Пошта с выбором отделения на карте (`/api/np/warehouses/bbox`) + самовывоз.
-- Стиль — наш neo-brutalism из `frontend/` (светлая по умолчанию + тёмная), раскладка — как у
+- Стиль — ~~neo-brutalism~~ дизайн v3 ChiSetup (одна тёмная тема), раскладка — как у
   vinli.com.ua (шапка с поиском, корзина-дровер, строка категорий, сайдбар фильтров, сетка товаров,
   страница товара «галерея слева / покупка справа», чекаут одной страницей в 2 колонки, кабинет
   с меню слева).
@@ -70,7 +83,7 @@
   `size` ≤ 60. `priceMaxAvailable` — максимум цены в выборке без учёта `priceMax` (для слайдера).
 - `GET /api/public/products/by-slug/{slug}` → `ProductDto` или 404.
 - `GET /api/public/sitemap` → `{ products: [{slug, updatedAt}], categories: [{slug}] }`.
-- Существующие `/api/products`, `/api/tags` остаются без изменений (Mini App).
+- Существующий `/api/products` остаётся без изменений (Mini App); `/api/tags` удалён в 2026-10 (никто не вызывал).
 
 ### Вход на сайт через бота
 
@@ -107,7 +120,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
 ### Бот (`ShopBot`)
 
 - `/start login_<nonce>` → найти токен по SHA-256(nonce), PENDING и не истёк. Ответ (на языке
-  пользователя, `messages_*.properties`): «Вход на сайт maxsolkh.shop · <браузер, ОС> . Выберите
+  пользователя, `messages_*.properties`): «Вход на сайт · <браузер, ОС> . Выберите
   число, которое видите на сайте» + inline-кнопки: 3 числа (одно верное, порядок случайный) и
   «Это не я». `callback_data`: `wl:<loginId>:<n>` / `wl:<loginId>:x`.
 - Верное число → `CONFIRMED`, `telegram_user_id = from.id`, `authService.recordBotUser(from)`,
@@ -162,7 +175,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
   (hreflang), JSON-LD `Product` + `BreadcrumbList` на товаре, `Organization` на главной.
   До публичного запуска — `robots: noindex` через env `SITE_INDEXABLE=false`.
 - Docker: `site/Dockerfile` (standalone, сборка из корня репо `-f site/Dockerfile .`), сервис `site`
-  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf.template` (вход по коду `SITE_GATE_CODE` до запуска)
+  в `docker-compose.yml`, `site-public` в `docker-compose.public.yml`, `infra/gateway-site.conf` (до 2026-10 — `.template` с входом по коду `SITE_GATE_CODE`; гейт удалён)
   (`/` → site, `/api` и `/ws` → backend, `/img` → nginx-кэш; resolver 127.0.0.11 + переменные,
   как в `gateway.conf`), `gateway-site` в `docker-compose.prod.yml` на `127.0.0.1:8092`.
 - CI: джоба `site` (typecheck + build) в `ci.yml`; образ `vladbogun1/maxsolch2-site` в `publish.yml`.
@@ -196,7 +209,7 @@ WebSocket `/ws`: при CONNECT без заголовка Authorization брат
   целиком, last-write-wins. Дубли в запросе суммируются, кол-во зажимается до 99, кривые id и
   `quantity ≤ 0` отбрасываются, несуществующие товары / чужие варианты отбрасываются. > 100 строк → 400.
 - `POST /api/me/cart/merge` (тело то же) → `CartDto` — слияние гостевой корзины.
-- `DELETE /api/me/cart` → `CartDto` (пустая).
+- ~~`DELETE /api/me/cart`~~ — удалён в 2026-10 (клиенты его не вызывали).
 
 ```jsonc
 // CartDto
@@ -247,7 +260,7 @@ max идемпотентен — повторённый (ретрай) merge н�
 
 **Mini App** (`frontend/lib/cart-sync.ts`, `startCartSync()` в Providers; стор `tgshop-cart-v1`
 получил `migrated`):
-- до обмена initData → JWT к `/api/me/cart` не ходим (правило UI-FIXES), показывается сохранённая копия;
+- до обмена initData → JWT к `/api/me/cart` не ходим (правило из `archive/UI-FIXES.md`), показывается сохранённая копия;
 - первый запуск после релиза (`migrated=false`): локальная корзина один раз сливается `merge`, дальше
   истина — сервер. Правки, сделанные до появления токена, тоже уходят через `merge` (ничего не теряется);
 - запись/перечитывание — как на сайте (400 мс, `visibilitychange`, `keepalive`), новый токен → `GET`;

@@ -1,7 +1,7 @@
 "use client";
 
 import { makeT } from "@/i18n";
-import { FALLBACK_LOCALE, LOCALE_TAG, type Locale } from "@/i18n/locales";
+import { FALLBACK_LOCALE, LOCALE_TAG, type Locale } from "@shop/shared";
 
 /** The language from the URL prefix (/ru/…, /en/…) — no provider is mounted when this page shows. */
 function urlLocale(): Locale {

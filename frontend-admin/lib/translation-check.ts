@@ -3,7 +3,6 @@
  * Pure functions, no React — the format they read is described in `translation-prompt.ts`.
  */
 import type { TrExportItem, TrLocale, TrOrigin, TrStatus } from "@/lib/api";
-import { KIND_LABEL } from "@/lib/translation-prompt";
 
 export const LOCALES: TrLocale[] = ["uk", "en"];
 
@@ -151,10 +150,6 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
     }
   }
   return { fields, strings, byId: new Map(strings.map((s) => [s.id, s])) };
-}
-
-export function kindLabel(kindKey: string): string {
-  return KIND_LABEL[kindKey] ?? kindKey;
 }
 
 // ============================================================================

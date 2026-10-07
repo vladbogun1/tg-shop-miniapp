@@ -36,8 +36,6 @@ export function resolveImageFull(value: string, maxSide = 1600): string {
   return resolve(value, { imageBase: IMAGE_BASE, apiBase: apiOrigin, size: maxSide, fit: true });
 }
 
-export { imgproxyUrl } from "@shop/shared";
-
 /** Neutral placeholder = --surface-2 of the dark ChiSetup theme. */
 const BLUR =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23222222'/%3E%3C/svg%3E";

@@ -1,10 +1,10 @@
 /**
  * Framer Motion presets for the customer Mini App. Springy, quick, tasteful.
  */
-import type { Variants, Transition } from "framer-motion";
+import type { Variants } from "framer-motion";
+import { spring } from "@shop/shared";
 
-export const spring: Transition = { type: "spring", stiffness: 380, damping: 32 };
-export const springSoft: Transition = { type: "spring", stiffness: 260, damping: 30 };
+export { spring };
 
 export const staggerContainer: Variants = {
   initial: {},

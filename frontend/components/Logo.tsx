@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G, MARK_GEOMETRY as M } from "@shop/shared";
+import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "@shop/shared";
 
 /**
  * ChiSetup logo (DESIGN-V3 §6) — the same vector geometry as the website
@@ -75,33 +75,6 @@ export function Logo({
           <path fill="#FF6600" d={G.bracketsOrange} />
         </>
       )}
-    </svg>
-  );
-}
-
-/** CS monogram app icon (same art as app/icon.svg and the bot avatar). */
-export function LogoMark({ size = 44, className = "" }: { size?: number; className?: string }) {
-  const id = useId().replace(/:/g, "");
-  return (
-    <svg aria-hidden viewBox={M.viewBox} width={size} height={size} className={`block shrink-0 ${className}`}>
-      <defs>
-        <linearGradient id={`${id}bg`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#151515" />
-          <stop offset="1" stopColor="#0E0E10" />
-        </linearGradient>
-        <linearGradient id={`${id}w`} x1="0" y1="0" x2="0" y2="1">
-          <Stops stops={BRAND_WHITE_STOPS} />
-        </linearGradient>
-        <linearGradient id={`${id}o`} x1="0" y1="0" x2="0" y2="1">
-          <Stops stops={BRAND_ORANGE_STOPS} />
-        </linearGradient>
-      </defs>
-      <rect width="512" height="512" rx={M.radius} fill={`url(#${id}bg)`} />
-      <rect x="2" y="2" width="508" height="508" rx={M.radius - 2} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="4" />
-      <path fill="#FFFFFF" d={M.bracketsWhite} />
-      <path fill="#FF6600" d={M.bracketsOrange} />
-      <path fill={`url(#${id}w)`} d={M.white} />
-      <path fill={`url(#${id}o)`} d={M.orange} />
     </svg>
   );
 }

@@ -19,13 +19,20 @@
 import { CheckCircle2, Loader2, Send, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { shortOrderId } from "@shop/shared";
+import {
+  type Dictionary,
+  FALLBACK_LOCALE,
+  type Locale,
+  LOCALE_TAG,
+  normalizeLocale,
+  type Params,
+  shortOrderId,
+  translate,
+} from "@shop/shared";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { en } from "@/i18n/en";
-import { FALLBACK_LOCALE, LOCALE_TAG, normalizeLocale, type Locale } from "@/i18n/locales";
 import { ru } from "@/i18n/ru";
-import { translate, type Dictionary, type Params } from "@/i18n/types";
 import { uk } from "@/i18n/uk";
 import { customerApi } from "@/lib/api";
 

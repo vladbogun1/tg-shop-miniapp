@@ -5,20 +5,18 @@
  * customer-specific part: where the token is kept (in memory, re-obtained from Telegram initData
  * on every launch) and the typed endpoint list.
  */
-import { getActiveLocale, getActiveTag } from "@/i18n/active";
-import { en } from "@/i18n/en";
-import { ru } from "@/i18n/ru";
-import { uk } from "@/i18n/uk";
 import {
   ApiError,
-  createHttpClient,
-  newIdempotencyKey,
-  normalizeBaseUrl,
   type AuthResponse,
   type CartLineInput,
   type Conversation,
+  createHttpClient,
   type CreateOrderResult,
+  getActiveLocale,
+  getActiveTag,
   type Message,
+  newIdempotencyKey,
+  normalizeBaseUrl,
   type NpCity,
   type NpWarehouse,
   type OrderDetail,
@@ -26,12 +24,15 @@ import {
   type OrderSummary,
   type PaymentOption,
   type PaymentStart,
-  type Receipt,
   type Product,
   type PromoPreview,
+  type Receipt,
   type SendMessageRequest,
   type ServerCart,
 } from "@shop/shared";
+import { en } from "@/i18n/en";
+import { ru } from "@/i18n/ru";
+import { uk } from "@/i18n/uk";
 
 export { ApiError, newIdempotencyKey };
 export type {
@@ -54,14 +55,11 @@ export type {
 };
 export type {
   DeliveryMethod,
-  MessageType,
   NpCategory,
-  OrderItem,
   OrderStatus,
   ProductImage,
   ProductTag,
   ProductVariant,
-  SenderType as MessageSenderType,
 } from "@shop/shared";
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
@@ -262,9 +260,6 @@ export const customerApi = {
    */
   setLocale: (locale: string) =>
     http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`),
-  /** Buffered interaction journal, flushed in batches — see lib/analytics. */
-  sendAnalytics: (batch: { sessionId: string; events: unknown[] }) =>
-    http.post<void>("/api/me/analytics", batch),
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
   /** Server cart shared with the website (same Telegram account) — see lib/cart-sync. */
   getCart: () => http.get<ServerCart>("/api/me/cart"),

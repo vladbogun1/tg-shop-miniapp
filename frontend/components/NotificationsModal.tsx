@@ -6,7 +6,7 @@
  * would trap position:fixed). Mobile: full-screen sheet. Desktop: panel anchored
  * top-right. Tap a row → that order's chat. Query keys + polling are preserved
  * from the original. List items animate DIRECTLY (initial/animate + delay), not
- * via variant-label propagation (see NEO.md framer-motion caveat).
+ * via variant-label propagation (see docs/archive/NEO-frontend.md framer-motion caveat).
  */
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";

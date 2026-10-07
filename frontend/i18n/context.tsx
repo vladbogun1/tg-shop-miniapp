@@ -24,17 +24,19 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken, onAccessToken, customerApi } from "@/lib/api";
-import { setActiveLocale } from "./active";
+import {
+  type Dictionary,
+  FALLBACK_LOCALE,
+  type Locale,
+  LOCALE_TAG,
+  normalizeLocale,
+  type Params,
+  setActiveLocale,
+  translate,
+} from "@shop/shared";
 import { ru } from "./ru";
 import { uk } from "./uk";
 import { en } from "./en";
-import {
-  FALLBACK_LOCALE,
-  LOCALE_TAG,
-  normalizeLocale,
-  type Locale,
-} from "./locales";
-import { translate, type Dictionary, type Params } from "./types";
 
 const STORAGE_KEY = "locale";
 
@@ -126,7 +128,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   return (
     <I18nContext.Provider value={value}>
       {/* Remounting on a language change is deliberate. Dates and prices are formatted by plain
-          functions that read the active locale (i18n/active), so a component that shows a price
+          functions that read the active locale (getActiveLocale in @shop/shared), so a component that shows a price
           but no translated text would otherwise keep the old formatting until something else
           re-rendered it. Switching language is a rare, deliberate action — a clean remount costs
           nothing and removes a whole class of half-translated screens. */}

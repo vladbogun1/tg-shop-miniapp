@@ -15,10 +15,9 @@
  */
 import { motion } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
-import type { Message } from "@shop/shared";
+import { type Message, noFadeFlash, spring } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
-import { spring, noFadeFlash } from "@/lib/motion";
 import { useFmt } from "@/lib/use-fmt";
 
 export function MessageBubble({

@@ -12,7 +12,7 @@
  */
 import type {
   CatalogSort,
-  PaymentOption,
+  Locale,
   PublicCategory,
   PublicCategoryDetail,
   PublicProductPage,
@@ -20,7 +20,6 @@ import type {
   ReviewPage,
   StorefrontProduct,
 } from "@shop/shared";
-import type { Locale } from "@/i18n/locales";
 import { catalogSearchParams, type CatalogQuery } from "./api";
 import { PAGE_SIZE, REVALIDATE_SECONDS } from "./config";
 
@@ -126,10 +125,6 @@ export async function getProductReviews(slug: string, locale: Locale, size = 10)
 /** Slugs only — language-independent. */
 export async function getSitemap(): Promise<PublicSitemap> {
   return getJson<PublicSitemap>("/api/public/sitemap", null);
-}
-
-export async function getPaymentOptions(locale: Locale): Promise<PaymentOption[]> {
-  return getJson<PaymentOption[]>("/api/payment-options", locale, ["payment-options"]);
 }
 
 /** Same as the promise-returning getters, but resolves to a fallback instead of throwing. */

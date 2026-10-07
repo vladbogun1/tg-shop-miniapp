@@ -6,7 +6,8 @@ import Link from "next/link";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useI18n } from "@/i18n/context";
 import { useCart, type CartLine } from "@/lib/cart";
-import { maxQty, useOrderLimits } from "@/lib/order-limits";
+import { maxQty } from "@shop/shared";
+import { useOrderLimits } from "@/lib/order-limits";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 

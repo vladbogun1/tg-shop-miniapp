@@ -12,16 +12,12 @@ export {
   formatDateTime,
   isNovaPoshtaTtn,
   ORDER_STATUS_COLOR as STATUS_VAR,
-  PAYMENT_STATE_LABEL,
-  paymentState,
   REJECT_REASON_LABEL,
   STATUS_ACTION_LABEL,
   STATUS_COLUMN_LABEL as STATUS_LABEL,
-  STATUS_EMOJI,
   STATUS_ORDER,
   shortOrderId as shortId,
   timeAgo,
-  type PaymentState,
   type RejectReasonCode,
 } from "@shop/shared";
 

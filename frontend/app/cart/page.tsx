@@ -8,7 +8,7 @@
  * store, and a STICKY bottom summary bar (total + prominent "Оформить") sitting
  * above the TabBar within thumb reach. Empty-cart state with a CTA back to the
  * catalog. Items animate in directly (NOT via variant-propagation through
- * AnimatePresence — see NEO.md caveat) and animate out on removal.
+ * AnimatePresence — see docs/archive/NEO-frontend.md caveat) and animate out on removal.
  *
  * The promo code is checked HERE (PromoField) rather than only on the last checkout step, and
  * the totals below show the discounted amount — the cart used to promise the full price and let
@@ -24,7 +24,8 @@ import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
-import { maxQty, useOrderLimits } from "@/lib/order-limits";
+import { maxQty } from "@shop/shared";
+import { useOrderLimits } from "@/lib/order-limits";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
@@ -94,7 +95,7 @@ export default function CartPage() {
         </span>
       </div>
 
-      {/* line items — animate each item DIRECTLY (NEO.md caveat) */}
+      {/* line items — animate each item DIRECTLY (docs/archive/NEO-frontend.md caveat) */}
       <div className="flex flex-col gap-3">
         <AnimatePresence initial={false}>
           {lines.map((l, i) => (

@@ -6,17 +6,18 @@
  */
 import {
   dayLabel as sharedDayLabel,
+  type Dictionary,
   formatDate as sharedFormatDate,
   formatShortDateTime as sharedFormatDateTime,
   formatTime as sharedFormatTime,
+  getActiveLocale,
+  getActiveTag,
+  type Locale,
   timeAgo as sharedTimeAgo,
 } from "@shop/shared";
-import { getActiveLocale, getActiveTag } from "@/i18n/active";
 import { ru } from "@/i18n/ru";
 import { uk } from "@/i18n/uk";
 import { en } from "@/i18n/en";
-import type { Locale } from "@/i18n/locales";
-import type { Dictionary } from "@/i18n/types";
 
 export {
   ORDER_STATUS_COLOR,

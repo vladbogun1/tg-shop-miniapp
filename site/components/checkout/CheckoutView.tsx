@@ -22,7 +22,21 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { visiblePaymentOptions, type DeliveryMethod, type NpCity, type NpWarehouse, type OrderDetail } from "@shop/shared";
+import {
+  type DeliveryMethod,
+  formatPhone,
+  isOrderLimitCode,
+  isValidPhone,
+  type NpCity,
+  npCityBounds,
+  npLatLng,
+  type NpWarehouse,
+  type OrderDetail,
+  type OrderLimitCode,
+  phoneE164,
+  resolveNpWarehouse,
+  visiblePaymentOptions,
+} from "@shop/shared";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,9 +50,7 @@ import { useCartValidation } from "@/lib/cart-validation";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
-import { formatPhone, isValidPhone, phoneE164 } from "@/lib/phone";
 import { useSession } from "@/lib/session";
-import { isOrderLimitCode, npCityBounds, npLatLng, resolveNpWarehouse, type OrderLimitCode } from "@shop/shared";
 import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
@@ -307,7 +319,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       customerName: name.trim(),
       phone: phoneE164(phone),
       comment: comment.trim() || undefined,
-      // ONLY a code the server has just confirmed (see UI-FIXES §6).
+      // ONLY a code the server has just confirmed (see docs/archive/UI-FIXES.md §6).
       promoCode: promoValid ? promoCode.trim() : undefined,
       deliveryMethod: delivery,
       npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,

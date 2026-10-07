@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { localePath } from "@/i18n";
-import { LOCALES } from "@/i18n/locales";
+import { LOCALES } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 import { untranslatedLegalPaths } from "@/lib/legal";
 import { getCategories, getSitemap, safe } from "@/lib/server-api";

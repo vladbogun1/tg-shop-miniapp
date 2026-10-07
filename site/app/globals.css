@@ -32,13 +32,6 @@
   --accent-lo: #E65C00;
   --accent-ink: #0E0E10;      /* text on orange is dark (6.3:1); white on #FF6600 is 2.9:1 */
   --accent-soft: rgba(255, 102, 0, .12);
-  --glow: 0 0 0 1px rgba(255, 102, 0, .55), 0 0 24px rgba(255, 102, 0, .35);
-
-  /* Former multicolour accents collapse into the brand */
-  --c2: #A1A1AA;
-  --c3: #FF8533;
-  --c4: #22C55E;
-  --c5: #FF6600;
 
   --ok: #22C55E;
   --warn: #F59E0B;
@@ -76,15 +69,6 @@
 footer.chrome { background-color: #0A0A0C; }
 
 @theme inline {
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-ink: var(--ink);
-  --color-ink-muted: var(--muted);
-  --color-ink-faint: var(--faint);
-  --color-ok: var(--ok);
-  --color-warn: var(--warn);
-  --color-danger: var(--danger);
-  --radius-nb: var(--r);
   --font-display: var(--font-exo), "Exo 2", system-ui, sans-serif;
   --font-sans: var(--font-inter), "Helvetica Neue", Arial, system-ui, sans-serif;
 }
