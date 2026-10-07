@@ -348,7 +348,7 @@ function CodCallout({ o }: { o: AdminDispatchOrder }) {
         <div className={big} style={{ color: ink }}>
           Наложка: {money(o.codMinor, o.currency)}
         </div>
-        <CopyButton value={String(Math.round(o.codMinor / 100))} label="Скопировать сумму наложки" />
+        <CopyButton value={o.codMinor % 100 === 0 ? String(o.codMinor / 100) : (o.codMinor / 100).toFixed(2)} label="Скопировать сумму наложки" />
       </div>
       <div className={sub}>
         {o.receivedMinor > 0

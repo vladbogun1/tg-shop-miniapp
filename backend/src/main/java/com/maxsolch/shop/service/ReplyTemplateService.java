@@ -172,10 +172,9 @@ public class ReplyTemplateService {
         return full == null ? "" : full.trim();
     }
 
-    /** Whole hryvnias with a thin-space thousands separator, the way the cards print money. */
+    /** Hryvnias the way the cards print money — kopecks shown when there are any. */
     static String money(long minor) {
-        long whole = Math.round(minor / 100.0);
-        return String.format(Locale.ROOT, "%,d", whole).replace(',', ' ') + " ₴";
+        return com.maxsolch.shop.common.MoneyFormat.uah(minor);
     }
 
     private static boolean notBlank(String s) {

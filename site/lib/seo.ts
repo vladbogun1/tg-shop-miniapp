@@ -94,9 +94,11 @@ export function clip(text: string, max: number): string {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,.;:—–-]+$/, "")}…`;
 }
 
-/** "650 ₴" / "650 UAH" for meta texts (no JS formatting quirks, no decimals). */
+/** "650 ₴" / "650 UAH" for meta texts (no JS formatting quirks). */
 export function metaPrice(minor: number, locale: Locale): string {
-  const n = Math.round(minor / 100).toLocaleString(LOCALE_TAG[locale]).replace(/ | /g, " ");
+  // Kopecks only when there are any ("0,95 ₴") — rounding a price misleads.
+  const opts = minor % 100 === 0 ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+  const n = (minor / 100).toLocaleString(LOCALE_TAG[locale], opts).replace(/ | /g, " ");
   return locale === "en" ? `${n} UAH` : `${n} ₴`;
 }
 

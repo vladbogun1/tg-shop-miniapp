@@ -817,8 +817,7 @@ public class NotificationService {
      * different totals for the same order whenever kopecks were involved.
      */
     private String money(long minor) {
-        long whole = Math.round(minor / 100.0);
-        return String.format("%,d", whole).replace(',', ' ');
+        return com.maxsolch.shop.common.MoneyFormat.amount(minor);
     }
 
     private String esc(String s) {
