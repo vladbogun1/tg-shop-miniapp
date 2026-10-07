@@ -34,6 +34,7 @@ public class ReceiptSigner {
     private final byte[] key;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ReceiptSigner(AppProperties props) {
         this(props, Clock.systemUTC());
     }
