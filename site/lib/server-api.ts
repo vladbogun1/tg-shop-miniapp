@@ -17,6 +17,7 @@ import type {
   PublicCategoryDetail,
   PublicProductPage,
   PublicSitemap,
+  ReviewFeed,
   ReviewPage,
   StorefrontProduct,
 } from "@shop/shared";
@@ -120,6 +121,11 @@ export async function getProductReviews(slug: string, locale: Locale, size = 10)
     if (e instanceof NotFoundError) return null;
     throw e;
   }
+}
+
+/** Newest published reviews across the shop for the home-page ribbon; product titles in `locale`. */
+export async function getReviewFeed(locale: Locale, size = 24): Promise<ReviewFeed> {
+  return getJson<ReviewFeed>(`/api/public/reviews/latest?size=${size}`, locale, ["reviews"]);
 }
 
 /** Slugs only — language-independent. */
