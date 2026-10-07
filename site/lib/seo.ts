@@ -102,26 +102,6 @@ export function metaPrice(minor: number, locale: Locale): string {
   return locale === "en" ? `${n} UAH` : `${n} ₴`;
 }
 
-/**
- * Legal pages (delivery, returns, warranty, privacy, terms) exist only in Ukrainian; /ru/… and /en/…
- * show the same text with a note. Three URLs with one text are duplicates, so until translations
- * exist every language version is canonical to the Ukrainian page and only that one is announced
- * in hreflang (the sitemap does the same).
- */
-export function legalPageMeta(locale: Locale, path: string, title: string, description: string): Metadata {
-  const uk = localePath("uk", path);
-  return pageMeta({
-    locale,
-    path,
-    title,
-    description,
-    alternates: { canonical: uk, languages: { uk, "x-default": uk } },
-  });
-}
-
-/** Paths whose ru/en versions are untranslated copies (see {@link legalPageMeta}). */
-export const UK_ONLY_PATHS = ["/delivery", "/returns", "/warranty", "/privacy", "/terms"];
-
 // ---------------------------------------------------------------- categories
 
 interface CategoryWords {

@@ -102,6 +102,7 @@ export const uk: RuDictionary = {
   "info.about": "Про магазин",
   "info.ukOnly": "Цей текст поки доступний лише українською мовою.",
   "info.updated": "Оновлено {date}",
+  "info.translationNote": "Це переклад з української. У разі розбіжностей діє українська версія.",
 
   "contacts.lead": "Найшвидше відповімо в Telegram — там же чат щодо кожного замовлення.",
   "contacts.telegram": "Telegram-бот",
@@ -114,6 +115,7 @@ export const uk: RuDictionary = {
   "contacts.pickup": "Самовивіз",
   "contacts.hours": "Години роботи",
   "contacts.seller": "Продавець",
+  "contacts.sellerValue": "ФОП Солоха Максим Андрійович, РНОКПП {taxId}",
 
   "about.lead": "ChiSetup — невеликий магазин ігрової периферії з України.",
   "about.text1":
@@ -129,6 +131,7 @@ export const uk: RuDictionary = {
   "notFound.text": "Такої сторінки немає — можливо, товар зняли з продажу або посилання застаріло.",
   "error.title": "Щось пішло не так",
   "error.text": "Сайт спіткнувся. Спробуйте ще раз — якщо не допоможе, оновіть сторінку.",
+  "error.global.text": "Спробуйте оновити сторінку.",
 
   "home.hero.kicker": "Мишки · Клавіатури · Навушники · Аксесуари",
   "home.hero.title": "Ігрові девайси для твого сетапу",

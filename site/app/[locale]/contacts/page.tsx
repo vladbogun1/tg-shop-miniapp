@@ -30,7 +30,7 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
     { icon: AtSign, label: t("contacts.owner"), value: ownerLink },
     { icon: MapPin, label: t("contacts.pickup"), value: t("contacts.pickupValue") },
     { icon: Clock, label: t("contacts.hours"), value: t("contacts.hoursValue") },
-    { icon: User, label: t("contacts.seller"), value: <>{SELLER.name}, РНОКПП {SELLER.taxId}</> },
+    { icon: User, label: t("contacts.seller"), value: t("contacts.sellerValue", { taxId: SELLER.taxId }) },
   ];
   return (
     <div className="container-site pt-6">
