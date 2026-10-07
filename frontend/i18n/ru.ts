@@ -235,7 +235,7 @@ export const ru = {
   "checkout.submitHint": "Оплата {amount} — на следующем шаге, у вас будет 24 часа",
   "checkout.toOrders": "Мои заказы",
   "cart.qtyLimit": "Не больше {n} шт. одного товара в заказе",
-  "created.title": "Заказ #{id} создан",
+  "created.title": "Заказ {id} создан",
   "created.text": "Оплатите его в течение 24 часов — иначе заказ отменится автоматически.",
   "cancel.confirm": "Да, отменить",
   "cancel.reasonOptional": "Причина (необязательно)",

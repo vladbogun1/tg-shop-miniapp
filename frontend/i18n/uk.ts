@@ -223,7 +223,7 @@ export const uk: RuDictionary = {
   "checkout.submitHint": "Оплата {amount} — на наступному кроці, у вас буде 24 години",
   "checkout.toOrders": "Мої замовлення",
   "cart.qtyLimit": "Не більше {n} шт. одного товару в замовленні",
-  "created.title": "Замовлення #{id} створено",
+  "created.title": "Замовлення {id} створено",
   "created.text": "Оплатіть його протягом 24 годин — інакше замовлення скасується автоматично.",
   "cancel.confirm": "Так, скасувати",
   "cancel.reasonOptional": "Причина (необовʼязково)",

@@ -223,7 +223,7 @@ export const en: RuDictionary = {
   "checkout.submitHint": "Payment of {amount} is the next step — you will have 24 hours",
   "checkout.toOrders": "My orders",
   "cart.qtyLimit": "No more than {n} pcs of one product per order",
-  "created.title": "Order #{id} placed",
+  "created.title": "Order {id} placed",
   "created.text": "Pay for it within 24 hours — otherwise the order is cancelled automatically.",
   "cancel.confirm": "Yes, cancel",
   "cancel.reasonOptional": "Reason (optional)",
