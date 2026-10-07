@@ -69,8 +69,38 @@ public class OnlinePaymentService {
         this.applier = applier;
     }
 
+    /** Optional (tests build the service without them): PRRO tax codes and basket JSON. */
+    private com.maxsolch.shop.settings.SettingsService settings;
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setSettings(com.maxsolch.shop.settings.SettingsService settings) {
+        this.settings = settings;
+    }
+
     public boolean isEnabled() {
         return mono.isEnabled();
+    }
+
+    /** Tax rate codes for every receipt line (setting payment.fiscalTaxCodes, e.g. "1" or "1,2"). */
+    List<Integer> taxCodes() {
+        if (settings == null) {
+            return List.of();
+        }
+        String raw = settings.getString(com.maxsolch.shop.settings.SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
+        List<Integer> out = new ArrayList<>();
+        if (raw != null) {
+            for (String part : raw.split("[,;\s]+")) {
+                if (!part.isBlank()) {
+                    try {
+                        out.add(Integer.parseInt(part.trim()));
+                    } catch (NumberFormatException e) {
+                        log.warn("payment.fiscalTaxCodes: '{}' is not a number — ignored", part);
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     // ------------------------------------------------------------------ start
@@ -138,13 +168,14 @@ public class OnlinePaymentService {
         }
         long validity = Math.max(60, Duration.between(now, expiresAt).toSeconds());
         String shortId = key.substring(0, 8);
+        List<MonobankClient.BasketItem> basket = basket(order, amount, shortId, taxCodes());
         MonobankClient.CreatedInvoice created;
         try {
             created = mono.createInvoice(new MonobankClient.CreateInvoice(
                     amount,
                     key,
                     "Оплата замовлення #" + shortId + " — ChiSetup",
-                    basket(order, amount, shortId),
+                    basket,
                     redirectUrl(order, returnTo, locale, embedded),
                     webhookUrl(),
                     validity,
@@ -162,6 +193,7 @@ public class OnlinePaymentService {
         inv.setAmountMinor(amount);
         inv.setPageUrl(created.pageUrl());
         inv.setDisplayType(display);
+        inv.setBasketJson(toJson(basket));
         inv.setExpiresAt(now.plusSeconds(validity));
         inv.setStatus(PaymentInvoice.CREATED);
         invoices.save(inv);
@@ -175,6 +207,10 @@ public class OnlinePaymentService {
      * receipt) needs the lines to sum to the invoice amount.
      */
     static List<MonobankClient.BasketItem> basket(Order order, long amount, String shortId) {
+        return basket(order, amount, shortId, List.of());
+    }
+
+    static List<MonobankClient.BasketItem> basket(Order order, long amount, String shortId, List<Integer> tax) {
         List<MonobankClient.BasketItem> lines = new ArrayList<>();
         long sum = 0;
         for (OrderItem it : order.getItems()) {
@@ -185,7 +221,7 @@ public class OnlinePaymentService {
                     + (it.getVariantNameSnapshot() == null || it.getVariantNameSnapshot().isBlank()
                     ? "" : " (" + it.getVariantNameSnapshot() + ")");
             lines.add(new MonobankClient.BasketItem(cut(name, 200), it.getQuantity(), it.getPriceMinorSnapshot(),
-                    UuidUtil.toString(it.getProductId())));
+                    UuidUtil.toString(it.getProductId()), tax));
             sum += it.getPriceMinorSnapshot() * it.getQuantity();
         }
         if (sum == amount && !lines.isEmpty()) {
@@ -194,7 +230,36 @@ public class OnlinePaymentService {
         String title = amount < order.getTotalMinor() && order.getPrepaymentMinor() > 0
                 ? "Передоплата за замовлення #" + shortId
                 : "Оплата замовлення #" + shortId;
-        return List.of(new MonobankClient.BasketItem(title, 1, amount, "order-" + shortId));
+        return List.of(new MonobankClient.BasketItem(title, 1, amount, "order-" + shortId, tax));
+    }
+
+    private static String toJson(List<MonobankClient.BasketItem> basket) {
+        try {
+            return JSON.writeValueAsString(basket);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Items of a refund, for the return receipt: a full refund returns exactly the lines sold; a
+     * partial one is a single line for the amount.
+     */
+    List<MonobankClient.BasketItem> refundItems(PaymentInvoice inv, long amount, boolean full) {
+        if (full && inv.getBasketJson() != null) {
+            try {
+                List<MonobankClient.BasketItem> sold = JSON.readValue(inv.getBasketJson(),
+                        new com.fasterxml.jackson.core.type.TypeReference<List<MonobankClient.BasketItem>>() { });
+                if (!sold.isEmpty()) {
+                    return sold;
+                }
+            } catch (Exception e) {
+                log.warn("invoice {}: unreadable basket_json — refunding as one line", inv.getExternalId());
+            }
+        }
+        String shortId = UuidUtil.toString(inv.getOrderId()).substring(0, 8);
+        return List.of(new MonobankClient.BasketItem("Повернення за замовлення #" + shortId, 1, amount,
+                "order-" + shortId, taxCodes()));
     }
 
     /**
@@ -274,7 +339,11 @@ public class OnlinePaymentService {
         }
         String extRef = "refund-" + UuidUtil.toString(UuidUtil.randomBytes()).substring(0, 13);
         try {
-            mono.cancel(inv.getExternalId(), extRef, amountMinor == null || amountMinor == left ? null : amountMinor);
+            boolean full = amountMinor == null || amountMinor == left;
+            // A full refund of an untouched invoice returns the sold lines; anything else is one line.
+            boolean asSold = full && inv.getRefundedMinor() == 0;
+            mono.cancel(inv.getExternalId(), extRef, full ? null : amountMinor,
+                    refundItems(inv, full ? left : amountMinor, asSold));
         } catch (MonobankClient.MonobankException e) {
             throw new BadRequestException("monobank отклонил возврат: " + e.getMessage());
         }

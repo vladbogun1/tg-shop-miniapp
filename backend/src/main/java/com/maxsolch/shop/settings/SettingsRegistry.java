@@ -27,6 +27,8 @@ public final class SettingsRegistry {
 
     // ---- keys (referenced by consumers; other packages read them via SettingsService) ----
     public static final String PROMO_HOLD_MINUTES = "promo.holdMinutes";
+    /** Tax rate codes of the PRRO (Вчасно.Каса / Checkbox) put on every fiscal receipt line. */
+    public static final String PAYMENT_FISCAL_TAX_CODES = "payment.fiscalTaxCodes";
     public static final String CATALOG_LOW_STOCK_QTY = "catalog.lowStockQty";
     public static final String METRICS_LOW_STOCK_DAYS = "metrics.lowStockDays";
     public static final String METRICS_DEAD_STOCK_DAYS = "metrics.deadStockDays";
@@ -64,6 +66,7 @@ public final class SettingsRegistry {
 
     public static final List<Group> GROUPS = List.of(
             new Group("orders", "Корзина и промокоды", "Как ведут себя корзина и промокоды при оформлении."),
+            new Group("payment", "Оплата и чеки", "Онлайн-оплата monobank и фискальные чеки (пРРО)."),
             new Group("stock", "Склад и метрики", "Пороги, по которым товары помечаются «мало» и «не продаются»."),
             new Group("notifications", "Уведомления", "Что бот пишет покупателям."),
             new Group("reviews", "Отзывы",
@@ -78,6 +81,14 @@ public final class SettingsRegistry {
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
+            textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
+                    "Коды налоговых ставок для чеков",
+                    "Числовые коды ставок из пРРО через запятую (например «1»), ставятся в каждую строку "
+                            + "чека monobank. Для Вчасно.Каса обязательно — без кода monobank не создаст "
+                            + "счёт. Где взять: Вчасно.Каса → Налаштування → Податкові ставки (для ФОП без "
+                            + "ПДВ — ставка «Без ПДВ»). Для Checkbox можно оставить пустым.",
+                    "", 64),
+
             boolSetting(SUPPORT_ENABLED, "support",
                     "Поддержка включена",
                     "Кнопки «Задать вопрос о товаре» и «Поддержка» на сайте и в Mini App. Выключено — "

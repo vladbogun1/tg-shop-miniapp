@@ -43,8 +43,31 @@ public class MonobankClient {
         return props.getPayment().getMonobank().isEnabled();
     }
 
-    /** One line of the basket shown on the payment page (and used for fiscal receipts). */
-    public record BasketItem(String name, long qty, long sum, String code) {
+    /**
+     * One line of the basket shown on the payment page and used for fiscal receipts.
+     * {@code tax} — tax rate codes of the merchant's PRRO (mandatory for Вчасно.Каса); may be empty.
+     */
+    public record BasketItem(String name, long qty, long sum, String code, List<Integer> tax) {
+
+        public BasketItem(String name, long qty, long sum, String code) {
+            this(name, qty, sum, code, List.of());
+        }
+    }
+
+    private static Map<String, Object> item(BasketItem b, boolean withUnit) {
+        Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("name", b.name());
+        m.put("qty", b.qty());
+        m.put("sum", b.sum());
+        m.put("code", b.code());
+        if (withUnit) {
+            m.put("total", b.sum() * b.qty());
+            m.put("unit", "шт.");
+        }
+        if (b.tax() != null && !b.tax().isEmpty()) {
+            m.put("tax", b.tax());
+        }
+        return m;
     }
 
     public record CreateInvoice(long amount, String reference, String destination, List<BasketItem> basket,
@@ -63,9 +86,7 @@ public class MonobankClient {
         paymInfo.put("reference", req.reference());
         paymInfo.put("destination", req.destination());
         if (req.basket() != null && !req.basket().isEmpty()) {
-            paymInfo.put("basketOrder", req.basket().stream().map(b -> Map.of(
-                    "name", b.name(), "qty", b.qty(), "sum", b.sum(), "total", b.sum() * b.qty(),
-                    "code", b.code(), "unit", "шт.")).toList());
+            paymInfo.put("basketOrder", req.basket().stream().map(b -> item(b, true)).toList());
         }
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("amount", req.amount());
@@ -91,11 +112,22 @@ public class MonobankClient {
 
     /** {@code POST /api/merchant/invoice/cancel} — full refund when {@code amount} is null. */
     public String cancel(String invoiceId, String extRef, Long amount) {
+        return cancel(invoiceId, extRef, amount, List.of());
+    }
+
+    /**
+     * Refund with the returned items ({@code items} — mandatory when fiscalisation is on, so a
+     * return receipt can be issued).
+     */
+    public String cancel(String invoiceId, String extRef, Long amount, List<BasketItem> items) {
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("invoiceId", invoiceId);
         body.put("extRef", extRef);
         if (amount != null) {
             body.put("amount", amount);
+        }
+        if (items != null && !items.isEmpty()) {
+            body.put("items", items.stream().map(b -> item(b, false)).toList());
         }
         return call("POST", "/api/merchant/invoice/cancel", body).path("status").asText(null);
     }
