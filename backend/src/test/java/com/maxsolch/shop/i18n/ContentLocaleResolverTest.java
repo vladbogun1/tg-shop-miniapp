@@ -34,7 +34,7 @@ class ContentLocaleResolverTest {
 
     @Test
     void unsupportedOrMissingHeaderFallsBackToUkrainian() {
-        // same rule as the interface texts (I18N.md): an unknown language is Ukrainian
+        // same rule as the interface texts (docs/archive/I18N.md): an unknown language is Ukrainian
         assertThat(resolve("/api/products", "de-DE", null)).isEqualTo("uk");
         assertThat(resolve("/api/products", null, null)).isEqualTo("uk");
     }
