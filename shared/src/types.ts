@@ -80,6 +80,24 @@ export interface PublicReview {
   adminReplyAt?: string | null;
 }
 
+/** One quote of the site's home-page reviews ribbon: the review plus the product it is about. */
+export interface FeedReview {
+  id: number;
+  author: string;
+  rating: number;
+  text: string;
+  publishedAt?: string | null;
+  productTitle: string;
+  productSlug: string;
+  imageUrl?: string | null;
+}
+
+/** `GET /api/public/reviews/latest?size=` — shop-wide summary and the newest reviews with a text. */
+export interface ReviewFeed {
+  summary: ReviewSummary;
+  items: FeedReview[];
+}
+
 /** `GET /api/public/products/{idOrSlug}/reviews?page=&size=` (page is 0-based). */
 export interface ReviewPage {
   productId: string;

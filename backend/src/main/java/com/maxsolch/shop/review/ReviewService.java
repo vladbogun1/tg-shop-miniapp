@@ -481,7 +481,7 @@ public class ReviewService {
         });
         if (info != null && info.slug() != null) {
             try {
-                siteRevalidator.revalidate(List.of("/product/" + info.slug()));
+                siteRevalidator.revalidate(List.of("/product/" + info.slug(), "/"));
             } catch (RuntimeException e) {
                 log.warn("Site revalidation after a review failed: {}", e.toString());
             }

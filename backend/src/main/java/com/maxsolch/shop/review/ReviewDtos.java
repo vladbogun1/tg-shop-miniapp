@@ -29,6 +29,15 @@ public final class ReviewDtos {
                              int totalPages, long total) {
     }
 
+    /** One quote of the site's home-page reviews ribbon: the review plus the product it is about. */
+    public record FeedReview(long id, String author, int rating, String text, Instant publishedAt,
+                             String productTitle, String productSlug, String imageUrl) {
+    }
+
+    /** {@code GET /api/public/reviews/latest}: shop-wide summary and the newest quotes. */
+    public record ReviewFeed(Summary summary, List<FeedReview> items) {
+    }
+
     // ------------------------------------------------------------------ customer
 
     /** {@code POST /api/me/reviews}: a new review of an order line, or an edit of an own PENDING one. */

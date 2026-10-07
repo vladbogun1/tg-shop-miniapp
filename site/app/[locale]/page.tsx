@@ -4,11 +4,12 @@ import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { CategoryArt, CategoryArtDefs } from "@/components/home/CategoryArt";
 import { HeroArt } from "@/components/home/HeroArt";
+import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getProducts, safe } from "@/lib/server-api";
+import { getCategories, getProducts, getReviewFeed, safe } from "@/lib/server-api";
 import { pageMeta, storeJsonLd } from "@/lib/seo";
 import { toCardProducts } from "@/lib/card";
 
@@ -33,10 +34,11 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
 
-  const [categories, hits, fresh] = await Promise.all([
+  const [categories, hits, fresh, feed] = await Promise.all([
     safe(getCategories(locale), []),
     safe(getProducts({ sort: "default", inStock: true, size: 8 }, locale), null),
     safe(getProducts({ sort: "new", inStock: true, size: 8 }, locale), null),
+    safe(getReviewFeed(locale), null),
   ]);
 
   return (
@@ -120,6 +122,9 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
           <ProductGrid products={toCardProducts(fresh.items)} />
         </section>
       )}
+
+      {/* reviews ribbon — under the products, before the trust row */}
+      {feed && feed.items.length > 0 && <ReviewsRibbon summary={feed.summary} items={feed.items} />}
 
       {/* trust */}
       <section className="container-site mt-16 md:mt-20" aria-labelledby="home-trust">

@@ -1,11 +1,13 @@
 package com.maxsolch.shop.review;
 
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.review.ReviewDtos.Summary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -76,6 +78,50 @@ public class ReviewStore {
                             new ProductInfo(rs.getString("title"), rs.getString("slug"), rs.getString("img")));
                 }, productIds.toArray());
         return out;
+    }
+
+    /** A published review with text, as the site's home-page reviews ribbon shows it. */
+    public record FeedRow(long id, String author, int rating, String text, Instant publishedAt,
+                          String productId, String productTitle, String productSlug, String imageUrl) {
+    }
+
+    /**
+     * The newest published reviews that have a text, of active products only, newest first.
+     * Rating-only reviews make no sense in a ribbon of quotes; hidden products must not be linked.
+     */
+    public List<FeedRow> latestFeed(int limit) {
+        return jdbc.query("select r.id, r.author_name, r.rating, r.text, r.published_at, "
+                        + "p.id pid, p.title, p.slug, "
+                        + "(select i.url from product_images i where i.product_id = p.id "
+                        + " order by i.sort_order, i.id limit 1) img "
+                        + "from product_reviews r join products p on p.id = r.product_id "
+                        + "where r.status = 'PUBLISHED' and p.active = true and char_length(trim(r.text)) > 0 "
+                        + "order by r.published_at desc, r.id desc limit ?",
+                (rs, i) -> {
+                    Timestamp published = rs.getTimestamp("published_at");
+                    return new FeedRow(rs.getLong("id"), rs.getString("author_name"), rs.getInt("rating"),
+                            rs.getString("text"), published == null ? null : published.toInstant(),
+                            UuidUtil.toString(rs.getBytes("pid")), rs.getString("title"), rs.getString("slug"),
+                            rs.getString("img"));
+                }, limit);
+    }
+
+    /** {@code [avg, count]} over all published reviews of active products; avg null when none. */
+    public Summary shopSummary() {
+        long[] dist = new long[5];
+        long[] total = {0, 0};
+        jdbc.query("select r.rating, count(*) n from product_reviews r join products p on p.id = r.product_id "
+                + "where r.status = 'PUBLISHED' and p.active = true group by r.rating", rs -> {
+            int rating = rs.getInt(1);
+            long n = rs.getLong(2);
+            if (rating >= 1 && rating <= 5) {
+                dist[rating - 1] += n;
+                total[0] += n;
+                total[1] += (long) rating * n;
+            }
+        });
+        Double avg = total[0] == 0 ? null : Math.round(total[1] * 100.0 / total[0]) / 100.0;
+        return new Summary(avg, total[0], Arrays.stream(dist).boxed().toList());
     }
 
     /** A delivered order that may be due for a reminder (re-checked by {@link ReviewRules#reminderDue}). */

@@ -1,0 +1,327 @@
+/* ============================================================================
+   Home-page reviews ribbon (components/home/ReviewsRibbon.tsx)
+   An endless marquee of review cards; every few seconds one card "surfaces" (data-spot, or the
+   pointer/keyboard on it) and plays the effect of its rating tier (data-tier):
+     legend 5★ · epic 4★ · solid 3★ · low 1–2★
+   Rows carry generous vertical padding (cancelled by negative margins) so lifted cards, glows and
+   sparks are not cut by the row clip / edge-fade mask; the rows themselves ignore the pointer, so
+   that padding never covers the header's pause button.
+   ============================================================================ */
+@property --rv-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+.rv-row {
+  --rv-pad-top: 64px;
+  --rv-pad-bottom: 36px;
+  position: relative;
+  overflow: hidden;
+  padding-block: var(--rv-pad-top) var(--rv-pad-bottom);
+  margin-block: calc(-1 * var(--rv-pad-top)) calc(-1 * var(--rv-pad-bottom));
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.rv-track {
+  display: flex;
+  width: max-content;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  animation: rv-marquee var(--rv-dur, 120s) linear infinite;
+  will-change: transform;
+}
+.rv-row[data-dir="right"] .rv-track { animation-direction: reverse; }
+.rv-ribbon[data-paused] .rv-track,
+.rv-row:hover .rv-track,
+.rv-row:focus-within .rv-track { animation-play-state: paused; }
+/* Slots use a trailing margin instead of `gap`: then the second copy starts exactly at -50%. */
+.rv-slot { flex: none; margin-inline-end: 16px; }
+@keyframes rv-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ---- card ---------------------------------------------------------------- */
+.rv-card {
+  --rv-tone: #D4D4D8;
+  --rv-ring: var(--line-strong);
+  position: relative;
+  isolation: isolate;
+  display: block;
+  width: 300px;
+  padding: 1px;                       /* the 1px "border" is this padding over the background */
+  border-radius: var(--r-card);
+  background: var(--rv-ring);
+  pointer-events: auto;
+  outline-offset: 4px;
+  transition: transform .6s cubic-bezier(.2, .9, .25, 1.25), box-shadow .5s ease;
+}
+@media (min-width: 640px) { .rv-card { width: 340px; } }
+.rv-fx {
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+.rv-fx::after {                      /* blurred copy = halo */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(14px);
+  opacity: .75;
+}
+.rv-shine {
+  position: absolute;
+  inset: 1px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: calc(var(--r-card) - 1px);
+  pointer-events: none;
+}
+.rv-shine::before {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 38%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .13) 45%, rgba(255, 255, 255, .22) 50%, rgba(255, 255, 255, .13) 55%, transparent);
+  transform: translateX(-160%) skewX(-16deg);
+}
+.rv-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  min-height: 232px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 18px 16px;
+  border-radius: calc(var(--r-card) - 1px);
+  background: linear-gradient(180deg, #1C1C1F, #141416);
+}
+.rv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rv-stars { position: relative; display: inline-flex; gap: 3px; }
+.rv-star { width: 17px; height: 17px; flex: none; color: var(--faint); }
+.rv-star[data-on] { color: var(--rv-tone); }
+.rv-quote {
+  margin-top: -6px;
+  font-family: var(--font-display);
+  font-size: 58px;
+  font-weight: 800;
+  line-height: .7;
+  color: var(--rv-tone);
+  opacity: .28;
+  transform-origin: 70% 30%;
+}
+.rv-text {
+  display: -webkit-box;
+  flex: 1;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #E4E4E7;
+  overflow-wrap: anywhere;
+}
+.rv-meta { display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--muted); }
+.rv-author { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-date { white-space: nowrap; }
+.rv-date::before { content: "·"; margin-inline-end: 8px; }
+.rv-product { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.rv-thumb { width: 36px; height: 36px; flex: none; overflow: hidden; border-radius: 6px; background: var(--surface-2); }
+.rv-thumb .text-2xl { font-size: 14px; }
+.rv-ptitle {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color .3s ease;
+}
+.rv-card:is(:hover, :focus-visible) .rv-ptitle { color: var(--accent-hi); }
+
+/* ---- tiers at rest ------------------------------------------------------- */
+.rv-card[data-tier="legend"] {
+  --rv-tone: var(--accent);
+  --rv-ring: linear-gradient(135deg, rgba(255, 102, 0, .6), var(--line) 38%, var(--line) 68%, rgba(255, 102, 0, .38));
+}
+.rv-card[data-tier="legend"] .rv-body {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(255, 102, 0, .11), transparent 60%),
+    linear-gradient(180deg, #1C1C1F, #141416);
+}
+.rv-card[data-tier="legend"] .rv-star[data-on] { filter: drop-shadow(0 0 5px rgba(255, 102, 0, .55)); }
+.rv-card[data-tier="legend"] .rv-quote { opacity: .45; }
+.rv-card[data-tier="epic"] {
+  --rv-tone: var(--accent-hi);
+  --rv-ring: linear-gradient(135deg, rgba(255, 133, 51, .38), var(--line) 45%);
+}
+.rv-card[data-tier="solid"] { --rv-tone: #D4D4D8; }
+.rv-card[data-tier="low"] { --rv-tone: #8A8A92; --rv-ring: var(--line); }
+.rv-card[data-tier="low"] .rv-text { color: #C4C4CA; }
+
+/* ---- surfacing ----------------------------------------------------------- */
+.rv-card:is([data-spot], :hover, :focus-visible) { z-index: 3; }
+
+/* 5★ — rotating ring + halo, stars flare in turn, sparks burst, shine sweep, the quote mark pulses. */
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) {
+  transform: translateY(-12px) scale(1.045);
+  box-shadow: 0 26px 50px -20px rgba(0, 0, 0, .85), 0 0 48px -6px rgba(255, 102, 0, .5);
+}
+.rv-card[data-tier="legend"] .rv-fx {
+  background: conic-gradient(from var(--rv-angle), transparent 0 55%, var(--accent) 72%, #FFFFFF 78%, var(--accent-hi) 84%, transparent 96%);
+}
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) .rv-fx {
+  opacity: 1;
+  animation: rv-spin 1.7s linear infinite;
+}
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) .rv-star[data-on] {
+  animation: rv-flare .75s cubic-bezier(.2, .9, .3, 1.4) calc(.12s + var(--i) * 90ms) backwards;
+}
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) .rv-shine::before {
+  animation: rv-sweep 1.15s cubic-bezier(.4, 0, .2, 1) .3s backwards;
+}
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) .rv-quote {
+  animation: rv-quote 1.1s cubic-bezier(.2, .9, .3, 1.3) .2s backwards;
+}
+.rv-sparks { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.rv-sparks > span {
+  position: absolute;
+  left: -2.5px;
+  top: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent-hi);
+  box-shadow: 0 0 8px var(--accent), 0 0 2px #FFFFFF;
+  opacity: 0;
+  transform: rotate(var(--a)) translateX(0);
+}
+.rv-sparks > span:nth-child(3n) { background: #FFFFFF; }
+.rv-sparks > span:nth-child(even) { width: 11px; height: 2px; top: -1px; left: -5.5px; }
+.rv-card[data-tier="legend"]:is([data-spot], :hover, :focus-visible) .rv-sparks > span {
+  animation: rv-spark 1.05s cubic-bezier(.12, .75, .3, 1) calc(.5s + var(--j) * 22ms) both;
+}
+
+/* 4★ — warm halo, shine sweep, stars pop. */
+.rv-card[data-tier="epic"]:is([data-spot], :hover, :focus-visible) {
+  transform: translateY(-9px) scale(1.03);
+  box-shadow: 0 22px 44px -20px rgba(0, 0, 0, .85), 0 0 32px -8px rgba(255, 133, 51, .45);
+}
+.rv-card[data-tier="epic"] .rv-fx { background: linear-gradient(135deg, var(--accent-hi), rgba(255, 133, 51, .15) 50%, var(--accent-hi)); }
+.rv-card[data-tier="epic"]:is([data-spot], :hover, :focus-visible) .rv-fx { opacity: .75; }
+.rv-card[data-tier="epic"]:is([data-spot], :hover, :focus-visible) .rv-star[data-on] {
+  animation: rv-pop .55s cubic-bezier(.2, .9, .3, 1.4) calc(.1s + var(--i) * 70ms) backwards;
+}
+.rv-card[data-tier="epic"]:is([data-spot], :hover, :focus-visible) .rv-shine::before {
+  animation: rv-sweep 1.2s cubic-bezier(.4, 0, .2, 1) .2s backwards;
+}
+
+/* 3★ — a small lift, the ring lights up, the stars tick once. */
+.rv-card[data-tier="solid"]:is([data-spot], :hover, :focus-visible) {
+  --rv-ring: rgba(255, 255, 255, .34);
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px -20px rgba(0, 0, 0, .8);
+}
+.rv-card[data-tier="solid"]:is([data-spot], :hover, :focus-visible) .rv-stars {
+  animation: rv-tick .5s ease .1s backwards;
+}
+
+/* 1–2★ — no celebration: a short HUD glitch, then it settles. */
+.rv-card[data-tier="low"]:is([data-spot], :hover, :focus-visible) { --rv-ring: rgba(239, 68, 68, .32); }
+.rv-card[data-tier="low"]:is([data-spot], :hover) .rv-body { animation: rv-glitch .55s steps(1, end) backwards; }
+.rv-card[data-tier="low"]:is([data-spot], :hover) .rv-text { animation: rv-split .55s steps(1, end) backwards; }
+
+/* ---- first appearance (data-in, set when the ribbon scrolls into view) ---- */
+.rv-ribbon[data-armed]:not([data-in]) .rv-card { opacity: 0; }
+.rv-ribbon[data-in] .rv-card { animation: rv-in-solid .7s cubic-bezier(.2, .8, .3, 1) calc(min(var(--k), 8) * 85ms) backwards; }
+.rv-ribbon[data-in] .rv-card[data-tier="legend"] { animation-name: rv-in-legend; animation-duration: .95s; }
+.rv-ribbon[data-in] .rv-card[data-tier="epic"] { animation-name: rv-in-epic; animation-duration: .8s; }
+.rv-ribbon[data-in] .rv-card[data-tier="low"] { animation-name: rv-in-low; animation-duration: .6s; animation-timing-function: steps(1, end); }
+
+/* header bits */
+.rv-live { position: relative; width: 8px; height: 8px; border-radius: 999px; background: var(--ok); }
+.rv-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--ok);
+  animation: rv-ping 1.8s cubic-bezier(0, 0, .2, 1) infinite;
+}
+.rv-ribbon[data-paused] .rv-live { background: var(--faint); }
+.rv-ribbon[data-paused] .rv-live::after { animation: none; opacity: 0; }
+
+@keyframes rv-spin { to { --rv-angle: 360deg; } }
+@keyframes rv-flare {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.6) rotate(-14deg); filter: drop-shadow(0 0 10px #FFFFFF) drop-shadow(0 0 14px var(--accent)); color: #FFF2E6; }
+  100% { transform: scale(1); }
+}
+@keyframes rv-pop { 0% { transform: scale(1); } 50% { transform: scale(1.32); } 100% { transform: scale(1); } }
+@keyframes rv-tick { 0%, 100% { transform: none; opacity: 1; } 50% { transform: translateY(-2px); opacity: .7; } }
+@keyframes rv-sweep { from { transform: translateX(-160%) skewX(-16deg); } to { transform: translateX(420%) skewX(-16deg); } }
+@keyframes rv-quote { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-6deg); opacity: .9; } 100% { transform: scale(1); } }
+@keyframes rv-spark {
+  0% { opacity: 0; transform: rotate(var(--a)) translateX(0) scale(1); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)) scale(.25); }
+}
+@keyframes rv-glitch {
+  0% { transform: translate(-3px, 1px); filter: hue-rotate(-30deg) saturate(1.6); }
+  15% { transform: translate(3px, -1px); clip-path: inset(10% 0 55% 0); }
+  30% { transform: translate(-2px, 0); clip-path: inset(48% 0 12% 0); }
+  45% { transform: translate(2px, 1px); clip-path: none; filter: none; }
+  60% { transform: translate(-1px, 0); }
+  75% { transform: none; }
+}
+@keyframes rv-split {
+  0% { text-shadow: 2px 0 rgba(239, 68, 68, .8), -2px 0 rgba(56, 189, 248, .7); }
+  30% { text-shadow: -2px 0 rgba(239, 68, 68, .8), 2px 0 rgba(56, 189, 248, .7); }
+  60% { text-shadow: 1px 0 rgba(239, 68, 68, .6), -1px 0 rgba(56, 189, 248, .5); }
+  80% { text-shadow: none; }
+}
+@keyframes rv-in-legend {
+  0% { opacity: 0; transform: translateY(34px) scale(.82); filter: blur(8px) brightness(2.2); }
+  55% { opacity: 1; transform: translateY(-6px) scale(1.04); filter: blur(0) brightness(1.35); box-shadow: 0 0 54px -4px rgba(255, 102, 0, .6); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes rv-in-epic {
+  0% { opacity: 0; transform: translateY(26px) scale(.93); filter: brightness(1.6); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.01); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes rv-in-solid { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes rv-in-low {
+  0% { opacity: 0; }
+  20% { opacity: 1; transform: translateX(-6px); }
+  40% { opacity: .35; transform: translateX(4px); }
+  60% { opacity: 1; transform: translateX(-2px); }
+  80% { opacity: .8; transform: none; }
+  100% { opacity: 1; }
+}
+@keyframes rv-ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+
+/* Reduced motion: no marquee and no surfacing — a plain horizontal scroller of one copy. */
+@media (prefers-reduced-motion: reduce) {
+  .rv-row {
+    --rv-pad-top: 8px;
+    --rv-pad-bottom: 12px;
+    overflow-x: auto;
+    pointer-events: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    -webkit-mask-image: none;
+            mask-image: none;
+    padding-inline: 16px;
+  }
+  .rv-track { animation: none; }
+  .rv-slot { scroll-snap-align: start; }
+  .rv-slot[data-dup] { display: none; }
+  .rv-card { transition: none; }
+  .rv-card:is([data-spot], :hover, :focus-visible) { transform: none !important; }
+  .rv-ribbon[data-armed]:not([data-in]) .rv-card { opacity: 1; }
+  .rv-toggle { display: none; }
+}
