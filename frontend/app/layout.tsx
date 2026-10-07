@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Exo_2, Inter } from "next/font/google";
-import Script from "next/script";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
@@ -99,12 +98,13 @@ export default function RootLayout({
             theme, MainButton) in any Telegram client (mobile + desktop).
             crossOrigin: telegram.org answers with `Access-Control-Allow-Origin: *`; without the
             attribute the browser masks every error from this script as a bare "Script error."
-            (that is all the error journal held on prod, ~20% of Android sessions). */}
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-          crossOrigin="anonymous"
-        />
+            (that is all the error journal held on prod, ~20% of Android sessions).
+            A plain parser-blocking <script>, not next/script: with `crossOrigin` set, next/script's
+            beforeInteractive only emits the preload and never inserts the script itself, which
+            would leave the app without window.Telegram.WebApp. A blocking tag in <head> runs
+            before any app chunk — the same guarantee beforeInteractive gave. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://telegram.org/js/telegram-web-app.js" crossOrigin="anonymous" />
         {/* Reveal the webview ASAP: call WebApp.ready()/expand() as soon as the SDK
             exists, INDEPENDENT of React/initData. On iOS the Telegram loading
             placeholder stays until ready() fires; if it were only called from a
