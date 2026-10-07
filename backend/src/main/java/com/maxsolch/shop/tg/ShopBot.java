@@ -32,6 +32,18 @@ import java.util.Locale;
 @Component
 public class ShopBot extends TelegramLongPollingBot {
 
+    /**
+     * {@code execute(SendDocument)} is final in DefaultAbsSender, so through the {@code @Lazy}
+     * proxy that NotificationService holds it ran on the empty proxy instance (null ObjectMapper).
+     * This plain method is proxied and delegates to the real bot.
+     */
+    public org.telegram.telegrambots.meta.api.objects.Message sendDocument(
+            org.telegram.telegrambots.meta.api.methods.send.SendDocument document)
+            throws org.telegram.telegrambots.meta.exceptions.TelegramApiException {
+        return execute(document);
+    }
+
+
     private final AppProperties props;
     private final AuthService authService;
     private final Messages messages;

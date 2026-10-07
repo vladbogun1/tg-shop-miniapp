@@ -419,7 +419,7 @@ public class NotificationService {
                 caption.append('\n').append("<a href=\"").append(esc(taxUrl).replace("\"", "&quot;")).append("\">")
                         .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
             }
-            bot.execute(SendDocument.builder()
+            bot.sendDocument(SendDocument.builder()
                     .chatId(String.valueOf(tgUserId))
                     .document(new InputFile(new java.io.ByteArrayInputStream(pdf), kind.fileName(shortId(order))))
                     .caption(caption.toString())
