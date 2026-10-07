@@ -4,6 +4,7 @@
  * API: GET /api/admin/activity (+ /facets, /stats, /broadcasts). Unknown codes fall back to the raw code.
  */
 import { apiGet } from "./api";
+import { money } from "./money";
 import type { BroadcastHistoryItem } from "./api-extra";
 
 export type ActivitySource = "BOT" | "SITE" | "MINIAPP" | "PAYMENT" | "SYSTEM";
@@ -292,7 +293,7 @@ export function detailPairs(json?: string | null): [string, string][] {
       let value = typeof v === "object" ? JSON.stringify(v) : String(v);
       if (k.endsWith("Minor") || k === "theirAmount") {
         const n = Number(v);
-        if (!isNaN(n)) value = (n / 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " ₴";
+        if (!isNaN(n)) value = money(n);
       }
       if (v === true) value = "да";
       return [DETAIL_LABEL[k] ?? k, value];

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
@@ -70,15 +71,16 @@ public class AdminProductController {
         return p.tags() == null ? List.of() : p.tags().stream().map(t -> t.slug()).toList();
     }
 
-    /** "цена 1200 → 900, сток 3 → 5" — only what changed among the money/stock/visibility fields. */
+    /** "цена 1 200 ₴ → 900 ₴, сток 3 → 5" — only what changed among the money/stock/visibility fields. */
     static String changeSummary(AdminProductDto before, AdminProductDto after) {
         StringBuilder sb = new StringBuilder(after.title());
         if (before == null) {
-            return sb.append(", price ").append(after.priceMinor()).append(", stock ").append(after.stock())
+            return sb.append(", цена ").append(MoneyFormat.uah(after.priceMinor())).append(", сток ").append(after.stock())
                     .toString();
         }
         if (before.priceMinor() != after.priceMinor()) {
-            sb.append(", цена ").append(before.priceMinor()).append(" → ").append(after.priceMinor());
+            sb.append(", цена ").append(MoneyFormat.uah(before.priceMinor())).append(" → ")
+                    .append(MoneyFormat.uah(after.priceMinor()));
         }
         if (before.stock() != after.stock()) {
             sb.append(", сток ").append(before.stock()).append(" → ").append(after.stock());

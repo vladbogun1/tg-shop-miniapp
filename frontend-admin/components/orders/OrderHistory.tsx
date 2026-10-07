@@ -7,6 +7,7 @@ import { ordersApi } from "@/lib/orders-api";
 import { formatDateTime } from "@/lib/orders";
 import { QueryState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { readableAuditDetails } from "@/lib/audit";
 
 const ACTION_LABEL: Record<string, string> = {
   ORDER_STATUS: "Статус",
@@ -46,7 +47,7 @@ export function OrderHistory({ orderId }: { orderId: string }) {
                 </span>
                 <span className="tabular text-[11px] text-[var(--text-faint)]">{formatDateTime(e.createdAt)}</span>
               </div>
-              {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text-muted)]">{e.details}</p>}
+              {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text-muted)]">{readableAuditDetails(e.details)}</p>}
               <p className="mt-1.5 text-[11.5px] font-medium text-[var(--text-faint)]">{e.adminName ?? `#${e.adminId}`}</p>
             </li>
           ))}

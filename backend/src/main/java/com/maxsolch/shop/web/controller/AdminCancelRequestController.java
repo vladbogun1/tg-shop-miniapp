@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
@@ -61,9 +62,9 @@ public class AdminCancelRequestController {
         CancelRequestService.ApproveResult r = cancelRequests.approve(order.getId(), req == null ? null : req.comment());
         audit.record("ORDER_CANCEL_REQUEST_APPROVE", "ORDER", id,
                 "запрос отмены одобрен: заказ отменён, сток возвращён, на возврат "
-                        + r.refundRequestedMinor() / 100.0 + " UAH (" + r.refundedInvoices() + " счёт.)"
+                        + MoneyFormat.uah(r.refundRequestedMinor()) + " (" + r.refundedInvoices() + " счёт.)"
                         + (r.refundErrors().isEmpty() ? "" : ", ошибки возврата: " + String.join("; ", r.refundErrors()))
-                        + (r.manualRefundMinor() > 0 ? ", вернуть вручную: " + r.manualRefundMinor() / 100.0 + " UAH" : ""));
+                        + (r.manualRefundMinor() > 0 ? ", вернуть вручную: " + MoneyFormat.uah(r.manualRefundMinor()) : ""));
         return new ApproveResponse(orderQueryService.toDetail(r.order()), r.refundRequestedMinor(),
                 r.refundedInvoices(), r.refundErrors(), r.manualRefundMinor());
     }

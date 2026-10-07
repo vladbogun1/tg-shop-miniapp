@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.payment.MonobankClient;
@@ -95,7 +96,7 @@ public class AdminOnlinePaymentController {
         Long amount = req == null ? null : req.amountMinor();
         payments.refund(orderId, invoiceId, amount);
         audit.record("ORDER_REFUND_ONLINE", "order", id,
-                "invoice " + invoiceId + ", " + (amount == null ? "full" : amount / 100.0 + " UAH"));
+                "счёт " + invoiceId + ", " + (amount == null ? "полностью" : MoneyFormat.uah(amount)));
         return list(id);
     }
 

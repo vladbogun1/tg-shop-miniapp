@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -182,7 +183,7 @@ public class OrderAdjustmentService {
         }
         long refundable = refundableMinor(order);
         if (refundMinor > refundable) {
-            throw new BadRequestException("вернуть можно не больше, чем получено: " + refundable / 100 + " ₴");
+            throw new BadRequestException("вернуть можно не больше, чем получено: " + MoneyFormat.uah(refundable));
         }
 
         List<String> parts = new ArrayList<>();
@@ -214,7 +215,7 @@ public class OrderAdjustmentService {
         }
         if (refundMinor > 0) {
             order.setRefundedMinor(order.getRefundedMinor() + refundMinor);
-            parts.add("возврат денег " + refundMinor / 100 + " ₴");
+            parts.add("возврат денег " + MoneyFormat.uah(refundMinor));
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);

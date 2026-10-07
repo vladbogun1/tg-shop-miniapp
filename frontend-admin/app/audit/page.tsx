@@ -23,6 +23,7 @@ import {
   auditActionLabel,
   auditEntityHref,
   auditEntityLabel,
+  readableAuditDetails,
 } from "@/lib/audit";
 import { formatDateTime } from "@/lib/orders";
 import { cn } from "@/lib/cn";
@@ -217,7 +218,7 @@ function AdminAuditTab() {
                       <td>
                         <EntityCell e={e} />
                       </td>
-                      <td className="max-w-[420px] break-words">{e.details || "—"}</td>
+                      <td className="max-w-[420px] break-words">{readableAuditDetails(e.details) || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -233,7 +234,7 @@ function AdminAuditTab() {
                     <span className="tabular text-[12px] text-[var(--text-muted)]">{formatDateTime(e.createdAt)}</span>
                   </div>
                   <div className="mt-1.5 text-[13px] font-semibold text-[var(--text)]">{who(e)}</div>
-                  {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text)]">{e.details}</p>}
+                  {e.details && <p className="mt-1 break-words text-[13px] text-[var(--text)]">{readableAuditDetails(e.details)}</p>}
                   <div className="mt-1.5">
                     <EntityCell e={e} />
                   </div>

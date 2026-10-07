@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
@@ -299,7 +300,7 @@ public class AdminOrderController {
         Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor());
         audit.record("ORDER_PAID", "ORDER", id,
                 req.receivedMinor() > 0
-                        ? "подтверждено получено: " + req.receivedMinor() + " (мин. ед.)"
+                        ? "подтверждено получено: " + MoneyFormat.uah(req.receivedMinor())
                         : "оплата снята");
         return orderQueryService.toDetail(updated);
     }
@@ -346,7 +347,7 @@ public class AdminOrderController {
         audit.record("ORDER_DISCOUNT", "ORDER", id,
                 Boolean.TRUE.equals(req.clear()) ? "скидка снята"
                         : "скидка: " + (req.promoCode() != null ? "промокод " + req.promoCode()
-                                : req.amountMinor() != null ? req.amountMinor() + " (мин. ед.)"
+                                : req.amountMinor() != null ? MoneyFormat.uah(req.amountMinor())
                                 : req.percent() + "%"));
         return orderQueryService.toDetail(updated);
     }
@@ -364,7 +365,7 @@ public class AdminOrderController {
                                        @RequestParam(defaultValue = "false") boolean restock) {
         OrderService.DeletedOrder d = orderService.delete(load(id).getId(), restock);
         audit.record("ORDER_DELETE", "ORDER", id,
-                "удалён заказ " + d.customerName() + ", " + d.totalMinor() + " (мин. ед.), статус "
+                "удалён заказ " + d.customerName() + ", " + MoneyFormat.uah(d.totalMinor()) + ", статус "
                         + d.status()
                         + (d.restocked() ? ", сток возвращён" : "")
                         + (d.promoCode() == null ? "" : ", промокод " + d.promoCode() + " освобождён")

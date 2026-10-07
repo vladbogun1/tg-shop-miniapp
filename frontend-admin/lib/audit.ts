@@ -2,6 +2,7 @@
  * Wording of the admin action log (admin_audit_log) — shared by the «Журнал» page and the
  * per-entity history blocks (order / product cards). Unknown codes fall back to the raw code.
  */
+import { money } from "@/lib/money";
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ADMIN_LOGIN_OK: "Вход в админку",
@@ -90,4 +91,32 @@ export function auditEntityHref(entityType: string, entityId?: string | null): s
   if (entityType === "ORDER") return `/orders/${entityId}`;
   if (entityType === "PRODUCT") return `/products?edit=${entityId}`;
   return null;
+}
+
+const AUDIT_STATUS_LABEL: Record<string, string> = {
+  NEW: "Новый",
+  APPROVED: "Одобрен",
+  SHIPPED: "Отправлен",
+  DELIVERED: "Доставлен",
+  REJECTED: "Отклонён",
+};
+
+const uah = (minor: string) => money(Number(minor));
+
+/**
+ * The text of a log entry as an admin should read it. Older entries were written by the backend
+ * with raw kopecks ("скидка: 10000 (мин. ед.)", "цена 150000 → 130000", "1500.0 UAH") and status
+ * codes ("статус → APPROVED"); those rows stay in the database as they are, so they are made
+ * readable here. New entries already come formatted (MoneyFormat on the backend) and pass through.
+ */
+export function readableAuditDetails(details: string | null | undefined): string {
+  if (!details) return "";
+  return details
+    .replace(/(-?\d+) \(мин\. ед\.\)/g, (_, n: string) => uah(n))
+    .replace(/цена (\d+) → (\d+)/g, (_, a: string, b: string) => `цена ${uah(a)} → ${uah(b)}`)
+    .replace(/, price (\d+), stock (\d+)/g, (_, p: string, s: string) => `, цена ${uah(p)}, сток ${s}`)
+    .replace(/(\d+(?:\.\d+)?) UAH/g, (_, n: string) => money(Math.round(Number(n) * 100)))
+    .replace(/(статус → )([A-Z]+)/g, (m, pre: string, code: string) =>
+      AUDIT_STATUS_LABEL[code] ? pre + AUDIT_STATUS_LABEL[code] : m,
+    );
 }

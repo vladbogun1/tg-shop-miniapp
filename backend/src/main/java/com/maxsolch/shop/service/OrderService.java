@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
@@ -535,7 +536,7 @@ public class OrderService {
             // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" without
             // the admin noticing the amount they typed was never what got saved.
             throw new BadRequestException("получено больше суммы заказа ("
-                    + order.getTotalMinor() / 100 + " " + order.getCurrency() + ")");
+                    + MoneyFormat.uah(order.getTotalMinor()) + ")");
         }
         long received = receivedMinor;
         order.setReceivedMinor(received);

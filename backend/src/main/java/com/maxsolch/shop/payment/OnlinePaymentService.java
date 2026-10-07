@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment;
 
+import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
@@ -364,7 +365,7 @@ public class OnlinePaymentService {
         }
         long left = inv.getAmountMinor() - inv.getRefundedMinor();
         if (amountMinor != null && (amountMinor <= 0 || amountMinor > left)) {
-            throw new BadRequestException("сумма возврата должна быть от 0.01 до " + left / 100.0 + " грн");
+            throw new BadRequestException("сумма возврата должна быть от 0,01 ₴ до " + MoneyFormat.uah(left));
         }
         if (left <= 0) {
             throw new BadRequestException("по этому счёту всё уже возвращено");
