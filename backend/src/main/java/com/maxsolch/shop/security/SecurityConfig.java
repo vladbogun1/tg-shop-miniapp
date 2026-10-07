@@ -50,9 +50,6 @@ public class SecurityConfig {
                 // Authenticated-but-wrong-role stays 403.
                 .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
-                        // Home / Thymeleaf + static
-                        .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/static/**").permitAll()
                         // Actuator: health/info are public (docker healthchecks / uptime probes);
                         // everything else (caches, metrics, env...) is ADMIN-only. Previously the
                         // rest fell through to anyRequest().authenticated(), so any CUSTOMER token

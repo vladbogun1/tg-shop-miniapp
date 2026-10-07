@@ -33,8 +33,6 @@ spring:
     cache-names: products, productById, tags, npCities, npWarehouses
     caffeine:
       spec: maximumSize=500,expireAfterWrite=120s
-  thymeleaf:
-    cache: true
   # Uploads: the Boot defaults are 1MB per file / 10MB per request, which silently rejected any
   # normal phone photo (the nginx gateway already allows 25m). Kept a little under the gateway
   # limit so the rejection happens here, with a proper JSON error.
@@ -95,7 +93,7 @@ app:
     vapid-subject: ${VAPID_SUBJECT:}
   telegram:
     bot-token: ${BOT_TOKEN:}
-    bot-username: ${BOT_USERNAME:@ChannelCheckerBot}
+    bot-username: ${BOT_USERNAME:}
     init-data-ttl-seconds: ${INITDATA_TTL_SECONDS:86400}
     admin-init-data-ttl-seconds: ${ADMIN_INITDATA_TTL_SECONDS:300}
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}

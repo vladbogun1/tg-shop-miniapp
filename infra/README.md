@@ -27,8 +27,9 @@ openssl rand -hex 32          # IMGPROXY_SALT
 docker compose up -d --build
 ```
 
-`minio-init` runs once to create the `product-images` bucket with a public-read
-(download) policy, then exits — that exited container is expected, not a failure.
+`minio-init` runs once to create the `product-images` bucket (private: imgproxy reads it with the
+S3 credentials, chat files go out only through signed `/api/media` links), then exits — that exited
+container is expected, not a failure.
 
 Check status / logs:
 
@@ -43,7 +44,7 @@ docker compose down            # add -v to also wipe the named volumes
 - Frontend (Mini App / admin): http://localhost:3000
 - Backend API: http://localhost:8080/api
 - Swagger UI: http://localhost:8080/swagger-ui.html
-- Backend home (Thymeleaf) / health: http://localhost:8080/ , http://localhost:8080/actuator/health
+- Backend health: http://localhost:8080/actuator/health
 - MinIO console: http://localhost:9001  (login = `S3_ACCESS_KEY` / `S3_SECRET_KEY`)
 - MinIO S3 API: http://localhost:9000
 - Images: http://localhost:8082/img/<signature>/<processing>/plain/s3://product-images/<key>@webp
