@@ -63,6 +63,23 @@ export function TabBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [autoHide]);
 
+  // something just went into the cart: bring the bar back (it may have slid away) and give the cart
+  // tab a bump, so it is obvious where the item went and where to go next
+  const prevCount = useRef(cartCount);
+  const [bump, setBump] = useState(0);
+  const settledAt = useRef(0);
+  useEffect(() => {
+    settledAt.current = performance.now() + 2000; // the saved cart loading in after start is not an «add»
+  }, []);
+  useEffect(() => {
+    if (cartCount > prevCount.current && performance.now() > settledAt.current) {
+      setTucked(false);
+      lastY.current = window.scrollY;
+      setBump((b) => b + 1);
+    }
+    prevCount.current = cartCount;
+  }, [cartCount]);
+
   const hidden =
     pathname.includes("/chat") ||
     pathname.startsWith("/checkout") ||
@@ -106,7 +123,10 @@ export function TabBar() {
                 className="absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
               />
             )}
-            <span className="relative z-10">
+            <span
+              key={href === "/cart" ? `cart-${bump}` : href}
+              className={`relative z-10 ${href === "/cart" && bump > 0 ? "tab-bump" : ""}`}
+            >
               <Icon
                 className="h-5 w-5 transition-colors"
                 strokeWidth={active ? 2.25 : 2}

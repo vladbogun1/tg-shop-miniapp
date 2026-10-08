@@ -323,3 +323,18 @@ body {
 
 /* a product sheet is open: the tab bar is back even if it slid away while scrolling the catalogue */
 html[data-sheet] .tabbar { transform: none !important; }
+
+/* the cart tab after an add-to-cart: a quick hop with an orange flash (TabBar remounts it per add) */
+.tab-bump { animation: tab-bump .55s cubic-bezier(.2, .9, .3, 1.4); }
+.tab-bump svg { animation: tab-bump-glow .9s ease-out; }
+@keyframes tab-bump {
+  0% { transform: none; }
+  30% { transform: translateY(-6px) scale(1.18); }
+  60% { transform: translateY(1px) scale(.96); }
+  100% { transform: none; }
+}
+@keyframes tab-bump-glow {
+  0%, 40% { color: var(--accent); filter: drop-shadow(0 0 8px rgba(255, 102, 0, .9)); }
+  100% { filter: none; }
+}
+@media (prefers-reduced-motion: reduce) { .tab-bump, .tab-bump svg { animation: none; } }
