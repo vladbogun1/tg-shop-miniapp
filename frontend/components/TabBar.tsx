@@ -13,12 +13,16 @@
  *     cost ~84px of the little vertical space the delivery step needs;
  *   - while the on-screen keyboard is up, where it used to cover the very field being typed in;
  *   - on /pay-return, which opens in a plain browser after paying, where the shop tabs lead nowhere.
+ *
+ * Compact (64px instead of 84): smaller paddings, icons and labels. In the catalogue it also slides
+ * away while the list scrolls down and comes back on the first scroll up (or at the very top) — the
+ * catalogue docks nothing to the bottom, so `--tabbar-h` stays as it is there.
  */
 import { motion } from "framer-motion";
 import { ShoppingBag, ShoppingCart, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { useCartCount } from "@/lib/cart";
 import { useKeyboardOpen } from "@/lib/viewport";
@@ -30,13 +34,34 @@ const TABS = [
 ] as const;
 
 /** Bar height + its bottom margin; mirrored into `--tabbar-h` for the docked blocks. */
-const BAR_H = "84px";
+const BAR_H = "64px";
 
 export function TabBar() {
   const t = useT();
   const pathname = usePathname();
   const cartCount = useCartCount();
   const keyboardOpen = useKeyboardOpen();
+
+  // catalogue only: hide while scrolling down, show on scroll up / near the top
+  const autoHide = pathname === "/";
+  const [tucked, setTucked] = useState(false);
+  const lastY = useRef(0);
+  useEffect(() => {
+    if (!autoHide) {
+      setTucked(false);
+      return;
+    }
+    lastY.current = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastY.current;
+      if (Math.abs(dy) < 8) return; // ignore jitter and momentum tails
+      setTucked(dy > 0 && y > 120);
+      lastY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [autoHide]);
 
   const hidden =
     pathname.includes("/chat") ||
@@ -52,8 +77,12 @@ export function TabBar() {
 
   return (
     <nav
-      className="fixed inset-x-3 bottom-0 z-40 mx-auto flex max-w-[456px] items-stretch justify-around rounded-[16px] border border-[var(--line)] p-1.5 shadow-[0_18px_40px_-12px_rgba(0,0,0,.8)] backdrop-blur-[14px]"
-      style={{ marginBottom: "max(12px, var(--safe-bottom))", background: "rgba(26,26,26,.92)" }}
+      className="tabbar fixed inset-x-3 bottom-0 z-40 mx-auto flex max-w-[456px] items-stretch justify-around rounded-[14px] border border-[var(--line)] p-1 shadow-[0_18px_40px_-12px_rgba(0,0,0,.8)] backdrop-blur-[14px] transition-transform duration-300 ease-out motion-reduce:transition-none"
+      style={{
+        marginBottom: "max(8px, var(--safe-bottom))",
+        background: "rgba(26,26,26,.92)",
+        transform: tucked ? "translateY(calc(100% + 16px + var(--safe-bottom)))" : undefined,
+      }}
     >
       {TABS.map(({ href, labelKey, Icon }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -68,18 +97,18 @@ export function TabBar() {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2"
+            className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
           >
             {active && (
               <motion.span
                 layoutId="tab-highlight"
                 transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute left-1/2 top-[-6px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
+                className="absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
               />
             )}
             <span className="relative z-10">
               <Icon
-                className="h-[22px] w-[22px] transition-colors"
+                className="h-5 w-5 transition-colors"
                 strokeWidth={active ? 2.25 : 2}
                 style={{ color: active ? "var(--accent)" : "var(--muted)" }}
               />
@@ -90,7 +119,7 @@ export function TabBar() {
               )}
             </span>
             <span
-              className="font-display relative z-10 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors"
+              className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
               style={{ color: active ? "var(--accent)" : "var(--muted)" }}
             >
               {t(labelKey)}

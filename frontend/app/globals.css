@@ -54,8 +54,8 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* Height the bottom tab-bar occupies. TabBar rewrites it (0px when it hides itself), and
-     every bottom-docked block reads it instead of repeating a magic 84px. */
-  --tabbar-h: 84px;
+     every bottom-docked block reads it instead of repeating a magic 64px. */
+  --tabbar-h: 64px;
 }
 
 /* Exo 2 (display): headings, buttons, prices, tabs, chips, labels. `--font-display` is set by
@@ -320,3 +320,6 @@ body {
 .np-map .leaflet-bar a.leaflet-disabled { background: var(--surface-2); color: var(--faint); }
 .np-map .leaflet-control-attribution { background: rgba(14, 14, 16, .7); color: var(--muted); }
 .np-map .leaflet-control-attribution a { color: var(--accent-hi); }
+
+/* a product sheet is open: the tab bar is back even if it slid away while scrolling the catalogue */
+html[data-sheet] .tabbar { transform: none !important; }

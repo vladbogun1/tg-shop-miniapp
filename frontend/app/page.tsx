@@ -109,10 +109,13 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-full" style={{ marginTop: "calc(-1 * max(16px, var(--safe-top)))" }}>
-      {/* ── STICKY HEADER ──────────────────────────────────────────────── */}
+      {/* ── HEADER ─────────────────────────────────────────────────────────
+          Only the controls (search · sort · categories) stick. The brand row above them scrolls
+          away with the list — it cost ~70px of a phone screen on every scroll position. Neither
+          part changes height, so the list never jumps. */}
       <div
-        className="sticky z-30 -mx-4 border-b border-[var(--line)] px-4 pb-3 backdrop-blur-[12px]"
-        style={{ top: 0, paddingTop: "max(12px, var(--safe-top))", background: "rgba(14,14,16,.86)" }}
+        className="-mx-4 px-4 pb-1"
+        style={{ paddingTop: "max(12px, var(--safe-top))", background: "rgba(14,14,16,.86)" }}
       >
         <header className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -129,11 +132,17 @@ export default function CatalogPage() {
             <LanguageToggle />
           </div>
         </header>
+      </div>
 
+      {/* ── STICKY CONTROLS ────────────────────────────────────────────── */}
+      <div
+        className="sticky z-30 -mx-4 border-b border-[var(--line)] px-4 pb-2.5 backdrop-blur-[12px]"
+        style={{ top: 0, paddingTop: "max(8px, var(--safe-top))", background: "rgba(14,14,16,.86)" }}
+      >
         {showControls && (
           <>
-            <div className="mt-3 flex items-stretch gap-2">
-              <div className="flex flex-1 items-center gap-2.5 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
+            <div className="flex items-stretch gap-2">
+              <div className="flex flex-1 items-center gap-2.5 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
                 <Search className="h-[18px] w-[18px] shrink-0 text-[var(--muted)]" strokeWidth={2.25} />
                 <input
                   value={search}
@@ -211,7 +220,7 @@ export default function CatalogPage() {
             </div>
 
             {tags.length > 0 && (
-              <DragScroll className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+              <DragScroll className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
                 <Chip active={activeTag === null} onClick={() => { haptic(); setActiveTag(null); }}>
                   {t("catalog.allTags")}
                 </Chip>
@@ -373,7 +382,7 @@ function Chip({ children, active, onClick }: { children: ReactNode; active: bool
     <button
       type="button"
       onClick={onClick}
-      className={`nb-chip nb-press tap shrink-0 whitespace-nowrap px-4 py-2 text-[13px] ${active ? "nb-chip-active" : ""}`}
+      className={`nb-chip nb-press min-h-[38px] shrink-0 whitespace-nowrap px-4 py-1.5 text-[13px] ${active ? "nb-chip-active" : ""}`}
     >
       {children}
     </button>

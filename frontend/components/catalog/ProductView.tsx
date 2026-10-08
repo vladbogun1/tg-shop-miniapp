@@ -62,12 +62,15 @@ function ViewBody({
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // the tab bar (which may have slid away in the catalogue) comes back under the sheet's action bar
+    document.documentElement.setAttribute("data-sheet", "");
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
+      document.documentElement.removeAttribute("data-sheet");
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
@@ -220,7 +223,7 @@ function ViewBody({
         <div
           ref={barRef}
           className="absolute inset-x-0 bottom-0 z-10 border-t border-[var(--line)] px-4 pt-3 backdrop-blur-[12px]"
-          style={{ paddingBottom: "calc(84px + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
+          style={{ paddingBottom: "calc(var(--tabbar-h) + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
         >
           <div className="mx-auto w-full max-w-[480px]">
             <AddToCartControl
