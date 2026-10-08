@@ -29,6 +29,13 @@
  *   data-min="500"    minimum time on screen (default MIN_MS). The website sets 0: no holding a page
  *                     that is already there. The Mini App keeps 500 so a quick load does not blink
  *                     the logo for a few frames.
+ *   data-once="session"  at most one overlay per browser tab session (sessionStorage): once a visitor
+ *                     has seen it, later full loads (refresh, a link opened in the same tab, back from
+ *                     the payment page) paint the page straight away. The website sets it — on phones
+ *                     hydration rarely beats the grace, so the logo was covering almost every load.
+ *   data-until="usable"  once shown, leave as soon as the page is usable (DOM + fonts + hydration)
+ *                     instead of also waiting for window "load" and the first-viewport images: the
+ *                     page is interactive by then, and the hero's art can finish loading in place.
  * Crawlers and audit tools (Googlebot, Lighthouse/PageSpeed, other bots) never get it.
  * No JS → a <noscript> style hides it (SEO / no-JS users never see it).
  */
@@ -106,7 +113,9 @@ var d=document,h=d.documentElement,el=d.getElementById("cs-preloader");
 if(!el||h.getAttribute("data-pl"))return;
 if(new RegExp("${BOT_UA}","i").test(navigator.userAgent||"")){h.setAttribute("data-pl","done");return;}
 var num=function(a,def){var v=parseInt(el.getAttribute(a)||"",10);return isNaN(v)?def:Math.max(0,v)};
-var grace=num("data-grace",0),min=num("data-min",${MIN_MS}),shown=!grace,shownAt=0;
+var grace=num("data-grace",0),min=num("data-min",${MIN_MS}),shown=!grace,shownAt=0,early=el.getAttribute("data-until")==="usable";
+if(el.getAttribute("data-once")==="session"){var seen=false;try{seen=sessionStorage.getItem("cs-pl")==="1";sessionStorage.setItem("cs-pl","1");}catch(e){}
+ if(seen){h.setAttribute("data-pl","done");window.__csPreloader={hydrated:function(){},finish:function(){},finished:function(){return true}};return;}}
 h.setAttribute("data-pl",grace?"wait":"on");
 var t0=(window.performance&&performance.now)?performance.now():0,now=function(){return window.performance?performance.now():Date.now()};
 var W={dom:.2,fonts:.25,hyd:.25,load:.15,img:.15},got={},p=.06,fin=false;
@@ -115,6 +124,7 @@ function set(v){p=Math.max(p,v);h.style.setProperty("--cspl-p",String(p));if(bar
 function usable(){return got.dom&&got.fonts&&got.hyd}
 function mark(k){if(got[k]||fin)return;got[k]=1;var s=.06;for(var x in got)s+=W[x]*.94;set(Math.min(s,.97));
  if(!shown&&usable()){fin=true;h.setAttribute("data-pl","done");h.style.removeProperty("--cspl-p");return;}
+ if(early&&usable()){done();return;}
  if(got.dom&&got.fonts&&got.hyd&&got.load&&!got.img){imgs();}
  if(got.img)done();}
 function imgs(){setTimeout(function(){var L=[],vh=innerHeight,a=d.images;

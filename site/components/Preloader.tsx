@@ -9,7 +9,8 @@ import { PRELOADER_CSS, PRELOADER_HTML, PRELOADER_NOSCRIPT_CSS, PRELOADER_SCRIPT
  *
  * Website mode (`data-grace` / `data-min`): the overlay stays invisible for the first 300ms and only
  * appears if the page is not usable by then, with no minimum time on screen — so a fast load paints
- * the page (and its LCP heading) straight away. See brand/preloader.ts.
+ * the page (and its LCP heading) straight away. It shows at most once per tab session and leaves as
+ * soon as the page is usable (not after every image). See brand/preloader.ts.
  */
 export function Preloader() {
   return (
@@ -22,6 +23,8 @@ export function Preloader() {
         id="cs-preloader"
         data-grace="300"
         data-min="0"
+        data-once="session"
+        data-until="usable"
         aria-hidden
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: PRELOADER_HTML }}
