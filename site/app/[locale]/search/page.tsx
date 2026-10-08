@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { alternates, makeT } from "@/i18n";
-import { parseCatalogState, toApiQuery, type SearchParams } from "@/lib/catalog-params";
+import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
+import { cardContext, computeListing, loadSchema, menuTree } from "@/lib/catalog";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getProducts, safe } from "@/lib/server-api";
+import { getCategories, getListingProducts, safe } from "@/lib/server-api";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is
@@ -32,12 +33,9 @@ export default async function SearchPage({
   const locale = await localeOf(params);
   const t = makeT(locale);
   const state = await parseCatalogState("/search", searchParams);
-  const [categories, data] = await Promise.all([
-    safe(getCategories(locale), []),
-    state.q ? safe(getProducts(toApiQuery(state), locale), null) : Promise.resolve(null),
-  ]);
+  const q = state.filter.q;
 
-  if (!state.q) {
+  if (!q) {
     return (
       <div className="container-site pt-10">
         <h1 className="font-display text-[30px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[38px]">{t("search.title")}</h1>
@@ -46,15 +44,24 @@ export default async function SearchPage({
     );
   }
 
+  // The backend searches (title, description, brand); the site filters the hits like a category.
+  const filter = { ...state.filter, attrs: {} };
+  const [categories, schema, products] = await Promise.all([
+    safe(getCategories(locale), []),
+    loadSchema(locale),
+    safe(getListingProducts(locale, { q }), null),
+  ]);
+  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale) : null;
   return (
     <CatalogView
       locale={locale}
-      title={t("search.resultsFor", { q: state.q })}
+      title={t("search.resultsFor", { q })}
       crumbs={[{ label: t("search.title") }]}
-      categories={categories}
-      activeCategory={null}
-      state={state}
-      data={data}
+      state={{ ...state, filter }}
+      listing={listing}
+      tree={menuTree(categories)}
+      activeSlug={null}
+      card={cardContext(schema, locale)}
     />
   );
 }

@@ -260,6 +260,13 @@ export interface FilterableProduct extends CatalogFields {
   title: string;
   priceMinor: number;
   stock?: number;
+  /** When present and non-empty, stock is the sum of the variants' (as the backend's effectiveStock). */
+  variants?: { stock: number }[];
+}
+
+/** Effective stock: sum of the variants when there are any, else the product's own. */
+function effectiveStock(p: FilterableProduct): number {
+  return p.variants?.length ? p.variants.reduce((n, v) => n + Math.max(0, v.stock), 0) : p.stock ?? 0;
 }
 
 export interface FacetValue {
@@ -344,7 +351,7 @@ type Ctx = ReturnType<typeof resolve>;
 function matches<P extends FilterableProduct>(p: P, f: CatalogFilter, ctx: Ctx, skip?: string): boolean {
   if (ctx.scope && !(p.categoryId && ctx.scope.has(p.categoryId))) return false;
   if (ctx.markdownOnly && (p.condition ?? "NEW") === "NEW") return false;
-  if (f.inStock && !((p.stock ?? 0) > 0)) return false;
+  if (f.inStock && !(effectiveStock(p) > 0)) return false;
   if (f.q) {
     const q = normalize(f.q);
     const hay = normalize(`${p.title} ${p.brandRef?.name ?? ""}`);

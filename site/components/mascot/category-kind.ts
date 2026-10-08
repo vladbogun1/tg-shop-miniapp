@@ -31,3 +31,28 @@ export function categoryKind(slug: string, name = ""): CategoryKind {
   }
   return "mouse";
 }
+
+/**
+ * Catalog v2 `artKind` (docs/CATALOG-SPECS.md §1: mouse|keyboard|keycaps|pad|glass|glides|headphones|
+ * iem|soundcard|sleeve|cable|blower|chair|desk|sale) → the art we actually have. The contract's
+ * names differ from the asset names for a few kinds; kinds without their own art borrow the closest.
+ */
+const ART_KIND_ALIASES: Record<string, CategoryKind> = {
+  keyboard: "mechanical",
+  pad: "mousepad",
+  headphones: "headset",
+  iem: "headset",
+  soundcard: "headset",
+};
+
+/** Art for a category: its admin `artKind` when set (and known), else the slug/name guess. */
+export function artKindOf(artKind: string | null | undefined, slug: string, name = ""): CategoryKind {
+  const k = artKind?.trim().toLowerCase();
+  if (k) {
+    // A keyboard root/leaf: keep the magnetic art for magnetic keyboards.
+    if (k === "keyboard") return categoryKind(slug, name) === "magnetic" ? "magnetic" : "mechanical";
+    if ((CATEGORY_KINDS as readonly string[]).includes(k)) return k as CategoryKind;
+    if (ART_KIND_ALIASES[k]) return ART_KIND_ALIASES[k];
+  }
+  return categoryKind(slug, name);
+}

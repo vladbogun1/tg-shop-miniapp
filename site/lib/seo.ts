@@ -169,9 +169,49 @@ export const CATEGORY_SEO: Record<string, Record<Locale, CategoryWords>> = {
     en: { name: "Gaming arm sleeves", item: "gaming arm sleeve" },
   },
   naushniki: {
-    uk: { name: "Ігрові навушники та аудіо" },
-    ru: { name: "Игровые наушники и аудио" },
-    en: { name: "Gaming headphones and audio" },
+    uk: { name: "Ігрові навушники", item: "навушники" },
+    ru: { name: "Игровые наушники", item: "наушники" },
+    en: { name: "Gaming headphones", item: "headphones" },
+  },
+  "naushniki-polnorazmernye": {
+    uk: { name: "Повнорозмірні ігрові навушники", item: "повнорозмірні навушники" },
+    ru: { name: "Полноразмерные игровые наушники", item: "полноразмерные наушники" },
+    en: { name: "Over-ear gaming headphones", item: "over-ear headphones" },
+  },
+  "naushniki-iem": {
+    uk: { name: "Внутрішньоканальні навушники IEM", item: "IEM-навушники" },
+    ru: { name: "Внутриканальные наушники IEM", item: "IEM-наушники" },
+    en: { name: "In-ear monitors (IEM)", item: "in-ear monitors" },
+  },
+  "zvukovye-karty": {
+    uk: { name: "Звукові карти та ЦАП для навушників" },
+    ru: { name: "Звуковые карты и ЦАП для наушников" },
+    en: { name: "Sound cards and headphone DACs" },
+  },
+  audio: {
+    uk: { name: "Ігрове аудіо: навушники та звукові карти" },
+    ru: { name: "Игровое аудио: наушники и звуковые карты" },
+    en: { name: "Gaming audio: headphones and sound cards" },
+  },
+  klaviatury: {
+    uk: { name: "Ігрові клавіатури", item: "ігрова клавіатура" },
+    ru: { name: "Игровые клавиатуры", item: "игровая клавиатура" },
+    en: { name: "Gaming keyboards", item: "gaming keyboard" },
+  },
+  "kovriki-tkanevye": {
+    uk: { name: "Тканинні ігрові килимки для миші", item: "тканинний килимок для миші" },
+    ru: { name: "Тканевые игровые коврики для мыши", item: "тканевый коврик для мыши" },
+    en: { name: "Cloth gaming mouse pads", item: "cloth mouse pad" },
+  },
+  raznoe: {
+    uk: { name: "Аксесуари для ігрового сетапу" },
+    ru: { name: "Аксессуары для игрового сетапа" },
+    en: { name: "Gaming setup accessories" },
+  },
+  mebel: {
+    uk: { name: "Ігрові меблі: крісла та столи" },
+    ru: { name: "Игровая мебель: кресла и столы" },
+    en: { name: "Gaming furniture: chairs and desks" },
   },
   duyki: {
     uk: { name: "Дуйки — компресори для чищення ПК", item: "дуйка для чищення ПК" },
@@ -256,10 +296,11 @@ export function catalogPageMeta(input: {
 // ---------------------------------------------------------------- products
 
 /** `<title>` of a product without an admin seoTitle: "{title} — ігрова мишка, купити в Україні". */
-export function productTitle(p: StorefrontProduct, locale: Locale): string {
+export function productTitle(p: StorefrontProduct, locale: Locale, leaf?: { slug: string; name: string } | null): string {
   if (p.seoTitle) return p.seoTitle;
   const t = makeT(locale);
-  const tag = p.tags?.[0];
+  // The leaf category: given by the caller (schema path), else the last of `tags` (= root, leaf).
+  const tag = leaf ?? p.tags?.[p.tags.length - 1];
   const item = tag ? categoryWords(tag.slug, tag.name, locale).item : undefined;
   // Skip the type when the name already says it ("Килимок Attack Shark", "Cable, White").
   const lower = p.title.toLocaleLowerCase();
@@ -287,9 +328,12 @@ export function productBrand(p: Pick<StorefrontProduct, "title" | "description">
   return guessProductBrand(p);
 }
 
-/** Brand for schema.org: the admin's `brand` field, else the {@link productBrand} heuristic. */
-export function productBrandName(p: Pick<StorefrontProduct, "title" | "description" | "brand">): string | null {
-  return p.brand?.trim() || productBrand(p);
+/**
+ * Brand for schema.org and feeds: the brand directory (`brandRef`, catalog v2), else the admin's old
+ * text field, else the {@link productBrand} heuristic.
+ */
+export function productBrandName(p: Pick<StorefrontProduct, "title" | "description" | "brand" | "brandRef">): string | null {
+  return p.brandRef?.name?.trim() || p.brand?.trim() || productBrand(p);
 }
 
 /** schema.org `sku`: the admin's article number, else the product id. */

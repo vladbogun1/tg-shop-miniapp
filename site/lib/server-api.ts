@@ -11,6 +11,7 @@
  * response could be served to the Ukrainian page of the same path.
  */
 import type {
+  CatalogSchema,
   CatalogSort,
   Locale,
   PublicCategory,
@@ -75,6 +76,27 @@ export async function getCategory(slug: string, locale: Locale): Promise<PublicC
 export async function getProducts(q: CatalogQuery, locale: Locale): Promise<PublicProductPage> {
   const sp = catalogSearchParams({ size: PAGE_SIZE, ...q });
   return getJson<PublicProductPage>(`/api/public/products?${sp.toString()}`, locale);
+}
+
+/**
+ * Catalog v2 schema (category tree, brands, attributes, condition labels), localized.
+ * See docs/CATALOG-SPECS.md §3.1 and shared/src/catalog.ts.
+ */
+export async function getCatalogSchema(locale: Locale): Promise<CatalogSchema> {
+  return getJson<CatalogSchema>("/api/public/catalog/schema", locale);
+}
+
+/**
+ * Every product of a category subtree (or the whole catalog / a search) in one response
+ * (`all=1`, backend caps it at 1000) — the site filters, counts facets, sorts and paginates itself
+ * with shared/catalog.ts. `category` may be the virtual "utsenka".
+ */
+export async function getListingProducts(locale: Locale, opts: { category?: string | null; q?: string } = {}): Promise<StorefrontProduct[]> {
+  const sp = new URLSearchParams({ all: "1" });
+  if (opts.category) sp.set("category", opts.category);
+  if (opts.q) sp.set("q", opts.q);
+  const page = await getJson<PublicProductPage | StorefrontProduct[]>(`/api/public/products?${sp.toString()}`, locale);
+  return Array.isArray(page) ? page : page.items;
 }
 
 /** Largest page the backend serves (PublicCatalogService.MAX_PAGE_SIZE). */

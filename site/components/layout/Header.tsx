@@ -2,8 +2,8 @@
 
 /**
  * Sticky site header (DESIGN-V3 §6): translucent page colour + blur + hairline. Logo · section nav
- * (Exo 2) · search with live suggestions · language · account · cart. Categories live on the home
- * page, in the catalogue sidebar and in the burger sheet. On phones the search drops to its own row.
+ * (Exo 2) · search with live suggestions · language · account · cart. Categories: the «Каталог»
+ * dropdown (roots + subcategories), the burger sheet (nested list), the home page and the sidebar. On phones the search drops to its own row.
  * One dark theme — there is no theme switch any more.
  *
  * Phones: the search row is NOT part of the sticky bar — it scrolls away with the page, and the
@@ -12,12 +12,14 @@
  * changes, so nothing on the page jumps.
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
+import { ChevronDown, LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { noFadeFlash, type PublicCategory } from "@shop/shared";
+import { noFadeFlash } from "@shop/shared";
+import { artKindOf } from "@/components/mascot/category-kind";
+import { type MenuNode, rootOf } from "@/lib/category-tree";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { useCart, useCartCount } from "@/lib/cart";
@@ -31,7 +33,7 @@ import { SupportGate } from "@/components/support/SupportGate";
 import { useSupportUnread } from "@/lib/support";
 import "./header.css";
 
-export function Header({ categories }: { categories: PublicCategory[] }) {
+export function Header({ tree }: { tree: MenuNode[] }) {
   const { t, href } = useI18n();
   const pathname = stripLocale(usePathname() ?? "/");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -41,6 +43,8 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
   useEffect(() => setMenuOpen(false), [pathname]);
 
   const activeSlug = pathname.startsWith("/catalog/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
+  // A leaf's page highlights its root in the menus.
+  const activeRoot = rootOf(tree, activeSlug)?.slug ?? null;
 
   // phones: compact once the search row has scrolled under the sticky bar
   const searchRow = useRef<HTMLDivElement>(null);
@@ -89,10 +93,7 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
           <SearchBox compact />
         </div>
         <nav aria-label={t("header.nav")} className="ml-3 hidden shrink-0 items-center gap-1 lg:flex">
-          <NavLink href={href("/catalog")} active={pathname === "/catalog" || !!activeSlug}>
-            <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
-            {t("header.catalog")}
-          </NavLink>
+          <CatalogMenu tree={tree} active={pathname === "/catalog" || !!activeSlug} activeSlug={activeSlug} activeRoot={activeRoot} />
           <NavLink href={href("/delivery")} active={pathname === "/delivery"} className="hidden xl:inline-flex">
             {t("header.nav.delivery")}
           </NavLink>
@@ -117,7 +118,7 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         </div>
       </div>
 
-      <MobileMenu open={menuOpen} onClose={closeMenu} categories={categories} activeSlug={activeSlug} />
+      <MobileMenu open={menuOpen} onClose={closeMenu} tree={tree} activeSlug={activeSlug} activeRoot={activeRoot} />
     </header>
     {/* phone: search on its own row, outside the sticky bar — it scrolls away (see above) */}
     <div ref={searchRow} className="hdr-row2 chrome container-site border-b border-[var(--line)] pb-3 pt-0.5 md:hidden">
@@ -212,13 +213,15 @@ function AccountButton() {
 function MobileMenu({
   open,
   onClose,
-  categories,
+  tree,
   activeSlug,
+  activeRoot,
 }: {
   open: boolean;
   onClose: () => void;
-  categories: PublicCategory[];
+  tree: MenuNode[];
   activeSlug: string | null;
+  activeRoot: string | null;
 }) {
   const { t, href } = useI18n();
   const hydrated = useHydrated();
@@ -270,11 +273,22 @@ function MobileMenu({
                     {t("header.allProducts")}
                   </MenuLink>
                 </li>
-                {categories.map((c) => (
+                {tree.map((c) => (
                   <li key={c.id}>
-                    <MenuLink href={href(`/catalog/${c.slug}`)} active={activeSlug === c.slug}>
+                    <MenuLink href={href(`/catalog/${c.slug}`)} active={activeSlug === c.slug} inPath={activeRoot === c.slug && activeSlug !== c.slug} count={c.productCount}>
                       {c.name}
                     </MenuLink>
+                    {c.children.length > 0 && (
+                      <ul className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-[var(--line-strong)] pl-2.5">
+                        {c.children.map((k) => (
+                          <li key={k.id}>
+                            <MenuLink href={href(`/catalog/${k.slug}`)} active={activeSlug === k.slug} count={k.productCount} small>
+                              {k.name}
+                            </MenuLink>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -315,19 +329,165 @@ function MobileMenu({
   );
 }
 
-function MenuLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function MenuLink({
+  href,
+  active,
+  inPath,
+  count,
+  small,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  /** Root of the leaf being viewed. */
+  inPath?: boolean;
+  count?: number;
+  small?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 items-center rounded-[var(--r)] border px-3 text-[14px] font-medium transition-colors ${
+      className={`flex items-center justify-between gap-2 rounded-[var(--r)] border px-3 font-medium transition-colors ${small ? "min-h-10 text-[13px]" : "min-h-11 text-[14px]"} ${
         active
           ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
-          : "border-transparent text-[var(--ink)] hover:bg-[var(--surface-2)]"
+          : inPath
+            ? "border-[var(--line-strong)] text-[var(--ink)] hover:bg-[var(--surface-2)]"
+            : `border-transparent hover:bg-[var(--surface-2)] ${small ? "text-[var(--muted)]" : "text-[var(--ink)]"}`
       }`}
     >
-      {children}
+      <span className="min-w-0 truncate">{children}</span>
+      {count !== undefined && <span className="shrink-0 font-display text-[12px] tabular-nums opacity-60">{count}</span>}
     </Link>
+  );
+}
+
+/**
+ * Desktop «Каталог»: a link to the whole catalog that also opens (hover / focus / click on the
+ * chevron) a panel with the root categories — each with its device icon and, for a parent, the
+ * list of its subcategories. The root of the page being viewed is highlighted.
+ */
+function CatalogMenu({
+  tree,
+  active,
+  activeSlug,
+  activeRoot,
+}: {
+  tree: MenuNode[];
+  active: boolean;
+  activeSlug: string | null;
+  activeRoot: string | null;
+}) {
+  const { t, href } = useI18n();
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const closeTimer = useRef<number | null>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const pointer = useRef("");
+  useEffect(() => setOpen(false), [pathname]);
+  useEscape(open, () => setOpen(false));
+  const show = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), 160);
+  };
+  if (tree.length === 0) {
+    return (
+      <NavLink href={href("/catalog")} active={active}>
+        <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
+        {t("header.catalog")}
+      </NavLink>
+    );
+  }
+  return (
+    <div
+      ref={wrap}
+      className="relative"
+      onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
+      onBlur={(e) => {
+        if (!wrap.current?.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
+      <div className="flex items-center">
+        <NavLink href={href("/catalog")} active={active}>
+          <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
+          {t("header.catalog")}
+        </NavLink>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="true"
+          aria-label={t("header.categories")}
+          onPointerDown={(e) => (pointer.current = e.pointerType)}
+          // With a mouse the hover has already opened it — a click must not close it again.
+          onClick={() => setOpen((v) => (pointer.current === "mouse" ? true : !v))}
+          className="-ml-2 grid h-11 w-7 place-items-center rounded-[var(--r)] text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
+        >
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} strokeWidth={2.25} />
+        </button>
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            {...noFadeFlash}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.16 }}
+            className="absolute left-0 top-full z-50 pt-2"
+          >
+            <nav
+              aria-label={t("header.categories")}
+              className="grid w-[min(860px,calc(100vw-48px))] grid-cols-3 gap-x-4 gap-y-1 rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] p-4 shadow-[0_24px_60px_rgba(0,0,0,.6)]"
+            >
+              {tree.map((root) => {
+                const on = activeRoot === root.slug;
+                const kind = artKindOf(root.artKind, root.slug, root.name);
+                return (
+                  <div key={root.id} className="min-w-0 py-1">
+                    <Link
+                      href={href(`/catalog/${root.slug}`)}
+                      aria-current={activeSlug === root.slug ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-[var(--r)] border px-2 py-1.5 transition-colors ${
+                        on ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]" : "border-transparent text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                      }`}
+                    >
+                      { }
+                      <img src={`/mascot/icons/${kind}.webp`} alt="" width={32} height={32} loading="lazy" className="h-8 w-8 shrink-0 object-contain" />
+                      <span className="min-w-0 flex-1 truncate font-display text-[14px] font-bold uppercase tracking-[.04em]">{root.name}</span>
+                      <span className="shrink-0 font-display text-[12px] tabular-nums opacity-60">{root.productCount}</span>
+                    </Link>
+                    {root.children.length > 0 && (
+                      <ul className="ml-[22px] mt-1 flex flex-col border-l border-[var(--line-strong)] pl-3">
+                        {root.children.map((c) => (
+                          <li key={c.id}>
+                            <Link
+                              href={href(`/catalog/${c.slug}`)}
+                              aria-current={activeSlug === c.slug ? "page" : undefined}
+                              className={`flex min-h-8 items-center justify-between gap-2 rounded-[var(--r)] px-2 text-[13px] font-medium transition-colors ${
+                                activeSlug === c.slug ? "text-[var(--accent-hi)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
+                              }`}
+                            >
+                              <span className="min-w-0 truncate">{c.name}</span>
+                              <span className="shrink-0 font-display text-[11px] tabular-nums opacity-60">{c.productCount}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import { FEED_REVALIDATE_SECONDS, feedItems, xmlResponse, type FeedItem } from "./feeds";
 import type { Locale } from "@shop/shared";
-import { getAllProducts, getCategories } from "./server-api";
+import { loadSchema } from "./catalog";
+import { getAllProducts } from "./server-api";
 
 /**
  * GET handler body shared by the feed routes. A backend failure answers 503, never an empty feed:
@@ -9,11 +10,12 @@ import { getAllProducts, getCategories } from "./server-api";
  */
 export async function feedResponse(locale: Locale, render: (items: FeedItem[]) => string): Promise<Response> {
   try {
-    const [products, categories] = await Promise.all([
+    const [products, schema] = await Promise.all([
       getAllProducts(locale, FEED_REVALIDATE_SECONDS),
-      getCategories(locale),
+      // Never throws: an older backend gets a schema from the menu (no characteristics).
+      loadSchema(locale),
     ]);
-    const items = feedItems(products, categories, locale);
+    const items = feedItems(products, schema, locale);
     // Nothing exportable while the catalog has products means something is off — do not publish it.
     if (items.length === 0 && products.length > 0) throw new Error("no exportable products");
     return xmlResponse(render(items));

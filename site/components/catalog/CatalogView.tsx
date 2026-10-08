@@ -1,137 +1,304 @@
-import type { CatalogSort, Locale, PublicCategory, PublicProductPage } from "@shop/shared";
-import { ChevronLeft, ChevronRight, PackageSearch } from "lucide-react";
+import { activeFilterCount, type Facet, type Locale } from "@shop/shared";
+import { ChevronLeft, ChevronRight, PackageSearch, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
-import { toCardProducts } from "@/lib/card";
-import { PAGE_SIZE } from "@/lib/config";
-import { CatalogFilters, CatalogSortSelect, MobileFiltersButton } from "./CatalogFilters";
+import { type CardContext, toCardProducts } from "@/lib/card";
+import { type Listing, type MenuNode } from "@/lib/catalog";
+import { type CatalogState, catalogHref, clearFilters, hasFilters } from "@/lib/catalog-params";
+import { CatalogNavProvider, CatalogSortSelect, FacetPanel, MobileFilters, PendingRegion, StateLink } from "./CatalogFilters";
 import { ProductGrid } from "./ProductCard";
 
-export interface CatalogState {
-  /** Path without locale, e.g. "/catalog/myshki" or "/search". */
-  basePath: string;
-  q?: string;
-  inStock: boolean;
-  /** Minor units. */
-  priceMax?: number;
-  sort: CatalogSort;
-  /** 1-based, as shown in the URL. */
-  page: number;
-}
-
-/** Builds the URL (without locale) for a catalog state; defaults are left out of the query. */
-export function catalogHref(s: CatalogState, patch: Partial<CatalogState> = {}): string {
-  const n = { ...s, ...patch };
-  const sp = new URLSearchParams();
-  if (n.q) sp.set("q", n.q);
-  if (n.inStock) sp.set("inStock", "1");
-  if (n.priceMax) sp.set("priceMax", String(Math.round(n.priceMax / 100)));
-  if (n.sort !== "default") sp.set("sort", n.sort);
-  if (n.page > 1) sp.set("page", String(n.page));
-  const qs = sp.toString();
-  return qs ? `${n.basePath}?${qs}` : n.basePath;
-}
+export type { CatalogState };
 
 /**
- * The catalog screen (server component): breadcrumbs, title, sidebar filters, sort, count, grid,
- * pagination. Shared by /catalog, /catalog/[category] and /search.
+ * The catalog screen (server component), shared by /catalog, /catalog/[category] and /search:
+ * breadcrumbs, H1, subcategory chips, then a left column (category tree + facets) and the results
+ * (active filter chips, «Знайдено N», sort, grid, pagination). docs/CATALOG-SPECS.md §5 «Сайт».
  */
 export function CatalogView({
   locale,
   title,
   crumbs,
-  categories,
-  activeCategory,
   state,
-  data,
+  listing,
+  tree,
+  activeSlug,
+  chips,
+  hint,
+  card,
   footer,
 }: {
   locale: Locale;
   title: string;
   crumbs: Crumb[];
-  categories: PublicCategory[];
-  activeCategory: string | null;
   state: CatalogState;
-  data: PublicProductPage | null;
+  listing: Listing | null;
+  /** Root categories with their children (empty ones already dropped). */
+  tree: MenuNode[];
+  /** Category of the page (root, leaf or "utsenka"); null = all products / search. */
+  activeSlug: string | null;
+  /** Subcategory chips above the grid (a root's children), with the root itself as «Усі». */
+  chips?: { root: MenuNode; children: MenuNode[] } | null;
+  /** No category: say that characteristic filters need one. */
+  hint?: boolean;
+  card: CardContext;
   /** Rendered under the grid and pagination (the category SEO text, see CategoryIntro). */
   footer?: ReactNode;
 }) {
   const t = makeT(locale);
-  const href = (p: string) => localePath(locale, p);
-  const total = data?.total ?? 0;
-  const pages = Math.max(1, Math.ceil(total / (data?.size || PAGE_SIZE)));
-  const filtered = state.inStock || !!state.priceMax;
+  const total = listing?.total ?? 0;
+  const facets = listing?.facets ?? [];
+  const active = activeFilterCount(state.filter);
+  const filtered = hasFilters(state.filter);
+  const reset = clearFilters(state);
 
-  const sidebar = (
-    <CatalogFilters
-      categories={categories}
-      activeCategory={activeCategory}
-      inStock={state.inStock}
-      priceMax={state.priceMax}
-      priceMaxAvailable={data?.priceMaxAvailable ?? 0}
-      hrefs={{
-        all: href(catalogHref({ ...state, basePath: "/catalog", page: 1 })),
-        category: Object.fromEntries(
-          categories.map((c) => [c.slug, href(catalogHref({ ...state, basePath: `/catalog/${c.slug}`, page: 1 }))])
-        ),
-        reset: href(catalogHref({ ...state, inStock: false, priceMax: undefined, page: 1 })),
-      }}
-      showCategories={!state.q}
-    />
-  );
+  const tree$ = <CategoryTree locale={locale} tree={tree} activeSlug={activeSlug} />;
+  const panel = <FacetPanel state={state} facets={facets} price={listing?.price ?? null} hint={hint} />;
 
   return (
-    <div className="container-site pt-6">
-      <Breadcrumbs locale={locale} items={crumbs} />
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-3 font-display text-[28px] font-extrabold uppercase leading-tight tracking-[.02em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[38px]">
+    <CatalogNavProvider>
+      <div className="container-site pt-6">
+        <Breadcrumbs locale={locale} items={crumbs} />
+        <div className="mb-5">
+          <h1 className="font-display text-[28px] font-extrabold uppercase leading-tight tracking-[.02em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[38px]">
             {title}
           </h1>
-          <p className="mt-1 flex items-center gap-2 text-[14px] font-medium text-[var(--muted)]" aria-live="polite">
-            <span aria-hidden className="tech-mark" />
-            {t("catalog.count", { n: total })}
-          </p>
         </div>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <MobileFiltersButton>{sidebar}</MobileFiltersButton>
-          <CatalogSortSelect value={state.sort} />
-        </div>
-      </div>
 
-      <div className="flex gap-8">
-        <aside className="hidden w-[250px] shrink-0 lg:block" aria-label={t("catalog.filters")}>
-          <div className="sticky top-[140px]">{sidebar}</div>
-        </aside>
+        {chips && chips.children.length > 0 && <SubcategoryChips locale={locale} chips={chips} activeSlug={activeSlug} />}
 
-        <div className="min-w-0 flex-1">
-          {!data ? (
-            <div className="nb p-8 text-center text-[15px] font-medium text-[var(--muted)]">{t("catalog.error")}</div>
-          ) : data.items.length === 0 ? (
-            <div className="nb hud-frame flex flex-col items-center gap-3 px-6 py-14 text-center">
-              <PackageSearch className="h-10 w-10 text-[var(--accent)]" strokeWidth={1.75} />
-              <p className="text-[18px] font-display font-extrabold uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
-              <p className="max-w-sm text-[14px] font-medium text-[var(--muted)]">{t("catalog.empty.text")}</p>
-              {filtered && (
-                <Link href={href(catalogHref({ ...state, inStock: false, priceMax: undefined, page: 1 }))} className="link-ink mt-2 text-[14px] font-semibold">
-                  {t("catalog.reset")}
-                </Link>
-              )}
+        <div className="flex gap-8">
+          <aside className="hidden w-[264px] shrink-0 lg:block" aria-label={t("catalog.filters")}>
+            <div className="flex flex-col gap-4">
+              {tree$}
+              <section className="nb px-4 py-1">{panel}</section>
             </div>
-          ) : (
-            <>
-              <ProductGrid products={toCardProducts(data.items)} priorityCount={4} />
-              {pages > 1 && <Pagination locale={locale} state={state} pages={pages} />}
-            </>
-          )}
-          {footer}
+          </aside>
+
+          <div className="min-w-0 flex-1">
+            {/* top row: Фільтри (N) on phones · found N · sort */}
+            <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
+              <MobileFilters active={active} total={total} resetState={filtered ? reset : null}>
+                <div className="flex flex-col gap-4">
+                  {tree$}
+                  <section className="nb px-4 py-1">{panel}</section>
+                </div>
+              </MobileFilters>
+              <p className="order-last flex w-full items-center gap-2 text-[14px] font-medium text-[var(--muted)] sm:order-none sm:w-auto" aria-live="polite">
+                <span aria-hidden className="tech-mark" />
+                {t("catalog.found", { n: total })}
+              </p>
+              <div className="ml-auto flex min-w-0 flex-1 justify-end sm:flex-none">
+                <CatalogSortSelect state={state} />
+              </div>
+            </div>
+
+            {filtered && <ActiveFilters locale={locale} state={state} facets={facets} reset={reset} />}
+
+            <PendingRegion>
+              {!listing ? (
+                <div className="nb p-8 text-center text-[15px] font-medium text-[var(--muted)]">{t("catalog.error")}</div>
+              ) : listing.items.length === 0 ? (
+                <div className="nb hud-frame flex flex-col items-center gap-3 px-6 py-14 text-center">
+                  <PackageSearch className="h-10 w-10 text-[var(--accent)]" strokeWidth={1.75} />
+                  <p className="font-display text-[18px] font-extrabold uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
+                  <p className="max-w-sm text-[14px] font-medium text-[var(--muted)]">{t("catalog.empty.text")}</p>
+                  {filtered && (
+                    <StateLink state={reset} className="link-ink mt-2 text-[14px] font-semibold">
+                      {t("catalog.reset")}
+                    </StateLink>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={4} />
+                  {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page }} pages={listing.pages} />}
+                </>
+              )}
+            </PendingRegion>
+            {footer}
+          </div>
         </div>
       </div>
-    </div>
+    </CatalogNavProvider>
   );
 }
+
+// ---------------------------------------------------------------- category tree
+
+/**
+ * «Категорії» card: «Усі товари» + the roots with counts; the selected root (or the root of the
+ * selected leaf) unfolds its subcategories as an indented tree with a guide line. Plain links, the
+ * clean category URLs (filters are not carried over — characteristic facets differ per category).
+ */
+function CategoryTree({ locale, tree, activeSlug }: { locale: Locale; tree: MenuNode[]; activeSlug: string | null }) {
+  const t = makeT(locale);
+  const href = (p: string) => localePath(locale, p);
+  if (tree.length === 0) return null;
+  return (
+    <nav className="nb p-4" aria-label={t("catalog.categories")}>
+      <h2 className="eyebrow mb-3 flex items-center gap-2 text-[11px]">
+        <span aria-hidden className="h-[2px] w-3 bg-[var(--accent)]" />
+        {t("catalog.categories")}
+      </h2>
+      <ul className="flex flex-col gap-1">
+        <li>
+          <TreeLink href={href("/catalog")} active={!activeSlug}>
+            {t("catalog.all")}
+          </TreeLink>
+        </li>
+        {tree.map((root) => {
+          const open = root.slug === activeSlug || root.children.some((c) => c.slug === activeSlug);
+          return (
+            <li key={root.id}>
+              <TreeLink href={href(`/catalog/${root.slug}`)} active={root.slug === activeSlug} inPath={open && root.slug !== activeSlug} count={root.productCount}>
+                {root.name}
+              </TreeLink>
+              {open && root.children.length > 0 && (
+                <ul className="relative ml-3 mt-1 flex flex-col gap-0.5 border-l border-[var(--line-strong)] pl-2.5">
+                  {root.children.map((c) => (
+                    <li key={c.id}>
+                      <TreeLink href={href(`/catalog/${c.slug}`)} active={c.slug === activeSlug} count={c.productCount} small>
+                        {c.name}
+                      </TreeLink>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+function TreeLink({
+  href,
+  active,
+  inPath,
+  count,
+  small,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  /** The root of the selected leaf. */
+  inPath?: boolean;
+  count?: number;
+  small?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center justify-between gap-2 rounded-[var(--r)] border px-2.5 py-1 font-medium transition-colors ${small ? "min-h-8 text-[13px]" : "min-h-9 text-[14px]"} ${
+        active
+          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+          : inPath
+            ? "border-transparent text-[var(--ink)] hover:bg-[var(--surface-2)]"
+            : "border-transparent text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+      }`}
+    >
+      <span className="min-w-0 truncate">{children}</span>
+      {count !== undefined && <span className="shrink-0 font-display text-[12px] tabular-nums opacity-70">{count}</span>}
+    </Link>
+  );
+}
+
+function SubcategoryChips({ locale, chips, activeSlug }: { locale: Locale; chips: { root: MenuNode; children: MenuNode[] }; activeSlug: string | null }) {
+  const t = makeT(locale);
+  const href = (p: string) => localePath(locale, p);
+  const chip = "nb-chip inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 font-display text-[13px] font-semibold transition-colors";
+  const items = [{ slug: chips.root.slug, name: t("catalog.allIn", { name: chips.root.name }), count: chips.root.productCount }, ...chips.children.map((c) => ({ slug: c.slug, name: c.name, count: c.productCount }))];
+  return (
+    <nav aria-label={t("catalog.subcategories")} className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+      <ul className="flex gap-2 sm:flex-wrap">
+        {items.map((c) => {
+          const on = c.slug === activeSlug;
+          return (
+            <li key={c.slug}>
+              <Link
+                href={href(`/catalog/${c.slug}`)}
+                aria-current={on ? "page" : undefined}
+                className={`${chip} ${on ? "nb-chip-active" : "text-[var(--ink)] hover:border-[var(--line-strong)]"}`}
+              >
+                {c.name}
+                <span className="font-display text-[12px] tabular-nums opacity-60">{c.count}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------- active filters
+
+function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state: CatalogState; facets: Facet[]; reset: CatalogState }) {
+  const t = makeT(locale);
+  const f = state.filter;
+  const nf = new Intl.NumberFormat(locale === "en" ? "en-US" : locale === "ru" ? "ru-RU" : "uk-UA", { maximumFractionDigits: 3 });
+  const range = (min: number | null | undefined, max: number | null | undefined, unit?: string | null) => {
+    const u = unit ? ` ${unit}` : "";
+    if (min != null && max != null) return `${nf.format(min)}–${nf.format(max)}${u}`;
+    if (min != null) return t("catalog.rangeFrom", { v: `${nf.format(min)}${u}` });
+    return t("catalog.rangeTo", { v: `${nf.format(max ?? 0)}${u}` });
+  };
+  const chips: { key: string; label: string; state: CatalogState }[] = [];
+  const next = (filter: typeof f): CatalogState => ({ ...state, filter, page: 1 });
+
+  if (f.inStock) chips.push({ key: "stock", label: t("catalog.inStock"), state: next({ ...f, inStock: false }) });
+  if (f.priceMin != null || f.priceMax != null) {
+    chips.push({ key: "price", label: `${t("catalog.price").replace(/,.*$/, "")}: ${range(f.priceMin, f.priceMax, "₴")}`, state: next({ ...f, priceMin: null, priceMax: null }) });
+  }
+  for (const facet of facets) {
+    if (facet.kind === "range") {
+      if (facet.selectedRange) {
+        const attrs = { ...(f.attrs ?? {}) };
+        delete attrs[facet.key];
+        chips.push({ key: facet.key, label: `${facet.label}: ${range(facet.selectedRange.min, facet.selectedRange.max, facet.unit)}`, state: next({ ...f, attrs }) });
+      }
+      continue;
+    }
+    for (const v of facet.values.filter((x) => x.selected)) {
+      let filter = f;
+      if (facet.key === "brand") filter = { ...f, brands: (f.brands ?? []).filter((x) => x !== v.value) };
+      else if (facet.key === "cond") filter = { ...f, conditions: (f.conditions ?? []).filter((x) => x !== v.value) };
+      else filter = { ...f, attrs: { ...(f.attrs ?? {}), [facet.key]: (f.attrs?.[facet.key] ?? []).filter((x) => x !== v.value) } };
+      const label = facet.kind === "bool" ? facet.label : facet.key === "brand" || facet.key === "cond" ? v.label : `${facet.label}: ${v.label}`;
+      chips.push({ key: `${facet.key}:${v.value}`, label, state: next(filter) });
+    }
+  }
+  if (chips.length === 0) return null;
+  return (
+    <ul className="mb-4 flex flex-wrap items-center gap-2">
+      {chips.map((c) => (
+        <li key={c.key}>
+          <StateLink
+            state={c.state}
+            aria-label={t("catalog.removeFilter", { label: c.label })}
+            className="nb-chip nb-chip-active inline-flex min-h-9 items-center gap-1.5 rounded-full pl-3 pr-2 text-[13px] font-semibold transition-colors hover:bg-[rgba(255,102,0,.2)]"
+          >
+            <span className="max-w-[240px] truncate">{c.label}</span>
+            <X className="h-3.5 w-3.5 shrink-0" strokeWidth={2.75} />
+          </StateLink>
+        </li>
+      ))}
+      <li>
+        <StateLink state={reset} className="link-ink px-1 text-[13px] font-semibold text-[var(--muted)]">
+          {t("catalog.resetAll")}
+        </StateLink>
+      </li>
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------- pagination
 
 function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogState; pages: number }) {
   const t = makeT(locale);

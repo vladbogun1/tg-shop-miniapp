@@ -13,7 +13,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { categoryKind, type CategoryKind } from "./category-kind";
+import { artKindOf, type CategoryKind } from "./category-kind";
 import "./category-tile.css";
 
 /** One pass of each scene strip, ms (4 frames, timings from the generator manifest). */
@@ -58,6 +58,7 @@ export function CategoryTile({
   href,
   slug,
   name,
+  artKind,
   count,
   loadingLabel,
   readyLabel,
@@ -65,11 +66,13 @@ export function CategoryTile({
   href: string;
   slug: string;
   name: string;
+  /** Catalog v2 category art; null = guessed from slug/name. */
+  artKind?: string | null;
   count: string;
   loadingLabel: string;
   readyLabel: string;
 }) {
-  const kind = categoryKind(slug, name);
+  const kind = artKindOf(artKind, slug, name);
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const timers = useRef<number[]>([]);

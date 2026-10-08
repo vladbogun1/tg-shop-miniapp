@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
-import { categoryKind, type CategoryKind } from "./category-kind";
+import { artKindOf, type CategoryKind } from "./category-kind";
 import "./hero-banner.css";
 
 /**
@@ -64,7 +64,7 @@ const VARIANTS = ["a", "b"] as const;
 const slogan = (kind: CategoryKind, n: number) => `home.banner.${kind}.${VARIANTS[n % VARIANTS.length]}` as MessageKey;
 const reaction = (kind: CategoryKind, n: number) => REACTIONS[kind][n % REACTIONS[kind].length];
 
-export type BannerCategory = { slug: string; name: string; productCount: number };
+export type BannerCategory = { slug: string; name: string; productCount: number; artKind?: string | null };
 type Slide = { slug: string; name: string; kind: CategoryKind };
 /** A mounted slide: index, visit number (picks slogan + reaction), key, leaving or not. */
 type Layer = { i: number; v: number; id: number; out: boolean };
@@ -72,7 +72,7 @@ type Layer = { i: number; v: number; id: number; out: boolean };
 export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
   const { t, href } = useI18n();
   const slides = useMemo<Slide[]>(
-    () => categories.filter((c) => c.productCount > 0).map((c) => ({ slug: c.slug, name: c.name, kind: categoryKind(c.slug, c.name) })),
+    () => categories.filter((c) => c.productCount > 0).map((c) => ({ slug: c.slug, name: c.name, kind: artKindOf(c.artKind, c.slug, c.name) })),
     [categories]
   );
 

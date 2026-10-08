@@ -13,6 +13,8 @@ import { localeOf, type LocaleParams } from "@/lib/route";
 import { getCategories, getProducts, getReviewFeed, safe } from "@/lib/server-api";
 import { pageMeta, storeJsonLd } from "@/lib/seo";
 import { toCardProducts } from "@/lib/card";
+import { cardContext, loadSchema } from "@/lib/catalog";
+import { menuTree } from "@/lib/category-tree";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;
@@ -37,12 +39,16 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
 
-  const [categories, hits, fresh, feed] = await Promise.all([
+  const [allCategories, schema, hits, fresh, feed] = await Promise.all([
     safe(getCategories(locale), []),
+    loadSchema(locale),
     safe(getProducts({ sort: "default", inStock: true, size: 8 }, locale), null),
     safe(getProducts({ sort: "new", inStock: true, size: 8 }, locale), null),
     safe(getReviewFeed(locale), null),
   ]);
+  // Tiles and banner slides: ROOT categories with products (+ the virtual «Уцінка» last).
+  const categories = menuTree(allCategories);
+  const card = cardContext(schema, locale);
 
   return (
     <>
@@ -92,6 +98,7 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
                   href={href(`/catalog/${c.slug}`)}
                   slug={c.slug}
                   name={c.name}
+                  artKind={c.artKind}
                   count={t("home.categoryCount", { n: c.productCount })}
                   loadingLabel={t("home.tile.loading")}
                   readyLabel={t("home.tile.ready")}
@@ -105,14 +112,14 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
       {hits && hits.items.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-hits">
           <SectionHead id="home-hits" title={t("home.hits")} more={href("/catalog")} moreLabel={t("common.showAll")} />
-          <ProductGrid products={toCardProducts(hits.items)} />
+          <ProductGrid products={toCardProducts(hits.items, card)} />
         </section>
       )}
 
       {fresh && fresh.items.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-new">
           <SectionHead id="home-new" title={t("home.new")} more={href("/catalog?sort=new")} moreLabel={t("common.showAll")} />
-          <ProductGrid products={toCardProducts(fresh.items)} />
+          <ProductGrid products={toCardProducts(fresh.items, card)} />
         </section>
       )}
 

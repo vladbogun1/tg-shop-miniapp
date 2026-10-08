@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { makeT } from "@/i18n";
 import { catalogPageMeta } from "@/lib/seo";
-import { parseCatalogState, toApiQuery, type SearchParams } from "@/lib/catalog-params";
+import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
+import { cardContext, computeListing, loadSchema, menuTree } from "@/lib/catalog";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getProducts, safe } from "@/lib/server-api";
+import { getCategories, getListingProducts, safe } from "@/lib/server-api";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is
@@ -41,19 +42,25 @@ export default async function CatalogPage({
   const locale = await localeOf(params);
   const t = makeT(locale);
   const state = await parseCatalogState("/catalog", searchParams);
-  const [categories, data] = await Promise.all([
+  // All products: only brand / price / condition / stock facets (no category → no attributes).
+  const filter = { ...state.filter, q: undefined, attrs: {} };
+  const [categories, schema, products] = await Promise.all([
     safe(getCategories(locale), []),
-    safe(getProducts(toApiQuery(state), locale), null),
+    loadSchema(locale),
+    safe(getListingProducts(locale), null),
   ]);
+  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale) : null;
   return (
     <CatalogView
       locale={locale}
       title={t("catalog.title")}
       crumbs={[{ label: t("catalog.title") }]}
-      categories={categories}
-      activeCategory={null}
-      state={state}
-      data={data}
+      state={{ ...state, filter }}
+      listing={listing}
+      tree={menuTree(categories)}
+      activeSlug={null}
+      hint
+      card={cardContext(schema, locale)}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 import Link from "next/link";
-import type { Locale, PublicCategory } from "@shop/shared";
+import type { Locale } from "@shop/shared";
+import type { MenuNode } from "@/lib/category-tree";
 import { localePath, makeT } from "@/i18n";
 import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
@@ -11,7 +12,7 @@ import { FooterSweeper } from "@/components/mascot/scenes";
  * Site footer (server component): shop links, customer info pages, Telegram, seller requisites.
  * `.chrome` surface a step darker than the page, hairline on top, Exo 2 eyebrow headings.
  */
-export function Footer({ categories, locale }: { categories: PublicCategory[]; locale: Locale }) {
+export function Footer({ tree, locale }: { tree: MenuNode[]; locale: Locale }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
   const year = new Date().getFullYear();
@@ -36,7 +37,7 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
                 {t("header.allProducts")}
               </Link>
             </li>
-            {categories.slice(0, 8).map((c) => (
+            {tree.slice(0, 12).map((c) => (
               <li key={c.id}>
                 <Link href={href(`/catalog/${c.slug}`)} className={linkCls}>
                   {c.name}

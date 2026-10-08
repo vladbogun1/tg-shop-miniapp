@@ -7,17 +7,17 @@
  */
 import { ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import type { StorefrontProduct } from "@shop/shared";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
+import type { CardProduct } from "@/lib/card";
 import { stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { RatingMini } from "@/components/reviews/RatingLink";
 import { useFmt } from "@/lib/use-fmt";
 
-export function ProductCard({ product, priority = false }: { product: StorefrontProduct; priority?: boolean }) {
+export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
   const { t, href } = useI18n();
   const fmt = useFmt();
   const add = useCart((s) => s.add);
@@ -26,6 +26,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
   const inStock = stock > 0;
   const off = discountPercent(product.priceMinor, product.compareAtMinor);
   const url = href(`/product/${product.slug}`);
+  const used = product.condition === "MARKDOWN" || product.condition === "USED" ? product.condition : null;
   const image = (product.images ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
 
   return (
@@ -54,11 +55,21 @@ export function ProductCard({ product, priority = false }: { product: Storefront
               {t("product.discount", { n: off })}
             </span>
           )}
+          {used && (
+            <span className="absolute bottom-2 left-2 rounded-full border border-[color-mix(in_srgb,var(--warn)_55%,transparent)] bg-[rgba(14,14,16,.86)] px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-[.1em] text-[var(--warn)]">
+              {t(used === "USED" ? "product.cond.USED" : "product.cond.MARKDOWN")}
+            </span>
+          )}
         </div>
         <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:px-4 sm:pt-4">
           <h3 className="line-clamp-2 min-h-[2.7em] font-sans text-[14px] font-semibold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-hi)]">
             {product.title}
           </h3>
+          {product.specLine && (
+            <p className="line-clamp-1 font-display text-[12px] font-medium tracking-[.02em] text-[var(--muted)]" title={product.specLine}>
+              {product.specLine}
+            </p>
+          )}
           <RatingMini avg={product.ratingAvg} count={product.ratingCount} />
           <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="font-display text-[18px] font-bold tabular-nums text-[var(--ink)]">
@@ -103,7 +114,7 @@ export function ProductCard({ product, priority = false }: { product: Storefront
   );
 }
 
-export function ProductGrid({ products, priorityCount = 0 }: { products: StorefrontProduct[]; priorityCount?: number }) {
+export function ProductGrid({ products, priorityCount = 0 }: { products: CardProduct[]; priorityCount?: number }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
       {products.map((p, i) => (

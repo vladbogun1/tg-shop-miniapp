@@ -7,7 +7,9 @@
  *   /feeds/hotline.xml     Hotline.ua price list (their own XML: firm, categories, items), Ukrainian
  *
  * All list only public products (the backend's /api/public/products = active, not archived) that
- * have a menu category and at least one photo. Links are the product pages of the feed's language,
+ * sit in a menu category (catalog v2: a leaf whose whole path is shown in the menu) and have at least
+ * one photo. Category, brand, condition and characteristics come from the catalog v2 schema
+ * (docs/CATALOG-SPECS.md §5 «Фиды»). Links are the product pages of the feed's language,
  * pictures are absolute JPEG renders through imgproxy — some feed crawlers still do not take WebP,
  * which imgproxy serves by default.
  *
@@ -19,21 +21,23 @@
  * Nothing here is rendered on the site.
  */
 import {
+  type CatalogCategory,
+  type CatalogSchema,
+  categoryBySlug,
+  categoryPath,
   imgproxyUrl,
   type Locale,
-  type PublicCategory,
+  MARKDOWN_COLLECTION_SLUG,
+  specRows,
   type StorefrontProduct,
-  type StorefrontTag,
 } from "@shop/shared";
 import { localePath, makeT } from "@/i18n";
 import { IMAGE_BASE, SITE_URL } from "./config";
-import { categoryWords, productBrand, SITE_NAME } from "./seo";
+import { categoryWords, productBrandName, SITE_NAME } from "./seo";
 import { stockOf } from "./stock";
 
 /** Feed data window, seconds (admin edits still drop it early through the "catalog" tag). */
 export const FEED_REVALIDATE_SECONDS = 3600;
-
-const MARKDOWN_SLUG = "utsenka";
 
 // ---------------------------------------------------------------- XML helpers
 
@@ -76,15 +80,30 @@ interface MaybeIdentifiers {
   mpn?: string | null;
 }
 
+/** One characteristic for g:product_detail / Hotline <param>. */
+export interface FeedSpec {
+  section: string;
+  name: string;
+  /** Formatted value with the unit ("51 г", "PAW3950"). */
+  value: string;
+}
+
+/** Most characteristics a feed item carries (Hotline reads up to ~20 params). */
+const MAX_SPECS = 20;
+
 export interface FeedItem {
   product: StorefrontProduct;
-  category: StorefrontTag;
+  /** The leaf category the product sits in. */
+  category: { slug: string; name: string };
   /** Search wording of the category in the feed's language ("Ігрові килимки для миші"). */
   categoryName: string;
+  /** "Клавіатури > Магнітні клавіатури" — category path names (g:product_type). */
+  productType: string;
+  specs: FeedSpec[];
   url: string;
   images: string[];
   inStock: boolean;
-  /** «Уцінка»: sold with stated defects. */
+  /** condition ≠ NEW (markdown or used): sold with stated defects. */
   markdown: boolean;
   brand: string | null;
   description: string;
@@ -100,12 +119,17 @@ export function feedImage(key: string): string {
 }
 
 /**
- * The category a product is listed under: its first menu category other than «Уцінка»; a product
- * that is only in «Уцінка» keeps that one. null = no menu category (not exported).
+ * Category path (root → leaf) a product is listed under; null = not exported. Catalog v2: the
+ * product's `categoryId`, every category of the path shown in the menu. An older backend without
+ * `categoryId`: its first tag (other than «Уцінка») known to the schema.
  */
-function feedCategory(p: StorefrontProduct, menu: Map<string, PublicCategory>): StorefrontTag | null {
-  const tags = (p.tags ?? []).filter((t) => t.slug && menu.has(t.slug));
-  return tags.find((t) => t.slug !== MARKDOWN_SLUG) ?? tags[0] ?? null;
+function feedPath(p: StorefrontProduct, schema: CatalogSchema): CatalogCategory[] | null {
+  let path = categoryPath(schema, p.categoryId);
+  if (!path.length) {
+    const tag = (p.tags ?? []).find((t) => t.slug && t.slug !== MARKDOWN_COLLECTION_SLUG && categoryBySlug(schema, t.slug));
+    path = tag ? categoryPath(schema, categoryBySlug(schema, tag.slug)!.id) : [];
+  }
+  return path.length && path.every((c) => c.showInMenu) ? path : null;
 }
 
 /** Plain text for feeds: no bullet glyph runs, collapsed blank lines, trimmed to `max`. */
@@ -127,7 +151,7 @@ function looksRussian(text: string): boolean {
  * Feed description in `locale`: the product's own text, or — when there is none or it is evidently
  * in another language — "{title} — {what it is}. {delivery line}" in the feed's language.
  */
-function description(p: StorefrontProduct, category: StorefrontTag, locale: Locale): string {
+function description(p: StorefrontProduct, category: { slug: string; name: string }, locale: Locale): string {
   const own = (p.description ?? "").trim();
   if (own && (locale === "ru" || !looksRussian(own))) return feedText(own, 5000);
   const item = categoryWords(category.slug, category.name, locale).item;
@@ -139,13 +163,27 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-export function feedItems(products: StorefrontProduct[], categories: PublicCategory[], locale: Locale): FeedItem[] {
-  const menu = new Map(categories.map((c) => [c.slug, c]));
+/** Yes/no words for bool characteristics in the feed's language. */
+function yesNo(locale: Locale): [string, string] {
+  const t = makeT(locale);
+  return [t("catalog.yes"), t("catalog.no")];
+}
+
+function feedSpecs(p: StorefrontProduct, schema: CatalogSchema, locale: Locale): FeedSpec[] {
+  if (!p.categoryId || !p.specs) return [];
+  return specRows(schema, p.categoryId, p.specs, locale, yesNo(locale))
+    .flatMap(({ group, rows }) => rows.map(({ attr, text }) => ({ section: group.label, name: attr.label, value: text })))
+    .slice(0, MAX_SPECS);
+}
+
+export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, locale: Locale): FeedItem[] {
   const items: FeedItem[] = [];
   for (const p of products) {
     if (p.active === false || p.archived === true) continue;
-    const category = feedCategory(p, menu);
-    if (!category) continue;
+    const path = feedPath(p, schema);
+    if (!path) continue;
+    const leaf = path[path.length - 1];
+    const category = { slug: leaf.slug, name: leaf.name };
     const images = (p.images ?? [])
       .slice()
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -158,11 +196,14 @@ export function feedItems(products: StorefrontProduct[], categories: PublicCateg
       product: p,
       category,
       categoryName: categoryWords(category.slug, category.name, locale).name,
+      productType: path.map((c) => c.name).join(" > "),
+      specs: feedSpecs(p, schema, locale),
       url: `${SITE_URL}${localePath(locale, `/product/${p.slug}`)}`,
       images,
       inStock: stockOf(p, null) > 0,
-      markdown: (p.tags ?? []).some((t) => t.slug === MARKDOWN_SLUG),
-      brand: productBrand(p),
+      markdown: (p.condition ?? ((p.tags ?? []).some((t) => t.slug === MARKDOWN_COLLECTION_SLUG) ? "MARKDOWN" : "NEW")) !== "NEW",
+      // Brand directory first (the admin's brand used to be ignored here), then the text heuristic.
+      brand: productBrandName(p),
       description: description(p, category, locale),
       sku: str(ids.sku),
       gtin: str(ids.gtin),
@@ -182,15 +223,19 @@ const price = (minor: number) => (minor / 100).toFixed(2);
  */
 const GOOGLE_CATEGORY: Record<string, number> = {
   kovriki: 1993, // Electronics > Electronics Accessories > Computer Accessories > Mouse Pads
+  "kovriki-tkanevye": 1993,
   "steklyannyy-pad": 1993,
   glaydy: 500052, // … > Input Device Accessories > Mice & Trackball Accessories
   myshki: 304, // … > Computer Components > Input Devices > Mice & Trackballs
   "klv-magnitnye": 303, // … > Input Devices > Keyboards
   "klv-mekhanicheskie": 303,
+  klaviatury: 303,
   keykapy: 503003, // … > Input Device Accessories > Keyboard Keys & Caps
   kabelya: 259, // Electronics > Electronics Accessories > Cables
   rukava: 5942, // Apparel & Accessories > Clothing Accessories > Arm Warmers & Sleeves
   naushniki: 505771, // Electronics > Audio > Audio Components > Headphones & Headsets
+  "naushniki-polnorazmernye": 505771,
+  "naushniki-iem": 505771,
   duyki: 4617, // Electronics > Electronics Accessories > Electronics Cleaners
   kresla: 6800, // Furniture > Chairs > Gaming Chairs
   stoly: 4191, // Furniture > Office Furniture > Desks
@@ -223,7 +268,7 @@ function googleItem(it: FeedItem, shipping: string): string {
   const p = it.product;
   const sale = p.compareAtMinor != null && p.compareAtMinor > p.priceMinor;
   const currency = p.currency ?? "UAH";
-  const googleCategory = it.category.slug ? GOOGLE_CATEGORY[it.category.slug] : undefined;
+  const googleCategory = GOOGLE_CATEGORY[it.category.slug];
   const hasIdentifier = !!(it.gtin || (it.brand && it.mpn));
   return [
     "<item>",
@@ -244,7 +289,15 @@ function googleItem(it: FeedItem, shipping: string): string {
     el("g:mpn", it.mpn),
     hasIdentifier ? "" : el("g:identifier_exists", "no"),
     el("g:google_product_category", googleCategory),
-    el("g:product_type", it.categoryName),
+    el("g:product_type", it.productType),
+    ...it.specs.map(
+      (d) =>
+        "<g:product_detail>" +
+        el("g:section_name", feedText(d.section, 140)) +
+        el("g:attribute_name", feedText(d.name, 140)) +
+        el("g:attribute_value", feedText(d.value, 1000)) +
+        "</g:product_detail>"
+    ),
     shipping,
     el("g:min_handling_time", shipping ? "" : 1),
     el("g:max_handling_time", shipping ? "" : 2),
@@ -280,7 +333,7 @@ function numericId(slug: string): number {
   return (h >>> 0) % 1_000_000_000 || 1;
 }
 
-/** Consumables: no shop warranty, only the 14-day return (warranty.md). */
+/** Consumables: no shop warranty, only the 14-day return (warranty.md). Leaf slugs (catalog v2). */
 const NO_WARRANTY = new Set(["glaydy", "keykapy", "kabelya", "rukava"]);
 /** Shop warranty when the product page states none (warranty.md), months. */
 const WARRANTY_MONTHS = 6;
@@ -309,7 +362,7 @@ function kyivTimestamp(d: Date): string {
 export function hotlineFeed(items: FeedItem[], now = new Date()): string {
   const listed = items.filter((it) => it.inStock && !it.markdown);
   const categories = new Map<string, string>();
-  for (const it of listed) categories.set(it.category.slug!, it.categoryName);
+  for (const it of listed) categories.set(it.category.slug, it.categoryName);
   const firmId = process.env.HOTLINE_FIRM_ID?.trim();
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -323,11 +376,11 @@ export function hotlineFeed(items: FeedItem[], now = new Date()): string {
     "<items>",
     ...listed.map((it) => {
       const p = it.product;
-      const warranty = it.category.slug && !NO_WARRANTY.has(it.category.slug) ? WARRANTY_MONTHS : null;
+      const warranty = !NO_WARRANTY.has(it.category.slug) ? WARRANTY_MONTHS : null;
       return [
         "<item>",
         el("id", p.id),
-        el("categoryId", numericId(it.category.slug!)),
+        el("categoryId", numericId(it.category.slug)),
         el("code", it.mpn ?? it.sku),
         el("barcode", it.gtin),
         el("vendor", it.brand),
@@ -339,6 +392,7 @@ export function hotlineFeed(items: FeedItem[], now = new Date()): string {
         p.compareAtMinor != null && p.compareAtMinor > p.priceMinor ? el("oldprice", price(p.compareAtMinor)) : "",
         el("stock", "В наличии"),
         warranty ? el("guarantee", warranty, ' type="shop"') : "",
+        ...it.specs.map((d) => el("param", d.value, ` name="${xmlEscape(d.name)}"`)),
         "</item>",
       ].join("");
     }),

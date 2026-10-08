@@ -33,7 +33,12 @@ export interface PublicCategory {
   slug: string;
   name: string;
   sortOrder: number;
+  /** Active products in this category and its subtree. */
   productCount: number;
+  /** Catalog v2 (docs/CATALOG-SPECS.md §3.1): parent category; null/absent = root. */
+  parentId?: string | null;
+  /** Catalog v2: art of the site tile (mouse, keyboard, …); null = guessed from the slug. */
+  artKind?: string | null;
 }
 
 /**

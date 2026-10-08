@@ -11,6 +11,7 @@ import { isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 import { pageMeta } from "@/lib/seo";
 import { getCategories, safe } from "@/lib/server-api";
+import { menuTree } from "@/lib/category-tree";
 import "../globals.css";
 
 const inter = Inter({
@@ -78,7 +79,8 @@ export default async function LocaleLayout({
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
-  const categories = await safe(getCategories(locale), []);
+  // Root categories with their subcategories; empty ones are hidden from the menus.
+  const tree = menuTree(await safe(getCategories(locale), []));
 
   return (
     <html lang={LOCALE_TAG[locale]} className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
@@ -88,12 +90,12 @@ export default async function LocaleLayout({
         <div className="scene" aria-hidden />
         <Providers locale={locale}>
           <PreloaderReady />
-          <Header categories={categories} />
+          <Header tree={tree} />
           {/* No z-index here: it would trap the sheets and lightboxes rendered inside under the sticky header. */}
           <main id="main" className="relative flex-1">
             {children}
           </main>
-          <Footer categories={categories} locale={locale} />
+          <Footer tree={tree} locale={locale} />
         </Providers>
       </body>
     </html>
