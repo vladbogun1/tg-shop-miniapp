@@ -56,5 +56,18 @@ public record OrderDetailDto(
         Instant cancelRequestedAt,
         Instant cancelRequestResolvedAt,
         /** Admin's answer (decline reason) shown to the customer. */
-        String cancelRequestAdminComment) {
+        String cancelRequestAdminComment,
+        /** Exchanges made on this order (V51), oldest first; empty when none. */
+        List<ExchangeDto> exchanges) {
+
+    public record ExchangeDto(Instant createdAt,
+                              String previousStatus,
+                              String previousTracking,
+                              String returnedSummary,
+                              String givenSummary,
+                              long totalBeforeMinor,
+                              long totalAfterMinor,
+                              String note,
+                              String adminName) {
+    }
 }

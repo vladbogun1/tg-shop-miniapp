@@ -67,6 +67,24 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onExchanged(OrderEvents.Exchanged event) {
+        withOrder(event.orderId(), order -> {
+            // The channel card moves to the new status column; the seller's "К ОТПРАВКЕ" card
+            // appears again only when the order goes straight to APPROVED.
+            notificationService.onStatusChanged(order);
+            if (order.getStatus() == OrderStatus.APPROVED) {
+                notificationService.syncDispatchCard(order);
+            } else {
+                notificationService.removeDispatchCard(order);
+            }
+            if (event.notifyCustomer()) {
+                notificationService.notifyCustomerExchange(order, event.givenSummary());
+            }
+        });
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
             notificationService.onPaymentReceived(order, event.amountMinor());

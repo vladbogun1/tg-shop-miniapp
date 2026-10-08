@@ -264,8 +264,10 @@ public class OrderService {
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(Instant.now());
         // Delivered ⇒ fully settled (COD collected on delivery + any prepayment). Record the
-        // full amount as received so наложка is 0 and it's never delivered-but-unpaid.
-        order.setReceivedMinor(order.getTotalMinor());
+        // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
+        // lowered: after an exchange for something cheaper the customer paid more than the new
+        // total, and the metrics read that overpayment to tell a refunded difference from a return.
+        order.setReceivedMinor(Math.max(order.getReceivedMinor(), order.getTotalMinor()));
         if (!order.isPaid()) {
             order.setPaid(true);
             order.setPaidAt(Instant.now());
@@ -882,6 +884,18 @@ public class OrderService {
         if (units <= 0) {
             return;
         }
+        releaseUnits(item, units);
+        item.setRestockedQty(Math.min(item.getQuantity(), item.getRestockedQty() + units));
+    }
+
+    /**
+     * Puts {@code units} of one order line back on the shelf without recording them on the line —
+     * for an exchange, where those units leave the order altogether.
+     */
+    void releaseUnits(OrderItem item, int units) {
+        if (units <= 0) {
+            return;
+        }
         productRepository.findByIdForUpdate(item.getProductId()).ifPresent(product -> {
             ProductVariant variant = item.getVariantId() == null ? null
                     : findVariant(product, UuidUtil.toString(item.getVariantId()));
@@ -894,7 +908,63 @@ public class OrderService {
             }
             productRepository.save(product);
         });
-        item.setRestockedQty(Math.min(item.getQuantity(), item.getRestockedQty() + units));
+    }
+
+    /**
+     * Reserves stock for a paid line going out with an exchange and adds it to the order (merged
+     * into the same product + variant line when there is one). Returns "Title (variant) ×qty" for
+     * the history. The caller holds the order lock and recomputes the totals.
+     */
+    String addExchangeLine(Order order, String productId, String variantId, int qty) {
+        if (qty < 1) {
+            throw new BadRequestException("количество должно быть не меньше 1");
+        }
+        Product product = productRepository.findByIdForUpdate(toBytes(productId, "productId"))
+                .orElseThrow(() -> new BadRequestException("товар не найден: " + productId));
+        if (product.isArchived()) {
+            throw new BadRequestException("товар в архиве: " + product.getTitle());
+        }
+        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        ProductVariant variant = null;
+        if (hasVariants) {
+            if (variantId == null || variantId.isBlank()) {
+                throw new BadRequestException("выберите вариант товара «" + product.getTitle() + "»");
+            }
+            variant = findVariant(product, variantId);
+            if (variant == null) {
+                throw new BadRequestException("вариант не принадлежит товару «" + product.getTitle() + "»");
+            }
+        }
+        reserveStock(product, variant, qty);
+        productRepository.save(product);
+
+        byte[] vId = variant == null ? null : variant.getId();
+        OrderItem existing = order.getItems().stream()
+                .filter(i -> !i.isGift())
+                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
+                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + qty);
+        } else {
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProductId(product.getId());
+            item.setTitleSnapshot(product.getTitle());
+            item.setPriceMinorSnapshot(product.getPriceMinor());
+            item.setQuantity(qty);
+            if (variant != null) {
+                item.setVariantId(variant.getId());
+                item.setVariantNameSnapshot(variant.getName());
+            }
+            order.getItems().add(item);
+        }
+        return product.getTitle() + (variant == null ? "" : " (" + variant.getName() + ")") + " ×" + qty;
+    }
+
+    /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
+    void recomputeOrderTotals(Order order) {
+        recomputeTotals(order);
     }
 
     /** product.stock mirrors the sum of variant stocks whenever the product has variants. */

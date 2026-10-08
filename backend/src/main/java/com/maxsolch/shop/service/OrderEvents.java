@@ -25,6 +25,13 @@ public final class OrderEvents {
     public record StatusChanged(byte[] orderId) {
     }
 
+    /**
+     * An admin exchanged goods in a paid order and sent it back to NEW / APPROVED: move the channel
+     * card, sync the dispatch card and (optionally) tell the customer what goes out instead.
+     */
+    public record Exchanged(byte[] orderId, boolean notifyCustomer, String givenSummary) {
+    }
+
     /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
     public record PaymentReceived(byte[] orderId, long amountMinor) {
     }

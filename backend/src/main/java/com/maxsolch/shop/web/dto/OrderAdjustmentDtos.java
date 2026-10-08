@@ -39,4 +39,19 @@ public final class OrderAdjustmentDtos {
         public record ReturnLine(long itemId, int quantity, Boolean restock) {
         }
     }
+
+    /**
+     * POST /api/admin/orders/{id}/exchange — what came back (restock = back into circulation),
+     * what goes out instead, and where the order goes next: NEW (default) or APPROVED.
+     */
+    public record ExchangeRequest(
+            @Valid List<RegisterReturnRequest.ReturnLine> returned,
+            @Valid List<NewLine> items,
+            String targetStatus,
+            Boolean notifyCustomer,
+            @Size(max = 500) String note) {
+
+        public record NewLine(@NotBlank String productId, String variantId, int quantity) {
+        }
+    }
 }

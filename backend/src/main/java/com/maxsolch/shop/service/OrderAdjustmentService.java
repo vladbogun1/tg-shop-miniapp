@@ -3,8 +3,10 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderExchange;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.repository.OrderExchangeRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
@@ -18,8 +20,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Admin corrections to an order that do not change its status: fixing the tracking number after
- * shipping, fixing the recipient / delivery address, and registering a (partial) return.
+ * Admin corrections to an order: fixing the tracking number after shipping, fixing the recipient /
+ * delivery address, registering a (partial) return — none of these change the status — and an
+ * exchange, which sends the order round again.
  *
  * <p>Each method returns a short Russian description of what changed, for the admin audit log.
  */
@@ -29,13 +32,16 @@ public class OrderAdjustmentService {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher events;
+    private final OrderExchangeRepository exchangeRepository;
 
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
-                                  ApplicationEventPublisher events) {
+                                  ApplicationEventPublisher events,
+                                  OrderExchangeRepository exchangeRepository) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.events = events;
+        this.exchangeRepository = exchangeRepository;
     }
 
     /** Result of an adjustment: the saved order and the audit line. */
@@ -165,18 +171,29 @@ public class OrderAdjustmentService {
      * "Отклонить" with reason REFUSED_AT_POST; this is for what happens around and after that.
      *
      * <p>Allowed for SHIPPED / DELIVERED (goods came back) and for REJECTED, where only a refund
-     * can be recorded: a rejected order's stock was settled at rejection time.
+     * can be recorded: a rejected order's stock was settled at rejection time. NEW / APPROVED only
+     * for money, and only while the customer has paid more than the total (an exchange for
+     * something cheaper sends the order back to NEW with the difference still to give back).
      */
     @Transactional
     public Result registerReturn(byte[] orderId, List<ReturnLine> lines, long refundMinor, String note) {
         Order order = load(orderId);
         OrderStatus s = order.getStatus();
-        if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED) {
+        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
+                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+        if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
         }
         List<ReturnLine> safeLines = lines == null ? List.of() : lines;
-        if (s == OrderStatus.REJECTED && safeLines.stream().anyMatch(l -> l.quantity() > 0)) {
-            throw new BadRequestException("по отклонённому заказу можно оформить только возврат денег");
+        if ((s == OrderStatus.REJECTED || overpaidInWork) && safeLines.stream().anyMatch(l -> l.quantity() > 0)) {
+            throw new BadRequestException(s == OrderStatus.REJECTED
+                    ? "по отклонённому заказу можно оформить только возврат денег"
+                    : "заказ ещё не отправлен — можно вернуть только переплату");
+        }
+        if (overpaidInWork && refundMinor > order.getReceivedMinor() - Math.max(0, order.getRefundedMinor())
+                - order.getTotalMinor()) {
+            throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(
+                    order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor()));
         }
         if (refundMinor < 0) {
             throw new BadRequestException("сумма возврата не может быть отрицательной");
@@ -225,9 +242,139 @@ public class OrderAdjustmentService {
         return new Result(saved, details);
     }
 
-    /** Money that can still be refunded: what was received minus what was already given back. */
+    // ----- exchange -----
+
+    /** One line going out instead of the returned goods. */
+    public record ExchangeNewLine(String productId, String variantId, int quantity) {
+    }
+
+    /** Where the order goes after an exchange: back to «Новый» (default) or straight to «Одобрен». */
+    public static boolean isExchangeTarget(OrderStatus s) {
+        return s == OrderStatus.NEW || s == OrderStatus.APPROVED;
+    }
+
+    /**
+     * Exchange on an order the customer already received (or that is on its way): some units come
+     * back — each line either returns to stock or is written off — and other goods go out in the
+     * same order, so a customer who paid is never asked to place and pay a new one.
+     *
+     * <p>The returned units leave the order, the new ones are added at today's price with their
+     * stock reserved, the totals are recomputed (the stored discount amount stays). Money is not
+     * touched: a dearer replacement leaves the difference as cash on delivery (or online payment
+     * for a fully prepaid option), a cheaper one leaves an overpayment for the admin to refund.
+     * The order goes back to NEW (or APPROVED) with the tracking number cleared, so it is shipped
+     * again with a new ТТН; the old one stays in {@link OrderExchange}.
+     */
+    @Transactional
+    public Result exchange(byte[] orderId, List<ReturnLine> returned, List<ExchangeNewLine> given,
+                           OrderStatus target, boolean notifyCustomer, String note, String adminName) {
+        Order order = load(orderId);
+        OrderStatus before = order.getStatus();
+        if (before != OrderStatus.SHIPPED && before != OrderStatus.DELIVERED) {
+            throw new BadRequestException("обмен оформляется для отправленного или доставленного заказа");
+        }
+        OrderStatus to = target == null ? OrderStatus.NEW : target;
+        if (!isExchangeTarget(to)) {
+            throw new BadRequestException("после обмена заказ уходит в «Новый» или «Одобрен»");
+        }
+        List<ReturnLine> back = returned == null ? List.of()
+                : returned.stream().filter(l -> l.quantity() > 0).toList();
+        List<ExchangeNewLine> out = given == null ? List.of()
+                : given.stream().filter(l -> l.quantity() > 0).toList();
+        if (back.isEmpty()) {
+            throw new BadRequestException("отметьте, что покупатель вернул");
+        }
+        if (out.isEmpty()) {
+            throw new BadRequestException("выберите товар на замену");
+        }
+        String cleanNote = note == null || note.isBlank() ? null : note.trim();
+        if (cleanNote != null && cleanNote.length() > 500) {
+            throw new BadRequestException("комментарий длиннее 500 символов");
+        }
+
+        long totalBefore = order.getTotalMinor();
+        String trackingBefore = order.getTrackingNumber();
+
+        // 1. What came back: stock (or written off), then the units leave the order.
+        List<String> backParts = new ArrayList<>();
+        for (ReturnLine line : back) {
+            OrderItem item = order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == line.itemId())
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException("order item not found"));
+            int left = item.getQuantity() - item.getReturnedQty();
+            if (line.quantity() > left) {
+                throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
+                        + "» можно обменять не больше " + left + " шт.");
+            }
+            if (line.restock()) {
+                orderService.releaseUnits(item, line.quantity());
+            }
+            backParts.add(item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")")
+                    + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (списано)"));
+            int remaining = item.getQuantity() - line.quantity();
+            if (remaining <= 0) {
+                order.getItems().remove(item);
+            } else {
+                item.setQuantity(remaining);
+                item.setRestockedQty(Math.min(item.getRestockedQty(), remaining));
+            }
+        }
+
+        // 2. What goes out instead, at today's price.
+        List<String> outParts = new ArrayList<>();
+        for (ExchangeNewLine line : out) {
+            outParts.add(orderService.addExchangeLine(order, line.productId(), line.variantId(), line.quantity()));
+        }
+        orderService.recomputeOrderTotals(order);
+
+        // 3. Back into the pipeline: shipped again with a new ТТН.
+        order.setStatus(to);
+        order.setTrackingNumber(null);
+        order.setShippedAt(null);
+        order.setDeliveredAt(null);
+        order.setApprovedAt(to == OrderStatus.APPROVED ? Instant.now() : null);
+        Order saved = orderRepository.save(order);
+
+        OrderExchange ex = new OrderExchange();
+        ex.setOrderId(saved.getId());
+        ex.setPreviousStatus(before.name());
+        ex.setPreviousTracking(trackingBefore);
+        ex.setReturnedSummary(cut(String.join("; ", backParts), 2000));
+        ex.setGivenSummary(cut(String.join("; ", outParts), 2000));
+        ex.setTotalBeforeMinor(totalBefore);
+        ex.setTotalAfterMinor(saved.getTotalMinor());
+        ex.setNote(cleanNote);
+        ex.setAdminName(adminName);
+        exchangeRepository.save(ex);
+
+        events.publishEvent(new OrderEvents.Exchanged(saved.getId(), notifyCustomer,
+                String.join(", ", outParts)));
+
+        long diff = saved.getTotalMinor() - totalBefore;
+        String details = "обмен: вернули " + String.join(", ", backParts)
+                + "; взамен " + String.join(", ", outParts)
+                + "; сумма " + MoneyFormat.uah(totalBefore) + " → " + MoneyFormat.uah(saved.getTotalMinor())
+                + (diff > 0 ? " (доплата " + MoneyFormat.uah(diff) + ")"
+                        : diff < 0 ? " (к возврату " + MoneyFormat.uah(-diff) + ")" : "")
+                + (trackingBefore == null ? "" : "; старая ТТН " + trackingBefore)
+                + "; статус " + before.name() + " → " + to.name()
+                + (cleanNote == null ? "" : "; " + cleanNote);
+        return new Result(saved, details);
+    }
+
+    private static String cut(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
+    }
+
+    /**
+     * Money that can still be refunded: what was received minus what was already given back. The
+     * raw received amount, not capped at the total: after an exchange for something cheaper the
+     * overpayment is exactly what has to go back.
+     */
     public static long refundableMinor(Order order) {
-        long received = OrderQueryService.receivedMinor(order);
+        long received = Math.max(0, order.getReceivedMinor());
         return Math.max(0, received - Math.max(0, order.getRefundedMinor()));
     }
 

@@ -163,7 +163,13 @@ INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, cu
   (UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'), NULL, 34900, 0, 34900, 'UAH', 'Віра Онлайн', '+380000000013',
    'NEW', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1',
    'Відділення №1 (тест): вул. Вигадана, 1', UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴',
-   TRUE, NOW() - INTERVAL 10 MINUTE, 15000, 15000, NULL, NULL, 'WEB', NOW() - INTERVAL 15 MINUTE);
+   TRUE, NOW() - INTERVAL 10 MINUTE, 15000, 15000, NULL, NULL, 'WEB', NOW() - INTERVAL 15 MINUTE),
+  -- #e2e0000e: DELIVERED and paid — the customer exchanges the cap for a backpack (exchange spec).
+  (UUID_TO_BIN('e2e0000e-0000-4000-8000-00000000000e'), NULL, 34900, 0, 34900, 'UAH', 'Ольга Обмінна', '+380000000014',
+   'DELIVERED', NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 1 DAY, NULL, '20450000000014', NULL, NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   TRUE, NOW() - INTERVAL 1 DAY, 0, 34900, NULL, NULL, 'MINIAPP', NOW() - INTERVAL 5 DAY);
 
 -- Online payment deadlines (24 h after the order). Orders above without one were placed before
 -- online payment and are never cancelled automatically.
@@ -208,7 +214,8 @@ INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snaps
   (UUID_TO_BIN('e2e0000b-0000-4000-8000-00000000000b'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), 'E2E Футболка базовая', 59900,
    UUID_TO_BIN('e2e0e001-0000-4000-8000-000000000002'), 'M', 1, FALSE, 0, 0),
   (UUID_TO_BIN('e2e0000c-0000-4000-8000-00000000000c'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0),
-  (UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);
+  (UUID_TO_BIN('e2e0000d-0000-4000-8000-00000000000d'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e0000e-0000-4000-8000-00000000000e'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);
 
 INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, type, text, created_at, delivered_at, read_at) VALUES
   (UUID_TO_BIN('e2e00003-0000-4000-8000-000000000003'), 'CUSTOMER', 900000003, 'Марія Чатова', 'TEXT',

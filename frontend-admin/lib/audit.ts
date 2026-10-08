@@ -24,6 +24,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_ITEM_ADD: "Позиция добавлена",
   ORDER_ITEM_QTY: "Количество позиции",
   ORDER_ITEM_REMOVE: "Позиция удалена",
+  ORDER_EXCHANGE: "Обмен товара",
   ORDER_DELETE: "Заказ удалён",
   PRODUCT_CREATE: "Товар создан",
   PRODUCT_UPDATE: "Товар изменён",

@@ -31,7 +31,22 @@ export type AdminOrderDetail = Omit<OrderDetailDto, "items"> & {
   npCityRef?: string | null;
   npWarehouseRef?: string | null;
   items: (OrderDetailDto["items"][number] & { returnedQty?: number })[];
+  /** Exchanges made on this order, oldest first. */
+  exchanges?: OrderExchange[];
 };
+
+/** One exchange (V51): what came back, what went out instead, ТТН and total before. */
+export interface OrderExchange {
+  createdAt: string;
+  previousStatus: OrderStatus;
+  previousTracking?: string | null;
+  returnedSummary: string;
+  givenSummary: string;
+  totalBeforeMinor: number;
+  totalAfterMinor: number;
+  note?: string | null;
+  adminName?: string | null;
+}
 
 /** POST …/cancel-request/approve — what happened to the money. */
 export interface CancelApproveResult {
@@ -71,6 +86,15 @@ export interface DeliveryPatch {
 export interface ReturnBody {
   lines: { itemId: number; quantity: number; restock: boolean }[];
   refundMinor: number;
+  note?: string;
+}
+
+export interface ExchangeBody {
+  /** restock = the returned units go back into circulation (on the shelf). */
+  returned: { itemId: number; quantity: number; restock: boolean }[];
+  items: { productId: string; variantId?: string; quantity: number }[];
+  targetStatus: "NEW" | "APPROVED";
+  notifyCustomer: boolean;
   note?: string;
 }
 
@@ -131,6 +155,10 @@ export const ordersApi = {
   /** POST /api/admin/orders/{id}/return — (partial) return + refund. */
   registerReturn: (id: string, body: ReturnBody) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return`, body),
+
+  /** POST /api/admin/orders/{id}/exchange — swap goods in a paid order, back to NEW for a new ТТН. */
+  exchange: (id: string, body: ExchangeBody) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/exchange`, body),
 
   /** Customer's cancellation request: cancel (CHANGED_MIND) + restock + full monobank refund. */
   approveCancelRequest: (id: string, comment?: string) =>

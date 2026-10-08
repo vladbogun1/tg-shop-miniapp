@@ -14,8 +14,9 @@ test("телефон: «Отложить» через нижний лист уб
     // Main action full width, «Отложить» as an icon button — both on screen, nothing cut off.
     const open = target.getByRole("button", { name: "Открыть заказ" });
     const more = target.getByRole("button", { name: "Отложить" });
-    await expect(open).toBeInViewport();
+    // Other specs may add rows above (an exchanged order is back in «Новые») — scroll to it first.
     await target.scrollIntoViewIfNeeded();
+    await expect(open).toBeInViewport();
     await expect(more).toBeInViewport();
     const box = await more.boundingBox();
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
