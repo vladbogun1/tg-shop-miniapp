@@ -8,45 +8,149 @@ import { Spr, Strip } from "./Sprite";
 type Vars = React.CSSProperties & Record<`--${string}`, string | number>;
 const at = (x: number, y: number): Vars => ({ "--x": x, "--y": y });
 
+/* ---------------------------------------------------------------------------------------------
+ * Home hero «Доставка ChiSetup» (docs/MASCOT-STORYBOARD.md §1). 160×88 art px, floor y=76, one 12 s
+ * cycle for every track (mascot.css §1): the forklift rolls in with a box up on its forks, lowers it
+ * in three steps, backs off; the «21» mascot walks up, the box shakes, bursts open and fans out the
+ * goods, they hang in a showcase, fly off to the cart, the box folds and vanishes, everyone goes home.
+ * Art lives in /public/mascot/hero (1 art px = 1 png px).
+ * ------------------------------------------------------------------------------------------- */
+
+const H = "/mascot/hero/";
+
+/** A sprite (or frame strip) of the hero scene; the frame is chosen by the element's keyframes. */
+function F({ src, w, h, n = 1, className = "", style }: { src: string; w: number; h: number; n?: number; className?: string; style?: Vars }) {
+  return (
+    <span
+      className={`mx mx-f ${className}`}
+      style={{ "--w": w, "--h": h, "--n": n, backgroundImage: `url(${H}${src}.png)`, ...style } as Vars}
+    />
+  );
+}
+
 /**
- * Home hero, right column: the ChiSetup forklift brings a box, sets it down in front of the
- * waving «21» mascot and backs out (10 s loop, see mascot.css §1). 160×80 art px.
+ * The goods that fan out of the box, in flight order. Adding one = one line here (+ its
+ * `p_<name>.png`, ≤16 art px, in /public/mascot/hero). Up to 7 fit the showcase.
  */
+const GOODS: [name: string, w: number, h: number][] = [
+  ["mouse", 13, 9],
+  ["keyboard", 16, 7],
+  ["headset", 12, 14],
+  ["mat", 16, 9],
+  ["keycaps", 12, 11],
+  ["glides", 12, 11],
+  ["cable", 14, 13],
+];
+
+/** Showcase slots (item centres): a fan from the upper left over the box and the mascot's head (clear of
+ * the forklift's beacon and of the mascot even mid-jump). */
+const SLOTS: [number, number][] = [
+  [30, 34],
+  [40, 20],
+  [55, 11],
+  [71, 8],
+  [87, 9],
+  [102, 13],
+  [117, 10],
+];
+const MOUTH: [number, number] = [70, 59]; // where the goods leave the open box
+const CART: [number, number] = [150, 9]; // top-right corner: the cart button on the page
+
+/** Integer per-item keyframe points (art px, relative to the start at the box mouth). */
+function goodVars(i: number, n: number, w: number, h: number): Vars {
+  const [sx, sy] = MOUTH;
+  const slot = SLOTS[n <= 1 ? 3 : Math.round((i * (SLOTS.length - 1)) / (n - 1))];
+  const dx = slot[0] - sx;
+  const dy = slot[1] - sy;
+  const top = 1 + Math.floor(h / 2) - sy; // never above the panel's top edge (1 px margin)
+  const v: Vars = {
+    "--x": sx - Math.floor(w / 2),
+    "--y": sy - Math.floor(h / 2),
+    "--w": w,
+    "--h": h,
+    "--gd": `${(i * 0.12).toFixed(2)}s`,
+    "--sp": dx < 0 ? 1 : -1,
+    "--pop-x": Math.floor(w / 2) - 3,
+    "--pop-y": Math.floor(h / 2) - 3,
+  };
+  // the arc out of the box, 8 points: up first, then over (a fountain) — so the right-hand goods
+  // clear the mascot's fists while he jumps
+  for (let k = 0; k < 8; k++) {
+    const s = k / 7;
+    v[`--x${k}`] = Math.round(dx * s * s);
+    v[`--y${k}`] = Math.max(top, Math.round(dy * s * (2 - s)));
+  }
+  // to the cart: 6 more points, a flatter arc
+  const cx = CART[0] - sx;
+  const cy = CART[1] - sy;
+  for (let k = 1; k < 7; k++) {
+    const s = k / 6;
+    v[`--c${k}x`] = Math.round(dx + (cx - dx) * s);
+    v[`--c${k}y`] = Math.max(top, Math.round(dy + (cy - dy) * s - 24 * s * (1 - s)));
+  }
+  return v;
+}
+
 export function HeroScene() {
   return (
     <div aria-hidden className="mx-hero">
       <span className="mx-hero-grid" />
       <span className="mx-hero-floor" />
-      <span className="mx-at mx-hs-hero" style={at(94, 16)}>
-        <span className="mx-hs-bob">
-          <Spr name="hero_wave" className="mx-hs-wave" />
-          <Spr name="hero_blink" className="mx-hs-blink" />
-        </span>
-      </span>
-      <span className="mx-at mx-hs-box" style={at(70, 45)}>
+      <span className="mx-h-wall" />
+      <span className="mx-cart-glow" />
+
+      {/* forklift (faces right) with the box up on its forks */}
+      <span className="mx-at mx-h" style={at(0, 28)}>
         <span className="mx-shadow" />
-        <Strip name="spark" dur={0.5} className="mx-hs-spark" />
-        <Spr name="box" />
-      </span>
-      <span className="mx-at mx-hs-hauler" style={at(13, 8)}>
-        <span className="mx-shadow" />
-        <span className="mx-hs-flip">
-          <Strip name="hauler" dur={0.36} />
+        <F src="hauler" w={64} h={48} n={7} className="mx-h-body" />
+        <span className="mx-h-beacon" />
+        <span className="mx-h-fork">
+          <F src="box" w={30} h={24} n={3} className="mx-h-carry" />
+          <F src="fork" w={19} h={13} />
         </span>
-        <Dust className="mx-dust-rear" />
-        <Dust className="mx-dust-front" />
+        <F src="dust" w={14} h={14} n={5} className="mx-h-dust" />
+        <F src="dust" w={14} h={14} n={5} className="mx-h-dust mx-h-dust2" />
+      </span>
+
+      {/* the box on the floor, from the touchdown on */}
+      <span className="mx-at mx-b" style={at(55, 52)}>
+        <span className="mx-shadow" />
+        <F src="box" w={30} h={24} n={3} className="mx-b-f" />
+      </span>
+      <F src="dust" w={14} h={14} n={5} className="mx-at mx-b-land" style={at(44, 62)} />
+      <F src="dust" w={14} h={14} n={5} className="mx-at mx-b-land" style={at(80, 62)} />
+      <F src="dust" w={14} h={14} n={5} className="mx-at mx-b-poof" style={at(56, 62)} />
+      <F src="dust" w={14} h={14} n={5} className="mx-at mx-b-poof" style={at(70, 60)} />
+      <F src="dust" w={14} h={14} n={5} className="mx-at mx-b-poof" style={at(63, 57)} />
+
+      {/* the goods, behind the box front until they clear it */}
+      {GOODS.map(([name, w, h], i) => (
+        <span key={name} className="mx-at mx-g" style={goodVars(i, GOODS.length, w, h)}>
+          <span className="mx-g-bob">
+            <F src={`p_${name}`} w={w} h={h} className="mx-g-img" />
+            <F src="star" w={7} h={7} className="mx-g-glint" />
+          </span>
+          <F src="star" w={7} h={7} className="mx-g-trail" />
+          <F src="star" w={7} h={7} className="mx-g-trail mx-g-trail2" />
+          <F src="star" w={7} h={7} className="mx-g-pop" />
+        </span>
+      ))}
+
+      {/* shake sparks, the burst and the swirl over the box */}
+      <F src="star" w={7} h={7} className="mx-at mx-b-spark" style={{ ...at(60, 47), "--k": "mx-b-spark0" }} />
+      <F src="star" w={7} h={7} className="mx-at mx-b-spark" style={{ ...at(69, 42), "--k": "mx-b-spark1" }} />
+      <F src="star" w={7} h={7} className="mx-at mx-b-spark" style={{ ...at(78, 47), "--k": "mx-b-spark2" }} />
+      <F src="flash" w={22} h={22} n={4} className="mx-at mx-b-flash" style={at(59, 43)} />
+      <F src="swirl" w={30} h={30} n={4} className="mx-at mx-b-swirl" style={at(55, 30)} />
+
+      {/* the «21» mascot (faces left) */}
+      <span className="mx-at mx-m" style={at(98, 24)}>
+        <span className="mx-shadow" />
+        <span className="mx-m-y">
+          <F src="hero" w={60} h={52} n={9} className="mx-m-f" />
+        </span>
       </span>
     </div>
-  );
-}
-
-function Dust({ className }: { className: string }) {
-  return (
-    <span className={`mx-dust ${className}`}>
-      <i style={{ "--d": 0 } as Vars} />
-      <i style={{ "--d": 1 } as Vars} />
-      <i style={{ "--d": 2 } as Vars} />
-    </span>
   );
 }
 

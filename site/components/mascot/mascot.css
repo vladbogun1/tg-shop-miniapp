@@ -49,17 +49,22 @@
 }
 
 /* ---------------------------------------------------------------------------
-   1. Hero scene: 160×80 art px, floor at y=72. 10 s loop:
-   0–2.4 s  the forklift rolls in with a box (dust behind the tracks)
-   2.8–3.5  lowers the box, sparks on landing, the mascot hops
-   4.0–6.2  backs out to the left, dust in front
-   6.2–10   idle: the mascot bobs and winks; the box blinks out like a picked-up item at 9 s
+   1. Hero «Доставка ChiSetup» — docs/MASCOT-STORYBOARD.md §1. 160×88 art px, floor y=76.
+   ONE 12 s cycle for every track (keyframe % = t / 12 s), frames switched with steps(1),
+   travel 1 art px per step (no sub-pixel blur):
+   0.4–0.8 beacon light on the wall · 0.8–2.6 forklift rolls in, box up on the forks · 2.6 nod ·
+   2.0 the mascot goes «wow» · 2.9–3.6 forks down in 3 steps · 3.6 touchdown dust, forklift backs off ^^ ·
+   4.0–5.0 mascot walks up · 5.0–5.6 box shakes, sparks · 5.6–6.0 bursts open, flash + swirl ·
+   6.0–7.4 the goods fan out (0.12 s apart) · 6.2–7.6 two joy jumps · 7.4–10.2 showcase bob, glints,
+   forklift blinks · 9.0 the mascot points · 10.2–11.2 goods fly to the cart · 10.6–11.4 box folds,
+   puff · 11.0–11.8 forklift leaves · 11.4–11.85 the mascot walks home, arms crossed → loop.
+   The keyframes below are generated from that timeline (one point per event) — edit the times as a set.
    --------------------------------------------------------------------------- */
 .mx-hero {
   --px: 2;
   position: relative;
   width: calc(160 * var(--px) * 1px);
-  height: calc(80 * var(--px) * 1px);
+  height: calc(88 * var(--px) * 1px);
   overflow: hidden;
   flex-shrink: 0;
   pointer-events: none;
@@ -83,92 +88,558 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(72 * var(--px) * 1px);
+  top: calc(76 * var(--px) * 1px);
   bottom: 0;
   border-top: calc(var(--px) * 1px) solid rgba(255, 102, 0, .45);
   background: linear-gradient(180deg, rgba(255, 102, 0, .10), transparent 70%);
   box-shadow: 0 0 12px rgba(255, 102, 0, .25);
 }
 
-.mx-hs-hero { animation: mx-hs-hop 10s steps(1) infinite; }
-.mx-hs-bob { position: relative; display: block; animation: mx-bob 2.4s steps(1) infinite; }
-.mx-hs-blink { position: absolute; left: calc(4 * var(--px) * 1px); top: 0; opacity: 0; animation: mx-hs-blink 10s steps(1) infinite; }
-.mx-hs-wave { animation: mx-hs-wave 10s steps(1) infinite; }
-@keyframes mx-hs-hop {
-  0%, 35.5%, 38%, 40.5%, 100% { transform: none; }
-  36.5% { transform: translateY(calc(var(--px) * -3px)); }
-  39% { transform: translateY(calc(var(--px) * -2px)); }
+/* every scene track: same 12 s cycle */
+.mx-hero :is(.mx-h, .mx-h-body, .mx-h-fork, .mx-h-carry, .mx-h-beacon, .mx-h-wall, .mx-h-dust,
+  .mx-b, .mx-b-f, .mx-b-land, .mx-b-poof, .mx-b-spark, .mx-b-flash, .mx-b-swirl,
+  .mx-g, .mx-g-img, .mx-g-bob, .mx-g-glint, .mx-g-trail, .mx-g-pop, .mx-cart-glow,
+  .mx-m, .mx-m-y, .mx-m-f) {
+  animation-duration: 12s;
+  animation-timing-function: steps(1, end);
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
 }
-@keyframes mx-hs-blink {
-  0%, 100% { opacity: 0; }
-  13% { opacity: 1; } 14.6% { opacity: 0; }
-  68% { opacity: 1; } 76% { opacity: 0; }
-  88% { opacity: 1; } 89.6% { opacity: 0; }
-}
-@keyframes mx-hs-wave {
-  0%, 100% { opacity: 1; }
-  13% { opacity: 0; } 14.6% { opacity: 1; }
-  68% { opacity: 0; } 76% { opacity: 1; }
-  88% { opacity: 0; } 89.6% { opacity: 1; }
+/* a frame strip: --w×--h cells, --n of them; the keyframes move background-position-x */
+.mx-f {
+  background-repeat: no-repeat;
+  background-size: calc(var(--w) * var(--n) * var(--px) * 1px) calc(var(--h) * var(--px) * 1px);
 }
 
-.mx-hs-hauler { animation: mx-hs-haul 10s infinite; }
-.mx-hs-flip { display: block; transform: scaleX(-1); }
-.mx-hs-hauler .mx-shadow { left: calc(8 * var(--px) * 1px); width: calc(72 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); height: calc(5 * var(--px) * 1px); }
-@keyframes mx-hs-haul {
-  0% { transform: translateX(calc(-104 * var(--px) * 1px)); animation-timing-function: steps(52, end); }
-  24% { transform: translateX(calc(var(--px) * 1px)); animation-timing-function: steps(1, end); }
-  25% { transform: none; animation-timing-function: steps(1, end); }
-  40% { transform: none; animation-timing-function: steps(55, end); }
-  62%, 100% { transform: translateX(calc(-110 * var(--px) * 1px)); }
-}
-
-.mx-hs-box { animation: mx-hs-box 10s infinite; }
-.mx-hs-box > img.mx { position: relative; }
-.mx-hs-box .mx-shadow { left: calc(-3 * var(--px) * 1px); width: calc(36 * var(--px) * 1px); top: calc(25 * var(--px) * 1px); height: calc(4 * var(--px) * 1px); animation: mx-hs-boxshadow 10s steps(1) infinite; }
-@keyframes mx-hs-box {
-  0% { transform: translate(calc(-104 * var(--px) * 1px), calc(-7 * var(--px) * 1px)); opacity: 1; animation-timing-function: steps(52, end); }
-  24% { transform: translate(calc(var(--px) * 1px), calc(-7 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
-  25%, 28% { transform: translate(0, calc(-7 * var(--px) * 1px)); animation-timing-function: steps(7, end); }
-  35% { transform: none; opacity: 1; animation-timing-function: steps(1, end); }
-  90% { opacity: 0; } 91% { opacity: 1; } 92% { opacity: 0; } 93% { opacity: 1; } 94% { opacity: 0; } 95% { opacity: 1; }
-  96%, 100% { transform: none; opacity: 0; }
-}
-/* the box's own shadow only once it is on the floor (while carried, the forklift's shadow is enough) */
-@keyframes mx-hs-boxshadow { 0%, 34.9% { opacity: 0; } 35%, 95.9% { opacity: 1; } 96%, 100% { opacity: 0; } }
-
-/* landing sparks: a 0.5 s strip, visible 3.5–4.0 s (= 7 whole strip loops in, so it starts on frame 0) */
-.mx-hs-spark {
+/* forklift */
+.mx-h { z-index: 1; animation-name: mx-h-haul; }
+.mx-h > .mx-shadow { left: calc(10 * var(--px) * 1px); width: calc(52 * var(--px) * 1px); top: calc(45 * var(--px) * 1px); height: calc(4 * var(--px) * 1px); }
+.mx-h-body { position: relative; animation-name: mx-h-body; }
+.mx-h-beacon {
   position: absolute;
-  left: calc(-5 * var(--px) * 1px);
-  top: calc(3 * var(--px) * 1px);
-  opacity: 0;
-  animation: mx-strip .5s steps(5) infinite, mx-hs-spark 10s steps(1) infinite;
+  left: calc(20 * var(--px) * 1px);
+  top: calc(8 * var(--px) * 1px);
+  width: calc(16 * var(--px) * 1px);
+  height: calc(16 * var(--px) * 1px);
+  background: radial-gradient(closest-side, rgba(255, 150, 30, .7), rgba(255, 102, 0, .25) 55%, transparent);
+  animation-name: mx-h-beacon;
 }
-@keyframes mx-hs-spark { 0%, 34.99% { opacity: 0; } 35% { opacity: 1; } 40%, 100% { opacity: 0; } }
-
-/* track dust: tiny CSS pixels thrown off the tracks */
-.mx-dust { position: absolute; width: 0; height: 0; opacity: 0; }
-.mx-dust i {
+/* forks: carriage + tine; the carried box rides on them (its pallet gap = the tine rows) */
+.mx-h-fork { position: absolute; left: calc(41 * var(--px) * 1px); top: calc(35 * var(--px) * 1px); animation-name: mx-h-lift; }
+.mx-h-fork > .mx { position: relative; }
+.mx-h-carry { position: absolute !important; left: calc(2 * var(--px) * 1px); top: calc(-11 * var(--px) * 1px); animation-name: mx-h-carry; }
+.mx-h-dust { position: absolute; left: calc(-2 * var(--px) * 1px); top: calc(34 * var(--px) * 1px); animation-name: mx-h-dust, mx-h-dust-o; }
+.mx-h-dust2 { left: calc(50 * var(--px) * 1px); animation-name: mx-h-dust2, mx-h-dust2-o; }
+.mx-h-wall {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: calc(2 * var(--px) * 1px);
-  height: calc(2 * var(--px) * 1px);
-  background: #c8b49a;
-  animation: mx-puff .42s steps(4, end) infinite;
-  animation-delay: calc(var(--d) * -.14s);
+  left: calc(-14 * var(--px) * 1px);
+  top: calc(30 * var(--px) * 1px);
+  width: calc(40 * var(--px) * 1px);
+  height: calc(52 * var(--px) * 1px);
+  background: radial-gradient(closest-side, rgba(255, 130, 20, .45), transparent);
+  animation-name: mx-h-wall;
 }
-.mx-dust i:nth-child(2) { width: calc(var(--px) * 1px); height: calc(var(--px) * 1px); top: calc(-1 * var(--px) * 1px); background: #a8957d; }
-.mx-dust i:nth-child(3) { top: calc(var(--px) * 1px); background: #e2d2bb; }
-@keyframes mx-puff {
-  0% { transform: none; opacity: .9; }
-  100% { transform: translate(calc(var(--dx) * var(--px) * 1px), calc(-5 * var(--px) * 1px)); opacity: 0; }
+
+/* box on the floor + its effects */
+.mx-b { z-index: 3; animation-name: mx-b-show; }
+.mx-b > .mx-shadow { left: calc(1 * var(--px) * 1px); width: calc(28 * var(--px) * 1px); top: calc(22 * var(--px) * 1px); height: calc(3 * var(--px) * 1px); }
+.mx-b-f { position: relative; animation-name: mx-b-frame, mx-b-shake; }
+.mx-b-land { z-index: 4; animation-name: mx-b-land, mx-b-land-o; }
+.mx-b-poof { z-index: 4; animation-name: mx-b-poof, mx-b-poof-o; }
+.mx-b-spark { z-index: 4; animation-name: var(--k); }
+.mx-b-flash { z-index: 4; animation-name: mx-b-flash, mx-b-flash-o; }
+.mx-b-swirl { z-index: 4; animation-name: mx-b-swirl, mx-b-swirl-o; }
+
+/* goods: start centred in the box mouth (--x/--y), points --x0…--y7 and --c1x…--c6y from scenes.tsx;
+   each item runs the same cycle shifted by --gd (0.12 s × its index) */
+.mx-g { z-index: 2; animation-name: mx-g-fly; animation-delay: var(--gd); }
+.mx-g :is(.mx-g-img, .mx-g-bob, .mx-g-glint, .mx-g-trail, .mx-g-pop) { animation-delay: var(--gd); }
+.mx-g-bob { display: block; position: relative; animation-name: mx-g-bob; }
+.mx-g-img { animation-name: mx-g-show; }
+.mx-g-glint { position: absolute; left: calc((var(--w) - 4) * var(--px) * 1px); top: calc(-3 * var(--px) * 1px); animation-name: mx-g-glint; }
+.mx-g-trail { position: absolute; left: calc(-6 * var(--px) * 1px); top: calc((var(--h) - 2) * var(--px) * 1px); animation-name: mx-g-trail; }
+.mx-g-trail2 { left: calc(-11 * var(--px) * 1px); top: calc((var(--h) + 2) * var(--px) * 1px); }
+.mx-g-pop { position: absolute; left: calc(var(--pop-x) * var(--px) * 1px); top: calc(var(--pop-y) * var(--px) * 1px); animation-name: mx-g-pop; }
+.mx-cart-glow {
+  position: absolute;
+  right: calc(-16 * var(--px) * 1px);
+  top: calc(-16 * var(--px) * 1px);
+  width: calc(44 * var(--px) * 1px);
+  height: calc(44 * var(--px) * 1px);
+  background: radial-gradient(closest-side, rgba(255, 170, 40, .55), rgba(255, 102, 0, .18) 60%, transparent);
+  animation-name: mx-cart-glow;
 }
-.mx-dust-rear { left: calc(6 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); --dx: -6; animation: mx-hs-dust-in 10s steps(1) infinite; }
-.mx-dust-front { left: calc(78 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); --dx: 6; animation: mx-hs-dust-out 10s steps(1) infinite; }
-@keyframes mx-hs-dust-in { 0%, 23% { opacity: 1; } 23.5%, 100% { opacity: 0; } }
-@keyframes mx-hs-dust-out { 0%, 40.5% { opacity: 0; } 41%, 61% { opacity: 1; } 61.5%, 100% { opacity: 0; } }
+
+/* the «21» mascot: x on .mx-m, jumps/breathing on .mx-m-y (the shadow stays on the floor) */
+.mx-m { z-index: 2; animation-name: mx-m-x; }
+.mx-m > .mx-shadow { left: calc(17 * var(--px) * 1px); width: calc(26 * var(--px) * 1px); top: calc(50 * var(--px) * 1px); height: calc(3 * var(--px) * 1px); }
+.mx-m-y { display: block; position: relative; animation-name: mx-m-y; }
+.mx-m-f { animation-name: mx-m-frame; }
+
+/* forklift x: rolls in 0.8–2.6 s, nods at the stop, backs off 3.6–4.6, leaves 11.0–11.8 */
+@keyframes mx-h-haul {
+  0% { transform: translateX(calc(-76 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  6.667% { transform: translateX(calc(-76 * var(--px) * 1px)); animation-timing-function: steps(88, end); }
+  21.667% { transform: translateX(calc(12 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  22.333% { transform: translateX(calc(13 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  23% { transform: translateX(calc(12 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  30% { transform: translateX(calc(12 * var(--px) * 1px)); animation-timing-function: steps(16, end); }
+  38.333% { transform: translateX(calc(-4 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  91.667% { transform: translateX(calc(-4 * var(--px) * 1px)); animation-timing-function: steps(72, end); }
+  98.333% { transform: translateX(calc(-76 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  100% { transform: translateX(calc(-76 * var(--px) * 1px)); }
+}
+
+/* forks: up while carrying, down in 3 steps of 3 px 2.9–3.6 s, back up off-screen */
+@keyframes mx-h-lift {
+  0% { transform: translateY(calc(-9 * var(--px) * 1px)); }
+  24.167% { transform: translateY(calc(-6 * var(--px) * 1px)); }
+  27.083% { transform: translateY(calc(-3 * var(--px) * 1px)); }
+  30% { transform: translate(0, 0); }
+  99.167% { transform: translateY(calc(-9 * var(--px) * 1px)); }
+  100% { transform: translateY(calc(-9 * var(--px) * 1px)); }
+}
+
+/* forklift frames: 0–2 driving (eyes), 3–5 driving ^^, 6 blink */
+@keyframes mx-h-body {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  6.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  7.5% { background-position-x: calc(-64 * var(--px) * 1px); }
+  8.333% { background-position-x: calc(-128 * var(--px) * 1px); }
+  9.167% { background-position-x: calc(0 * var(--px) * 1px); }
+  10% { background-position-x: calc(-64 * var(--px) * 1px); }
+  10.833% { background-position-x: calc(-128 * var(--px) * 1px); }
+  11.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  12.5% { background-position-x: calc(-64 * var(--px) * 1px); }
+  13.333% { background-position-x: calc(-128 * var(--px) * 1px); }
+  14.167% { background-position-x: calc(0 * var(--px) * 1px); }
+  15% { background-position-x: calc(-64 * var(--px) * 1px); }
+  15.833% { background-position-x: calc(-128 * var(--px) * 1px); }
+  16.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  17.5% { background-position-x: calc(-64 * var(--px) * 1px); }
+  18.333% { background-position-x: calc(-128 * var(--px) * 1px); }
+  19.167% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-64 * var(--px) * 1px); }
+  20.833% { background-position-x: calc(-128 * var(--px) * 1px); }
+  21.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  30% { background-position-x: calc(-320 * var(--px) * 1px); }
+  30.833% { background-position-x: calc(-256 * var(--px) * 1px); }
+  31.667% { background-position-x: calc(-192 * var(--px) * 1px); }
+  32.5% { background-position-x: calc(-320 * var(--px) * 1px); }
+  33.333% { background-position-x: calc(-256 * var(--px) * 1px); }
+  34.167% { background-position-x: calc(-192 * var(--px) * 1px); }
+  35% { background-position-x: calc(-320 * var(--px) * 1px); }
+  35.833% { background-position-x: calc(-256 * var(--px) * 1px); }
+  36.667% { background-position-x: calc(-192 * var(--px) * 1px); }
+  37.5% { background-position-x: calc(-320 * var(--px) * 1px); }
+  38.333% { background-position-x: calc(-192 * var(--px) * 1px); }
+  61.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  66.667% { background-position-x: calc(-384 * var(--px) * 1px); }
+  67.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  77.5% { background-position-x: calc(-384 * var(--px) * 1px); }
+  78.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  79.5% { background-position-x: calc(-384 * var(--px) * 1px); }
+  80.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  91.667% { background-position-x: calc(-128 * var(--px) * 1px); }
+  92.5% { background-position-x: calc(-64 * var(--px) * 1px); }
+  93.333% { background-position-x: calc(0 * var(--px) * 1px); }
+  94.167% { background-position-x: calc(-128 * var(--px) * 1px); }
+  95% { background-position-x: calc(-64 * var(--px) * 1px); }
+  95.833% { background-position-x: calc(0 * var(--px) * 1px); }
+  96.667% { background-position-x: calc(-128 * var(--px) * 1px); }
+  97.5% { background-position-x: calc(-64 * var(--px) * 1px); }
+  98.333% { background-position-x: calc(0 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+/* the box on the forks until it touches the floor */
+@keyframes mx-h-carry {
+  0% { opacity: 1; }
+  30% { opacity: 0; }
+  99.167% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* beacon glow while it moves */
+@keyframes mx-h-beacon {
+  0% { opacity: 0; }
+  6.667% { opacity: 1; }
+  7.917% { opacity: 0.35; }
+  9.167% { opacity: 1; }
+  10.417% { opacity: 0.35; }
+  11.667% { opacity: 1; }
+  12.917% { opacity: 0.35; }
+  14.167% { opacity: 1; }
+  15.417% { opacity: 0.35; }
+  16.667% { opacity: 1; }
+  17.917% { opacity: 0.35; }
+  19.167% { opacity: 1; }
+  20.417% { opacity: 0.35; }
+  21.667% { opacity: 1; }
+  22.917% { opacity: 0.35; }
+  24.167% { opacity: 1; }
+  25.417% { opacity: 0.35; }
+  26.667% { opacity: 1; }
+  27.917% { opacity: 0.35; }
+  29.167% { opacity: 1; }
+  30.417% { opacity: 0.35; }
+  31.667% { opacity: 1; }
+  32.917% { opacity: 0.35; }
+  34.167% { opacity: 1; }
+  35.417% { opacity: 0.35; }
+  36.667% { opacity: 1; }
+  37.917% { opacity: 0.35; }
+  38.333% { opacity: 0; }
+  91.667% { opacity: 1; }
+  92.917% { opacity: 0.35; }
+  94.167% { opacity: 1; }
+  95.417% { opacity: 0.35; }
+  96.667% { opacity: 1; }
+  97.917% { opacity: 0.35; }
+  98.333% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* beacon light on the wall before it shows up */
+@keyframes mx-h-wall {
+  0% { opacity: 0; }
+  3.333% { opacity: 0.9; }
+  4.417% { opacity: 0.2; }
+  5.5% { opacity: 0.9; }
+  6.667% { opacity: 0.3; }
+  7.917% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* track dust frames */
+@keyframes mx-h-dust {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  7.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  8.5% { background-position-x: calc(-14 * var(--px) * 1px); }
+  9.5% { background-position-x: calc(-28 * var(--px) * 1px); }
+  10.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  11.5% { background-position-x: calc(-14 * var(--px) * 1px); }
+  12.5% { background-position-x: calc(-28 * var(--px) * 1px); }
+  13.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  14.5% { background-position-x: calc(-14 * var(--px) * 1px); }
+  15.5% { background-position-x: calc(-28 * var(--px) * 1px); }
+  16.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  17.5% { background-position-x: calc(-14 * var(--px) * 1px); }
+  18.5% { background-position-x: calc(-28 * var(--px) * 1px); }
+  19.5% { background-position-x: calc(0 * var(--px) * 1px); }
+  20.5% { background-position-x: calc(-14 * var(--px) * 1px); }
+  21.5% { background-position-x: calc(-28 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+/* track dust behind (left) while rolling in */
+@keyframes mx-h-dust-o {
+  0% { opacity: 0; }
+  7.5% { opacity: 1; }
+  21.667% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* track dust behind (right) while reversing / leaving */
+@keyframes mx-h-dust2-o {
+  0% { opacity: 0; }
+  30.833% { opacity: 1; }
+  38.333% { opacity: 0; }
+  91.667% { opacity: 1; }
+  98.333% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes mx-h-dust2 {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  30.833% { background-position-x: calc(0 * var(--px) * 1px); }
+  31.833% { background-position-x: calc(-14 * var(--px) * 1px); }
+  32.833% { background-position-x: calc(-28 * var(--px) * 1px); }
+  33.833% { background-position-x: calc(0 * var(--px) * 1px); }
+  34.833% { background-position-x: calc(-14 * var(--px) * 1px); }
+  35.833% { background-position-x: calc(-28 * var(--px) * 1px); }
+  36.833% { background-position-x: calc(0 * var(--px) * 1px); }
+  37.833% { background-position-x: calc(-14 * var(--px) * 1px); }
+  38.333% { background-position-x: calc(0 * var(--px) * 1px); }
+  91.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  92.667% { background-position-x: calc(-14 * var(--px) * 1px); }
+  93.667% { background-position-x: calc(-28 * var(--px) * 1px); }
+  94.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  95.667% { background-position-x: calc(-14 * var(--px) * 1px); }
+  96.667% { background-position-x: calc(-28 * var(--px) * 1px); }
+  97.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+/* floor box: from the touchdown until it blinks out */
+@keyframes mx-b-show {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  93.333% { opacity: 0; }
+  93.833% { opacity: 1; }
+  94.333% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* closed → ajar → open … and back */
+@keyframes mx-b-frame {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  46.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  47.75% { background-position-x: calc(-30 * var(--px) * 1px); }
+  48.917% { background-position-x: calc(-60 * var(--px) * 1px); }
+  88.333% { background-position-x: calc(-30 * var(--px) * 1px); }
+  90.833% { background-position-x: calc(0 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+/* shakes ±1 px ×3 */
+@keyframes mx-b-shake {
+  0% { transform: translate(0, 0); }
+  41.667% { transform: translateX(calc(1 * var(--px) * 1px)); }
+  42.5% { transform: translateX(calc(-1 * var(--px) * 1px)); }
+  43.333% { transform: translateX(calc(1 * var(--px) * 1px)); }
+  44.167% { transform: translateX(calc(-1 * var(--px) * 1px)); }
+  45% { transform: translateX(calc(1 * var(--px) * 1px)); }
+  45.833% { transform: translateX(calc(-1 * var(--px) * 1px)); }
+  46.667% { transform: translate(0, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* touchdown dust frames */
+@keyframes mx-b-land {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  30% { background-position-x: calc(-14 * var(--px) * 1px); }
+  31% { background-position-x: calc(-28 * var(--px) * 1px); }
+  32% { background-position-x: calc(-42 * var(--px) * 1px); }
+  33% { background-position-x: calc(-56 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+@keyframes mx-b-land-o {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  34.167% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* box vanishes in a puff */
+@keyframes mx-b-poof {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  93.333% { background-position-x: calc(-14 * var(--px) * 1px); }
+  94.333% { background-position-x: calc(-28 * var(--px) * 1px); }
+  95.333% { background-position-x: calc(-42 * var(--px) * 1px); }
+  96.333% { background-position-x: calc(-56 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+@keyframes mx-b-poof-o {
+  0% { opacity: 0; }
+  93.333% { opacity: 1; }
+  97.5% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* sparks popping over the shaking box */
+@keyframes mx-b-spark0 {
+  0%, 42.417% { opacity: 0; transform: translate(0, 0); }
+  42.5% { opacity: 1; transform: translate(0, 0); }
+  43.333% { opacity: 1; transform: translateY(calc(-2 * var(--px) * 1px)); }
+  44.167% { opacity: 1; transform: translateY(calc(-4 * var(--px) * 1px)); }
+  45%, 100% { opacity: 0; transform: translateY(calc(-4 * var(--px) * 1px)); }
+}
+
+@keyframes mx-b-spark1 {
+  0%, 43.667% { opacity: 0; transform: translate(0, 0); }
+  43.75% { opacity: 1; transform: translate(0, 0); }
+  44.583% { opacity: 1; transform: translateY(calc(-2 * var(--px) * 1px)); }
+  45.417% { opacity: 1; transform: translateY(calc(-4 * var(--px) * 1px)); }
+  46.25%, 100% { opacity: 0; transform: translateY(calc(-4 * var(--px) * 1px)); }
+}
+
+@keyframes mx-b-spark2 {
+  0%, 44.917% { opacity: 0; transform: translate(0, 0); }
+  45% { opacity: 1; transform: translate(0, 0); }
+  45.833% { opacity: 1; transform: translateY(calc(-2 * var(--px) * 1px)); }
+  46.667% { opacity: 1; transform: translateY(calc(-4 * var(--px) * 1px)); }
+  47.5%, 100% { opacity: 0; transform: translateY(calc(-4 * var(--px) * 1px)); }
+}
+
+/* burst star when the box opens */
+@keyframes mx-b-flash {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  46.667% { background-position-x: calc(0 * var(--px) * 1px); }
+  47.5% { background-position-x: calc(-22 * var(--px) * 1px); }
+  48.333% { background-position-x: calc(-44 * var(--px) * 1px); }
+  49.167% { background-position-x: calc(-66 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+@keyframes mx-b-flash-o {
+  0% { opacity: 0; }
+  46.667% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* golden swirl (after the flash) */
+@keyframes mx-b-swirl {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  48.75% { background-position-x: calc(0 * var(--px) * 1px); }
+  50% { background-position-x: calc(-30 * var(--px) * 1px); }
+  51.25% { background-position-x: calc(-60 * var(--px) * 1px); }
+  52.5% { background-position-x: calc(-90 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+@keyframes mx-b-swirl-o {
+  0% { opacity: 0; }
+  48.75% { opacity: 1; }
+  54.167% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* mascot x: walks up to the box 4.0–5.0 s, back home 11.4–11.85 */
+@keyframes mx-m-x {
+  0% { transform: translate(0, 0); animation-timing-function: steps(1, end); }
+  33.333% { transform: translate(0, 0); animation-timing-function: steps(20, end); }
+  41.667% { transform: translateX(calc(-20 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  95% { transform: translateX(calc(-20 * var(--px) * 1px)); animation-timing-function: steps(20, end); }
+  98.75% { transform: translate(0, 0); animation-timing-function: steps(1, end); }
+  100% { transform: translate(0, 0); }
+}
+
+/* idle breathing 1 px, two joy jumps 6.2–7.6 s */
+@keyframes mx-m-y {
+  0% { transform: translate(0, 0); }
+  3.333% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  6.667% { transform: translate(0, 0); }
+  10% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  13.333% { transform: translate(0, 0); }
+  51.667% { transform: translateY(calc(-3 * var(--px) * 1px)); }
+  52.5% { transform: translateY(calc(-6 * var(--px) * 1px)); }
+  53.75% { transform: translateY(calc(-7 * var(--px) * 1px)); }
+  55% { transform: translateY(calc(-5 * var(--px) * 1px)); }
+  55.833% { transform: translateY(calc(-2 * var(--px) * 1px)); }
+  56.667% { transform: translate(0, 0); }
+  58.333% { transform: translateY(calc(-3 * var(--px) * 1px)); }
+  59.167% { transform: translateY(calc(-6 * var(--px) * 1px)); }
+  60.417% { transform: translateY(calc(-7 * var(--px) * 1px)); }
+  61.667% { transform: translateY(calc(-5 * var(--px) * 1px)); }
+  62.5% { transform: translateY(calc(-2 * var(--px) * 1px)); }
+  63.333% { transform: translate(0, 0); }
+  66.667% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  70% { transform: translate(0, 0); }
+  73.333% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  76.667% { transform: translate(0, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* 0 arms crossed · 1 wow · 2 stand · 3/4 walk ← · 5 points · 6 joy jump · 7/8 walk → */
+@keyframes mx-m-frame {
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  16.667% { background-position-x: calc(-60 * var(--px) * 1px); }
+  30% { background-position-x: calc(-120 * var(--px) * 1px); }
+  33.333% { background-position-x: calc(-180 * var(--px) * 1px); }
+  35.417% { background-position-x: calc(-240 * var(--px) * 1px); }
+  37.5% { background-position-x: calc(-180 * var(--px) * 1px); }
+  39.583% { background-position-x: calc(-240 * var(--px) * 1px); }
+  41.667% { background-position-x: calc(-120 * var(--px) * 1px); }
+  46.667% { background-position-x: calc(-60 * var(--px) * 1px); }
+  51.667% { background-position-x: calc(-360 * var(--px) * 1px); }
+  56.667% { background-position-x: calc(-120 * var(--px) * 1px); }
+  58.333% { background-position-x: calc(-360 * var(--px) * 1px); }
+  63.333% { background-position-x: calc(-120 * var(--px) * 1px); }
+  75% { background-position-x: calc(-300 * var(--px) * 1px); }
+  80% { background-position-x: calc(-120 * var(--px) * 1px); }
+  95% { background-position-x: calc(-420 * var(--px) * 1px); }
+  96.25% { background-position-x: calc(-480 * var(--px) * 1px); }
+  97.5% { background-position-x: calc(-420 * var(--px) * 1px); }
+  98.75% { background-position-x: calc(0 * var(--px) * 1px); }
+  100% { background-position-x: calc(0 * var(--px) * 1px); }
+}
+
+/* goods: fan out of the box along their arcs (6.0 s + i·0.12), hang in the showcase, fly to the cart (10.2 s + i·0.12) */
+@keyframes mx-g-fly {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(calc(var(--x0) * var(--px) * 1px), calc(var(--y0) * var(--px) * 1px)) rotate(calc(var(--sp) * -45deg)); }
+  50.667% { transform: translate(calc(var(--x1) * var(--px) * 1px), calc(var(--y1) * var(--px) * 1px)) rotate(calc(var(--sp) * -45deg)); }
+  51.333% { transform: translate(calc(var(--x2) * var(--px) * 1px), calc(var(--y2) * var(--px) * 1px)) rotate(calc(var(--sp) * -30deg)); }
+  52% { transform: translate(calc(var(--x3) * var(--px) * 1px), calc(var(--y3) * var(--px) * 1px)) rotate(calc(var(--sp) * -30deg)); }
+  52.667% { transform: translate(calc(var(--x4) * var(--px) * 1px), calc(var(--y4) * var(--px) * 1px)) rotate(calc(var(--sp) * -15deg)); }
+  53.333% { transform: translate(calc(var(--x5) * var(--px) * 1px), calc(var(--y5) * var(--px) * 1px)) rotate(calc(var(--sp) * -15deg)); }
+  54% { transform: translate(calc(var(--x6) * var(--px) * 1px), calc(var(--y6) * var(--px) * 1px)) rotate(calc(var(--sp) * 0deg)); }
+  54.667% { transform: translate(calc(var(--x7) * var(--px) * 1px), calc(var(--y7) * var(--px) * 1px)) rotate(calc(var(--sp) * 0deg)); }
+  85% { transform: translate(calc(var(--x7) * var(--px) * 1px), calc(var(--y7) * var(--px) * 1px)); }
+  85.417% { transform: translate(calc(var(--c1x) * var(--px) * 1px), calc(var(--c1y) * var(--px) * 1px)); }
+  85.833% { transform: translate(calc(var(--c2x) * var(--px) * 1px), calc(var(--c2y) * var(--px) * 1px)); }
+  86.25% { transform: translate(calc(var(--c3x) * var(--px) * 1px), calc(var(--c3y) * var(--px) * 1px)); }
+  86.667% { transform: translate(calc(var(--c4x) * var(--px) * 1px), calc(var(--c4y) * var(--px) * 1px)); }
+  87.083% { transform: translate(calc(var(--c5x) * var(--px) * 1px), calc(var(--c5y) * var(--px) * 1px)); }
+  87.5% { transform: translate(calc(var(--c6x) * var(--px) * 1px), calc(var(--c6y) * var(--px) * 1px)); }
+  98.333%, 100% { transform: translate(0, 0); }
+}
+
+@keyframes mx-g-show {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  87.5% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* showcase bob 1 px */
+@keyframes mx-g-bob {
+  0% { transform: translate(0, 0); }
+  61.667% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  65% { transform: translate(0, 0); }
+  68.333% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  71.667% { transform: translate(0, 0); }
+  75% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  78.333% { transform: translate(0, 0); }
+  81.667% { transform: translateY(calc(-1 * var(--px) * 1px)); }
+  85% { transform: translate(0, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* a glint on each item (phase = item delay) */
+@keyframes mx-g-glint {
+  0% { opacity: 0; }
+  69.167% { opacity: 1; }
+  70.167% { opacity: 0; }
+  80% { opacity: 1; }
+  80.833% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* spark trail on the way to the cart */
+@keyframes mx-g-trail {
+  0% { opacity: 0; }
+  85% { opacity: 1; }
+  87.5% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* pop where it vanishes */
+@keyframes mx-g-pop {
+  0% { opacity: 0; }
+  87.5% { opacity: 1; }
+  88.5% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* the cart corner lights up as goods arrive */
+@keyframes mx-cart-glow {
+  0% { opacity: 0; }
+  87.083% { opacity: 0.6; }
+  88.333% { opacity: 0.25; }
+  89.583% { opacity: 0.7; }
+  90.833% { opacity: 0.3; }
+  92.083% { opacity: 0.8; }
+  93.333% { opacity: 0.35; }
+  94.583% { opacity: 0.7; }
+  96.667% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
 
 /* ---------------------------------------------------------------------------
    2. «To the catalogue» CTA: a coin pops out from behind the button's top edge (Mario block).
@@ -324,21 +795,27 @@
    --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .mx-strip:not(.mx-strip-still),
-  .mx-hs-bob, .mx-hs-blink, .mx-hs-wave,
   .mx-trust > .mx,
   .mx-404-block > .mx {
     animation-iteration-count: infinite !important;
   }
   .mx-strip:not(.mx-strip-still) { animation-duration: var(--dur) !important; }
-  .mx-hs-bob { animation-duration: 2.4s !important; }
-  .mx-hs-blink, .mx-hs-wave { animation-duration: 10s !important; }
   .mx-trust > .mx { animation-duration: 3s !important; }
   .mx-404-block > .mx { animation-duration: 3s !important; }
 
-  /* hero: a still composition — box on the floor, the mascot waves and winks */
-  .mx-hs-hauler, .mx-hs-spark, .mx-dust { display: none; }
-  .mx-hs-box { animation: none !important; transform: none; opacity: 1; }
-  .mx-hs-box .mx-shadow { animation: none !important; opacity: 1; }
+  /* hero: the storyboard's still «t ≈ 8 s» — forklift on the left, the open box, the goods fanned
+     out over it (each at its own phase), the mascot mid joy-jump; only the goods keep a 1 px bob */
+  .mx-hero :is(.mx-h, .mx-h-body, .mx-h-fork, .mx-h-carry, .mx-h-beacon, .mx-h-wall, .mx-h-dust,
+    .mx-b, .mx-b-f, .mx-b-land, .mx-b-poof, .mx-b-spark, .mx-b-flash, .mx-b-swirl,
+    .mx-g, .mx-g-img, .mx-g-glint, .mx-g-trail, .mx-g-pop, .mx-cart-glow, .mx-m) {
+    animation-duration: 12s !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: paused !important;
+    animation-delay: calc(var(--gd, 0s) - 8s) !important;
+  }
+  .mx-hero .mx-m-y { animation: none !important; transform: translateY(calc(-4 * var(--px) * 1px)); }
+  .mx-hero .mx-m-f { animation: none !important; background-position-x: calc(-6 * 60 * var(--px) * 1px); }
+  .mx-hero .mx-g-bob { animation: mx-bob 1.6s steps(1) infinite !important; animation-delay: calc(var(--gd) * -2) !important; }
   /* CTA: the coin sits above the button and spins, no jump */
   .mx-coin-host:is(:hover, :focus-within, :active) .mx-coinpop-c { animation: none !important; opacity: 1; transform: translateY(calc(-16 * var(--px) * 1px)); }
   .mx-coinpop .mx-spark { display: none; }

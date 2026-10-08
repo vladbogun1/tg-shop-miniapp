@@ -7,10 +7,9 @@ import "./mascot.css";
  * Everything here is decorative: aria-hidden, alt="", no pointer events.
  */
 
-/** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json (+ `box` cut from the props sheet). */
+/** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json (the hero scene has its own art in /mascot/hero, see scenes.tsx). */
 export const SPRITES = {
   hero_wave: [66, 56, 1],
-  hero_blink: [59, 56, 1],
   devices: [66, 56, 1],
   setup: [69, 56, 1],
   twitch: [65, 56, 1],
@@ -24,11 +23,9 @@ export const SPRITES = {
   kick: [78, 56, 1],
   qblock: [21, 20, 1],
   qblock_hit: [19, 20, 1],
-  box: [30, 27, 1],
   coin: [12, 12, 2],
   spark: [39, 36, 5],
   sweeper: [50, 25, 2],
-  hauler: [85, 65, 3],
 } as const;
 
 export type SpriteName = keyof typeof SPRITES;
