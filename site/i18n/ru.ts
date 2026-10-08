@@ -80,6 +80,7 @@ export const ru = {
   "header.home": "ChiSetup — на главную",
   "header.catalog": "Каталог",
   "header.search": "Поиск товаров",
+  "header.searchShort": "Поиск",
   "header.searchSubmit": "Найти",
   "header.searchAll": "Все результаты по «{q}»",
   "header.searchEmpty": "Ничего не нашлось",

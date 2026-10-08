@@ -1,0 +1,35 @@
+/* Phone header: one sticky bar + a search row that scrolls away; compact mode once it is gone (Header.tsx). */
+
+.site-header .hdr-mark,
+.site-header .hdr-csearch { display: none; }
+
+@media (max-width: 767px) {
+  /* no seam between the bar and the search row while both are visible */
+  .site-header:not([data-compact]) { border-bottom-color: transparent; }
+  .hdr-row2 { position: relative; z-index: 30; }
+
+  .site-header .hdr-mark,
+  .site-header .hdr-csearch { display: block; }
+  .site-header .hdr-mark { width: 0; overflow: hidden; opacity: 0; transition: opacity .2s ease, width .2s ease; }
+  .site-header .hdr-csearch {
+    flex-basis: 0;
+    max-width: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .site-header .hdr-word { transition: opacity .2s ease; }
+
+  .site-header[data-compact] .hdr-word { display: none; }
+  .site-header[data-compact] .hdr-mark { width: 36px; opacity: 1; }
+  .site-header[data-compact] .hdr-csearch { max-width: none; flex-basis: 0; opacity: 1; transform: none; pointer-events: auto; }
+  /* buttons a size down so burger · mark · search · account · cart fit a 375 px phone */
+  .site-header[data-compact] .container-site { gap: 6px; }
+  .site-header[data-compact] .tap { height: 40px; min-width: 40px; width: 40px; }
+  .site-header[data-compact] .tap svg { width: 18px; height: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header .hdr-mark, .site-header .hdr-csearch, .site-header .hdr-word { transition: none; }
+}

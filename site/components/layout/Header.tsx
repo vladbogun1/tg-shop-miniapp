@@ -5,12 +5,17 @@
  * (Exo 2) · search with live suggestions · language · account · cart. Categories live on the home
  * page, in the catalogue sidebar and in the burger sheet. On phones the search drops to its own row.
  * One dark theme — there is no theme switch any more.
+ *
+ * Phones: the search row is NOT part of the sticky bar — it scrolls away with the page, and the
+ * moment it has gone under the bar the bar turns compact (header.css): the wordmark gives way to the
+ * CS mark, a compact search slides into the bar and the buttons shrink. The bar's height never
+ * changes, so nothing on the page jumps.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { noFadeFlash, type PublicCategory } from "@shop/shared";
 import { stripLocale } from "@/i18n";
@@ -24,6 +29,7 @@ import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
 import { SupportGate } from "@/components/support/SupportGate";
 import { useSupportUnread } from "@/lib/support";
+import "./header.css";
 
 export function Header({ categories }: { categories: PublicCategory[] }) {
   const { t, href } = useI18n();
@@ -36,8 +42,27 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
 
   const activeSlug = pathname.startsWith("/catalog/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
 
+  // phones: compact once the search row has scrolled under the sticky bar
+  const searchRow = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const row = searchRow.current;
+    if (!row || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(
+      ([e]) => setCompact(!e.isIntersecting && e.boundingClientRect.top < (e.rootBounds?.top ?? 72)),
+      // the root's top edge sits at the bar's bottom: the row counts as gone once it is fully under the bar
+      { rootMargin: "-72px 0px 0px 0px", threshold: 0 }
+    );
+    io.observe(row);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <header className="chrome sticky top-0 z-40 border-b border-[var(--line)] backdrop-blur-[12px] backdrop-saturate-150">
+    <>
+    <header
+      data-compact={compact || undefined}
+      className="site-header chrome sticky top-0 z-40 border-b border-[var(--line)] backdrop-blur-[12px] backdrop-saturate-150"
+    >
       <a href="#main" className="skip-link nb px-3 py-2 font-display text-[13px] font-bold uppercase">
         {t("header.skip")}
       </a>
@@ -51,7 +76,18 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         >
           <Menu className="h-5 w-5" strokeWidth={2.25} />
         </button>
-        <Logo />
+        <span className="hdr-word inline-flex">
+          <Logo />
+        </span>
+        <span className="hdr-mark">
+          <Link href={href("/")} aria-label={t("header.home")} tabIndex={compact ? 0 : -1} className="block rounded-[10px]">
+            { }
+            <img src="/icon.svg" alt="" width={36} height={36} className="block h-9 w-9 rounded-[10px]" />
+          </Link>
+        </span>
+        <div className="hdr-csearch min-w-0 flex-1" aria-hidden={!compact} inert={!compact}>
+          <SearchBox compact />
+        </div>
         <nav aria-label={t("header.nav")} className="ml-3 hidden shrink-0 items-center gap-1 lg:flex">
           <NavLink href={href("/catalog")} active={pathname === "/catalog" || !!activeSlug}>
             <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
@@ -81,13 +117,13 @@ export function Header({ categories }: { categories: PublicCategory[] }) {
         </div>
       </div>
 
-      {/* phone: search on its own row */}
-      <div className="container-site pb-3 md:hidden">
-        <SearchBox />
-      </div>
-
       <MobileMenu open={menuOpen} onClose={closeMenu} categories={categories} activeSlug={activeSlug} />
     </header>
+    {/* phone: search on its own row, outside the sticky bar — it scrolls away (see above) */}
+    <div ref={searchRow} className="hdr-row2 chrome container-site border-b border-[var(--line)] pb-3 pt-0.5 md:hidden">
+      <SearchBox />
+    </div>
+    </>
   );
 }
 

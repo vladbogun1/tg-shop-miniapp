@@ -67,6 +67,7 @@ export const uk: RuDictionary = {
   "header.home": "ChiSetup — на головну",
   "header.catalog": "Каталог",
   "header.search": "Пошук товарів",
+  "header.searchShort": "Пошук",
   "header.searchSubmit": "Знайти",
   "header.searchAll": "Усі результати за «{q}»",
   "header.searchEmpty": "Нічого не знайшлося",

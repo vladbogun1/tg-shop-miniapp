@@ -67,6 +67,7 @@ export const en: RuDictionary = {
   "header.home": "ChiSetup — home",
   "header.catalog": "Catalogue",
   "header.search": "Search products",
+  "header.searchShort": "Search",
   "header.searchSubmit": "Search",
   "header.searchAll": "All results for “{q}”",
   "header.searchEmpty": "Nothing found",

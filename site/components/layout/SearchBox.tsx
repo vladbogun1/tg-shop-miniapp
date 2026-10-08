@@ -16,7 +16,8 @@ import { useDebounced } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
-export function SearchBox() {
+/** `compact`: the phone header's one-row mode — 40 px tall, no «Search» button (Enter / the list submit). */
+export function SearchBox({ compact = false }: { compact?: boolean }) {
   const { t, href, locale } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
@@ -90,7 +91,7 @@ export function SearchBox() {
           e.preventDefault();
           goSearch();
         }}
-        className="flex h-11 items-center overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]"
+        className={`flex ${compact ? "h-10" : "h-11"} items-center overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_var(--accent-soft)]`}
       >
         <Search className="ml-3 h-4 w-4 shrink-0 text-[var(--muted)]" strokeWidth={2.25} aria-hidden />
         <input
@@ -103,7 +104,8 @@ export function SearchBox() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder={t("header.search")}
+          placeholder={compact ? t("header.searchShort") : t("header.search")}
+          enterKeyHint="search"
           aria-label={t("header.search")}
           role="combobox"
           aria-expanded={showList}
@@ -127,6 +129,7 @@ export function SearchBox() {
         )}
         <button
           type="submit"
+          hidden={compact}
           className="h-full shrink-0 border-l border-[var(--line)] bg-[var(--surface-2)] px-4 font-display text-[12px] font-semibold uppercase tracking-[.1em] text-[var(--muted)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
         >
           {t("header.searchSubmit")}
