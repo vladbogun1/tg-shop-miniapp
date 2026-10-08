@@ -1,10 +1,11 @@
 "use client";
 
 /** Cart line list + totals, shared by the drawer and the /cart page. */
-import { AlertTriangle, ShoppingBag, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useI18n } from "@/i18n/context";
+import { CartSweeper } from "@/components/mascot/scenes";
 import { useCart, type CartLine } from "@/lib/cart";
 import { maxQty } from "@shop/shared";
 import { useOrderLimits } from "@/lib/order-limits";
@@ -100,9 +101,7 @@ export function CartEmpty({ onNavigate }: { onNavigate?: () => void }) {
   const { t, href } = useI18n();
   return (
     <div className="hud-frame m-1 flex [--hud-bw:0px] flex-col items-center gap-3 px-4 py-12 text-center">
-      <span className="chamfer grid h-16 w-16 place-items-center bg-[var(--surface-2)]">
-        <ShoppingBag className="h-8 w-8 text-[var(--accent)]" strokeWidth={1.75} />
-      </span>
+      <CartSweeper />
       <p className="font-display text-[18px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">{t("cart.empty.title")}</p>
       <p className="max-w-xs text-[14px] font-medium text-[var(--muted)]">{t("cart.empty.text")}</p>
       <Link

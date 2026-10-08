@@ -5,6 +5,7 @@ import { localePath, makeT } from "@/i18n";
 import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
 import { SupportGate } from "@/components/support/SupportGate";
+import { FooterSweeper } from "@/components/mascot/scenes";
 
 /**
  * Site footer (server component): shop links, customer info pages, Telegram, seller requisites.
@@ -19,6 +20,7 @@ export function Footer({ categories, locale }: { categories: PublicCategory[]; l
   return (
     <footer className="chrome relative z-10 mt-20 border-t border-[var(--line)]">
       <span aria-hidden className="absolute left-0 top-[-1px] h-[2px] w-24 bg-[var(--accent)] shadow-[0_0_10px_rgba(255,102,0,.7)] sm:left-[max(24px,calc((100vw-1280px)/2+24px))]" />
+      <FooterSweeper />
       <div className="container-site grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Wordmark size={28} />

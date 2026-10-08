@@ -1,11 +1,13 @@
-import { ArrowRight, CreditCard, MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { CategoryArt, CategoryArtDefs } from "@/components/home/CategoryArt";
-import { HeroArt } from "@/components/home/HeroArt";
 import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
+import { Spr, type SpriteName } from "@/components/mascot/Sprite";
+import { CategoryPeek } from "@/components/mascot/CategoryPeek";
+import { CoinPop, HeroScene } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
@@ -22,11 +24,13 @@ export async function generateMetadata({ params }: { params: LocaleParams }): Pr
   return pageMeta({ locale, path: "/", title: t("meta.title"), absoluteTitle: true, description: t("meta.description") });
 }
 
-const TRUST: { icon: typeof Truck; title: MessageKey; text: MessageKey }[] = [
-  { icon: Truck, title: "home.trust.delivery.title", text: "home.trust.delivery.text" },
-  { icon: CreditCard, title: "home.trust.payment.title", text: "home.trust.payment.text" },
-  { icon: ShieldCheck, title: "home.trust.warranty.title", text: "home.trust.warranty.text" },
-  { icon: MessageCircle, title: "home.trust.chat.title", text: "home.trust.chat.text" },
+/** Each point has its pixel character: the forklift with a parcel, the coin-heart, the robot
+ *  checking hardware («we check every item»), the mascot typing («a real person answers»). */
+const TRUST: { sprite: SpriteName; title: MessageKey; text: MessageKey }[] = [
+  { sprite: "hauler_box", title: "home.trust.delivery.title", text: "home.trust.delivery.text" },
+  { sprite: "don_ua", title: "home.trust.payment.title", text: "home.trust.payment.text" },
+  { sprite: "setup", title: "home.trust.warranty.title", text: "home.trust.warranty.text" },
+  { sprite: "dm", title: "home.trust.chat.title", text: "home.trust.chat.text" },
 ];
 
 export default async function HomePage({ params }: { params: LocaleParams }) {
@@ -61,7 +65,8 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
             <p className="eyebrow mt-5 text-[11px] leading-relaxed text-[var(--ink)] sm:text-[12px]">{t("home.hero.kicker")}</p>
             <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-[var(--muted)] sm:text-[17px]">{t("home.hero.text")}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <span className="cta-glow flex w-full sm:w-auto">
+              <span className="cta-glow mx-coin-host flex w-full sm:w-auto">
+                <CoinPop />
                 <ButtonLink href={href("/catalog")} variant="accent" size="lg" className="w-full sm:w-auto" icon={<ArrowRight className="h-5 w-5" strokeWidth={2.25} />}>
                   {t("home.hero.cta")}
                 </ButtonLink>
@@ -71,9 +76,11 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
               </ButtonLink>
             </div>
           </div>
-          {/* Drawn kit (decorative) in a HUD frame. Desktop only — on narrower screens the copy needs the room. */}
-          <div aria-hidden className="hud-frame relative hidden rounded-[var(--r-card)] border border-[var(--line)] bg-[radial-gradient(ellipse_at_60%_70%,rgba(255,102,0,.14),transparent_62%),linear-gradient(180deg,#151517,#0F0F11)] p-6 lg:block">
-            <HeroArt className="pointer-events-none relative h-auto w-full select-none" />
+          {/* Live pixel scene (decorative) in a HUD frame: the ChiSetup forklift delivers a box to the
+              «21» mascot. Under the copy on phones/tablets, the right column from lg. Whole-pixel
+              scale per breakpoint lives in mascot.css (.mx-hero). */}
+          <div aria-hidden className="hud-frame relative flex justify-center overflow-hidden rounded-[var(--r-card)] border border-[var(--line)] bg-[radial-gradient(ellipse_at_70%_80%,rgba(255,102,0,.16),transparent_62%),linear-gradient(180deg,#151517,#0F0F11)] px-1 py-4 sm:p-4">
+            <HeroScene />
           </div>
         </div>
       </section>
@@ -100,8 +107,9 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
                     slug={c.slug}
                     name={c.name}
                     accent="var(--accent)"
-                    className="pointer-events-none absolute bottom-1.5 right-2 h-[70px] w-[70px] opacity-80 transition-[transform,opacity] group-hover:opacity-100 duration-200 ease-out group-hover:-translate-y-1 group-hover:-rotate-6 sm:h-[92px] sm:w-[92px] motion-reduce:transition-none motion-reduce:group-hover:transform-none"
+                    className="mx-cat-art pointer-events-none absolute bottom-1.5 right-2 h-[70px] w-[70px] opacity-80 transition-[transform,opacity] duration-200 ease-out sm:h-[92px] sm:w-[92px] motion-reduce:transition-none"
                   />
+                  <CategoryPeek slug={c.slug} name={c.name} />
                 </Link>
               </li>
             ))}
@@ -132,10 +140,14 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
           {t("home.trust.title")}
         </h2>
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {TRUST.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="nb flex gap-4 p-5">
-              <span className="chamfer grid h-12 w-12 shrink-0 place-items-center bg-[var(--accent-soft)] text-[var(--accent)]">
-                <Icon className="h-6 w-6" strokeWidth={1.75} />
+          {TRUST.map(({ sprite, title, text }, i) => (
+            <li key={title} className="nb flex items-center gap-4 p-5">
+              <span
+                aria-hidden
+                className="mx-trust chamfer flex h-16 w-[76px] shrink-0 items-end justify-center overflow-hidden bg-[var(--accent-soft)]"
+                style={{ "--i": i } as React.CSSProperties}
+              >
+                <Spr name={sprite} lazy />
               </span>
               <div>
                 <h3 className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t(title)}</h3>

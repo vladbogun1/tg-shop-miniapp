@@ -24,6 +24,7 @@ import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 import { formatRating } from "@/components/reviews/Stars";
+import { Spr } from "@/components/mascot/Sprite";
 import "./reviews-ribbon.css";
 
 type Tier = "legend" | "epic" | "solid" | "low";
@@ -144,6 +145,8 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
     const clear = () => {
       if (current) delete current.dataset.spot;
       current = null;
+      // the pixel mascot by the heading laughs along with a 5★ spotlight (CSS: mascot.css §4)
+      delete root.dataset.legend;
     };
 
     const pick = (): HTMLElement | null => {
@@ -180,6 +183,7 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
       current = el;
       el.dataset.spot = "";
       const tier = (el.dataset.tier as Tier) ?? "solid";
+      if (tier === "legend") root.dataset.legend = "";
       timer = window.setTimeout(() => {
         clear();
         timer = window.setTimeout(tick, GAP_MS);
@@ -222,6 +226,9 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
         <h2 id="home-reviews" className="flex min-w-0 items-center gap-3 font-display text-[24px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[32px]">
           <span aria-hidden className="tech-mark" />
           <span className="min-w-0">{t("home.reviews.title")}</span>
+          <span aria-hidden className="mx-rv">
+            <Spr name="discord" lazy />
+          </span>
         </h2>
         <div className="flex items-center gap-3">
           {summary.count > 0 && (

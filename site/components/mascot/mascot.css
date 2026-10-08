@@ -1,0 +1,349 @@
+/* ============================================================================
+   Pixel mascot (maxsolch «21» + ChiSetup robots) — see components/mascot/*.
+   Rules (mascot-pack/README): pixelated, WHOLE scales only (--px, unitless, set by the host),
+   sizes and positions in art px × --px, effects inside the sprite's wrapper, idle/hover motion on
+   the wrapper, CSS-only. Reduced motion keeps the characters (frame strips, blinks) and drops the
+   travel — note globals.css forces every animation to .01ms there, so the overrides below are
+   !important on a class (beats the `*` rule) and every travelling element has a sensible base state.
+   ============================================================================ */
+
+.mx {
+  display: block;
+  width: calc(var(--w) * var(--px, 2) * 1px);
+  height: calc(var(--h) * var(--px, 2) * 1px);
+  max-width: none;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.mx-strip {
+  background-repeat: no-repeat;
+  background-size: calc(var(--w) * var(--n) * var(--px, 2) * 1px) calc(var(--h) * var(--px, 2) * 1px);
+  animation: mx-strip var(--dur, .6s) steps(var(--n)) infinite;
+}
+.mx-strip-still {
+  animation: none;
+  background-position-x: calc(var(--f, 0) * var(--w) * var(--px, 2) * -1px);
+}
+@keyframes mx-strip { to { background-position-x: calc(var(--w) * var(--n) * var(--px, 2) * -1px); } }
+
+/* absolute placement in art px: style="--x:…; --y:…" */
+.mx-at {
+  position: absolute;
+  left: calc(var(--x) * var(--px) * 1px);
+  top: calc(var(--y) * var(--px) * 1px);
+}
+.mx-shadow {
+  position: absolute;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .6), transparent);
+  pointer-events: none;
+}
+/* 1 art-px idle bob */
+@keyframes mx-bob { 50% { transform: translateY(calc(var(--px) * -1px)); } }
+@keyframes mx-hop {
+  0%, 100% { transform: none; }
+  25% { transform: translateY(calc(var(--px) * -3px)); }
+  50% { transform: translateY(calc(var(--px) * -1px)); }
+  75% { transform: translateY(calc(var(--px) * -2px)); }
+}
+
+/* ---------------------------------------------------------------------------
+   1. Hero scene: 160×80 art px, floor at y=72. 10 s loop:
+   0–2.4 s  the forklift rolls in with a box (dust behind the tracks)
+   2.8–3.5  lowers the box, sparks on landing, the mascot hops
+   4.0–6.2  backs out to the left, dust in front
+   6.2–10   idle: the mascot bobs and winks; the box blinks out like a picked-up item at 9 s
+   --------------------------------------------------------------------------- */
+.mx-hero {
+  --px: 2;
+  position: relative;
+  width: calc(160 * var(--px) * 1px);
+  height: calc(80 * var(--px) * 1px);
+  overflow: hidden;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+}
+@media (min-width: 768px) { .mx-hero { --px: 3; } }
+@media (min-width: 1024px) { .mx-hero { --px: 2; } }
+@media (min-width: 1280px) { .mx-hero { --px: 3; } }
+
+.mx-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+  background-size: calc(8 * var(--px) * 1px) calc(8 * var(--px) * 1px);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 30%, #000 88%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 30%, #000 88%, transparent);
+}
+.mx-hero-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(72 * var(--px) * 1px);
+  bottom: 0;
+  border-top: calc(var(--px) * 1px) solid rgba(255, 102, 0, .45);
+  background: linear-gradient(180deg, rgba(255, 102, 0, .10), transparent 70%);
+  box-shadow: 0 0 12px rgba(255, 102, 0, .25);
+}
+
+.mx-hs-hero { animation: mx-hs-hop 10s steps(1) infinite; }
+.mx-hs-bob { position: relative; display: block; animation: mx-bob 2.4s steps(1) infinite; }
+.mx-hs-blink { position: absolute; left: calc(4 * var(--px) * 1px); top: 0; opacity: 0; animation: mx-hs-blink 10s steps(1) infinite; }
+.mx-hs-wave { animation: mx-hs-wave 10s steps(1) infinite; }
+@keyframes mx-hs-hop {
+  0%, 35.5%, 38%, 40.5%, 100% { transform: none; }
+  36.5% { transform: translateY(calc(var(--px) * -3px)); }
+  39% { transform: translateY(calc(var(--px) * -2px)); }
+}
+@keyframes mx-hs-blink {
+  0%, 100% { opacity: 0; }
+  13% { opacity: 1; } 14.6% { opacity: 0; }
+  68% { opacity: 1; } 76% { opacity: 0; }
+  88% { opacity: 1; } 89.6% { opacity: 0; }
+}
+@keyframes mx-hs-wave {
+  0%, 100% { opacity: 1; }
+  13% { opacity: 0; } 14.6% { opacity: 1; }
+  68% { opacity: 0; } 76% { opacity: 1; }
+  88% { opacity: 0; } 89.6% { opacity: 1; }
+}
+
+.mx-hs-hauler { animation: mx-hs-haul 10s infinite; }
+.mx-hs-flip { display: block; transform: scaleX(-1); }
+.mx-hs-hauler .mx-shadow { left: calc(8 * var(--px) * 1px); width: calc(72 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); height: calc(5 * var(--px) * 1px); }
+@keyframes mx-hs-haul {
+  0% { transform: translateX(calc(-104 * var(--px) * 1px)); animation-timing-function: steps(52, end); }
+  24% { transform: translateX(calc(var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  25% { transform: none; animation-timing-function: steps(1, end); }
+  40% { transform: none; animation-timing-function: steps(55, end); }
+  62%, 100% { transform: translateX(calc(-110 * var(--px) * 1px)); }
+}
+
+.mx-hs-box { animation: mx-hs-box 10s infinite; }
+.mx-hs-box > img.mx { position: relative; }
+.mx-hs-box .mx-shadow { left: calc(-3 * var(--px) * 1px); width: calc(36 * var(--px) * 1px); top: calc(25 * var(--px) * 1px); height: calc(4 * var(--px) * 1px); animation: mx-hs-boxshadow 10s steps(1) infinite; }
+@keyframes mx-hs-box {
+  0% { transform: translate(calc(-104 * var(--px) * 1px), calc(-7 * var(--px) * 1px)); opacity: 1; animation-timing-function: steps(52, end); }
+  24% { transform: translate(calc(var(--px) * 1px), calc(-7 * var(--px) * 1px)); animation-timing-function: steps(1, end); }
+  25%, 28% { transform: translate(0, calc(-7 * var(--px) * 1px)); animation-timing-function: steps(7, end); }
+  35% { transform: none; opacity: 1; animation-timing-function: steps(1, end); }
+  90% { opacity: 0; } 91% { opacity: 1; } 92% { opacity: 0; } 93% { opacity: 1; } 94% { opacity: 0; } 95% { opacity: 1; }
+  96%, 100% { transform: none; opacity: 0; }
+}
+/* the box's own shadow only once it is on the floor (while carried, the forklift's shadow is enough) */
+@keyframes mx-hs-boxshadow { 0%, 34.9% { opacity: 0; } 35%, 95.9% { opacity: 1; } 96%, 100% { opacity: 0; } }
+
+/* landing sparks: a 0.5 s strip, visible 3.5–4.0 s (= 7 whole strip loops in, so it starts on frame 0) */
+.mx-hs-spark {
+  position: absolute;
+  left: calc(-5 * var(--px) * 1px);
+  top: calc(3 * var(--px) * 1px);
+  opacity: 0;
+  animation: mx-strip .5s steps(5) infinite, mx-hs-spark 10s steps(1) infinite;
+}
+@keyframes mx-hs-spark { 0%, 34.99% { opacity: 0; } 35% { opacity: 1; } 40%, 100% { opacity: 0; } }
+
+/* track dust: tiny CSS pixels thrown off the tracks */
+.mx-dust { position: absolute; width: 0; height: 0; opacity: 0; }
+.mx-dust i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(2 * var(--px) * 1px);
+  height: calc(2 * var(--px) * 1px);
+  background: #c8b49a;
+  animation: mx-puff .42s steps(4, end) infinite;
+  animation-delay: calc(var(--d) * -.14s);
+}
+.mx-dust i:nth-child(2) { width: calc(var(--px) * 1px); height: calc(var(--px) * 1px); top: calc(-1 * var(--px) * 1px); background: #a8957d; }
+.mx-dust i:nth-child(3) { top: calc(var(--px) * 1px); background: #e2d2bb; }
+@keyframes mx-puff {
+  0% { transform: none; opacity: .9; }
+  100% { transform: translate(calc(var(--dx) * var(--px) * 1px), calc(-5 * var(--px) * 1px)); opacity: 0; }
+}
+.mx-dust-rear { left: calc(6 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); --dx: -6; animation: mx-hs-dust-in 10s steps(1) infinite; }
+.mx-dust-front { left: calc(78 * var(--px) * 1px); top: calc(61 * var(--px) * 1px); --dx: 6; animation: mx-hs-dust-out 10s steps(1) infinite; }
+@keyframes mx-hs-dust-in { 0%, 23% { opacity: 1; } 23.5%, 100% { opacity: 0; } }
+@keyframes mx-hs-dust-out { 0%, 40.5% { opacity: 0; } 41%, 61% { opacity: 1; } 61.5%, 100% { opacity: 0; } }
+
+/* ---------------------------------------------------------------------------
+   2. «To the catalogue» CTA: a coin pops out from behind the button's top edge (Mario block).
+   --------------------------------------------------------------------------- */
+.mx-coin-host { position: relative; isolation: isolate; }
+.mx-coin-host > a { position: relative; z-index: 1; }
+.mx-coinpop {
+  --px: 2;
+  position: absolute;
+  z-index: 0;
+  left: calc(50% - 6 * var(--px) * 1px);
+  bottom: calc(100% - 12 * var(--px) * 1px);
+  width: calc(12 * var(--px) * 1px);
+  height: calc(12 * var(--px) * 1px);
+  pointer-events: none;
+}
+@media (min-width: 640px) { .mx-coinpop { --px: 3; } }
+.mx-coinpop-c { display: block; opacity: 0; }
+/* the sparkle where the coin vanishes (top of its jump, -20 art px) */
+.mx-coinpop .mx-spark { position: absolute; left: calc(-13 * var(--px) * 1px); top: calc(-32 * var(--px) * 1px); opacity: 0; }
+@keyframes mx-coin-jump {
+  0% { opacity: 1; transform: none; animation-timing-function: steps(8, end); }
+  40% { opacity: 1; transform: translateY(calc(-26 * var(--px) * 1px)); animation-timing-function: steps(4, end); }
+  70% { opacity: 1; transform: translateY(calc(-20 * var(--px) * 1px)); }
+  71%, 100% { opacity: 0; transform: translateY(calc(-20 * var(--px) * 1px)); }
+}
+@keyframes mx-coin-spark { 0%, 69.9% { opacity: 0; } 70%, 99% { opacity: 1; } 100% { opacity: 0; } }
+@media (hover: hover) {
+  .mx-coin-host:hover .mx-coinpop-c { animation: mx-coin-jump .7s 1 both; }
+  .mx-coin-host:hover .mx-coinpop .mx-spark { animation: mx-strip .3s steps(5) 1 .49s both, mx-coin-spark .7s 1 both; }
+}
+.mx-coin-host:focus-within .mx-coinpop-c,
+.mx-coin-host:active .mx-coinpop-c { animation: mx-coin-jump .7s 1 both; }
+.mx-coin-host:focus-within .mx-coinpop .mx-spark,
+.mx-coin-host:active .mx-coinpop .mx-spark { animation: mx-strip .3s steps(5) 1 .49s both, mx-coin-spark .7s 1 both; }
+
+/* ---------------------------------------------------------------------------
+   3. Category tiles: the character peeks out from behind the right edge on hover/focus.
+   Touch screens: always there, small (×1), still. The SVG art makes way for it.
+   --------------------------------------------------------------------------- */
+.mx-peek {
+  --px: 2;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateX(calc(var(--w) * var(--px) * 1px));
+  transition: transform .26s steps(6, end);
+}
+.mx-peek > .mx { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .55)); }
+@media (hover: hover) {
+  .group:is(:hover, :focus-visible) .mx-peek { transform: translateX(calc(var(--peek) * var(--px) * 1px)); }
+  .group:is(:hover, :focus-visible) .mx-peek > .mx { animation: mx-bob 1.2s steps(1) .3s infinite; }
+  .group:is(:hover, :focus-visible) .mx-cat-art { opacity: 0; transform: translate(-12px, -4px) rotate(-6deg); }
+}
+@media (hover: none) {
+  .mx-peek { --px: 1; right: 4px; bottom: 4px; transform: none; transition: none; }
+  .mx-cat-art { display: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   4. Reviews: the laughing mascot by the heading; hops while a 5★ «legend» is in the spotlight.
+   --------------------------------------------------------------------------- */
+.mx-rv { --px: 1; display: inline-block; flex-shrink: 0; margin-left: 4px; vertical-align: bottom; }
+.mx-rv > .mx { transform-origin: 50% 100%; }
+.rv-ribbon[data-legend] .mx-rv > .mx { animation: mx-hop .5s steps(4, end) 3; }
+
+/* ---------------------------------------------------------------------------
+   5. «Why us» tiles: a sprite in the chamfered tile instead of the icon.
+   --------------------------------------------------------------------------- */
+.mx-trust { --px: 1; }
+.mx-trust > .mx { animation: mx-bob 3s steps(1) infinite; animation-delay: calc(var(--i, 0) * -.75s); }
+
+/* ---------------------------------------------------------------------------
+   6. Footer: the vacuum robot drives along the top edge (25 s each way, turns at the ends).
+   --------------------------------------------------------------------------- */
+.mx-sweep-track {
+  --px: 2;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: calc(25 * var(--px) * 1px);
+  overflow: hidden;
+  pointer-events: none;
+  container-type: inline-size;
+}
+.mx-sweep { position: absolute; left: 0; bottom: 0; transform: translateX(calc(24 * var(--px) * 1px)); animation: mx-sweep 50s linear infinite; }
+.mx-sweep-flip { display: block; animation: mx-face 50s steps(1) infinite; }
+@keyframes mx-sweep {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(calc(100cqw - 50 * var(--px) * 1px)); }
+  100% { transform: translateX(0); }
+}
+/* the robot faces left as drawn */
+@keyframes mx-face { 0% { transform: scaleX(-1); } 50% { transform: none; } }
+
+/* 7a. Empty cart: the same robot potters back and forth on a short loop. */
+.mx-cart { --px: 2; position: relative; width: calc(90 * var(--px) * 1px); height: calc(27 * var(--px) * 1px); }
+.mx-cart .mx-sweep { animation: mx-cart-run 6s infinite; transform: translateX(calc(20 * var(--px) * 1px)); }
+.mx-cart .mx-sweep-flip { animation: mx-face 6s steps(1) infinite; }
+.mx-cart .mx-shadow { left: calc(2 * var(--px) * 1px); right: calc(2 * var(--px) * 1px); bottom: 0; height: calc(4 * var(--px) * 1px); }
+@keyframes mx-cart-run {
+  0% { transform: translateX(0); animation-timing-function: steps(20, end); }
+  40%, 50% { transform: translateX(calc(40 * var(--px) * 1px)); animation-timing-function: steps(20, end); }
+  90%, 100% { transform: translateX(0); }
+}
+
+/* ---------------------------------------------------------------------------
+   7b. 404: the mascot kicks the ?-block, a coin pops out and vanishes in a sparkle. 3 s loop,
+   92×80 art px. Hit at 1.0 s, coin sparkle at 1.5 s (both whole 0.5 s spark loops in).
+   --------------------------------------------------------------------------- */
+.mx-404 { --px: 2; position: relative; width: calc(92 * var(--px) * 1px); height: calc(80 * var(--px) * 1px); margin-inline: auto; pointer-events: none; }
+@media (min-width: 640px) { .mx-404 { --px: 3; } }
+.mx-404 .mx-shadow { left: calc(10 * var(--px) * 1px); width: calc(36 * var(--px) * 1px); top: calc(77 * var(--px) * 1px); height: calc(4 * var(--px) * 1px); }
+.mx-404-kick { animation: mx-404-kick 3s steps(1) infinite; }
+@keyframes mx-404-kick {
+  0%, 60%, 100% { transform: none; }
+  18% { transform: translateX(calc(-2 * var(--px) * 1px)); }
+  27% { transform: translateX(calc(-3 * var(--px) * 1px)); }
+  33.33% { transform: translateX(calc(1 * var(--px) * 1px)); }
+  45% { transform: none; }
+}
+.mx-404-block { animation: mx-404-bump 3s steps(1) infinite; }
+.mx-404-block > .mx + .mx { position: absolute; left: calc(var(--px) * 1px); top: 0; opacity: 0; animation: mx-404-hit 3s steps(1) infinite; }
+.mx-404-block > .mx:first-child { animation: mx-404-unhit 3s steps(1) infinite; }
+@keyframes mx-404-bump {
+  0%, 100% { transform: none; }
+  33.33% { transform: translate(calc(2 * var(--px) * 1px), calc(-3 * var(--px) * 1px)); }
+  37% { transform: translate(calc(1 * var(--px) * 1px), calc(-1 * var(--px) * 1px)); }
+  41% { transform: none; }
+}
+@keyframes mx-404-hit { 0%, 33.32% { opacity: 0; } 33.33%, 55% { opacity: 1; } 55.01%, 100% { opacity: 0; } }
+@keyframes mx-404-unhit { 0%, 33.32% { opacity: 1; } 33.33%, 55% { opacity: 0; } 55.01%, 100% { opacity: 1; } }
+.mx-404-coin { opacity: 0; animation: mx-404-coin 3s infinite; }
+@keyframes mx-404-coin {
+  0%, 33.32% { opacity: 0; transform: translateY(calc(10 * var(--px) * 1px)); }
+  33.33% { opacity: 1; transform: translateY(calc(10 * var(--px) * 1px)); animation-timing-function: steps(10, end); }
+  45% { opacity: 1; transform: translateY(calc(-10 * var(--px) * 1px)); animation-timing-function: steps(2, end); }
+  49.9% { opacity: 1; transform: translateY(calc(-8 * var(--px) * 1px)); }
+  50%, 100% { opacity: 0; transform: translateY(calc(-8 * var(--px) * 1px)); }
+}
+.mx-404-spark { opacity: 0; animation: mx-strip .5s steps(5) infinite, var(--win) 3s steps(1) infinite; }
+@keyframes mx-404-win-hit { 0%, 33.32% { opacity: 0; } 33.33% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes mx-404-win-coin { 0%, 49.99% { opacity: 0; } 50% { opacity: 1; } 66.66%, 100% { opacity: 0; } }
+
+/* ---------------------------------------------------------------------------
+   Reduced motion: no travel, characters stay alive in place.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .mx-strip:not(.mx-strip-still),
+  .mx-hs-bob, .mx-hs-blink, .mx-hs-wave,
+  .mx-trust > .mx,
+  .mx-404-block > .mx {
+    animation-iteration-count: infinite !important;
+  }
+  .mx-strip:not(.mx-strip-still) { animation-duration: var(--dur) !important; }
+  .mx-hs-bob { animation-duration: 2.4s !important; }
+  .mx-hs-blink, .mx-hs-wave { animation-duration: 10s !important; }
+  .mx-trust > .mx { animation-duration: 3s !important; }
+  .mx-404-block > .mx { animation-duration: 3s !important; }
+
+  /* hero: a still composition — box on the floor, the mascot waves and winks */
+  .mx-hs-hauler, .mx-hs-spark, .mx-dust { display: none; }
+  .mx-hs-box { animation: none !important; transform: none; opacity: 1; }
+  .mx-hs-box .mx-shadow { animation: none !important; opacity: 1; }
+  /* CTA: the coin sits above the button and spins, no jump */
+  .mx-coin-host:is(:hover, :focus-within, :active) .mx-coinpop-c { animation: none !important; opacity: 1; transform: translateY(calc(-16 * var(--px) * 1px)); }
+  .mx-coinpop .mx-spark { display: none; }
+  /* tiles: no slide, the character is simply there on hover */
+  .mx-peek { transition: none !important; }
+  /* footer / cart: parked */
+  .mx-sweep-flip { animation: none !important; transform: none; }
+  /* 404: block keeps flipping hit/unhit, the coin hovers above it */
+  .mx-404-coin { animation: none !important; opacity: 1; transform: translateY(calc(-6 * var(--px) * 1px)); }
+  .mx-404-spark { display: none; }
+}

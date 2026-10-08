@@ -1,6 +1,6 @@
 /**
  * Small category illustrations for the home «Categories» tiles, drawn in the same v3 language as
- * HeroArt: graphite fills, thin steel outlines, a soft orange halo, slight tilt.
+ * the old hero art: graphite fills, thin steel outlines, a soft orange halo, slight tilt.
  *
  * Every drawing uses graphite / key-grey / near-black plus ONE accent passed in by the tile
  * (brand orange on the home page).

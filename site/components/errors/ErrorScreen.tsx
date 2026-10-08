@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
+import { NotFoundScene } from "@/components/mascot/scenes";
 
 /** 404 / 500: big glowing code in a HUD frame. */
 export function ErrorScreen({ code, onRetry }: { code: 404 | 500; onRetry?: () => void }) {
@@ -12,6 +13,7 @@ export function ErrorScreen({ code, onRetry }: { code: 404 | 500; onRetry?: () =
   return (
     <div className="container-site flex justify-center pt-12 pb-6">
       <div className="nb-lg hud-frame relative w-full max-w-2xl p-8 text-center sm:p-12">
+        {code === 404 && <NotFoundScene />}
         <p
           aria-hidden
           className="font-display text-[110px] font-extrabold italic leading-none tracking-[-.02em] text-[var(--accent)] [text-shadow:0_0_40px_rgba(255,102,0,.45)] sm:text-[160px]"
