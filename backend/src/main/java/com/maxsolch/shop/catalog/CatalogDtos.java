@@ -167,7 +167,7 @@ public final class CatalogDtos {
     // ------------------------------------------------------------------ admin: cards
 
     /**
-     * {@code unfinished} = DRAFT cards that are hidden and not archived (the "Незавершённые" list);
+     * {@code unfinished} = products created in the admin and never published (V53 flag), not archived;
      * {@code incomplete} = active products with a required characteristic missing or no category.
      */
     public record CardsStats(long draft, long aiFilled, long ready, long incomplete, long unfinished) {
@@ -177,7 +177,8 @@ public final class CatalogDtos {
                                  String brand, String condition, String conditionNote, String description,
                                  Map<String, Object> specs, String cardStatus, Integer cardConfidence,
                                  Map<String, Object> cardMeta, List<String> missingRequired, List<String> variants,
-                                 String imageUrl, long priceMinor, long price, boolean active, int stock) {
+                                 String imageUrl, long priceMinor, long price, boolean active, int stock,
+                                 boolean unfinished) {
     }
 
     /** Translations of one language in a cards import item (all optional). */

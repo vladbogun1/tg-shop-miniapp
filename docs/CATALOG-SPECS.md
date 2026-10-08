@@ -122,6 +122,8 @@ ALTER TABLE products
   из категории: `[{id, name, slug}]` = путь категории (корень, лист) — старые клиенты/кэш не ломаются. `brand` (строка) = `brandRef.name`.
 - `GET /api/public/products?category=<slug>` — по поддереву; `category=utsenka` — подборка condition≠NEW. Новый параметр `all=1`
   (без пагинации, для фасетов на стороне сайта; максимум 1000). Сайт фильтрует и считает фасеты сам через `shared/catalog.ts`.
+  `view=card` — лёгкий элемент для списков (`id, slug, title, priceMinor, compareAtMinor, currency, stock, variants, images` (первые 2),
+  `ratingAvg, ratingCount, soldCount, createdAt, categoryId, brandRef, condition, specs`; без описания, SEO, `conditionNote`, `tags`).
 - `GET /api/public/categories` — как сейчас (плоско) + `parentId`, `artKind`; `productCount` по поддереву. Виртуальная «Уценка» добавляется
   последним элементом (`id:"utsenka"`, `parentId:null`, `artKind:"sale"`), если есть такие товары.
 - `GET /api/public/categories/{slug}` — работает и для скрытых из меню (сейчас 404), и для `utsenka` (SEO из старого тега, если был, иначе шаблон).
@@ -148,10 +150,10 @@ ALTER TABLE products
 ### 3.3 Админка — товар
 
 `ProductUpsertRequest`/`AdminProductDto`: `categoryId` (лист; `""` в PATCH — снять), `brandId` (`""` — снять; или `brandName` → найти
-по имени/алиасу или создать), `condition`, `conditionNote`, `specs` (заменяет целиком; `null` — не трогать), `cardStatus` (админ может
-поставить READY/DRAFT вручную; READY пишет `card_meta.reviewedAt/reviewedBy`). `tagIds` и `brand` убраны из запроса (игнорируются).
+по имени/алиасу или создать), `condition`, `conditionNote`, `specs` (заменяет целиком; `null` — не трогать). `cardStatus` в запросе **игнорируется**: статус карточки меняют только
+`cards/import` и `PATCH /products/{id}/card-status` (READY пишет `card_meta.reviewedAt/reviewedBy`). `tagIds` и `brand` убраны из запроса (игнорируются).
 `AdminProductDto` дополнительно: `categoryId`, `brandRef {id,slug,name}`, `brand` (= brandRef.name), `condition`, `conditionNote`, `specs`,
-`cardStatus`, `cardConfidence`, `cardMeta`, `missingRequired:[key]`, `tags` = путь категории `[{id,name,slug,sortOrder,showInMenu}]`.
+`cardStatus`, `cardConfidence`, `cardMeta`, `missingRequired:[key]`, `unfinished` (V53), `tags` = путь категории `[{id,name,slug,sortOrder,showInMenu}]`.
 Ответ на сохранение содержит `specIssues: [{key, reason, message}]` — что валидатор отбросил (reason — код: `UNKNOWN_KEY`, `UNKNOWN_OPTION`,
 `NOT_A_NUMBER`, `OUT_OF_RANGE`, `MIN_GT_MAX`, `NOT_A_BOOL`, `NOT_A_STRING`, `NOT_A_LIST`, `EMPTY`, `TOO_LONG`). Смена категории без `specs`
 перепроверяет сохранённые specs по новой схеме (лишние ключи уходят в `specIssues`). Аудит `PRODUCT_UPDATE` пишет изменения кратко
@@ -160,7 +162,9 @@ ALTER TABLE products
 
 **Незавершённые товары (решение владельца 09.10):**
 - `POST /api/admin/products` требует `title`, `priceMinor > 0`, `stock ≥ 0` и `categoryId` (лист) — иначе 400; фото, бренд, описание,
-  характеристики необязательны. Новый товар **всегда** сохраняется скрытым (`active=false`) и с `cardStatus=DRAFT`, что бы ни пришло в `active`.
+  характеристики необязательны. Новый товар **всегда** сохраняется скрытым (`active=false`), с `cardStatus=DRAFT` и `unfinished=true`, что бы ни пришло
+  в `active`. `unfinished` (V53, «Незавершённые») снимается, когда товар становится активным любым путём или уходит в архив;
+  у старых скрытых товаров он `false`.
 - Публикация — переход `active: false → true` (`PATCH /products/{id}/active {active:true}` или `PATCH /products/{id}` с `active:true`):
   нет цены или категории → 409 `PRODUCT_NOT_PUBLISHABLE` с `missing: ["price","category"]` (force не обходит);
   карточка `DRAFT` → 409 `CARD_NOT_READY`, если не передан `?force=1` («выложить без оформления»). Уже активные товары не трогаются.
@@ -169,10 +173,10 @@ ALTER TABLE products
 
 - `GET /api/admin/cards/stats` → `{draft, aiFilled, ready, incomplete, unfinished}` (бейдж в меню = draft + aiFilled).
   `incomplete` — активные неархивные товары без категории или с незаполненным required; `unfinished` («Незавершённые») —
-  `cardStatus=DRAFT`, скрытые, не в архиве.
+  `products.unfinished = 1` и не в архиве.
 - `GET /api/admin/cards/export?status=draft|ai_filled|ready|incomplete|unfinished|all&ids=<uuid,uuid>` → `[{id, title, slug, categoryId,
   categorySlug, brand, condition, conditionNote, description, specs, cardStatus, cardConfidence, cardMeta, missingRequired:[key],
-  variants:[name], imageUrl, priceMinor, price, active, stock}]` (`imageUrl` — ключ первого фото, как хранится; `price` — гривны).
+  variants:[name], imageUrl, priceMinor, price, active, stock, unfinished}]` (`imageUrl` — ключ первого фото, как хранится; `price` — гривны).
 - `PUT /api/admin/cards/import` `{items:[{productId, categorySlug?, brand?, specs?, confidence?:{key:0..100}, overall?, description?, sources?,
   notes?, model?, markReady?:boolean, title?, translations?:{uk?:{title?,description?,conditionNote?}, en?:{…}}, publish?:boolean,
   condition?, conditionNote?}], replaceSpecs:boolean}` →

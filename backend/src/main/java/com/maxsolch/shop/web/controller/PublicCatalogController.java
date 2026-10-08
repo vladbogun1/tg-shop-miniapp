@@ -7,6 +7,7 @@ import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
+import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductCardPage;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductPage;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,8 +57,8 @@ public class PublicCatalogController {
     @GetMapping("/products")
     @Operation(summary = "Filtered, sorted, paginated products. category = slug (whole subtree) or utsenka "
             + "(condition != NEW); sort: default|price_asc|price_desc|new|name; all=1 = no paging (max 1000); "
-            + "unknown category slug → 404")
-    public ProductPage products(@RequestParam(required = false) String category,
+            + "view=card = lightweight items (no description/SEO/tags, ≤ 2 images); unknown category slug → 404")
+    public Object products(@RequestParam(required = false) String category,
                                 @RequestParam(required = false) String q,
                                 @RequestParam(required = false) Boolean inStock,
                                 @RequestParam(required = false) Long priceMax,
@@ -65,10 +66,12 @@ public class PublicCatalogController {
                                 @RequestParam(required = false) Integer page,
                                 @RequestParam(required = false) Integer size,
                                 @RequestParam(required = false) String all,
+                                @RequestParam(required = false) String view,
                                 Locale locale) {
         boolean everything = "1".equals(all) || "true".equalsIgnoreCase(all);
-        return service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page, size,
-                everything), ContentLocale.normalize(locale));
+        ProductPage result = service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page,
+                size, everything), ContentLocale.normalize(locale));
+        return "card".equalsIgnoreCase(view) ? ProductCardPage.of(result) : result;
     }
 
     @GetMapping("/catalog/schema")

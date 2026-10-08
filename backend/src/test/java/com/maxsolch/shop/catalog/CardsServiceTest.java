@@ -134,6 +134,7 @@ class CardsServiceTest {
     @Test
     void publishNeedsAFinishedPublishableCard() {
         mouse.setActive(false);
+        mouse.setUnfinished(true);
         // only a brand → no content → stays DRAFT → not published
         CardsImportResult r = service.importCards(new CardsImportRequest(List.of(
                 item(id(), null, "Lamzu", null, null, false, true, null)), false), 1L);
@@ -151,6 +152,7 @@ class CardsServiceTest {
                 item(id(), null, null, Map.of("weight_g", 49), null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).published()).isTrue();
         assertThat(mouse.isActive()).isTrue();
+        assertThat(mouse.isUnfinished()).isFalse();
     }
 
     @Test
@@ -182,9 +184,12 @@ class CardsServiceTest {
     void statsAndExport() {
         Product hidden = db.product("Draft mouse", mice);
         hidden.setActive(false);
+        hidden.setUnfinished(true);
+        Product legacy = db.product("Sold out mouse", mice); // hidden long ago, never «unfinished»
+        legacy.setActive(false);
         mouse.setActive(true);
         CatalogDtos.CardsStats st = service.stats();
-        assertThat(st.draft()).isEqualTo(2);
+        assertThat(st.draft()).isEqualTo(3);
         assertThat(st.unfinished()).isEqualTo(1);
         assertThat(st.incomplete()).isEqualTo(1); // the active mouse misses weight_g
 
@@ -194,6 +199,7 @@ class CardsServiceTest {
         assertThat(items.get(0).categorySlug()).isEqualTo("myshki");
         assertThat(service.export("unfinished", null)).extracting(CatalogDtos.CardExportItem::title)
                 .containsExactly("Draft mouse");
+        assertThat(service.export("unfinished", null).get(0).unfinished()).isTrue();
         assertThat(service.export("all", id())).hasSize(1);
     }
 }

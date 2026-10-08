@@ -124,6 +124,13 @@ public class Product {
     @Column(name = "card_confidence", columnDefinition = "TINYINT")
     private Integer cardConfidence;
 
+    /**
+     * Created in the admin and never published yet (V53, «Незавершённые»). Set on create, cleared
+     * when the product becomes active or is archived. Legacy hidden products are not unfinished.
+     */
+    @Column(name = "unfinished", nullable = false)
+    private boolean unfinished = false;
+
     /** {fields:{key:{c,src}}, sources, notes, model, importedAt, reviewedAt, reviewedBy}. */
     @Column(name = "card_meta", columnDefinition = "JSON")
     private String cardMetaJson;

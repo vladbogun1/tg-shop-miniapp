@@ -57,6 +57,24 @@ class AdminProductCatalogTest {
         when(products.findByIdWithDetails(any())).thenReturn(Optional.of(product));
     }
 
+    @Test
+    void aManualSaveNeverChangesTheCardStatus() {
+        product.setCardStatus(CardStatus.READY);
+        product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
+        ProductUpsertRequest stale = new ProductUpsertRequest("Lamzu Maya", "desc", 3000_00, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, Map.of("weight_g", 50),
+                "AI_FILLED");
+        assertThat(service.update(id, stale).cardStatus()).isEqualTo("READY");
+        assertThat(service.update(id, req(3000_00, null, null, null, Map.of("weight_g", 51), null, null)).cardStatus())
+                .isEqualTo("READY");
+    }
+
+    @Test
+    void archivingClearsUnfinished() {
+        product.setUnfinished(true);
+        assertThat(service.setArchived(id, true).unfinished()).isFalse();
+    }
+
     private static ProductUpsertRequest req(long price, Integer stock, Boolean active, String categoryId,
                                             Map<String, Object> specs, String brandId, String condition) {
         return new ProductUpsertRequest("Lamzu Maya", "desc", price, null, stock, active, null, null, null, null,
@@ -69,6 +87,7 @@ class AdminProductCatalogTest {
                 Map.of("weight_g", 49, "bogus", 1), CatalogFixtures.LAMZU, "MARKDOWN"));
         assertThat(created.active()).isFalse();
         assertThat(created.cardStatus()).isEqualTo("DRAFT");
+        assertThat(created.unfinished()).isTrue();
         assertThat(created.categoryId()).isEqualTo(CatalogFixtures.MICE);
         assertThat(created.tags()).extracting(t -> t.slug()).containsExactly("myshki");
         assertThat(created.brand()).isEqualTo("Lamzu");
@@ -93,7 +112,10 @@ class AdminProductCatalogTest {
         assertThatThrownBy(() -> service.setActive(id, true, false))
                 .isInstanceOf(ConflictException.class)
                 .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(AdminProductService.CARD_NOT_READY));
-        assertThat(service.setActive(id, true, true).active()).isTrue();
+        product.setUnfinished(true);
+        AdminProductDto published = service.setActive(id, true, true);
+        assertThat(published.active()).isTrue();
+        assertThat(published.unfinished()).isFalse();
         // already active: the gate is only on the transition
         assertThat(service.setActive(id, true, false).active()).isTrue();
     }

@@ -108,9 +108,9 @@ public class CardsService {
                 || !s.missingRequired(cid, ProductCatalogFields.specs(p)).isEmpty();
     }
 
-    /** A DRAFT card that is hidden and not archived — created but never finished. */
+    /** Created in the admin and never published (V53 flag), not archived. */
     static boolean isUnfinished(Product p) {
-        return status(p) == CardStatus.DRAFT && !p.isActive() && !p.isArchived();
+        return p.isUnfinished() && !p.isArchived();
     }
 
     /** {@code status}: draft | ai_filled | ready | incomplete | unfinished | all; {@code ids}: comma-separated. */
@@ -162,7 +162,7 @@ public class CardsService {
                 p.getConditionNote(), p.getDescription(), specs, status(p).name(), p.getCardConfidence(),
                 SpecsJson.readMap(p.getCardMetaJson()), s.missingRequired(cid, specs),
                 p.getVariants().stream().map(ProductVariant::getName).toList(), image, p.getPriceMinor(),
-                p.getPriceMinor() / 100, p.isActive(), p.getStock());
+                p.getPriceMinor() / 100, p.isActive(), p.getStock(), p.isUnfinished());
     }
 
     // ------------------------------------------------------------------ import
@@ -329,6 +329,7 @@ public class CardsService {
                     reason = AdminProductService.CARD_NOT_READY;
                 } else {
                     p.setActive(true);
+                    AdminProductService.syncUnfinished(p);
                     productRepository.save(p);
                     published = true;
                 }

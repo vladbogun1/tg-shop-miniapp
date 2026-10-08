@@ -39,11 +39,14 @@ public record AdminProductDto(
         Map<String, Object> cardMeta,
         /** Required attributes of the category path without a value. */
         List<String> missingRequired,
-        List<SpecsValidator.Issue> specIssues) {
+        List<SpecsValidator.Issue> specIssues,
+        /** Created and never published (V53), the «Незавершённые» list. */
+        boolean unfinished) {
 
     public AdminProductDto withSpecIssues(List<SpecsValidator.Issue> issues) {
         return new AdminProductDto(id, title, description, priceMinor, currency, stock, active, archived, images,
                 variants, tags, slug, compareAtMinor, seoTitle, seoDescription, brand, sku, categoryId, brandRef,
-                condition, conditionNote, specs, cardStatus, cardConfidence, cardMeta, missingRequired, issues);
+                condition, conditionNote, specs, cardStatus, cardConfidence, cardMeta, missingRequired, issues,
+                unfinished);
     }
 }

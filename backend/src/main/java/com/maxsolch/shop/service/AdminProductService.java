@@ -120,6 +120,7 @@ public class AdminProductService {
         // Unfinished until the card is done: hidden, DRAFT — whatever the form asked for.
         p.setActive(false);
         p.setCardStatus(CardStatus.DRAFT);
+        p.setUnfinished(true);
         applyVariants(p, req);
         return toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
     }
@@ -157,6 +158,7 @@ public class AdminProductService {
         if (!wasActive && p.isActive()) {
             checkPublishable(p, force);
         }
+        syncUnfinished(p);
         List<byte[]> removedVariants = applyVariants(p, req);
         AdminProductDto saved = toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
         // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
@@ -186,6 +188,7 @@ public class AdminProductService {
             checkPublishable(p, force);
         }
         p.setActive(active);
+        syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
 
@@ -198,6 +201,7 @@ public class AdminProductService {
     public AdminProductDto setArchived(String id, boolean archived) {
         Product p = load(id);
         p.setArchived(archived);
+        syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
 
@@ -242,6 +246,13 @@ public class AdminProductService {
         if (!force && (p.getCardStatus() == null || p.getCardStatus() == CardStatus.DRAFT)) {
             throw new ConflictException("Карточка не оформлена (черновик) — оформите её или выложите без оформления",
                     CARD_NOT_READY);
+        }
+    }
+
+    /** An unfinished product stops being one once it is published or archived (V53). */
+    public static void syncUnfinished(Product p) {
+        if (p.isActive() || p.isArchived()) {
+            p.setUnfinished(false);
         }
     }
 
@@ -322,7 +333,7 @@ public class AdminProductService {
     /**
      * Category, brand, condition, characteristics and card status (§3.3); {@code null} keeps. The
      * characteristics are validated against the (new) category: a changed category re-checks the
-     * stored ones too. Manual edits never change the card status (only an explicit cardStatus does).
+     * stored ones too. Manual edits never change the card status.
      *
      * @return what the validator dropped
      */
@@ -380,15 +391,9 @@ public class AdminProductService {
             p.setSpecsJson(SpecsJson.write(r.specs()));
             issues = r.issues();
         }
-        if (req.cardStatus() != null) {
-            CardStatus st = CardStatus.parse(req.cardStatus());
-            if (st == null) {
-                throw new BadRequestException("cardStatus: DRAFT | AI_FILLED | READY");
-            }
-            if (st != p.getCardStatus()) {
-                setStatus(p, st, null);
-            }
-        }
+        // cardStatus of the form is ignored: a manual save never changes the card status — only the
+        // cards import and PATCH /products/{id}/card-status do (an admin form that echoed a stale
+        // status used to flip READY cards back to AI_FILLED).
         return issues;
     }
 
@@ -592,6 +597,7 @@ public class AdminProductService {
                 p.getCardConfidence(),
                 SpecsJson.readMap(p.getCardMetaJson()),
                 catalog.missingRequired(categoryId, specs),
-                null);
+                null,
+                p.isUnfinished());
     }
 }
