@@ -226,7 +226,10 @@
   .group:is(:hover, :focus-visible) .mx-cat-art { opacity: 0; transform: translate(-12px, -4px) rotate(-6deg); }
 }
 @media (hover: none) {
-  .mx-peek { --px: 1; right: 4px; bottom: 4px; transform: none; transition: none; }
+  /* wide characters (cfg, tg…) would cover the «N товарів» counter on a ~165px phone tile:
+     tuck everything past ~72 art px behind the right edge */
+  .mx-peek { --px: 1; right: 4px; bottom: 4px; transition: none;
+    transform: translateX(max(0px, calc((var(--w) - 72) * 1px))); }
   .mx-cat-art { display: none; }
 }
 
