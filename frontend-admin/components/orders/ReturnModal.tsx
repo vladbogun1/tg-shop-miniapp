@@ -45,7 +45,8 @@ export function ReturnModal({
   }, [open, orderId]);
 
   const refundable = order ? Math.max(0, (order.receivedMinor ?? 0) - (order.refundedMinor ?? 0)) : 0;
-  const goodsOnly = order?.status === "REJECTED";
+  // Money only: a rejected order (stock settled at rejection) or an overpaid one still in work.
+  const goodsOnly = order?.status === "REJECTED" || order?.status === "NEW" || order?.status === "APPROVED";
 
   // Price of what is being returned now — a suggestion for the refund amount.
   const returnedValue = useMemo(() => {
@@ -101,7 +102,9 @@ export function ReturnModal({
       <div className="flex flex-col gap-4">
         {goodsOnly ? (
           <p className="text-[13px] text-[var(--text-muted)]">
-            Заказ отклонён — склад по нему уже учтён. Здесь можно записать только возврат денег.
+            {order.status === "REJECTED"
+              ? "Заказ отклонён — склад по нему уже учтён. Здесь можно записать только возврат денег."
+              : `Покупатель переплатил ${money(Math.max(0, order.receivedMinor - (order.refundedMinor ?? 0) - order.totalMinor), order.currency)} (после обмена) — запишите, что вернули разницу.`}
           </p>
         ) : (
           <div className="flex flex-col gap-2.5">

@@ -29,6 +29,8 @@ export const ORDER = {
   audit: "e2e0000c-0000-4000-8000-00000000000c",
   /** NEW, 150 ₴ prepayment paid online (monobank invoice, card •••• 1902) — inbox PAYMENT, refund dialog. */
   paidOnline: "e2e0000d-0000-4000-8000-00000000000d",
+  /** DELIVERED, paid in full — exchanged for another product (back to NEW, new ТТН). */
+  exchange: "e2e0000e-0000-4000-8000-00000000000e",
 } as const;
 
 export const CUSTOMER: Record<keyof typeof ORDER, string> = {
@@ -45,6 +47,7 @@ export const CUSTOMER: Record<keyof typeof ORDER, string> = {
   shipped: "Андрій Посилка",
   audit: "Лариса Журнальна",
   paidOnline: "Віра Онлайн",
+  exchange: "Ольга Обмінна",
 };
 
 export const PRODUCT = {

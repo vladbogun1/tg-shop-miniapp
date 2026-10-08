@@ -22,9 +22,10 @@ import {
   WalletMinimal,
   MoreHorizontal,
   Undo2,
+  Repeat,
 } from "lucide-react";
 import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
-import { ordersApi, type AdminOrderDetail, type DeliveryPatch, type ReturnBody } from "@/lib/orders-api";
+import { ordersApi, type AdminOrderDetail, type DeliveryPatch, type ExchangeBody, type ReturnBody } from "@/lib/orders-api";
 import { allowedTargets, shortId, STATUS_ACTION_LABEL, STATUS_LABEL } from "@/lib/orders";
 import { useToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
@@ -49,6 +50,7 @@ import { DiscountModal } from "./DiscountModal";
 import { TrackingModal } from "./TrackingModal";
 import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
+import { ExchangeModal } from "./ExchangeModal";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 
 type Tab = "details" | "chat" | "history";
@@ -94,6 +96,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [exchangeOpen, setExchangeOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [profile, setProfile] = useState<UserCardDto | null>(null);
 
@@ -108,6 +111,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     setTrackingOpen(false);
     setDeliveryOpen(false);
     setReturnOpen(false);
+    setExchangeOpen(false);
     setMoreOpen(false);
   }, [orderId, initialTab]);
 
@@ -261,6 +265,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     }
   }
 
+  async function saveExchange(body: ExchangeBody) {
+    const id = orderId;
+    if (!id) return;
+    const msg = body.targetStatus === "APPROVED" ? "Обмен оформлен — заказ ждёт отправки" : "Обмен оформлен — заказ снова в «Новых»";
+    if (await run("exchange", () => ordersApi.exchange(id, body), msg)) {
+      setExchangeOpen(false);
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["order-audit", id] });
+    }
+  }
+
   function requestStatus(target: OrderStatus) {
     if (NEEDS_MODAL.includes(target)) setPendingTarget(target);
     else void applyStatus({ status: target });
@@ -311,7 +326,12 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     !!order &&
     (order.status === "SHIPPED" ||
       order.status === "DELIVERED" ||
-      (order.status === "REJECTED" && order.receivedMinor > (order.refundedMinor ?? 0)));
+      (order.status === "REJECTED" && order.receivedMinor > (order.refundedMinor ?? 0)) ||
+      // After an exchange for something cheaper: the overpayment can go back before shipping.
+      ((order.status === "NEW" || order.status === "APPROVED") &&
+        order.receivedMinor - (order.refundedMinor ?? 0) > order.totalMinor));
+  // Exchange: the goods reached (or are on the way to) the customer — swap them in this same order.
+  const canExchange = !!order && (order.status === "SHIPPED" || order.status === "DELIVERED");
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
@@ -390,6 +410,9 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
               onSelect: () => requestStatus(t),
             };
           }),
+        ...(canExchange
+          ? [{ key: "exchange", label: "Обмен", icon: <Repeat className="h-4 w-4" />, onSelect: () => setExchangeOpen(true) }]
+          : []),
         ...(canReturn
           ? [{ key: "return", label: "Возврат", icon: <Undo2 className="h-4 w-4" />, onSelect: () => setReturnOpen(true) }]
           : []),
@@ -464,6 +487,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onEditTracking: () => setTrackingOpen(true),
                       onOpenCustomer: order.tgUserId ? openCustomer : undefined,
                       onReturn: canReturn ? () => setReturnOpen(true) : undefined,
+                      onExchange: canExchange ? () => setExchangeOpen(true) : undefined,
                       onPaymentChanged: refreshLists,
                       paymentRef,
                     }}
@@ -579,6 +603,14 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         loading={busyKey === "return"}
         onClose={() => setReturnOpen(false)}
         onSave={saveReturn}
+      />
+
+      <ExchangeModal
+        open={exchangeOpen}
+        order={order ?? null}
+        loading={busyKey === "exchange"}
+        onClose={() => setExchangeOpen(false)}
+        onSave={saveExchange}
       />
 
       <ItemPicker

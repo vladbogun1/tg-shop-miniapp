@@ -19,6 +19,7 @@ import {
   Pencil,
   Undo2,
   Wallet,
+  Repeat,
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
@@ -48,6 +49,8 @@ export interface DetailHandlers {
   onEditTracking: () => void;
   onOpenCustomer?: () => void;
   onReturn?: () => void;
+  /** Exchange goods (shipped / delivered orders): back to NEW for a new ТТН. */
+  onExchange?: () => void;
   /** Invoices refreshed or refunded — reload the order and the lists. */
   onPaymentChanged?: () => void;
   /** The «Онлайн-оплата» section, to scroll to it («Внимание» → «Оплаты»). */
@@ -271,7 +274,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
         </div>
-        {(editable || h.onReturn) && (
+        {(editable || h.onReturn || h.onExchange) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {editable && (
               <>
@@ -282,6 +285,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   {order.discountMinor > 0 ? "Изменить скидку" : "Скидка"}
                 </Button>
               </>
+            )}
+            {h.onExchange && (
+              <Button size="sm" variant="surface" icon={<Repeat className="h-4 w-4" />} onClick={h.onExchange}>
+                Обмен
+              </Button>
             )}
             {h.onReturn && (
               <Button size="sm" variant="surface" icon={<Undo2 className="h-4 w-4" />} onClick={h.onReturn}>
@@ -310,6 +318,29 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           <p className="mt-3 text-[12px] font-semibold text-[var(--text-muted)]">
             ↩ Возврат оформлен {formatDateTime(order.returnedAt)}
           </p>
+        )}
+        {(order.exchanges?.length ?? 0) > 0 && (
+          <div className="mt-3 flex flex-col gap-2">
+            {order.exchanges!.map((ex, i) => (
+              <div key={i} className="card-2 px-3 py-2.5 text-[12.5px]">
+                <div className="font-display mb-1 flex flex-wrap items-center gap-x-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--accent-hi)]">
+                  <Repeat className="h-3.5 w-3.5" /> Обмен {formatDateTime(ex.createdAt)}
+                  {ex.adminName && <span className="normal-case tracking-normal text-[var(--text-faint)]">· {ex.adminName}</span>}
+                </div>
+                <div className="text-[var(--text-muted)]">
+                  <span className="font-semibold text-[var(--text)]">Вернули:</span> {ex.returnedSummary}
+                </div>
+                <div className="text-[var(--text-muted)]">
+                  <span className="font-semibold text-[var(--text)]">Взамен:</span> {ex.givenSummary}
+                </div>
+                <div className="tabular text-[var(--text-faint)]">
+                  Сумма {money(ex.totalBeforeMinor, order.currency)} → {money(ex.totalAfterMinor, order.currency)}
+                  {ex.previousTracking ? ` · старая ТТН ${ex.previousTracking}` : ""}
+                </div>
+                {ex.note && <div className="text-[var(--text-faint)]">{ex.note}</div>}
+              </div>
+            ))}
+          </div>
         )}
       </Section>
     </div>

@@ -7,6 +7,7 @@ import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.i18n.CustomerRejectReason;
+import com.maxsolch.shop.repository.OrderExchangeRepository;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
@@ -51,6 +52,7 @@ public class OrderQueryService {
     private final TranslationService translationService;
     private final UserRepository userRepository;
     private final CustomerRejectReason customerRejectReason;
+    private final OrderExchangeRepository exchangeRepository;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
@@ -60,7 +62,8 @@ public class OrderQueryService {
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
                              UserRepository userRepository,
-                             CustomerRejectReason customerRejectReason) {
+                             CustomerRejectReason customerRejectReason,
+                             OrderExchangeRepository exchangeRepository) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -70,6 +73,7 @@ public class OrderQueryService {
         this.translationService = translationService;
         this.userRepository = userRepository;
         this.customerRejectReason = customerRejectReason;
+        this.exchangeRepository = exchangeRepository;
     }
 
     /**
@@ -245,7 +249,9 @@ public class OrderQueryService {
                 o.isPaid(),
                 o.getPaidAt(),
                 o.getPrepaymentMinor(),
-                receivedMinor(o),
+                // The admin sees what really arrived (an exchange for something cheaper leaves it
+                // above the total — that overpayment is to be refunded); the customer, the capped.
+                customer ? receivedMinor(o) : Math.max(0, o.getReceivedMinor()),
                 o.getPaymentDueAt(),
                 OrderService.amountDueMinor(o),
                 sourceOf(o),
@@ -259,7 +265,12 @@ public class OrderQueryService {
                 o.getCancelRequestReason(),
                 o.getCancelRequestedAt(),
                 o.getCancelRequestResolvedAt(),
-                o.getCancelRequestAdminComment());
+                o.getCancelRequestAdminComment(),
+                customer ? List.of() : exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
+                        .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
+                                e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
+                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName()))
+                        .toList());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

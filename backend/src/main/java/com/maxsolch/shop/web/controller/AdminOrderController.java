@@ -293,6 +293,34 @@ public class AdminOrderController {
         return orderQueryService.toDetail(r.order());
     }
 
+    @PostMapping("/{id}/exchange")
+    @Operation(summary = "Exchange goods in a shipped / delivered order: returned units (restock or write off), "
+            + "replacement lines at today's price; the order goes back to NEW (or APPROVED) for a new ТТН")
+    public OrderDetailDto exchange(@PathVariable String id,
+                                   @Valid @RequestBody OrderAdjustmentDtos.ExchangeRequest req) {
+        List<OrderAdjustmentService.ReturnLine> returned = req.returned() == null ? List.of()
+                : req.returned().stream()
+                        .map(l -> new OrderAdjustmentService.ReturnLine(l.itemId(), l.quantity(),
+                                l.restock() == null || l.restock()))
+                        .toList();
+        List<OrderAdjustmentService.ExchangeNewLine> items = req.items() == null ? List.of()
+                : req.items().stream()
+                        .map(l -> new OrderAdjustmentService.ExchangeNewLine(l.productId(), l.variantId(), l.quantity()))
+                        .toList();
+        OrderStatus target = OrderStatus.NEW;
+        if (req.targetStatus() != null && !req.targetStatus().isBlank()) {
+            try {
+                target = OrderStatus.valueOf(req.targetStatus().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("неизвестный статус: " + req.targetStatus());
+            }
+        }
+        OrderAdjustmentService.Result r = adjustments.exchange(load(id).getId(), returned, items, target,
+                req.notifyCustomer() == null || req.notifyCustomer(), req.note(), audit.currentAdminName());
+        audit.record("ORDER_EXCHANGE", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
+    }
+
     @PatchMapping("/{id}/paid")
     @Operation(summary = "Set the order's paid flag")
     public OrderDetailDto setPaid(@PathVariable String id,

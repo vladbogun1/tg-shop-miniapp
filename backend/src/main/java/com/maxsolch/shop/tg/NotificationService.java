@@ -291,6 +291,38 @@ public class NotificationService {
         }
     }
 
+    /** An admin exchanged goods in the order → DM the customer what goes out instead. */
+    public void notifyCustomerExchange(Order order, String givenSummary) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String cur = nz(order.getCurrency());
+            StringBuilder t = new StringBuilder();
+            t.append(messages.get(locale, "bot.exchange.title")).append('\n');
+            t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            t.append(messages.get(locale, "bot.exchange.body", escHtml(nz(givenSummary)))).append('\n');
+            long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
+            if (cod > 0) {
+                t.append(messages.get(locale, "bot.exchange.toPay", money(cod) + " " + cur)).append('\n');
+            }
+            t.append(messages.get(locale, "bot.exchange.ttn"));
+            dm("ORDER_EXCHANGE", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerExchange failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** The tracking number was corrected after shipping → DM the customer the new one. */
     public void notifyCustomerTracking(Order order) {
         if (!enabled()) {
