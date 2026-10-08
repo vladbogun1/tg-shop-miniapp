@@ -6,7 +6,8 @@ import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { Spr, type SpriteName } from "@/components/mascot/Sprite";
 import { CategorySprite } from "@/components/mascot/CategorySprite";
-import { CoinPop, HeroScene } from "@/components/mascot/scenes";
+import { HeroBanner } from "@/components/mascot/HeroBanner";
+import { CoinPop } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
@@ -75,12 +76,9 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
               </ButtonLink>
             </div>
           </div>
-          {/* Live pixel scene (decorative) in a HUD frame: the ChiSetup forklift delivers a box to the
-              «21» mascot. Under the copy on phones/tablets, the right column from lg. Whole-pixel
-              scale per breakpoint lives in mascot.css (.mx-hero). */}
-          <div aria-hidden className="hud-frame relative flex justify-center overflow-hidden rounded-[var(--r-card)] border border-[var(--line)] bg-[radial-gradient(ellipse_at_70%_80%,rgba(255,102,0,.16),transparent_62%),linear-gradient(180deg,#151517,#0F0F11)] px-1 py-4 sm:p-4">
-            <HeroScene />
-          </div>
+          {/* Category slides (slogan + device icon) with the «21» mascot peeking from the corner:
+              under the copy on phones/tablets, the right column from lg (HeroBanner, hero-banner.css). */}
+          <HeroBanner categories={categories} />
         </div>
       </section>
 

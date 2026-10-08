@@ -7,7 +7,7 @@ import "./mascot.css";
  * Everything here is decorative: aria-hidden, alt="", no pointer events.
  */
 
-/** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json (the hero scene has its own art in /mascot/hero, see scenes.tsx). */
+/** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json. */
 export const SPRITES = {
   devices: [66, 56, 1],
   don_ua: [58, 56, 1],
