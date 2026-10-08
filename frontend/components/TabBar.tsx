@@ -16,7 +16,7 @@
  *
  * Compact (64px instead of 84): smaller paddings, icons and labels. In the catalogue it also slides
  * away while the list scrolls down and comes back on the first scroll up, at the very top or at the
- * very end of the list — the
+ * very end of the list, and 5 s after the scrolling stops — the
  * catalogue docks nothing to the bottom, so `--tabbar-h` stays as it is there.
  */
 import { motion } from "framer-motion";
@@ -36,6 +36,8 @@ const TABS = [
 
 /** Bar height + its bottom margin; mirrored into `--tabbar-h` for the docked blocks. */
 const BAR_H = "64px";
+/** After scrolling stops, the slid-away bar returns by itself. */
+const IDLE_SHOW_MS = 5000;
 
 export function TabBar() {
   const t = useT();
@@ -53,7 +55,11 @@ export function TabBar() {
       return;
     }
     lastY.current = window.scrollY;
+    // once the reading stops, the bar comes back by itself and stays until the next scroll down
+    let idleTimer = 0;
     const onScroll = () => {
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => setTucked(false), IDLE_SHOW_MS);
       const y = window.scrollY;
       const dy = y - lastY.current;
       if (Math.abs(dy) < 8) return; // ignore jitter and momentum tails
@@ -63,7 +69,10 @@ export function TabBar() {
       lastY.current = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(idleTimer);
+    };
   }, [autoHide]);
 
   // something just went into the cart: bring the bar back (it may have slid away) and give the cart
