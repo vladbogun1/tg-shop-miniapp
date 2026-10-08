@@ -63,7 +63,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
   // ---- 1. selection + prompt ------------------------------------------------
   // Hidden unfinished products first (they are not on sale until completed), else the backlog.
-  const [mode, setMode] = useState<Mode>(() => (items.some((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active === false) ? "unfinished" : "draft"));
+  const [mode, setMode] = useState<Mode>(() => (items.some((i) => i.unfinished === true) ? "unfinished" : "draft"));
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -81,8 +81,8 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
   const pools = useMemo(
     () => ({
-      unfinished: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active === false),
-      draft: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active !== false),
+      unfinished: sorted.filter((i) => i.unfinished === true),
+      draft: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true),
       incomplete: sorted.filter((i) => (i.missingRequired?.length ?? 0) > 0),
       lowconf: sorted.filter((i) => i.cardStatus === "AI_FILLED" && (i.cardConfidence ?? 0) < LOW_CONFIDENCE),
       all: sorted,

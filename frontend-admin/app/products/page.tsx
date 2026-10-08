@@ -6,7 +6,7 @@
  *  - search by title (and brand), filters: category (tree, «Без категории»), brand, card status
  *    (Черновик / От ИИ / Проверена / Неполная), condition; status chips with counts
  *    (Все / В наличии / Закончились (видны) / Скрытые / Незавершённые),
- *  - hidden DRAFT cards = «Незавершён» (created with the short form): «Оформить с ИИ» opens
+ *  - `unfinished` products = «Незавершён» (created with the short form, not published yet): «Оформить с ИИ» opens
  *    CardCompletionModal; turning a DRAFT card on goes through the publishing gate,
  *  - smart default sort (active-but-out-of-stock surfaced first) + manual sorts,
  *  - list view (DEFAULT) ⇄ cards view toggle; the whole row opens the editor,
@@ -61,9 +61,9 @@ type CardFilter = "" | CardStatus | "INCOMPLETE";
 const NO_CATEGORY = "__none";
 const NO_BRAND = "__none";
 
-/** Created with the short form and not completed yet: hidden + DRAFT card. */
+/** Created with the short form and not published/archived yet (backend flag, V53). */
 function isUnfinished(p: Product): boolean {
-  return p.active === false && (p.cardStatus ?? "DRAFT") === "DRAFT";
+  return p.unfinished === true;
 }
 type SortKey =
   | "smart"
@@ -668,7 +668,7 @@ function RowMenu({ onEdit, onArchive, onComplete }: { onEdit: () => void; onArch
   );
 }
 
-/** «Незавершён» for hidden drafts, otherwise the card status (+ «неполная»), and the condition. */
+/** «Незавершён» for unfinished products, otherwise the card status (+ «неполная»), and the condition. */
 function CardMarks({ p, missing }: { p: Product; missing: number }) {
   if (isUnfinished(p)) {
     return (

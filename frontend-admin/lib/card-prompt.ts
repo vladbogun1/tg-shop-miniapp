@@ -293,6 +293,8 @@ export interface CardItem {
   price?: number | null;
   active?: boolean | null;
   stock?: number | null;
+  /** V53: created via the short admin form and not yet published/archived («Незавершённые»). */
+  unfinished?: boolean | null;
 }
 
 const CONDITION_RU: Record<string, string> = { NEW: "Новый", MARKDOWN: "Уценка", USED: "Б/у" };

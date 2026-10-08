@@ -24,7 +24,7 @@ type QFilter = "unfinished" | "ai" | "draft" | "incomplete" | "ready" | "all";
 
 const STATUS_ORDER: Record<string, number> = { AI_FILLED: 0, DRAFT: 1, READY: 2 };
 const isDraft = (i: CardItem) => (i.cardStatus ?? "DRAFT") === "DRAFT";
-const isUnfinished = (i: CardItem) => isDraft(i) && i.active === false;
+const isUnfinished = (i: CardItem) => i.unfinished === true;
 
 export function CardQueue({ items, schema }: { items: CardItem[]; schema: CardSchema | undefined }) {
   const qc = useQueryClient();

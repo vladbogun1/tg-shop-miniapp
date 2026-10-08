@@ -36,6 +36,8 @@ export default function CardsPage() {
   const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
   // Ids over ALL products: the same product keeps its "p…" id whatever is selected.
   const ids = useMemo(() => assignCardIds(items.map((i) => i.id)), [items]);
+  // «На витрине без оформления»: DRAFT cards already on sale.
+  const draftActive = useMemo(() => items.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active === true).length, [items]);
   const fetching = itemsQ.isFetching || schemaQ.isFetching || statsQ.isFetching;
 
   return (
@@ -61,7 +63,7 @@ export default function CardsPage() {
       {stats && (
         <motion.div variants={staggerContainer} initial="initial" animate="animate" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Незавершённые (скрыты)" rawValue={stats.unfinished} icon={EyeOff} accent="var(--warn)" hint="не продаются, пока не оформлены" />
-          <StatCard label="На витрине без оформления" rawValue={stats.draftActive} icon={FilePen} accent="var(--text-muted)" hint="продаются, характеристик нет" />
+          <StatCard label="На витрине без оформления" rawValue={draftActive} icon={FilePen} accent="var(--text-muted)" hint="продаются, характеристик нет" />
           <StatCard label="От ИИ — ждут проверки" rawValue={stats.aiFilled} icon={Sparkles} accent="var(--info)" hint="проверьте в «Очереди»" />
           <StatCard label="Проверены" rawValue={stats.ready} icon={CheckCheck} accent="var(--ok)" hint={stats.incomplete ? `неполных: ${stats.incomplete}` : undefined} />
         </motion.div>

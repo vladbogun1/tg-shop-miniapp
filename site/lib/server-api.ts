@@ -90,9 +90,11 @@ export async function getCatalogSchema(locale: Locale): Promise<CatalogSchema> {
  * Every product of a category subtree (or the whole catalog / a search) in one response
  * (`all=1`, backend caps it at 1000) — the site filters, counts facets, sorts and paginates itself
  * with shared/catalog.ts. `category` may be the virtual "utsenka".
+ * `view=card`: light items (no description / SEO / conditionNote / tags, first 2 images) — listings
+ * must not read those fields; the product page loads the full product by slug.
  */
 export async function getListingProducts(locale: Locale, opts: { category?: string | null; q?: string } = {}): Promise<StorefrontProduct[]> {
-  const sp = new URLSearchParams({ all: "1" });
+  const sp = new URLSearchParams({ all: "1", view: "card" });
   if (opts.category) sp.set("category", opts.category);
   if (opts.q) sp.set("q", opts.q);
   const page = await getJson<PublicProductPage | StorefrontProduct[]>(`/api/public/products?${sp.toString()}`, locale);

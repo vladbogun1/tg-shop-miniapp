@@ -12,10 +12,8 @@ export interface CardStats {
   aiFilled: number;
   ready: number;
   incomplete: number;
-  /** Hidden drafts: created with a title only, not yet completed (never shown to buyers). */
+  /** Created via the short admin form, not yet published/archived (backend flag, V53). */
   unfinished: number;
-  /** Drafts already on the storefront (legacy products without a card). */
-  draftActive: number;
 }
 
 export type CardExportStatus = "draft" | "ai_filled" | "incomplete" | "unfinished" | "all";
@@ -145,14 +143,12 @@ export const cardsApi = {
   async stats(): Promise<CardStats> {
     const o = await apiGet<Record<string, unknown>>("/api/admin/cards/stats");
     const draft = n(o.draft);
-    const unfinished = n(o.unfinished);
     return {
       draft,
       aiFilled: n(o.aiFilled ?? o.ai_filled),
       ready: n(o.ready),
       incomplete: n(o.incomplete),
-      unfinished,
-      draftActive: typeof o.draftActive === "number" ? o.draftActive : Math.max(0, draft - unfinished),
+      unfinished: n(o.unfinished),
     };
   },
 

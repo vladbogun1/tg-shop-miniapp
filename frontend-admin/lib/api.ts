@@ -80,6 +80,8 @@ export type AdminProduct = Product & {
   cardMeta?: CardMeta | null;
   /** Required attribute keys without a value, when the backend computes it (else computed client-side). */
   missingRequired?: string[] | null;
+  /** V53: created via the short admin form and not yet published/archived («Незавершён»). */
+  unfinished?: boolean;
 };
 
 /** products.card_meta — per-field AI confidence and sources of the last «Карточки» import. */

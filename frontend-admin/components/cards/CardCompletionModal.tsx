@@ -160,7 +160,7 @@ export function CardCompletionModal({
 
   function close() {
     if (!saved || !published) {
-      if (reason === "created" || item?.active === false) push(HIDDEN_TOAST, "info");
+      if (reason === "created" || item?.unfinished === true) push(HIDDEN_TOAST, "info");
     }
     onClose({ saved, published });
   }
@@ -198,7 +198,7 @@ export function CardCompletionModal({
         push(`Карточка сохранена, товар на витрине${translatedNote(one)}`, "ok");
         onClose({ saved: true, published: true });
       } else if (!publish) {
-        push(item?.active === false ? HIDDEN_TOAST : "Карточка сохранена", item?.active === false ? "info" : "ok");
+        push(item?.unfinished === true ? HIDDEN_TOAST : "Карточка сохранена", item?.unfinished === true ? "info" : "ok");
         onClose({ saved: true, published: false });
       }
     } catch (e) {
@@ -272,7 +272,7 @@ export function CardCompletionModal({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {(reason === "created" || item.active === false) && !published && (
+            {(reason === "created" || item.unfinished === true) && !published && (
               <div className="flex gap-3 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-3">
                 <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" />
                 <div className="text-[13px] leading-relaxed text-[var(--text)]">
