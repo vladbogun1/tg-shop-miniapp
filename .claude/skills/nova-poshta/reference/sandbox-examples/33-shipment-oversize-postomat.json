@@ -1,0 +1,48 @@
+{
+  "_title": "Слишком большая посылка в поштомат",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "status": "ReadyToShip",
+      "clientOrder": "TEST-1003",
+      "note": "test cod",
+      "payerType": "Sender",
+      "sender": {
+        "countryCode": "UA",
+        "divisionNumber": "38/1",
+        "name": "Тестовий Відправник",
+        "phone": "380000000000"
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "divisionNumber": "38/3158",
+        "name": "Тестовий Отримувач",
+        "phone": "380671234567"
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "parcelDescription": "Клавіатура",
+          "insuranceCost": 2000,
+          "actualWeight": 25000,
+          "length": 700,
+          "width": 450,
+          "height": 350
+        }
+      ]
+    }
+  },
+  "status": 422,
+  "response": {
+    "errors": {
+      "errorMessage": "Max param value sizes is 60"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_title": "limit > 101",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/divisions?countryCodes[]=UA&limit=1000&page=2",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 422,
+  "response": {
+    "errors": {
+      "limit": "The limit field must not be greater than 101."
+    }
+  }
+}

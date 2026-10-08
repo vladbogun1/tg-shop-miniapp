@@ -1,0 +1,16 @@
+{
+  "_title": "Удаление подписки",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "DELETE",
+    "url": "https://api-stage.novapost.com/v.1.0/tracking-push/subscribers/<id>",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "Повторно: 422 {\"errors\":{\"id\":\"The selected id is invalid.\"}}.",
+  "response": {
+    "message": "Subscription successfully deleted."
+  }
+}

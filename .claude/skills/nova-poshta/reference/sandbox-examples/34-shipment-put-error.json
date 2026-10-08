@@ -1,0 +1,49 @@
+{
+  "_title": "PUT /shipments/{id} для UA",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "PUT",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/<id>",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "status": "ReadyToShip",
+      "clientOrder": "TEST-1001",
+      "note": "updated note",
+      "payerType": "Sender",
+      "sender": {
+        "countryCode": "UA",
+        "divisionNumber": "38/1",
+        "name": "Тестовий Відправник",
+        "phone": "380000000000"
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "divisionNumber": "11/2",
+        "name": "Тестовий Отримувач",
+        "phone": "380671234567"
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "parcelDescription": "Аксесуари для комп'ютера",
+          "insuranceCost": 1500,
+          "actualWeight": 1800,
+          "length": 300,
+          "width": 200,
+          "height": 100
+        }
+      ]
+    }
+  },
+  "status": 422,
+  "_note": "Тестовым ключом физлица не работает: \"Vip not found in Ukraine\" (та же ошибка, что на неизвестный ключ) — нужен договорной бизнес-клиент.",
+  "response": {
+    "errors": {
+      "errorMessage": "Vip not found in Ukraine"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "_title": "BasicTracking: история после удаления ТТН",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/tracking/history?numbers[]=20400554016338",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "code — строка. Неизвестный номер: 404 {\"errors\":{\"errorMessage\":\"not_found\"}}.",
+  "response": {
+    "items": [
+      {
+        "id": "01a11ad2-9de6-7dd3-9724-8f53707e3af9",
+        "number": "20400554016338",
+        "scheduled_delivery_date": "0001-01-01T00:00:00.000000Z",
+        "history_tracking": [
+          {
+            "code": "1",
+            "code_name": "Зареєстровано та готується",
+            "country_code": "UA",
+            "settlement": "",
+            "date": "2026-10-08T09:22:53.568000Z"
+          },
+          {
+            "code": "2",
+            "code_name": "Скасовано",
+            "country_code": "",
+            "settlement": "",
+            "date": "2026-10-08T09:23:28.973000Z"
+          }
+        ],
+        "related_numbers": []
+      }
+    ]
+  }
+}

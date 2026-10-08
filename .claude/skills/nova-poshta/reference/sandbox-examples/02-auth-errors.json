@@ -1,0 +1,15 @@
+{
+  "_title": "Ошибки авторизации: неверный ключ",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/clients/authorization?apiKey=0000000000000000000000000000000000000000"
+  },
+  "status": 422,
+  "_note": "Без apiKey: 422 {\"errors\":{\"apiKey\":\"The api key field is required.\"}}. Без Authorization или мусорный JWT: 401 {\"errors\":{\"errorMessage\":\"Invalid token\"}}. Протухший/с чужой подписью: 401 {\"errors\":{\"errorMessage\":\"Expired token\"}}.",
+  "response": {
+    "errors": {
+      "errorMessage": "Vip not found in Ukraine"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "_title": "Список подписок (общий тестовый клиент!)",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/tracking-push/subscribers",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "Тестовый ключ общий: в списке чужая подписка типа creator. Чужие подписки не трогать.",
+  "response": {
+    "current_page": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "total": 1,
+    "items": [
+      {
+        "id": "35cceedf-2683-47d2-a7ec-fd2b1c2f26b7",
+        "type": "creator",
+        "url": "<URL іншого клієнта пісочниці>",
+        "isActive": true,
+        "is_active": true,
+        "phone": "380000000000",
+        "cid": "<cid тестового клієнта>",
+        "eventTypes": [
+          "ReadyToShip",
+          "AwaitingOnDivision",
+          "Received",
+          "Returned",
+          "Deleted",
+          "ArrivalSC",
+          "InCityRecipient"
+        ],
+        "event_types": [
+          "ReadyToShip",
+          "AwaitingOnDivision",
+          "Received",
+          "Returned",
+          "Deleted",
+          "ArrivalSC",
+          "InCityRecipient"
+        ],
+        "sendWarnings": false,
+        "send_warnings": false,
+        "sendFullHistoryForMultiParcel": false,
+        "warningEmail": null,
+        "warning_email": null,
+        "companyTins": [],
+        "company_tins": [],
+        "secretToken": "<секрет іншого клієнта пісочниці>",
+        "secret_token": "<секрет іншого клієнта пісочниці>",
+        "secretTokenHeaderName": "X-NP-Key",
+        "secret_token_header_name": "X-NP-Key",
+        "contentType": "application/json",
+        "updatedAt": "2026-08-12T17:10:02.665000Z",
+        "updated_at": "2026-08-12T17:10:02.665000Z",
+        "createdAt": "2026-08-12T17:10:02.665000Z",
+        "created_at": "2026-08-12T17:10:02.665000Z",
+        "numbers": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "_title": "Отделения Харькова (CargoBranch)",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/divisions?countryCodes[]=UA&settlementIds[]=133451&limit=5&page=1",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "externalId = Ref отделения из старого API (AddressGeneral.getWarehouses) — сверено на №1 и поштомате №3158. number = WarehouseIndex старого API (\"38/1\"), а не Number (\"1\"). limit максимум 101.",
+  "response": {
+    "current_page": 1,
+    "last_page": 357,
+    "per_page": 5,
+    "total": 1785,
+    "from": null,
+    "to": null,
+    "items": [
+      {
+        "id": 7386,
+        "name": "Відділення №1: вул. Польова, 67",
+        "shortName": "Відділення №1: вул. Польова, 67",
+        "externalId": "169227f4-e1c2-11e3-8c4a-0050568002cf",
+        "source": "NPUA",
+        "countryCode": "UA",
+        "settlement": {
+          "id": 133451,
+          "name": "місто Харків",
+          "region": {
+            "id": 416,
+            "name": "Харківська область",
+            "parent": null
+          }
+        },
+        "address": "61068, Україна, Харківська область, місто Харків, Польова, 67",
+        "displayAddress": "Харків, Польова, 67",
+        "number": "38/1",
+        "status": "Working",
+        "customerServiceAvailable": true,
+        "divisionCategory": "CargoBranch",
+        "paymentEnabledDelivery": false,
+        "paymentEnabledPickup": false,
+        "publicPhones": [
+          "0800500609"
+        ],
+        "internalPhones": [],
+        "responsiblePerson": "<ПІБ відповідального прибрано>",
+        "partner": null,
+        "ownerDivision": null,
+        "latitude": 49.9741432334,
+        "longitude": 36.2719035017,
+        "distance": null,
+        "longTermLocation": false,
+        "maxWeightPlaceSender": 1100000,
+        "maxLengthPlaceSender": 6000,
+        "maxWidthPlaceSender": 1700,
+        "maxHeightPlaceSender": 2200,
+        "maxWeightPlaceRecipient": 1100000,
+        "maxLengthPlaceRecipient": 6000,
+        "maxWidthPlaceRecipient": 1700,
+        "maxHeightPlaceRecipient": 2200,
+        "prohibitedSending": false,
+        "prohibitedIssuance": false,
+        "maxCostPlace": 99999999.99,
+        "maxDeclaredCostPlace": 99999999.99,
+        "workSchedule": [
+          {
+            "day": "sunday",
+            "from": "08:00",
+            "to": "19:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "monday",
+            "from": "08:00",
+            "to": "21:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "tuesday",
+            "from": "08:00",
+            "to": "21:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "wednesday",
+            "from": "08:00",
+            "to": "21:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "thursday",
+            "from": "08:00",
+            "to": "21:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "friday",
+            "from": "08:00",
+            "to": "21:00",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "saturday",
+            "from": "08:00",
+            "to": "19:00",
+            "breakFrom": null,
+            "breakTo": null
+          }
+        ],
+        "girthValue": null,
+        "girthFormula": null,
+        "settings": [
+          {
+            "id": 2124,
+            "divisionId": 7386,
+            "from": "2025-06-17T09:23:26.104125Z",
+            "to": "3024-06-17T09:23:26.104130Z",
+            "name": "additionalId",
+            "value": "75a3aafc-1ce0-11e2-8db4-d4ae52ab9fab",
+            "createdAt": "2022-10-01T16:55:23.000000Z",
+            "updatedAt": "2026-08-24T23:20:22.935957Z",
+            "deletedAt": null
+          }
+        ],
+        "logisticsCode": "Д4/В1/В1",
+        "additionalIds": [
+          {
+            "type": "InternetAddress",
+            "partner": "NPUkraine",
+            "countryCode": "UA",
+            "value": "169227f4-e1c2-11e3-8c4a-0050568002cf"
+          }
+        ],
+        "photos": [],
+        "attributes": {
+          "servicingDepartmentForParcel": 7386,
+          "servicingDepartmentForCargo": 7386,
+          "servicingDepartmentForSmallCargo": 7386,
+          "bikeParking": true,
+          "hasGenerator": true,
+          "hasMirror": true,
+          "hasFittingRoom": true,
+          "charging": true,
+          "selfServiceWorkplacesCount": 1,
+          "callButton": true,
+          "ramp": true,
+          "parking": true,
+          "utilization": false,
+          "utilizationDivision": null
+        },
+        "createdAt": "2022-10-01T16:55:23.000000Z",
+        "updatedAt": "2026-08-24T23:20:22.937604Z",
+        "deletedAt": null,
+        "timeZone": {
+          "id": null,
+          "name": ""
+        },
+        "fullAddress": {
+          "country": "Ukraine",
+          "settlement": "місто Харків",
+          "street": "Польова",
+          "building": "67",
+          "note": "",
+          "zipcode": "61068"
+        }
+      }
+    ]
+  }
+}

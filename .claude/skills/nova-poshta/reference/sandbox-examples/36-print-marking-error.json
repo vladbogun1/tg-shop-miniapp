@@ -1,0 +1,18 @@
+{
+  "_title": "Печать маркировки UA",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/print?numbers[]=<ТТН>&type=marking",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 422,
+  "_note": "type=marking (с printSizeType/deliveryType и без) → 422 \"Server error\"; type=international → 422 \"Print is not supported\".",
+  "response": {
+    "errors": {
+      "errorMessage": "Server error"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "_title": "Добавить номера в подписку — не работает в песочнице",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/tracking-push/subscribers/<id>/numbers",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "numbers": [
+        "20400554016016"
+      ]
+    }
+  },
+  "status": 422,
+  "_note": "Повторено на второй подписке через 8 с — та же ошибка. DELETE /numbers с тем же id отвечает 200 {\"status\":\"error\",…notFoundNumbers}.",
+  "response": {
+    "errors": {
+      "id": "The selected id is invalid."
+    }
+  }
+}

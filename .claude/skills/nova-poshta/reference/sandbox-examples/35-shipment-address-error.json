@@ -1,0 +1,56 @@
+{
+  "_title": "ТТН на адрес (курьер) — не создаётся",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "status": "ReadyToShip",
+      "clientOrder": "TEST-1004",
+      "note": "test",
+      "payerType": "Recipient",
+      "sender": {
+        "countryCode": "UA",
+        "divisionNumber": "38/1",
+        "name": "Тестовий Відправник",
+        "phone": "380000000000"
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "name": "Тестовий Отримувач",
+        "phone": "380671234567",
+        "addressParts": {
+          "city": "місто Київ",
+          "region": "Київська область",
+          "street": "вулиця Хрещатик",
+          "building": "1",
+          "flat": "1",
+          "postCode": "01001"
+        }
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "parcelDescription": "Аксесуари для комп'ютера",
+          "insuranceCost": 1500,
+          "actualWeight": 1000,
+          "length": 300,
+          "width": 200,
+          "height": 100
+        }
+      ]
+    }
+  },
+  "status": 422,
+  "_note": "Просвечивают ошибки старого API (RecipientCityName/RecipientCity) — адресная доставка UA через addressParts в песочнице не заработала.",
+  "response": {
+    "errors": {
+      "errorMessage": "RecipientCityName not selected; RecipientCity is incorrect; Recipient counterparty person creation problem."
+    }
+  }
+}

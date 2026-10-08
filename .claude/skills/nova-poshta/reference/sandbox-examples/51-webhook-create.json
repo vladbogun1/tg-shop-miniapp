@@ -1,0 +1,51 @@
+{
+  "_title": "Создание подписки типа numbers",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/tracking-push/subscribers",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "type": "numbers",
+      "url": "https://demo.chisetup.com.ua/api/np/webhook",
+      "isActive": true,
+      "contentType": "application/json",
+      "eventTypes": [],
+      "secretToken": "TestSecret123",
+      "secretTokenHeaderName": "X-NP-Key"
+    }
+  },
+  "status": 200,
+  "_note": "Ответ 200 (а не 201, как в доке). Поля продублированы camelCase и snake_case.",
+  "response": {
+    "id": "17b305f8-a795-424a-8a8d-ad9bf31e49f0",
+    "type": "numbers",
+    "url": "https://demo.chisetup.com.ua/api/np/webhook",
+    "isActive": true,
+    "is_active": true,
+    "phone": "380000000000",
+    "cid": "<cid тестового клієнта>",
+    "eventTypes": [],
+    "event_types": [],
+    "sendWarnings": false,
+    "send_warnings": false,
+    "sendFullHistoryForMultiParcel": false,
+    "warningEmail": null,
+    "warning_email": null,
+    "companyTins": [],
+    "company_tins": [],
+    "secretToken": "TestSecret123",
+    "secret_token": "TestSecret123",
+    "secretTokenHeaderName": "X-NP-Key",
+    "secret_token_header_name": "X-NP-Key",
+    "contentType": "application/json",
+    "updatedAt": "2026-10-08T09:23:50.390000Z",
+    "updated_at": "2026-10-08T09:23:50.390000Z",
+    "createdAt": "2026-10-08T09:23:50.390000Z",
+    "created_at": "2026-10-08T09:23:50.390000Z",
+    "numbers": null
+  }
+}

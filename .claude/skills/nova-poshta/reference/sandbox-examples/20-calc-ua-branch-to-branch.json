@@ -1,0 +1,79 @@
+{
+  "_title": "Расчёт стоимости Харків→Київ, 2 кг, платит получатель",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/calculations",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "payerType": "Recipient",
+      "sender": {
+        "countryCode": "UA",
+        "divisionId": 7386,
+        "name": "Тестовий Відправник",
+        "phone": "380000000000"
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "divisionId": 10816,
+        "name": "Тестовий Отримувач",
+        "phone": "380000000001"
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "insuranceCost": 3000,
+          "actualWeight": 2000,
+          "length": 300,
+          "width": 200,
+          "height": 150
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "_note": "Без sender.name → 422 \"Contact Sender contains less than 2 words\" (поля name нет в OpenAPI calculations, но оно обязательно). scheduledDeliveryDate для UA = null. Тарифы песочницы не равны боевым.",
+  "response": {
+    "scheduledDeliveryDate": null,
+    "sender": {
+      "countryCode": "UA",
+      "settlementId": 133451,
+      "divisionId": 7386
+    },
+    "recipient": {
+      "countryCode": "UA",
+      "settlementId": 118064,
+      "divisionId": 10816
+    },
+    "services": [
+      {
+        "shipmentId": null,
+        "shipmentParcelRowNumber": null,
+        "serviceId": null,
+        "serviceType": null,
+        "serviceName": null,
+        "serviceCode": null,
+        "amount": 1,
+        "contractNumber": null,
+        "payerType": "Recipient",
+        "paymentStatus": "NeedPay",
+        "divisionId": null,
+        "price": 150,
+        "discount": 0,
+        "cost": 150,
+        "user": "",
+        "shipmentLockVersion": null,
+        "additionalParameters": null,
+        "currencyCode": null,
+        "createdAt": "2026-10-08T09:21:30.643836Z",
+        "updatedAt": "0001-01-01T00:00:00.000000Z",
+        "deliveryType": null,
+        "deliveryTypeName": null
+      }
+    ]
+  }
+}

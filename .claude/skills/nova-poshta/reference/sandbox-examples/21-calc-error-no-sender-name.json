@@ -1,0 +1,40 @@
+{
+  "_title": "Расчёт без sender.name",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/calculations",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "payerType": "Sender",
+      "sender": {
+        "countryCode": "UA",
+        "divisionId": 7386
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "divisionId": 11546
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "insuranceCost": 1500,
+          "actualWeight": 500,
+          "length": 200,
+          "width": 150,
+          "height": 100
+        }
+      ]
+    }
+  },
+  "status": 422,
+  "response": {
+    "errors": {
+      "errorMessage": "Contact Sender contains less than 2 words"
+    }
+  }
+}

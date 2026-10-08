@@ -1,0 +1,26 @@
+{
+  "_title": "Тестовый вебхук на наш URL (у нас пока 404)",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/tracking-push/subscribers/test-webhook",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "numbers": [
+        "SHPL0000000001"
+      ],
+      "id": "<id подписки>",
+      "cid": "<cid тестового клієнта>"
+    }
+  },
+  "status": 406,
+  "_note": "406 \"error send webhook\" — NP получил не-2xx от нашего URL (эндпоинта ещё нет). С рабочим эндпоинтом ожидается 200 {\"success\":…}.",
+  "response": {
+    "errors": {
+      "errorMessage": "error send webhook"
+    }
+  }
+}

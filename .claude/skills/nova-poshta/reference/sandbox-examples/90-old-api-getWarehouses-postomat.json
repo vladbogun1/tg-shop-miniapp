@@ -1,0 +1,121 @@
+{
+  "_title": "Старый API без ключа: AddressGeneral.getWarehouses (поштомат №3158, Харків) — сверка externalId↔Ref",
+  "_captured": "2026-10-08, api.novaposhta.ua (публичный справочник, без apiKey)",
+  "request": {
+    "method": "POST",
+    "url": "https://api.novaposhta.ua/v2.0/json/",
+    "body": {
+      "modelName": "AddressGeneral",
+      "calledMethod": "getWarehouses",
+      "methodProperties": {
+        "CityRef": "db5c88e0-391c-11dd-90d9-001a92567626",
+        "WarehouseId": "3158",
+        "Limit": "2",
+        "Page": "1"
+      }
+    }
+  },
+  "response": {
+    "success": true,
+    "data": [
+      {
+        "SiteKey": "15685",
+        "Description": "Поштомат \"Нова пошта\" №3158: проїзд Рогатинський, 3 (маг. РОСТ)",
+        "DescriptionRu": "Почтомат \"Новая Пошта\"  №3158: проезд Рогатинский, 3 (маг. РОСТ)",
+        "ShortAddress": "Харків, проїзд Рогатинський, 3 (маг. РОСТ)",
+        "ShortAddressRu": "Харьков, проезд Рогатинський, 3 (маг. РОСТ)",
+        "Phone": "",
+        "TypeOfWarehouse": "f9316480-5f2d-425d-bc2c-ac7cd29decf0",
+        "Ref": "40abfb08-ee36-11e8-ad0d-005056b24375",
+        "Number": "3158",
+        "CityRef": "db5c88e0-391c-11dd-90d9-001a92567626",
+        "CityDescription": "Харків",
+        "CityDescriptionRu": "Харьков",
+        "SettlementRef": "e71f8842-4b33-11e4-ab6d-005056801329",
+        "SettlementDescription": "Харків",
+        "SettlementAreaDescription": "Харківська",
+        "SettlementRegionsDescription": "",
+        "SettlementTypeDescription": "місто",
+        "SettlementTypeDescriptionRu": "город",
+        "Longitude": "36.221360000000000",
+        "Latitude": "49.999450000000000",
+        "PostFinance": "0",
+        "BicycleParking": "0",
+        "PaymentAccess": "1",
+        "POSTerminal": "0",
+        "InternationalShipping": "0",
+        "SelfServiceWorkplacesCount": "0",
+        "TotalMaxWeightAllowed": "20",
+        "PlaceMaxWeightAllowed": "0",
+        "SendingLimitationsOnDimensions": {
+          "Width": 40,
+          "Height": 30,
+          "Length": 60
+        },
+        "ReceivingLimitationsOnDimensions": {
+          "Width": 40,
+          "Height": 30,
+          "Length": 60
+        },
+        "Reception": {
+          "Monday": "08:00-21:00",
+          "Tuesday": "08:00-21:00",
+          "Wednesday": "08:00-21:00",
+          "Thursday": "08:00-21:00",
+          "Friday": "08:00-21:00",
+          "Saturday": "09:00-18:00",
+          "Sunday": "-"
+        },
+        "Delivery": {
+          "Monday": "-",
+          "Tuesday": "-",
+          "Wednesday": "-",
+          "Thursday": "-",
+          "Friday": "-",
+          "Saturday": "-",
+          "Sunday": "-"
+        },
+        "Schedule": {
+          "Monday": "00:01-23:59",
+          "Tuesday": "00:01-23:59",
+          "Wednesday": "00:01-23:59",
+          "Thursday": "00:01-23:59",
+          "Friday": "00:01-23:59",
+          "Saturday": "00:01-23:59",
+          "Sunday": "00:01-23:59"
+        },
+        "DistrictCode": "Х03/709",
+        "WarehouseStatus": "Working",
+        "WarehouseStatusDate": "2022-06-05 00:00:00",
+        "WarehouseIllusha": "0",
+        "CategoryOfWarehouse": "Postomat",
+        "Direct": "",
+        "RegionCity": "ХАРКІВ ПОСИЛКОВИЙ",
+        "WarehouseForAgent": "0",
+        "GeneratorEnabled": "0",
+        "MaxDeclaredCost": "29000",
+        "WorkInMobileAwis": "0",
+        "DenyToSelect": "0",
+        "CanGetMoneyTransfer": "0",
+        "HasMirror": "0",
+        "HasFittingRoom": "0",
+        "OnlyReceivingParcel": "0",
+        "PostMachineType": "PartTime",
+        "PostalCodeUA": "61058",
+        "WarehouseIndex": "38/3158",
+        "BeaconCode": "",
+        "Location": "",
+        "PostomatFor": "Sender"
+      }
+    ],
+    "errors": [],
+    "warnings": [],
+    "info": {
+      "totalCount": 1
+    },
+    "messageCodes": [],
+    "errorCodes": [],
+    "warningCodes": [],
+    "infoCodes": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "_title": "JWT по тестовому ключу",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/clients/authorization?apiKey=<TEST_API_KEY>"
+  },
+  "status": 200,
+  "_note": "Payload JWT: {\"iss\":\"np\",\"iat\":…,\"exp\":iat+3600,\"cid\":\"<uuid клиента>\",\"ref\":…,\"src\":\"local\",\"sub\":…}. TTL ровно 3600 c.",
+  "response": {
+    "jwt": "<JWT>"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "_title": "FullTracking по созданной ТТН",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/tracking?numbers[]=20400554016016&withUndeliveryReason=true&withCreatedOnTheBasis=true",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "currentStatus — ОБЪЕКТ (в OpenAPI массив), statusCode — число. В parcels размеры в см и вес в кг (при создании — мм и г!). Неизвестный номер: 404 \"Shipments not found\".",
+  "response": {
+    "items": [
+      {
+        "currentStatus": {
+          "number": "20400554016016",
+          "createdDate": "2026-10-08T09:21:40.219000Z",
+          "scheduledDate": "0001-01-01T00:00:00.000000Z",
+          "scheduledDateOriginal": null,
+          "adjustedDate": null,
+          "closingDate": null,
+          "statusCode": 1,
+          "statusDate": "2026-10-08T09:21:40.288271Z",
+          "deliveryType": "Division",
+          "deliveryCountry": "UA",
+          "recipientName": "Тестовий Отримувач",
+          "status": "Чекаємо на посилку від вас"
+        },
+        "detailsTracking": [
+          {
+            "number": "20400554016016",
+            "date": "2026-10-08T09:21:40.219000Z",
+            "event": "CreateID",
+            "eventStatus": "now",
+            "countryCode": "UA",
+            "code": "1",
+            "parcelNumber": "20400554016016",
+            "postCode": "61068",
+            "hideSettlement": false,
+            "divisionName": "відділення 1",
+            "settlementName": "Харків",
+            "settlementExternalId": "e71f8842-4b33-11e4-ab6d-005056801329",
+            "eventName": "Відправник оформив посилку, але ще не відправив",
+            "postCode1": "61001",
+            "postCode2": "61204"
+          }
+        ],
+        "historyOnlineTracking": [
+          {
+            "number": "20400554016016",
+            "date": "2026-10-08T09:21:40.219000Z",
+            "event": "CreateID",
+            "eventStatus": "now",
+            "countryCode": "UA",
+            "code": "1",
+            "parcelNumber": "20400554016016",
+            "postCode": "61068",
+            "hideSettlement": false,
+            "divisionName": "відділення 1",
+            "settlementName": "Харків",
+            "settlementExternalId": "e71f8842-4b33-11e4-ab6d-005056801329",
+            "eventName": "Відправник оформив посилку, але ще не відправив",
+            "postCode1": "61001",
+            "postCode2": "61204"
+          }
+        ],
+        "parcels": [
+          {
+            "number": "20400554016016",
+            "rowNumber": 1,
+            "untied": false,
+            "cargoCategoryGroup": "parcel",
+            "cargoCategoryId": "",
+            "categoryCargoName": "Посилка",
+            "parcelDescription": "Аксесуари для комп'ютера",
+            "insuranceCost": 1500,
+            "insuranceCostCurrencyCode": "UAH",
+            "length": 30,
+            "width": 20,
+            "height": 10,
+            "actualWeight": 1,
+            "volumetricWeight": 1.5,
+            "lengthCheck": null,
+            "widthCheck": null,
+            "heightCheck": null,
+            "actualWeightCheck": null,
+            "volumetricWeightCheck": null
+          }
+        ],
+        "alternativeNumbers": [],
+        "alternativeNumbersGW": [
+          {
+            "name": "ClientOrder",
+            "number": "TEST-1001",
+            "date": "2026-10-08T09:21:40.288000Z"
+          }
+        ],
+        "alternativeNumbersGWNew": [],
+        "deliveryInfo": null,
+        "undeliveryReasons": [],
+        "createdOnTheBasis": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "_title": "Поштоматы Харькова",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/divisions?countryCodes[]=UA&settlementIds[]=133451&divisionCategories[]=Postomat&limit=2",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "Лимиты: maxWeightPlaceRecipient=20000 г, 600x400x300 мм, maxDeclaredCostPlace=29000.",
+  "response": {
+    "current_page": 1,
+    "last_page": 797,
+    "per_page": 2,
+    "total": 1593,
+    "from": null,
+    "to": null,
+    "items": [
+      {
+        "id": 14462,
+        "name": "Поштомат \"Нова пошта\" №3158: проїзд Рогатинський, 3 (маг. РОСТ)",
+        "shortName": "Поштомат \"Нова пошта\" №3158: проїзд Рогатинський, 3 (маг. РОСТ)",
+        "externalId": "40abfb08-ee36-11e8-ad0d-005056b24375",
+        "source": "NPUA",
+        "countryCode": "UA",
+        "settlement": {
+          "id": 133451,
+          "name": "місто Харків",
+          "region": {
+            "id": 416,
+            "name": "Харківська область",
+            "parent": null
+          }
+        },
+        "address": "61058, Україна, Харківська область, місто Харків, Рогатинський, 3",
+        "displayAddress": "Харків, проїзд Рогатинський, 3 (маг. РОСТ)",
+        "number": "38/3158",
+        "status": "Working",
+        "customerServiceAvailable": true,
+        "divisionCategory": "Postomat",
+        "paymentEnabledDelivery": false,
+        "paymentEnabledPickup": false,
+        "publicPhones": [],
+        "internalPhones": [],
+        "responsiblePerson": "<ПІБ відповідального прибрано>",
+        "partner": null,
+        "ownerDivision": null,
+        "latitude": 49.99945,
+        "longitude": 36.22136,
+        "distance": null,
+        "longTermLocation": false,
+        "maxWeightPlaceSender": 20000,
+        "maxLengthPlaceSender": 600,
+        "maxWidthPlaceSender": 400,
+        "maxHeightPlaceSender": 300,
+        "maxWeightPlaceRecipient": 20000,
+        "maxLengthPlaceRecipient": 600,
+        "maxWidthPlaceRecipient": 400,
+        "maxHeightPlaceRecipient": 300,
+        "prohibitedSending": false,
+        "prohibitedIssuance": false,
+        "maxCostPlace": 99999999.99,
+        "maxDeclaredCostPlace": 29000,
+        "workSchedule": [
+          {
+            "day": "sunday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "monday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "tuesday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "wednesday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "thursday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "friday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          },
+          {
+            "day": "saturday",
+            "from": "00:01",
+            "to": "23:59",
+            "breakFrom": null,
+            "breakTo": null
+          }
+        ],
+        "girthValue": null,
+        "girthFormula": null,
+        "settings": [
+          {
+            "id": 44367,
+            "divisionId": 14462,
+            "from": "2025-04-21T13:43:49.618268Z",
+            "to": "3024-04-21T13:43:49.618273Z",
+            "name": "additionalId",
+            "value": "63aaa7fc-b060-4394-81b8-18cee7dc99dc",
+            "createdAt": "2022-10-01T17:22:28.000000Z",
+            "updatedAt": "2026-05-18T16:59:17.654136Z",
+            "deletedAt": null
+          }
+        ],
+        "logisticsCode": "Х03/710",
+        "additionalIds": [
+          {
+            "type": "InternetAddress",
+            "partner": "NPUkraine",
+            "countryCode": "UA",
+            "value": "40abfb08-ee36-11e8-ad0d-005056b24375"
+          }
+        ],
+        "photos": [],
+        "attributes": {
+          "servicingDepartmentForParcel": 1910540,
+          "servicingDepartmentForCargo": 1910540,
+          "servicingDepartmentForSmallCargo": 1910540,
+          "postomatSending": true,
+          "novaPayServices": true,
+          "utilization": false,
+          "utilizationDivision": null
+        },
+        "createdAt": "2022-10-01T17:22:28.000000Z",
+        "updatedAt": "2026-05-18T16:59:17.656024Z",
+        "deletedAt": null,
+        "timeZone": {
+          "id": null,
+          "name": ""
+        },
+        "fullAddress": {
+          "country": "Ukraine",
+          "settlement": "місто Харків",
+          "street": "Рогатинський",
+          "building": "3",
+          "note": "",
+          "zipcode": "61058"
+        }
+      }
+    ]
+  }
+}

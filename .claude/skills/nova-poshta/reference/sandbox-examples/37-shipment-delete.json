@@ -1,0 +1,16 @@
+{
+  "_title": "Удаление ТТН по id",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "DELETE",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments/<id>",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "Повторно: 422 {\"errors\":{\"errorMessage\":\"shipment_was_deleted\"}}. По номеру ТТН вместо id: 404 shipment_not_found.",
+  "response": {
+    "success": true
+  }
+}

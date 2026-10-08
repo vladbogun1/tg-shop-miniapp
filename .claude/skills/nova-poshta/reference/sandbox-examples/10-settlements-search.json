@@ -1,0 +1,129 @@
+{
+  "_title": "Поиск населённого пункта",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "GET",
+    "url": "https://api-stage.novapost.com/v.1.0/settlements?countryCodes[]=UA&textSearch=kyiv&limit=3",
+    "headers": {
+      "Authorization": "<JWT>"
+    }
+  },
+  "status": 200,
+  "_note": "textSearch «Київ» кириллицей вернул сначала сёла «Київське»; латиница kyiv — сразу місто Київ (boost=510). externalId = SettlementRef старого API (не CityRef!).",
+  "response": {
+    "current_page": 1,
+    "last_page": 396,
+    "per_page": 3,
+    "total": 1186,
+    "from": null,
+    "to": null,
+    "items": [
+      {
+        "id": 118064,
+        "name": "місто Київ",
+        "country": {
+          "code": "UA",
+          "name": "Україна"
+        },
+        "region": {
+          "id": 406,
+          "name": "Київська область",
+          "parent": null
+        },
+        "latitude": 50.450418,
+        "longitude": 30.523541,
+        "postCode1": "01001",
+        "postCode2": "04216",
+        "alternativeNames": [
+          "kyiv",
+          "місто київ",
+          "misto kiyiv",
+          "город киев",
+          "gorod kiev",
+          "city kyiv",
+          "kyyiv"
+        ],
+        "externalId": "e718a680-4b33-11e4-ab6d-005056801329",
+        "boost": 510,
+        "prohibitedSending": false,
+        "prohibitedIssuance": false,
+        "createdAt": "2022-10-01T15:50:20.000000Z",
+        "updatedAt": "2026-10-08T00:20:56.707258Z",
+        "deletedAt": null
+      },
+      {
+        "id": 118066,
+        "name": "село Київка",
+        "country": {
+          "code": "UA",
+          "name": "Україна"
+        },
+        "region": {
+          "id": 955,
+          "name": "Голопристанський район",
+          "parent": {
+            "id": 417,
+            "name": "Херсонська область"
+          }
+        },
+        "latitude": 46.217119,
+        "longitude": 32.530332,
+        "postCode1": "75663",
+        "postCode2": "75663",
+        "alternativeNames": [
+          "kyivka",
+          "село київка",
+          "selo kiyivka",
+          "село киевка",
+          "selo kievka",
+          "village kyivka",
+          "kyyivka"
+        ],
+        "externalId": "0dd153b3-4b3a-11e4-ab6d-005056801329",
+        "boost": 0,
+        "prohibitedSending": false,
+        "prohibitedIssuance": true,
+        "createdAt": "2022-10-01T15:50:20.000000Z",
+        "updatedAt": "2026-06-23T10:29:43.762282Z",
+        "deletedAt": null
+      },
+      {
+        "id": 118068,
+        "name": "село Київське",
+        "country": {
+          "code": "UA",
+          "name": "Україна"
+        },
+        "region": {
+          "id": 796,
+          "name": "Новоодеський район",
+          "parent": {
+            "id": 410,
+            "name": "Миколаївська область"
+          }
+        },
+        "latitude": 47.494583,
+        "longitude": 32.020439,
+        "postCode1": "54105",
+        "postCode2": "54105",
+        "alternativeNames": [
+          "kyivske",
+          "село київське",
+          "село киевское",
+          "village kyivske",
+          "selo kievskoe",
+          "selo kiyivs'ke",
+          "selo kiyivs ke",
+          "kyyivske"
+        ],
+        "externalId": "0dc2dec1-4b3a-11e4-ab6d-005056801329",
+        "boost": 0,
+        "prohibitedSending": false,
+        "prohibitedIssuance": false,
+        "createdAt": "2022-10-01T15:50:20.000000Z",
+        "updatedAt": "2026-06-30T10:03:39.507115Z",
+        "deletedAt": null
+      }
+    ]
+  }
+}

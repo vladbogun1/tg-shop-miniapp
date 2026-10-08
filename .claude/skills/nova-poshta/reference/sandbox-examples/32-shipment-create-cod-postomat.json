@@ -1,0 +1,123 @@
+{
+  "_title": "ТТН в поштомат с services[COD] — COD молча проигнорирован",
+  "_captured": "2026-10-08, api-stage.novapost.com",
+  "request": {
+    "method": "POST",
+    "url": "https://api-stage.novapost.com/v.1.0/shipments",
+    "headers": {
+      "Authorization": "<JWT>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "status": "ReadyToShip",
+      "clientOrder": "TEST-1002",
+      "note": "test cod",
+      "payerType": "Sender",
+      "sender": {
+        "countryCode": "UA",
+        "divisionNumber": "38/1",
+        "name": "Тестовий Відправник",
+        "phone": "380000000000"
+      },
+      "recipient": {
+        "countryCode": "UA",
+        "divisionNumber": "38/3158",
+        "name": "Тестовий Отримувач",
+        "phone": "380671234567"
+      },
+      "parcels": [
+        {
+          "rowNumber": 1,
+          "cargoCategory": "parcel",
+          "parcelDescription": "Клавіатура",
+          "insuranceCost": 2000,
+          "actualWeight": 800,
+          "length": 450,
+          "width": 150,
+          "height": 50
+        }
+      ],
+      "services": [
+        {
+          "shipmentParcelRowNumber": null,
+          "serviceCode": "COD",
+          "amount": 2000,
+          "contractNumber": null,
+          "payerType": "Recipient",
+          "additionalParameters": {
+            "cod": {
+              "cash": null,
+              "card": null,
+              "bankAccount": {
+                "amount": 2000,
+                "currencyCode": "UAH",
+                "bankAccountId": "1234567890",
+                "bankAccountName": "UA213223130000026007233566001",
+                "description": "test",
+                "commissionPayer": "Recipient"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "status": 201,
+  "_note": "201, но в GET /shipments услуги COD нет — для внутренних UA-отправлений COD нового API не работает. В поштомат добавилась услуга «Доплата за доставку у поштомат».",
+  "response": {
+    "id": "01a11ad2-9de6-7dd3-9724-8f53707e3af9",
+    "number": "20400554016338",
+    "scheduledDeliveryDate": "0001-01-01T00:00:00.000000Z",
+    "status": "ReadyToShip",
+    "cost": 90,
+    "parcelsAmount": 1,
+    "createdAt": "2026-10-08T09:22:53.568239Z",
+    "updatedAt": "0001-01-01T00:00:00.000000Z",
+    "deletedAt": null,
+    "recipientsArea": null,
+    "recipientsAreaNumber": null,
+    "deliveryPartners": null,
+    "services": [
+      {
+        "id": "",
+        "shipmentId": "20400554016338",
+        "shipmentParcelRowNumber": null,
+        "serviceId": "",
+        "serviceName": "",
+        "amount": 1,
+        "contractNumber": null,
+        "payerType": "Sender",
+        "paymentStatus": "NeedPay",
+        "divisionId": null,
+        "price": 90,
+        "discount": 0,
+        "cost": 90,
+        "currencyCode": null,
+        "user": "",
+        "shipmentLockVersion": null,
+        "additionalParameters": null,
+        "createdAt": "2026-10-08T09:22:53.568239Z",
+        "updatedAt": "0001-01-01T00:00:00.000000Z"
+      }
+    ],
+    "parcels": [
+      {
+        "number": "20400554016338",
+        "rowNumber": 1,
+        "untied": false,
+        "pricingType": null,
+        "cargoCategory": "parcel",
+        "cargoCategoryId": null,
+        "parcelDescription": "Клавіатура",
+        "insuranceCost": 2000,
+        "length": 450,
+        "width": 150,
+        "height": 50,
+        "actualWeight": 800,
+        "volumetricWeight": 844,
+        "recipient": null,
+        "clientParcel": null
+      }
+    ]
+  }
+}
