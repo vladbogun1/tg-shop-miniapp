@@ -24,6 +24,11 @@ import {
   type SendMessageRequest,
   type SenderType,
   type TimeRange,
+  type CardStatus,
+  type ProductCondition,
+  type ProductSpecs,
+  type SpecType,
+  type SpecValue,
 } from "@shop/shared";
 
 export { ApiError };
@@ -41,6 +46,11 @@ export type {
   SendMessageRequest,
   SenderType,
   TimeRange,
+  CardStatus,
+  ProductCondition,
+  ProductSpecs,
+  SpecType,
+  SpecValue,
 };
 
 /** Where an order was placed (backend `orders.source`). */
@@ -53,46 +63,310 @@ export type OrderDetailDto = OrderDetail & { source?: OrderSource; customerLocal
 
 /**
  * Product as the admin API returns it: the shared shape plus the public-site fields
- * (URL slug, struck-through "old" price, SEO overrides). Kept here so the Mini App's shared
- * types stay untouched.
+ * (URL slug, struck-through "old" price, SEO overrides) and the catalog v2 card fields
+ * (docs/CATALOG-SPECS.md §3.3). Kept here so the Mini App's shared types stay untouched.
  */
 export type AdminProduct = Product & {
   slug?: string;
   compareAtMinor?: number | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
-  /** schema.org brand; null = the site guesses it from the texts. */
-  brand?: string | null;
   /** Article number (unique when set); null = the site uses the id. */
   sku?: string | null;
+  /** Card workflow (not shown on the storefront): DRAFT → AI_FILLED → READY. */
+  cardStatus?: CardStatus;
+  /** Overall AI confidence of the last import, 0..100. */
+  cardConfidence?: number | null;
+  cardMeta?: CardMeta | null;
+  /** Required attribute keys without a value, when the backend computes it (else computed client-side). */
+  missingRequired?: string[] | null;
 };
 
+/** products.card_meta — per-field AI confidence and sources of the last «Карточки» import. */
+export interface CardMeta {
+  fields?: Record<string, { c?: number | null; src?: string | null }>;
+  sources?: string[];
+  notes?: string | null;
+  model?: string | null;
+  importedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+}
+
+/** What the validator dropped on save (unknown key, option not in the list, bad number…). */
+export interface SpecIssue {
+  key: string;
+  reason: string;
+}
+
+export type AdminProductSaved = AdminProduct & { specIssues?: SpecIssue[] | null };
+
+// ---- catalog v2: categories, brands, characteristics (docs/CATALOG-SPECS.md §3.2) ----
+
 /**
- * Tag = a category on the public site: URL slug, menu position and visibility, and the SEO of its
- * page (Russian source; uk/en on the «Переводы» screen). Empty SEO field = the site's template.
+ * Category of the 2-level tree. `productCount` = products of the whole subtree,
+ * `productCountDirect` = products lying in this very category (only leaves can hold products).
+ * SEO fields: Russian source, empty = the site's template; uk/en on the «Переводы» screen.
  */
-export type AdminTag = ProductTag & {
-  slug?: string;
-  sortOrder?: number;
-  showInMenu?: boolean;
+export interface AdminCategory {
+  id: string;
+  slug: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  showInMenu: boolean;
+  /** Tile art of the site; null = guessed from the slug. */
+  artKind?: string | null;
+  productCount: number;
+  productCountDirect: number;
   seoTitle?: string | null;
   seoDescription?: string | null;
   h1?: string | null;
   introText?: string | null;
-};
+}
 
-export interface TagWriteRequest {
+export interface CategoryWriteRequest {
   name: string;
   /** Blank = generate from the name. */
   slug?: string;
+  parentId?: string | null;
   sortOrder?: number;
   showInMenu?: boolean;
+  /** null = «авто» (by slug). */
+  artKind?: string | null;
   /** SEO fields: omitted = keep, "" = clear. */
   seoTitle?: string;
   seoDescription?: string;
   h1?: string;
   introText?: string;
 }
+
+export interface CategoryReorderItem {
+  id: string;
+  parentId: string | null;
+  sortOrder: number;
+}
+
+export interface AdminBrand {
+  id: string;
+  name: string;
+  slug: string;
+  /** Other spellings used to recognise the brand (AI answers, «Создать „…“»). */
+  aliases: string[];
+  website?: string | null;
+  sortOrder?: number;
+  productCount: number;
+}
+
+export interface BrandWriteRequest {
+  name: string;
+  slug?: string;
+  aliases?: string[];
+  website?: string;
+  sortOrder?: number;
+}
+
+export interface AdminSpecOption {
+  id?: string;
+  /** Slug stored in product specs. */
+  value: string;
+  labelRu: string;
+  labelUk: string;
+  labelEn: string;
+  aliases: string[];
+  sortOrder: number;
+  /** Products whose specs use this option (when the backend reports it). */
+  usedCount?: number;
+}
+
+export interface AdminSpecBucket {
+  /** Inclusive; null = open. */
+  min: number | null;
+  max: number | null;
+  labelRu: string;
+  labelUk: string;
+  labelEn: string;
+}
+
+/** Attribute with all three languages, as the editor sees it. */
+export interface AdminSpecAttribute {
+  id: string;
+  /** null = global (every category). */
+  categoryId: string | null;
+  key: string;
+  labelRu: string;
+  labelUk: string;
+  labelEn: string;
+  type: SpecType;
+  unitRu?: string | null;
+  unitUk?: string | null;
+  unitEn?: string | null;
+  /** number only: stored as {min,max}. */
+  range: boolean;
+  group: string;
+  filterable: boolean;
+  comparable: boolean;
+  required: boolean;
+  highlight: boolean;
+  sortOrder: number;
+  buckets: AdminSpecBucket[] | null;
+  hint?: string | null;
+  options: AdminSpecOption[];
+  /** GET ?categoryId=: defined on a parent (or global), read-only here. */
+  inherited?: boolean;
+  /** Products whose specs have this key. */
+  usedCount?: number;
+}
+
+export type SpecAttributeWriteRequest = Omit<AdminSpecAttribute, "id" | "inherited" | "usedCount">;
+
+export interface AdminSpecGroup {
+  key: string;
+  labelRu: string;
+  labelUk: string;
+  labelEn: string;
+  sortOrder: number;
+}
+
+/** GET /api/admin/catalog/schema — everything, all languages (editor, wizard, prompt). */
+export interface AdminCatalogSchema {
+  categories: AdminCategory[];
+  brands: AdminBrand[];
+  groups: AdminSpecGroup[];
+  attributes: AdminSpecAttribute[];
+}
+
+// The backend may answer with DB-ish names (group_key/sort_order/is_range, aliases as "a\nb",
+// type in caps): these normalisers keep the UI on one shape whatever the exact JSON is.
+type Loose = Record<string, unknown>;
+const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
+const strOrNull = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
+const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+function pick(o: Loose, ...keys: string[]): unknown {
+  for (const k of keys) if (o[k] !== undefined && o[k] !== null) return o[k];
+  return undefined;
+}
+function aliasList(v: unknown): string[] {
+  if (Array.isArray(v)) return v.map(str).map((x) => x.trim()).filter(Boolean);
+  if (typeof v === "string") return v.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  return [];
+}
+
+export function normCategory(raw: unknown): AdminCategory {
+  const o = (raw ?? {}) as Loose;
+  return {
+    id: str(o.id),
+    slug: str(o.slug),
+    name: str(pick(o, "name", "name_ru")),
+    parentId: strOrNull(o.parentId),
+    sortOrder: num(pick(o, "sortOrder", "sort_order")),
+    showInMenu: pick(o, "showInMenu", "show_in_menu") !== false,
+    artKind: strOrNull(pick(o, "artKind", "art_kind")),
+    productCount: num(pick(o, "productCount", "product_count")),
+    productCountDirect: num(pick(o, "productCountDirect", "product_count_direct"), num(pick(o, "productCount", "product_count"))),
+    seoTitle: strOrNull(o.seoTitle),
+    seoDescription: strOrNull(o.seoDescription),
+    h1: strOrNull(o.h1),
+    introText: strOrNull(o.introText),
+  };
+}
+
+export function normBrand(raw: unknown): AdminBrand {
+  const o = (raw ?? {}) as Loose;
+  return {
+    id: str(o.id),
+    name: str(o.name),
+    slug: str(o.slug),
+    aliases: aliasList(o.aliases),
+    website: strOrNull(pick(o, "website", "site", "url")),
+    sortOrder: num(o.sortOrder),
+    productCount: num(o.productCount),
+  };
+}
+
+const SPEC_TYPES: SpecType[] = ["number", "enum", "multi", "bool", "text"];
+
+function normLabels(x: Loose) {
+  return {
+    labelRu: str(pick(x, "labelRu", "label_ru", "label")),
+    labelUk: str(pick(x, "labelUk", "label_uk")),
+    labelEn: str(pick(x, "labelEn", "label_en")),
+  };
+}
+
+export function normAttribute(raw: unknown): AdminSpecAttribute {
+  const o = (raw ?? {}) as Loose;
+  const t = str(o.type).toLowerCase() as SpecType;
+  const unit = (o.unit && typeof o.unit === "object" ? o.unit : {}) as Loose;
+  const facet = (o.facet && typeof o.facet === "object" ? o.facet : {}) as Loose;
+  const buckets = o.buckets ?? facet.buckets;
+  const used = pick(o, "usedCount", "productCount");
+  return {
+    id: str(o.id),
+    categoryId: strOrNull(o.categoryId),
+    key: str(o.key),
+    ...normLabels(o),
+    type: SPEC_TYPES.includes(t) ? t : "text",
+    unitRu: strOrNull(pick(o, "unitRu") ?? unit.ru ?? (typeof o.unit === "string" ? o.unit : undefined)),
+    unitUk: strOrNull(pick(o, "unitUk") ?? unit.uk),
+    unitEn: strOrNull(pick(o, "unitEn") ?? unit.en),
+    range: pick(o, "range", "isRange") === true,
+    group: str(pick(o, "group", "groupKey")) || "main",
+    filterable: o.filterable === true,
+    comparable: o.comparable === true,
+    required: pick(o, "required", "requiredForReady", "required_for_ready") === true,
+    highlight: o.highlight === true,
+    sortOrder: num(pick(o, "sortOrder", "sort")),
+    buckets: Array.isArray(buckets)
+      ? buckets.map((b) => {
+          const x = (b ?? {}) as Loose;
+          return { min: numOrNull(x.min), max: numOrNull(x.max), ...normLabels(x) };
+        })
+      : null,
+    hint: strOrNull(pick(o, "hint", "hintRu", "hint_ru")),
+    options: (Array.isArray(o.options) ? o.options : []).map((op, i) => {
+      const x = (op ?? {}) as Loose;
+      return {
+        id: strOrNull(x.id) ?? undefined,
+        value: str(x.value),
+        ...normLabels(x),
+        aliases: aliasList(x.aliases),
+        sortOrder: num(pick(x, "sortOrder", "sort"), i * 10),
+        usedCount: typeof x.usedCount === "number" ? x.usedCount : undefined,
+      };
+    }),
+    inherited: o.inherited === true,
+    usedCount: typeof used === "number" ? used : undefined,
+  };
+}
+
+export function normGroup(raw: unknown, i = 0): AdminSpecGroup {
+  const o = (raw ?? {}) as Loose;
+  return { key: str(o.key), ...normLabels(o), sortOrder: num(pick(o, "sortOrder", "sort"), i * 10) };
+}
+
+/** Request body of an attribute: the backend names the order `sort` (attributes and options). */
+function attributeBody(a: Partial<SpecAttributeWriteRequest>) {
+  const { sortOrder, options, ...rest } = a;
+  return {
+    ...rest,
+    ...(sortOrder !== undefined ? { sort: sortOrder } : {}),
+    ...(options !== undefined
+      ? {
+          options: options.map((o) => ({
+            value: o.value,
+            labelRu: o.labelRu,
+            labelUk: o.labelUk,
+            labelEn: o.labelEn,
+            aliases: o.aliases,
+            sort: o.sortOrder,
+          })),
+        }
+      : {}),
+  };
+}
+
 export type MessageDto = Message;
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
@@ -526,7 +800,17 @@ export interface ProductWriteRequest {
   expectedStock?: number;
   active: boolean;
   imageKeys: string[];
-  tagIds: string[];
+  /** Leaf category; required for new products. null = keep, "" = none. */
+  categoryId?: string | null;
+  /** Existing brand; "" clears, null keeps. Omitted with brandName = find or create by name/alias. */
+  brandId?: string | null;
+  brandName?: string;
+  condition?: ProductCondition;
+  /** "" clears. */
+  conditionNote?: string;
+  /** The whole specs object (keys missing = unknown). */
+  specs?: ProductSpecs;
+  cardStatus?: CardStatus;
   /**
    * Existing variants MUST carry their id: without it the server can only match by name, and a
    * rename would delete the row and create a new one — which used to invalidate customers'
@@ -539,8 +823,6 @@ export interface ProductWriteRequest {
   compareAtMinor?: number;
   seoTitle?: string;
   seoDescription?: string;
-  /** "" clears; omitted keeps. */
-  brand?: string;
   /** Unique among products; "" clears; omitted keeps. A taken one -> 400. */
   sku?: string;
 }
@@ -647,7 +929,7 @@ export interface BroadcastResult {
 
 // ---- content translations (docs/CONTENT-I18N.md) ---------------------------
 export type TrLocale = "uk" | "en";
-export type TrEntityType = "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
+export type TrEntityType = "PRODUCT" | "VARIANT" | "CATEGORY" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
 export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
 export type TrOrigin = "AI" | "MANUAL";
 
@@ -666,7 +948,7 @@ export interface TrExportItem {
   origin: TrOrigin | null;
   /**
    * Owning product of PRODUCT/VARIANT fields; null for payment options and tag names. For the SEO
-   * fields of a TAG `productTitle` holds the category name (context; `productId` stays null).
+   * fields of a CATEGORY `productTitle` holds the category name (context; `productId` stays null).
    */
   productId: string | null;
   productTitle: string | null;
@@ -843,21 +1125,99 @@ export const adminApi = {
   products: () => apiGet<AdminProduct[]>("/api/admin/products"),
   productsArchived: () => apiGet<AdminProduct[]>("/api/admin/products/archived"),
   createProduct: (body: ProductWriteRequest) =>
-    apiPost<AdminProduct>("/api/admin/products", body),
-  updateProduct: (id: string, body: ProductWriteRequest) =>
-    apiPatch<AdminProduct>(`/api/admin/products/${id}`, body),
-  setProductActive: (id: string, active: boolean) =>
-    apiPatch<AdminProduct>(`/api/admin/products/${id}/active`, { active }),
+    apiPost<AdminProductSaved>("/api/admin/products", body),
+  /** `force`: publish (active=true) a card that is not completed yet (409 CARD_NOT_READY otherwise). */
+  updateProduct: (id: string, body: ProductWriteRequest, force = false) =>
+    apiPatch<AdminProductSaved>(`/api/admin/products/${id}${force ? "?force=1" : ""}`, body),
+  /** «Отметить проверенной» / «Вернуть в черновик». */
+  setCardStatus: (id: string, status: CardStatus) =>
+    apiPatch<AdminProduct>(`/api/admin/products/${id}/card-status`, { status }),
+  /**
+   * Turning a DRAFT card on → 409 CARD_NOT_READY (unless `force`); no price / category →
+   * 409 PRODUCT_NOT_PUBLISHABLE.
+   */
+  setProductActive: (id: string, active: boolean, force = false) =>
+    apiPatch<AdminProduct>(`/api/admin/products/${id}/active${force ? "?force=1" : ""}`, { active }),
   setProductArchived: (id: string, archived: boolean) =>
     apiPatch<AdminProduct>(`/api/admin/products/${id}/archived`, { archived }),
   upload: (file: File) => uploadFile("/api/admin/uploads", file),
 
-  // ---- tags ----
-  tags: () => apiGet<AdminTag[]>("/api/admin/tags"),
-  createTag: (body: TagWriteRequest) => apiPost<AdminTag>("/api/admin/tags", body),
-  updateTag: (id: string, body: TagWriteRequest) =>
-    apiPatch<AdminTag>(`/api/admin/tags/${id}`, body),
-  deleteTag: (id: string) => apiDelete<void>(`/api/admin/tags/${id}`),
+  // ---- categories (tree as a flat list) ----
+  categories: async () => (await apiGet<unknown[]>("/api/admin/categories")).map(normCategory),
+  createCategory: async (body: CategoryWriteRequest) =>
+    normCategory(await apiPost<unknown>("/api/admin/categories", body)),
+  updateCategory: async (id: string, body: CategoryWriteRequest) =>
+    normCategory(await apiPatch<unknown>(`/api/admin/categories/${id}`, body)),
+  /** 409 CATEGORY_HAS_PRODUCTS / CATEGORY_HAS_CHILDREN. */
+  deleteCategory: (id: string) => apiDelete<void>(`/api/admin/categories/${id}`),
+  reorderCategories: (rows: CategoryReorderItem[]) => apiPatch<unknown>("/api/admin/categories/reorder", rows),
+
+  // ---- brands ----
+  brands: async () => (await apiGet<unknown[]>("/api/admin/brands")).map(normBrand),
+  createBrand: async (body: BrandWriteRequest) => normBrand(await apiPost<unknown>("/api/admin/brands", body)),
+  updateBrand: async (id: string, body: BrandWriteRequest) =>
+    normBrand(await apiPatch<unknown>(`/api/admin/brands/${id}`, body)),
+  /** Products of the brand stay, without a brand. */
+  deleteBrand: (id: string) => apiDelete<void>(`/api/admin/brands/${id}`),
+  /** Products and aliases of `id` move to `targetId`; `id` is deleted. */
+  mergeBrand: (id: string, targetId: string) => apiPost<unknown>(`/api/admin/brands/${id}/merge-into/${targetId}`),
+
+  // ---- characteristics ----
+  /** Own + inherited (parents, global) attributes of a category; no id = the global ones. */
+  specAttributes: async (categoryId?: string | null) =>
+    (
+      await apiGet<unknown[]>(
+        `/api/admin/spec-attributes${categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : ""}`
+      )
+    ).map(normAttribute),
+  createSpecAttribute: async (body: SpecAttributeWriteRequest) =>
+    normAttribute(await apiPost<unknown>("/api/admin/spec-attributes", attributeBody(body))),
+  /** Options are replaced as a whole; dropping a used option → 409 without `force`. */
+  updateSpecAttribute: async (id: string, body: Partial<SpecAttributeWriteRequest>, force = false) =>
+    normAttribute(
+      await apiPatch<unknown>(`/api/admin/spec-attributes/${id}${force ? "?force=1" : ""}`, attributeBody(body))
+    ),
+  /** In use → 409 ATTRIBUTE_IN_USE {count}; `force` also removes the key from product specs. */
+  deleteSpecAttribute: (id: string, force = false) =>
+    apiDelete<void>(`/api/admin/spec-attributes/${id}${force ? "?force=1" : ""}`),
+  /** Rewrites product specs from one option value to another («объединить с…»). */
+  renameSpecOption: (id: string, from: string, to: string) =>
+    apiPost<unknown>(`/api/admin/spec-attributes/${id}/rename-option`, { from, to }),
+  specGroups: async () => (await apiGet<unknown[]>("/api/admin/spec-groups")).map((g, i) => normGroup(g, i)),
+  putSpecGroups: async (groups: AdminSpecGroup[]) =>
+    (
+      await apiPut<unknown[]>(
+        "/api/admin/spec-groups",
+        groups.map(({ sortOrder, ...g }) => ({ ...g, sort: sortOrder }))
+      )
+    ).map((g, i) => normGroup(g, i)),
+  catalogSchema: async (): Promise<AdminCatalogSchema> => {
+    const r = ((await apiGet<unknown>("/api/admin/catalog/schema")) ?? {}) as Loose;
+    const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+    let attributes = arr(r.attributes).map(normAttribute);
+    // A nested answer (attributes inside their categories, globals apart) is flattened.
+    if (attributes.length === 0) {
+      attributes = [
+        ...arr(pick(r, "globalAttributes", "global_attributes")).map((a) => ({ ...normAttribute(a), categoryId: null })),
+        ...arr(r.categories).flatMap((c) =>
+          arr((c as Loose).attributes).map((a) => ({ ...normAttribute(a), categoryId: str((c as Loose).id) || null }))
+        ),
+      ];
+    }
+    // The import format names the parent by slug.
+    const rawCats = arr(r.categories) as Loose[];
+    const idBySlug = new Map(rawCats.map((c) => [str(c.slug), str(c.id)]));
+    return {
+      categories: rawCats.map((c) => {
+        const n = normCategory(c);
+        const parentSlug = typeof c.parent === "string" ? c.parent : null;
+        return n.parentId || !parentSlug ? n : { ...n, parentId: idBySlug.get(parentSlug) ?? null };
+      }),
+      brands: arr(r.brands).map(normBrand),
+      groups: arr(r.groups).map((g, i) => normGroup(g, i)),
+      attributes,
+    };
+  },
 
   // ---- promocodes ----
   promocodes: () => apiGet<PromoCode[]>("/api/admin/promocodes"),

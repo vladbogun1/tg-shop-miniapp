@@ -15,7 +15,8 @@ import {
   LayoutDashboard,
   BarChart3,
   Package,
-  Tags,
+  FolderTree,
+  BadgeCheck,
   Ticket,
   CreditCard,
   Users,
@@ -35,6 +36,7 @@ import {
   UsersRound,
   Star,
   LifeBuoy,
+  ClipboardCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
@@ -50,6 +52,7 @@ import { useInbox } from "@/lib/inbox";
 import { useSupportUnread } from "@/lib/support-api";
 import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
+import { pendingCards, useCardStats } from "@/lib/cards";
 
 const NAV = [
   { href: "/inbox", label: "Внимание", icon: BellRing, badge: "inbox" as const },
@@ -61,10 +64,12 @@ const NAV = [
   { href: "/broadcasts", label: "Рассылки", icon: Send },
   { href: "/products", label: "Товары", icon: Package },
   { href: "/reviews", label: "Отзывы", icon: Star, badge: "reviews" as const },
-  { href: "/tags", label: "Теги", icon: Tags },
+  { href: "/categories", label: "Категории", icon: FolderTree },
+  { href: "/brands", label: "Бренды", icon: BadgeCheck },
   { href: "/promocodes", label: "Промокоды", icon: Ticket },
   { href: "/payment", label: "Оплата", icon: CreditCard },
   { href: "/translations", label: "Переводы", icon: Languages, badge: "translations" as const },
+  { href: "/cards", label: "Карточки", icon: ClipboardCheck, badge: "cards" as const },
   { href: "/audit", label: "Журнал", icon: ScrollText },
   { href: "/settings", label: "Настройки", icon: Settings },
   { href: "/admins", label: "Админы", icon: UsersRound, superOnly: true },
@@ -81,10 +86,12 @@ const TITLE: Record<string, string> = {
   "/broadcasts": "Рассылки",
   "/products": "Товары",
   "/reviews": "Отзывы",
-  "/tags": "Теги",
+  "/categories": "Категории",
+  "/brands": "Бренды",
   "/promocodes": "Промокоды",
   "/payment": "Оплата",
   "/translations": "Переводы",
+  "/cards": "Карточки",
   "/audit": "Журнал",
   "/settings": "Настройки",
   "/admins": "Админы",
@@ -124,6 +131,9 @@ function NavLinks({
   // right after imports on the «Переводы» screen.
   const { data: trStats } = useTranslationStats();
   const trPending = pendingCount(trStats);
+  // Cards waiting: hidden unfinished products + filled by the AI but not reviewed («Карточки»), every 2 min.
+  const { data: cardStats } = useCardStats();
+  const cardsPending = pendingCards(cardStats);
   // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
@@ -140,6 +150,7 @@ function NavLinks({
         const Icon = item.icon;
         const inboxBadge = "badge" in item && item.badge === "inbox" && inboxTotal > 0;
         const trBadge = "badge" in item && item.badge === "translations" && trPending > 0;
+        const cardsBadge = "badge" in item && item.badge === "cards" && cardsPending > 0;
         const reviewsBadge = "badge" in item && item.badge === "reviews" && reviewsPending > 0;
         const supportBadge = "badge" in item && item.badge === "support" && supportWaiting > 0;
         return (
@@ -173,7 +184,7 @@ function NavLinks({
                 strokeWidth={active ? 2.25 : 2}
               />
               {/* Collapsed rail: the count shrinks to a dot on the icon. */}
-              {collapsed && (inboxBadge || trBadge || supportBadge) && (
+              {collapsed && (inboxBadge || trBadge || cardsBadge || supportBadge) && (
                 <span
                   aria-hidden
                   className={cn(
@@ -196,6 +207,15 @@ function NavLinks({
                 className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
               >
                 {trPending > 999 ? "999+" : trPending}
+              </span>
+            )}
+            {cardsBadge && (
+              <span
+                aria-label={`Карточек ждут завершения или проверки: ${cardsPending}`}
+                title="Незавершённые (скрытые) + заполненные ИИ, но не проверенные"
+                className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
+              >
+                {cardsPending > 999 ? "999+" : cardsPending}
               </span>
             )}
             {reviewsBadge && (

@@ -33,6 +33,22 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   TAG_CREATE: "Тег создан",
   TAG_UPDATE: "Тег изменён",
   TAG_DELETE: "Тег удалён",
+  CATEGORY_CREATE: "Категория создана",
+  CATEGORY_UPDATE: "Категория изменена",
+  CATEGORY_DELETE: "Категория удалена",
+  CATEGORY_REORDER: "Порядок категорий",
+  BRAND_CREATE: "Бренд создан",
+  BRAND_UPDATE: "Бренд изменён",
+  BRAND_DELETE: "Бренд удалён",
+  BRAND_MERGE: "Бренды объединены",
+  SPEC_ATTRIBUTE_CREATE: "Характеристика создана",
+  SPEC_ATTRIBUTE_UPDATE: "Характеристика изменена",
+  SPEC_ATTRIBUTE_DELETE: "Характеристика удалена",
+  SPEC_OPTION_RENAME: "Опции объединены",
+  SPEC_GROUPS_UPDATE: "Группы характеристик",
+  CATALOG_SCHEMA_IMPORT: "Импорт схемы каталога",
+  CARDS_IMPORT: "Импорт карточек (ИИ)",
+  PRODUCT_CARD_STATUS: "Статус карточки",
   PROMO_CREATE: "Промокод создан",
   PROMO_UPDATE: "Промокод изменён",
   PROMO_DELETE: "Промокод удалён",
@@ -54,6 +70,10 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   ORDER: "Заказ",
   PRODUCT: "Товар",
   TAG: "Тег",
+  CATEGORY: "Категория",
+  BRAND: "Бренд",
+  SPEC_ATTRIBUTE: "Характеристика",
+  CATALOG: "Каталог",
   PROMO: "Промокод",
   PAYMENT: "Оплата",
   BROADCAST: "Рассылка",
@@ -76,6 +96,10 @@ export const AUDIT_RISKY = new Set([
   "PAYMENT_REQUISITES",
   "PROMO_DELETE",
   "TAG_DELETE",
+  "CATEGORY_DELETE",
+  "BRAND_DELETE",
+  "BRAND_MERGE",
+  "SPEC_ATTRIBUTE_DELETE",
 ]);
 
 export function auditActionLabel(code: string): string {
@@ -91,6 +115,8 @@ export function auditEntityHref(entityType: string, entityId?: string | null): s
   if (!entityId) return null;
   if (entityType === "ORDER") return `/orders/${entityId}`;
   if (entityType === "PRODUCT") return `/products?edit=${entityId}`;
+  if (entityType === "CATEGORY") return `/categories?edit=${entityId}`;
+  if (entityType === "BRAND") return "/brands";
   return null;
 }
 

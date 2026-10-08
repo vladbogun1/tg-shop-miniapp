@@ -231,7 +231,7 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
     setSummary(result);
     invalidateTranslations(qc);
     qc.invalidateQueries({ queryKey: ["products"] });
-    qc.invalidateQueries({ queryKey: ["tags"] });
+    qc.invalidateQueries({ queryKey: ["categories"] });
     const applied =
       (result.import.uk?.applied ?? 0) +
       (result.import.en?.applied ?? 0) +

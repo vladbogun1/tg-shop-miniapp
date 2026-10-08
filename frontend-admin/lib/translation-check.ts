@@ -50,7 +50,7 @@ export interface WorkSet {
 /** `{name}`-style slots of chat templates (ReplyTemplateService fills them in). */
 const PLACEHOLDER = /\{[a-zA-Z]+\}/g;
 
-const TYPE_ORDER: Record<string, number> = { TAG: 0, PAYMENT_OPTION: 1, REPLY_TEMPLATE: 2, PRODUCT: 3, VARIANT: 4 };
+const TYPE_ORDER: Record<string, number> = { CATEGORY: 0, PAYMENT_OPTION: 1, REPLY_TEMPLATE: 2, PRODUCT: 3, VARIANT: 4 };
 const FIELD_ORDER: Record<string, number> = {
   title: 0,
   name: 0,
@@ -59,6 +59,7 @@ const FIELD_ORDER: Record<string, number> = {
   seo_description: 3,
   h1: 4,
   intro_text: 5,
+  condition_note: 6,
   purpose: 0,
   note: 1,
 };
@@ -137,7 +138,7 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
         kindKey: `${f.entityType}.${f.field}`,
         // Context for the AI: the product of a variant name, the category of a category SEO text.
         product:
-          f.entityType === "VARIANT" || f.entityType === "REPLY_TEMPLATE" || (f.entityType === "TAG" && f.field !== "name")
+          f.entityType === "VARIANT" || f.entityType === "REPLY_TEMPLATE" || (f.entityType === "CATEGORY" && f.field !== "name")
             ? f.productTitle
             : null,
         fields: [],

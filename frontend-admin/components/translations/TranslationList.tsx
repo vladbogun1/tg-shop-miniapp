@@ -23,7 +23,7 @@ import { Select } from "@/components/ui/Select";
 import { InlineText, IssueList, KindBadge, ProductLink, SourceText, StatusChip } from "@/components/translations/shared";
 
 type StatusFilter = "all" | "missing" | "stale" | "translated";
-type TypeFilter = "" | "PRODUCT" | "VARIANT" | "TAG" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
+type TypeFilter = "" | "PRODUCT" | "VARIANT" | "CATEGORY" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
 const PAGE = 40;
 
 export function TranslationList({ ws }: { ws: WorkSet }) {
@@ -135,7 +135,7 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
             { value: "", label: "Все типы" },
             { value: "PRODUCT", label: "Товары" },
             { value: "VARIANT", label: "Варианты" },
-            { value: "TAG", label: "Категории" },
+            { value: "CATEGORY", label: "Категории" },
             { value: "PAYMENT_OPTION", label: "Оплата" },
             { value: "REPLY_TEMPLATE", label: "Шаблоны чата" },
           ]}
@@ -167,10 +167,10 @@ export function TranslationList({ ws }: { ws: WorkSet }) {
                 <ProductLink productId={f.productId} title={f.productTitle} />
               ) : (
                 <span className="text-[12px] font-semibold text-[var(--text-muted)]">
-                  {f.entityType === "TAG"
+                  {f.entityType === "CATEGORY"
                     ? f.productTitle
-                      ? `Тег «${f.productTitle}»`
-                      : "Теги"
+                      ? `Категория «${f.productTitle}»`
+                      : "Категории"
                     : f.entityType === "REPLY_TEMPLATE"
                       ? `Шаблон чата «${f.productTitle ?? ""}»`
                       : "Оплата"}

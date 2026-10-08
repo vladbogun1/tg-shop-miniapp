@@ -406,7 +406,7 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                     <Link
                       href={editHref(d.productId)}
                       className="mr-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline"
-                      title="Открыть товар: поставить старую цену (скидку) или перенести в «Уценку»"
+                      title="Открыть товар: поставить старую цену (скидку) или уценить (состояние «Уценка»)"
                     >
                       <PackageX className="h-3.5 w-3.5" /> Скидка
                     </Link>

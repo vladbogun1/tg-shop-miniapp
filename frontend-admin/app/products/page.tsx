@@ -3,8 +3,11 @@
 /**
  * Products (route "/products").
  *
- *  - search by title, tag filter, status chips with counts
- *    (Все / В наличии / Закончились (видны) / Скрытые),
+ *  - search by title (and brand), filters: category (tree, «Без категории»), brand, card status
+ *    (Черновик / От ИИ / Проверена / Неполная), condition; status chips with counts
+ *    (Все / В наличии / Закончились (видны) / Скрытые / Незавершённые),
+ *  - hidden DRAFT cards = «Незавершён» (created with the short form): «Оформить с ИИ» opens
+ *    CardCompletionModal; turning a DRAFT card on goes through the publishing gate,
  *  - smart default sort (active-but-out-of-stock surfaced first) + manual sorts,
  *  - list view (DEFAULT) ⇄ cards view toggle; the whole row opens the editor,
  *  - effective stock = sum of variant stocks else product.stock,
@@ -25,8 +28,15 @@ import {
   Search,
   PackageSearch,
   MoreHorizontal,
+  Wand2,
+  RotateCcw,
 } from "lucide-react";
-import { adminApi, ApiError, type Product } from "@/lib/api";
+import { adminApi, ApiError, type AdminProduct, type CardStatus, type ProductCondition } from "@/lib/api";
+import { productMissingRequired, subtreeOf, CONDITION_OPTIONS } from "@/lib/catalog-admin";
+import { CategoryTreeSelect } from "@/components/catalog/CategoryTreeSelect";
+import { CardStatusBadge, ConditionBadge } from "@/components/catalog/CardBits";
+import { usePublishGate } from "@/components/catalog/PublishGate";
+import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
@@ -44,7 +54,17 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductModal } from "@/components/products/ProductModal";
 import { useShopSetting } from "@/lib/settings";
 
-type StatusFilter = "all" | "instock" | "out" | "hidden";
+type Product = AdminProduct;
+type StatusFilter = "all" | "instock" | "out" | "hidden" | "unfinished";
+type CardFilter = "" | CardStatus | "INCOMPLETE";
+
+const NO_CATEGORY = "__none";
+const NO_BRAND = "__none";
+
+/** Created with the short form and not completed yet: hidden + DRAFT card. */
+function isUnfinished(p: Product): boolean {
+  return p.active === false && (p.cardStatus ?? "DRAFT") === "DRAFT";
+}
 type SortKey =
   | "smart"
   | "title"
@@ -87,7 +107,11 @@ export default function ProductsPage() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [tagId, setTagId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState("");
+  const [brandId, setBrandId] = useState("");
+  const [cardFilter, setCardFilter] = useState<CardFilter>("");
+  const [condition, setCondition] = useState<"" | ProductCondition>("");
+  const [completion, setCompletion] = useState<{ id: string; reason: "created" | "manual" } | null>(null);
   const [sort, setSort] = useState<SortKey>("smart");
   const [view, setView] = useState<ViewMode>("list");
 
@@ -95,7 +119,19 @@ export default function ProductsPage() {
     queryKey: ["products", archivedView],
     queryFn: () => (archivedView ? adminApi.productsArchived() : adminApi.products()),
   });
-  const { data: tags = [] } = useQuery({ queryKey: ["tags"], queryFn: () => adminApi.tags() });
+  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, staleTime: 60_000 });
+  const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, staleTime: 60_000 });
+  const { data: schema } = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, staleTime: 60_000 });
+  const [guardPublish, gateUi] = usePublishGate((id) => setCompletion({ id, reason: "manual" }));
+
+  /** Missing required characteristics per product (backend value when given, else from the schema). */
+  const missingOf = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!schema) return m;
+    const cats = schema.categories.length ? schema.categories : categories;
+    for (const p of products) m.set(p.id, productMissingRequired(p, schema.attributes, cats).length);
+    return m;
+  }, [products, schema, categories]);
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["products"] });
@@ -106,8 +142,17 @@ export default function ProductsPage() {
   useEffect(() => {
     if (isLoading || typeof window === "undefined") return;
     const sp = new URLSearchParams(window.location.search);
+    const brand = sp.get("brand");
+    if (brand) setBrandId(brand);
+    sp.delete("brand");
     const id = sp.get("edit");
-    if (!id) return;
+    if (!id) {
+      if (brand) {
+        const qs0 = sp.toString();
+        window.history.replaceState(null, "", window.location.pathname + (qs0 ? `?${qs0}` : ""));
+      }
+      return;
+    }
     const p = products.find((x) => x.id === id);
     if (p) {
       setEditing(p);
@@ -121,7 +166,11 @@ export default function ProductsPage() {
   // Both are one tap away from a mis-tap on a phone, so each confirms with an «Отменить» toast.
   async function setActive(p: Product, active: boolean, undo = true) {
     try {
-      await adminApi.setProductActive(p.id, active);
+      // Turning on a DRAFT card asks first (CARD_NOT_READY) — or explains what is missing.
+      const ok = active
+        ? await guardPublish(p, (force) => adminApi.setProductActive(p.id, true, force))
+        : (await adminApi.setProductActive(p.id, false), true);
+      if (!ok) return;
       refresh();
       if (undo) {
         push(
@@ -150,13 +199,20 @@ export default function ProductsPage() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const categoryScope: Set<string> | "none" | null =
+      categoryId === NO_CATEGORY ? "none" : categoryId ? subtreeOf(categories, categoryId) : null;
     let list = products.filter((p) => {
-      if (q && !p.title.toLowerCase().includes(q)) return false;
-      if (tagId && !(p.tags ?? []).some((t) => t.id === tagId)) return false;
+      if (q && !p.title.toLowerCase().includes(q) && !(p.brandRef?.name ?? "").toLowerCase().includes(q)) return false;
+      if (categoryScope === "none" && p.categoryId) return false;
+      if (categoryScope instanceof Set && !(p.categoryId && categoryScope.has(p.categoryId))) return false;
+      if (brandId === NO_BRAND ? !!p.brandRef : !!brandId && p.brandRef?.id !== brandId) return false;
+      if (condition && (p.condition ?? "NEW") !== condition) return false;
+      if (cardFilter === "INCOMPLETE" ? !(missingOf.get(p.id) ?? 0) : !!cardFilter && (p.cardStatus ?? "DRAFT") !== cardFilter) return false;
       if (!archivedView) {
         if (status === "instock" && !(p.active !== false && effStock(p) > 0)) return false;
         if (status === "out" && !(p.active !== false && effStock(p) === 0)) return false;
         if (status === "hidden" && p.active !== false) return false;
+        if (status === "unfinished" && !isUnfinished(p)) return false;
       }
       return true;
     });
@@ -185,7 +241,7 @@ export default function ProductsPage() {
       }
     });
     return list;
-  }, [products, search, status, tagId, sort, archivedView]);
+  }, [products, search, status, categoryId, categories, brandId, condition, cardFilter, missingOf, sort, archivedView]);
 
   const counts = useMemo(() => {
     const active = products.filter((p) => p.active !== false);
@@ -194,6 +250,7 @@ export default function ProductsPage() {
       instock: active.filter((p) => effStock(p) > 0).length,
       out: active.filter((p) => effStock(p) === 0).length,
       hidden: products.filter((p) => p.active === false).length,
+      unfinished: products.filter(isUnfinished).length,
     };
   }, [products]);
 
@@ -221,14 +278,28 @@ export default function ProductsPage() {
       { value: "instock" as StatusFilter, label: "В наличии", count: counts.instock },
       { value: "out" as StatusFilter, label: "Закончились", count: counts.out },
       { value: "hidden" as StatusFilter, label: "Скрытые", count: counts.hidden },
+      ...(counts.unfinished > 0 || status === "unfinished"
+        ? [{ value: "unfinished" as StatusFilter, label: "Незавершённые", count: counts.unfinished }]
+        : []),
     ],
-    [counts]
+    [counts, status]
   );
 
-  const tagOptions = useMemo(
-    () => [{ value: "", label: "Все теги" }, ...tags.map((t) => ({ value: t.id, label: t.name }))],
-    [tags]
+  const brandOptions = useMemo(
+    () => [
+      { value: "", label: "Все бренды" },
+      { value: NO_BRAND, label: "Без бренда" },
+      ...[...brands].sort((a, b) => a.name.localeCompare(b.name)).map((b) => ({ value: b.id, label: `${b.name} · ${b.productCount}` })),
+    ],
+    [brands]
   );
+  const activeFilters = [categoryId, brandId, cardFilter, condition].filter(Boolean).length;
+  function resetFilters() {
+    setCategoryId("");
+    setBrandId("");
+    setCardFilter("");
+    setCondition("");
+  }
 
   return (
     <div>
@@ -283,15 +354,6 @@ export default function ProductsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="min-w-[170px]">
-            <Select
-              label="Тег"
-              value={tagId ?? ""}
-              onChange={(v) => setTagId(v || null)}
-              placeholder="Все теги"
-              options={tagOptions}
-            />
-          </div>
           <div className="min-w-[210px]">
             <Select<SortKey>
               label="Сортировка"
@@ -335,8 +397,53 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 items-end gap-3 xl:grid-cols-[minmax(220px,1.4fr)_1fr_1fr_1fr_auto]">
+          <CategoryTreeSelect
+            className="col-span-2 xl:col-span-1"
+            label="Категория"
+            mode="any"
+            showCounts
+            categories={categories}
+            value={categoryId}
+            onChange={setCategoryId}
+            placeholder="Все категории"
+            extra={[
+              { value: "", label: "Все категории" },
+              { value: NO_CATEGORY, label: "Без категории" },
+            ]}
+          />
+          <Select label="Бренд" value={brandId} onChange={setBrandId} placeholder="Все бренды" options={brandOptions} />
+          <Select<CardFilter>
+            label="Карточка"
+            value={cardFilter}
+            onChange={setCardFilter}
+            placeholder="Любая"
+            options={[
+              { value: "", label: "Любая" },
+              { value: "DRAFT", label: "Черновик" },
+              { value: "AI_FILLED", label: "От ИИ" },
+              { value: "READY", label: "Проверена" },
+              { value: "INCOMPLETE", label: "Неполная" },
+            ]}
+          />
+          <Select<"" | ProductCondition>
+            label="Состояние"
+            value={condition}
+            onChange={setCondition}
+            placeholder="Любое"
+            options={[{ value: "", label: "Любое" }, ...CONDITION_OPTIONS]}
+          />
+          {activeFilters > 0 ? (
+            <Button variant="ghost" icon={<RotateCcw className="h-4 w-4" />} onClick={resetFilters}>
+              Сбросить · {activeFilters}
+            </Button>
+          ) : (
+            <span className="hidden xl:block" />
+          )}
+        </div>
+
         {!archivedView && (
-          // Four chips with counts are wider than a phone: scroll them, not the page.
+          // Status chips with counts are wider than a phone: scroll them, not the page.
           <div className="thin-scroll -mx-1 max-w-full overflow-x-auto px-1 pb-1">
             <SegmentedControl<StatusFilter>
               options={statusOptions}
@@ -397,6 +504,8 @@ export default function ProductsPage() {
             <ProductRow
               key={p.id}
               p={p}
+              missing={missingOf.get(p.id) ?? 0}
+              onComplete={() => setCompletion({ id: p.id, reason: "manual" })}
               archivedView={archivedView}
               onEdit={() => {
                 setEditing(p);
@@ -418,6 +527,8 @@ export default function ProductsPage() {
             <ProductCard
               key={p.id}
               p={p}
+              missing={missingOf.get(p.id) ?? 0}
+              onComplete={() => setCompletion({ id: p.id, reason: "manual" })}
               archivedView={archivedView}
               onEdit={() => {
                 setEditing(p);
@@ -433,16 +544,33 @@ export default function ProductsPage() {
       <ProductModal
         open={modalOpen}
         product={editing}
-        tags={tags}
         onClose={() => setModalOpen(false)}
         onSaved={refresh}
+        onCreated={(p) => setCompletion({ id: p.id, reason: "created" })}
+        onCompleteWithAi={(id) => setCompletion({ id, reason: "manual" })}
       />
+      {completion && (
+        <CardCompletionModal
+          key={completion.id}
+          productId={completion.id}
+          open
+          reason={completion.reason}
+          onClose={() => {
+            setCompletion(null);
+            refresh();
+          }}
+        />
+      )}
+      {gateUi}
     </div>
   );
 }
 
 interface RowProps {
   p: Product;
+  /** Required characteristics without a value. */
+  missing: number;
+  onComplete: () => void;
   archivedView: boolean;
   onEdit: () => void;
   onActive: (v: boolean) => void;
@@ -499,7 +627,7 @@ function IconBtn({
 }
 
 /** Phone-only «⋯» menu for the row actions (edit / archive). */
-function RowMenu({ onEdit, onArchive }: { onEdit: () => void; onArchive: () => void }) {
+function RowMenu({ onEdit, onArchive, onComplete }: { onEdit: () => void; onArchive: () => void; onComplete?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -519,6 +647,11 @@ function RowMenu({ onEdit, onArchive }: { onEdit: () => void; onArchive: () => v
       </IconBtn>
       {open && (
         <div className="elevated absolute right-0 top-11 z-20 w-44 overflow-hidden p-1 pointer-coarse:top-12">
+          {onComplete && (
+            <button type="button" className={cn(item, "text-[var(--accent-hi)]")} onClick={() => (setOpen(false), onComplete())}>
+              Оформить с ИИ
+            </button>
+          )}
           <button type="button" className={item} onClick={() => (setOpen(false), onEdit())}>
             Редактировать
           </button>
@@ -535,7 +668,25 @@ function RowMenu({ onEdit, onArchive }: { onEdit: () => void; onArchive: () => v
   );
 }
 
-function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) {
+/** «Незавершён» for hidden drafts, otherwise the card status (+ «неполная»), and the condition. */
+function CardMarks({ p, missing }: { p: Product; missing: number }) {
+  if (isUnfinished(p)) {
+    return (
+      <span className="chip-tint" style={{ ["--chip" as string]: "var(--warn)" }} title="Создан коротко и ещё не оформлен — скрыт с витрины">
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+        Незавершён
+      </span>
+    );
+  }
+  return (
+    <>
+      <CardStatusBadge status={p.cardStatus} confidence={p.cardConfidence} incomplete={missing} compact />
+      <ConditionBadge condition={p.condition} />
+    </>
+  );
+}
+
+function ProductRow({ p, missing, onComplete, archivedView, onEdit, onActive, onArchive }: RowProps) {
   const danger = p.active !== false && effStock(p) === 0 && !archivedView;
   return (
     <motion.div
@@ -577,6 +728,8 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
           {(p.soldCount ?? 0) > 0 && (
             <span className="tabular">продано {p.soldCount}</span>
           )}
+          {p.brandRef?.name && <span className="truncate">{p.brandRef.name}</span>}
+          <CardMarks p={p} missing={missing} />
         </div>
       </div>
       {/* Controls must not also trigger the row's «open editor» click. */}
@@ -590,6 +743,11 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
               </span>
             </div>
             <div className="hidden items-center gap-2 sm:flex">
+              {isUnfinished(p) && (
+                <Button size="sm" variant={isUnfinished(p) ? "outline" : "ghost"} icon={<Wand2 className="h-3.5 w-3.5" />} onClick={onComplete}>
+                  Оформить с ИИ
+                </Button>
+              )}
               <IconBtn label="Редактировать" onClick={onEdit}>
                 <Pencil className="h-4 w-4" />
               </IconBtn>
@@ -598,7 +756,7 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
               </IconBtn>
             </div>
             <div className="sm:hidden">
-              <RowMenu onEdit={onEdit} onArchive={() => onArchive(true)} />
+              <RowMenu onEdit={onEdit} onArchive={() => onArchive(true)} onComplete={(p.cardStatus ?? "DRAFT") === "DRAFT" ? onComplete : undefined} />
             </div>
           </>
         ) : (
@@ -616,7 +774,7 @@ function ProductRow({ p, archivedView, onEdit, onActive, onArchive }: RowProps) 
   );
 }
 
-function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps) {
+function ProductCard({ p, missing, onComplete, archivedView, onEdit, onActive, onArchive }: RowProps) {
   const danger = p.active !== false && effStock(p) === 0 && !archivedView;
   return (
     <motion.div
@@ -654,11 +812,19 @@ function ProductCard({ p, archivedView, onEdit, onActive, onArchive }: RowProps)
             </span>
           )}
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          <CardMarks p={p} missing={missing} />
+        </div>
         <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3.5">
           {!archivedView ? (
             <>
               <Toggle checked={!!p.active} onChange={onActive} label="на витрине" />
               <div className="flex gap-2">
+                {isUnfinished(p) && (
+                  <IconBtn label="Оформить с ИИ" onClick={onComplete}>
+                    <Wand2 className="h-4 w-4" />
+                  </IconBtn>
+                )}
                 <IconBtn label="Редактировать" onClick={onEdit}>
                   <Pencil className="h-4 w-4" />
                 </IconBtn>
