@@ -24,7 +24,35 @@ const FADE_MS = 220;
 /** The success beat: long enough to register «Ready!», short enough not to feel like a real wait. */
 const DONE_MS = 650;
 
-type Phase = "idle" | "scene" | "done";
+/** Longest we hold the tile on «loading» waiting for a scene strip on a slow line before showing it anyway. */
+const MAX_WAIT_MS = 2500;
+
+type Phase = "idle" | "wait" | "scene" | "done";
+
+/**
+ * Scene strips (~20–50 KB each) are fetched ahead: each tile's strip when the browser is idle once the
+ * tile comes within ~a screen of the viewport, and at once on hover / focus / touch. The click
+ * then never shows an empty slot; if the strip is still on its way, the tile waits on «loading».
+ */
+const sceneSrc = (kind: CategoryKind) => `/mascot/scenes/${kind}.webp`;
+const scenes = new Map<CategoryKind, Promise<void>>();
+function preloadScene(kind: CategoryKind): Promise<void> {
+  let p = scenes.get(kind);
+  if (!p) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = sceneSrc(kind);
+    p = (img.decode ? img.decode() : new Promise<void>((ok, fail) => ((img.onload = () => ok()), (img.onerror = fail)))).catch(() => {
+      scenes.delete(kind); // let a later attempt retry
+    });
+    scenes.set(kind, p);
+  }
+  return p;
+}
+const idle = (fn: () => void) => {
+  if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(fn, { timeout: 2000 });
+  else setTimeout(fn, 300);
+};
 
 export function CategoryTile({
   href,
@@ -45,6 +73,24 @@ export function CategoryTile({
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const timers = useRef<number[]>([]);
+  const ref = useRef<HTMLAnchorElement>(null);
+
+  // fetch this tile's scene in the background once the grid is within ~a screen of the viewport
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          idle(() => void preloadScene(kind));
+        }
+      },
+      { rootMargin: "1000px 0px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [kind]);
 
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   // coming back with the browser's back button restores the tile from the bfcache mid-show
@@ -63,16 +109,29 @@ export function CategoryTile({
     e.preventDefault();
     if (phase !== "idle") return;
     router.prefetch(href);
-    setPhase("scene");
+    setPhase("wait");
     const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms));
-    at(FADE_MS + sceneMs, () => setPhase("done"));
-    at(FADE_MS + sceneMs + DONE_MS, () => router.push(href));
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      setPhase("scene");
+      at(FADE_MS + sceneMs, () => setPhase("done"));
+      at(FADE_MS + sceneMs + DONE_MS, () => router.push(href));
+    };
+    void preloadScene(kind).then(start);
+    at(MAX_WAIT_MS, start);
   };
+  const warm = () => void preloadScene(kind);
 
   return (
     <Link
+      ref={ref}
       href={href}
       onClick={onClick}
+      onPointerEnter={warm}
+      onFocus={warm}
+      onTouchStart={warm}
       data-phase={phase}
       aria-busy={phase !== "idle" || undefined}
       className="mx-tile nb nb-hover group relative isolate flex h-full min-h-[136px] flex-col overflow-hidden bg-[radial-gradient(circle_at_85%_85%,rgba(255,102,0,.10),transparent_55%)] p-3.5 sm:min-h-[148px] sm:p-4"
@@ -103,12 +162,12 @@ export function CategoryTile({
           <img src={`/mascot/icons/${kind}.webp`} alt="" loading="lazy" decoding="async" draggable={false} />
           <span className="mx-tile-glint" style={{ "--icon": `url(/mascot/icons/${kind}.webp)` } as React.CSSProperties} />
         </span>
-        {phase !== "idle" && (
+        {(phase === "scene" || phase === "done") && (
           <span
             className="mx-tile-scene"
             style={
               {
-                backgroundImage: `url(/mascot/scenes/${kind}.webp)`,
+                backgroundImage: `url(${sceneSrc(kind)})`,
                 "--pass": `${pass}ms`,
                 "--passes": PASSES,
                 "--fade": `${FADE_MS}ms`,

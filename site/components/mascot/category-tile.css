@@ -73,9 +73,9 @@ li:nth-child(3n + 3) .mx-tile-icon { animation-delay: -2.4s; }
 }
 
 /* ---- click: the icon gives way to the character scene ---- */
-.mx-tile[data-phase="scene"] .mx-tile-icon,
+.mx-tile:is([data-phase="wait"], [data-phase="scene"]) .mx-tile-icon,
 .mx-tile[data-phase="done"] .mx-tile-icon { opacity: 0; transform: scale(.6) rotate(-12deg); animation: none; }
-.mx-tile[data-phase="scene"] .mx-tile-glow,
+.mx-tile:is([data-phase="wait"], [data-phase="scene"]) .mx-tile-glow,
 .mx-tile[data-phase="done"] .mx-tile-glow { opacity: 1; transform: scale(1.25); }
 
 .mx-tile-scene {
@@ -135,7 +135,7 @@ li:nth-child(3n + 3) .mx-tile-icon { animation-delay: -2.4s; }
 
 /* the scene is wider than the icon: the counter steps aside while it plays (the visitor is leaving anyway) */
 .mx-tile-count { transition: opacity .2s ease-out; }
-.mx-tile:is([data-phase="scene"], [data-phase="done"]) .mx-tile-count { opacity: 0; }
+.mx-tile:not([data-phase="idle"]) .mx-tile-count { opacity: 0; }
 
 /* ---- fake loading: label in the counter's place + a bar along the bottom edge ---- */
 .mx-tile-status {
