@@ -77,7 +77,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
-        return error(HttpStatus.CONFLICT, ex.getMessage(), ex.getCode());
+        ResponseEntity<Map<String, Object>> res = error(HttpStatus.CONFLICT, ex.getMessage(), ex.getCode());
+        if (!ex.getDetails().isEmpty() && res.getBody() != null) {
+            ex.getDetails().forEach(res.getBody()::putIfAbsent);
+        }
+        return res;
     }
 
     /**

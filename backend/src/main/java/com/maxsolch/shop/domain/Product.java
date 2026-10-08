@@ -1,14 +1,15 @@
 package com.maxsolch.shop.domain;
 
+import com.maxsolch.shop.catalog.CardStatus;
+import com.maxsolch.shop.catalog.ProductCondition;
 import com.maxsolch.shop.common.UuidUtil;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
@@ -18,9 +19,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 @Getter
 @Setter
@@ -54,10 +53,6 @@ public class Product {
 
     @Column(name = "seo_description", length = 512)
     private String seoDescription;
-
-    /** Brand for schema.org Product.brand (V36); null = the site's heuristic. Not translated. */
-    @Column(name = "brand", length = 128)
-    private String brand;
 
     /** Article number (V36), unique when set; null = the site uses the id. */
     @Column(name = "sku", length = 64)
@@ -100,12 +95,38 @@ public class Product {
     @OrderBy("sortOrder ASC")
     private List<ProductVariant> variants = new ArrayList<>();
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "product_tags",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private Set<Tag> tags = new LinkedHashSet<>();
+    // ---- Catalog v2 (V52). The legacy tags / product_tags / products.brand are no longer mapped. ----
+
+    /** Leaf category (docs/CATALOG-SPECS.md); null = not categorised yet. */
+    @Column(name = "category_id", columnDefinition = "BINARY(16)")
+    private byte[] categoryId;
+
+    @Column(name = "brand_id", columnDefinition = "BINARY(16)")
+    private byte[] brandId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "`condition`", nullable = false)
+    private ProductCondition condition = ProductCondition.NEW;
+
+    /** Reason of the markdown / state of a used item (Russian source; uk/en via PRODUCT condition_note). */
+    @Column(name = "condition_note", length = 255)
+    private String conditionNote;
+
+    /** Characteristics: attribute key → value, validated by SpecsValidator on every write. */
+    @Column(name = "specs", columnDefinition = "JSON")
+    private String specsJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "card_status", nullable = false)
+    private CardStatus cardStatus = CardStatus.DRAFT;
+
+    /** 0..100, overall confidence of the last AI import. */
+    @Column(name = "card_confidence", columnDefinition = "TINYINT")
+    private Integer cardConfidence;
+
+    /** {fields:{key:{c,src}}, sources, notes, model, importedAt, reviewedAt, reviewedBy}. */
+    @Column(name = "card_meta", columnDefinition = "JSON")
+    private String cardMetaJson;
 
     @PrePersist
     void prePersist() {

@@ -10,7 +10,6 @@ import com.maxsolch.shop.web.dto.PaymentOptionDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
-import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -64,7 +63,8 @@ class TranslationServiceTest {
         return new ProductDto(PRODUCT, title, description, 10_000, "UAH", 3, true, 0, List.of(),
                 List.of(new ProductVariantDto(VARIANT, "Красный", 3, 0)),
                 List.of(new TagDto(TAG, "Ковры", "kovry", 0, true)),
-                "kover", null, seoTitle, null, Instant.EPOCH, "Attack Shark", "AS-1", null, 0);
+                "kover", null, seoTitle, null, Instant.EPOCH, "Attack Shark", "AS-1", null, 0,
+                null, null, "MARKDOWN", "Вскрыта упаковка", Map.of("weight_g", 51));
     }
 
     @Test
@@ -73,7 +73,7 @@ class TranslationServiceTest {
                 new Key(TranslationEntityType.PRODUCT, PRODUCT, TITLE), current("Ковер", "Килимок"),
                 new Key(TranslationEntityType.PRODUCT, PRODUCT, DESCRIPTION), current("Мягкий", "М'який"),
                 new Key(TranslationEntityType.VARIANT, VARIANT, NAME), current("Красный", "Червоний"),
-                new Key(TranslationEntityType.TAG, TAG, NAME), current("Ковры", "Килимки")));
+                new Key(TranslationEntityType.CATEGORY, TAG, NAME), current("Ковры", "Килимки")));
 
         ProductDto out = overlay.product(product("Ковер", "Мягкий", null));
 
@@ -121,7 +121,7 @@ class TranslationServiceTest {
     void paymentOptionAndTagOverlay() {
         Overlay overlay = new Overlay(Map.of(
                 new Key(TranslationEntityType.PAYMENT_OPTION, PAYMENT, TITLE), current("Наложка", "Накладений платіж"),
-                new Key(TranslationEntityType.TAG, TAG, NAME), current("Ковры", "Килимки")));
+                new Key(TranslationEntityType.CATEGORY, TAG, NAME), current("Ковры", "Килимки")));
 
         PaymentOptionDto po = overlay.paymentOption(new PaymentOptionDto(PAYMENT, "Наложка", "Описание", true, 10_000));
         assertThat(po.title()).isEqualTo("Накладений платіж");
@@ -133,20 +133,30 @@ class TranslationServiceTest {
     }
 
     @Test
-    void tagSeoGivesOnlyCurrentTranslationsNeverTheRussianSource() {
+    void categorySeoGivesOnlyCurrentTranslationsNeverTheRussianSource() {
         Overlay overlay = new Overlay(Map.of(
-                new Key(TranslationEntityType.TAG, TAG, SEO_TITLE), current("Коврики купить", "Килимки купити"),
-                new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.H1), current("Старый H1", "Старий H1"),
-                new Key(TranslationEntityType.TAG, TAG, TranslationEntityType.INTRO_TEXT), current("Текст", "Текст uk")));
+                new Key(TranslationEntityType.CATEGORY, TAG, SEO_TITLE), current("Коврики купить", "Килимки купити"),
+                new Key(TranslationEntityType.CATEGORY, TAG, TranslationEntityType.H1), current("Старый H1", "Старий H1")));
 
-        TagSeoDto out = overlay.tagSeoTranslated(new TagSeoDto(TAG, "Коврики купить", "Описание", "Новый H1", "Текст"));
+        assertThat(overlay.translationOrNull(TranslationEntityType.CATEGORY, TAG, SEO_TITLE, "Коврики купить"))
+                .isEqualTo("Килимки купити");
+        assertThat(overlay.translationOrNull(TranslationEntityType.CATEGORY, TAG, TranslationEntityType.H1, "Новый H1"))
+                .isNull(); // stale: source changed
+        assertThat(overlay.translationOrNull(TranslationEntityType.CATEGORY, TAG, TranslationEntityType.SEO_DESCRIPTION,
+                "Описание")).isNull();
+    }
 
-        assertThat(out.seoTitle()).isEqualTo("Килимки купити");
-        assertThat(out.seoDescription()).isNull(); // no translation -> the site's template
-        assertThat(out.h1()).isNull();             // stale: source changed
-        assertThat(out.introText()).isEqualTo("Текст uk");
+    @Test
+    void conditionNoteIsTranslatedAndCatalogFieldsPassThrough() {
+        Overlay overlay = new Overlay(Map.of(
+                new Key(TranslationEntityType.PRODUCT, PRODUCT, TranslationEntityType.CONDITION_NOTE),
+                current("Вскрыта упаковка", "Розкрита упаковка")));
 
-        assertThat(new Overlay(Map.of()).tagSeoTranslated(new TagSeoDto(TAG, "a", "b", "c", "d")).isEmpty()).isTrue();
+        ProductDto out = overlay.product(product("Ковер", "Мягкий", null));
+
+        assertThat(out.conditionNote()).isEqualTo("Розкрита упаковка");
+        assertThat(out.condition()).isEqualTo("MARKDOWN");
+        assertThat(out.specs()).containsEntry("weight_g", 51);
     }
 
     @Test

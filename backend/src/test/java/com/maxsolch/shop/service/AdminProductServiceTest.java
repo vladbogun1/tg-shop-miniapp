@@ -5,7 +5,9 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.catalog.BrandAdminService;
+import com.maxsolch.shop.catalog.CatalogDirectory;
+import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.ConflictException;
@@ -38,7 +40,8 @@ import static org.mockito.Mockito.when;
 class AdminProductServiceTest {
 
     @Mock ProductRepository productRepository;
-    @Mock TagRepository tagRepository;
+    @Mock CatalogDirectory catalogDirectory;
+    @Mock BrandAdminService brandService;
     @Mock ImageStorageService imageStorageService;
     @Mock SlugService slugService;
     @Mock TranslationService translationService;
@@ -49,8 +52,10 @@ class AdminProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AdminProductService(productRepository, tagRepository, imageStorageService,
-                slugService, translationService);
+        service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
+                catalogDirectory, brandService);
+        lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
+        lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
         product = new Product();
         product.setId(UuidUtil.randomBytes());
         product.setTitle("Mouse X");
@@ -64,32 +69,30 @@ class AdminProductServiceTest {
 
     private static ProductUpsertRequest req(Integer stock, Integer expected, List<VariantInput> variants) {
         return new ProductUpsertRequest("Mouse X", "new description", 90_000, null, stock, null,
-                null, null, variants, null, null, null, null, null, null, expected);
+                null, variants, null, null, null, null, null, expected,
+                null, null, null, null, null, null, null);
     }
 
     private static ProductUpsertRequest seoReq(String brand, String sku) {
         return new ProductUpsertRequest("Mouse X", "new description", 90_000, null, null, null,
-                null, null, null, null, null, null, null, brand, sku, null);
+                null, null, null, null, null, null, sku, null,
+                null, null, brand, null, null, null, null);
     }
 
     @Test
-    void brandAndSkuAreSavedTrimmedAndBlankClears() {
+    void skuIsSavedTrimmedAndBlankClears() {
         when(productRepository.skuTaken("MX-01", product.getId())).thenReturn(false);
-        AdminProductDto saved = service.update(id, seoReq("  Attack Shark ", " MX-01 "));
-        assertThat(saved.brand()).isEqualTo("Attack Shark");
+        AdminProductDto saved = service.update(id, seoReq(null, " MX-01 "));
         assertThat(saved.sku()).isEqualTo("MX-01");
 
-        saved = service.update(id, seoReq(" ", ""));
-        assertThat(saved.brand()).isNull();
+        saved = service.update(id, seoReq(null, ""));
         assertThat(saved.sku()).isNull();
     }
 
     @Test
-    void nullBrandAndSkuKeepTheStoredValues() {
-        product.setBrand("VGN");
+    void nullSkuKeepsTheStoredValue() {
         product.setSku("V-1");
         AdminProductDto saved = service.update(id, seoReq(null, null));
-        assertThat(saved.brand()).isEqualTo("VGN");
         assertThat(saved.sku()).isEqualTo("V-1");
     }
 

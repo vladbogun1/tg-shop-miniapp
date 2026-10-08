@@ -1,8 +1,13 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.catalog.CatalogDirectory;
+import com.maxsolch.shop.catalog.CatalogSnapshot;
+import com.maxsolch.shop.catalog.MarkdownCollection;
+import com.maxsolch.shop.catalog.ProductCondition;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationEntityType;
+import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDetailDto;
@@ -11,13 +16,12 @@ import com.maxsolch.shop.web.dto.PublicCatalogDtos.ProductPage;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapCategory;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.SitemapProduct;
-import com.maxsolch.shop.web.dto.TagDto;
-import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Collator;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,38 +39,58 @@ import static com.maxsolch.shop.common.Texts.trimToNull;
  *
  * <p>Everything is computed over {@link CatalogService#listActiveProducts(String)} — the same
  * Caffeine cached list the Mini App reads (a couple of hundred products), one per content language.
- * Filtering that in memory is cheaper than any query and, importantly, the admin's cache evictions
- * keep both apps in step.
+ * Categories are a tree (catalog v2): a category filter covers its whole subtree; the virtual
+ * {@code utsenka} collection is every product whose condition is not NEW.
  */
 @Service
 public class PublicCatalogService {
 
     public static final int MAX_PAGE_SIZE = 60;
     public static final int DEFAULT_PAGE_SIZE = 24;
+    /** {@code all=1}: the whole selection for the site's own faceting. */
+    public static final int MAX_ALL = 1000;
 
     private final CatalogService catalogService;
-    private final TagRepository tagRepository;
+    private final CatalogDirectory catalogDirectory;
     private final ProductRepository productRepository;
+    private final TranslationService translationService;
+    private final MarkdownCollection markdown;
 
     public PublicCatalogService(CatalogService catalogService,
-                                TagRepository tagRepository,
-                                ProductRepository productRepository) {
+                                CatalogDirectory catalogDirectory,
+                                ProductRepository productRepository,
+                                TranslationService translationService,
+                                MarkdownCollection markdown) {
         this.catalogService = catalogService;
-        this.tagRepository = tagRepository;
+        this.catalogDirectory = catalogDirectory;
         this.productRepository = productRepository;
+        this.translationService = translationService;
+        this.markdown = markdown;
     }
 
     /** Query parameters of {@code GET /api/public/products}; nulls mean "not set". */
     public record Query(String category, String q, Boolean inStock, Long priceMax, String sort,
-                        Integer page, Integer size) {
+                        Integer page, Integer size, Boolean all) {
+
+        public Query(String category, String q, Boolean inStock, Long priceMax, String sort, Integer page,
+                     Integer size) {
+            this(category, q, inStock, priceMax, sort, page, size, null);
+        }
     }
 
     public ProductPage search(Query query, String lang) {
         List<ProductDto> all = catalogService.listActiveProducts(lang);
+        CatalogSnapshot catalog = catalogDirectory.snapshot();
 
         String category = trimToNull(query.category());
-        if (category != null && catalogService.listTags(lang).stream().noneMatch(t -> category.equals(t.slug()))) {
-            throw new NotFoundException("category not found");
+        boolean markdownOnly = MarkdownCollection.isSlug(category);
+        Set<String> scope = null;
+        if (category != null && !markdownOnly) {
+            CatalogSnapshot.Cat c = catalog.categoryBySlug(category);
+            if (c == null) {
+                throw new NotFoundException("category not found");
+            }
+            scope = catalog.subtree(c.id());
         }
         String needle = trimToNull(query.q());
         String q = needle == null ? null : needle.toLowerCase(Locale.ROOT);
@@ -74,8 +98,10 @@ public class PublicCatalogService {
         boolean inStockOnly = Boolean.TRUE.equals(query.inStock());
 
         // Everything except the price cap — that selection also gives the slider its upper bound.
+        Set<String> inScope = scope;
         List<ProductDto> base = all.stream()
-                .filter(p -> category == null || hasTag(p, category))
+                .filter(p -> inScope == null || (p.categoryId() != null && inScope.contains(p.categoryId())))
+                .filter(p -> !markdownOnly || isMarkdown(p))
                 .filter(p -> matching == null || matching.contains(p.id()))
                 .filter(p -> !inStockOnly || p.effectiveStock() > 0)
                 .toList();
@@ -87,6 +113,10 @@ public class PublicCatalogService {
                 .sorted(comparator(query.sort()))
                 .toList();
 
+        if (Boolean.TRUE.equals(query.all())) {
+            List<ProductDto> items = filtered.size() > MAX_ALL ? filtered.subList(0, MAX_ALL) : filtered;
+            return new ProductPage(items, filtered.size(), 0, MAX_ALL, priceMaxAvailable);
+        }
         int size = query.size() == null ? DEFAULT_PAGE_SIZE : Math.max(1, Math.min(MAX_PAGE_SIZE, query.size()));
         int page = query.page() == null ? 0 : Math.max(0, query.page());
         long from = (long) page * size;
@@ -96,10 +126,13 @@ public class PublicCatalogService {
         return new ProductPage(items, filtered.size(), page, size, priceMaxAvailable);
     }
 
+    static boolean isMarkdown(ProductDto p) {
+        return p.condition() != null && !ProductCondition.NEW.name().equals(p.condition());
+    }
+
     /**
-     * Products whose title or description contains {@code q} in the Russian source OR in any current
-     * translation — «килимок» finds «Ковер» whatever language the page is in. Each language's list
-     * is already cached, so this is three in-memory scans.
+     * Products whose title, description or brand contains {@code q} in the Russian source OR in any
+     * current translation — «килимок» finds «Ковер» whatever language the page is in.
      */
     private Set<String> matchingIds(String q) {
         Set<String> ids = new HashSet<>();
@@ -123,60 +156,101 @@ public class PublicCatalogService {
                 .findFirst();
     }
 
-    /** Menu categories ({@code showInMenu}), by sortOrder then name, with live product counts. */
+    /**
+     * Menu categories ({@code showInMenu}, and the parent too), tree order, with subtree product
+     * counts; the virtual «Уценка» last when it has products.
+     */
     public List<CategoryDto> categories(String lang) {
-        Map<String, Long> counts = productCounts(lang);
-        Collator collator = collator();
-        return catalogService.listTags(lang).stream()
-                .filter(TagDto::showInMenu)
-                .sorted(Comparator.comparingInt(TagDto::sortOrder)
-                        .thenComparing(TagDto::name, collator))
-                .map(t -> new CategoryDto(t.id(), t.slug(), t.name(), t.sortOrder(),
-                        counts.getOrDefault(t.id(), 0L)))
-                .toList();
+        CatalogSnapshot catalog = catalogDirectory.snapshot();
+        Map<String, Long> counts = subtreeCounts(catalog, lang);
+        TranslationService.Overlay overlay = translationService.overlay(lang);
+        List<CategoryDto> out = new ArrayList<>();
+        for (CatalogSnapshot.Cat c : catalog.treeOrder()) {
+            if (!inMenu(catalog, c)) {
+                continue;
+            }
+            out.add(new CategoryDto(c.id(), c.slug(), name(overlay, c), c.sortOrder(),
+                    counts.getOrDefault(c.id(), 0L), c.parentId(), c.artKind(), c.showInMenu()));
+        }
+        long markdownCount = markdownCount(lang);
+        if (markdownCount > 0) {
+            out.add(new CategoryDto(MarkdownCollection.ID, MarkdownCollection.SLUG, markdown.info(lang).name(),
+                    MarkdownCollection.SORT_ORDER, markdownCount, null, MarkdownCollection.ART_KIND, true));
+        }
+        return out;
     }
 
     /**
-     * One category (any tag with that slug, in the menu or not — like the product filter) with the
-     * SEO of its page in the given language. Empty when there is no such slug.
+     * One category by slug (in the menu or not) with the SEO of its page in the given language, or
+     * the virtual «Уценка». Empty when there is no such slug.
      */
     public Optional<CategoryDetailDto> category(String slug, String lang) {
         if (slug == null || slug.isBlank()) {
             return Optional.empty();
         }
-        String s = slug.trim().toLowerCase(Locale.ROOT);
-        return catalogService.listTags(lang).stream()
-                .filter(t -> s.equals(t.slug()))
-                .findFirst()
-                .map(t -> {
-                    TagSeoDto seo = catalogService.tagSeo(lang).get(t.id());
-                    long count = productCounts(lang).getOrDefault(t.id(), 0L);
-                    return seo == null
-                            ? new CategoryDetailDto(t.id(), t.slug(), t.name(), t.sortOrder(), count, t.showInMenu(),
-                                    null, null, null, null)
-                            : new CategoryDetailDto(t.id(), t.slug(), t.name(), t.sortOrder(), count, t.showInMenu(),
-                                    seo.seoTitle(), seo.seoDescription(), seo.h1(), seo.introText());
-                });
+        String l = ContentLocale.normalize(lang);
+        if (MarkdownCollection.isSlug(slug)) {
+            MarkdownCollection.Info info = markdown.info(l);
+            return Optional.of(new CategoryDetailDto(MarkdownCollection.ID, MarkdownCollection.SLUG, info.name(),
+                    MarkdownCollection.SORT_ORDER, markdownCount(l), true, info.seoTitle(), info.seoDescription(),
+                    info.h1(), info.introText(), null, MarkdownCollection.ART_KIND));
+        }
+        CatalogSnapshot catalog = catalogDirectory.snapshot();
+        CatalogSnapshot.Cat c = catalog.categoryBySlug(slug);
+        if (c == null) {
+            return Optional.empty();
+        }
+        TranslationService.Overlay overlay = translationService.overlay(l);
+        long count = subtreeCounts(catalog, l).getOrDefault(c.id(), 0L);
+        boolean translated = ContentLocale.isTranslated(l);
+        String seoTitle = translated ? seo(overlay, c, TranslationEntityType.SEO_TITLE, c.seoTitle()) : c.seoTitle();
+        String seoDescription = translated
+                ? seo(overlay, c, TranslationEntityType.SEO_DESCRIPTION, c.seoDescription()) : c.seoDescription();
+        String h1 = translated ? seo(overlay, c, TranslationEntityType.H1, c.h1()) : c.h1();
+        String intro = translated ? seo(overlay, c, TranslationEntityType.INTRO_TEXT, c.introText()) : c.introText();
+        return Optional.of(new CategoryDetailDto(c.id(), c.slug(), name(overlay, c), c.sortOrder(), count,
+                c.showInMenu(), seoTitle, seoDescription, h1, intro, c.parentId(), c.artKind()));
     }
 
-    /** Active products per tag id (the same cached list the menu and the filter use). */
-    private Map<String, Long> productCounts(String lang) {
+    /**
+     * SEO of a category page in a TRANSLATED language: the current translation or {@code null} —
+     * never the Russian source (the site's own localized template is better than Russian text).
+     */
+    private static String seo(TranslationService.Overlay overlay, CatalogSnapshot.Cat c, String field, String source) {
+        return overlay.translationOrNull(TranslationEntityType.CATEGORY, c.id(), field, source);
+    }
+
+    private static String name(TranslationService.Overlay overlay, CatalogSnapshot.Cat c) {
+        return overlay.text(TranslationEntityType.CATEGORY, c.id(), TranslationEntityType.NAME, c.name());
+    }
+
+    private static boolean inMenu(CatalogSnapshot catalog, CatalogSnapshot.Cat c) {
+        if (!c.showInMenu()) {
+            return false;
+        }
+        CatalogSnapshot.Cat parent = catalog.category(c.parentId());
+        return parent == null || parent.showInMenu();
+    }
+
+    /** Active products per category id, each counted in its category and every ancestor. */
+    Map<String, Long> subtreeCounts(CatalogSnapshot catalog, String lang) {
         Map<String, Long> counts = new HashMap<>();
         for (ProductDto p : catalogService.listActiveProducts(lang)) {
-            if (p.tags() == null) {
-                continue;
-            }
-            for (TagDto t : p.tags()) {
-                counts.merge(t.id(), 1L, Long::sum);
+            for (CatalogSnapshot.Cat c : catalog.path(p.categoryId())) {
+                counts.merge(c.id(), 1L, Long::sum);
             }
         }
         return counts;
     }
 
+    private long markdownCount(String lang) {
+        return catalogService.listActiveProducts(lang).stream().filter(PublicCatalogService::isMarkdown).count();
+    }
+
     /**
-     * Products and menu categories for sitemap.xml. A category with no public products is left out:
-     * it renders an empty list (the site marks it {@code noindex}), i.e. a soft 404 for search
-     * engines. A category's {@code updatedAt} is the newest change among its products.
+     * Products and menu categories (roots and children) for sitemap.xml. A category with no public
+     * products in its subtree is left out (soft 404); its {@code updatedAt} is the newest change
+     * among those products. {@code utsenka} is listed when it has products.
      */
     @Transactional(readOnly = true)
     public SitemapDto sitemap() {
@@ -191,41 +265,45 @@ public class PublicCatalogService {
                 })
                 .toList();
 
-        // Same product set and tag membership as categories() — the cached public DTOs.
+        CatalogSnapshot catalog = catalogDirectory.snapshot();
         Set<String> nonEmpty = new HashSet<>();
         Map<String, Instant> lastChange = new HashMap<>();
+        boolean anyMarkdown = false;
+        Instant markdownChange = null;
         for (ProductDto p : catalogService.listActiveProducts(ContentLocale.RU)) {
-            if (p.tags() == null) {
-                continue;
-            }
             Instant updated = updatedBySlug.get(p.slug());
-            for (TagDto t : p.tags()) {
-                if (t.slug() == null) {
-                    continue;
-                }
-                nonEmpty.add(t.slug());
+            for (CatalogSnapshot.Cat c : catalog.path(p.categoryId())) {
+                nonEmpty.add(c.id());
                 if (updated != null) {
-                    lastChange.merge(t.slug(), updated, (a, b) -> a.isAfter(b) ? a : b);
+                    lastChange.merge(c.id(), updated, (a, b) -> a.isAfter(b) ? a : b);
+                }
+            }
+            if (isMarkdown(p)) {
+                anyMarkdown = true;
+                if (updated != null && (markdownChange == null || updated.isAfter(markdownChange))) {
+                    markdownChange = updated;
                 }
             }
         }
-        List<SitemapCategory> categories = tagRepository.findAllByOrderByNameAsc().stream()
-                .filter(t -> t.isShowInMenu())
-                .filter(t -> nonEmpty.contains(t.getSlug()))
-                .map(t -> new SitemapCategory(t.getSlug(), lastChange.get(t.getSlug())))
-                .toList();
+        List<SitemapCategory> categories = new ArrayList<>();
+        for (CatalogSnapshot.Cat c : catalog.treeOrder()) {
+            if (inMenu(catalog, c) && nonEmpty.contains(c.id())) {
+                categories.add(new SitemapCategory(c.slug(), lastChange.get(c.id())));
+            }
+        }
+        if (anyMarkdown) {
+            categories.add(new SitemapCategory(MarkdownCollection.SLUG, markdownChange));
+        }
         return new SitemapDto(products, categories);
     }
 
     // ------------------------------------------------------------------ internals
 
-    private static boolean hasTag(ProductDto p, String slug) {
-        return p.tags() != null && p.tags().stream().anyMatch(t -> slug.equals(t.slug()));
-    }
-
     private static boolean matches(ProductDto p, String q) {
         return (p.title() != null && p.title().toLowerCase(Locale.ROOT).contains(q))
-                || (p.description() != null && p.description().toLowerCase(Locale.ROOT).contains(q));
+                || (p.description() != null && p.description().toLowerCase(Locale.ROOT).contains(q))
+                || (p.brandRef() != null && p.brandRef().name() != null
+                        && p.brandRef().name().toLowerCase(Locale.ROOT).contains(q));
     }
 
     /**

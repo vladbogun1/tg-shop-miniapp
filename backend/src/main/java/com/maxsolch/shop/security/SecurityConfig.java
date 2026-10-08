@@ -62,6 +62,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/app-info").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        // Catalog schema for the Mini App (categories, brands, characteristics)
+                        .requestMatchers(HttpMethod.GET, "/api/catalog/schema").permitAll()
                         // Public website catalog (filters, slugs, categories, sitemap)
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         // Website event journal (package C): anonymous visitors too, per-IP limited

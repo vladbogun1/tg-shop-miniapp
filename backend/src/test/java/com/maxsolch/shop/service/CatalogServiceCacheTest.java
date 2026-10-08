@@ -1,12 +1,12 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.catalog.CatalogDirectory;
+import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
-import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.ContentTranslation;
 import com.maxsolch.shop.translation.ContentTranslationId;
 import com.maxsolch.shop.translation.ContentTranslationRepository;
@@ -48,7 +48,7 @@ class CatalogServiceCacheTest {
     static class Config {
         @Bean
         CacheManager cacheManager() {
-            return new ConcurrentMapCacheManager("products", "productById", "tags");
+            return new ConcurrentMapCacheManager("products", "productById", "catalogSchema");
         }
 
         @Bean
@@ -57,8 +57,12 @@ class CatalogServiceCacheTest {
         }
 
         @Bean
-        TagRepository tagRepository() {
-            return mock(TagRepository.class);
+        CatalogDirectory catalogDirectory() {
+            CatalogDirectory d = mock(CatalogDirectory.class);
+            CatalogSnapshot.Cat mats = new CatalogSnapshot.Cat("22222222-2222-2222-2222-222222222222", null, "Коврики",
+                    "kovriki", 10, true, "pad", null, null, null, null);
+            when(d.snapshot()).thenReturn(new CatalogSnapshot(List.of(mats), List.of(), List.of(), List.of()));
+            return d;
         }
 
         @Bean
@@ -72,7 +76,7 @@ class CatalogServiceCacheTest {
         }
 
         @Bean
-        CatalogService catalogService(ProductRepository products, TagRepository tags, TranslationService ts) {
+        CatalogService catalogService(ProductRepository products, CatalogDirectory tags, TranslationService ts) {
             OrderItemRepository orderItems = mock(OrderItemRepository.class);
             when(orderItems.soldCountsByProduct()).thenReturn(List.of());
             return new CatalogService(products, tags, orderItems, ts);
@@ -84,8 +88,6 @@ class CatalogServiceCacheTest {
     @Autowired
     ProductRepository productRepository;
     @Autowired
-    TagRepository tagRepository;
-    @Autowired
     ContentTranslationRepository translationRepository;
     @Autowired
     CacheManager cacheManager;
@@ -95,19 +97,17 @@ class CatalogServiceCacheTest {
     @BeforeEach
     void setUp() {
         cacheManager.getCacheNames().forEach(n -> cacheManager.getCache(n).clear());
-        clearInvocations(productRepository, tagRepository, translationRepository);
+        clearInvocations(productRepository, translationRepository);
 
         Product p = new Product();
         p.setId(UuidUtil.toBytes(ID));
         p.setTitle("Ковер");
         p.setSlug("kover");
         p.setActive(true);
+        p.setCategoryId(UuidUtil.toBytes("22222222-2222-2222-2222-222222222222"));
+        p.setSpecsJson("{\"weight_g\":51}");
         when(productRepository.findAllActive()).thenReturn(List.of(p));
         when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
-        Tag t = new Tag();
-        t.setId(UuidUtil.randomBytes());
-        t.setName("Ковры");
-        when(tagRepository.findAllByOrderByNameAsc()).thenReturn(List.of(t));
 
         ContentTranslation uk = new ContentTranslation(new ContentTranslationId(
                 TranslationEntityType.PRODUCT, UuidUtil.toBytes(ID), TranslationEntityType.TITLE, "uk"));
@@ -132,48 +132,21 @@ class CatalogServiceCacheTest {
     }
 
     @Test
-    void productByIdAndTagsAreCachedPerLanguage() {
+    void productByIdIsCachedPerLanguage() {
         assertThat(catalogService.getProduct(ID, "uk")).map(ProductDto::title).contains("Килимок");
         assertThat(catalogService.getProduct(ID, "en")).map(ProductDto::title).contains("Ковер");
         assertThat(catalogService.getProduct(ID, "uk")).map(ProductDto::title).contains("Килимок");
         verify(productRepository, times(2)).findByIdWithDetails(any());
-
-        catalogService.listTags("uk");
-        catalogService.listTags("ru");
-        catalogService.listTags("uk");
-        verify(tagRepository, times(2)).findAllByOrderByNameAsc();
     }
 
     @Test
-    void tagSeoIsTheSourceInRussianAndOnlyTranslationsElsewhere() {
-        Tag t = new Tag();
-        t.setId(UuidUtil.toBytes("33333333-3333-3333-3333-333333333333"));
-        t.setName("Ковры");
-        t.setSeoTitle("Игровые коврики — купить");
-        t.setH1("Игровые коврики");
-        Tag empty = new Tag();
-        empty.setId(UuidUtil.randomBytes());
-        empty.setName("Без SEO");
-        when(tagRepository.findAll()).thenReturn(List.of(t, empty));
-        ContentTranslation title = new ContentTranslation(new ContentTranslationId(
-                TranslationEntityType.TAG, t.getId(), TranslationEntityType.SEO_TITLE, "uk"));
-        title.setText("Ігрові килимки — купити");
-        title.setSourceHash(TranslationService.sha256Hex("Игровые коврики — купить"));
-        when(translationRepository.findByLocale("uk")).thenReturn(List.of(title));
-        translationService.invalidate();
-        String id = UuidUtil.toString(t.getId());
-
-        var ru = catalogService.tagSeo("ru");
-        assertThat(ru).containsOnlyKeys(id);
-        assertThat(ru.get(id).seoTitle()).isEqualTo("Игровые коврики — купить");
-        assertThat(ru.get(id).h1()).isEqualTo("Игровые коврики");
-
-        var uk = catalogService.tagSeo("uk");
-        assertThat(uk.get(id).seoTitle()).isEqualTo("Ігрові килимки — купити");
-        assertThat(uk.get(id).h1()).isNull(); // untranslated -> the site's template, not Russian
-
-        assertThat(catalogService.tagSeo("en")).isEmpty();
-        catalogService.tagSeo("uk");
-        verify(tagRepository, times(3)).findAll();
+    void productsCarryTheCatalogFieldsAndTheCategoryPathAsTags() {
+        ProductDto p = catalogService.listActiveProducts("ru").get(0);
+        assertThat(p.categoryId()).isEqualTo("22222222-2222-2222-2222-222222222222");
+        assertThat(p.tags()).extracting(t -> t.slug()).containsExactly("kovriki");
+        assertThat(p.condition()).isEqualTo("NEW");
+        assertThat(p.specs()).containsEntry("weight_g", 51);
+        assertThat(p.brandRef()).isNull();
+        assertThat(p.brand()).isNull();
     }
 }

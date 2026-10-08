@@ -30,7 +30,7 @@ spring:
     locations: classpath:db/migration
   cache:
     type: caffeine
-    cache-names: products, productById, tags, npCities, npWarehouses
+    cache-names: products, productById, catalogSchema, npCities, npWarehouses
     caffeine:
       spec: maximumSize=500,expireAfterWrite=120s
   # Uploads: the Boot defaults are 1MB per file / 10MB per request, which silently rejected any

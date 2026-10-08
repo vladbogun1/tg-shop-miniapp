@@ -11,14 +11,25 @@ public class ConflictException extends RuntimeException {
     public static final String CONFLICT = "CONFLICT";
 
     private final String code;
+    /** Extra fields merged into the error body (e.g. {@code count}, {@code missing}); never null. */
+    private final java.util.Map<String, Object> details;
 
     public ConflictException(String message) {
         this(message, CONFLICT);
     }
 
     public ConflictException(String message, String code) {
+        this(message, code, java.util.Map.of());
+    }
+
+    public ConflictException(String message, String code, java.util.Map<String, Object> details) {
         super(message);
         this.code = code;
+        this.details = details == null ? java.util.Map.of() : details;
+    }
+
+    public java.util.Map<String, Object> getDetails() {
+        return details;
     }
 
     /** Stable identifier of the reason. */

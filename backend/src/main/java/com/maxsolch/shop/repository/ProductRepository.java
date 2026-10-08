@@ -4,6 +4,7 @@ import com.maxsolch.shop.domain.Product;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -61,14 +62,45 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
         return id == null ? existsBySku(sku) : existsBySkuAndIdNot(sku, id);
     }
 
+    /** Products directly in a category (any state), for the "category has products" checks. */
+    @Query("select count(p) from Product p where p.categoryId = :categoryId")
+    long countByCategory(@Param("categoryId") byte[] categoryId);
+
+    /** {@code [categoryId, count]} of non-archived products ({@code activeOnly}: and active). */
+    @Query("select p.categoryId, count(p) from Product p where p.archived = false "
+            + "and (:activeOnly = false or p.active = true) and p.categoryId is not null group by p.categoryId")
+    List<Object[]> countsByCategory(@Param("activeOnly") boolean activeOnly);
+
+    /** {@code [id, categoryId, specsJson]} of every product that has characteristics. */
+    @Query("select p.id, p.categoryId, p.specsJson from Product p where p.specsJson is not null")
+    List<Object[]> specsRows();
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Product p set p.specsJson = :json where p.id = :id")
+    int updateSpecs(@Param("id") byte[] id, @Param("json") String json);
+
+    /** {@code [brandId, count]} of non-archived products. */
+    @Query("select p.brandId, count(p) from Product p where p.archived = false and p.brandId is not null "
+            + "group by p.brandId")
+    List<Object[]> countsByBrand();
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Product p set p.categoryId = :to where p.categoryId = :from")
+    int moveCategory(@Param("from") byte[] from, @Param("to") byte[] to);
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Product p set p.brandId = :to where p.brandId = :from")
+    int moveBrand(@Param("from") byte[] from, @Param("to") byte[] to);
+
     /** {@code [id, title]} of the given products (translated titles of customer order lines). */
     @Query("select p.id, p.title from Product p where p.id in :ids")
     List<Object[]> titlesByIds(@Param("ids") Collection<byte[]> ids);
 
     /**
-     * {@code [id, title, description, seoTitle, seoDescription, active, archived]} of every product —
-     * the Russian sources the content translations are checked against.
+     * {@code [id, title, description, seoTitle, seoDescription, active, archived, conditionNote]} of every
+     * product — the Russian sources the content translations are checked against.
      */
-    @Query("select p.id, p.title, p.description, p.seoTitle, p.seoDescription, p.active, p.archived from Product p")
+    @Query("select p.id, p.title, p.description, p.seoTitle, p.seoDescription, p.active, p.archived, "
+            + "p.conditionNote from Product p")
     List<Object[]> translationSources();
 }

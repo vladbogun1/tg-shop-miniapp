@@ -1,7 +1,10 @@
 package com.maxsolch.shop.web.dto;
 
 import java.time.Instant;
+import com.maxsolch.shop.catalog.CatalogDtos.BrandRefDto;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * Public product representation. Ids are UUID strings, money in minor units.
@@ -33,7 +36,16 @@ public record ProductDto(
         /** Average of the published reviews (V44), null while there are none. */
         Double ratingAvg,
         /** Number of published reviews (V44). */
-        int ratingCount) {
+        int ratingCount,
+        // ---- catalog v2 (V52, docs/CATALOG-SPECS.md); {@code tags} = the category path, {@code brand} = brandRef.name ----
+        String categoryId,
+        BrandRefDto brandRef,
+        /** NEW | MARKDOWN | USED. */
+        String condition,
+        /** Translated like the title. */
+        String conditionNote,
+        /** Attribute key → value (see SpecType); unknown = key absent. */
+        Map<String, Object> specs) {
 
     /** Units actually available: the variant sum when there are variants, else the product stock. */
     public int effectiveStock() {

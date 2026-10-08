@@ -1,7 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.catalog.CategoryRepository;
 import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
@@ -55,11 +55,11 @@ public class SlugService {
             Map.entry('ё', "yo"), Map.entry('ъ', ""), Map.entry('ы', "y"), Map.entry('э', "e"));
 
     private final ProductRepository productRepository;
-    private final TagRepository tagRepository;
+    private final CategoryRepository categoryRepository;
 
-    public SlugService(ProductRepository productRepository, TagRepository tagRepository) {
+    public SlugService(ProductRepository productRepository, CategoryRepository categoryRepository) {
         this.productRepository = productRepository;
-        this.tagRepository = tagRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     /**
@@ -80,18 +80,23 @@ public class SlugService {
                 : productRepository.existsBySlugAndIdNot(slug, selfId);
     }
 
-    public String forTag(String explicit, String name, byte[] selfId) {
+    /** Slug for a category; never the reserved {@code utsenka} (the virtual «Уценка» collection). */
+    public String forCategory(String explicit, String name, byte[] selfId) {
         String base = baseOf(explicit, name, "category");
-        return uniquify(base, s -> selfId == null
-                ? tagRepository.existsBySlug(s)
-                : tagRepository.existsBySlugAndIdNot(s, selfId));
+        return uniquify(base, s -> categorySlugTaken(s, selfId));
     }
 
-    public boolean tagSlugTaken(String slug, byte[] selfId) {
+    public boolean categorySlugTaken(String slug, byte[] selfId) {
+        if (RESERVED_CATEGORY_SLUGS.contains(slug)) {
+            return true;
+        }
         return selfId == null
-                ? tagRepository.existsBySlug(slug)
-                : tagRepository.existsBySlugAndIdNot(slug, selfId);
+                ? categoryRepository.existsBySlug(slug)
+                : categoryRepository.existsBySlugAndIdNot(slug, selfId);
     }
+
+    /** Category slugs the site uses for something else. */
+    public static final java.util.Set<String> RESERVED_CATEGORY_SLUGS = java.util.Set.of("utsenka");
 
     private static String baseOf(String explicit, String source, String fallback) {
         String fromExplicit = explicit == null ? "" : slugify(explicit);

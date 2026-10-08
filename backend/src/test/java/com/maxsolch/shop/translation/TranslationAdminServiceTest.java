@@ -3,13 +3,13 @@ package com.maxsolch.shop.translation;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.Tag;
+import com.maxsolch.shop.catalog.Category;
 import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
-import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.catalog.CategoryRepository;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportRequest;
@@ -48,7 +48,7 @@ class TranslationAdminServiceTest {
     ContentTranslationRepository repo;
     ProductRepository products;
     ProductVariantRepository variants;
-    TagRepository tags;
+    CategoryRepository tags;
     PaymentOptionRepository payments;
     ReplyTemplateRepository templates;
     TranslationService translationService;
@@ -60,18 +60,18 @@ class TranslationAdminServiceTest {
         repo = mock(ContentTranslationRepository.class);
         products = mock(ProductRepository.class);
         variants = mock(ProductVariantRepository.class);
-        tags = mock(TagRepository.class);
+        tags = mock(CategoryRepository.class);
         payments = mock(PaymentOptionRepository.class);
         templates = mock(ReplyTemplateRepository.class);
         translationService = mock(TranslationService.class);
-        cacheManager = new ConcurrentMapCacheManager("products", "productById", "tags");
+        cacheManager = new ConcurrentMapCacheManager("products", "productById", "catalogSchema");
 
         List<Object[]> productRows = new ArrayList<>();
         productRows.add(new Object[]{UuidUtil.toBytes(PRODUCT), TITLE, "Описание", null, "", true, false});
         productRows.add(new Object[]{UuidUtil.toBytes(ARCHIVED), "Старый", null, null, null, true, true});
         when(products.translationSources()).thenReturn(productRows);
         when(variants.translationSources()).thenReturn(List.of());
-        Tag tag = new Tag();
+        Category tag = new Category();
         tag.setId(UuidUtil.toBytes(TAG));
         tag.setName("Ковры");
         when(tags.findAll()).thenReturn(List.of(tag));
@@ -218,7 +218,7 @@ class TranslationAdminServiceTest {
         // product title + description, tag name; archived product, inactive payment option and empty
         // sources are not exported
         assertThat(all).extracting(i -> i.entityType() + ":" + i.field())
-                .containsExactly("PRODUCT:title", "PRODUCT:description", "TAG:name");
+                .containsExactly("PRODUCT:title", "PRODUCT:description", "CATEGORY:name");
         ExportItem title = all.get(0);
         assertThat(title.status()).isEqualTo("STALE");
         assertThat(title.source()).isEqualTo(TITLE);
@@ -267,48 +267,47 @@ class TranslationAdminServiceTest {
         ExportItem variant = all.stream().filter(i -> i.entityType().equals("VARIANT")).findFirst().orElseThrow();
         assertThat(variant.productId()).isEqualTo(PRODUCT);
         assertThat(variant.productTitle()).isEqualTo(TITLE);
-        ExportItem tag = all.stream().filter(i -> i.entityType().equals("TAG")).findFirst().orElseThrow();
+        ExportItem tag = all.stream().filter(i -> i.entityType().equals("CATEGORY")).findFirst().orElseThrow();
         assertThat(tag.productId()).isNull();
     }
 
     @Test
-    void tagSeoFieldsAreExportedWithTheCategoryNameAsContext() {
-        Tag tag = new Tag();
+    void categorySeoFieldsAreExportedWithTheCategoryNameAsContext() {
+        Category tag = new Category();
         tag.setId(UuidUtil.toBytes(TAG));
         tag.setName("Ковры");
         tag.setSeoTitle("Игровые коврики — купить");
         tag.setIntroText("Длинный текст");
         when(tags.findAll()).thenReturn(List.of(tag));
 
-        List<ExportItem> tagItems = service.export("uk", "all", "tag");
+        List<ExportItem> tagItems = service.export("uk", "all", "category");
         assertThat(tagItems).extracting(ExportItem::field).containsExactly("name", "seo_title", "intro_text");
         assertThat(tagItems.get(0).productTitle()).isNull();
         assertThat(tagItems.get(1).productTitle()).isEqualTo("Ковры");
         assertThat(tagItems.get(1).productId()).isNull();
 
         ImportResult r = service.importTranslations(new ImportRequest("uk", null, false, List.of(
-                new ImportItem("TAG", TAG, "intro_text", TranslationService.sha256Hex("Длинный текст"), "Довгий текст"),
-                new ImportItem("TAG", TAG, "h1", TranslationService.sha256Hex("x"), "y"))), 1L);
+                new ImportItem("CATEGORY", TAG, "intro_text", TranslationService.sha256Hex("Длинный текст"), "Довгий текст"),
+                new ImportItem("CATEGORY", TAG, "h1", TranslationService.sha256Hex("x"), "y"))), 1L);
         assertThat(r.applied()).isEqualTo(1);
         assertThat(r.notFound()).isEqualTo(1); // h1 is empty: NO_SOURCE
     }
 
     @Test
-    void sourceFixOfATagSeoFieldSkipsTheNameCheck() {
-        Tag tag = new Tag();
+    void sourceFixOfACategorySeoFieldSkipsTheNameCheck() {
+        Category tag = new Category();
         tag.setId(UuidUtil.toBytes(TAG));
         tag.setName("Ковры");
         tag.setH1("Игровые ковирки");
         when(tags.findById(any())).thenReturn(Optional.of(tag));
 
         TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
-                List.of(new TranslationDtos.SourceRef("TAG", TAG, "h1", TranslationService.sha256Hex("Игровые ковирки"))),
+                List.of(new TranslationDtos.SourceRef("CATEGORY", TAG, "h1", TranslationService.sha256Hex("Игровые ковирки"))),
                 "Игровые коврики", null), 1L);
 
         assertThat(r.updated()).isEqualTo(1);
         assertThat(tag.getH1()).isEqualTo("Игровые коврики");
         assertThat(tag.getName()).isEqualTo("Ковры");
-        verify(tags, never()).findByName(anyString());
     }
 
     private Product product() {

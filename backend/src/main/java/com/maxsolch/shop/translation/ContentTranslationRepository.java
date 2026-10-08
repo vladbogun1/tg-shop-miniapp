@@ -60,6 +60,11 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
     int deleteOrphanTags();
 
     @Modifying
+    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'CATEGORY' "
+            + "AND entity_id NOT IN (SELECT id FROM categories)")
+    int deleteOrphanCategories();
+
+    @Modifying
     @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'PAYMENT_OPTION' "
             + "AND entity_id NOT IN (SELECT id FROM payment_options)")
     int deleteOrphanPaymentOptions();

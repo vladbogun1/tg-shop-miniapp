@@ -1,5 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.catalog.CatalogDtos.CatalogSchemaDto;
+import com.maxsolch.shop.catalog.CatalogSchemaService;
 import com.maxsolch.shop.service.PublicCatalogService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
@@ -29,13 +31,15 @@ import java.util.Locale;
 public class PublicCatalogController {
 
     private final PublicCatalogService service;
+    private final CatalogSchemaService schemaService;
 
-    public PublicCatalogController(PublicCatalogService service) {
+    public PublicCatalogController(PublicCatalogService service, CatalogSchemaService schemaService) {
         this.service = service;
+        this.schemaService = schemaService;
     }
 
     @GetMapping("/categories")
-    @Operation(summary = "Menu categories (tags with showInMenu) with active product counts")
+    @Operation(summary = "Menu categories (tree order, parentId/artKind, subtree counts) + virtual utsenka last")
     public List<CategoryDto> categories(Locale locale) {
         return service.categories(ContentLocale.normalize(locale));
     }
@@ -50,7 +54,8 @@ public class PublicCatalogController {
     }
 
     @GetMapping("/products")
-    @Operation(summary = "Filtered, sorted, paginated products. sort: default|price_asc|price_desc|new|name; "
+    @Operation(summary = "Filtered, sorted, paginated products. category = slug (whole subtree) or utsenka "
+            + "(condition != NEW); sort: default|price_asc|price_desc|new|name; all=1 = no paging (max 1000); "
             + "unknown category slug → 404")
     public ProductPage products(@RequestParam(required = false) String category,
                                 @RequestParam(required = false) String q,
@@ -59,9 +64,17 @@ public class PublicCatalogController {
                                 @RequestParam(required = false) String sort,
                                 @RequestParam(required = false) Integer page,
                                 @RequestParam(required = false) Integer size,
+                                @RequestParam(required = false) String all,
                                 Locale locale) {
-        return service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page, size),
-                ContentLocale.normalize(locale));
+        boolean everything = "1".equals(all) || "true".equalsIgnoreCase(all);
+        return service.search(new PublicCatalogService.Query(category, q, inStock, priceMax, sort, page, size,
+                everything), ContentLocale.normalize(locale));
+    }
+
+    @GetMapping("/catalog/schema")
+    @Operation(summary = "Catalog schema (categories tree, brands, groups, characteristics, conditions), localized")
+    public CatalogSchemaDto schema(Locale locale) {
+        return schemaService.publicSchema(ContentLocale.normalize(locale));
     }
 
     @GetMapping("/products/by-slug/{slug}")

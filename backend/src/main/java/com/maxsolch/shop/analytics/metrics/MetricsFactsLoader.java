@@ -170,8 +170,9 @@ public class MetricsFactsLoader {
 
     private List<MetricsFacts.ProductFact> loadProducts() {
         Map<String, List<String>> tags = new HashMap<>();
-        jdbc.query("select bin_to_uuid(pt.product_id) pid, t.name from product_tags pt "
-                        + "join tags t on t.id = pt.tag_id order by t.sort_order, t.name",
+        // Catalog v2: the ROOT category of the product's category, one per product (no double counting).
+        jdbc.query("select bin_to_uuid(p.id) pid, coalesce(r.name, c.name) name from products p "
+                        + "join categories c on c.id = p.category_id left join categories r on r.id = c.parent_id",
                 rs -> {
                     tags.computeIfAbsent(rs.getString("pid"), k -> new ArrayList<>()).add(rs.getString("name"));
                 });

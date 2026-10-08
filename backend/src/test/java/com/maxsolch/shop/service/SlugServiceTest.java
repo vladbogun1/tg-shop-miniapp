@@ -1,7 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.TagRepository;
+import com.maxsolch.shop.catalog.CategoryRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,7 +25,7 @@ class SlugServiceTest {
     @Mock
     ProductRepository productRepository;
     @Mock
-    TagRepository tagRepository;
+    CategoryRepository categoryRepository;
     @InjectMocks
     SlugService service;
 
@@ -123,8 +123,16 @@ class SlugServiceTest {
 
     @Test
     void untransliterableNamesFallBackToAGenericSlug() {
-        when(tagRepository.existsBySlug("category")).thenReturn(false);
+        when(categoryRepository.existsBySlug("category")).thenReturn(false);
 
-        assertThat(service.forTag(null, "😀", null)).isEqualTo("category");
+        assertThat(service.forCategory(null, "😀", null)).isEqualTo("category");
+    }
+
+    @Test
+    void theMarkdownCollectionSlugIsReservedForCategories() {
+        when(categoryRepository.existsBySlug("utsenka-2")).thenReturn(false);
+
+        assertThat(service.categorySlugTaken("utsenka", null)).isTrue();
+        assertThat(service.forCategory("utsenka", "Уценка", null)).isEqualTo("utsenka-2");
     }
 }

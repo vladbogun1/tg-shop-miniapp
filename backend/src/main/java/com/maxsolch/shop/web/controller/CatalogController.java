@@ -1,5 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.catalog.CatalogDtos.CatalogSchemaDto;
+import com.maxsolch.shop.catalog.CatalogSchemaService;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.web.dto.ProductDto;
@@ -22,9 +24,17 @@ import java.util.Locale;
 public class CatalogController {
 
     private final CatalogService catalogService;
+    private final CatalogSchemaService schemaService;
 
-    public CatalogController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService, CatalogSchemaService schemaService) {
         this.catalogService = catalogService;
+        this.schemaService = schemaService;
+    }
+
+    @GetMapping("/catalog/schema")
+    @Operation(summary = "Catalog schema for the Mini App (categories, brands, characteristics), localized")
+    public CatalogSchemaDto schema(Locale locale) {
+        return schemaService.publicSchema(ContentLocale.normalize(locale));
     }
 
     @GetMapping("/products")

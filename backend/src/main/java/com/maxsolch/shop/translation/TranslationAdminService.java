@@ -1,16 +1,17 @@
 package com.maxsolch.shop.translation;
 
+import com.maxsolch.shop.catalog.Category;
+import com.maxsolch.shop.catalog.CatalogDtos.CategoryUpsertRequest;
+import com.maxsolch.shop.catalog.CategoryRepository;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.ReplyTemplate;
-import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
-import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.TranslationDtos.Counts;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportItem;
@@ -25,7 +26,6 @@ import com.maxsolch.shop.translation.TranslationDtos.Status;
 import com.maxsolch.shop.translation.TranslationService.Key;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos;
-import com.maxsolch.shop.web.dto.TagUpsertRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -64,7 +64,7 @@ public class TranslationAdminService {
     static final int MAX_REJECTED_LISTED = 2_000;
 
     private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
-    private static final List<String> CATALOG_CACHES = List.of("products", "productById", "tags");
+    private static final List<String> CATALOG_CACHES = List.of("products", "productById", "catalogSchema");
 
     /**
      * The Russian source of one field; {@code inScope} = part of the export (live entity);
@@ -82,12 +82,13 @@ public class TranslationAdminService {
             Map.entry("PRODUCT:description", MAX_TEXT_CHARS),
             Map.entry("PRODUCT:seo_title", 255),
             Map.entry("PRODUCT:seo_description", 512),
+            Map.entry("PRODUCT:condition_note", 255),
             Map.entry("VARIANT:name", 128),
-            Map.entry("TAG:name", 128),
-            Map.entry("TAG:seo_title", 255),
-            Map.entry("TAG:seo_description", 512),
-            Map.entry("TAG:h1", 255),
-            Map.entry("TAG:intro_text", TagUpsertRequest.INTRO_MAX_CHARS),
+            Map.entry("CATEGORY:name", 128),
+            Map.entry("CATEGORY:seo_title", 255),
+            Map.entry("CATEGORY:seo_description", 512),
+            Map.entry("CATEGORY:h1", 255),
+            Map.entry("CATEGORY:intro_text", CategoryUpsertRequest.INTRO_MAX_CHARS),
             Map.entry("PAYMENT_OPTION:title", 255),
             Map.entry("PAYMENT_OPTION:description", 1024),
             Map.entry("REPLY_TEMPLATE:body", ReplyTemplateDtos.BODY_MAX_CHARS));
@@ -95,7 +96,7 @@ public class TranslationAdminService {
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
-    private final TagRepository tagRepository;
+    private final CategoryRepository categoryRepository;
     private final PaymentOptionRepository paymentOptionRepository;
     private final ReplyTemplateRepository replyTemplateRepository;
     private final TranslationService translationService;
@@ -104,7 +105,7 @@ public class TranslationAdminService {
     public TranslationAdminService(ContentTranslationRepository repository,
                                    ProductRepository productRepository,
                                    ProductVariantRepository variantRepository,
-                                   TagRepository tagRepository,
+                                   CategoryRepository categoryRepository,
                                    PaymentOptionRepository paymentOptionRepository,
                                    ReplyTemplateRepository replyTemplateRepository,
                                    TranslationService translationService,
@@ -112,7 +113,7 @@ public class TranslationAdminService {
         this.repository = repository;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
-        this.tagRepository = tagRepository;
+        this.categoryRepository = categoryRepository;
         this.paymentOptionRepository = paymentOptionRepository;
         this.replyTemplateRepository = replyTemplateRepository;
         this.translationService = translationService;
@@ -163,7 +164,9 @@ public class TranslationAdminService {
             Map<Key, ContentTranslation> rows = existing(l);
             Map<String, int[]> acc = new LinkedHashMap<>();
             for (TranslationEntityType t : TranslationEntityType.values()) {
-                acc.put(t.name(), new int[3]);
+                if (t.translatable()) {
+                    acc.put(t.name(), new int[3]);
+                }
             }
             acc.put("ALL", new int[3]);
             for (Map.Entry<Key, Source> e : sources.entrySet()) {
@@ -437,6 +440,7 @@ public class TranslationAdminService {
                     case TranslationEntityType.TITLE -> p.getTitle();
                     case TranslationEntityType.DESCRIPTION -> p.getDescription();
                     case TranslationEntityType.SEO_TITLE -> p.getSeoTitle();
+                    case TranslationEntityType.CONDITION_NOTE -> p.getConditionNote();
                     default -> p.getSeoDescription();
                 };
                 if (!matches(current, wantedHash, newHash)) {
@@ -446,6 +450,7 @@ public class TranslationAdminService {
                     case TranslationEntityType.TITLE -> p.setTitle(newSource);
                     case TranslationEntityType.DESCRIPTION -> p.setDescription(newSource);
                     case TranslationEntityType.SEO_TITLE -> p.setSeoTitle(newSource);
+                    case TranslationEntityType.CONDITION_NOTE -> p.setConditionNote(newSource);
                     default -> p.setSeoDescription(newSource);
                 }
                 return "OK";
@@ -461,24 +466,26 @@ public class TranslationAdminService {
                 v.setName(newSource);
                 return "OK";
             }
-            case TAG -> {
-                Tag t = tagRepository.findById(id).orElse(null);
+            case CATEGORY -> {
+                Category t = categoryRepository.findById(id).orElse(null);
                 if (t == null) {
                     return "NOT_FOUND";
                 }
                 if (!TranslationEntityType.NAME.equals(field)) {
-                    if (!matches(tagSeoField(t, field), wantedHash, newHash)) {
+                    if (!matches(categorySeoField(t, field), wantedHash, newHash)) {
                         return "STALE";
                     }
-                    setTagSeoField(t, field, newSource);
+                    setCategorySeoField(t, field, newSource);
                     return "OK";
                 }
                 if (!matches(t.getName(), wantedHash, newHash)) {
                     return "STALE";
                 }
-                Tag clash = tagRepository.findByName(newSource).orElse(null);
-                if (clash != null && !Arrays.equals(clash.getId(), id)) {
-                    return "INVALID_TAG_NAME_TAKEN";
+                boolean clash = categoryRepository.findAll().stream()
+                        .anyMatch(c -> !Arrays.equals(c.getId(), id) && Arrays.equals(c.getParentId(), t.getParentId())
+                                && c.getName().equalsIgnoreCase(newSource.trim()));
+                if (clash) {
+                    return "INVALID_CATEGORY_NAME_TAKEN";
                 }
                 t.setName(newSource);
                 return "OK";
@@ -517,24 +524,24 @@ public class TranslationAdminService {
         }
     }
 
-    /** The SEO source fields of a tag (everything translatable but the name). */
-    static String tagSeoField(Tag t, String field) {
+    /** The SEO source fields of a category (everything translatable but the name). */
+    static String categorySeoField(Category t, String field) {
         return switch (field) {
             case TranslationEntityType.SEO_TITLE -> t.getSeoTitle();
             case TranslationEntityType.SEO_DESCRIPTION -> t.getSeoDescription();
             case TranslationEntityType.H1 -> t.getH1();
             case TranslationEntityType.INTRO_TEXT -> t.getIntroText();
-            default -> throw new IllegalArgumentException("not a tag SEO field: " + field);
+            default -> throw new IllegalArgumentException("not a category SEO field: " + field);
         };
     }
 
-    private static void setTagSeoField(Tag t, String field, String value) {
+    private static void setCategorySeoField(Category t, String field, String value) {
         switch (field) {
             case TranslationEntityType.SEO_TITLE -> t.setSeoTitle(value);
             case TranslationEntityType.SEO_DESCRIPTION -> t.setSeoDescription(value);
             case TranslationEntityType.H1 -> t.setH1(value);
             case TranslationEntityType.INTRO_TEXT -> t.setIntroText(value);
-            default -> throw new IllegalArgumentException("not a tag SEO field: " + field);
+            default -> throw new IllegalArgumentException("not a category SEO field: " + field);
         }
     }
 
@@ -604,6 +611,7 @@ public class TranslationAdminService {
         int removed = repository.deleteOrphanProducts()
                 + repository.deleteOrphanVariants()
                 + repository.deleteOrphanTags()
+                + repository.deleteOrphanCategories()
                 + repository.deleteOrphanPaymentOptions()
                 + repository.deleteOrphanReplyTemplates();
         if (removed > 0) {
@@ -629,6 +637,8 @@ public class TranslationAdminService {
                     id, title);
             put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, (String) r[4], live,
                     id, title);
+            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.CONDITION_NOTE,
+                    r.length > 7 ? (String) r[7] : null, live, id, title);
         }
         for (Object[] r : variantRepository.translationSources()) {
             boolean live = Boolean.TRUE.equals(r[2]) && !Boolean.TRUE.equals(r[3]);
@@ -637,14 +647,15 @@ public class TranslationAdminService {
             put(out, TranslationEntityType.VARIANT, UuidUtil.toString((byte[]) r[0]), TranslationEntityType.NAME,
                     (String) r[1], live, productId, productTitle);
         }
-        for (Tag t : tagRepository.findAll()) {
+        for (Category t : categoryRepository.findAll()) {
             String id = UuidUtil.toString(t.getId());
-            put(out, TranslationEntityType.TAG, id, TranslationEntityType.NAME, t.getName(), true);
+            put(out, TranslationEntityType.CATEGORY, id, TranslationEntityType.NAME, t.getName(), true);
             // SEO fields carry the category name as context (productTitle; productId stays null),
             // so the «Переводы» screen and the AI prompt can tell whose page the text belongs to.
-            for (String field : TranslationEntityType.TAG.fields()) {
+            for (String field : TranslationEntityType.CATEGORY.fields()) {
                 if (!TranslationEntityType.NAME.equals(field)) {
-                    put(out, TranslationEntityType.TAG, id, field, tagSeoField(t, field), true, null, t.getName());
+                    put(out, TranslationEntityType.CATEGORY, id, field, categorySeoField(t, field), true, null,
+                            t.getName());
                 }
             }
         }
@@ -746,7 +757,7 @@ public class TranslationAdminService {
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
             throw new BadRequestException(
-                    "entityType must be one of PRODUCT, VARIANT, TAG, PAYMENT_OPTION, REPLY_TEMPLATE");
+                    "entityType must be one of PRODUCT, VARIANT, CATEGORY, PAYMENT_OPTION, REPLY_TEMPLATE");
         }
         return type;
     }

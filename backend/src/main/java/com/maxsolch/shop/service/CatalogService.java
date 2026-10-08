@@ -1,18 +1,19 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.catalog.CatalogDirectory;
+import com.maxsolch.shop.catalog.CatalogDtos.BrandRefDto;
+import com.maxsolch.shop.catalog.CatalogSnapshot;
+import com.maxsolch.shop.catalog.ProductCatalogFields;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.Tag;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.TagRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductImageDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;
-import com.maxsolch.shop.web.dto.TagSeoDto;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ import java.util.Optional;
  *
  * <p>Every method takes the content language ({@code ru}/{@code uk}/{@code en}, see
  * {@link ContentLocale}) and the caches are keyed by it: the DTOs carry translated titles,
- * descriptions, variant and tag names (docs/CONTENT-I18N.md). The key is normalised in SpEL so an
+ * descriptions, variant and category names (docs/CONTENT-I18N.md). The key is normalised in SpEL so an
  * unexpected value can never grow the cache beyond the three languages.
  */
 @Service
@@ -36,16 +37,16 @@ public class CatalogService {
     private static final String LANG_KEY = "T(com.maxsolch.shop.translation.ContentLocale).normalize(#lang)";
 
     private final ProductRepository productRepository;
-    private final TagRepository tagRepository;
+    private final CatalogDirectory catalogDirectory;
     private final OrderItemRepository orderItemRepository;
     private final TranslationService translationService;
 
     public CatalogService(ProductRepository productRepository,
-                          TagRepository tagRepository,
+                          CatalogDirectory catalogDirectory,
                           OrderItemRepository orderItemRepository,
                           TranslationService translationService) {
         this.productRepository = productRepository;
-        this.tagRepository = tagRepository;
+        this.catalogDirectory = catalogDirectory;
         this.orderItemRepository = orderItemRepository;
         this.translationService = translationService;
     }
@@ -92,41 +93,6 @@ public class CatalogService {
         return sold;
     }
 
-    @Transactional(readOnly = true)
-    @Cacheable(value = "tags", key = LANG_KEY)
-    public List<TagDto> listTags(String lang) {
-        List<TagDto> original = tagRepository.findAllByOrderByNameAsc().stream()
-                .map(TagDto::of)
-                .toList();
-        return translationService.overlay(lang).tags(original);
-    }
-
-    /**
-     * SEO of the category pages (V36) in one language, by tag id; tags without any SEO text are
-     * left out. Russian = the source; uk/en = only fields with a current translation (see
-     * {@link TranslationService.Overlay#tagSeoTranslated}), the rest null so the site uses its
-     * localized template. Lives in the {@code tags} cache (evicted by tag edits and translation
-     * imports) under its own key, apart from {@link #listTags}: the intro texts are long and have no
-     * business in the tag lists the Mini App and every product card carry.
-     */
-    @Transactional(readOnly = true)
-    @Cacheable(value = "tags", key = "'seo:' + " + LANG_KEY)
-    public Map<String, TagSeoDto> tagSeo(String lang) {
-        boolean translated = ContentLocale.isTranslated(ContentLocale.normalize(lang));
-        TranslationService.Overlay overlay = translationService.overlay(lang);
-        Map<String, TagSeoDto> out = new HashMap<>();
-        for (Tag t : tagRepository.findAll()) {
-            TagSeoDto seo = TagSeoDto.of(t);
-            if (translated) {
-                seo = overlay.tagSeoTranslated(seo);
-            }
-            if (!seo.isEmpty()) {
-                out.put(seo.tagId(), seo);
-            }
-        }
-        return Map.copyOf(out);
-    }
-
     private ProductDto toDto(Product p, Map<String, Long> soldCounts) {
         List<ProductImageDto> images = p.getImages().stream()
                 .map(i -> new ProductImageDto(i.getId(), i.getUrl(), i.getSortOrder()))
@@ -134,9 +100,10 @@ public class CatalogService {
         List<ProductVariantDto> variants = p.getVariants().stream()
                 .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(), v.getStock(), v.getSortOrder()))
                 .toList();
-        List<TagDto> tags = p.getTags().stream()
-                .map(this::toTagDto)
-                .toList();
+        CatalogSnapshot catalog = catalogDirectory.snapshot();
+        String categoryId = ProductCatalogFields.categoryId(p);
+        List<TagDto> tags = ProductCatalogFields.tags(catalog, categoryId);
+        BrandRefDto brandRef = ProductCatalogFields.brandRef(catalog, ProductCatalogFields.brandId(p));
         String id = UuidUtil.toString(p.getId());
         return new ProductDto(
                 id,
@@ -155,13 +122,14 @@ public class CatalogService {
                 p.getSeoTitle(),
                 p.getSeoDescription(),
                 p.getCreatedAt(),
-                p.getBrand(),
+                brandRef == null ? null : brandRef.name(),
                 p.getSku(),
                 p.getRatingAvg() == null ? null : p.getRatingAvg().doubleValue(),
-                p.getRatingCount());
-    }
-
-    private TagDto toTagDto(Tag t) {
-        return TagDto.of(t);
+                p.getRatingCount(),
+                categoryId,
+                brandRef,
+                ProductCatalogFields.condition(p),
+                p.getConditionNote(),
+                ProductCatalogFields.specs(p));
     }
 }

@@ -55,20 +55,75 @@ public class AdminProductController {
 
     /**
      * Rebuild the site pages this product appears on (no-op when revalidation is off): its page,
-     * its categories — and, after an edit, the categories and slug it had before, or a product
-     * moved out of a category kept showing in that category's listing until ISR expiry.
+     * its category path (leaf and parent) and «Уценка» — and, after an edit, the path and slug it had
+     * before, or a product moved out of a category kept showing there until ISR expiry.
      */
     private AdminProductDto revalidated(AdminProductDto p, AdminProductDto before) {
-        java.util.Set<String> categories = new java.util.LinkedHashSet<>(tagSlugs(p));
+        java.util.Set<String> categories = new java.util.LinkedHashSet<>(pathSlugs(p));
         if (before != null) {
-            categories.addAll(tagSlugs(before));
+            categories.addAll(pathSlugs(before));
+        }
+        if (!"NEW".equals(p.condition()) || (before != null && !"NEW".equals(before.condition()))) {
+            categories.add(com.maxsolch.shop.catalog.MarkdownCollection.SLUG);
         }
         siteRevalidator.productChanged(p.slug(), before == null ? null : before.slug(), categories);
         return p;
     }
 
-    private static List<String> tagSlugs(AdminProductDto p) {
+    /** The category path root → leaf ({@code tags} carries it). */
+    private static List<String> pathSlugs(AdminProductDto p) {
         return p.tags() == null ? List.of() : p.tags().stream().map(t -> t.slug()).toList();
+    }
+
+    private static boolean flag(String v) {
+        return v != null && (v.equals("1") || v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes"));
+    }
+
+    /** "категория A → B, бренд X → Y, состояние NEW → MARKDOWN, характеристики: +3, ~2, −1". */
+    static String catalogSummary(AdminProductDto before, AdminProductDto after) {
+        StringBuilder sb = new StringBuilder();
+        if (before == null) {
+            return "";
+        }
+        if (!java.util.Objects.equals(before.categoryId(), after.categoryId())) {
+            sb.append(", категория ").append(pathName(before)).append(" → ").append(pathName(after));
+        }
+        if (!java.util.Objects.equals(before.brand(), after.brand())) {
+            sb.append(", бренд ").append(before.brand() == null ? "—" : before.brand()).append(" → ")
+                    .append(after.brand() == null ? "—" : after.brand());
+        }
+        if (!java.util.Objects.equals(before.condition(), after.condition())) {
+            sb.append(", состояние ").append(before.condition()).append(" → ").append(after.condition());
+        }
+        java.util.Map<String, Object> a = before.specs() == null ? java.util.Map.of() : before.specs();
+        java.util.Map<String, Object> b = after.specs() == null ? java.util.Map.of() : after.specs();
+        int added = 0;
+        int changed = 0;
+        int removed = 0;
+        for (var e : b.entrySet()) {
+            if (!a.containsKey(e.getKey())) {
+                added++;
+            } else if (!java.util.Objects.equals(String.valueOf(a.get(e.getKey())), String.valueOf(e.getValue()))) {
+                changed++;
+            }
+        }
+        for (String k : a.keySet()) {
+            if (!b.containsKey(k)) {
+                removed++;
+            }
+        }
+        if (added + changed + removed > 0) {
+            sb.append(", характеристики: +").append(added).append(", ~").append(changed).append(", −").append(removed);
+        }
+        if (!java.util.Objects.equals(before.cardStatus(), after.cardStatus())) {
+            sb.append(", карточка ").append(before.cardStatus()).append(" → ").append(after.cardStatus());
+        }
+        return sb.toString();
+    }
+
+    private static String pathName(AdminProductDto p) {
+        return p.tags() == null || p.tags().isEmpty() ? "—"
+                : String.join(" › ", p.tags().stream().map(t -> t.name()).toList());
     }
 
     /** "цена 1 200 ₴ → 900 ₴, сток 3 → 5" — only what changed among the money/stock/visibility fields. */
@@ -115,23 +170,28 @@ public class AdminProductController {
     }
 
     @PatchMapping("/products/{id}")
-    @Operation(summary = "Update product")
-    public AdminProductDto update(@PathVariable String id, @Valid @RequestBody ProductUpsertRequest req) {
+    @Operation(summary = "Update product (turning it active: 409 CARD_NOT_READY unless force=1, "
+            + "409 PRODUCT_NOT_PUBLISHABLE {missing})")
+    public AdminProductDto update(@PathVariable String id, @Valid @RequestBody ProductUpsertRequest req,
+                                  @RequestParam(required = false) String force) {
         // Read before the save: the journal shows what changed, the site rebuilds the old slug and
         // the categories the product is leaving.
         AdminProductDto before = productService.get(id);
-        AdminProductDto updated = productService.update(id, req);
-        audit.record("PRODUCT_UPDATE", "PRODUCT", id, changeSummary(before, updated));
+        AdminProductDto updated = productService.update(id, req, flag(force));
+        audit.record("PRODUCT_UPDATE", "PRODUCT", id, changeSummary(before, updated) + catalogSummary(before, updated)
+                + (flag(force) && !before.active() && updated.active() ? ", выложен без оформления" : ""));
         return revalidated(updated, before);
     }
 
     @PatchMapping("/products/{id}/active")
-    @Operation(summary = "Toggle product active")
-    public AdminProductDto active(@PathVariable String id, @RequestBody BooleanFlagRequest body) {
+    @Operation(summary = "Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; "
+            + "no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing})")
+    public AdminProductDto active(@PathVariable String id, @RequestBody BooleanFlagRequest body,
+                                  @RequestParam(required = false) String force) {
         if (body.active() == null) {
             throw new BadRequestException("active is required");
         }
-        AdminProductDto saved = productService.setActive(id, body.active());
+        AdminProductDto saved = productService.setActive(id, body.active(), flag(force));
         // Journal after the fact: a 404 must not leave a "показан" entry for something that never happened.
         audit.record("PRODUCT_ACTIVE", "PRODUCT", id, body.active() ? "показан" : "скрыт");
         return revalidated(saved, null);

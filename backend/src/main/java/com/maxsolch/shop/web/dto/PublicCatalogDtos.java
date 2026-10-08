@@ -19,7 +19,12 @@ public final class PublicCatalogDtos {
             long priceMaxAvailable) {
     }
 
-    public record CategoryDto(String id, String slug, String name, int sortOrder, long productCount) {
+    /**
+     * Menu category (flat, tree order: each root followed by its children). {@code productCount} =
+     * active products of the subtree. The virtual «Уценка» comes last with {@code id = "utsenka"}.
+     */
+    public record CategoryDto(String id, String slug, String name, int sortOrder, long productCount,
+                              String parentId, String artKind, boolean showInMenu) {
     }
 
     /**
@@ -29,7 +34,7 @@ public final class PublicCatalogDtos {
      */
     public record CategoryDetailDto(String id, String slug, String name, int sortOrder, long productCount,
                                     boolean showInMenu, String seoTitle, String seoDescription, String h1,
-                                    String introText) {
+                                    String introText, String parentId, String artKind) {
     }
 
     public record SitemapProduct(String slug, Instant updatedAt) {
