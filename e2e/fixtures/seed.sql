@@ -27,6 +27,11 @@ DELETE FROM product_images;
 DELETE FROM product_variants;
 DELETE FROM products;
 DELETE FROM tags;
+DELETE FROM spec_options;
+DELETE FROM spec_attributes;
+DELETE FROM spec_groups;
+DELETE FROM categories;
+DELETE FROM brands;
 DELETE FROM content_translations;
 DELETE FROM client_events;
 DELETE FROM analytics_daily;
@@ -54,7 +59,8 @@ INSERT INTO payment_options (id, title, description, requires_prepayment, prepay
    'Вся сумма заказа онлайн: карта, Apple Pay, Google Pay.', FALSE, 0, 3, TRUE);
 
 -- ---------- Catalog ----------
-INSERT INTO tags (id, name, slug, sort_order, show_in_menu) VALUES
+-- Catalog v2 (V52): categories (a flat tree of two leaves here), products sit in a leaf.
+INSERT INTO categories (id, name, slug, sort_order, show_in_menu) VALUES
   (UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000001'), 'E2E Футболки', 'e2e-futbolki', 1, TRUE),
   (UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002'), 'E2E Аксессуары', 'e2e-aksessuary', 2, TRUE);
 
@@ -75,12 +81,16 @@ INSERT INTO product_variants (id, product_id, name, stock, sort_order) VALUES
   (UUID_TO_BIN('e2e0e001-0000-4000-8000-000000000001'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), 'S', 5, 0),
   (UUID_TO_BIN('e2e0e001-0000-4000-8000-000000000002'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), 'M', 2, 1);
 
-INSERT INTO product_tags (product_id, tag_id) VALUES
-  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000001')),
-  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')),
-  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')),
-  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000004'), UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')),
-  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000005'), UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002'));
+UPDATE products SET category_id = UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000001')
+ WHERE id = UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001');
+UPDATE products SET category_id = UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')
+ WHERE id IN (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'),
+              UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000004'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000005'));
+-- Seeded products are finished cards (the publishing gate only applies to drafts).
+UPDATE products SET card_status = 'READY' WHERE id IN (
+  UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'),
+  UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000004'),
+  UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000005'));
 
 -- ---------- Customers (invented Telegram ids) ----------
 INSERT INTO users (telegram_user_id, username, first_name, last_name, language_code, locale, created_at) VALUES

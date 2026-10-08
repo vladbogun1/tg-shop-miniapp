@@ -147,22 +147,47 @@ ALTER TABLE products
 
 ### 3.3 Админка — товар
 
-`ProductUpsertRequest`/`AdminProductDto`: `categoryId` (обязателен у новых товаров; лист), `brandId` (или `brandName` → найти по имени/алиасу или
-создать), `condition`, `conditionNote`, `specs`, `cardStatus` (админ может поставить READY/DRAFT вручную). `tagIds` и `brand` убираются из запроса.
-Ответ на сохранение содержит `specIssues: [{key, reason}]` — что валидатор отбросил. Аудит `PRODUCT_UPDATE` пишет изменения specs кратко
-(«характеристики: +3, ~2, −1»), категории, бренда, состояния. Любое ручное изменение specs у READY-карточки статус не меняет.
+`ProductUpsertRequest`/`AdminProductDto`: `categoryId` (лист; `""` в PATCH — снять), `brandId` (`""` — снять; или `brandName` → найти
+по имени/алиасу или создать), `condition`, `conditionNote`, `specs` (заменяет целиком; `null` — не трогать), `cardStatus` (админ может
+поставить READY/DRAFT вручную; READY пишет `card_meta.reviewedAt/reviewedBy`). `tagIds` и `brand` убраны из запроса (игнорируются).
+`AdminProductDto` дополнительно: `categoryId`, `brandRef {id,slug,name}`, `brand` (= brandRef.name), `condition`, `conditionNote`, `specs`,
+`cardStatus`, `cardConfidence`, `cardMeta`, `missingRequired:[key]`, `tags` = путь категории `[{id,name,slug,sortOrder,showInMenu}]`.
+Ответ на сохранение содержит `specIssues: [{key, reason, message}]` — что валидатор отбросил (reason — код: `UNKNOWN_KEY`, `UNKNOWN_OPTION`,
+`NOT_A_NUMBER`, `OUT_OF_RANGE`, `MIN_GT_MAX`, `NOT_A_BOOL`, `NOT_A_STRING`, `NOT_A_LIST`, `EMPTY`, `TOO_LONG`). Смена категории без `specs`
+перепроверяет сохранённые specs по новой схеме (лишние ключи уходят в `specIssues`). Аудит `PRODUCT_UPDATE` пишет изменения кратко
+(«категория A › B → C, бренд X → Y, состояние NEW → MARKDOWN, характеристики: +3, ~2, −1, карточка DRAFT → READY»).
+Любое ручное изменение specs статус карточки не меняет.
+
+**Незавершённые товары (решение владельца 09.10):**
+- `POST /api/admin/products` требует `title`, `priceMinor > 0`, `stock ≥ 0` и `categoryId` (лист) — иначе 400; фото, бренд, описание,
+  характеристики необязательны. Новый товар **всегда** сохраняется скрытым (`active=false`) и с `cardStatus=DRAFT`, что бы ни пришло в `active`.
+- Публикация — переход `active: false → true` (`PATCH /products/{id}/active {active:true}` или `PATCH /products/{id}` с `active:true`):
+  нет цены или категории → 409 `PRODUCT_NOT_PUBLISHABLE` с `missing: ["price","category"]` (force не обходит);
+  карточка `DRAFT` → 409 `CARD_NOT_READY`, если не передан `?force=1` («выложить без оформления»). Уже активные товары не трогаются.
 
 ### 3.4 Админка — «Карточки» (оформление ИИ)
 
-- `GET /api/admin/cards/stats` → `{draft, aiFilled, ready, incomplete}` (бейдж в меню = draft + aiFilled).
-- `GET /api/admin/cards/export?status=draft|ai_filled|incomplete|all&ids=` → `[{id, title, slug, categoryId, categorySlug, brand, condition, conditionNote,
-  description, specs, cardStatus, cardConfidence, missingRequired:[key], variants:[name], imageUrl, price}]`.
-- `PUT /api/admin/cards/import` `{items:[{productId, categorySlug?, brand?, specs, confidence:{key:0..100}, overall, description?, sources?, notes?, model?,
-  markReady:boolean}], replaceSpecs:boolean}` → `{applied, rejected:[{productId, reason}], issues:[{productId, key, reason}], createdBrands:[name]}`.
+- `GET /api/admin/cards/stats` → `{draft, aiFilled, ready, incomplete, unfinished}` (бейдж в меню = draft + aiFilled).
+  `incomplete` — активные неархивные товары без категории или с незаполненным required; `unfinished` («Незавершённые») —
+  `cardStatus=DRAFT`, скрытые, не в архиве.
+- `GET /api/admin/cards/export?status=draft|ai_filled|ready|incomplete|unfinished|all&ids=<uuid,uuid>` → `[{id, title, slug, categoryId,
+  categorySlug, brand, condition, conditionNote, description, specs, cardStatus, cardConfidence, cardMeta, missingRequired:[key],
+  variants:[name], imageUrl, priceMinor, price, active, stock}]` (`imageUrl` — ключ первого фото, как хранится; `price` — гривны).
+- `PUT /api/admin/cards/import` `{items:[{productId, categorySlug?, brand?, specs?, confidence?:{key:0..100}, overall?, description?, sources?,
+  notes?, model?, markReady?:boolean, title?, translations?:{uk?:{title?,description?,conditionNote?}, en?:{…}}, publish?:boolean,
+  condition?, conditionNote?}], replaceSpecs:boolean}` →
+  `{applied, rejected:[{productId, reason}], issues:[{productId, key, reason, message}], createdBrands:[name],
+  items:[{productId, applied, published, reason?, translated:{uk:n, en:n}, skippedManual:n}]}`.
   Сервер повторно валидирует всё (клиентская проверка — только для UX). `replaceSpecs=false` (по умолчанию): ключи ответа перезаписывают,
-  отсутствующие сохраняются. Описание меняется, только если пришло и отмечено. Статус → `AI_FILLED` или `READY` (`markReady`).
-  Смена категории — только на лист; неизвестный slug → issue. Аудит `CARDS_IMPORT`. Журнал карточки — `card_meta`.
-- `PATCH /api/admin/products/{id}/card-status` `{status}` — «Проверено» из списка/карточки.
+  отсутствующие сохраняются. `title` / `description` (ru) меняются, только если пришли (занятое название → issue `TITLE_TAKEN`).
+  Статус → `AI_FILLED`, если пришли specs/описание/название, или `READY` (`markReady`); только бренд/категория — статус не меняется.
+  Смена категории — только на лист; неизвестный slug → issue `UNKNOWN_CATEGORY`, родитель → `CATEGORY_NOT_LEAF`.
+  `translations` пишутся в `content_translations` (PRODUCT: title/description/condition_note, origin AI) от **итогового** русского текста
+  (source_hash = SHA-256 сохранённого источника) в той же транзакции; MANUAL-переводы не перезаписываются (`skippedManual`); пустой/длинный
+  текст → issue `INVALID_TEXT_BLANK` / `INVALID_TEXT_TOO_LONG`, нет русского источника → `NO_SOURCE`.
+  `publish: true` — после применения сделать товар активным, если есть цена и категория и карточка не DRAFT; иначе `published:false`
+  и `reason` (`NOT_PUBLISHABLE: price,category` / `CARD_NOT_READY`). Аудит `CARDS_IMPORT`. Журнал карточки — `card_meta`.
+- `PATCH /api/admin/products/{id}/card-status` `{status}` — «Проверено» из списка/карточки (аудит `PRODUCT_CARD_STATUS`).
 
 ## 4. Промпт «Оформление карточек» (frontend-admin/lib/card-prompt.ts)
 
