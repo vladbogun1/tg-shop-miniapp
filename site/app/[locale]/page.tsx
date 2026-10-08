@@ -2,11 +2,10 @@ import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
-import { CategoryArt, CategoryArtDefs } from "@/components/home/CategoryArt";
 import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { Spr, type SpriteName } from "@/components/mascot/Sprite";
-import { CategoryPeek } from "@/components/mascot/CategoryPeek";
+import { CategorySprite } from "@/components/mascot/CategorySprite";
 import { CoinPop, HeroScene } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
@@ -24,12 +23,12 @@ export async function generateMetadata({ params }: { params: LocaleParams }): Pr
   return pageMeta({ locale, path: "/", title: t("meta.title"), absoluteTitle: true, description: t("meta.description") });
 }
 
-/** Each point has its pixel character: the forklift with a parcel, the coin-heart, the robot
- *  checking hardware («we check every item»), the mascot typing («a real person answers»). */
+/** Each point has its pixel character: the forklift with a parcel, the coin-heart, the mascot
+ *  inspecting a mouse through a magnifier («we check every item»), the mascot typing («a real person answers»). */
 const TRUST: { sprite: SpriteName; title: MessageKey; text: MessageKey }[] = [
   { sprite: "hauler_box", title: "home.trust.delivery.title", text: "home.trust.delivery.text" },
   { sprite: "don_ua", title: "home.trust.payment.title", text: "home.trust.payment.text" },
-  { sprite: "setup", title: "home.trust.warranty.title", text: "home.trust.warranty.text" },
+  { sprite: "devices", title: "home.trust.warranty.title", text: "home.trust.warranty.text" },
   { sprite: "dm", title: "home.trust.chat.title", text: "home.trust.chat.text" },
 ];
 
@@ -89,27 +88,24 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
       {categories.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-cats">
           <SectionHead id="home-cats" title={t("home.categories")} more={href("/catalog")} moreLabel={t("common.showAll")} />
-          <CategoryArtDefs />
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             {categories.map((c) => (
               <li key={c.id}>
+                {/* text on top, the 96×80 pixel slot in flow at the bottom-right: the name (any length,
+                    any number of lines) and the counter can never end up under the sprite */}
                 <Link
                   href={href(`/catalog/${c.slug}`)}
-                  className="nb nb-hover group relative isolate flex h-full min-h-[136px] flex-col justify-between overflow-hidden bg-[radial-gradient(circle_at_85%_85%,rgba(255,102,0,.10),transparent_55%)] p-3.5 sm:min-h-[148px] sm:p-4"
+                  className="nb nb-hover group relative isolate flex h-full flex-col overflow-hidden bg-[radial-gradient(circle_at_85%_85%,rgba(255,102,0,.10),transparent_55%)] p-3.5 sm:p-4"
                 >
-                  <span className="relative z-10 font-display text-[15px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[16px]">
+                  <span className="font-display text-[15px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[16px]">
                     {c.name}
                   </span>
-                  <span className="relative z-10 mt-2 max-w-[55%] text-[12px] font-medium text-[var(--muted)]">
+                  <span className="mt-1 text-[12px] font-medium text-[var(--muted)]">
                     {t("home.categoryCount", { n: c.productCount })}
                   </span>
-                  <CategoryArt
-                    slug={c.slug}
-                    name={c.name}
-                    accent="var(--accent)"
-                    className="mx-cat-art pointer-events-none absolute bottom-1.5 right-2 h-[70px] w-[70px] opacity-80 transition-[transform,opacity] duration-200 ease-out sm:h-[92px] sm:w-[92px] motion-reduce:transition-none"
-                  />
-                  <CategoryPeek slug={c.slug} name={c.name} />
+                  <span className="-mb-1.5 -mr-1.5 mt-auto self-end pt-2 sm:-mb-2 sm:-mr-2">
+                    <CategorySprite slug={c.slug} name={c.name} />
+                  </span>
                 </Link>
               </li>
             ))}

@@ -24,7 +24,7 @@ import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 import { formatRating } from "@/components/reviews/Stars";
-import { Spr } from "@/components/mascot/Sprite";
+import "@/components/mascot/mascot.css";
 import "./reviews-ribbon.css";
 
 type Tier = "legend" | "epic" | "solid" | "low";
@@ -145,7 +145,7 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
     const clear = () => {
       if (current) delete current.dataset.spot;
       current = null;
-      // the pixel mascot by the heading laughs along with a 5★ spotlight (CSS: mascot.css §4)
+      // the pixel mascot by the heading reads on, then cheers a 5★ spotlight (CSS: mascot.css §4)
       delete root.dataset.legend;
     };
 
@@ -227,7 +227,12 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
           <span aria-hidden className="tech-mark" />
           <span className="min-w-0">{t("home.reviews.title")}</span>
           <span aria-hidden className="mx-rv">
-            <Spr name="discord" lazy />
+            <span className="mx-rv-f" />
+            <span className="mx-rv-stars">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <i key={i} style={{ "--i": i } as React.CSSProperties} />
+              ))}
+            </span>
           </span>
         </h2>
         <div className="flex items-center gap-3">

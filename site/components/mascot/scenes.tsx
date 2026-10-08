@@ -29,29 +29,30 @@ function F({ src, w, h, n = 1, className = "", style }: { src: string; w: number
 }
 
 /**
- * The goods that fan out of the box, in flight order. Adding one = one line here (+ its
- * `p_<name>.png`, ≤16 art px, in /public/mascot/hero). Up to 7 fit the showcase.
+ * The goods that fan out of the box, in flight order (each lands in the SLOTS entry of the same
+ * rank). Adding one = one line here (+ its `p_<name>.png`, 17–22 art px, in /public/mascot/hero).
+ * Up to 6 fit the showcase.
  */
 const GOODS: [name: string, w: number, h: number][] = [
-  ["mouse", 13, 9],
-  ["keyboard", 16, 7],
-  ["headset", 12, 14],
-  ["mat", 16, 9],
-  ["keycaps", 12, 11],
-  ["glides", 12, 11],
-  ["cable", 14, 13],
+  ["keyboard", 20, 8],
+  ["mouse", 18, 12],
+  ["glides", 17, 15],
+  ["headset", 17, 19],
+  ["keycaps", 18, 17],
+  ["cable", 18, 17],
 ];
 
-/** Showcase slots (item centres): a fan from the upper left over the box and the mascot's head (clear of
- * the forklift's beacon and of the mascot even mid-jump). */
+/**
+ * Showcase slots (item centres): a two-row fan over the box, left of the mascot (clear of his fists
+ * mid-jump and of his finger when he points at them) and above the parked forklift's beacon.
+ */
 const SLOTS: [number, number][] = [
-  [30, 34],
-  [40, 20],
-  [55, 11],
-  [71, 8],
-  [87, 9],
-  [102, 13],
-  [117, 10],
+  [38, 32],
+  [52, 13],
+  [58, 31],
+  [71, 10],
+  [77, 31],
+  [90, 12],
 ];
 const MOUTH: [number, number] = [70, 59]; // where the goods leave the open box
 const CART: [number, number] = [150, 9]; // top-right corner: the cart button on the page

@@ -648,6 +648,7 @@
 .mx-coin-host > a { position: relative; z-index: 1; }
 .mx-coinpop {
   --px: 2;
+  --jump: 14; /* art px; phones: the hero copy sits ~45 px over the button */
   position: absolute;
   z-index: 0;
   left: calc(50% - 6 * var(--px) * 1px);
@@ -656,15 +657,15 @@
   height: calc(12 * var(--px) * 1px);
   pointer-events: none;
 }
-@media (min-width: 640px) { .mx-coinpop { --px: 3; } }
+@media (min-width: 640px) { .mx-coinpop { --px: 3; --jump: 26; } }
 .mx-coinpop-c { display: block; opacity: 0; }
-/* the sparkle where the coin vanishes (top of its jump, -20 art px) */
-.mx-coinpop .mx-spark { position: absolute; left: calc(-13 * var(--px) * 1px); top: calc(-32 * var(--px) * 1px); opacity: 0; }
+/* the sparkle where the coin vanishes (6 art px under the top of its jump) */
+.mx-coinpop .mx-spark { position: absolute; left: calc(-13 * var(--px) * 1px); top: calc((-6 - var(--jump)) * var(--px) * 1px); opacity: 0; }
 @keyframes mx-coin-jump {
   0% { opacity: 1; transform: none; animation-timing-function: steps(8, end); }
-  40% { opacity: 1; transform: translateY(calc(-26 * var(--px) * 1px)); animation-timing-function: steps(4, end); }
-  70% { opacity: 1; transform: translateY(calc(-20 * var(--px) * 1px)); }
-  71%, 100% { opacity: 0; transform: translateY(calc(-20 * var(--px) * 1px)); }
+  40% { opacity: 1; transform: translateY(calc(var(--jump) * -1 * var(--px) * 1px)); animation-timing-function: steps(4, end); }
+  70% { opacity: 1; transform: translateY(calc((6 - var(--jump)) * var(--px) * 1px)); }
+  71%, 100% { opacity: 0; transform: translateY(calc((6 - var(--jump)) * var(--px) * 1px)); }
 }
 @keyframes mx-coin-spark { 0%, 69.9% { opacity: 0; } 70%, 99% { opacity: 1; } 100% { opacity: 0; } }
 @media (hover: hover) {
@@ -677,39 +678,190 @@
 .mx-coin-host:active .mx-coinpop .mx-spark { animation: mx-strip .3s steps(5) 1 .49s both, mx-coin-spark .7s 1 both; }
 
 /* ---------------------------------------------------------------------------
-   3. Category tiles: the character peeks out from behind the right edge on hover/focus.
-   Touch screens: always there, small (×1), still. The SVG art makes way for it.
+   3. Category tiles: a fixed 48×40 art-px slot (×2 = 96×80) in flow at the tile's bottom-right
+   (CategorySprite). Rest = frame 0; hover / keyboard focus plays the 4 frames once with the
+   manifest timings (--an / --ad set per kind), then it is back to frame 0. Touch: still.
    --------------------------------------------------------------------------- */
-.mx-peek {
+.mx-cat {
   --px: 2;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
+  display: block;
+  width: calc(48 * var(--px) * 1px);
+  height: calc(40 * var(--px) * 1px);
+  background-repeat: no-repeat;
+  background-size: calc(192 * var(--px) * 1px) calc(40 * var(--px) * 1px);
+  image-rendering: pixelated;
   pointer-events: none;
-  transform: translateX(calc(var(--w) * var(--px) * 1px));
-  transition: transform .26s steps(6, end);
 }
-.mx-peek > .mx { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .55)); }
 @media (hover: hover) {
-  .group:is(:hover, :focus-visible) .mx-peek { transform: translateX(calc(var(--peek) * var(--px) * 1px)); }
-  .group:is(:hover, :focus-visible) .mx-peek > .mx { animation: mx-bob 1.2s steps(1) .3s infinite; }
-  .group:is(:hover, :focus-visible) .mx-cat-art { opacity: 0; transform: translate(-12px, -4px) rotate(-6deg); }
+  .group:is(:hover, :focus-visible) .mx-cat { animation: var(--an) var(--ad) steps(1, end) 1; }
 }
-@media (hover: none) {
-  /* wide characters (cfg, tg…) would cover the «N товарів» counter on a ~165px phone tile:
-     tuck everything past ~72 art px behind the right edge */
-  .mx-peek { --px: 1; right: 4px; bottom: 4px; transition: none;
-    transform: translateX(max(0px, calc((var(--w) - 72) * 1px))); }
-  .mx-cat-art { display: none; }
+@keyframes mx-cat-mouse { /* 120/90/160/230 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-48 * var(--px) * 1px); }
+  35% { background-position-x: calc(-96 * var(--px) * 1px); }
+  61.67% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-glides { /* 150/150/150/250 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  42.86% { background-position-x: calc(-96 * var(--px) * 1px); }
+  64.29% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-mousepad { /* 120/120/140/220 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-48 * var(--px) * 1px); }
+  40% { background-position-x: calc(-96 * var(--px) * 1px); }
+  63.33% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-glass { /* 150/140/140/270 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  41.43% { background-position-x: calc(-96 * var(--px) * 1px); }
+  61.43% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-mechanical { /* 110/90/90/210 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  22% { background-position-x: calc(-48 * var(--px) * 1px); }
+  40% { background-position-x: calc(-96 * var(--px) * 1px); }
+  58% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-magnetic { /* 120/100/170/210 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-48 * var(--px) * 1px); }
+  36.67% { background-position-x: calc(-96 * var(--px) * 1px); }
+  65% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-keycaps { /* 150/130/120/300 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  40% { background-position-x: calc(-96 * var(--px) * 1px); }
+  57.14% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-headset { /* 150/150/150/250 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  42.86% { background-position-x: calc(-96 * var(--px) * 1px); }
+  64.29% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-cable { /* 150/150/150/250 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  42.86% { background-position-x: calc(-96 * var(--px) * 1px); }
+  64.29% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-sleeve { /* 140/140/120/300 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-48 * var(--px) * 1px); }
+  40% { background-position-x: calc(-96 * var(--px) * 1px); }
+  57.14% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-blower { /* 130/120/160/290 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  18.57% { background-position-x: calc(-48 * var(--px) * 1px); }
+  35.71% { background-position-x: calc(-96 * var(--px) * 1px); }
+  58.57% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-chair { /* 120/150/180/250 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  17.14% { background-position-x: calc(-48 * var(--px) * 1px); }
+  38.57% { background-position-x: calc(-96 * var(--px) * 1px); }
+  64.29% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-desk { /* 150/140/140/270 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  21.43% { background-position-x: calc(-48 * var(--px) * 1px); }
+  41.43% { background-position-x: calc(-96 * var(--px) * 1px); }
+  61.43% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
+}
+@keyframes mx-cat-sale { /* 140/80/160/320 ms */
+  0% { background-position-x: calc(0 * var(--px) * 1px); }
+  20% { background-position-x: calc(-48 * var(--px) * 1px); }
+  31.43% { background-position-x: calc(-96 * var(--px) * 1px); }
+  54.29% { background-position-x: calc(-144 * var(--px) * 1px); }
+  100% { background-position-x: calc(-144 * var(--px) * 1px); }
 }
 
 /* ---------------------------------------------------------------------------
-   4. Reviews: the laughing mascot by the heading; hops while a 5★ «legend» is in the spotlight.
+   4. Reviews: the mascot reading a review on his phone by the heading (40×32 ×2, plus a 7 px star band). While a 5★
+   «legend» is in the spotlight (data-legend, ~2.6 s): wow → grin → thumbs up, and five pixel stars
+   light up one by one over his head; then back to reading.
    --------------------------------------------------------------------------- */
-.mx-rv { --px: 1; display: inline-block; flex-shrink: 0; margin-left: 4px; vertical-align: bottom; }
-.mx-rv > .mx { transform-origin: 50% 100%; }
-.rv-ribbon[data-legend] .mx-rv > .mx { animation: mx-hop .5s steps(4, end) 3; }
+.mx-rv {
+  --px: 2;
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: calc(40 * var(--px) * 1px);
+  height: calc(39 * var(--px) * 1px); /* 7 px band for the stars + the 40×32 sprite */
+  margin-left: 4px;
+}
+.mx-rv-f {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(32 * var(--px) * 1px);
+  background: url(/mascot/reviews/reader.png) no-repeat 0 0 / calc(160 * var(--px) * 1px) 100%;
+  image-rendering: pixelated;
+}
+.rv-ribbon[data-legend] .mx-rv-f { animation: mx-rv-read 2.4s steps(1, end) 1; }
+@keyframes mx-rv-read {
+  0% { background-position-x: calc(-40 * var(--px) * 1px); }
+  22% { background-position-x: calc(-80 * var(--px) * 1px); }
+  48%, 100% { background-position-x: calc(-120 * var(--px) * 1px); }
+}
+/* the stars: 5×5 art px each, drawn with box-shadow pixels, in a row in the band over his head */
+.mx-rv-stars {
+  position: absolute;
+  top: 0;
+  left: calc(2 * var(--px) * 1px);
+  display: flex;
+  gap: calc(2 * var(--px) * 1px);
+}
+.mx-rv-stars i {
+  position: relative;
+  width: calc(5 * var(--px) * 1px);
+  height: calc(5 * var(--px) * 1px);
+  opacity: 0;
+}
+.mx-rv-stars i::before {
+  content: "";
+  position: absolute;
+  left: calc(2 * var(--px) * 1px);
+  top: calc(2 * var(--px) * 1px);
+  width: calc(var(--px) * 1px);
+  height: calc(var(--px) * 1px);
+  background: #ffe08a;
+  --p: calc(var(--px) * 1px);
+  box-shadow:
+    0 calc(-2 * var(--p)) #ff6600, 0 calc(-1 * var(--p)) #ffb23c,
+    0 calc(2 * var(--p)) #ff6600, 0 var(--p) #ffb23c,
+    calc(-2 * var(--p)) 0 #ff6600, calc(-1 * var(--p)) 0 #ffb23c,
+    calc(2 * var(--p)) 0 #ff6600, var(--p) 0 #ffb23c,
+    calc(-1 * var(--p)) calc(-1 * var(--p)) #ff8a1e, var(--p) calc(-1 * var(--p)) #ff8a1e,
+    calc(-1 * var(--p)) var(--p) #ff8a1e, var(--p) var(--p) #ff8a1e;
+}
+/* star i: on from 0.3 s + i·0.2 s until 2.3 s */
+.rv-ribbon[data-legend] .mx-rv-stars i {
+  animation: mx-rv-star calc(2s - var(--i) * .2s) steps(1, end) calc(.3s + var(--i) * .2s) 1;
+}
+@keyframes mx-rv-star {
+  0% { opacity: 1; transform: translateY(calc(-1 * var(--px) * 1px)); }
+  12%, 100% { opacity: 1; transform: none; }
+}
 
 /* ---------------------------------------------------------------------------
    5. «Why us» tiles: a sprite in the chamfered tile instead of the icon.
@@ -804,7 +956,8 @@
   .mx-404-block > .mx { animation-duration: 3s !important; }
 
   /* hero: the storyboard's still «t ≈ 8 s» — forklift on the left, the open box, the goods fanned
-     out over it (each at its own phase), the mascot mid joy-jump; only the goods keep a 1 px bob */
+     out over it (each at its own phase), the mascot on the floor, hands to his cheeks («wow»);
+     only the goods keep a 1 px bob */
   .mx-hero :is(.mx-h, .mx-h-body, .mx-h-fork, .mx-h-carry, .mx-h-beacon, .mx-h-wall, .mx-h-dust,
     .mx-b, .mx-b-f, .mx-b-land, .mx-b-poof, .mx-b-spark, .mx-b-flash, .mx-b-swirl,
     .mx-g, .mx-g-img, .mx-g-glint, .mx-g-trail, .mx-g-pop, .mx-cart-glow, .mx-m) {
@@ -813,14 +966,12 @@
     animation-play-state: paused !important;
     animation-delay: calc(var(--gd, 0s) - 8s) !important;
   }
-  .mx-hero .mx-m-y { animation: none !important; transform: translateY(calc(-4 * var(--px) * 1px)); }
-  .mx-hero .mx-m-f { animation: none !important; background-position-x: calc(-6 * 60 * var(--px) * 1px); }
+  .mx-hero .mx-m-y { animation: none !important; transform: none; }
+  .mx-hero .mx-m-f { animation: none !important; background-position-x: calc(-1 * 60 * var(--px) * 1px); }
   .mx-hero .mx-g-bob { animation: mx-bob 1.6s steps(1) infinite !important; animation-delay: calc(var(--gd) * -2) !important; }
   /* CTA: the coin sits above the button and spins, no jump */
-  .mx-coin-host:is(:hover, :focus-within, :active) .mx-coinpop-c { animation: none !important; opacity: 1; transform: translateY(calc(-16 * var(--px) * 1px)); }
+  .mx-coin-host:is(:hover, :focus-within, :active) .mx-coinpop-c { animation: none !important; opacity: 1; transform: translateY(calc((4 - var(--jump)) * var(--px) * 1px)); }
   .mx-coinpop .mx-spark { display: none; }
-  /* tiles: no slide, the character is simply there on hover */
-  .mx-peek { transition: none !important; }
   /* footer / cart: parked */
   .mx-sweep-flip { animation: none !important; transform: none; }
   /* 404: block keeps flipping hit/unhit, the coin hovers above it */

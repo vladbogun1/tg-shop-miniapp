@@ -9,15 +9,8 @@ import "./mascot.css";
 
 /** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json (the hero scene has its own art in /mascot/hero, see scenes.tsx). */
 export const SPRITES = {
-  hero_wave: [66, 56, 1],
   devices: [66, 56, 1],
-  setup: [69, 56, 1],
-  twitch: [65, 56, 1],
-  cfg: [96, 56, 1],
   don_ua: [58, 56, 1],
-  tg: [79, 56, 1],
-  youtube: [50, 56, 1],
-  discord: [67, 56, 1],
   dm: [62, 56, 1],
   hauler_box: [73, 56, 1],
   kick: [78, 56, 1],
