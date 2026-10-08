@@ -1,0 +1,26 @@
+.mx-lost {
+  --fw: 180px;
+  --fh: 150px;
+  display: block;
+  width: var(--fw);
+  height: var(--fh);
+  margin-inline: auto;
+  background: url(/mascot/404/search.webp) 0 0 / calc(var(--fw) * 6) var(--fh) no-repeat;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .5));
+  animation: mx-lost 7.2s steps(1, end) infinite;
+}
+@media (min-width: 640px) { .mx-lost { --fw: 216px; --fh: 180px; } }
+
+/* beats: look left 1.4 s · look right 1.4 s · scratch 1.0 s · found the box 1.4 s · shrug 1.0 s · thumbs-up 1.0 s */
+@keyframes mx-lost {
+  0% { background-position-x: 0; }
+  19.44% { background-position-x: calc(var(--fw) * -1); }
+  38.89% { background-position-x: calc(var(--fw) * -2); }
+  52.78% { background-position-x: calc(var(--fw) * -3); }
+  72.22% { background-position-x: calc(var(--fw) * -4); }
+  86.11% { background-position-x: calc(var(--fw) * -5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mx-lost { animation: none !important; background-position-x: calc(var(--fw) * -3); }
+}

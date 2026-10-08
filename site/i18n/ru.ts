@@ -209,6 +209,8 @@ export const ru = {
   "home.trust.chat.title": "Чат с магазином",
   "home.trust.chat.text": "Вопрос по заказу — пишете в чат, отвечает живой человек.",
   "home.categoryCount": { one: "{n} товар", few: "{n} товара", many: "{n} товаров", other: "{n} товара" },
+  "home.tile.loading": "Подбираем товары…",
+  "home.tile.ready": "Готово!",
 
   // ── catalog ───────────────────────────────────────────────────────────────
   "catalog.title": "Каталог",

@@ -9,13 +9,6 @@ import "./mascot.css";
 
 /** [width, height, frames] in art pixels — mascot-pack/sprites/manifest.json. */
 export const SPRITES = {
-  devices: [66, 56, 1],
-  don_ua: [58, 56, 1],
-  dm: [62, 56, 1],
-  hauler_box: [73, 56, 1],
-  kick: [78, 56, 1],
-  qblock: [21, 20, 1],
-  qblock_hit: [19, 20, 1],
   coin: [12, 12, 2],
   spark: [39, 36, 5],
   sweeper: [50, 25, 2],

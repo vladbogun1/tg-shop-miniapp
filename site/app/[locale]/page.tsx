@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
-import { Spr, type SpriteName } from "@/components/mascot/Sprite";
-import { CategorySprite } from "@/components/mascot/CategorySprite";
+import { CategoryTile } from "@/components/mascot/CategoryTile";
 import { HeroBanner } from "@/components/mascot/HeroBanner";
 import { CoinPop } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
@@ -26,7 +25,7 @@ export async function generateMetadata({ params }: { params: LocaleParams }): Pr
 
 /** Each point has its pixel character: the forklift with a parcel, the coin-heart, the mascot
  *  inspecting a mouse through a magnifier («we check every item»), the mascot typing («a real person answers»). */
-const TRUST: { sprite: SpriteName; title: MessageKey; text: MessageKey }[] = [
+const TRUST: { sprite: "hauler_box" | "don_ua" | "devices" | "dm"; title: MessageKey; text: MessageKey }[] = [
   { sprite: "hauler_box", title: "home.trust.delivery.title", text: "home.trust.delivery.text" },
   { sprite: "don_ua", title: "home.trust.payment.title", text: "home.trust.payment.text" },
   { sprite: "devices", title: "home.trust.warranty.title", text: "home.trust.warranty.text" },
@@ -89,22 +88,14 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             {categories.map((c) => (
               <li key={c.id}>
-                {/* text on top, the 96×80 pixel slot in flow at the bottom-right: the name (any length,
-                    any number of lines) and the counter can never end up under the sprite */}
-                <Link
+                <CategoryTile
                   href={href(`/catalog/${c.slug}`)}
-                  className="nb nb-hover group relative isolate flex h-full flex-col overflow-hidden bg-[radial-gradient(circle_at_85%_85%,rgba(255,102,0,.10),transparent_55%)] p-3.5 sm:p-4"
-                >
-                  <span className="font-display text-[15px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)] [overflow-wrap:anywhere] sm:text-[16px]">
-                    {c.name}
-                  </span>
-                  <span className="mt-1 text-[12px] font-medium text-[var(--muted)]">
-                    {t("home.categoryCount", { n: c.productCount })}
-                  </span>
-                  <span className="-mb-1.5 -mr-1.5 mt-auto self-end pt-2 sm:-mb-2 sm:-mr-2">
-                    <CategorySprite slug={c.slug} name={c.name} />
-                  </span>
-                </Link>
+                  slug={c.slug}
+                  name={c.name}
+                  count={t("home.categoryCount", { n: c.productCount })}
+                  loadingLabel={t("home.tile.loading")}
+                  readyLabel={t("home.tile.ready")}
+                />
               </li>
             ))}
           </ul>
@@ -141,7 +132,8 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
                 className="mx-trust chamfer flex h-16 w-[76px] shrink-0 items-end justify-center overflow-hidden bg-[var(--accent-soft)]"
                 style={{ "--i": i } as React.CSSProperties}
               >
-                <Spr name={sprite} lazy />
+                { }
+                <img src={`/mascot/trust/${sprite}.webp`} alt="" draggable={false} loading="lazy" decoding="async" className="mx-trust-img block h-14 w-auto max-w-[72px] object-contain" />
               </span>
               <div>
                 <h3 className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t(title)}</h3>

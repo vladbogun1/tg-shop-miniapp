@@ -192,6 +192,8 @@ export const en: RuDictionary = {
   "home.trust.chat.title": "Chat with the shop",
   "home.trust.chat.text": "A question about your order — write in the chat, a real person answers.",
   "home.categoryCount": { one: "{n} item", other: "{n} items" },
+  "home.tile.loading": "Picking the gear…",
+  "home.tile.ready": "Ready!",
 
   "catalog.title": "Catalogue",
   "catalog.filters": "Filters",

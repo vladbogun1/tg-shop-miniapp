@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
-import { categoryKind, type CategoryKind } from "./CategorySprite";
+import { categoryKind, type CategoryKind } from "./category-kind";
 import "./hero-banner.css";
 
 /**

@@ -192,6 +192,8 @@ export const uk: RuDictionary = {
   "home.trust.chat.title": "Чат із магазином",
   "home.trust.chat.text": "Питання щодо замовлення — пишете в чат, відповідає жива людина.",
   "home.categoryCount": { one: "{n} товар", few: "{n} товари", many: "{n} товарів", other: "{n} товару" },
+  "home.tile.loading": "Підбираємо товари…",
+  "home.tile.ready": "Готово!",
 
   "catalog.title": "Каталог",
   "catalog.filters": "Фільтри",
