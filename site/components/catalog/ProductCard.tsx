@@ -114,9 +114,18 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
   );
 }
 
-export function ProductGrid({ products, priorityCount = 0 }: { products: CardProduct[]; priorityCount?: number }) {
+export function ProductGrid({
+  products,
+  priorityCount = 0,
+  cols = "grid-cols-2 md:grid-cols-3 xl:grid-cols-4",
+}: {
+  products: CardProduct[];
+  priorityCount?: number;
+  /** Column classes; the catalog (with side columns) uses at most 3. */
+  cols?: string;
+}) {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+    <ul className={`grid gap-3 sm:gap-4 ${cols}`}>
       {products.map((p, i) => (
         <li key={p.id}>
           <ProductCard product={p} priority={i < priorityCount} />

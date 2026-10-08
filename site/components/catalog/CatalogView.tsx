@@ -7,7 +7,8 @@ import { localePath, makeT } from "@/i18n";
 import { type CardContext, toCardProducts } from "@/lib/card";
 import { type Listing, type MenuNode } from "@/lib/catalog";
 import { type CatalogState, catalogHref, clearFilters, hasFilters } from "@/lib/catalog-params";
-import { CatalogNavProvider, CatalogSortSelect, FacetPanel, MobileFilters, PendingRegion, StateLink } from "./CatalogFilters";
+import { DragScroller } from "@/components/ui/DragScroller";
+import { CatalogNavProvider, CatalogSortSelect, FacetPanel, FiltersDrawer, PendingRegion, StateLink } from "./CatalogFilters";
 import { ProductGrid } from "./ProductCard";
 
 export type { CatalogState };
@@ -54,9 +55,16 @@ export function CatalogView({
   const filtered = hasFilters(state.filter);
   const reset = clearFilters(state);
 
-  const tree$ = <CategoryTree locale={locale} tree={tree} activeSlug={activeSlug} />;
   const panel = <FacetPanel state={state} facets={facets} price={listing?.price ?? null} hint={hint} />;
 
+  /*
+   * Layout (owner's brief, 2026-10-09):
+   *   ≥1280  categories 240 | grid (3 cols) | filters 280, sticky with its own scroll
+   *   1024+  categories | grid; filters in a right drawer behind «Фільтри (N)»
+   *   768+   grid only (categories: chips row + header menu); filters in the right drawer
+   *   <768   the same, filters in a full-screen sheet
+   * Categories are navigation, never inside the filter panel.
+   */
   return (
     <CatalogNavProvider>
       <div className="container-site pt-6">
@@ -69,23 +77,17 @@ export function CatalogView({
 
         {chips && chips.children.length > 0 && <SubcategoryChips locale={locale} chips={chips} activeSlug={activeSlug} />}
 
-        <div className="flex gap-8">
-          <aside className="hidden w-[264px] shrink-0 lg:block" aria-label={t("catalog.filters")}>
-            <div className="flex flex-col gap-4">
-              {tree$}
-              <section className="nb px-4 py-1">{panel}</section>
-            </div>
+        <div className="flex gap-6">
+          <aside className="hidden w-[240px] shrink-0 lg:block" aria-label={t("catalog.categories")}>
+            <CategoryTree locale={locale} tree={tree} activeSlug={activeSlug} />
           </aside>
 
           <div className="min-w-0 flex-1">
-            {/* top row: Фільтри (N) on phones · found N · sort */}
+            {/* top row: Фільтри (N) below 1280 · found N · sort */}
             <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
-              <MobileFilters active={active} total={total} resetState={filtered ? reset : null}>
-                <div className="flex flex-col gap-4">
-                  {tree$}
-                  <section className="nb px-4 py-1">{panel}</section>
-                </div>
-              </MobileFilters>
+              <FiltersDrawer active={active} total={total} resetState={filtered ? reset : null}>
+                {panel}
+              </FiltersDrawer>
               <p className="order-last flex w-full items-center gap-2 text-[14px] font-medium text-[var(--muted)] sm:order-none sm:w-auto" aria-live="polite">
                 <span aria-hidden className="tech-mark" />
                 {t("catalog.found", { n: total })}
@@ -113,13 +115,30 @@ export function CatalogView({
                 </div>
               ) : (
                 <>
-                  <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={4} />
+                  <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={3} cols="grid-cols-2 md:grid-cols-3" />
                   {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page }} pages={listing.pages} />}
                 </>
               )}
             </PendingRegion>
             {footer}
           </div>
+
+          <aside className="hidden w-[280px] shrink-0 xl:block" aria-label={t("catalog.filters")}>
+            <div className="nb no-scrollbar sticky top-[calc(var(--header-h)+16px)] max-h-[calc(100dvh-var(--header-h)-32px)] overflow-y-auto overscroll-contain px-4 pb-2 pt-3">
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--line)] pb-3">
+                <h2 className="eyebrow flex items-center gap-2 text-[11px]">
+                  <span aria-hidden className="h-[2px] w-3 bg-[var(--accent)]" />
+                  {active > 0 ? t("catalog.filtersN", { n: active }) : t("catalog.filters")}
+                </h2>
+                {filtered && (
+                  <StateLink state={reset} className="link-ink text-[12px] font-semibold text-[var(--muted)]">
+                    {t("catalog.resetAll")}
+                  </StateLink>
+                )}
+              </div>
+              {panel}
+            </div>
+          </aside>
         </div>
       </div>
     </CatalogNavProvider>
@@ -212,27 +231,28 @@ function TreeLink({
 function SubcategoryChips({ locale, chips, activeSlug }: { locale: Locale; chips: { root: MenuNode; children: MenuNode[] }; activeSlug: string | null }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
-  const chip = "nb-chip inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 font-display text-[13px] font-semibold transition-colors";
+  const chip = "nb-chip inline-flex min-h-10 shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-full px-4 font-display text-[13px] font-semibold transition-colors";
   const items = [{ slug: chips.root.slug, name: t("catalog.allIn", { name: chips.root.name }), count: chips.root.productCount }, ...chips.children.map((c) => ({ slug: c.slug, name: c.name, count: c.productCount }))];
   return (
-    <nav aria-label={t("catalog.subcategories")} className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
-      <ul className="flex gap-2 sm:flex-wrap">
+    <nav aria-label={t("catalog.subcategories")} className="-mx-4 mb-5 md:-mx-6 lg:mx-0">
+      <DragScroller className="flex gap-2 px-4 scroll-px-4 md:px-6 md:scroll-px-6 lg:px-0 lg:scroll-px-0">
         {items.map((c) => {
           const on = c.slug === activeSlug;
           return (
-            <li key={c.slug}>
-              <Link
-                href={href(`/catalog/${c.slug}`)}
-                aria-current={on ? "page" : undefined}
-                className={`${chip} ${on ? "nb-chip-active" : "text-[var(--ink)] hover:border-[var(--line-strong)]"}`}
-              >
-                {c.name}
-                <span className="font-display text-[12px] tabular-nums opacity-60">{c.count}</span>
-              </Link>
-            </li>
+            <Link
+              key={c.slug}
+              href={href(`/catalog/${c.slug}`)}
+              aria-current={on ? "page" : undefined}
+              data-active={on || undefined}
+              draggable={false}
+              className={`${chip} ${on ? "nb-chip-active" : "text-[var(--ink)] hover:border-[var(--line-strong)]"}`}
+            >
+              {c.name}
+              <span className="font-display text-[12px] tabular-nums opacity-60">{c.count}</span>
+            </Link>
           );
         })}
-      </ul>
+      </DragScroller>
     </nav>
   );
 }

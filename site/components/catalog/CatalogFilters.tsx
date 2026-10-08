@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Catalog v2 filters (docs/CATALOG-SPECS.md §5 «Сайт»): the facet panel (desktop sidebar and the
- * phone sheet), the sort dropdown and the navigation that ties them to the URL.
+ * Catalog v2 filters (docs/CATALOG-SPECS.md §5 «Сайт»): the facet panel (right column from 1280 px,
+ * a drawer/sheet below), the sort dropdown and the navigation that ties them to the URL.
  *
  * All state lives in the query string in the shared format (`filterToParams`), so a filtered page
  * is server-rendered, shareable and works without JS: every option is a real link (rel=nofollow —
@@ -312,13 +312,27 @@ function RangeForm({
   );
 }
 
-// ---------------------------------------------------------------- phones
+// ---------------------------------------------------------------- drawer (< 1280 px)
+
+/** ≥ 768 px: the panel slides in from the right; below that it is a full-screen sheet. */
+function useWide(): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const on = () => setWide(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return wide;
+}
 
 /**
- * «Фильтры (N)» → full-height sheet with the same panel. Choices apply at once (the counts and the
- * «Показать N товаров» button update live); the sheet stays open until the visitor is done.
+ * «Фільтри (N)» below 1280 px (from 1280 the same panel is the right column). Opens a right drawer
+ * on tablets/small laptops and a full-screen sheet on phones. Choices apply at once — the counts
+ * and «Показати N товарів» update live — and it stays open until the visitor is done.
  */
-export function MobileFilters({
+export function FiltersDrawer({
   active,
   total,
   resetState,
@@ -332,6 +346,7 @@ export function MobileFilters({
 }) {
   const { t } = useI18n();
   const { pending } = useNav();
+  const wide = useWide();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   useScrollLock(open);
@@ -343,60 +358,74 @@ export function MobileFilters({
         type="button"
         onClick={() => setOpen(true)}
         aria-expanded={open}
-        className="nb-press tap flex h-11 shrink-0 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)] lg:hidden"
+        className={`nb-press tap flex h-11 shrink-0 items-center gap-2 rounded-[var(--r)] border px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] xl:hidden ${
+          active > 0 ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]" : "border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)]"
+        }`}
       >
         <SlidersHorizontal className="h-4 w-4" strokeWidth={2.25} />
         {active > 0 ? t("catalog.filtersN", { n: active }) : t("catalog.filters")}
       </button>
       <AnimatePresence>
+        {open && wide && (
+              <motion.div
+                key="backdrop"
+                {...noFadeFlash}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={close}
+                aria-hidden
+                className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[6px] xl:hidden"
+              />
+        )}
         {open && (
-          <motion.div
-            {...noFadeFlash}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("catalog.filters")}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 330, damping: 36 }}
-            onClickCapture={(e) => {
-              // A category link leaves the page; filter links keep the sheet open.
-              const a = (e.target as HTMLElement).closest("a");
-              if (a && a.getAttribute("rel") !== "nofollow") setOpen(false);
-            }}
-            className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)] lg:hidden"
-          >
-            <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
-              <p className="font-display text-[18px] font-extrabold uppercase text-[var(--ink)]">{t("catalog.filters")}</p>
-              <button
-                type="button"
-                onClick={close}
-                aria-label={t("common.close")}
-                className="tap grid h-11 w-11 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
-              >
-                <X className="h-5 w-5" strokeWidth={2.25} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-4">{children}</div>
-            <div className="flex gap-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3">
-              {resetState && (
-                <StateLink
-                  state={resetState}
-                  className="tap flex h-12 shrink-0 items-center rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)]"
+            <motion.div
+              key="panel"
+              {...noFadeFlash}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("catalog.filters")}
+              initial={wide ? { x: "100%" } : { y: "100%" }}
+              animate={wide ? { x: 0 } : { y: 0 }}
+              exit={wide ? { x: "100%" } : { y: "100%" }}
+              transition={{ type: "spring", stiffness: 340, damping: 36 }}
+              className={`fixed z-50 flex flex-col bg-[var(--bg)] xl:hidden ${
+                wide ? "inset-y-0 right-0 w-[400px] max-w-[90vw] border-l border-[var(--line-strong)] shadow-[-24px_0_60px_rgba(0,0,0,.5)]" : "inset-0"
+              }`}
+            >
+              <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
+                <p className="font-display text-[18px] font-extrabold uppercase text-[var(--ink)]">
+                  {active > 0 ? t("catalog.filtersN", { n: active }) : t("catalog.filters")}
+                </p>
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label={t("common.close")}
+                  className="tap grid h-11 w-11 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
                 >
-                  {t("catalog.resetAll")}
-                </StateLink>
-              )}
-              <button
-                type="button"
-                onClick={close}
-                aria-busy={pending}
-                className="nb-accent nb-press flex h-12 flex-1 items-center justify-center rounded-[var(--r)] font-display text-[14px] font-bold uppercase tracking-[.06em]"
-              >
-                {pending ? t("common.loading") : t("catalog.showN", { n: total })}
-              </button>
-            </div>
-          </motion.div>
+                  <X className="h-5 w-5" strokeWidth={2.25} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-1">{children}</div>
+              <div className="flex gap-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3">
+                {resetState && (
+                  <StateLink
+                    state={resetState}
+                    className="tap flex h-12 shrink-0 items-center rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)]"
+                  >
+                    {t("catalog.resetAll")}
+                  </StateLink>
+                )}
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-busy={pending}
+                  className="nb-accent nb-press flex h-12 flex-1 items-center justify-center rounded-[var(--r)] font-display text-[14px] font-bold uppercase tracking-[.06em]"
+                >
+                  {pending ? t("common.loading") : t("catalog.showN", { n: total })}
+                </button>
+              </div>
+            </motion.div>
         )}
       </AnimatePresence>
     </>
