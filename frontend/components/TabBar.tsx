@@ -15,7 +15,8 @@
  *   - on /pay-return, which opens in a plain browser after paying, where the shop tabs lead nowhere.
  *
  * Compact (64px instead of 84): smaller paddings, icons and labels. In the catalogue it also slides
- * away while the list scrolls down and comes back on the first scroll up (or at the very top) — the
+ * away while the list scrolls down and comes back on the first scroll up, at the very top or at the
+ * very end of the list — the
  * catalogue docks nothing to the bottom, so `--tabbar-h` stays as it is there.
  */
 import { motion } from "framer-motion";
@@ -56,7 +57,9 @@ export function TabBar() {
       const y = window.scrollY;
       const dy = y - lastY.current;
       if (Math.abs(dy) < 8) return; // ignore jitter and momentum tails
-      setTucked(dy > 0 && y > 120);
+      // the end of the list: nothing more to scroll to, so the bar comes back with the next steps
+      const atEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 80;
+      setTucked(dy > 0 && y > 120 && !atEnd);
       lastY.current = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });

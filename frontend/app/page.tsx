@@ -134,10 +134,18 @@ export default function CatalogPage() {
         </header>
       </div>
 
-      {/* ── STICKY CONTROLS ────────────────────────────────────────────── */}
+      {/* ── STICKY CONTROLS ──────────────────────────────────────────────
+          They stick just under the safe area (Telegram fullscreen: status bar + its buttons), which a
+          fixed strip of header colour covers — padding them by --safe-top instead doubled that gap
+          under the brand row while nothing was scrolled yet. */}
       <div
-        className="sticky z-30 -mx-4 border-b border-[var(--line)] px-4 pb-2.5 backdrop-blur-[12px]"
-        style={{ top: 0, paddingTop: "max(8px, var(--safe-top))", background: "rgba(14,14,16,.86)" }}
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-30 backdrop-blur-[12px]"
+        style={{ height: "var(--safe-top)", background: "rgba(14,14,16,.86)" }}
+      />
+      <div
+        className="sticky z-30 -mx-4 border-b border-[var(--line)] px-4 pb-2.5 pt-2 backdrop-blur-[12px]"
+        style={{ top: "var(--safe-top)", background: "rgba(14,14,16,.86)" }}
       >
         {showControls && (
           <>
