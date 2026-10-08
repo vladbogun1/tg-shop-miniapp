@@ -15,6 +15,8 @@ export type TimeRange = "month" | "halfyear" | "year" | "all";
 
 // ---- catalog ----------------------------------------------------------------
 
+import type { CatalogFields } from "./catalog";
+
 export interface ProductImage {
   /** Auto-increment id from the database. */
   id?: number;
@@ -23,6 +25,7 @@ export interface ProductImage {
   sortOrder?: number;
 }
 
+/** @deprecated V52 — products have one category (`categoryId`), see catalog.ts. Kept while old payloads exist. */
 export interface ProductTag {
   id: string;
   name: string;
@@ -36,7 +39,7 @@ export interface ProductVariant {
   sortOrder?: number;
 }
 
-export interface Product {
+export interface Product extends CatalogFields {
   id: string;
   title: string;
   description?: string;

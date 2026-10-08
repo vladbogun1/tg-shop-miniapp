@@ -9,6 +9,7 @@
 export * from "./brand/logo";
 export * from "./brand/preloader";
 export * from "./cart";
+export * from "./catalog";
 export * from "./cn";
 export * from "./format";
 export * from "./http";
