@@ -12,27 +12,40 @@ import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { Gallery } from "@/components/catalog/Gallery";
+import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "@/components/catalog/ProductSpecs";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { RatingBadge } from "@/components/reviews/Stars";
 import { useT } from "@/i18n/context";
 import { trackProductView } from "@/lib/analytics";
+import { EMPTY_SCHEMA, useCatalogSchema } from "@/lib/catalog";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
 import type { Product, ProductVariant } from "@/lib/api";
 
+interface Nav {
+  /** Breadcrumb tap: back to the catalog with this category (null = all products). */
+  onCategory?: (slug: string | null) => void;
+  /** Brand tap: back to the catalog filtered by this brand. */
+  onBrand?: (slug: string) => void;
+}
+
 export function ProductView({
   product,
   onClose,
   onAdded,
+  onCategory,
+  onBrand,
 }: {
   product: Product | null;
   onClose: () => void;
   onAdded?: () => void;
-}) {
+} & Nav) {
   return (
     <AnimatePresence>
-      {product && <ViewBody key={product.id} product={product} onClose={onClose} onAdded={onAdded} />}
+      {product && (
+        <ViewBody key={product.id} product={product} onClose={onClose} onAdded={onAdded} onCategory={onCategory} onBrand={onBrand} />
+      )}
     </AnimatePresence>
   );
 }
@@ -41,12 +54,15 @@ function ViewBody({
   product,
   onClose,
   onAdded,
+  onCategory,
+  onBrand,
 }: {
   product: Product;
   onClose: () => void;
   onAdded?: () => void;
-}) {
+} & Nav) {
   const t = useT();
+  const schema = useCatalogSchema().data ?? EMPTY_SCHEMA;
   const hasVariants = (product.variants?.length ?? 0) > 0;
   const [variant, setVariant] = useState<ProductVariant | null>(null);
   const [touchedVariant, setTouchedVariant] = useState(false);
@@ -138,6 +154,7 @@ function ViewBody({
             </div>
 
             <div className="mt-4">
+              <ProductCrumbs schema={schema} product={product} onCategory={onCategory} />
               <h2 className="font-display text-[22px] font-bold leading-tight text-[var(--ink)]">{product.title}</h2>
               {(product.ratingCount ?? 0) > 0 && (
                 <div className="mt-1.5">
@@ -152,7 +169,12 @@ function ViewBody({
               <span className="font-display mt-2 inline-block text-[26px] font-bold tabular-nums leading-none text-[var(--accent)]">
                 {money(product.priceMinor, product.currency)}
               </span>
+              <div>
+                <ProductBrand product={product} onBrand={onBrand} />
+              </div>
             </div>
+
+            <ConditionPlate product={product} />
 
             {hasVariants && (
               <div className="mt-5">
@@ -186,18 +208,7 @@ function ViewBody({
               </div>
             )}
 
-            {(product.tags?.length ?? 0) > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {product.tags!.map((t) => (
-                  <span
-                    key={t.id}
-                    className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--muted)]"
-                  >
-                    #{t.name}
-                  </span>
-                ))}
-              </div>
-            )}
+            <SpecsTable schema={schema} product={product} />
 
             {product.description ? (
               <p className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-[#C9C9CF]">

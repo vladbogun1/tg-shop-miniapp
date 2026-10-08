@@ -19,9 +19,12 @@ import type { Product } from "@/lib/api";
 export function ProductCard({
   product,
   onOpen,
+  summary,
 }: {
   product: Product;
   onOpen: (p: Product) => void;
+  /** One-line spec summary ("51 г · PAW3950 · 8000 Гц") from the catalog schema. */
+  summary?: string;
 }) {
   const t = useT();
   const hasVariants = (product.variants?.length ?? 0) > 0;
@@ -58,12 +61,20 @@ export function ProductCard({
             />
             {inStock ? t("product.inStock") : t("product.outOfStockShort")}
           </span>
+          {product.condition && product.condition !== "NEW" && (
+            <span className="font-display absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
+              {product.condition === "USED" ? t("catalog.cond.used") : t("catalog.cond.markdown")}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5 px-3 pt-2.5">
           <h3 className="line-clamp-2 min-h-[2.6em] text-[13.5px] font-semibold leading-snug text-[var(--ink)]">
             {product.title}
           </h3>
+          {summary && (
+            <p className="-mt-0.5 truncate text-[11.5px] font-medium leading-tight text-[var(--muted)]">{summary}</p>
+          )}
           <span className="font-display text-[17px] font-bold tabular-nums leading-none text-[var(--ink)]">
             {money(product.priceMinor, product.currency)}
           </span>

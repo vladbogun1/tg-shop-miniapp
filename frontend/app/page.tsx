@@ -2,8 +2,9 @@
 
 /**
  * SHOP catalog — ChiSetup (v3).
- * Data/logic unchanged (queryKey ["products"], search + tag filter, tap →
- * ProductView). Sorting: out-of-stock always sink to the bottom; default orders
+ * Catalog v2: everything comes from ["products"] + the schema (["catalogSchema", locale]);
+ * filtering/facets go through the shared engine (filterProducts), sort is applied after it. Tap →
+ * ProductView. Sorting: out-of-stock always sink to the bottom; default orders
  * by bestseller (soldCount). A sort menu sits next to search. Tag row supports
  * mouse drag + wheel horizontal scroll on desktop.
  */
@@ -18,6 +19,7 @@ import {
   Flame,
   PackageOpen,
   Search,
+  SlidersHorizontal,
   WifiOff,
   X,
 } from "lucide-react";
@@ -26,12 +28,24 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { Logo } from "@/components/Logo";
 import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
+import { FilterSheet, activeFilterChips } from "@/components/catalog/FilterSheet";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
-import { getActiveTag } from "@shop/shared";
-import { useT } from "@/i18n/context";
-import { customerApi, type Product, type ProductTag } from "@/lib/api";
+import {
+  activeFilterCount,
+  categoryBySlug,
+  categoryPath,
+  childCategories,
+  filterForCategory,
+  filterProducts,
+  getActiveTag,
+  MARKDOWN_COLLECTION_SLUG,
+  specSummary,
+} from "@shop/shared";
+import { useI18n } from "@/i18n/context";
+import { customerApi, type Product } from "@/lib/api";
+import { EMPTY_FILTER, EMPTY_SCHEMA, productInStock, toEngineItems, useCatalogSchema, useStoredFilter } from "@/lib/catalog";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 
@@ -47,20 +61,22 @@ const SORTS: { key: SortKey; labelKey: string; Icon: typeof Flame }[] = [
   { key: "name", labelKey: "catalog.sort.name", Icon: ArrowDownAZ },
 ];
 
-function inStock(p: Product): boolean {
-  return (p.variants?.length ?? 0) > 0
-    ? (p.variants ?? []).some((v) => v.stock > 0)
-    : (p.stock ?? 0) > 0;
+/** "Клавиатуры" → "клавиатуры" for "Все клавиатуры"; acronyms ("IEM") stay as they are. */
+function lowerFirst(s: string): string {
+  return s.length > 1 && s[1] === s[1].toLocaleLowerCase() ? s[0].toLocaleLowerCase() + s.slice(1) : s;
 }
 
 export default function CatalogPage() {
-  const t = useT();
+  const { t, locale, tag: localeTag } = useI18n();
   const [selected, setSelected] = useState<Product | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [filter, setFilter] = useStoredFilter();
   const [sort, setSort] = useState<SortKey>("popular");
   const [sortOpen, setSortOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const schemaQuery = useCatalogSchema();
+  const schema = schemaQuery.data ?? EMPTY_SCHEMA;
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["products"],
@@ -69,23 +85,32 @@ export default function CatalogPage() {
 
   const products = useMemo(() => data ?? [], [data]);
 
-  const tags = useMemo<ProductTag[]>(() => {
-    const map = new Map<string, ProductTag>();
-    for (const p of products) for (const t of p.tags ?? []) if (!map.has(t.id)) map.set(t.id, t);
-    return Array.from(map.values());
-  }, [products]);
+  const items = useMemo(() => toEngineItems(products), [products]);
+
+  // A stored category that no longer exists (renamed/emptied) is ignored, not a blank screen.
+  const category =
+    filter.category === MARKDOWN_COLLECTION_SLUG || categoryBySlug(schema, filter.category) ? (filter.category ?? null) : null;
+  const effective = useMemo(() => ({ ...filter, category, q: search.trim() || undefined }), [filter, category, search]);
+
+  // Level 1: roots in sortOrder (in the menu, with products) · "Уценка" last if anything is not new.
+  const roots = useMemo(
+    () => childCategories(schema, null).filter((c) => c.showInMenu && c.productCount > 0),
+    [schema],
+  );
+  const hasMarkdown = useMemo(() => products.some((p) => p.condition && p.condition !== "NEW"), [products]);
+  const activeRoot =
+    category && category !== MARKDOWN_COLLECTION_SLUG ? (categoryPath(schema, categoryBySlug(schema, category)?.id)[0] ?? null) : null;
+  const children = useMemo(
+    () => (activeRoot ? childCategories(schema, activeRoot.id).filter((c) => c.showInMenu && c.productCount > 0) : []),
+    [schema, activeRoot],
+  );
 
   const sorted = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = products.filter((p) => {
-      const matchesSearch = q === "" || p.title.toLowerCase().includes(q);
-      const matchesTag = activeTag === null || (p.tags ?? []).some((t) => t.id === activeTag);
-      return matchesSearch && matchesTag;
-    });
+    const list = filterProducts(schema, items, effective).map((x) => x.src);
     return list.sort((a, b) => {
       // Out-of-stock always sinks to the bottom.
-      const ai = inStock(a) ? 0 : 1;
-      const bi = inStock(b) ? 0 : 1;
+      const ai = productInStock(a) ? 0 : 1;
+      const bi = productInStock(b) ? 0 : 1;
       if (ai !== bi) return ai - bi;
       switch (sort) {
         case "price_asc":
@@ -99,7 +124,26 @@ export default function CatalogPage() {
           return (b.soldCount ?? 0) - (a.soldCount ?? 0) || a.title.localeCompare(b.title, getActiveTag());
       }
     });
-  }, [products, search, activeTag, sort]);
+  }, [schema, items, effective, sort]);
+
+  const summaries = useMemo(() => {
+    const yesNo: [string, string] = [t("catalog.yes"), t("catalog.no")];
+    const m = new Map<string, string>();
+    if (schema.attributes.length === 0) return m;
+    for (const p of products) {
+      const line = specSummary(schema, p.categoryId, p.specs, locale, yesNo);
+      if (line) m.set(p.id, line);
+    }
+    return m;
+  }, [schema, products, locale, t]);
+
+  const filterCount = activeFilterCount(filter);
+  const activeChips = useMemo(() => activeFilterChips(schema, filter, t, localeTag), [schema, filter, t, localeTag]);
+
+  const selectCategory = (slug: string | null) => {
+    haptic();
+    setFilter((f) => filterForCategory(f, slug));
+  };
 
   const showControls = !isLoading && !isError && products.length > 0;
   const fireToast = (msg: string) => {
@@ -175,6 +219,29 @@ export default function CatalogPage() {
                 )}
               </div>
 
+              {/* filters */}
+              <button
+                type="button"
+                aria-label={t("catalog.filters")}
+                onClick={() => {
+                  haptic();
+                  setSortOpen(false);
+                  setFiltersOpen(true);
+                }}
+                className={`nb-press tap relative grid w-[52px] shrink-0 place-items-center rounded-[var(--r)] border ${
+                  filterCount > 0
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                    : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
+                }`}
+              >
+                <SlidersHorizontal className="h-5 w-5" strokeWidth={2.25} />
+                {filterCount > 0 && (
+                  <span className="font-display absolute -right-1.5 -top-1.5 flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10.5px] font-bold leading-none text-[var(--accent-ink)]">
+                    {filterCount}
+                  </span>
+                )}
+              </button>
+
               {/* sort */}
               <div className="relative shrink-0">
                 <button
@@ -227,16 +294,66 @@ export default function CatalogPage() {
               </div>
             </div>
 
-            {tags.length > 0 && (
+            {(roots.length > 0 || hasMarkdown) && (
               <DragScroll className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
-                <Chip active={activeTag === null} onClick={() => { haptic(); setActiveTag(null); }}>
+                <Chip active={category === null} onClick={() => selectCategory(null)}>
                   {t("catalog.allTags")}
                 </Chip>
-                {tags.map((tag) => (
-                  <Chip key={tag.id} active={activeTag === tag.id} onClick={() => { haptic(); setActiveTag(tag.id); }}>
-                    {tag.name}
+                {roots.map((c) => (
+                  <Chip key={c.id} active={activeRoot?.id === c.id} onClick={() => selectCategory(c.slug)}>
+                    {c.name}
                   </Chip>
                 ))}
+                {hasMarkdown && (
+                  <Chip active={category === MARKDOWN_COLLECTION_SLUG} onClick={() => selectCategory(MARKDOWN_COLLECTION_SLUG)}>
+                    {t("catalog.markdown")}
+                  </Chip>
+                )}
+              </DragScroll>
+            )}
+
+            {activeRoot && children.length > 0 && (
+              <DragScroll className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
+                <Chip small active={category === activeRoot.slug} onClick={() => selectCategory(activeRoot.slug)}>
+                  {t("catalog.allIn", { name: lowerFirst(activeRoot.name) })}
+                </Chip>
+                {children.map((c) => (
+                  <Chip key={c.id} small active={category === c.slug} onClick={() => selectCategory(c.slug)}>
+                    {c.name}
+                  </Chip>
+                ))}
+              </DragScroll>
+            )}
+
+            {activeChips.length > 0 && (
+              <DragScroll className="no-scrollbar -mx-4 mt-2 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
+                {activeChips.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-label={t("catalog.filter.remove", { name: c.label })}
+                    onClick={() => {
+                      haptic();
+                      setFilter((f) => c.remove(f));
+                    }}
+                    className="nb-press inline-flex min-h-[30px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] py-1 pl-2.5 pr-1.5 text-[12px] font-semibold text-[var(--accent-hi)]"
+                  >
+                    {c.label}
+                    <X className="h-3.5 w-3.5" strokeWidth={2.75} />
+                  </button>
+                ))}
+                {activeChips.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptic();
+                      setFilter((f) => ({ ...EMPTY_FILTER, category: f.category ?? null }));
+                    }}
+                    className="min-h-[30px] shrink-0 whitespace-nowrap px-2 text-[12px] font-semibold text-[var(--muted)] underline underline-offset-2"
+                  >
+                    {t("catalog.filter.resetAll")}
+                  </button>
+                )}
               </DragScroll>
             )}
           </>
@@ -277,7 +394,7 @@ export default function CatalogPage() {
             title={t("catalog.noResults.title")}
             text={t("catalog.noResults.text")}
           >
-            <NbButton onClick={() => { setSearch(""); setActiveTag(null); }}>{t("catalog.resetFilters")}</NbButton>
+            <NbButton onClick={() => { setSearch(""); setFilter(EMPTY_FILTER); }}>{t("catalog.resetFilters")}</NbButton>
           </EmptyState>
         )}
 
@@ -296,11 +413,11 @@ export default function CatalogPage() {
                   animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring, delay: 0.03 + i * 0.04 } }}
                   className="catalog-cell flex"
                 >
-                  <ProductCard product={p} onOpen={setSelected} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} />
                 </motion.div>
               ) : (
                 <div key={p.id} className="catalog-cell flex">
-                  <ProductCard product={p} onOpen={setSelected} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} />
                 </div>
               ),
             )}
@@ -312,6 +429,29 @@ export default function CatalogPage() {
         product={selected}
         onClose={() => setSelected(null)}
         onAdded={() => fireToast(t("catalog.addedToast"))}
+        onCategory={(slug) => {
+          setSearch("");
+          setFilter((f) => filterForCategory(f, slug));
+          setSelected(null);
+          window.scrollTo({ top: 0 });
+        }}
+        onBrand={(slug) => {
+          setSearch("");
+          setFilter({ ...EMPTY_FILTER, brands: [slug] });
+          setSelected(null);
+          window.scrollTo({ top: 0 });
+        }}
+      />
+      <FilterSheet
+        open={filtersOpen}
+        schema={schema}
+        items={items}
+        filter={{ ...filter, category }}
+        q={search}
+        onApply={(f) => {
+          setFilter(f);
+          setFiltersOpen(false);
+        }}
       />
       <Toast message={toast} />
     </div>
@@ -385,12 +525,13 @@ function DragScroll({ children, className }: { children: ReactNode; className?: 
   );
 }
 
-function Chip({ children, active, onClick }: { children: ReactNode; active: boolean; onClick: () => void }) {
+function Chip({ children, active, onClick, small }: { children: ReactNode; active: boolean; onClick: () => void; small?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`nb-chip nb-press min-h-[38px] shrink-0 whitespace-nowrap px-4 py-1.5 text-[13px] ${active ? "nb-chip-active" : ""}`}
+      aria-pressed={active}
+      className={`nb-chip nb-press shrink-0 whitespace-nowrap ${small ? "min-h-[32px] px-3 py-1 text-[12px]" : "min-h-[38px] px-4 py-1.5 text-[13px]"} ${active ? "nb-chip-active" : ""}`}
     >
       {children}
     </button>

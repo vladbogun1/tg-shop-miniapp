@@ -9,6 +9,7 @@ import {
   ApiError,
   type AuthResponse,
   type CartLineInput,
+  type CatalogSchema,
   type Conversation,
   createHttpClient,
   type CreateOrderResult,
@@ -38,6 +39,7 @@ export { ApiError, newIdempotencyKey };
 export type {
   AuthResponse,
   CartLineInput,
+  CatalogSchema,
   Conversation,
   CreateOrderResult,
   Message,
@@ -214,6 +216,8 @@ export const customerApi = {
   // Public
   getProducts: () => http.get<Product[]>("/api/products"),
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
+  /** Catalog v2: category tree, brands, spec attributes — localized by the language header. */
+  getCatalogSchema: () => http.get<CatalogSchema>("/api/catalog/schema"),
   getPaymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   /** Anti-bot order limits (0 = no limit): quantity steppers clamp to maxQtyPerProduct. */
