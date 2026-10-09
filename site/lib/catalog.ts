@@ -4,6 +4,7 @@
  * list with the ONE shared engine (shared/src/catalog.ts). Server-only.
  */
 import {
+  attributesFor,
   buildFacets,
   type CatalogFilter,
   type CatalogSchema,
@@ -11,6 +12,7 @@ import {
   categoryBySlug,
   type Facet,
   filterProducts,
+  type FilterableProduct,
   type Locale,
   MARKDOWN_COLLECTION_SLUG,
   priceBounds,
@@ -81,6 +83,62 @@ export interface Listing {
   page: number;
   facets: Facet[];
   price: { min: number; max: number } | null;
+  /** What the filter panel needs to recount a draft selection in the browser (see CatalogEngine). */
+  engine: CatalogEngine;
+}
+
+/**
+ * The listing's product pool cut down to the fields the shared engine reads, plus the slice of the
+ * schema it touches. The filter panel keeps a draft selection and recounts «Показати N» and every
+ * facet with `filterProducts` / `buildFacets` on the client — the catalog is ~220 products, so a few
+ * KB of JSON beats a server round trip per click (and gives the same numbers by construction).
+ */
+export interface CatalogEngine {
+  schema: CatalogSchema;
+  products: FilterableProduct[];
+  /** The scope the page forces (category slug / markdown collection), never changed by the panel. */
+  category: string | null;
+  labels: { brand: string; condition: string };
+}
+
+/** `filter.category` with an unknown slug dropped (old backend — the product list is already scoped). */
+function engineCategory(schema: CatalogSchema, category: string | null | undefined): string | null {
+  if (category && category !== MARKDOWN_COLLECTION_SLUG && !categoryBySlug(schema, category)) return null;
+  return category ?? null;
+}
+
+function catalogEngine(schema: CatalogSchema, products: StorefrontProduct[], category: string | null, labels: CatalogEngine["labels"]): CatalogEngine {
+  const cat = category && category !== MARKDOWN_COLLECTION_SLUG ? categoryBySlug(schema, category) : null;
+  const attributes = attributesFor(schema, cat?.id ?? null)
+    .filter((a) => a.filterable && a.type !== "text")
+    .map((a) => ({ ...a, hint: null }));
+  const keys = attributes.map((a) => a.key);
+  const brandSlugs = new Set(products.map((p) => p.brandRef?.slug).filter(Boolean));
+  return {
+    schema: {
+      categories: schema.categories.map((c) => ({ ...c, name: "", artKind: null })),
+      brands: schema.brands.filter((b) => brandSlugs.has(b.slug)),
+      groups: [],
+      attributes,
+      conditions: schema.conditions,
+    },
+    products: products.map((p) => {
+      const specs: NonNullable<FilterableProduct["specs"]> = {};
+      for (const k of keys) if (p.specs?.[k] !== undefined) specs[k] = p.specs[k];
+      return {
+        id: p.id,
+        title: "",
+        priceMinor: p.priceMinor,
+        stock: stockOf(p, null),
+        categoryId: p.categoryId ?? null,
+        brandRef: p.brandRef ? { id: p.brandRef.id, slug: p.brandRef.slug, name: "" } : null,
+        condition: p.condition ?? "NEW",
+        specs,
+      };
+    }),
+    category,
+    labels,
+  };
 }
 
 /** Same order as the backend (PublicCatalogService.comparator): out of stock sinks, then the sort. */
@@ -114,13 +172,10 @@ export function computeListing(
   locale: Locale
 ): Listing {
   const t = makeT(locale);
-  const engineFilter: CatalogFilter = { ...filter, q: undefined };
-  // A category the schema does not know (old backend) — the product list is already scoped.
-  if (engineFilter.category && engineFilter.category !== MARKDOWN_COLLECTION_SLUG && !categoryBySlug(schema, engineFilter.category)) {
-    engineFilter.category = null;
-  }
+  const engineFilter: CatalogFilter = { ...filter, q: undefined, category: engineCategory(schema, filter.category) };
+  const labels = { brand: t("catalog.brand"), condition: t("catalog.condition") };
   const matched = filterProducts(schema, products, engineFilter);
-  const facets = buildFacets(schema, products, engineFilter, { brand: t("catalog.brand"), condition: t("catalog.condition") });
+  const facets = buildFacets(schema, products, engineFilter, labels);
   const sorted = sortProducts(matched, sort, locale);
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const cur = Math.min(Math.max(1, page), pages);
@@ -131,6 +186,7 @@ export function computeListing(
     page: cur,
     facets,
     price: priceBounds(schema, products, engineFilter),
+    engine: catalogEngine(schema, products, engineFilter.category ?? null, labels),
   };
 }
 
