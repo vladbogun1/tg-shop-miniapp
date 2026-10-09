@@ -29,7 +29,7 @@ test("карточки: ответ ИИ → проверка → сохране�
   await expect(page.getByRole("button", { name: /Скопировать (промпт|пакет 1)/ }).first()).toBeVisible();
 
   // The answer id is "p" + 8 hex of the UUID (the checker also accepts a longer prefix).
-  const pid = "p" + product.id.replace(/-/g, "").slice(0, 8);
+  const pid = "p" + product.id.replace(/-/g, ""); // full hex: seed ids share long prefixes
   const description = `E2E-оформление. ${product.description ?? ""}`.trim();
   const answer = "```json\n" + JSON.stringify({ [pid]: { overall: 88, description, sources: ["https://example.com/spec"], notes: "e2e" } }, null, 2) + "\n```";
   await page.getByLabel("Ответ ИИ").fill(answer);
