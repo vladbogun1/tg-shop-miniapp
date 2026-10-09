@@ -652,8 +652,10 @@ public class CardsService {
             row = new ContentTranslation(id);
         }
         row.setText(text);
-        row.setSourceHash(TranslationService.sha256Hex(source));
+        row.setSource(source);
         row.setOrigin(tr.manual() ? TranslationOrigin.MANUAL : TranslationOrigin.AI);
+        // An admin's accepted text is reviewed; new AI text goes back to «Проверить ИИ» on the «Переводы» screen.
+        row.setReviewedAt(tr.manual() ? Instant.now() : null);
         row.setUpdatedBy(tr.adminId());
         translationRepository.save(row);
         tr.counts()[0]++;

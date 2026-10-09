@@ -3,10 +3,10 @@
 /** Small pieces shared by the «Переводы» screen. */
 import { Check, Copy, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
-import type { TrStatus } from "@/lib/api";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import type { DiffPart, Issue } from "@/lib/translation-check";
+import { STATE_LABEL, type Bucket } from "@/lib/translation-queue";
 import { KIND_SHORT } from "@/lib/translation-prompt";
 import { Button } from "@/components/ui/Button";
 
@@ -69,21 +69,33 @@ export function KindBadge({ kindKey }: { kindKey: string }) {
 }
 
 /** Tinted chips (16% of the hue + text in it), like every status chip in v3. */
-const STATUS_STYLE: Record<TrStatus, { label: string; color: string; cls?: string }> = {
-  TRANSLATED: { label: "готово", color: "var(--ok)" },
-  STALE: { label: "устарел", color: "var(--warn)" },
-  MISSING: { label: "нет", color: "var(--text-muted)", cls: "!bg-[var(--surface-3)]" },
+const STATE_STYLE: Record<Bucket, { color: string; cls?: string }> = {
+  missing: { color: "var(--text-muted)", cls: "!bg-[var(--surface-3)]" },
+  stale: { color: "var(--warn)" },
+  review: { color: "var(--info)" },
+  done: { color: "var(--ok)" },
 };
 
-export function StatusChip({ lang, status }: { lang: string; status: TrStatus }) {
-  const s = STATUS_STYLE[status];
+/** State of one language: «uk · нет перевода», «en · устарел», «uk · ИИ, не проверен», «en · готово». */
+export function StateChip({ lang, state, className }: { lang?: string; state: Bucket; className?: string }) {
+  const s = STATE_STYLE[state];
   return (
     <span
-      className={cn("chip-tint !gap-1 !px-2 !text-[10px] !leading-[16px]", s.cls)}
+      className={cn("chip-tint !gap-1 !px-2 !text-[10px] !leading-[16px]", s.cls, className)}
       style={{ "--chip": s.color } as CSSProperties}
     >
-      {lang} · {s.label}
+      {lang && <span className="uppercase">{lang} ·</span>}
+      {STATE_LABEL[state]}
     </span>
+  );
+}
+
+/** Keyboard key hint. */
+export function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <kbd className="rounded-[var(--r-sm)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-1.5 py-px font-mono text-[10.5px] font-semibold text-[var(--text-muted)]">
+      {children}
+    </kbd>
   );
 }
 

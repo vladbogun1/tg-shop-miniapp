@@ -26,10 +26,13 @@ public final class TranslationDtos {
      * (link to its editor and context for variant names); null for payment options and tag names.
      * For the SEO fields of a TAG {@code productTitle} holds the category name (context only,
      * {@code productId} stays null).
+     * {@code prevSource}: for STALE — the Russian text the translation was made from (V56), so the
+     * screen can show what changed; null when unknown or not stale.
+     * {@code reviewed}: a person accepted the text (MANUAL rows always; AI rows after «Принять»).
      */
     public record ExportItem(String entityType, String entityId, String field, String source,
                              String sourceHash, String status, String text, String origin,
-                             String productId, String productTitle) {
+                             String productId, String productTitle, String prevSource, boolean reviewed) {
     }
 
     public record ImportItem(String entityType, String entityId, String field, String sourceHash, String text) {
@@ -47,15 +50,42 @@ public final class TranslationDtos {
                                List<Rejected> rejected) {
     }
 
-    public record Counts(int translated, int stale, int missing) {
+    /** {@code unreviewed}: part of {@code translated} that is AI output nobody accepted yet. */
+    public record Counts(int translated, int stale, int missing, int unreviewed) {
     }
 
     /**
-     * locale → entity type (+ {@code ALL}) → counts, over the export scope (active non-archived
-     * products and their variants, all tags, active payment options; fields with an empty source
-     * are not counted).
+     * locale → entity type (+ {@code ALL}) → counts of fields, over the export scope (active
+     * non-archived products and their variants, categories, active payment options, chat templates;
+     * fields with an empty source are not counted).
+     *
+     * <p>{@code texts}: the same work in the units of the «Переводы» screen — unique Russian texts
+     * (a description shared by 20 products is one), each in exactly one bucket, first match wins:
+     * {@code missing} (some language has no translation) → {@code stale} (the original changed) →
+     * {@code review} (AI translation not accepted yet) → {@code done}.
      */
-    public record Stats(Map<String, Map<String, Counts>> locales) {
+    public record Stats(Map<String, Map<String, Counts>> locales, TextCounts texts) {
+    }
+
+    public record TextCounts(int missing, int stale, int review, int done) {
+    }
+
+    /**
+     * «Принять»: the translation of {@code locale} is correct for the source with {@code sourceHash}
+     * (the hash the admin saw — must be the current one). A stale row is re-bound to that source.
+     */
+    public record AcceptItem(String entityType, String entityId, String field, String locale, String sourceHash) {
+    }
+
+    public record AcceptRequest(List<AcceptItem> items) {
+    }
+
+    /**
+     * {@code accepted}: rows marked reviewed ({@code rebased} of them were stale and now belong to the
+     * current source); {@code skippedStale}: the source changed after the admin looked;
+     * {@code notFound}: no translation / no such field.
+     */
+    public record AcceptResult(int accepted, int rebased, int skippedStale, int notFound, int invalid) {
     }
 
     public record DeleteResult(int deleted) {

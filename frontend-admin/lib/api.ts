@@ -965,6 +965,10 @@ export interface TrExportItem {
    */
   productId: string | null;
   productTitle: string | null;
+  /** STALE only: the Russian text the translation was made from (V56); null when unknown. */
+  prevSource: string | null;
+  /** A person accepted the text (MANUAL always; AI after «Принять»). */
+  reviewed: boolean;
 }
 
 export interface TrImportItem {
@@ -996,11 +1000,43 @@ export interface TrCounts {
   translated: number;
   stale: number;
   missing: number;
+  /** Part of `translated` that is AI output nobody accepted yet. */
+  unreviewed: number;
 }
 
-/** locale → entity type (+ "ALL") → counts. */
+/**
+ * Unique Russian texts, each in exactly one bucket (first match wins): missing → stale → review → done.
+ * The units and buckets of the tabs on the «Переводы» screen.
+ */
+export interface TrTextCounts {
+  missing: number;
+  stale: number;
+  review: number;
+  done: number;
+}
+
+/** locale → entity type (+ "ALL") → counts of fields; `texts` — the same in unique texts. */
 export interface TrStats {
   locales: Record<TrLocale, Record<TrEntityType | "ALL", TrCounts>>;
+  texts?: TrTextCounts;
+}
+
+/** «Принять»: the translation is right for the source with `sourceHash` (must be the current one). */
+export interface TrAcceptItem {
+  entityType: string;
+  entityId: string;
+  field: string;
+  locale: TrLocale;
+  sourceHash: string;
+}
+
+export interface TrAcceptResult {
+  accepted: number;
+  /** Stale rows re-bound to the current source («перевод всё ещё верен»). */
+  rebased: number;
+  skippedStale: number;
+  notFound: number;
+  invalid: number;
 }
 
 export interface TrSourceFixResult {
@@ -1300,6 +1336,9 @@ export const adminApi = {
     force?: boolean;
     items: TrImportItem[];
   }) => apiPut<TrImportResult>("/api/admin/translations/import", body),
+  /** Mark translations as checked; a stale one is re-bound to the current source. */
+  translationsAccept: (items: TrAcceptItem[]) =>
+    apiPut<TrAcceptResult>("/api/admin/translations/accept", { items }),
   /** Reset one field of one language (the Russian original is shown again). */
   translationsReset: (locale: TrLocale, entityType: string, entityId: string, field: string) =>
     apiDelete<{ deleted: number }>(

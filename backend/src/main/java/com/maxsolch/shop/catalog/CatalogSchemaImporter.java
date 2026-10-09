@@ -434,8 +434,9 @@ public class CatalogSchemaImporter {
                 continue;
             }
             row.setText(text);
-            row.setSourceHash(hash);
+            row.setSource(source);
             row.setOrigin(TranslationOrigin.AI);
+            row.setReviewedAt(null);
             translationRepository.save(row);
         }
     }

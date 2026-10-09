@@ -69,7 +69,15 @@ CREATE TABLE content_translations (
 - `PUT /api/admin/translations/import` `{ locale, origin?: 'AI'|'MANUAL', force?: bool, items: [{ entityType, entityId, field, sourceHash, text }] }`
   → `{ applied, skippedStale, skippedManual, notFound, invalid }`. Строка применяется, только если
   `sourceHash` равен хешу текущего исходника; `MANUAL`-строки не перезаписываются без `force`.
-- `GET /api/admin/translations/stats` → по каждому языку: `translated / stale / missing` по типам.
+- `GET /api/admin/translations/stats` → по каждому языку: `translated / stale / missing / unreviewed` по типам
+  (поля) и `texts: { missing, stale, review, done }` — уникальные тексты, каждый в одной корзине (вкладки экрана).
+- `PUT /api/admin/translations/accept` `{ items: [{ entityType, entityId, field, locale, sourceHash }] }`
+  → `{ accepted, rebased, skippedStale, notFound, invalid }` — «Принять»: перевод отмечен проверенным
+  (`reviewed_at`); устаревший перепривязывается к текущему оригиналу («перевод всё ещё верен»).
+  `sourceHash` должен быть хешем ТЕКУЩЕГО оригинала.
+- V56: `source_text` — снимок оригинала, из которого сделан перевод (выгрузка отдаёт его как
+  `prevSource` у устаревших — экран показывает дифф), `reviewed_at` — проверено человеком (MANUAL —
+  всегда). Импорт AI сбрасывает отметку, импорт MANUAL ставит.
 - `DELETE /api/admin/translations?locale=&entityType=&entityId=&field=` — точечный сброс
   (`field` — одно поле одного языка).
 - `PUT /api/admin/translations/source-fix` `{ items: [{ entityType, entityId, field, sourceHash }], source, translations: { uk?, en? } }`
@@ -86,10 +94,14 @@ CREATE TABLE content_translations (
 саб-агентов с глоссарием (`docs/i18n-glossary.md`) → проверка (числа, латиница, переносы строк,
 эмодзи сохранены; длина в разумных пределах) → импорт через `PUT /api/admin/translations/import`.
 
-## Экран «Переводы» в админке (2026-10)
+## Экран «Переводы» в админке (2026-10, переработан — docs/TRANSLATIONS-UX-AUDIT.md)
 
-`frontend-admin/app/translations` + `components/translations/*`. В меню — бейдж: полей × языков без
-актуального перевода (missing + stale, uk + en; `GET …/stats`, раз в 2 мин и сразу после записи).
+`frontend-admin/app/translations` + `components/translations/*`, логика вкладок — `lib/translation-queue.ts`.
+Строка = уникальный русский текст (общее описание — одна строка, перевод пишется во все места).
+Вкладки (каждый текст ровно в одной): «Нужно перевести» → «Устарели» → «Проверить ИИ» → «Готово»;
+фильтры язык / тип / поиск. Бейдж меню = «Нужно перевести» + «Устарели» (`stats.texts`).
+Просмотр по одному (`TranslationReview`): оригинал ↔ переводы, дифф оригинала у устаревших, правка на
+месте, «Принять и дальше» (Ctrl+Enter), Alt+↑/↓, Esc. «Перевести через ИИ» — для того, что в списке:
 
 1. **Промпт.** Уникальные русские строки (дедуп по `sourceHash`, общие описания — один раз) →
    промпт для любого чата с ИИ, без ключей API. Части по ~12 000 симв. оригинала / 60 строк,
@@ -111,7 +123,8 @@ CREATE TABLE content_translations (
    если правка безопасна (те же строки, числа, латиница, совпадение слов ≥ 75 %) и отправляет
    `source-fix` (оригинал во всех полях с этим текстом + uk/en нового текста). Иначе — ссылка на
    товар (`/products?edit=<id>` открывает редактор).
-5. **Отправка** — `import` origin AI по каждому языку, только поля, где перевода нет или он
-   устарел; переключатель «Перезаписывать устаревшие ручные переводы» = `force`.
-6. Вкладка **«Все переводы»**: фильтры (нет / устарело / переведено, тип, поиск), правка на месте
-   сохраняется как MANUAL (`force=true`), сброс одного поля — `DELETE …&field=`.
+5. **Отправка** — только через окно подтверждения со сводкой; `import` origin AI по каждому языку,
+   только поля, где перевода нет или он устарел. Устаревший ручной перевод заменяется только у явно
+   отмеченной строки (отдельный запрос с `force`). Сохранённое попадает в «Проверить ИИ».
+6. Правка в просмотре сохраняется как MANUAL (`force=true`) во все места текста; «Удалить перевод» —
+   `DELETE …&field=` по каждому месту.

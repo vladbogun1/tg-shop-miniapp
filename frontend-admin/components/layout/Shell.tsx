@@ -127,7 +127,7 @@ function NavLinks({
   layoutScope: string;
 }) {
   const pathname = usePathname();
-  // Fields × languages that need a translation (missing or stale), refreshed every 2 min and
+  // Texts that need a translation (missing or stale, unique Russian texts), refreshed every 2 min and
   // right after imports on the «Переводы» screen.
   const { data: trStats } = useTranslationStats();
   const trPending = pendingCount(trStats);

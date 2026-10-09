@@ -60,6 +60,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   TRANSLATIONS_IMPORT: "Импорт переводов",
   TRANSLATIONS_DELETE: "Сброс переводов",
   TRANSLATIONS_SOURCE_FIX: "Правка текста + переводы",
+  TRANSLATIONS_ACCEPT: "Переводы приняты",
   SETTINGS_UPDATE: "Настройки изменены",
   SITE_REVALIDATE: "Обновление сайта",
   INBOX_DISMISS: "«Внимание»: разобрано",

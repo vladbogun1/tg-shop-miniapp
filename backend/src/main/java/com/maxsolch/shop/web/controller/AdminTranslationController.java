@@ -4,6 +4,8 @@ import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.translation.TranslationAdminService;
+import com.maxsolch.shop.translation.TranslationDtos.AcceptRequest;
+import com.maxsolch.shop.translation.TranslationDtos.AcceptResult;
 import com.maxsolch.shop.translation.TranslationDtos.DeleteResult;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportRequest;
@@ -85,6 +87,21 @@ public class AdminTranslationController {
                 "fields " + body.items().size() + " (" + first.field() + "): updated " + r.updated()
                         + ", stale " + r.skippedStale() + ", translations " + r.translationsApplied());
         if (r.updated() > 0 || r.translationsApplied() > 0) {
+            siteRevalidator.allChanged();
+        }
+        return r;
+    }
+
+    @PutMapping("/accept")
+    @Operation(summary = "Mark translations as checked by a person; a stale one is re-bound to the current source "
+            + "(the admin confirmed it still fits)")
+    public AcceptResult accept(@RequestBody AcceptRequest body) {
+        AcceptResult r = service.accept(body, SecurityUtil.currentUserId());
+        audit.record("TRANSLATIONS_ACCEPT", "TRANSLATION", "review",
+                "accepted " + r.accepted() + ", rebased " + r.rebased() + ", stale " + r.skippedStale()
+                        + ", notFound " + r.notFound() + ", invalid " + r.invalid());
+        if (r.rebased() > 0) {
+            // A re-bound stale translation is visible again on the uk/en site.
             siteRevalidator.allChanged();
         }
         return r;
