@@ -95,7 +95,9 @@ export function Footer({ tree, locale }: { tree: MenuNode[]; locale: Locale }) {
       <div className="border-t border-[var(--line)]">
         <div className="container-site flex flex-col gap-1 py-4 text-[12px] text-[var(--faint)] sm:flex-row sm:justify-between">
           <span>{t("footer.requisites")}</span>
-          <span>{t("footer.rights", { year })}</span>
+          <span>
+            {t("footer.trademarks")} {t("footer.rights", { year })}
+          </span>
         </div>
       </div>
     </footer>
