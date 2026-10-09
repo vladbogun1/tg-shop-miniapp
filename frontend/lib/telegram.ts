@@ -67,12 +67,18 @@ function applySafeAreaInsets(): void {
   const sa = wa.safeAreaInset ?? {};
   const csa = wa.contentSafeAreaInset ?? {};
   const root = document.documentElement;
-  const set = (name: string, env: string, px: number) =>
-    root.style.setProperty(name, `max(env(${env}, 0px), ${Math.max(0, px)}px)`);
-  set("--safe-top", "safe-area-inset-top", (sa.top ?? 0) + (csa.top ?? 0));
-  set("--safe-bottom", "safe-area-inset-bottom", (sa.bottom ?? 0) + (csa.bottom ?? 0));
-  set("--safe-left", "safe-area-inset-left", (sa.left ?? 0) + (csa.left ?? 0));
-  set("--safe-right", "safe-area-inset-right", (sa.right ?? 0) + (csa.right ?? 0));
+  // Also reads Telegram's own live CSS vars (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*,
+  // kept up to date by telegram-web-app.js): the JS values can be 0 when we read them (fullscreen is
+  // applied a moment later) and a missed contentSafeAreaChanged left the header under Закрыть · ⌄ · ⋮.
+  const set = (name: string, side: string, px: number) =>
+    root.style.setProperty(
+      name,
+      `max(env(safe-area-inset-${side}, 0px), ${Math.max(0, px)}px, calc(var(--tg-safe-area-inset-${side}, 0px) + var(--tg-content-safe-area-inset-${side}, 0px)))`
+    );
+  set("--safe-top", "top", (sa.top ?? 0) + (csa.top ?? 0));
+  set("--safe-bottom", "bottom", (sa.bottom ?? 0) + (csa.bottom ?? 0));
+  set("--safe-left", "left", (sa.left ?? 0) + (csa.left ?? 0));
+  set("--safe-right", "right", (sa.right ?? 0) + (csa.right ?? 0));
 }
 
 
