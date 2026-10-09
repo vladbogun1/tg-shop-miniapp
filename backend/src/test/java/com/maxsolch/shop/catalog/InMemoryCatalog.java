@@ -92,6 +92,8 @@ final class InMemoryCatalog {
         lenient().when(productRepository.findByIdForUpdate(any())).thenAnswer(i -> products.stream()
                 .filter(p -> Arrays.equals(p.getId(), (byte[]) i.getArgument(0))).findFirst());
         lenient().when(productRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        lenient().when(productRepository.findByIdWithDetails(any())).thenAnswer(i -> products.stream()
+                .filter(p -> Arrays.equals(p.getId(), (byte[]) i.getArgument(0))).findFirst());
 
         lenient().when(translationRepository.findById(any())).thenAnswer(i -> {
             ContentTranslationId id = i.getArgument(0);

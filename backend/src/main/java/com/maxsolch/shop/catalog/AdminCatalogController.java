@@ -284,6 +284,28 @@ public class AdminCatalogController {
         return r;
     }
 
+    @GetMapping("/cards/{productId}/review")
+    @Operation(summary = "Review panel: the card, what the last AI import changed (before → after), "
+            + "who reviewed it, current uk/en texts")
+    public CatalogDtos.CardReview cardReview(@PathVariable String productId) {
+        return cards.review(productId);
+    }
+
+    @PutMapping("/cards/{productId}/accept")
+    @Operation(summary = "«Принять»: the admin's edits (title/description/specs/uk·en) + READY")
+    public CardsImportResult cardAccept(@PathVariable String productId,
+                                        @RequestBody(required = false) CatalogDtos.CardAcceptRequest body) {
+        CardsImportResult r = cards.accept(productId, body, adminId());
+        boolean edited = body != null && (body.title() != null || body.description() != null
+                || body.specs() != null || body.translations() != null);
+        audit.record("CARD_ACCEPT", "PRODUCT", productId, (edited ? "принято с правками" : "принято")
+                + (r.issues().isEmpty() ? "" : ", замечаний " + r.issues().size()));
+        if (edited) {
+            siteRevalidator.allChanged();
+        }
+        return r;
+    }
+
     @PatchMapping("/products/{id}/card-status")
     @Operation(summary = "Card status DRAFT | AI_FILLED | READY («Проверено»)")
     public AdminProductDto cardStatus(@PathVariable String id, @RequestBody CardStatusRequest body) {

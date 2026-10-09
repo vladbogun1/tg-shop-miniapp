@@ -195,7 +195,30 @@ public final class CatalogDtos {
                                  /** {@code uk} / {@code en} → texts of the resulting Russian source. */
                                  Map<String, CardTranslation> translations,
                                  /** Make it active afterwards when publishable (price, category). */
-                                 Boolean publish) {
+                                 Boolean publish,
+                                 /** Optional source url per characteristic key (written as {@code src}). */
+                                 Map<String, String> fieldSources) {
+    }
+
+    /**
+     * «Принять» in the review panel: the admin's inline edits (all optional) — they are written as
+     * the admin's (translations MANUAL) and merged into {@code card_meta.last} as edited.
+     */
+    public record CardAcceptRequest(String title, String description, Map<String, Object> specs,
+                                    Map<String, CardTranslation> translations, Boolean ready) {
+    }
+
+    /** One current uk/en text of the product: origin AI | MANUAL; stale = made for another Russian text. */
+    public record CardTextState(String text, String origin, boolean stale) {
+    }
+
+    /**
+     * Review panel data: the card, the snapshot of the last AI import ({@code last}: what changed,
+     * before → after), who reviewed it (name) and the current uk/en texts.
+     */
+    public record CardReview(CardExportItem item, Map<String, Object> last, String importedAt, String reviewedAt,
+                             Long reviewedBy, String reviewedByName,
+                             Map<String, Map<String, CardTextState>> translations) {
     }
 
     public record CardsImportRequest(List<CardImportItem> items, Boolean replaceSpecs) {

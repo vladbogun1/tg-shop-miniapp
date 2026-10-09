@@ -1,10 +1,13 @@
 package com.maxsolch.shop.catalog;
 
+import com.maxsolch.shop.catalog.CatalogDtos.CardAcceptRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.CardExportItem;
 import com.maxsolch.shop.catalog.CatalogDtos.CardImportItem;
 import com.maxsolch.shop.catalog.CatalogDtos.CardIssue;
 import com.maxsolch.shop.catalog.CatalogDtos.CardItemResult;
 import com.maxsolch.shop.catalog.CatalogDtos.CardRejected;
+import com.maxsolch.shop.catalog.CatalogDtos.CardReview;
+import com.maxsolch.shop.catalog.CatalogDtos.CardTextState;
 import com.maxsolch.shop.catalog.CatalogDtos.CardTranslation;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportResult;
@@ -12,6 +15,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.CardsStats;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.translation.ContentLocale;
@@ -23,6 +27,7 @@ import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationOrigin;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.web.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -56,15 +62,17 @@ public class CardsService {
     private final BrandAdminService brandService;
     private final ContentTranslationRepository translationRepository;
     private final TranslationService translationService;
+    private final AdminUserRepository adminUserRepository;
 
     public CardsService(ProductRepository productRepository, CatalogDirectory directory,
                         BrandAdminService brandService, ContentTranslationRepository translationRepository,
-                        TranslationService translationService) {
+                        TranslationService translationService, AdminUserRepository adminUserRepository) {
         this.productRepository = productRepository;
         this.directory = directory;
         this.brandService = brandService;
         this.translationRepository = translationRepository;
         this.translationService = translationService;
+        this.adminUserRepository = adminUserRepository;
     }
 
     // ------------------------------------------------------------------ stats / export
@@ -168,6 +176,20 @@ public class CardsService {
 
     // ------------------------------------------------------------------ import
 
+    /** What one import run collects over its items. */
+    private static final class Run {
+        final List<CardRejected> rejected = new ArrayList<>();
+        final List<CardIssue> issues = new ArrayList<>();
+        final List<String> createdBrands = new ArrayList<>();
+        final List<CardItemResult> results = new ArrayList<>();
+        int applied;
+        boolean anyTranslation;
+
+        CardsImportResult result() {
+            return new CardsImportResult(applied, rejected, issues, createdBrands, results);
+        }
+    }
+
     @Transactional
     public CardsImportResult importCards(CardsImportRequest req, Long adminId) {
         if (req == null || req.items() == null) {
@@ -177,175 +199,327 @@ public class CardsService {
             throw new BadRequestException("too many items (max " + MAX_IMPORT_ITEMS + ")");
         }
         boolean replace = Boolean.TRUE.equals(req.replaceSpecs());
-        List<CardRejected> rejected = new ArrayList<>();
-        List<CardIssue> issues = new ArrayList<>();
-        List<String> createdBrands = new ArrayList<>();
-        List<CardItemResult> results = new ArrayList<>();
-        int applied = 0;
-        boolean anyTranslation = false;
-
+        Run run = new Run();
         for (CardImportItem item : req.items()) {
             if (item == null || item.productId() == null) {
-                rejected.add(new CardRejected(null, "INVALID_ITEM"));
+                run.rejected.add(new CardRejected(null, "INVALID_ITEM"));
                 continue;
             }
             String pid;
             try {
                 pid = normalizeId(item.productId().trim());
             } catch (BadRequestException e) {
-                rejected.add(new CardRejected(item.productId(), "INVALID_ID"));
-                results.add(new CardItemResult(item.productId(), false, false, "INVALID_ID", Map.of(), 0));
+                run.rejected.add(new CardRejected(item.productId(), "INVALID_ID"));
+                run.results.add(new CardItemResult(item.productId(), false, false, "INVALID_ID", Map.of(), 0));
                 continue;
             }
             Product p = productRepository.findByIdForUpdate(UuidUtil.toBytes(pid)).orElse(null);
             if (p == null) {
-                rejected.add(new CardRejected(pid, "NOT_FOUND"));
-                results.add(new CardItemResult(pid, false, false, "NOT_FOUND", Map.of(), 0));
+                run.rejected.add(new CardRejected(pid, "NOT_FOUND"));
+                run.results.add(new CardItemResult(pid, false, false, "NOT_FOUND", Map.of(), 0));
                 continue;
             }
-            // Brands created by earlier items must be visible: re-read the directory per item.
-            CatalogSnapshot s = directory.load();
-            boolean content = false;
-
-            // category (leaf only)
-            String catSlug = trimToNull(item.categorySlug());
-            if (catSlug != null) {
-                CatalogSnapshot.Cat c = s.categoryBySlug(catSlug);
-                if (c == null) {
-                    issues.add(new CardIssue(pid, "category", "UNKNOWN_CATEGORY", "нет категории «" + catSlug + "»"));
-                } else if (!s.isLeaf(c.id())) {
-                    issues.add(new CardIssue(pid, "category", "CATEGORY_NOT_LEAF",
-                            "«" + catSlug + "» — раздел с подкатегориями"));
-                } else {
-                    p.setCategoryId(UuidUtil.toBytes(c.id()));
-                }
-            }
-            // brand: by name / alias, or created
-            String brandName = trimToNull(item.brand());
-            if (brandName != null) {
-                boolean[] created = {false};
-                Brand b = brandService.findOrCreate(brandName, created);
-                if (b != null) {
-                    p.setBrandId(b.getId());
-                    if (created[0]) {
-                        createdBrands.add(b.getName());
-                    }
-                }
-            }
-            if (item.condition() != null) {
-                ProductCondition c = ProductCondition.parse(item.condition());
-                if (c == null) {
-                    issues.add(new CardIssue(pid, "condition", "UNKNOWN_CONDITION", item.condition()));
-                } else {
-                    p.setCondition(c);
-                }
-            }
-            if (item.conditionNote() != null) {
-                p.setConditionNote(cut(trimToNull(item.conditionNote()), 255));
-            }
-            // title (ru)
-            String title = trimToNull(item.title());
-            if (title != null && !title.equals(p.getTitle())) {
-                if (title.length() > 255) {
-                    issues.add(new CardIssue(pid, "title", "TOO_LONG", "название длиннее 255 символов"));
-                } else if (!title.equalsIgnoreCase(p.getTitle()) && productRepository.existsByTitle(title)) {
-                    issues.add(new CardIssue(pid, "title", "TITLE_TAKEN", "такое название уже есть"));
-                } else {
-                    p.setTitle(title);
-                    content = true;
-                }
-            }
-            // description (ru) — only when sent
-            String description = trimToNull(item.description());
-            if (description != null) {
-                if (description.length() > 20_000) {
-                    issues.add(new CardIssue(pid, "description", "TOO_LONG", "описание длиннее 20 000 символов"));
-                } else {
-                    p.setDescription(description);
-                    content = true;
-                }
-            }
-            // specs, validated against the (possibly new) category
-            String cid = ProductCatalogFields.categoryId(p);
-            Map<String, Object> current = SpecsJson.readMap(p.getSpecsJson());
-            if (item.specs() != null) {
-                SpecsValidator.Result r = SpecsValidator.validate(s.attributesFor(cid), item.specs());
-                for (SpecsValidator.Issue i : r.issues()) {
-                    issues.add(new CardIssue(pid, i.key(), i.reason(), i.message()));
-                }
-                Map<String, Object> merged = replace ? new LinkedHashMap<>() : new LinkedHashMap<>(current);
-                merged.putAll(r.specs());
-                // Keep only what the (current) schema knows, in schema order.
-                SpecsValidator.Result clean = SpecsValidator.validate(s.attributesFor(cid), merged);
-                p.setSpecsJson(SpecsJson.write(clean.specs()));
-                content = true;
-            }
-            // card meta (journal of the AI fill)
-            if (content || item.confidence() != null || item.overall() != null) {
-                p.setCardMetaJson(SpecsJson.write(meta(p, item)));
-                if (item.overall() != null) {
-                    p.setCardConfidence(Math.max(0, Math.min(100, item.overall())));
-                }
-            }
-            if (Boolean.TRUE.equals(item.markReady())) {
-                AdminProductService.setStatus(p, CardStatus.READY, adminId);
-            } else if (content) {
-                p.setCardStatus(CardStatus.AI_FILLED);
-            }
-            productRepository.save(p);
-            productRepository.flush();
-
-            // translations of the resulting Russian sources
-            Map<String, Integer> translated = new LinkedHashMap<>();
-            int skippedManual = 0;
-            if (item.translations() != null) {
-                for (Map.Entry<String, CardTranslation> e : item.translations().entrySet()) {
-                    String locale = e.getKey() == null ? "" : e.getKey().trim().toLowerCase(Locale.ROOT);
-                    if (!ContentLocale.TRANSLATED.contains(locale) || e.getValue() == null) {
-                        issues.add(new CardIssue(pid, "translations." + e.getKey(), "INVALID_LOCALE",
-                                "язык перевода: uk или en"));
-                        continue;
-                    }
-                    int[] counts = {0, 0};
-                    CardTranslation t = e.getValue();
-                    writeTranslation(pid, p, locale, TranslationEntityType.TITLE, p.getTitle(), t.title(), counts, issues, adminId);
-                    writeTranslation(pid, p, locale, TranslationEntityType.DESCRIPTION, p.getDescription(),
-                            t.description(), counts, issues, adminId);
-                    writeTranslation(pid, p, locale, TranslationEntityType.CONDITION_NOTE, p.getConditionNote(),
-                            t.conditionNote(), counts, issues, adminId);
-                    translated.put(locale, counts[0]);
-                    skippedManual += counts[1];
-                    anyTranslation |= counts[0] > 0;
-                }
-            }
-
-            // publishing
-            boolean published = p.isActive();
-            String reason = null;
-            if (Boolean.TRUE.equals(item.publish()) && !p.isActive()) {
-                List<String> missing = AdminProductService.missingForPublish(p);
-                if (!missing.isEmpty()) {
-                    reason = "NOT_PUBLISHABLE: " + String.join(",", missing);
-                } else if (status(p) == CardStatus.DRAFT) {
-                    reason = AdminProductService.CARD_NOT_READY;
-                } else {
-                    p.setActive(true);
-                    AdminProductService.syncUnfinished(p);
-                    productRepository.save(p);
-                    published = true;
-                }
-            }
-            applied++;
-            results.add(new CardItemResult(pid, true, published, reason, translated, skippedManual));
+            applyItem(run, pid, p, item, replace, false, adminId);
         }
-        if (anyTranslation) {
+        finish(run);
+        return run.result();
+    }
+
+    /**
+     * «Принять» from the review panel: the admin's edits (title / description / specs / uk·en texts,
+     * all optional) are applied as the admin's own — translations become MANUAL (over MANUAL ones
+     * too), {@code card_meta.last} keeps its «before» and gets the new «after» (edited) — and the
+     * card becomes READY (unless {@code ready=false}).
+     */
+    @Transactional
+    public CardsImportResult accept(String productId, CardAcceptRequest req, Long adminId) {
+        String pid = normalizeId(productId == null ? "" : productId.trim());
+        Product p = productRepository.findByIdForUpdate(UuidUtil.toBytes(pid))
+                .orElseThrow(() -> new NotFoundException("product not found"));
+        CardAcceptRequest r = req == null ? new CardAcceptRequest(null, null, null, null, true) : req;
+        CardImportItem item = new CardImportItem(pid, null, null, r.specs(), null, null, r.description(), null, null,
+                null, !Boolean.FALSE.equals(r.ready()), null, null, r.title(), r.translations(), null, null);
+        Run run = new Run();
+        applyItem(run, pid, p, item, false, true, adminId);
+        finish(run);
+        return run.result();
+    }
+
+    private void finish(Run run) {
+        if (run.anyTranslation) {
             afterCommit(translationService::invalidate);
         }
         directory.evictAll();
-        return new CardsImportResult(applied, rejected, issues, createdBrands, results);
     }
 
-    /** card_meta: confidence per field (merged), sources, notes, model, overall, importedAt. */
+    /**
+     * Applies one item to a locked product. {@code manual}: the admin's edits (not an AI answer) —
+     * translations are MANUAL and {@code card_meta.last} is merged instead of replaced.
+     */
+    private void applyItem(Run run, String pid, Product p, CardImportItem item, boolean replace, boolean manual,
+                           Long adminId) {
+        List<CardIssue> issues = run.issues;
+        // Brands created by earlier items must be visible: re-read the directory per item.
+        CatalogSnapshot s = directory.load();
+        boolean content = false;
+
+        // «before» of everything the import may change (card_meta.last)
+        CatalogSnapshot.Cat catBefore = s.category(ProductCatalogFields.categoryId(p));
+        CatalogSnapshot.BrandInfo brandBefore = s.brand(ProductCatalogFields.brandId(p));
+        String categoryBefore = catBefore == null ? null : catBefore.slug();
+        String categoryAfter = categoryBefore;
+        String brandNameBefore = brandBefore == null ? null : brandBefore.name();
+        String brandNameAfter = brandNameBefore;
+        Map<String, Object> specsBefore = SpecsJson.readMap(p.getSpecsJson());
+        String titleBefore = p.getTitle();
+        String descriptionBefore = p.getDescription();
+        Map<String, Object[]> textChanges = new LinkedHashMap<>();
+
+        // category (leaf only)
+        String catSlug = trimToNull(item.categorySlug());
+        if (catSlug != null) {
+            CatalogSnapshot.Cat c = s.categoryBySlug(catSlug);
+            if (c == null) {
+                issues.add(new CardIssue(pid, "category", "UNKNOWN_CATEGORY", "нет категории «" + catSlug + "»"));
+            } else if (!s.isLeaf(c.id())) {
+                issues.add(new CardIssue(pid, "category", "CATEGORY_NOT_LEAF",
+                        "«" + catSlug + "» — раздел с подкатегориями"));
+            } else {
+                p.setCategoryId(UuidUtil.toBytes(c.id()));
+                categoryAfter = c.slug();
+            }
+        }
+        // brand: by name / alias, or created
+        String brandName = trimToNull(item.brand());
+        if (brandName != null) {
+            boolean[] created = {false};
+            Brand b = brandService.findOrCreate(brandName, created);
+            if (b != null) {
+                p.setBrandId(b.getId());
+                brandNameAfter = b.getName();
+                if (created[0]) {
+                    run.createdBrands.add(b.getName());
+                }
+            }
+        }
+        if (item.condition() != null) {
+            ProductCondition c = ProductCondition.parse(item.condition());
+            if (c == null) {
+                issues.add(new CardIssue(pid, "condition", "UNKNOWN_CONDITION", item.condition()));
+            } else {
+                p.setCondition(c);
+            }
+        }
+        if (item.conditionNote() != null) {
+            p.setConditionNote(cut(trimToNull(item.conditionNote()), 255));
+        }
+        // title (ru)
+        String title = trimToNull(item.title());
+        if (title != null && !title.equals(p.getTitle())) {
+            if (title.length() > 255) {
+                issues.add(new CardIssue(pid, "title", "TOO_LONG", "название длиннее 255 символов"));
+            } else if (!title.equalsIgnoreCase(p.getTitle()) && productRepository.existsByTitle(title)) {
+                issues.add(new CardIssue(pid, "title", "TITLE_TAKEN", "такое название уже есть"));
+            } else {
+                p.setTitle(title);
+                content = true;
+            }
+        }
+        // description (ru) — only when sent
+        String description = trimToNull(item.description());
+        if (description != null) {
+            if (description.length() > 20_000) {
+                issues.add(new CardIssue(pid, "description", "TOO_LONG", "описание длиннее 20 000 символов"));
+            } else {
+                p.setDescription(description);
+                content = true;
+            }
+        }
+        // specs, validated against the (possibly new) category
+        String cid = ProductCatalogFields.categoryId(p);
+        if (item.specs() != null) {
+            SpecsValidator.Result r = SpecsValidator.validate(s.attributesFor(cid), item.specs());
+            for (SpecsValidator.Issue i : r.issues()) {
+                issues.add(new CardIssue(pid, i.key(), i.reason(), i.message()));
+            }
+            Map<String, Object> merged = replace ? new LinkedHashMap<>() : new LinkedHashMap<>(specsBefore);
+            merged.putAll(r.specs());
+            // Keep only what the (current) schema knows, in schema order.
+            SpecsValidator.Result clean = SpecsValidator.validate(s.attributesFor(cid), merged);
+            p.setSpecsJson(SpecsJson.write(clean.specs()));
+            content = true;
+        }
+        if (!Objects.equals(titleBefore, p.getTitle())) {
+            textChanges.put("ru/title", new Object[]{titleBefore, p.getTitle()});
+        }
+        if (!Objects.equals(descriptionBefore, p.getDescription())) {
+            textChanges.put("ru/description", new Object[]{descriptionBefore, p.getDescription()});
+        }
+        if (Boolean.TRUE.equals(item.markReady())) {
+            AdminProductService.setStatus(p, CardStatus.READY, adminId);
+        } else if (content && !manual) {
+            p.setCardStatus(CardStatus.AI_FILLED);
+        }
+        productRepository.save(p);
+        productRepository.flush();
+
+        // translations of the resulting Russian sources
+        Map<String, Integer> translated = new LinkedHashMap<>();
+        int skippedManual = 0;
+        if (item.translations() != null) {
+            for (Map.Entry<String, CardTranslation> e : item.translations().entrySet()) {
+                String locale = e.getKey() == null ? "" : e.getKey().trim().toLowerCase(Locale.ROOT);
+                if (!ContentLocale.TRANSLATED.contains(locale) || e.getValue() == null) {
+                    issues.add(new CardIssue(pid, "translations." + e.getKey(), "INVALID_LOCALE",
+                            "язык перевода: uk или en"));
+                    continue;
+                }
+                CardTranslation t = e.getValue();
+                Tr tr = new Tr(pid, p, locale, new int[]{0, 0}, issues, textChanges, manual, adminId);
+                writeTranslation(tr, TranslationEntityType.TITLE, p.getTitle(), t.title());
+                writeTranslation(tr, TranslationEntityType.DESCRIPTION, p.getDescription(), t.description());
+                writeTranslation(tr, TranslationEntityType.CONDITION_NOTE, p.getConditionNote(), t.conditionNote());
+                translated.put(locale, tr.counts()[0]);
+                skippedManual += tr.counts()[1];
+                run.anyTranslation |= tr.counts()[0] > 0;
+            }
+        }
+
+        // card meta: journal of the AI fill + what this import changed (card_meta.last)
+        boolean ai = item.confidence() != null || item.overall() != null;
+        if (content || ai || !textChanges.isEmpty()) {
+            Map<String, Object> changed = changes(categoryBefore, categoryAfter, brandNameBefore, brandNameAfter,
+                    specsBefore, SpecsJson.readMap(p.getSpecsJson()), textChanges, item);
+            Map<String, Object> meta = manual ? SpecsJson.readMap(p.getCardMetaJson()) : meta(p, item);
+            // An AI import replaces the snapshot (no history kept); the admin's edits are merged into it.
+            meta.put("last", manual ? mergeLast(meta.get("last"), changed) : lastOf(changed, item));
+            p.setCardMetaJson(SpecsJson.write(meta));
+            if (item.overall() != null) {
+                p.setCardConfidence(Math.max(0, Math.min(100, item.overall())));
+            }
+            productRepository.save(p);
+        }
+
+        // publishing
+        boolean published = p.isActive();
+        String reason = null;
+        if (Boolean.TRUE.equals(item.publish()) && !p.isActive()) {
+            List<String> missing = AdminProductService.missingForPublish(p);
+            if (!missing.isEmpty()) {
+                reason = "NOT_PUBLISHABLE: " + String.join(",", missing);
+            } else if (status(p) == CardStatus.DRAFT) {
+                reason = AdminProductService.CARD_NOT_READY;
+            } else {
+                p.setActive(true);
+                AdminProductService.syncUnfinished(p);
+                productRepository.save(p);
+                published = true;
+            }
+        }
+        run.applied++;
+        run.results.add(new CardItemResult(pid, true, published, reason, translated, skippedManual));
+    }
+
+    /**
+     * What one import changed: {@code category} / {@code brand} {before, after}, {@code specs}
+     * {key: {before, after, c?, src?}} and {@code texts} {"lang/field": {before, after}} — changes only.
+     */
+    static Map<String, Object> changes(String catBefore, String catAfter, String brandBefore, String brandAfter,
+                                       Map<String, Object> specsBefore, Map<String, Object> specsAfter,
+                                       Map<String, Object[]> texts, CardImportItem item) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (!Objects.equals(catBefore, catAfter)) {
+            out.put("category", beforeAfter(catBefore, catAfter));
+        }
+        if (!Objects.equals(brandBefore, brandAfter)) {
+            out.put("brand", beforeAfter(brandBefore, brandAfter));
+        }
+        Map<String, Object> specs = new LinkedHashMap<>();
+        Set<String> keys = new LinkedHashSet<>(specsAfter.keySet());
+        keys.addAll(specsBefore.keySet());
+        for (String k : keys) {
+            Object b = specsBefore.get(k);
+            Object a = specsAfter.get(k);
+            if (Objects.equals(b, a)) {
+                continue;
+            }
+            Map<String, Object> e = beforeAfter(b, a);
+            Integer c = confidenceOf(item.confidence() == null ? null : item.confidence().get(k));
+            if (c != null) {
+                e.put("c", c);
+            }
+            String src = sourceOf(item, k);
+            if (src != null) {
+                e.put("src", src);
+            }
+            specs.put(k, e);
+        }
+        out.put("specs", specs);
+        Map<String, Object> textsOut = new LinkedHashMap<>();
+        texts.forEach((k, v) -> textsOut.put(k, beforeAfter(v[0], v[1])));
+        out.put("texts", textsOut);
+        return out;
+    }
+
+    private static Map<String, Object> beforeAfter(Object before, Object after) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("before", before);
+        m.put("after", after);
+        return m;
+    }
+
+    private static Map<String, Object> lastOf(Map<String, Object> changed, CardImportItem item) {
+        Map<String, Object> last = new LinkedHashMap<>();
+        last.put("at", Instant.now().toString());
+        if (item.model() != null) {
+            last.put("model", cut(item.model(), 120));
+        }
+        last.put("changed", changed);
+        return last;
+    }
+
+    /**
+     * The admin's edits on top of the last AI import: an entry already there keeps its «before»
+     * (the value before the AI) and gets the new «after»; a new one is added. Both get edited=true.
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> mergeLast(Object old, Map<String, Object> edits) {
+        Map<String, Object> last = old instanceof Map<?, ?> m ? new LinkedHashMap<>((Map<String, Object>) m)
+                : new LinkedHashMap<>();
+        Map<String, Object> changed = last.get("changed") instanceof Map<?, ?> m
+                ? new LinkedHashMap<>((Map<String, Object>) m) : new LinkedHashMap<>();
+        for (String scalar : List.of("category", "brand")) {
+            if (edits.get(scalar) instanceof Map<?, ?> e) {
+                changed.put(scalar, edited(changed.get(scalar), (Map<String, Object>) e));
+            }
+        }
+        for (String group : List.of("specs", "texts")) {
+            Map<String, Object> target = changed.get(group) instanceof Map<?, ?> m
+                    ? new LinkedHashMap<>((Map<String, Object>) m) : new LinkedHashMap<>();
+            if (edits.get(group) instanceof Map<?, ?> g) {
+                for (Map.Entry<String, Object> e : ((Map<String, Object>) g).entrySet()) {
+                    target.put(e.getKey(), edited(target.get(e.getKey()), (Map<String, Object>) e.getValue()));
+                }
+            }
+            changed.put(group, target);
+        }
+        String now = Instant.now().toString();
+        last.putIfAbsent("at", now);
+        last.put("editedAt", now);
+        last.put("changed", changed);
+        return last;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> edited(Object old, Map<String, Object> edit) {
+        Map<String, Object> e = old instanceof Map<?, ?> m ? new LinkedHashMap<>((Map<String, Object>) m)
+                : new LinkedHashMap<>(edit);
+        e.put("after", edit.get("after"));
+        e.put("edited", true);
+        return e;
+    }
+
+    /** card_meta: confidence (+ source) per field (merged), sources, notes, model, overall, importedAt. */
     @SuppressWarnings("unchecked")
     static Map<String, Object> meta(Product p, CardImportItem item) {
         Map<String, Object> meta = SpecsJson.readMap(p.getCardMetaJson());
@@ -353,9 +527,15 @@ public class CardsService {
                 ? new LinkedHashMap<>((Map<String, Object>) m) : new LinkedHashMap<>();
         if (item.confidence() != null) {
             for (Map.Entry<String, Object> e : item.confidence().entrySet()) {
-                Integer c = e.getValue() instanceof Number n ? Math.max(0, Math.min(100, n.intValue())) : null;
+                Integer c = confidenceOf(e.getValue());
                 if (c != null) {
-                    fields.put(e.getKey(), Map.of("c", c));
+                    Map<String, Object> f = new LinkedHashMap<>();
+                    f.put("c", c);
+                    String src = sourceOf(item, e.getKey());
+                    if (src != null) {
+                        f.put("src", src);
+                    }
+                    fields.put(e.getKey(), f);
                 }
             }
         }
@@ -376,44 +556,109 @@ public class CardsService {
         return meta;
     }
 
+    private static Integer confidenceOf(Object v) {
+        return v instanceof Number n ? Math.max(0, Math.min(100, n.intValue())) : null;
+    }
+
+    /** Source url the AI named for one characteristic (http/https only). */
+    private static String sourceOf(CardImportItem item, String key) {
+        String src = item.fieldSources() == null ? null : trimToNull(item.fieldSources().get(key));
+        return src != null && src.matches("(?i)^https?://\\S+$") ? cut(src, 500) : null;
+    }
+
+    // ------------------------------------------------------------------ review panel
+
+    /** The card + the snapshot of the last import, the reviewer's name and the current uk/en texts. */
+    @Transactional(readOnly = true)
+    public CardReview review(String productId) {
+        String pid = normalizeId(productId == null ? "" : productId.trim());
+        Product p = productRepository.findByIdWithDetails(UuidUtil.toBytes(pid))
+                .filter(x -> !x.isArchived())
+                .orElseThrow(() -> new NotFoundException("product not found"));
+        CardExportItem item = exportItem(directory.snapshot(), p);
+        Map<String, Object> meta = item.cardMeta() == null ? Map.of() : item.cardMeta();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> last = meta.get("last") instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
+        Long reviewedBy = meta.get("reviewedBy") instanceof Number n ? n.longValue() : null;
+        String reviewedByName = reviewedBy == null ? null : adminUserRepository.findById(reviewedBy)
+                .map(a -> trimToNull(a.getName()) != null ? a.getName().trim() : trimToNull(a.getUsername()))
+                .orElse(null);
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put(TranslationEntityType.TITLE, p.getTitle());
+        sources.put(TranslationEntityType.DESCRIPTION, p.getDescription());
+        sources.put(TranslationEntityType.CONDITION_NOTE, p.getConditionNote());
+        Map<String, Map<String, CardTextState>> translations = new LinkedHashMap<>();
+        for (String locale : ContentLocale.TRANSLATED) {
+            Map<String, CardTextState> texts = new LinkedHashMap<>();
+            sources.forEach((field, source) -> translationRepository
+                    .findById(new ContentTranslationId(TranslationEntityType.PRODUCT, p.getId(), field, locale))
+                    .ifPresent(row -> texts.put(textKey(field), new CardTextState(row.getText(),
+                            row.getOrigin().name(),
+                            source == null || !TranslationService.sha256Hex(source).equals(row.getSourceHash())))));
+            translations.put(locale, texts);
+        }
+        return new CardReview(item, last, str(meta.get("importedAt")), str(meta.get("reviewedAt")), reviewedBy,
+                reviewedByName, translations);
+    }
+
+    private static String str(Object o) {
+        return o instanceof String x ? x : null;
+    }
+
+    /** content_translations field → the name the admin UI uses ("condition_note" → "conditionNote"). */
+    static String textKey(String field) {
+        return TranslationEntityType.CONDITION_NOTE.equals(field) ? "conditionNote" : field;
+    }
+
+    /** Context of the translations of one language of one item. */
+    private record Tr(String pid, Product p, String locale, int[] counts, List<CardIssue> issues,
+                      Map<String, Object[]> changes, boolean manual, Long adminId) {
+    }
+
     /**
      * Writes one PRODUCT translation of the current Russian {@code source} (hash of the source as
-     * stored). MANUAL rows are kept. counts[0] = written, counts[1] = skipped as MANUAL.
+     * stored). From the AI MANUAL rows are kept; the admin's edit ({@code manual}) is written as
+     * MANUAL over anything. counts[0] = written, counts[1] = skipped as MANUAL; a changed text is
+     * recorded in {@code changes} for card_meta.last.
      */
-    private void writeTranslation(String pid, Product p, String locale, String field, String source, String text,
-                                  int[] counts, List<CardIssue> issues, Long adminId) {
+    private void writeTranslation(Tr tr, String field, String source, String text) {
         if (text == null) {
             return;
         }
-        String key = "translations." + locale + "." + field;
+        String key = "translations." + tr.locale() + "." + field;
         if (text.isBlank()) {
-            issues.add(new CardIssue(pid, key, "INVALID_TEXT_BLANK", "пустой перевод"));
+            tr.issues().add(new CardIssue(tr.pid(), key, "INVALID_TEXT_BLANK", "пустой перевод"));
             return;
         }
         if (text.length() > TranslationAdminService.MAX_TEXT_CHARS
                 || text.getBytes(StandardCharsets.UTF_8).length > 65_535) {
-            issues.add(new CardIssue(pid, key, "INVALID_TEXT_TOO_LONG", "перевод слишком длинный"));
+            tr.issues().add(new CardIssue(tr.pid(), key, "INVALID_TEXT_TOO_LONG", "перевод слишком длинный"));
             return;
         }
         if (source == null || source.isBlank()) {
-            issues.add(new CardIssue(pid, key, "NO_SOURCE", "нет русского текста для перевода"));
+            tr.issues().add(new CardIssue(tr.pid(), key, "NO_SOURCE", "нет русского текста для перевода"));
             return;
         }
-        ContentTranslationId id = new ContentTranslationId(TranslationEntityType.PRODUCT, p.getId(), field, locale);
+        ContentTranslationId id = new ContentTranslationId(TranslationEntityType.PRODUCT, tr.p().getId(), field,
+                tr.locale());
         ContentTranslation row = translationRepository.findById(id).orElse(null);
-        if (row != null && row.getOrigin() == TranslationOrigin.MANUAL) {
-            counts[1]++;
+        if (row != null && row.getOrigin() == TranslationOrigin.MANUAL && !tr.manual()) {
+            tr.counts()[1]++;
             return;
         }
+        String before = row == null ? null : row.getText();
         if (row == null) {
             row = new ContentTranslation(id);
         }
         row.setText(text);
         row.setSourceHash(TranslationService.sha256Hex(source));
-        row.setOrigin(TranslationOrigin.AI);
-        row.setUpdatedBy(adminId);
+        row.setOrigin(tr.manual() ? TranslationOrigin.MANUAL : TranslationOrigin.AI);
+        row.setUpdatedBy(tr.adminId());
         translationRepository.save(row);
-        counts[0]++;
+        tr.counts()[0]++;
+        if (!text.equals(before)) {
+            tr.changes().put(tr.locale() + "/" + textKey(field), new Object[]{before, text});
+        }
     }
 
     private static String cut(String s, int max) {
