@@ -85,7 +85,11 @@ interface Props {
   onCreated?: (p: AdminProduct) => void;
   /** «Оформить с ИИ» from the publishing gate. */
   onCompleteWithAi?: (productId: string) => void;
+  /** Step to open on (deep link "/products?edit=<id>&step=specs"), default the first one. */
+  initialStep?: ProductStepKey;
 }
+
+export type ProductStepKey = "basics" | "photos" | "pricing" | "category" | "specs" | "site" | "review";
 
 /** The editable form as plain values — the same shape is snapshotted to detect unsaved changes. */
 function initialForm(product: AdminProduct | null) {
@@ -141,13 +145,16 @@ const STEP_ANIM = {
   exit: (d: number) => ({ opacity: 0, x: d * -28 }),
 };
 
-export function ProductModal({ open, product, onClose, onSaved, onCreated, onCompleteWithAi }: Props) {
+export function ProductModal({ open, product, onClose, onSaved, onCreated, onCompleteWithAi, initialStep }: Props) {
   const { push } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const creating = !product;
 
   const [step, setStep] = useState(0);
+  // Read when the modal opens (not a dependency: changing it must not reset an open form).
+  const initialStepRef = useRef(initialStep);
+  initialStepRef.current = initialStep;
   const [dir, setDir] = useState(1);
   const [f, setF] = useState<Form>(() => initialForm(product));
   const [uploading, setUploading] = useState(false);
@@ -168,7 +175,8 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   useEffect(() => {
     if (!open) return;
     const fresh = initialForm(product);
-    setStep(0);
+    // The wizard of a new product always starts from the beginning.
+    setStep(product && initialStepRef.current ? S[initialStepRef.current] : 0);
     setDir(1);
     setConfirmClose(false);
     setShowMissing(false);
@@ -1094,7 +1102,7 @@ function CardStatusPanel({
         </div>
       </div>
       {status !== "READY" && missing > 0 && (
-        <p className="mt-2 text-[12px] text-[var(--text-faint)]">Можно отметить и неполную — «неполная» останется видна в списке.</p>
+        <p className="mt-2 text-[12px] text-[var(--text-faint)]">Можно отметить и неполную — в «Карточки → Готово» её покажет фильтр «только неполные».</p>
       )}
       {(sources.length > 0 || notes) && (
         <div className="mt-3 border-t border-[var(--line)] pt-2.5 text-[12px] text-[var(--text-muted)]">
@@ -1111,7 +1119,7 @@ function CardStatusPanel({
           )}
         </div>
       )}
-      <p className="mt-2 text-[11.5px] text-[var(--text-faint)]">Статус — рабочая очередь админки, на витрину не влияет. Меняется сразу.</p>
+      <p className="mt-2 text-[11.5px] text-[var(--text-faint)]">Черновик не выкладывается на витрину без явного «Выложить без оформления»; «от ИИ» и «проверена» — выкладываются. Меняется сразу.</p>
     </div>
   );
 }

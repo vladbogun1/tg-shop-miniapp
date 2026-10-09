@@ -32,11 +32,11 @@ export function CardStatusBadge({
       <span
         className={cn("chip-tint", s === "DRAFT" && "!bg-[var(--surface-3)]")}
         style={{ "--chip": STATUS_HUE[s] } as CSSProperties}
-        title="Статус оформления карточки (на витрину не влияет)"
+        title={s === "DRAFT" ? "Карточка не оформлена: черновик не выкладывается на витрину без явного «Выложить без оформления»" : "Статус оформления карточки"}
       >
         <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
         {CARD_STATUS_LABEL[s]}
-        {s === "AI_FILLED" && confidence != null && !compact && <span className="tabular opacity-80">· {confidence} %</span>}
+        {s === "AI_FILLED" && confidence != null && !compact && <span className="tabular opacity-80" title="Насколько ИИ уверена в карточке в целом">· ИИ {confidence} %</span>}
       </span>
       {!!incomplete && incomplete > 0 && (
         <span

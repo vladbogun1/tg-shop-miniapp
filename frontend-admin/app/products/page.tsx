@@ -51,8 +51,12 @@ import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ProductModal } from "@/components/products/ProductModal";
+import { ProductModal, type ProductStepKey } from "@/components/products/ProductModal";
+
 import { useShopSetting } from "@/lib/settings";
+
+/** Steps a deep link may open the product wizard on. */
+const STEP_KEYS = new Set<string>(["basics", "photos", "pricing", "category", "specs", "site", "review"]);
 
 type Product = AdminProduct;
 type StatusFilter = "all" | "instock" | "out" | "hidden" | "unfinished";
@@ -104,6 +108,8 @@ export default function ProductsPage() {
   const [archivedView, setArchivedView] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  // Step of the deep link "/products?edit=<id>&step=specs" (from «Карточки»).
+  const [editStep, setEditStep] = useState<ProductStepKey | undefined>(undefined);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -154,11 +160,14 @@ export default function ProductsPage() {
       return;
     }
     const p = products.find((x) => x.id === id);
+    const step = sp.get("step");
     if (p) {
+      setEditStep(step && STEP_KEYS.has(step) ? (step as ProductStepKey) : undefined);
       setEditing(p);
       setModalOpen(true);
     }
     sp.delete("edit");
+    sp.delete("step");
     const qs = sp.toString();
     window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
   }, [isLoading, products]);
@@ -544,7 +553,11 @@ export default function ProductsPage() {
       <ProductModal
         open={modalOpen}
         product={editing}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setEditStep(undefined);
+        }}
+        initialStep={editStep}
         onSaved={refresh}
         onCreated={(p) => setCompletion({ id: p.id, reason: "created" })}
         onCompleteWithAi={(id) => setCompletion({ id, reason: "manual" })}
