@@ -7,12 +7,14 @@
  * stock, the spec line and the condition badge, and the cart keeps the same fields — nothing else is read on the client.
  */
 import type { CatalogSchema, Locale, StorefrontProduct } from "@shop/shared";
-import { specSummary } from "@shop/shared";
+import { compareGroupOf, specSummary } from "@shop/shared";
 
 /** A catalog tile's data: the product fields below + the spec line computed on the server. */
 export interface CardProduct extends StorefrontProduct {
   /** "51 г · PAW3950 · 8000 Гц" (highlight attributes); absent when nothing is known. */
   specLine?: string;
+  /** Comparison group (root category id) — the card's «Порівняти» needs it without the schema. */
+  compareGroup?: string;
 }
 
 /** Spec summary context; without it the tiles simply have no spec line. */
@@ -37,6 +39,7 @@ export function toCardProduct(p: StorefrontProduct, ctx?: CardContext): CardProd
     ratingCount: p.ratingCount,
     condition: p.condition,
     ...(specLine ? { specLine } : {}),
+    ...(ctx?.schema ? { compareGroup: compareGroupOf(ctx.schema, p.categoryId) } : {}),
     images: first ? [{ url: first.url, sortOrder: first.sortOrder }] : [],
     variants: (p.variants ?? []).map((v) => ({ id: v.id, name: v.name, stock: v.stock, sortOrder: v.sortOrder })),
   };

@@ -9,11 +9,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { CompareModal } from "@/components/compare/CompareModal";
 import { ToastHost } from "@/components/ui/Toast";
 import { I18nProvider } from "@/i18n/context";
 import type { Locale } from "@shop/shared";
 import { api } from "@/lib/api";
 import { CartSync } from "@/lib/cart-sync";
+import { CompareTabSync } from "@/lib/compare";
 import { useSession } from "@/lib/session";
 
 function makeClient() {
@@ -68,6 +70,8 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <Analytics />
         {children}
         <CartDrawer />
+        <CompareTabSync />
+        <CompareModal />
         <ToastHost />
       </I18nProvider>
     </QueryClientProvider>

@@ -15,6 +15,7 @@ import { stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { RatingMini } from "@/components/reviews/RatingLink";
+import { CompareToggle } from "@/components/compare/CompareToggle";
 import { useFmt } from "@/lib/use-fmt";
 
 export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
@@ -83,16 +84,16 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
           </div>
         </div>
       </Link>
-      <div className="p-3 sm:p-4">
+      <div className="flex gap-1.5 p-3 sm:gap-2 sm:p-4">
         {hasVariants || !inStock ? (
           <Link
             href={url}
             aria-disabled={!inStock}
-            className={`tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] sm:text-[13px] ${
+            className={`tap nb-up flex min-h-[42px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] whitespace-nowrap bg-[var(--surface-2)] px-2 text-[12px] font-semibold sm:px-3 text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] sm:text-[13px] ${
               inStock ? "" : "text-[var(--muted)] opacity-70"
             }`}
           >
-            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            <SlidersHorizontal className="h-4 w-4 shrink-0 max-sm:hidden" strokeWidth={2.25} />
             {inStock ? t("product.choose") : t("product.outOfStock")}
           </Link>
         ) : (
@@ -103,12 +104,13 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
               trackAddToCart(product.id, null, 1);
               toast(t("product.added"));
             }}
-            className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-3 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
+            className="nb-press tap nb-up flex min-h-[42px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] whitespace-nowrap bg-[var(--accent-soft)] px-2 text-[12px] font-bold sm:px-3 text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
           >
-            <ShoppingBag className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            <ShoppingBag className="h-4 w-4 shrink-0 max-sm:hidden" strokeWidth={2.25} />
             {t("product.addToCart")}
           </button>
         )}
+        {product.compareGroup && <CompareToggle productId={product.id} group={product.compareGroup} />}
       </div>
     </article>
   );

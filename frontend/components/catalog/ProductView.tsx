@@ -11,6 +11,9 @@ import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
+import { CompareViewButton } from "@/components/compare/CompareBits";
+import { compareGroupOf } from "@shop/shared";
+import { useCompare } from "@/lib/compare";
 import { Gallery } from "@/components/catalog/Gallery";
 import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "@/components/catalog/ProductSpecs";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
@@ -171,8 +174,15 @@ function ViewBody({
               <span className="font-display mt-2 inline-block text-[26px] font-bold tabular-nums leading-none text-[var(--accent)]">
                 {money(product.priceMinor, product.currency)}
               </span>
-              <div>
+              <div className="flex flex-wrap items-center gap-x-2">
                 <ProductBrand product={product} onBrand={onBrand} />
+                {schema.categories.length > 0 && (
+                  <CompareViewButton
+                    productId={product.id}
+                    group={compareGroupOf(schema, product.categoryId)}
+                    onOpenComparison={() => useCompare.getState().openScreen(compareGroupOf(schema, product.categoryId))}
+                  />
+                )}
               </div>
             </div>
 

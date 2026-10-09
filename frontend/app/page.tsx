@@ -32,9 +32,13 @@ import { FilterSheet, activeFilterChips } from "@/components/catalog/FilterSheet
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
+import { CompareSheet } from "@/components/compare/CompareSheet";
+import { CompareFab, CompareToastHost } from "@/components/compare/CompareBits";
+import { useCompare } from "@/lib/compare";
 import {
   activeFilterCount,
   categoryBySlug,
+  compareGroupOf,
   categoryPath,
   childCategories,
   filterForCategory,
@@ -136,6 +140,19 @@ export default function CatalogPage() {
     }
     return m;
   }, [schema, products, locale, t]);
+
+  // Opening the comparison (from the toast or the product view) closes the product on top of the
+  // catalog; a product opened FROM the comparison then lies over it, and closing it comes back there.
+  const compareOpen = useCompare((s) => s.open);
+  useEffect(() => {
+    if (compareOpen) setSelected(null);
+  }, [compareOpen]);
+  const compareGroups = useMemo(() => {
+    const m = new Map<string, string>();
+    if (schema.categories.length === 0) return m;
+    for (const p of products) m.set(p.id, compareGroupOf(schema, p.categoryId));
+    return m;
+  }, [schema, products]);
 
   const filterCount = activeFilterCount(filter);
   const activeChips = useMemo(() => activeFilterChips(schema, filter, t, localeTag), [schema, filter, t, localeTag]);
@@ -415,11 +432,11 @@ export default function CatalogPage() {
                   animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring, delay: 0.03 + i * 0.04 } }}
                   className="catalog-cell flex"
                 >
-                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} />
                 </motion.div>
               ) : (
                 <div key={p.id} className="catalog-cell flex">
-                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} />
                 </div>
               ),
             )}
@@ -455,6 +472,16 @@ export default function CatalogPage() {
           setFiltersOpen(false);
         }}
       />
+      <CompareSheet
+        onOpenProduct={setSelected}
+        onBrowse={(slug) => {
+          setSearch("");
+          setFilter((f) => filterForCategory(f, slug));
+          window.scrollTo({ top: 0 });
+        }}
+      />
+      <CompareFab />
+      <CompareToastHost />
       <Toast message={toast} />
     </div>
   );

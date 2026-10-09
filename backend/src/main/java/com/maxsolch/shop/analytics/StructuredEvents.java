@@ -12,6 +12,7 @@ import java.util.Set;
  *   <li>{@code add_to_cart {productId, variantId, qty}} — a line was added to the cart</li>
  *   <li>{@code checkout_start} — the checkout screen was opened with a non-empty cart</li>
  *   <li>{@code order_created {orderId}} — the order went through</li>
+ *   <li>{@code compare_add {productId}} / {@code compare_open {count}} — the comparison (docs/COMPARE.md)</li>
  * </ul>
  * The older free-text events ({@code click}/{@code view}/{@code error}) stay valid; the aggregator
  * recognises them for the history recorded before these existed.
@@ -22,13 +23,15 @@ public final class StructuredEvents {
     public static final String ADD_TO_CART = "add_to_cart";
     public static final String CHECKOUT_START = "checkout_start";
     public static final String ORDER_CREATED = "order_created";
+    public static final String COMPARE_ADD = "compare_add";
+    public static final String COMPARE_OPEN = "compare_open";
 
     /**
      * What an anonymous website visitor may write. Clicks carry only a label of what was tapped and,
      * in {@code meta}, a description of the element actually hit — never field values.
      */
     public static final Set<String> WEB_ALLOWED = Set.of(
-            "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED);
+            "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED, COMPARE_ADD, COMPARE_OPEN);
 
     private StructuredEvents() {
     }

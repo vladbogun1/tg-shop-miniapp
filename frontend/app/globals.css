@@ -339,3 +339,8 @@ html[data-sheet] .tabbar { transform: none !important; }
   100% { filter: none; }
 }
 @media (prefers-reduced-motion: reduce) { .tab-bump, .tab-bump svg { animation: none; } }
+
+/* comparison: the count pops when it changes */
+@keyframes cmp-bump { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.cmp-bump { animation: cmp-bump .35s ease-out; }
+@media (prefers-reduced-motion: reduce) { .cmp-bump { animation: none; } }

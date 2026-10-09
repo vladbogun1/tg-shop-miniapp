@@ -110,6 +110,11 @@ export function trackAddToCart(productId: string, variantId: string | null, qty:
   track("add_to_cart", { productId, variantId, qty });
 }
 
+/** Comparison: compare_add (productId) / compare_open (how many products are in the list). */
+export function trackCompare(event: "compare_add" | "compare_open", productId?: string, count?: number) {
+  track(event, { productId, count });
+}
+
 export function trackCheckoutStart() {
   track("checkout_start");
 }

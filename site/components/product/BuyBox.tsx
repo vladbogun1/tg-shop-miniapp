@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { maxQty, type ProductVariant, type StorefrontProduct } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { RatingLink } from "@/components/reviews/RatingLink";
+import { CompareToggle } from "@/components/compare/CompareToggle";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
@@ -21,7 +22,7 @@ import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
 
-export function BuyBox({ product }: { product: StorefrontProduct }) {
+export function BuyBox({ product, compareGroup }: { product: StorefrontProduct; compareGroup?: string }) {
   const { t, href } = useI18n();
   const fmt = useFmt();
   const router = useRouter();
@@ -170,6 +171,12 @@ export function BuyBox({ product }: { product: StorefrontProduct }) {
           {t("product.buyNow")}
         </Button>
       </div>
+
+      {compareGroup && (
+        <div className="mt-3">
+          <CompareToggle productId={product.id} group={compareGroup} variant="full" />
+        </div>
+      )}
     </div>
   );
 }

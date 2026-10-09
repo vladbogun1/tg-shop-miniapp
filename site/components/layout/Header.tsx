@@ -12,7 +12,7 @@
  * changes, so nothing on the page jumps.
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LayoutGrid, Menu, ShoppingBag, User, X } from "lucide-react";
+import { ChevronDown, LayoutGrid, Menu, Scale, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,6 +23,7 @@ import { type MenuNode, rootOf } from "@/lib/category-tree";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { useCart, useCartCount } from "@/lib/cart";
+import { useCompare, useCompareCount } from "@/lib/compare";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 import { displayName, initials, rememberedUser, useSession } from "@/lib/session";
 import { LangMenu } from "./LangMenu";
@@ -114,6 +115,7 @@ export function Header({ tree }: { tree: MenuNode[] }) {
             <LangMenu />
           </div>
           <AccountButton />
+          <CompareButton />
           <CartButton />
         </div>
       </div>
@@ -125,6 +127,32 @@ export function Header({ tree }: { tree: MenuNode[] }) {
       <SearchBox />
     </div>
     </>
+  );
+}
+
+/** Scales + count; only while something is in the comparison (the header is tight on phones). */
+function CompareButton() {
+  const { t } = useI18n();
+  const hydrated = useHydrated();
+  const count = useCompareCount();
+  const open = useCompare((s) => s.openModal);
+  if (!hydrated || count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => open()}
+      aria-label={t("compare.headerCount", { n: count })}
+      title={t("compare.title")}
+      className="tap relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
+    >
+      <Scale className="h-5 w-5" strokeWidth={2.1} />
+      <span
+        key={count}
+        className="cmp-bump absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full border border-[var(--accent)] bg-[var(--bg)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-hi)]"
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 

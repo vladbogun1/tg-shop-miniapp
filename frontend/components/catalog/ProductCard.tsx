@@ -9,6 +9,7 @@
  */
 import { SlidersHorizontal } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
+import { CompareCardToggle } from "@/components/compare/CompareBits";
 import { RatingBadge } from "@/components/reviews/Stars";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
@@ -20,9 +21,12 @@ export function ProductCard({
   product,
   onOpen,
   summary,
+  compareGroup,
 }: {
   product: Product;
   onOpen: (p: Product) => void;
+  /** Comparison group (root category id); absent until the schema is known = no compare button. */
+  compareGroup?: string;
   /** One-line spec summary ("51 г · PAW3950 · 8000 Гц") from the catalog schema. */
   summary?: string;
 }) {
@@ -62,7 +66,7 @@ export function ProductCard({
             {inStock ? t("product.inStock") : t("product.outOfStockShort")}
           </span>
           {product.condition && product.condition !== "NEW" && (
-            <span className="font-display absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
+            <span className="font-display absolute bottom-2 left-2 rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
               {product.condition === "USED" ? t("catalog.cond.used") : t("catalog.cond.markdown")}
             </span>
           )}
@@ -99,6 +103,7 @@ export function ProductCard({
           <AddToCartControl product={product} variant={null} fullWidth size="sm" />
         )}
       </div>
+      {compareGroup && <CompareCardToggle productId={product.id} group={compareGroup} />}
       {/* desktop hover: orange strip along the bottom edge */}
       <span
         aria-hidden

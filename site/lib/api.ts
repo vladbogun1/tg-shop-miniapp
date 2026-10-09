@@ -11,6 +11,7 @@ import {
   ApiError,
   type AuthUser,
   type BonusCode,
+  type CatalogSchema,
   type CartLineInput,
   createHttpClient,
   type CreateOrderResult,
@@ -182,6 +183,9 @@ export const api = {
   categories: () => http.get<PublicCategory[]>("/api/public/categories"),
   products: (q: CatalogQuery) =>
     http.get<PublicProductPage>(`/api/public/products?${catalogSearchParams(q).toString()}`),
+  /** Every public product, light items (specs included) — the comparison picks its own from it. */
+  allCards: () => http.get<PublicProductPage>("/api/public/products?all=1&view=card"),
+  catalogSchema: () => http.get<CatalogSchema>("/api/public/catalog/schema"),
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
   paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),

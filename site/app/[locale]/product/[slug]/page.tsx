@@ -1,7 +1,7 @@
 import { BadgeInfo, CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { type CatalogSchema, categoryPath, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
+import { type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
@@ -178,7 +178,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-12">
         <Gallery images={images} alt={product.title} />
         <div className="min-w-0">
-          <BuyBox product={product} />
+          <BuyBox product={product} compareGroup={compareGroupOf(schema, product.categoryId)} />
           {(product.brandRef || markdown) && (
             <div className="mt-4 flex flex-col gap-3">
               {product.brandRef && (
