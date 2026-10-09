@@ -528,7 +528,7 @@ function PanelBody({
             className="max-sm:w-full"
           >
             {dirty ? "Сохранить и принять" : "Принять"}
-            <kbd className="ml-1 hidden rounded-[3px] border border-[rgba(14,14,16,.25)] px-1 font-mono text-[10px] leading-[14px] sm:inline">A</kbd>
+            <kbd aria-hidden className="ml-1 hidden rounded-[3px] border border-[rgba(14,14,16,.25)] px-1 font-mono text-[10px] leading-[14px] sm:inline">A</kbd>
           </Button>
         )}
       </div>
