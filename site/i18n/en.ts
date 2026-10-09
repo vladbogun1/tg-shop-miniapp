@@ -92,6 +92,7 @@ export const en: RuDictionary = {
   "footer.botText": "Orders, statuses and chat with the shop — on Telegram.",
   "footer.requisites": "Sole proprietor (FOP) Maksym Andriiovych Solokha · Tax ID 3547612413",
   "footer.rights": "© {year} ChiSetup",
+  "footer.trademarks": "Trademarks belong to their respective owners.",
 
   "info.delivery": "Delivery & payment",
   "info.returns": "Returns & exchange",
@@ -182,6 +183,9 @@ export const en: RuDictionary = {
   "home.reviews.pause": "Pause the reviews ribbon",
   "home.reviews.play": "Play the reviews ribbon",
   "home.reviews.open": "Review of “{title}”",
+  "home.brands.label": "Brands",
+  "home.brands.pause": "Pause the brands strip",
+  "home.brands.play": "Play the brands strip",
   "home.trust.title": "Why us",
   "home.trust.delivery.title": "Nova Poshta delivery",
   "home.trust.delivery.text": "Branch or parcel locker anywhere in Ukraine — pick it right on the map.",
