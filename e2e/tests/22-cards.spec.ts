@@ -33,7 +33,7 @@ test("карточки: ответ ИИ → проверка → сохране�
   const description = `E2E-оформление. ${product.description ?? ""}`.trim();
   const answer = "```json\n" + JSON.stringify({ [pid]: { overall: 88, description, sources: ["https://example.com/spec"], notes: "e2e" } }, null, 2) + "\n```";
   await page.getByLabel("Ответ ИИ").fill(answer);
-  await page.getByRole("button", { name: "Проверить" }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
 
   await expect(page.getByText("Проверка и сохранение")).toBeVisible();
   await expect(page.getByText(product.title).first()).toBeVisible();
