@@ -1,12 +1,15 @@
 "use client";
 
 /**
- * «Перевод с ИИ»: 1) prompt in parts → 2) paste the answer → 3) review / edit → send.
+ * «Перевести через ИИ»: 1) prompt in parts → 2) paste the answer → 3) review / edit → confirm → save.
+ * Runs for the texts the list showed when it was opened (`scope`); the parts are frozen for the
+ * whole session so they do not renumber while the admin copies them one by one.
+ * Saved translations land in «Проверить ИИ» — they are not «Готово» until a person accepts them.
  * The prompt text lives in lib/translation-prompt.ts, parsing/validation in lib/translation-check.ts.
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ClipboardPaste, PartyPopper, Send, Sparkles, Wand2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ClipboardPaste, Send, Sparkles, Wand2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { adminApi, ApiError, type TrImportItem, type TrImportResult, type TrLocale, type TrSourceFixResult } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -20,13 +23,13 @@ import {
   type WorkSet,
 } from "@/lib/translation-check";
 import { buildPrompt, KIND_LABEL, splitIntoParts, type PromptString } from "@/lib/translation-prompt";
+import { langState, staleManual } from "@/lib/translation-queue";
 import { invalidateTranslations } from "@/lib/translations";
 import { useToast } from "@/lib/toast";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { useConfirm } from "@/components/ui/ConfirmModal";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Toggle } from "@/components/ui/Toggle";
 import {
   CopyButton,
   Diff,
@@ -35,10 +38,10 @@ import {
   KindBadge,
   ProductLink,
   SourceText,
-  StatusChip,
+  StateChip,
 } from "@/components/translations/shared";
+import { plural } from "@/components/translations/TranslationReview";
 
-type PromptFilter = "todo" | "missing" | "stale";
 type ReviewFilter = "all" | "ok" | "warn" | "error" | "ru";
 
 interface SendSummary {
@@ -69,30 +72,17 @@ function Step({ n, title, children, aside }: { n: number; title: string; childre
   );
 }
 
-export function AiTranslate({ ws }: { ws: WorkSet }) {
+export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string[]; onClose: () => void }) {
   const qc = useQueryClient();
   const { push } = useToast();
+  const [confirm, confirmUi] = useConfirm();
 
-  // ---- 1. prompt ----------------------------------------------------------
-  const [filter, setFilter] = useState<PromptFilter>("todo");
+  // ---- 1. prompt (frozen at opening) --------------------------------------
   const [copied, setCopied] = useState<Set<number>>(new Set());
   const [preview, setPreview] = useState<number | null>(null);
-
-  const todo = useMemo(() => ws.strings.filter((s) => s.needs.uk || s.needs.en), [ws]);
-  const counts = useMemo(
-    () => ({
-      todo: todo.length,
-      missing: todo.filter((s) => s.hasMissing).length,
-      stale: todo.filter((s) => s.hasStale).length,
-    }),
-    [todo]
-  );
-  const chosen = useMemo(
-    () => (filter === "todo" ? todo : todo.filter((s) => (filter === "missing" ? s.hasMissing : s.hasStale))),
-    [todo, filter]
-  );
-  const fieldCount = chosen.reduce((n, s) => n + s.fields.length, 0);
-  const parts = useMemo(() => {
+  const [{ chosen, parts }] = useState(() => {
+    const wanted = new Set(scope);
+    const chosen = ws.strings.filter((s) => wanted.has(s.sourceHash));
     const strings: (PromptString & { ru: string })[] = chosen.map((s) => ({
       id: s.id,
       kind: KIND_LABEL[s.kindKey] ?? s.kindKey,
@@ -100,8 +90,12 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
       ru: s.source,
     }));
     const split = splitIntoParts(strings);
-    return split.map((p, i) => ({ ids: p.map((x) => x.id), text: buildPrompt(p, i + 1, split.length), chars: p.reduce((n, x) => n + x.ru.length, 0) }));
-  }, [chosen]);
+    return {
+      chosen,
+      parts: split.map((p, i) => ({ ids: p.map((x) => x.id), text: buildPrompt(p, i + 1, split.length), chars: p.reduce((n, x) => n + x.ru.length, 0) })),
+    };
+  });
+  const fieldCount = chosen.reduce((n, s) => n + s.fields.length, 0);
   // The one orange button of step 1: the next part still to copy (the rest are graphite).
   const nextPart = parts.findIndex((_, i) => !copied.has(i));
 
@@ -138,14 +132,14 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
     }
     setMissing(miss);
     setRows(r.rows);
-    setSelected(new Set(r.rows.filter((x) => x.level === "ok" && !x.done).map((x) => x.id)));
+    // Clean rows are pre-ticked; a row that would replace the admin's own translation never is.
+    setSelected(new Set(r.rows.filter((x) => x.level === "ok" && !x.done && !replacesManual(x)).map((x) => x.id)));
     setApplyFix(new Set());
     setSummary(null);
   }
 
   // ---- 3. review ----------------------------------------------------------
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
-  const [force, setForce] = useState(false);
   const [sending, setSending] = useState(false);
   const [summary, setSummary] = useState<SendSummary | null>(null);
 
@@ -182,30 +176,61 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
     const chosenRows = sendable;
     const fixRows = chosenRows.filter((r) => applyFix.has(r.id) && r.ruChanged && r.ruIssues.length === 0);
     const plain = chosenRows.filter((r) => !fixRows.includes(r));
+    // Outdated translations the admin wrote by hand are replaced only for rows ticked explicitly —
+    // they go in a separate request with `force`, the rest never overwrites a MANUAL row.
     const byLocale: Record<TrLocale, TrImportItem[]> = { uk: [], en: [] };
+    const forced: Record<TrLocale, TrImportItem[]> = { uk: [], en: [] };
     for (const r of plain) {
       for (const f of r.str.fields) {
         for (const l of LOCALES) {
           if (f.status[l] === "TRANSLATED") continue;
-          byLocale[l].push({
-            entityType: f.entityType,
-            entityId: f.entityId,
-            field: f.field,
-            sourceHash: f.sourceHash,
-            text: r[l],
-          });
+          const item = { entityType: f.entityType, entityId: f.entityId, field: f.field, sourceHash: f.sourceHash, text: r[l] };
+          (f.origin[l] === "MANUAL" ? forced : byLocale)[l].push(item);
         }
       }
     }
+    const fieldsTotal = LOCALES.reduce((n, l) => n + byLocale[l].length + forced[l].length, 0);
+    const manualTotal = LOCALES.reduce((n, l) => n + forced[l].length, 0);
+    const ok = await confirm({
+      title: `Сохранить переводы ${chosenRows.length} ${plural(chosenRows.length, "текста", "текстов", "текстов")}?`,
+      message: (
+        <ul className="flex list-disc flex-col gap-1 pl-5">
+          {fieldsTotal > 0 && (
+            <li>
+              {fieldsTotal} {plural(fieldsTotal, "перевод", "перевода", "переводов")} (места × языки) сразу увидят покупатели.
+            </li>
+          )}
+          {manualTotal > 0 && (
+            <li className="text-[color-mix(in_srgb,var(--warn)_80%,var(--text))]">
+              {manualTotal} из них заменят ваши устаревшие ручные переводы.
+            </li>
+          )}
+          {fixRows.length > 0 && (
+            <li className="text-[var(--accent-hi)]">
+              Русский оригинал будет исправлен в {fixRows.length} {plural(fixRows.length, "тексте", "текстах", "текстах")}.
+            </li>
+          )}
+          <li>Всё сохранённое попадёт во вкладку «Проверить ИИ» — там его можно просмотреть и принять.</li>
+        </ul>
+      ),
+      confirmLabel: "Сохранить",
+    });
+    if (!ok) return;
     setSending(true);
     const result: SendSummary = { import: {}, fixes: [], importErrors: [] };
     try {
       for (const l of LOCALES) {
-        if (!byLocale[l].length) continue;
-        try {
-          result.import[l] = await adminApi.translationsImport({ locale: l, origin: "AI", force, items: byLocale[l] });
-        } catch (e) {
-          result.importErrors.push(`${l}: ${e instanceof ApiError ? e.message : "ошибка"}`);
+        for (const [items, force] of [
+          [byLocale[l], false],
+          [forced[l], true],
+        ] as const) {
+          if (!items.length) continue;
+          try {
+            const r = await adminApi.translationsImport({ locale: l, origin: "AI", force, items });
+            result.import[l] = mergeResults(result.import[l], r);
+          } catch (e) {
+            result.importErrors.push(`${l}: ${e instanceof ApiError ? e.message : "ошибка"}`);
+          }
         }
       }
       for (const r of fixRows) {
@@ -248,53 +273,50 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
     push(
       result.importErrors.length
         ? "Часть данных не отправлена — см. итог"
-        : `Сохранено переводов: ${applied}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}`,
+        : `Сохранено переводов: ${applied}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}. Они ждут проверки во вкладке «Проверить ИИ».`,
       result.importErrors.length ? "error" : "ok"
     );
   }
 
-  if (todo.length === 0 && !rows) {
-    return (
-      <EmptyState
-        icon={PartyPopper}
-        title="Всё переведено"
-        description="У всех товаров, вариантов, категорий и способов оплаты есть актуальный перевод на украинский и английский. Измените текст товара — и он появится здесь."
-      />
-    );
+  const unsent = (rows ?? []).length > 0 || (!rows && answer.trim().length > 0);
+  async function leave() {
+    if (
+      unsent &&
+      !(await confirm({
+        title: "Закрыть перевод через ИИ?",
+        message: "Вставленный ответ и неотправленные переводы пропадут.",
+        confirmLabel: "Закрыть",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    onClose();
   }
 
   return (
     <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => void leave()}>
+          К списку
+        </Button>
+        <div className="font-display text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+          Перевод через ИИ · <span className="tabular text-[var(--text)]">{chosen.length}</span>{" "}
+          {plural(chosen.length, "текст", "текста", "текстов")}
+        </div>
+      </div>
+
       {/* ---- Step 1 ---- */}
-      <Step
-        n={1}
-        title="Промпт для ИИ"
-        aside={
-          <SegmentedControl<PromptFilter>
-            size="sm"
-            value={filter}
-            onChange={(v) => {
-              setFilter(v);
-              setCopied(new Set());
-            }}
-            options={[
-              { value: "todo", label: "Всё нужное", count: counts.todo },
-              { value: "missing", label: "Нет перевода", count: counts.missing },
-              { value: "stale", label: "Устарело", count: counts.stale },
-            ]}
-          />
-        }
-      >
+      <Step n={1} title="Промпт для ИИ">
         <p className="mb-3 text-[13px] leading-relaxed text-[var(--text-muted)]">
           Скопируйте промпт в любой чат с ИИ (ChatGPT, Claude…), дождитесь ответа одним блоком кода и вставьте его ниже.
-          Одинаковые тексты (общие описания) переводятся один раз:{" "}
-          <b className="text-[var(--text)]">{chosen.length}</b> уникальных строк →{" "}
-          <b className="text-[var(--text)]">{fieldCount}</b> полей.
+          В промпте <b className="text-[var(--text)]">{chosen.length}</b> {plural(chosen.length, "текст", "текста", "текстов")} — те,
+          что были в списке; они используются в <b className="text-[var(--text)]">{fieldCount}</b>{" "}
+          {plural(fieldCount, "месте", "местах", "местах")}. ИИ заодно вычитает русский текст — правки оригинала применяются
+          только по вашей галочке.
           {parts.length > 1 && " Большой объём разбит на части — отправляйте их по очереди, каждую в новом сообщении или чате."}
         </p>
-        {chosen.length === 0 ? (
-          <div className="text-[13px] font-semibold text-[var(--text-faint)]">По этому фильтру переводить нечего.</div>
-        ) : parts.length === 1 ? (
+        {parts.length === 1 ? (
           <div className="flex flex-wrap items-center gap-2">
             <CopyButton variant={copied.has(0) || answer.trim() ? "surface" : "accent"} text={parts[0].text} copied={copied.has(0)} onCopied={() => setCopied(new Set(copied).add(0))} />
             <Button variant="ghost" size="sm" onClick={() => setPreview(preview === 0 ? null : 0)} iconRight={<ChevronDown className={cn("h-4 w-4 transition-transform", preview === 0 && "rotate-180")} />}>
@@ -438,10 +460,10 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
               onChange={setReviewFilter}
               options={[
                 { value: "all", label: "Все", count: rows.length },
-                { value: "ok", label: "Готово", count: stats.ok },
-                { value: "warn", label: "Проверить", count: stats.warn },
+                { value: "ok", label: "Без замечаний", count: stats.ok },
+                { value: "warn", label: "Есть замечания", count: stats.warn },
                 { value: "error", label: "Ошибки", count: stats.error },
-                { value: "ru", label: "Правки ru", count: stats.ru },
+                { value: "ru", label: "Правки оригинала", count: stats.ru },
               ]}
             />
           }
@@ -453,17 +475,18 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
           ) : (
             <>
               <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px]">
-                <Button size="sm" variant="outline" onClick={() => setSelected(new Set(rows.filter((r) => r.level === "ok" && !r.done).map((r) => r.id)))}>
-                  Только зелёные
+                <span className="font-semibold text-[var(--text-muted)]">Отметить:</span>
+                <Button size="sm" variant="outline" onClick={() => setSelected(new Set(rows.filter((r) => r.level === "ok" && !r.done && !replacesManual(r)).map((r) => r.id)))}>
+                  Без замечаний
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setSelected(new Set(rows.filter((r) => r.level !== "error" && !r.done).map((r) => r.id)))}>
-                  Зелёные + жёлтые
+                <Button size="sm" variant="outline" onClick={() => setSelected(new Set(rows.filter((r) => r.level !== "error" && !r.done && !replacesManual(r)).map((r) => r.id)))}>
+                  + с замечаниями
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                   Снять все
                 </Button>
                 <span className="ml-auto text-[var(--text-muted)]">
-                  Красные не отправляются — исправьте текст прямо в поле, проверка обновится сразу.
+                  Строки с ошибками не сохраняются — исправьте текст прямо в поле, проверка обновится сразу.
                 </span>
               </div>
               <div className="flex flex-col gap-3">
@@ -486,12 +509,10 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
             style={{ bottom: "var(--bottom-nav)" }}
             className="sticky z-10 -mx-4 mt-4 flex flex-wrap items-center gap-3 border-t border-[var(--line)] bg-[var(--surface)] px-4 py-3 sm:-mx-5 sm:px-5"
           >
-            <Button variant="accent" chamfer size="lg" icon={<Send className="h-4 w-4" />} loading={sending} disabled={sendable.length === 0} onClick={send}>
-              Отправить в базу ({sendable.length})
+            <Button variant="accent" chamfer size="lg" icon={<Send className="h-4 w-4" />} loading={sending} disabled={sendable.length === 0} onClick={() => void send()}>
+              Сохранить отмеченные · {sendable.length}
             </Button>
-            <div className="min-w-[220px]">
-              <Toggle checked={force} onChange={setForce} label="Перезаписывать устаревшие ручные переводы" />
-            </div>
+            <span className="text-[12px] text-[var(--text-muted)]">Перед сохранением покажем, что именно изменится.</span>
             {applyFix.size > 0 && (
               <span className="text-[12px] font-semibold text-[var(--text-muted)]">
                 Правок оригинала: {Array.from(applyFix).filter((id) => selected.has(id)).length}
@@ -502,8 +523,26 @@ export function AiTranslate({ ws }: { ws: WorkSet }) {
           {summary && <SummaryView summary={summary} />}
         </Step>
       )}
+      {confirmUi}
     </div>
   );
+}
+
+/** The row would overwrite an outdated translation the admin wrote by hand. */
+function replacesManual(r: ReviewRow): boolean {
+  return LOCALES.some((l) => staleManual(r.str, l).length > 0);
+}
+
+function mergeResults(a: TrImportResult | undefined, b: TrImportResult): TrImportResult {
+  if (!a) return b;
+  return {
+    applied: a.applied + b.applied,
+    skippedStale: a.skippedStale + b.skippedStale,
+    skippedManual: a.skippedManual + b.skippedManual,
+    notFound: a.notFound + b.notFound,
+    invalid: a.invalid + b.invalid,
+    rejected: [...a.rejected, ...b.rejected],
+  };
 }
 
 function ReviewCard({
@@ -551,13 +590,10 @@ function ReviewCard({
             <span className="font-mono text-[12px] font-semibold text-[var(--text-muted)]">{row.id}</span>
           </label>
           <KindBadge kindKey={s.kindKey} />
-          {s.fields.length > 1 && <Badge tone="info">×{s.fields.length} полей</Badge>}
+          {s.fields.length > 1 && <Badge tone="info">в {s.fields.length} местах</Badge>}
           {row.done && <Badge tone="neutral">уже переведено — пропуск</Badge>}
-          {(["uk", "en"] as const).map((l) =>
-            s.needs[l] ? (
-              <StatusChip key={l} lang={l} status={s.hasMissing && s.fields.some((f) => f.status[l] === "MISSING") ? "MISSING" : "STALE"} />
-            ) : null
-          )}
+          {(["uk", "en"] as const).map((l) => (s.needs[l] ? <StateChip key={l} lang={l} state={langState(s, l)} /> : null))}
+          {replacesManual(row) && !row.done && <Badge tone="warn">заменит ваш ручной перевод</Badge>}
           <div className="ml-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             {products.slice(0, 3).map(([id, title]) => (
               <ProductLink key={id} productId={id} title={title} />
@@ -682,7 +718,7 @@ function SummaryView({ summary }: { summary: SendSummary }) {
       )}
       {(summary.import.uk?.skippedManual || summary.import.en?.skippedManual) ? (
         <div className="mt-2 text-[12px] text-[var(--text-muted)]">
-          Ручные переводы не перезаписываются. Включите «Перезаписывать устаревшие ручные переводы» или поправьте их во вкладке «Все переводы».
+          Ручные переводы, сделанные для текущего текста, не перезаписываются — поправьте их в просмотре по одному.
         </div>
       ) : null}
     </motion.div>
