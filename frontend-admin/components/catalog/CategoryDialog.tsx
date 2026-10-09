@@ -5,7 +5,7 @@
  * Russian source) and «Характеристики» (the attribute schema: inherited from the parent / global
  * ones greyed out, own ones editable and sortable; saved one by one, right away).
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Check, Globe2, Layers, Lock, Pencil, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -313,14 +313,10 @@ export function CategoryDialog({
           ]}
         />
 
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.16 }}
-          >
+        {/* Plain div + CSS fade (see .tab-in in globals.css): a keyed framer element here left the
+            Modal's exit unfinished after a tab switch, and an invisible dialog swallowed clicks. */}
+        <>
+          <div key={tab} className="tab-in">
             {tab === "main" && (
               <div className="flex flex-col gap-4">
                 <Input
@@ -608,8 +604,8 @@ export function CategoryDialog({
                   </p>
                 </div>
               ))}
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        </>
       </Modal>
 
       {category && (

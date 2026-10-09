@@ -23,6 +23,9 @@ test("карточки: ответ ИИ → проверка → сохране�
 
   await page.goto("/cards");
   await expect(page.getByRole("heading", { name: "Карточки" })).toBeVisible();
+  // The default filter is the to-do list (new / unoformed products on the storefront), which is empty
+  // in the seed — pick «Все» to get a prompt.
+  await page.getByRole("button", { name: /^Все\s*\d*$/ }).first().click();
   await expect(page.getByRole("button", { name: /Скопировать (промпт|пакет 1)/ }).first()).toBeVisible();
 
   // The answer id is "p" + 8 hex of the UUID (the checker also accepts a longer prefix).

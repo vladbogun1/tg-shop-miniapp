@@ -4,7 +4,6 @@
  * Underline tabs (WAI-ARIA tablist): ←/→/Home/End move between tabs, the orange 2px underline
  * slides to the active one. The panels are the caller's — render the one for `value`.
  */
-import { motion } from "framer-motion";
 import { useId, useRef } from "react";
 import { cn } from "@/lib/cn";
 
@@ -72,13 +71,16 @@ export function Tabs<T extends string>({
                 {t.count}
               </span>
             )}
-            {active && (
-              <motion.span
-                layoutId={`tab-${id}`}
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute inset-x-1 -bottom-px h-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]"
-              />
-            )}
+            {/* Plain CSS, not a framer `layoutId`: a shared-layout element inside a Modal kept the
+                Modal's exit from finishing after a tab switch (framer-motion 11.18) — an invisible
+                dialog stayed on top of the page and swallowed every click. */}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-x-1 -bottom-px h-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)] transition-[opacity,transform] duration-200",
+                active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-50"
+              )}
+            />
           </button>
         );
       })}

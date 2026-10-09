@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useIsPresent } from "framer-motion";
 import { X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -28,6 +28,31 @@ export function ModalCancel({ children = "Отмена", disabled }: { children?
     <Button variant="ghost" onClick={close} disabled={disabled}>
       {children}
     </Button>
+  );
+}
+
+/**
+ * The positioning layer of an open modal. While the modal is leaving it stops taking clicks at once and
+ * is hidden for good shortly after: with framer-motion 11.18 the exit of an AnimatePresence child
+ * sometimes never completes (layout animations of children unmounted earlier, e.g. on a tab switch),
+ * and the invisible dialog then sat on top of the page swallowing every click.
+ */
+function ModalLayer({ children }: { children: ReactNode }) {
+  const present = useIsPresent();
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (present) return;
+    const t = setTimeout(() => setGone(true), 400);
+    return () => clearTimeout(t);
+  }, [present]);
+  return (
+    <div
+      inert={!present || undefined}
+      aria-hidden={!present || undefined}
+      className={cn("fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4", !present && "pointer-events-none", gone && "invisible")}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -76,6 +101,13 @@ export function Modal({
   }, [dirty, onClose]);
 
   useOverlayLayer(open, requestClose);
+  // A fresh key per opening (computed during render, so the dialog never remounts while open): if a
+  // previous exit got stuck (see ModalLayer), the new dialog still enters.
+  const sessionRef = useRef(0);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) sessionRef.current += 1;
+  wasOpen.current = open;
+  const session = sessionRef.current;
   // A pending "close without saving?" must not reappear on the next open.
   useEffect(() => {
     if (!open) setAskClose(false);
@@ -93,7 +125,7 @@ export function Modal({
           {open && (
             // Phone: a full-width bottom sheet (footer under the thumb, room for the keyboard);
             // from sm up: the centred dialog.
-            <div className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4">
+            <ModalLayer key={session}>
               <motion.div
                 variants={backdropVariants}
                 initial="initial"
@@ -151,7 +183,7 @@ export function Modal({
                   )}
                 </ModalCloseContext.Provider>
               </motion.div>
-            </div>
+            </ModalLayer>
           )}
         </AnimatePresence>,
         document.body
