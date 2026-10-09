@@ -11,6 +11,7 @@ interface ExportItem {
   title: string;
   description?: string | null;
   cardStatus?: string;
+  active?: boolean;
 }
 
 test("карточки: ответ ИИ → проверка → сохранение → «Проверено»", async ({ page, api }) => {
@@ -18,7 +19,8 @@ test("карточки: ответ ИИ → проверка → сохране�
   expect(exp.status).toBe(200);
   const raw = exp.body as unknown;
   const items = (Array.isArray(raw) ? raw : ((raw as { items?: ExportItem[] }).items ?? [])) as ExportItem[];
-  const product = items.find((i) => i.cardStatus !== "READY") ?? items[0];
+  // On the storefront: the queue filters («От ИИ — проверить») only list storefront products.
+  const product = items.find((i) => i.active && i.cardStatus !== "READY") ?? items.find((i) => i.active) ?? items[0];
   expect(product, "в базе есть товары").toBeTruthy();
 
   await page.goto("/cards");
@@ -37,7 +39,7 @@ test("карточки: ответ ИИ → проверка → сохране�
 
   await expect(page.getByText("Проверка и сохранение")).toBeVisible();
   await expect(page.getByText(product.title).first()).toBeVisible();
-  await expect(page.getByText("example.com")).toBeVisible();
+  await expect(page.getByRole("link", { name: /example\.com/ }).first()).toBeVisible();
   await page.getByRole("button", { name: /^Сохранить 1 товар/ }).click();
   await expect(page.getByText("Итог сохранения")).toBeVisible();
 
