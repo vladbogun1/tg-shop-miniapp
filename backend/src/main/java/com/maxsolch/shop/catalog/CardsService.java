@@ -81,7 +81,8 @@ public class CardsService {
             CardStatus st = status(p);
             switch (st) {
                 case DRAFT -> draft++;
-                case AI_FILLED -> ai++;
+                // waiting for review = what the storefront shows; hidden old products are not a to-do
+                case AI_FILLED -> ai += p.isActive() ? 1 : 0;
                 case READY -> ready++;
             }
             if (isIncomplete(s, p)) {

@@ -20,7 +20,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
 import { CardStatusChip, ConfidencePill, fmtDate, Thumb } from "@/components/cards/shared";
 
-type QFilter = "unfinished" | "ai" | "draft" | "incomplete" | "ready" | "all";
+type QFilter = "unfinished" | "ai" | "draft" | "incomplete" | "ready" | "hidden" | "all";
 
 const STATUS_ORDER: Record<string, number> = { AI_FILLED: 0, DRAFT: 1, READY: 2 };
 const isDraft = (i: CardItem) => (i.cardStatus ?? "DRAFT") === "DRAFT";
@@ -38,9 +38,10 @@ export function CardQueue({ items, schema }: { items: CardItem[]; schema: CardSc
   const counts = useMemo(
     () => ({
       unfinished: items.filter(isUnfinished).length,
-      ai: items.filter((i) => i.cardStatus === "AI_FILLED").length,
-      draft: items.filter((i) => isDraft(i) && !isUnfinished(i)).length,
-      incomplete: items.filter((i) => (i.missingRequired?.length ?? 0) > 0).length,
+      ai: items.filter((i) => i.cardStatus === "AI_FILLED" && i.active === true).length,
+      draft: items.filter((i) => isDraft(i) && !isUnfinished(i) && i.active === true).length,
+      incomplete: items.filter((i) => i.active === true && (i.missingRequired?.length ?? 0) > 0).length,
+      hidden: items.filter((i) => isDraft(i) && !isUnfinished(i) && i.active !== true).length,
       ready: items.filter((i) => i.cardStatus === "READY").length,
       all: items.length,
     }),
@@ -53,10 +54,11 @@ export function CardQueue({ items, schema }: { items: CardItem[]; schema: CardSc
       .filter((i) => {
         const st = i.cardStatus ?? "DRAFT";
         if (filter === "unfinished" && !isUnfinished(i)) return false;
-        if (filter === "ai" && st !== "AI_FILLED") return false;
-        if (filter === "draft" && (st !== "DRAFT" || isUnfinished(i))) return false;
+        if (filter === "ai" && (st !== "AI_FILLED" || i.active !== true)) return false;
+        if (filter === "draft" && (st !== "DRAFT" || isUnfinished(i) || i.active !== true)) return false;
+        if (filter === "hidden" && (st !== "DRAFT" || isUnfinished(i) || i.active === true)) return false;
         if (filter === "ready" && st !== "READY") return false;
-        if (filter === "incomplete" && !(i.missingRequired?.length ?? 0)) return false;
+        if (filter === "incomplete" && (i.active !== true || !(i.missingRequired?.length ?? 0))) return false;
         return !q || `${i.title} ${i.brand ?? ""}`.toLocaleLowerCase("ru").includes(q);
       })
       .sort(
@@ -104,9 +106,10 @@ export function CardQueue({ items, schema }: { items: CardItem[]; schema: CardSc
           options={[
             { value: "unfinished", label: "Незавершённые", count: counts.unfinished },
             { value: "ai", label: "От ИИ — проверить", count: counts.ai },
-            { value: "draft", label: "Без оформления (на витрине)", count: counts.draft },
-            { value: "incomplete", label: "Неполные", count: counts.incomplete },
+            { value: "draft", label: "На витрине без оформления", count: counts.draft },
+            { value: "incomplete", label: "Неполные на витрине", count: counts.incomplete },
             { value: "ready", label: "Проверены", count: counts.ready },
+            { value: "hidden", label: "Скрытые старые", count: counts.hidden },
             { value: "all", label: "Все", count: counts.all },
           ]}
         />

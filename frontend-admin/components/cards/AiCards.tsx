@@ -33,7 +33,7 @@ import { ReviewCard } from "@/components/cards/ReviewCard";
 import { buildImportItem, defaultSel, mergeSel, type ProductSel } from "@/components/cards/selection";
 import { CardStatusChip, Check, ConfidencePill, Step, Thumb } from "@/components/cards/shared";
 
-type Mode = "unfinished" | "draft" | "incomplete" | "lowconf" | "all" | "manual";
+type Mode = "unfinished" | "draft" | "review" | "incomplete" | "lowconf" | "hidden" | "all" | "manual";
 type ReviewFilter = "all" | "ok" | "warn" | "error";
 
 /** AI-filled cards below this overall confidence are offered for another pass. */
@@ -63,7 +63,15 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
   // ---- 1. selection + prompt ------------------------------------------------
   // Hidden unfinished products first (they are not on sale until completed), else the backlog.
-  const [mode, setMode] = useState<Mode>(() => (items.some((i) => i.unfinished === true) ? "unfinished" : "draft"));
+  const [mode, setMode] = useState<Mode>(() =>
+    items.some((i) => i.unfinished === true)
+      ? "unfinished"
+      : items.some((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active === true)
+        ? "draft"
+        : items.some((i) => i.cardStatus === "AI_FILLED" && i.active === true)
+          ? "review"
+          : "unfinished"
+  );
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -82,8 +90,12 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
   const pools = useMemo(
     () => ({
       unfinished: sorted.filter((i) => i.unfinished === true),
-      draft: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true),
-      incomplete: sorted.filter((i) => (i.missingRequired?.length ?? 0) > 0),
+      // on the storefront without a card (legacy products the AI has not touched yet)
+      draft: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true && i.active === true),
+      review: sorted.filter((i) => i.cardStatus === "AI_FILLED" && i.active === true),
+      incomplete: sorted.filter((i) => i.active === true && (i.missingRequired?.length ?? 0) > 0),
+      // hidden old products (sold out / taken off sale): not a to-do, only on demand
+      hidden: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true && i.active !== true),
       lowconf: sorted.filter((i) => i.cardStatus === "AI_FILLED" && (i.cardConfidence ?? 0) < LOW_CONFIDENCE),
       all: sorted,
     }),
@@ -260,9 +272,11 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
   const modeOptions = [
     { value: "unfinished" as const, label: "Незавершённые", count: pools.unfinished.length },
-    { value: "draft" as const, label: "Без оформления (на витрине)", count: pools.draft.length },
-    { value: "incomplete" as const, label: "Неполные", count: pools.incomplete.length },
+    { value: "draft" as const, label: "На витрине без оформления", count: pools.draft.length },
+    { value: "review" as const, label: "От ИИ — проверить", count: pools.review.length },
+    { value: "incomplete" as const, label: "Неполные на витрине", count: pools.incomplete.length },
     { value: "lowconf" as const, label: `От ИИ < ${LOW_CONFIDENCE} %`, count: pools.lowconf.length },
+    { value: "hidden" as const, label: "Скрытые старые", count: pools.hidden.length },
     { value: "all" as const, label: "Все", count: pools.all.length },
     { value: "manual" as const, label: "Вручную", count: manual.size || undefined },
   ];
@@ -380,7 +394,11 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
         {chosen.length === 0 ? (
           <div className="text-[13px] font-semibold text-[var(--text-faint)]">
-            {mode === "manual" ? "Отметьте товары в списке." : "По этому фильтру товаров нет."}
+            {mode === "manual"
+              ? "Отметьте товары в списке."
+              : mode === "unfinished" || mode === "draft"
+                ? "Всё оформлено: новых и неоформленных товаров на витрине нет. Старые скрытые товары — в фильтре «Скрытые старые»."
+                : "По этому фильтру товаров нет."}
           </div>
         ) : batches.length === 1 ? (
           <div className="flex flex-wrap items-center gap-2">
