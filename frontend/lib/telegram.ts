@@ -54,7 +54,23 @@ function currentScheme(): "dark" | "light" {
  * non-fullscreen client keeps its native env() insets.
  */
 /** Height of Telegram's fullscreen controls strip (Закрыть · ⌄ · ⋮) when the client reports 0. */
-const FULLSCREEN_CONTROLS_PX = 46;
+const FULLSCREEN_CONTROLS_PX = 48;
+/** Status bar height to assume when neither Telegram nor env() report it. */
+const ANDROID_STATUS_BAR_PX = 28;
+
+/** env(safe-area-inset-top) in px (0 when the WebView does not provide it). */
+function envInsetTop(): number {
+  try {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)";
+    document.body.appendChild(probe);
+    const px = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+    probe.remove();
+    return px;
+  } catch {
+    return 0;
+  }
+}
 
 let safeAreaReported = false;
 let lastSafeArea: {
@@ -85,6 +101,8 @@ function reportSafeArea(
       csa: [csa.top ?? null, csa.bottom ?? null],
       tgVars: [cs.getPropertyValue("--tg-safe-area-inset-top").trim(), cs.getPropertyValue("--tg-content-safe-area-inset-top").trim()],
       fb: fallback,
+      env: envInsetTop(),
+      safeTop: getComputedStyle(document.querySelector(".sticky") ?? document.body).top,
       vh: window.innerHeight,
     });
     void import("@/lib/analytics").then((m) => m.track("tg_safe_area", undefined, meta.slice(0, 500))).catch(() => {});
@@ -111,7 +129,13 @@ function applySafeAreaInsets(): void {
   // the «Закрыть · ⌄ · ⋮» strip is drawn over the page: fall back to that strip's height.
   const phone = wa.platform === "android" || wa.platform === "ios";
   const fallback = !!wa.isFullscreen && phone && !(csa.top && csa.top > 0);
-  if (fallback) csa.top = FULLSCREEN_CONTROLS_PX;
+  if (fallback) {
+    // Seen live (Telegram-Android 12.10.6, WebApp 9.6, fullscreen): safeAreaInset, contentSafeAreaInset and
+    // the --tg-* CSS vars are ALL 0, so the status bar is missing too. Status bar = env() when the WebView
+    // gives it, else a typical Android value; plus the controls strip.
+    const statusBar = Math.max(sa.top ?? 0, envInsetTop()) || ANDROID_STATUS_BAR_PX;
+    csa.top = statusBar - (sa.top ?? 0) + FULLSCREEN_CONTROLS_PX;
+  }
   reportSafeArea(wa, sa, wa.contentSafeAreaInset ?? {}, fallback);
   const root = document.documentElement;
   // Also reads Telegram's own live CSS vars (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*,
