@@ -158,7 +158,13 @@ export interface AdminBrand {
   website?: string | null;
   sortOrder?: number;
   productCount: number;
+  /** Logo for the site's brand marquee: S3 key (products/brands/…) or https URL; null = name in type. */
+  logoUrl: string | null;
+  /** MONO — recoloured to one tone on the site; ORIGINAL — as uploaded. */
+  logoMode: BrandLogoMode;
 }
+
+export type BrandLogoMode = "MONO" | "ORIGINAL";
 
 export interface BrandWriteRequest {
   name: string;
@@ -166,6 +172,9 @@ export interface BrandWriteRequest {
   aliases?: string[];
   website?: string;
   sortOrder?: number;
+  /** "" removes the logo; omitted keeps it. */
+  logoUrl?: string;
+  logoMode?: BrandLogoMode;
 }
 
 export interface AdminSpecOption {
@@ -284,6 +293,8 @@ export function normBrand(raw: unknown): AdminBrand {
     website: strOrNull(pick(o, "website", "site", "url")),
     sortOrder: num(o.sortOrder),
     productCount: num(o.productCount),
+    logoUrl: strOrNull(o.logoUrl),
+    logoMode: o.logoMode === "ORIGINAL" ? "ORIGINAL" : "MONO",
   };
 }
 
@@ -1160,6 +1171,8 @@ export const adminApi = {
   updateBrand: async (id: string, body: BrandWriteRequest) =>
     normBrand(await apiPatch<unknown>(`/api/admin/brands/${id}`, body)),
   /** Products of the brand stay, without a brand. */
+  /** Brand logo (SVG/PNG/WebP) -> { key } for logoUrl. */
+  uploadBrandLogo: (file: File) => uploadFile("/api/admin/brands/uploads", file),
   deleteBrand: (id: string) => apiDelete<void>(`/api/admin/brands/${id}`),
   /** Products and aliases of `id` move to `targetId`; `id` is deleted. */
   mergeBrand: (id: string, targetId: string) => apiPost<unknown>(`/api/admin/brands/${id}/merge-into/${targetId}`),
