@@ -12,12 +12,12 @@
  *   1–2★ low  — no lift, a short HUD glitch
  *
  * The pick is random but weighted towards higher ratings. Hover/focus pauses a row and surfaces the
- * card under the pointer; the play/pause button stops everything (WCAG 2.2.2). With reduced motion
+ * card under the pointer; the owner asked for no pause button. With reduced motion
  * the rows are plain horizontal scrollers and nothing surfaces.
  */
-import { Pause, Play, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { FeedReview, ReviewSummary } from "@shop/shared";
 import { localePath } from "@/i18n";
 import { useI18n } from "@/i18n/context";
@@ -117,9 +117,6 @@ function track(list: FeedReview[], row: string): Slot[] {
 export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; items: FeedReview[] }) {
   const { t, tag } = useI18n();
   const rootRef = useRef<HTMLElement>(null);
-  const [paused, setPaused] = useState(false);
-  const pausedRef = useRef(paused);
-  pausedRef.current = paused;
 
   // Desktop: alternate reviews between the rows so neighbours differ; phones: one row of all.
   const rows = useMemo(() => {
@@ -171,7 +168,7 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
 
     const tick = () => {
       clear();
-      if (!visible || pausedRef.current || reduce.matches || document.hidden) {
+      if (!visible || reduce.matches || document.hidden) {
         timer = window.setTimeout(tick, 1200);
         return;
       }
@@ -219,7 +216,6 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
     <section
       ref={rootRef}
       className="rv-ribbon mt-16 md:mt-20"
-      data-paused={paused ? "" : undefined}
       aria-labelledby="home-reviews"
     >
       <div className="container-site mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -245,16 +241,6 @@ export function ReviewsRibbon({ summary, items }: { summary: ReviewSummary; item
               <span className="text-[13px] font-semibold text-[var(--muted)]">{t("reviews.count", { n: summary.count })}</span>
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => setPaused((p) => !p)}
-            aria-pressed={paused}
-            aria-label={paused ? t("home.reviews.play") : t("home.reviews.pause")}
-            title={paused ? t("home.reviews.play") : t("home.reviews.pause")}
-            className="rv-toggle tap grid h-11 w-11 place-items-center rounded-full border border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
-          >
-            {paused ? <Play className="h-4 w-4" fill="currentColor" /> : <Pause className="h-4 w-4" fill="currentColor" />}
-          </button>
         </div>
       </div>
 

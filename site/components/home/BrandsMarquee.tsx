@@ -11,11 +11,10 @@
  * is rendered twice and the track slides by −50%, slots use a trailing margin so the copy starts
  * exactly there, edges fade with a mask. The list is repeated until one copy is at least a screen
  * wide (so the track is ≥ 2 screens and the loop never shows a gap); the repeat count and the speed
- * are re-measured when the strip or a logo changes size. Hover/focus pauses, the button stops it
+ * are re-measured when the strip or a logo changes size. Hover/focus pauses it (no pause button — owner's call)
  * (WCAG 2.2.2), off-screen it does not animate, with reduced motion it is a plain horizontal
  * scroller of one copy. Repeats and the looping copy are aria-hidden and out of the tab order.
  */
-import { Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { brandLogoSrc, type CatalogBrand } from "@shop/shared";
@@ -39,7 +38,6 @@ export function BrandsMarquee({ brands }: { brands: CatalogBrand[] }) {
   const { t, locale } = useI18n();
   const rootRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLUListElement>(null);
-  const [paused, setPaused] = useState(false);
 
   const list = useMemo(
     () => [...brands].filter((b) => b.productCount > 0).sort((a, b) => b.productCount - a.productCount || a.name.localeCompare(b.name)),
@@ -94,7 +92,6 @@ export function BrandsMarquee({ brands }: { brands: CatalogBrand[] }) {
       ref={rootRef}
       className="bm-strip"
       aria-label={t("home.brands.label")}
-      data-paused={paused ? "" : undefined}
       style={{ "--bm-dur": `${cycle * reps}s` } as React.CSSProperties}
     >
       <div className="container-site bm-inner">
@@ -112,16 +109,6 @@ export function BrandsMarquee({ brands }: { brands: CatalogBrand[] }) {
             ))}
           </ul>
         </div>
-        <button
-          type="button"
-          onClick={() => setPaused((p) => !p)}
-          aria-pressed={paused}
-          aria-label={paused ? t("home.brands.play") : t("home.brands.pause")}
-          title={paused ? t("home.brands.play") : t("home.brands.pause")}
-          className="bm-toggle"
-        >
-          {paused ? <Play className="h-3.5 w-3.5" fill="currentColor" /> : <Pause className="h-3.5 w-3.5" fill="currentColor" />}
-        </button>
       </div>
     </nav>
   );

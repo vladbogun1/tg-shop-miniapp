@@ -68,7 +68,6 @@
   animation: bm-marquee var(--bm-dur, 50s) linear infinite;
   will-change: transform;
 }
-.bm-strip[data-paused] .bm-track,
 .bm-strip[data-off] .bm-track,
 .bm-row:hover .bm-track,
 .bm-row:focus-within .bm-track { animation-play-state: paused; }
@@ -155,24 +154,6 @@
 .bm-sep::before { background: rgba(255, 255, 255, .16); }
 .bm-sep::after { background: rgba(255, 102, 0, .55); }
 
-/* ---- pause --------------------------------------------------------------- */
-.bm-toggle {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  transition: color .2s ease, border-color .2s ease;
-}
-.bm-toggle:hover { border-color: var(--accent); color: var(--accent-hi); }
-.bm-strip[data-paused] .bm-toggle { color: var(--accent-hi); }
-/* The visual stays 32px (a 60px strip); the hit area is 44px, like .tap. */
-.bm-toggle { position: relative; }
-.bm-toggle::after { content: ""; position: absolute; inset: -6px; }
 
 /* Reduced motion: no marquee — one copy in a horizontal scroller. */
 @media (prefers-reduced-motion: reduce) {
@@ -187,6 +168,5 @@
   .bm-slot[data-dup] { display: none; }
   .bm-slot:last-child .bm-sep,
   .bm-slot:has(+ .bm-slot[data-dup]) .bm-sep { display: none; }
-  .bm-toggle { display: none; }
   .bm-item, .bm-word, .bm-logo, .bm-count { transition: none; }
 }

@@ -30,7 +30,6 @@
   will-change: transform;
 }
 .rv-row[data-dir="right"] .rv-track { animation-direction: reverse; }
-.rv-ribbon[data-paused] .rv-track,
 .rv-row:hover .rv-track,
 .rv-row:focus-within .rv-track { animation-play-state: paused; }
 /* Slots use a trailing margin instead of `gap`: then the second copy starts exactly at -50%. */
@@ -251,8 +250,6 @@
   background: var(--ok);
   animation: rv-ping 1.8s cubic-bezier(0, 0, .2, 1) infinite;
 }
-.rv-ribbon[data-paused] .rv-live { background: var(--faint); }
-.rv-ribbon[data-paused] .rv-live::after { animation: none; opacity: 0; }
 
 @keyframes rv-spin { to { --rv-angle: 360deg; } }
 @keyframes rv-flare {
@@ -323,5 +320,4 @@
   .rv-card { transition: none; }
   .rv-card:is([data-spot], :hover, :focus-visible) { transform: none !important; }
   .rv-ribbon[data-armed]:not([data-in]) .rv-card { opacity: 1; }
-  .rv-toggle { display: none; }
 }
