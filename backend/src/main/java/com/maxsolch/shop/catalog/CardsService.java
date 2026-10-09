@@ -89,8 +89,8 @@ public class CardsService {
             CardStatus st = status(p);
             switch (st) {
                 case DRAFT -> draft++;
-                // waiting for review = what the storefront shows; hidden old products are not a to-do
-                case AI_FILLED -> ai += p.isActive() ? 1 : 0;
+                // «Проверить» counts every AI-filled card, hidden ones too (the admin UI tab shows them all)
+                case AI_FILLED -> ai++;
                 case READY -> ready++;
             }
             if (isIncomplete(s, p)) {
@@ -240,7 +240,8 @@ public class CardsService {
         CardImportItem item = new CardImportItem(pid, null, null, r.specs(), null, null, r.description(), null, null,
                 null, !Boolean.FALSE.equals(r.ready()), null, null, r.title(), r.translations(), null, null);
         Run run = new Run();
-        applyItem(run, pid, p, item, false, true, adminId);
+        // The panel sends the whole edited set: a cleared field is removed.
+        applyItem(run, pid, p, item, true, true, adminId);
         finish(run);
         return run.result();
     }
