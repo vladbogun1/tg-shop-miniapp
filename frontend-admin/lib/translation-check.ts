@@ -23,6 +23,10 @@ export interface FieldRef {
   status: Record<TrLocale, TrStatus>;
   text: Record<TrLocale, string | null>;
   origin: Record<TrLocale, TrOrigin | null>;
+  /** STALE: the Russian text the translation was made from (null when unknown). */
+  prevSource: Record<TrLocale, string | null>;
+  /** A person accepted the translation (MANUAL or «Принять»). */
+  reviewed: Record<TrLocale, boolean>;
 }
 
 /** One unique Russian string = one id in the prompt, fanned out to all its fields. */
@@ -108,12 +112,16 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
         status: { uk: "MISSING", en: "MISSING" },
         text: { uk: null, en: null },
         origin: { uk: null, en: null },
+        prevSource: { uk: null, en: null },
+        reviewed: { uk: false, en: false },
       };
       map.set(key, f);
     }
     f.status[locale] = it.status;
     f.text[locale] = it.text;
     f.origin[locale] = it.origin;
+    f.prevSource[locale] = it.prevSource ?? null;
+    f.reviewed[locale] = !!it.reviewed;
   };
   uk.forEach((i) => add("uk", i));
   en.forEach((i) => add("en", i));
