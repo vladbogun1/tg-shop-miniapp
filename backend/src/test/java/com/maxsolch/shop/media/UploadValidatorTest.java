@@ -86,4 +86,36 @@ class UploadValidatorTest {
         assertThatThrownBy(() -> validator.validateImage(file("receipt.pdf", "application/pdf", 2048)))
                 .isInstanceOf(BadRequestException.class);
     }
+
+    private MockMultipartFile svg(String body) {
+        return new MockMultipartFile("file", "logo.svg", "image/svg+xml",
+                body.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void brandLogoTakesAPassiveSvgPngAndWebp() {
+        assertThatCode(() -> validator.validateBrandLogo(
+                svg("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path d=\"M0 0h10v10z\"/></svg>")))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validateBrandLogo(file("logo.png", "image/png", 1024)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validateBrandLogo(file("logo.webp", "image/webp", 1024)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void brandLogoRefusesActiveSvgAndOtherTypes() {
+        assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg><script>alert(1)</script></svg>")))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg onload=\"alert(1)\"></svg>")))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg><a href=\"javascript:x\"/></svg>")))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> validator.validateBrandLogo(svg("<html>not a logo</html>")))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> validator.validateBrandLogo(file("logo.jpg", "image/jpeg", 1024)))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> validator.validateBrandLogo(file("logo.png", "image/png", 3 * 1024 * 1024)))
+                .isInstanceOf(BadRequestException.class);
+    }
 }

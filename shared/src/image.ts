@@ -81,3 +81,17 @@ export function resolveImageSrc(value: string, opts: ResolveOptions): string {
   }
   return imgproxyUrl(opts.imageBase, value.replace(/^\/+/, ""), opts.size ?? 600, opts.fit ?? false);
 }
+
+/**
+ * Brand logo for the marquee / admin preview: an absolute URL (or a local blob:/data: preview) as-is,
+ * an S3 key through imgproxy fitted into a wide box (logos are wide, not square) and rendered to WebP.
+ * An SVG is rasterised by imgproxy (`el:1` lets the vector grow to the box) — it is never served raw.
+ */
+export function brandLogoSrc(value: string, imageBase: string, width = 480, height = 160): string {
+  if (isAbsoluteUrl(value)) return value.startsWith("//") ? `https:${value}` : value;
+  if (/^(blob|data):/i.test(value)) return value;
+  const key = value.replace(/^\/+/, "");
+  const base = imageBase.replace(/\/$/, "");
+  const enlarge = /\.svg$/i.test(key) ? "/el:1" : "";
+  return `${base}/insecure/rs:fit:${width}:${height}${enlarge}/plain/s3://${BUCKET}/${key}@webp`;
+}

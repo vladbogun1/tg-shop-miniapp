@@ -77,11 +77,17 @@ export interface CatalogCategory {
   productCount: number;
 }
 
+/** How a brand logo is drawn on the dark site: recoloured to one tone, or as uploaded. */
+export type BrandLogoMode = "MONO" | "ORIGINAL";
+
 export interface CatalogBrand {
   id: string;
   slug: string;
   name: string;
   productCount: number;
+  /** S3 key (products/brands/…, through imgproxy) or an absolute URL; absent/null = show the name. */
+  logoUrl?: string | null;
+  logoMode?: BrandLogoMode | null;
 }
 
 /**

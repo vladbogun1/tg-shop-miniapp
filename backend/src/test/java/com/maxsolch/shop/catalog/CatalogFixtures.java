@@ -48,7 +48,7 @@ public final class CatalogFixtures {
                 attr("hot_swap", KEYBOARDS, SpecType.BOOL, true, false, List.of()),
                 attr("actuation_mm", MAGNETIC, SpecType.NUMBER, true, true, List.of()));
         List<CatalogSnapshot.BrandInfo> brands = List.of(
-                new CatalogSnapshot.BrandInfo(LAMZU, "Lamzu", "lamzu", List.of("LAMZU"), null, 0));
+                new CatalogSnapshot.BrandInfo(LAMZU, "Lamzu", "lamzu", List.of("LAMZU"), null, 0, null, "MONO"));
         return new CatalogSnapshot(cats, brands, List.of(new CatalogSnapshot.Group("main", "Основное", "Основне",
                 "General", 10)), attrs);
     }

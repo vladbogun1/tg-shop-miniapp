@@ -4,14 +4,15 @@
  * «Бренды» (route "/brands"): the brand directory of catalog v2 — name, URL slug, site, number of
  * products, aliases (other spellings the AI import and «Создать „…“» recognise). Create / edit,
  * delete (products stay, without a brand) and «Объединить с…» (products and aliases move to
- * another brand — for duplicates like «Attack Shark» / «AttackShark»).
+ * another brand — for duplicates like «Attack Shark» / «AttackShark»). The logo (and how it is drawn)
+ * feeds the brand marquee on the site's home page.
  */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BadgeCheck, Check, ExternalLink, GitMerge, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { adminApi, ApiError, type AdminBrand } from "@/lib/api";
+import { adminApi, ApiError, type AdminBrand, type BrandLogoMode } from "@/lib/api";
 import { productsWord } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
@@ -27,6 +28,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { TagInput } from "@/components/catalog/TagInput";
 import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombobox";
+import { BrandLogoField, BrandLogoThumb } from "@/components/catalog/BrandLogoField";
 
 type Sort = "name" | "products";
 
@@ -35,7 +37,12 @@ interface Form {
   slug: string;
   website: string;
   aliases: string[];
+  /** "" = no logo. */
+  logoUrl: string;
+  logoMode: BrandLogoMode;
 }
+
+const EMPTY_FORM: Form = { name: "", slug: "", website: "", aliases: [], logoUrl: "", logoMode: "MONO" };
 
 const norm = (s: string) => s.toLocaleLowerCase("ru").replace(/ё/g, "е").trim();
 
@@ -58,7 +65,7 @@ export default function BrandsPage() {
   const [sort, setSort] = useState<Sort>("products");
   const [editing, setEditing] = useState<AdminBrand | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<Form>({ name: "", slug: "", website: "", aliases: [] });
+  const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [initial, setInitial] = useState("");
   const [saving, setSaving] = useState(false);
   const [merging, setMerging] = useState<AdminBrand | null>(null);
@@ -87,7 +94,9 @@ export default function BrandsPage() {
   }
 
   function openForm(b: AdminBrand | null) {
-    const f = { name: b?.name ?? "", slug: b?.slug ?? "", website: b?.website ?? "", aliases: b?.aliases ?? [] };
+    const f: Form = b
+      ? { name: b.name, slug: b.slug, website: b.website ?? "", aliases: b.aliases, logoUrl: b.logoUrl ?? "", logoMode: b.logoMode }
+      : EMPTY_FORM;
     setEditing(b);
     setForm(f);
     setInitial(JSON.stringify(f));
@@ -107,6 +116,8 @@ export default function BrandsPage() {
         slug: form.slug.trim(),
         website: form.website.trim(),
         aliases: form.aliases,
+        logoUrl: form.logoUrl,
+        logoMode: form.logoMode,
       };
       if (editing) await adminApi.updateBrand(editing.id, body);
       else await adminApi.createBrand(body);
@@ -218,6 +229,7 @@ export default function BrandsPage() {
                   <table className="data-table">
                     <thead>
                       <tr>
+                        <th className="w-[96px]">Логотип</th>
                         <th>Бренд</th>
                         <th>Slug</th>
                         <th>Сайт</th>
@@ -229,6 +241,11 @@ export default function BrandsPage() {
                     <motion.tbody variants={staggerContainer} initial="initial" animate="animate">
                       {visible.map((b) => (
                         <motion.tr key={b.id} variants={riseItem} className="group">
+                          <td>
+                            <button type="button" onClick={() => openForm(b)} className="focusable block rounded-[var(--r-sm)]" aria-label={`Логотип ${b.name}: изменить`}>
+                              <BrandLogoThumb url={b.logoUrl} mode={b.logoMode} name={b.name} />
+                            </button>
+                          </td>
                           <td>
                             <button type="button" onClick={() => openForm(b)} className="focusable rounded-[var(--r-sm)] text-left font-semibold text-[var(--text)] hover:text-[var(--accent-hi)]">
                               {b.name}
@@ -275,12 +292,15 @@ export default function BrandsPage() {
                   {visible.map((b) => (
                     <motion.li key={b.id} variants={riseItem} className="card p-3">
                       <div className="flex items-start justify-between gap-2">
-                        <button type="button" onClick={() => openForm(b)} className="min-w-0 text-left">
+                        <button type="button" onClick={() => openForm(b)} className="flex min-w-0 items-center gap-2.5 text-left">
+                          <BrandLogoThumb url={b.logoUrl} mode={b.logoMode} name={b.name} />
+                          <span className="min-w-0">
                           <div className="truncate text-[15px] font-semibold text-[var(--ink)]">{b.name}</div>
                           <div className="truncate font-mono text-[11.5px] text-[var(--text-faint)]">
                             {b.slug}
                             {b.website ? ` · ${hostOf(b.website)}` : ""}
                           </div>
+                          </span>
                         </button>
                         <span className="tabular shrink-0 text-[13px] font-semibold text-[var(--text-muted)]">{productsWord(b.productCount)}</span>
                       </div>
@@ -357,6 +377,13 @@ export default function BrandsPage() {
               Другие написания: по ним бренд узнаётся в ответах ИИ и при создании товара. Enter или запятая — добавить.
             </span>
           </div>
+          <BrandLogoField
+            name={form.name}
+            value={form.logoUrl}
+            mode={form.logoMode}
+            onChange={(v) => setForm((f) => ({ ...f, logoUrl: v }))}
+            onModeChange={(m) => setForm((f) => ({ ...f, logoMode: m }))}
+          />
           {editing && (
             <p className="text-[12px] text-[var(--text-faint)]">
               {editing.productCount > 0 ? `У бренда ${productsWord(editing.productCount)}.` : "У бренда пока нет товаров."}

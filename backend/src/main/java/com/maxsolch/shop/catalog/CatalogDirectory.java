@@ -54,7 +54,7 @@ public class CatalogDirectory {
         List<CatalogSnapshot.Cat> cats = categoryRepository.findAll().stream().map(CatalogDirectory::cat).toList();
         List<CatalogSnapshot.BrandInfo> brands = brandRepository.findAll().stream()
                 .map(b -> new CatalogSnapshot.BrandInfo(UuidUtil.toString(b.getId()), b.getName(), b.getSlug(),
-                        b.aliasList(), b.getWebsite(), b.getSortOrder()))
+                        b.aliasList(), b.getWebsite(), b.getSortOrder(), b.getLogoUrl(), b.getLogoMode()))
                 .toList();
         List<CatalogSnapshot.Group> groups = groupRepository.findAll().stream()
                 .map(g -> new CatalogSnapshot.Group(g.getKey(), g.getLabelRu(), g.getLabelUk(), g.getLabelEn(),

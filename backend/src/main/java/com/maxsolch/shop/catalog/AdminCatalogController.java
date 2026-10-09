@@ -16,11 +16,14 @@ import com.maxsolch.shop.catalog.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.RenameOption;
 import com.maxsolch.shop.catalog.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.catalog.CatalogDtos.SpecAttributeUpsertRequest;
+import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.AdminProductDto;
+import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -61,11 +65,14 @@ public class AdminCatalogController {
     private final AdminProductService products;
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
+    private final UploadValidator uploadValidator;
+    private final ImageStorageService imageStorageService;
 
     public AdminCatalogController(CategoryAdminService categories, BrandAdminService brands,
                                   SpecAttributeAdminService attributes, CatalogSchemaService schema,
                                   CatalogSchemaImporter importer, CardsService cards, AdminProductService products,
-                                  AdminAuditService audit, SiteRevalidator siteRevalidator) {
+                                  AdminAuditService audit, SiteRevalidator siteRevalidator,
+                                  UploadValidator uploadValidator, ImageStorageService imageStorageService) {
         this.categories = categories;
         this.brands = brands;
         this.attributes = attributes;
@@ -75,6 +82,8 @@ public class AdminCatalogController {
         this.products = products;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
+        this.uploadValidator = uploadValidator;
+        this.imageStorageService = imageStorageService;
     }
 
     private static Long adminId() {
@@ -149,10 +158,19 @@ public class AdminCatalogController {
         return b;
     }
 
+    @PostMapping("/brands/uploads")
+    @Operation(summary = "Upload a brand logo: SVG/PNG/WebP (returns S3 key for logoUrl)")
+    public UploadResponse uploadBrandLogo(@RequestParam("file") MultipartFile file) {
+        uploadValidator.validateBrandLogo(file);
+        return UploadResponse.ofKey(imageStorageService.uploadBrandLogo(file));
+    }
+
     @PatchMapping("/brands/{id}")
     public AdminBrandDto updateBrand(@PathVariable String id, @Valid @RequestBody BrandUpsertRequest req) {
         AdminBrandDto b = brands.update(id, req);
-        audit.record("BRAND_UPDATE", "BRAND", id, b.name() + ", slug " + b.slug());
+        audit.record("BRAND_UPDATE", "BRAND", id, b.name() + ", slug " + b.slug()
+                + (req.logoUrl() == null ? "" : req.logoUrl().isBlank() ? ", логотип удалён" : ", логотип")
+                + (req.logoMode() == null ? "" : ", режим логотипа " + b.logoMode()));
         siteRevalidator.allChanged();
         return b;
     }

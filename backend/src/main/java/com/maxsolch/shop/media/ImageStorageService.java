@@ -77,6 +77,19 @@ public class ImageStorageService {
     }
 
     /**
+     * Brand logos live under products/ on purpose: imgproxy only proxies that prefix
+     * (IMGPROXY_ALLOWED_SOURCES), and logos are public like product photos.
+     */
+    public static final String BRAND_LOGO_PREFIX = "products/brands/";
+
+    /** Upload a brand logo (PNG/WebP/SVG, checked by {@link UploadValidator#validateBrandLogo}). */
+    public String uploadBrandLogo(MultipartFile file) {
+        String filename = sanitize(file.getOriginalFilename());
+        String key = BRAND_LOGO_PREFIX + UUID.randomUUID() + "/" + filename;
+        return upload(file, key);
+    }
+
+    /**
      * Upload a chat attachment. Key layout: chat/{uuid}/{filename}.
      */
     public String uploadChatAttachment(MultipartFile file) {

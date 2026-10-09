@@ -106,6 +106,7 @@ export const ru = {
   "footer.botText": "Заказы, статусы и чат с магазином — в Telegram.",
   "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
   "footer.rights": "© {year} ChiSetup",
+  "footer.trademarks": "Товарные знаки принадлежат их владельцам.",
 
   // ── info pages ────────────────────────────────────────────────────────────
   "info.delivery": "Доставка и оплата",
@@ -199,6 +200,9 @@ export const ru = {
   "home.reviews.pause": "Остановить ленту отзывов",
   "home.reviews.play": "Запустить ленту отзывов",
   "home.reviews.open": "Отзыв о товаре «{title}»",
+  "home.brands.label": "Бренды",
+  "home.brands.pause": "Остановить ленту брендов",
+  "home.brands.play": "Запустить ленту брендов",
   "home.trust.title": "Почему у нас",
   "home.trust.delivery.title": "Доставка Новой Почтой",
   "home.trust.delivery.text": "Отделение или почтомат по всей Украине — выбираете прямо на карте.",

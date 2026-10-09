@@ -22,6 +22,9 @@ import java.util.List;
 @Table(name = "brands")
 public class Brand {
 
+    public static final String LOGO_MONO = "MONO";
+    public static final String LOGO_ORIGINAL = "ORIGINAL";
+
     @Id
     @Column(name = "id", columnDefinition = "BINARY(16)", nullable = false)
     private byte[] id;
@@ -40,6 +43,14 @@ public class Brand {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
+
+    /** V54: MinIO key ({@code products/brands/…}) or an absolute URL; null = the site shows the name. */
+    @Column(name = "logo_url", length = 2048)
+    private String logoUrl;
+
+    /** V54: {@link #LOGO_MONO} (recoloured to one tone on the site) or {@link #LOGO_ORIGINAL}. */
+    @Column(name = "logo_mode", nullable = false, length = 16)
+    private String logoMode = LOGO_MONO;
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;

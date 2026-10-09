@@ -35,6 +35,17 @@ public class UploadValidator {
     private static final Set<String> DOCUMENT_TYPES = Set.of("application/pdf");
     private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf");
 
+    /**
+     * Brand logos: raster PNG/WebP or a vector SVG. An SVG is never shown directly — imgproxy renders
+     * it to WebP (and sanitises SVG itself) — but it is still refused if it carries anything active.
+     */
+    private static final Set<String> LOGO_TYPES = Set.of("image/png", "image/webp", "image/svg+xml");
+    private static final Set<String> LOGO_EXTENSIONS = Set.of("png", "webp", "svg");
+    private static final long LOGO_MAX_BYTES = 2L * 1024 * 1024;
+    private static final java.util.regex.Pattern SVG_ACTIVE = java.util.regex.Pattern.compile(
+            "<script|<foreignobject|<!entity|<iframe|<embed|<object|javascript:|\son[a-z]+\s*=",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private final Messages messages;
 
     public UploadValidator(Messages messages) {
@@ -51,6 +62,26 @@ public class UploadValidator {
         Set<String> types = union(IMAGE_TYPES, DOCUMENT_TYPES);
         Set<String> extensions = union(IMAGE_EXTENSIONS, DOCUMENT_EXTENSIONS);
         validate(file, types, extensions, messages.current("api.upload.kind.imageOrPdf"));
+    }
+
+    /** Brand logo: PNG, WebP or a passive SVG, at most 2 MB. */
+    public void validateBrandLogo(MultipartFile file) {
+        String kind = messages.current("api.upload.kind.logo");
+        validate(file, LOGO_TYPES, LOGO_EXTENSIONS, kind);
+        if (file.getSize() > LOGO_MAX_BYTES) {
+            throw new BadRequestException(messages.current("api.upload.tooBig", LOGO_MAX_BYTES / 1024 / 1024));
+        }
+        if ("svg".equals(extensionOf(file.getOriginalFilename()))) {
+            String text;
+            try {
+                text = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException e) {
+                throw new BadRequestException(messages.current("api.upload.badType", kind));
+            }
+            if (!text.toLowerCase(Locale.ROOT).contains("<svg") || SVG_ACTIVE.matcher(text).find()) {
+                throw new BadRequestException(messages.current("api.upload.badType", kind));
+            }
+        }
     }
 
     private void validate(MultipartFile file, Set<String> allowedTypes,

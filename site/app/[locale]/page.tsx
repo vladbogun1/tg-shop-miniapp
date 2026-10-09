@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductGrid } from "@/components/catalog/ProductCard";
+import { BrandsMarquee } from "@/components/home/BrandsMarquee";
 import { ReviewsRibbon } from "@/components/home/ReviewsRibbon";
 import { JsonLd } from "@/components/layout/Breadcrumbs";
 import { CategoryTile } from "@/components/mascot/CategoryTile";
@@ -87,6 +88,9 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
         </div>
       </section>
 
+      {/* brands — a thin running strip right under the hero (logos from the admin, names otherwise) */}
+      {schema.brands.length > 0 && <BrandsMarquee brands={schema.brands} />}
+
       {/* categories */}
       {categories.length > 0 && (
         <section className="container-site mt-16 md:mt-20" aria-labelledby="home-cats">
@@ -170,3 +174,4 @@ function SectionHead({ id, title, more, moreLabel }: { id: string; title: string
     </div>
   );
 }
+

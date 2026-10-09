@@ -70,7 +70,8 @@ public class CatalogSchemaService {
                 .toList();
         List<CatalogBrandDto> brands = s.brands().stream()
                 .filter(b -> brandCounts.getOrDefault(b.id(), 0L) > 0)
-                .map(b -> new CatalogBrandDto(b.id(), b.slug(), b.name(), brandCounts.get(b.id())))
+                .map(b -> new CatalogBrandDto(b.id(), b.slug(), b.name(), brandCounts.get(b.id()),
+                        b.logoUrl(), b.logoMode()))
                 .toList();
         List<SpecGroupDto> groups = s.groups().stream()
                 .map(g -> new SpecGroupDto(g.key(), g.label(l), g.sort()))

@@ -8,6 +8,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.catalog.CatalogDtos.CardAcceptRequest;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.translation.ContentTranslation;
 import com.maxsolch.shop.translation.ContentTranslationId;
@@ -38,7 +39,8 @@ class CardsServiceTest {
     @BeforeEach
     void setUp() {
         db = new InMemoryCatalog();
-        BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory);
+        BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
+                mock(ImageStorageService.class));
         admins = mock(AdminUserRepository.class);
         service = new CardsService(db.productRepository, db.directory, brands, db.translationRepository,
                 mock(TranslationService.class), admins);

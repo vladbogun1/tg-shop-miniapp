@@ -92,6 +92,7 @@ export const uk: RuDictionary = {
   "footer.botText": "Замовлення, статуси та чат із магазином — у Telegram.",
   "footer.requisites": "ФОП Солоха Максим Андрійович · РНОКПП 3547612413",
   "footer.rights": "© {year} ChiSetup",
+  "footer.trademarks": "Товарні знаки належать їхнім власникам.",
 
   "info.delivery": "Доставка та оплата",
   "info.returns": "Повернення та обмін",
@@ -182,6 +183,9 @@ export const uk: RuDictionary = {
   "home.reviews.pause": "Зупинити стрічку відгуків",
   "home.reviews.play": "Запустити стрічку відгуків",
   "home.reviews.open": "Відгук про товар «{title}»",
+  "home.brands.label": "Бренди",
+  "home.brands.pause": "Зупинити стрічку брендів",
+  "home.brands.play": "Запустити стрічку брендів",
   "home.trust.title": "Чому в нас",
   "home.trust.delivery.title": "Доставка Новою Поштою",
   "home.trust.delivery.text": "Відділення або поштомат по всій Україні — обираєте просто на карті.",

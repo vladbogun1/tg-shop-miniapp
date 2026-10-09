@@ -3,6 +3,7 @@ package com.maxsolch.shop.catalog;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.CatalogDtos.BrandUpsertRequest;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.service.SlugService;
 import com.maxsolch.shop.web.BadRequestException;
@@ -27,12 +28,14 @@ public class BrandAdminService {
     private final BrandRepository repository;
     private final ProductRepository productRepository;
     private final CatalogDirectory directory;
+    private final ImageStorageService storage;
 
     public BrandAdminService(BrandRepository repository, ProductRepository productRepository,
-                             CatalogDirectory directory) {
+                             CatalogDirectory directory, ImageStorageService storage) {
         this.repository = repository;
         this.productRepository = productRepository;
         this.directory = directory;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
@@ -73,8 +76,12 @@ public class BrandAdminService {
             }
             b.setName(name);
         }
+        String oldLogo = b.getLogoUrl();
         apply(b, req);
         repository.save(b);
+        if (oldLogo != null && !oldLogo.equals(b.getLogoUrl())) {
+            storage.deleteQuietly(oldLogo);
+        }
         directory.evictAll();
         return dto(b, CategoryAdminService.counts(productRepository.countsByBrand()));
     }
@@ -85,6 +92,7 @@ public class BrandAdminService {
         Brand b = load(id);
         productRepository.moveBrand(b.getId(), null);
         repository.delete(b);
+        storage.deleteQuietly(b.getLogoUrl());
         directory.evictAll();
         return b.getName();
     }
@@ -102,6 +110,13 @@ public class BrandAdminService {
         aliases.add(source.getName());
         aliases.addAll(source.aliasList());
         aliases.removeIf(a -> a.equalsIgnoreCase(target.getName()));
+        if (target.getLogoUrl() == null && source.getLogoUrl() != null) {
+            // The target inherits the logo instead of losing it with the source.
+            target.setLogoUrl(source.getLogoUrl());
+            target.setLogoMode(source.getLogoMode());
+        } else {
+            storage.deleteQuietly(source.getLogoUrl());
+        }
         repository.delete(source);
         repository.flush();
         target.setAliasList(aliases);
@@ -179,6 +194,40 @@ public class BrandAdminService {
         if (req.sortOrder() != null) {
             b.setSortOrder(req.sortOrder());
         }
+        if (req.logoUrl() != null) {
+            b.setLogoUrl(logoUrl(req.logoUrl()));
+        }
+        if (req.logoMode() != null) {
+            b.setLogoMode(logoMode(req.logoMode()));
+        }
+    }
+
+    /**
+     * Blank = no logo. Otherwise either a key under {@link ImageStorageService#BRAND_LOGO_PREFIX} (from
+     * the logo upload — only that prefix, so a brand cannot point the site at a customer's chat file)
+     * or an absolute https URL.
+     */
+    static String logoUrl(String raw) {
+        String v = trimToNull(raw);
+        if (v == null) {
+            return null;
+        }
+        if (v.startsWith("https://")) {
+            return v;
+        }
+        String key = v.replaceFirst("^/+", "");
+        if (!key.startsWith(ImageStorageService.BRAND_LOGO_PREFIX) || key.contains("..")) {
+            throw new BadRequestException("logoUrl: загрузите логотип заново");
+        }
+        return key;
+    }
+
+    static String logoMode(String raw) {
+        String v = raw.trim().toUpperCase(Locale.ROOT);
+        if (!v.equals(Brand.LOGO_MONO) && !v.equals(Brand.LOGO_ORIGINAL)) {
+            throw new BadRequestException("logoMode: MONO или ORIGINAL");
+        }
+        return v;
     }
 
     private String slugService(String name, byte[] selfId) {
@@ -204,6 +253,6 @@ public class BrandAdminService {
     static AdminBrandDto dto(Brand b, Map<String, Long> counts) {
         String id = UuidUtil.toString(b.getId());
         return new AdminBrandDto(id, b.getName(), b.getSlug(), b.aliasList(), b.getWebsite(), b.getSortOrder(),
-                counts.getOrDefault(id, 0L));
+                counts.getOrDefault(id, 0L), b.getLogoUrl(), b.getLogoMode());
     }
 }
