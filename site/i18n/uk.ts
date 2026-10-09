@@ -219,6 +219,8 @@ export const uk: RuDictionary = {
   "catalog.pagination": "Сторінки каталогу",
   "catalog.prev": "Назад",
   "catalog.next": "Далі",
+  "catalog.showMore": "Показати ще {n}",
+  "catalog.shownOf": "Показано {n} з {total}",
   "catalog.page": "Сторінка {n}",
   "catalog.intro.more": "Читати повністю",
   "catalog.intro.less": "Згорнути",

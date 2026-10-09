@@ -76,11 +76,13 @@ export { menuTree, rootOf, type MenuNode } from "./category-tree";
 // ---------------------------------------------------------------- listing
 
 export interface Listing {
-  /** Current page, ready for the cards (see lib/card). */
+  /** Pages from..page («Показати ще» appends), ready for the cards (see lib/card). */
   items: StorefrontProduct[];
   total: number;
   pages: number;
   page: number;
+  /** First page of the shown run; = page without «Показати ще». */
+  from: number;
   facets: Facet[];
   price: { min: number; max: number } | null;
   /** What the filter panel needs to recount a draft selection in the browser (see CatalogEngine). */
@@ -169,7 +171,8 @@ export function computeListing(
   filter: CatalogFilter,
   sort: CatalogSort,
   page: number,
-  locale: Locale
+  locale: Locale,
+  from?: number
 ): Listing {
   const t = makeT(locale);
   const engineFilter: CatalogFilter = { ...filter, q: undefined, category: engineCategory(schema, filter.category) };
@@ -179,11 +182,13 @@ export function computeListing(
   const sorted = sortProducts(matched, sort, locale);
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const cur = Math.min(Math.max(1, page), pages);
+  const first = Math.min(Math.max(1, from ?? cur), cur);
   return {
-    items: sorted.slice((cur - 1) * PAGE_SIZE, cur * PAGE_SIZE),
+    items: sorted.slice((first - 1) * PAGE_SIZE, cur * PAGE_SIZE),
     total: sorted.length,
     pages,
     page: cur,
+    from: first,
     facets,
     price: priceBounds(schema, products, engineFilter),
     engine: catalogEngine(schema, products, engineFilter.category ?? null, labels),

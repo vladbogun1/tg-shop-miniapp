@@ -237,6 +237,8 @@ export const ru = {
   "catalog.pagination": "Страницы каталога",
   "catalog.prev": "Назад",
   "catalog.next": "Вперёд",
+  "catalog.showMore": "Показать ещё {n}",
+  "catalog.shownOf": "Показано {n} из {total}",
   "catalog.page": "Страница {n}",
   "catalog.intro.more": "Читать полностью",
   "catalog.intro.less": "Свернуть",

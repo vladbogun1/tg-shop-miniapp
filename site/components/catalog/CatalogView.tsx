@@ -8,7 +8,8 @@ import { type CardContext, toCardProducts } from "@/lib/card";
 import { type Listing, type MenuNode } from "@/lib/catalog";
 import { type CatalogState, clearFilters, hasFilters } from "@/lib/catalog-params";
 import { DragScroller } from "@/components/ui/DragScroller";
-import { CatalogNavProvider, CatalogSortSelect, FilterSidebar, FiltersDrawer, FoundCount, PendingRegion, RESULTS_ID, StateLink } from "./CatalogFilters";
+import { CatalogNavProvider, CatalogSortSelect, FilterSidebar, FiltersDrawer, FoundCount, PendingRegion, RESULTS_ID, ShowMore, StateLink } from "./CatalogFilters";
+import { PAGE_SIZE } from "@/lib/config";
 import { ProductGrid } from "./ProductCard";
 import { CompareOpenButton } from "@/components/compare/CompareToggle";
 
@@ -117,7 +118,8 @@ export function CatalogView({
               ) : (
                 <>
                   <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={3} cols="grid-cols-2 md:grid-cols-3" />
-                  {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page }} pages={listing.pages} />}
+                  <ShowMore state={state} from={listing.from} page={listing.page} pages={listing.pages} total={listing.total} pageSize={PAGE_SIZE} />
+                  {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page, from: listing.from }} pages={listing.pages} />}
                 </>
               )}
             </PendingRegion>
@@ -313,15 +315,17 @@ function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state
 
 function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogState; pages: number }) {
   const t = makeT(locale);
-  const at = (page: number): CatalogState => ({ ...state, page });
+  const at = (page: number): CatalogState => ({ ...state, page, from: undefined });
   const cur = state.page;
+  // after «Показати ще» pages from..cur are on screen: all of them are «current», «back» goes before them
+  const first = Math.min(state.from ?? cur, cur);
   const nums = pageWindow(cur, pages);
   const cell =
     "grid h-11 min-w-11 place-items-center rounded-[var(--r)] border px-3 font-display text-[14px] font-bold tabular-nums transition-colors";
   return (
     <nav aria-label={t("catalog.pagination")} className="mt-10 flex flex-wrap items-center justify-center gap-2">
-      {cur > 1 ? (
-        <StateLink state={at(cur - 1)} toResults rel="prev" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
+      {first > 1 ? (
+        <StateLink state={at(first - 1)} toResults rel="prev" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
           <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
           <span className="sr-only">{t("catalog.prev")}</span>
         </StateLink>
@@ -336,10 +340,10 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
             key={n}
             state={at(n)}
             toResults
-            aria-current={n === cur ? "page" : undefined}
+            aria-current={n >= first && n <= cur ? "page" : undefined}
             aria-label={t("catalog.page", { n })}
             className={`${cell} ${
-              n === cur
+              n >= first && n <= cur
                 ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                 : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--ink)]"
             }`}

@@ -16,7 +16,7 @@
  * above the screen. Chip removal, «Скинути все», sort and pagination navigate at once.
  */
 import { AnimatePresence, motion, type PanInfo, useDragControls, useReducedMotion } from "framer-motion";
-import { Check, ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, SlidersHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -295,6 +295,46 @@ export function StateLink({
 }
 
 const withFilter = (s: CatalogState, filter: CatalogFilter): CatalogState => ({ ...s, filter, page: 1 });
+
+// ---------------------------------------------------------------- «Показати ще»
+
+/**
+ * Appends the next page under the shown ones instead of switching pages: the URL becomes
+ * `?page=N+1&from=<first shown>`, so a reload or «back» lands on the same list (and the variant is
+ * noindex + canonical to the plain page, see catalogPageMeta). Its own transition: the shown cards
+ * stay as they are (no dimming like a new selection), only the button spins; the new cards come in
+ * below, the scroll position stays.
+ */
+export function ShowMore({ state, from, page, pages, total, pageSize }: { state: CatalogState; from: number; page: number; pages: number; total: number; pageSize: number }) {
+  const { t } = useI18n();
+  const { url } = useNav();
+  const router = useRouter();
+  const [loading, start] = useTransition();
+  if (page >= pages) return null;
+  const next: CatalogState = { ...state, page: page + 1, from };
+  const shown = Math.min(page * pageSize, total) - (from - 1) * pageSize;
+  const more = Math.min(pageSize, total - page * pageSize);
+  return (
+    <div className="mt-8 flex flex-col items-center gap-2.5">
+      <a
+        href={url(next)}
+        rel="nofollow"
+        aria-busy={loading}
+        onClick={(e) => {
+          if (!plainClick(e)) return;
+          e.preventDefault();
+          if (loading) return;
+          start(() => router.replace(url(next), { scroll: false }));
+        }}
+        className={`tap inline-flex min-h-[52px] w-full max-w-[420px] items-center justify-center gap-2.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-6 font-display text-[14px] font-bold uppercase tracking-[.08em] text-[var(--accent-hi)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] ${loading ? "pointer-events-none" : ""}`}
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} /> : <ChevronDown className="h-4 w-4" strokeWidth={2.5} />}
+        {t("catalog.showMore", { n: more })}
+      </a>
+      <p className="text-[12.5px] font-medium text-[var(--muted)]">{t("catalog.shownOf", { n: shown, total })}</p>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- sort
 

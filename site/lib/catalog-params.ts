@@ -1,7 +1,8 @@
 /**
  * Catalog URL state: the shared filter format (`filterFromParams` / `filterToParams` in
  * shared/src/catalog.ts — `?brand=a,b&cond=markdown&price=100..900&inStock=1&f.sensor=paw3950`) plus
- * the site's own `sort` and `page`. Safe for server and client components.
+ * the site's own `sort`, `page` and `from` («Показати ще»: pages from..page are shown together).
+ * Safe for server and client components.
  */
 import {
   type CatalogFilter,
@@ -22,6 +23,11 @@ export interface CatalogState {
   sort: CatalogSort;
   /** 1-based, as shown in the URL. */
   page: number;
+  /**
+   * «Показати ще»: the first page of the shown run (pages from..page are listed together), so a
+   * reload or «back» shows the same list. Absent / ≥ page = just `page`.
+   */
+  from?: number;
 }
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -34,11 +40,15 @@ export function stateFromParams(basePath: string, p: Record<string, string | str
   if (filter.q) filter.q = filter.q.trim().slice(0, 100) || undefined;
   const sortRaw = one(p.sort) ?? "";
   const pageRaw = Number(one(p.page) ?? "1");
+  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+  const fromRaw = Number(one(p.from) ?? "");
+  const from = Number.isFinite(fromRaw) && fromRaw >= 1 && fromRaw < page ? Math.floor(fromRaw) : undefined;
   return {
     basePath,
     filter,
     sort: (SORTS as string[]).includes(sortRaw) ? (sortRaw as CatalogSort) : "default",
-    page: Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1,
+    page,
+    ...(from ? { from } : {}),
   };
 }
 
@@ -55,6 +65,7 @@ export function catalogHref(s: CatalogState, patch: Partial<CatalogState> = {}):
   const sp = filterToParams({ ...n.filter, category: undefined });
   if (n.sort !== "default") sp.set("sort", n.sort);
   if (n.page > 1) sp.set("page", String(n.page));
+  if (n.from && n.from < n.page) sp.set("from", String(n.from));
   const qs = sp.toString().replace(/%2C/gi, ",").replace(/%2E%2E/gi, "..");
   return qs ? `${n.basePath}?${qs}` : n.basePath;
 }
@@ -73,5 +84,5 @@ export function hasFilters(f: CatalogFilter): boolean {
 
 /** The same state with every filter cleared (search text and sort kept). */
 export function clearFilters(s: CatalogState): CatalogState {
-  return { ...s, filter: { q: s.filter.q }, page: 1 };
+  return { ...s, filter: { q: s.filter.q }, page: 1, from: undefined };
 }

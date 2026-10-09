@@ -219,6 +219,8 @@ export const en: RuDictionary = {
   "catalog.pagination": "Catalogue pages",
   "catalog.prev": "Previous",
   "catalog.next": "Next",
+  "catalog.showMore": "Show {n} more",
+  "catalog.shownOf": "Showing {n} of {total}",
   "catalog.page": "Page {n}",
   "catalog.intro.more": "Read more",
   "catalog.intro.less": "Show less",

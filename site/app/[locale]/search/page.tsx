@@ -51,7 +51,7 @@ export default async function SearchPage({
     loadSchema(locale),
     safe(getListingProducts(locale, { q }), null),
   ]);
-  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale) : null;
+  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale, state.from) : null;
   return (
     <CatalogView
       locale={locale}

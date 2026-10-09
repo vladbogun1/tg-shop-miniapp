@@ -103,7 +103,7 @@ export default async function CategoryPage({
   const state = await parseCatalogState(`/catalog/${c.slug}`, searchParams);
   // «Уцінка» is a condition collection: no condition facet, no condition filter.
   const filter = { ...state.filter, q: undefined, ...(c.isSale ? { conditions: [] } : {}) };
-  const listing = c.products ? computeListing(c.schema, c.products, { ...filter, category: c.slug }, state.sort, state.page, locale) : null;
+  const listing = c.products ? computeListing(c.schema, c.products, { ...filter, category: c.slug }, state.sort, state.page, locale, state.from) : null;
 
   const heading = c.detail?.h1?.trim() || c.name;
   const intro = c.detail?.introText?.trim();
