@@ -12,6 +12,8 @@ import { useEffect, useId, useRef } from "react";
 interface Layer {
   id: string;
   onEscape: () => void;
+  /** Esc is left to the component's own handler (a drag in progress cancels itself, not the modal under it). */
+  passEscape?: boolean;
 }
 
 const stack: Layer[] = [];
@@ -22,6 +24,11 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key !== "Escape" || stack.length === 0) return;
   // An IME composition owns its own Escape.
   if (e.isComposing) return;
+  const top = stack[stack.length - 1];
+  if (top.passEscape) {
+    top.onEscape();
+    return;
+  }
   e.preventDefault();
   e.stopPropagation();
   stack[stack.length - 1].onEscape();
@@ -58,7 +65,7 @@ export function isTopLayer(id: string): boolean {
 export function useOverlayLayer(
   open: boolean,
   onEscape: () => void,
-  opts: { lockScroll?: boolean } = {}
+  opts: { lockScroll?: boolean; passEscape?: boolean } = {}
 ): string {
   const id = useId();
   const handler = useRef(onEscape);
@@ -66,11 +73,12 @@ export function useOverlayLayer(
     handler.current = onEscape;
   }, [onEscape]);
   const lock = opts.lockScroll ?? true;
+  const passEscape = opts.passEscape ?? false;
 
   useEffect(() => {
     if (!open) return;
     ensureListener();
-    const layer: Layer = { id, onEscape: () => handler.current() };
+    const layer: Layer = { id, onEscape: () => handler.current(), passEscape };
     stack.push(layer);
     if (lock) lockScroll();
     return () => {
@@ -78,7 +86,7 @@ export function useOverlayLayer(
       if (i >= 0) stack.splice(i, 1);
       if (lock) unlockScroll();
     };
-  }, [open, id, lock]);
+  }, [open, id, lock, passEscape]);
 
   return id;
 }

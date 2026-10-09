@@ -31,9 +31,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Trash2,
-  UploadCloud,
   Wand2,
-  X,
 } from "lucide-react";
 import {
   adminApi,
@@ -71,6 +69,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
+import { PhotoUploader } from "@/components/products/PhotoUploader";
 import { CategoryTreeSelect } from "@/components/catalog/CategoryTreeSelect";
 import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombobox";
 import { SpecsForm } from "@/components/catalog/SpecsForm";
@@ -152,7 +151,6 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   const [dir, setDir] = useState(1);
   const [f, setF] = useState<Form>(() => initialForm(product));
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [cardStatus, setCardStatus] = useState<CardStatus>("DRAFT");
@@ -614,11 +612,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
             fileRef={fileRef}
             imageKeys={f.imageKeys}
             uploading={uploading}
-            dragOver={dragOver}
-            setDragOver={setDragOver}
             onFiles={uploadFiles}
             onRemove={(i) => set("imageKeys", f.imageKeys.filter((_, j) => j !== i))}
-            onMove={moveImage}
+            onReorder={moveImage}
             compact
           />
           <div className="flex items-start gap-2.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[12.5px] leading-relaxed text-[var(--text-muted)]">
@@ -723,11 +719,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                   fileRef={fileRef}
                   imageKeys={f.imageKeys}
                   uploading={uploading}
-                  dragOver={dragOver}
-                  setDragOver={setDragOver}
                   onFiles={uploadFiles}
                   onRemove={(i) => set("imageKeys", f.imageKeys.filter((_, j) => j !== i))}
-                  onMove={moveImage}
+                  onReorder={moveImage}
                 />
               )}
 
@@ -991,120 +985,6 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
 }
 
 // ---- pieces ---------------------------------------------------------------------------------------
-
-function PhotoUploader({
-  fileRef,
-  imageKeys,
-  uploading,
-  dragOver,
-  setDragOver,
-  onFiles,
-  onRemove,
-  onMove,
-  compact,
-}: {
-  fileRef: React.RefObject<HTMLInputElement | null>;
-  imageKeys: string[];
-  uploading: boolean;
-  dragOver: boolean;
-  setDragOver: (v: boolean) => void;
-  onFiles: (f: FileList | null) => void;
-  onRemove: (i: number) => void;
-  onMove: (from: number, to: number) => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      {compact && <span className="field-label">Фото · необязательно</span>}
-      <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            fileRef.current?.click();
-          }
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          onFiles(e.dataTransfer.files);
-        }}
-        onClick={() => fileRef.current?.click()}
-        className={cn(
-          "focusable font-display flex cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[var(--r-lg)] border px-4 text-center text-[12.5px] font-semibold uppercase tracking-[0.06em] transition-colors",
-          compact ? "py-5" : "py-7",
-          dragOver
-            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
-            : "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text-muted)] hover:border-[var(--border-2)] hover:text-[var(--text)]"
-        )}
-      >
-        <span className="accent-tint grid h-11 w-11 place-items-center rounded-[var(--r-md)]">
-          {uploading ? <Spinner className="h-5 w-5" /> : <UploadCloud className="h-5 w-5" />}
-        </span>
-        {uploading ? "Загрузка…" : "Перетащите фото или нажмите для загрузки"}
-        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
-      </div>
-      {imageKeys.length === 0 ? (
-        !compact && <p className="text-[13px] text-[var(--text-faint)]">Первое фото станет обложкой. Порядок можно менять стрелками.</p>
-      ) : (
-        <>
-          <p className="field-label !text-[11px] !text-[var(--text-faint)]">{imageKeys.length} фото · первое = обложка</p>
-          <div className={cn("grid gap-2", compact ? "grid-cols-4 sm:grid-cols-5" : "grid-cols-3 sm:grid-cols-4")}>
-            {imageKeys.map((key, i) => (
-              // One clipping frame (r-lg): the photo, the overlays and the arrow strip all live inside it.
-              <motion.div
-                layout
-                key={key + i}
-                className={cn("group relative overflow-hidden rounded-[var(--r-lg)] border", i === 0 ? "border-[rgba(255,102,0,.45)]" : "border-[var(--line)]")}
-              >
-                <Image src={key} alt="" size={200} className="aspect-square w-full" />
-                {i === 0 && (
-                  <span className="font-display absolute left-1.5 top-1.5 rounded-[var(--r-md)] border border-[rgba(255,102,0,.45)] bg-[rgba(14,14,16,.8)] px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-[14px] tracking-[0.06em] text-[var(--accent-hi)] backdrop-blur-sm">
-                    обложка
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onRemove(i)}
-                  className="hit absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[rgba(14,14,16,.8)] text-[var(--text)] backdrop-blur-sm transition-colors hover:border-[color-mix(in_srgb,var(--danger)_55%,transparent)] hover:text-[var(--danger-ink)]"
-                  aria-label="Удалить"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 border-t border-[var(--line)] bg-[rgba(14,14,16,.72)] px-1 py-0.5 backdrop-blur-sm">
-                  <button
-                    type="button"
-                    onClick={() => onMove(i, i - 1)}
-                    disabled={i === 0}
-                    className="grid h-6 w-6 place-items-center rounded-[var(--r-sm)] text-[var(--text)] transition-colors hover:bg-white/10 disabled:opacity-30"
-                    aria-label="Левее"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onMove(i, i + 1)}
-                    disabled={i === imageKeys.length - 1}
-                    className="grid h-6 w-6 place-items-center rounded-[var(--r-sm)] text-[var(--text)] transition-colors hover:bg-white/10 disabled:opacity-30"
-                    aria-label="Правее"
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 const CELL =
   "h-10 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[14px] text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]";
