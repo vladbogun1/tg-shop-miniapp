@@ -53,6 +53,44 @@ function currentScheme(): "dark" | "light" {
  * the --safe-* vars our headers/navbar already use. Uses max(env(), inset) so a
  * non-fullscreen client keeps its native env() insets.
  */
+/** Height of Telegram's fullscreen controls strip (Закрыть · ⌄ · ⋮) when the client reports 0. */
+const FULLSCREEN_CONTROLS_PX = 46;
+
+let safeAreaReported = false;
+let lastSafeArea: {
+  wa: { isFullscreen?: boolean; platform?: string; version?: string };
+  sa: { top?: number; bottom?: number };
+  csa: { top?: number; bottom?: number };
+  fallback: boolean;
+} | null = null;
+/** One diagnostic event per page load: what Telegram actually reports (client_events, event "tg_safe_area"). */
+function reportSafeArea(
+  wa: { isFullscreen?: boolean; platform?: string; version?: string },
+  sa: { top?: number; bottom?: number },
+  csa: { top?: number; bottom?: number },
+  fallback: boolean
+): void {
+  lastSafeArea = { wa, sa, csa, fallback };
+  if (safeAreaReported) return;
+  safeAreaReported = true;
+  // Reported a moment later with the LATEST values: fullscreen and its insets arrive after the first call.
+  window.setTimeout(() => {
+    const { wa, sa, csa, fallback } = lastSafeArea!;
+    const cs = getComputedStyle(document.documentElement);
+    const meta = JSON.stringify({
+      fs: wa.isFullscreen ?? null,
+      pf: wa.platform,
+      v: wa.version,
+      sa: [sa.top ?? null, sa.bottom ?? null],
+      csa: [csa.top ?? null, csa.bottom ?? null],
+      tgVars: [cs.getPropertyValue("--tg-safe-area-inset-top").trim(), cs.getPropertyValue("--tg-content-safe-area-inset-top").trim()],
+      fb: fallback,
+      vh: window.innerHeight,
+    });
+    void import("@/lib/analytics").then((m) => m.track("tg_safe_area", undefined, meta.slice(0, 500))).catch(() => {});
+  }, 2500);
+}
+
 function applySafeAreaInsets(): void {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const wa = (window as unknown as {
@@ -60,12 +98,21 @@ function applySafeAreaInsets(): void {
       WebApp?: {
         safeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
         contentSafeAreaInset?: { top?: number; bottom?: number; left?: number; right?: number };
+        isFullscreen?: boolean;
+        platform?: string;
+        version?: string;
       };
     };
   }).Telegram?.WebApp;
   if (!wa) return;
   const sa = wa.safeAreaInset ?? {};
-  const csa = wa.contentSafeAreaInset ?? {};
+  const csa = { ...(wa.contentSafeAreaInset ?? {}) };
+  // Some Android clients (seen on Telegram-Android 12.10 fullscreen) report a 0 content inset while
+  // the «Закрыть · ⌄ · ⋮» strip is drawn over the page: fall back to that strip's height.
+  const phone = wa.platform === "android" || wa.platform === "ios";
+  const fallback = !!wa.isFullscreen && phone && !(csa.top && csa.top > 0);
+  if (fallback) csa.top = FULLSCREEN_CONTROLS_PX;
+  reportSafeArea(wa, sa, wa.contentSafeAreaInset ?? {}, fallback);
   const root = document.documentElement;
   // Also reads Telegram's own live CSS vars (--tg-safe-area-inset-*, --tg-content-safe-area-inset-*,
   // kept up to date by telegram-web-app.js): the JS values can be 0 when we read them (fullscreen is
