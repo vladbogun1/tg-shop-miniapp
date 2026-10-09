@@ -3,13 +3,14 @@
  *   «Оформить»  — DRAFT (new hidden products first, then on the storefront, then old hidden ones);
  *   «Проверить» — AI_FILLED, hidden ones too (least sure first);
  *   «Готово»    — READY (last reviewed first), with «только неполные».
- * The storefront filter (all / on the storefront / hidden) applies to every tab.
+ * The storefront filter applies to every tab. By default («в работе») old hidden products are left out:
+ * ~180 retired products are DRAFT forever and would bury the real work (and the nav badge).
  */
 import { attributesForCategory, type CardItem, type CardSchema } from "@/lib/card-prompt";
 import type { CardMeta } from "@/lib/cards-api";
 
 export type CardTab = "draft" | "review" | "ready";
-export type Vitrine = "all" | "live" | "hidden";
+export type Vitrine = "work" | "all" | "live" | "hidden";
 
 export const TAB_LABEL: Record<CardTab, string> = { draft: "Оформить", review: "Проверить", ready: "Готово" };
 
@@ -23,6 +24,7 @@ export function tabOf(i: CardItem): CardTab {
 
 export function matchesVitrine(i: CardItem, v: Vitrine): boolean {
   if (v === "all") return true;
+  if (v === "work") return i.active === true || i.unfinished === true;
   return v === "live" ? i.active === true : i.active !== true;
 }
 

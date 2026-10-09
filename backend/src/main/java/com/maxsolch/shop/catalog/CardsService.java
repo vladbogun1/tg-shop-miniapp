@@ -88,7 +88,13 @@ public class CardsService {
         for (Product p : productRepository.findAllNotArchived()) {
             CardStatus st = status(p);
             switch (st) {
-                case DRAFT -> draft++;
+                // «Оформить» (and the nav badge) counts drafts that matter: on the storefront or new hidden ones.
+                // Old hidden drafts (~180 retired products) stay reachable via «Витрина: скрытые» but are not work.
+                case DRAFT -> {
+                    if (p.isActive() || isUnfinished(p)) {
+                        draft++;
+                    }
+                }
                 // «Проверить» counts every AI-filled card, hidden ones too (the admin UI tab shows them all)
                 case AI_FILLED -> ai++;
                 case READY -> ready++;

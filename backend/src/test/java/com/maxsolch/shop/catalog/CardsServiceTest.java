@@ -199,7 +199,7 @@ class CardsServiceTest {
         legacy.setActive(false);
         mouse.setActive(true);
         CatalogDtos.CardsStats st = service.stats();
-        assertThat(st.draft()).isEqualTo(3);
+        assertThat(st.draft()).isEqualTo(2); // the legacy hidden one is not work
         assertThat(st.unfinished()).isEqualTo(1);
         assertThat(st.incomplete()).isEqualTo(1); // the active mouse misses weight_g
 

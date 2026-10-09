@@ -32,7 +32,7 @@ export function useCatalogSchema() {
   return useQuery({ queryKey: CATALOG_SCHEMA_KEY, queryFn: () => cardsApi.schema(), staleTime: 5 * 60_000 });
 }
 
-/** Badge: the «Оформить» (every DRAFT) + «Проверить» (every AI_FILLED) tabs of «Карточки». */
+/** Badge: «Оформить» (drafts on the storefront + new hidden) + «Проверить» (every AI_FILLED) of «Карточки». */
 export function pendingCards(stats: CardStats | undefined): number {
   return stats ? stats.draft + stats.aiFilled : 0;
 }

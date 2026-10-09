@@ -68,7 +68,7 @@ export default function CardsPage() {
   const ids = useMemo(() => assignCardIds(items.map((i) => i.id)), [items]);
 
   const [tab, setTab] = useState<CardTab | null>(null);
-  const [vitrine, setVitrine] = useState<Vitrine>("all");
+  const [vitrine, setVitrine] = useState<Vitrine>("work");
   const [query, setQuery] = useState("");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -255,7 +255,8 @@ export default function CardsPage() {
               setLimit(PAGE);
             }}
             options={[
-              { value: "all", label: "Витрина: все" },
+              { value: "work", label: "В работе" },
+              { value: "all", label: "Все, со старыми" },
               { value: "live", label: "На витрине" },
               { value: "hidden", label: "Скрытые" },
             ]}
