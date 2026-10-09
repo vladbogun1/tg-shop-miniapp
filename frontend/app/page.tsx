@@ -33,7 +33,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
 import { CompareSheet } from "@/components/compare/CompareSheet";
-import { CompareFab, CompareToastHost } from "@/components/compare/CompareBits";
+import { CompareToastHost } from "@/components/compare/CompareBits";
 import { useCompare } from "@/lib/compare";
 import {
   activeFilterCount,
@@ -480,7 +480,6 @@ export default function CatalogPage() {
           window.scrollTo({ top: 0 });
         }}
       />
-      <CompareFab />
       <CompareToastHost />
       <Toast message={toast} />
     </div>

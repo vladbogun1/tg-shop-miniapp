@@ -20,12 +20,13 @@
  * catalogue docks nothing to the bottom, so `--tabbar-h` stays as it is there.
  */
 import { motion } from "framer-motion";
-import { ShoppingBag, ShoppingCart, User } from "lucide-react";
+import { Scale, ShoppingBag, ShoppingCart, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { useCartCount } from "@/lib/cart";
+import { useCompare, useCompareCount } from "@/lib/compare";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 const TABS = [
@@ -43,6 +44,22 @@ export function TabBar() {
   const t = useT();
   const pathname = usePathname();
   const cartCount = useCartCount();
+  const router = useRouter();
+  // «Сравнить» appears as a tab only while the comparison list is not empty (and after mount: the
+  // list lives in localStorage). A tab instead of a floating button: a button over the grid covered
+  // the tiles' own ⚖ while scrolling.
+  const compareCount = useCompareCount();
+  const compareOpen = useCompare((s) => s.open);
+  const openCompare = useCompare((s) => s.openScreen);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const showCompare = mounted && compareCount > 0;
+  // the comparison screen belongs to the catalog: leaving it (cart, account tabs) closes it, so it
+  // does not pop up again on the way back. Not an unmount cleanup in the sheet — StrictMode runs
+  // those right after mount, which closed it the moment it opened from another page.
+  useEffect(() => {
+    if (pathname !== "/") useCompare.getState().closeScreen();
+  }, [pathname]);
   const keyboardOpen = useKeyboardOpen();
 
   // catalogue only: hide while scrolling down, show on scroll up / near the top
@@ -113,9 +130,9 @@ export function TabBar() {
         transform: tucked ? "translateY(calc(100% + 16px + var(--safe-bottom)))" : undefined,
       }}
     >
-      {TABS.map(({ href, labelKey, Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
+      {TABS.map(({ href, labelKey, Icon }, i) => {
+        const active = compareOpen ? false : href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const tab = (
           <Link
             key={href}
             href={href}
@@ -158,6 +175,45 @@ export function TabBar() {
             </span>
           </Link>
         );
+        if (i !== 0 || !showCompare) return tab;
+        return [
+          tab,
+          <button
+            key="compare"
+            type="button"
+            onClick={() => {
+              // the comparison screen lives on the catalog page; from elsewhere go there first, the
+              // open flag survives the navigation
+              openCompare();
+              if (pathname !== "/") router.push("/");
+            }}
+            aria-label={t("compare.headerCount", { n: compareCount })}
+            className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
+          >
+            {compareOpen && (
+              <motion.span
+                layoutId="tab-highlight"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                className="absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
+              />
+            )}
+            <span className="relative z-10">
+              <Scale className="h-5 w-5 transition-colors" strokeWidth={compareOpen ? 2.25 : 2} style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }} />
+              <span
+                key={compareCount}
+                className="cmp-bump font-display absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] ring-2 ring-[#1a1a1a]"
+              >
+                {compareCount}
+              </span>
+            </span>
+            <span
+              className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
+              style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }}
+            >
+              {t("compare.tab")}
+            </span>
+          </button>,
+        ];
       })}
     </nav>
   );

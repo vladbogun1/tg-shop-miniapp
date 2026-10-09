@@ -10,6 +10,7 @@ import { type CatalogState, clearFilters, hasFilters } from "@/lib/catalog-param
 import { DragScroller } from "@/components/ui/DragScroller";
 import { CatalogNavProvider, CatalogSortSelect, FilterSidebar, FiltersDrawer, FoundCount, PendingRegion, RESULTS_ID, StateLink } from "./CatalogFilters";
 import { ProductGrid } from "./ProductCard";
+import { CompareOpenButton } from "@/components/compare/CompareToggle";
 
 export type { CatalogState };
 
@@ -92,6 +93,8 @@ export function CatalogView({
               <div className="ml-auto flex min-w-0 flex-1 justify-end sm:flex-none">
                 <CatalogSortSelect state={state} />
               </div>
+              {/* phones: the header has no room for ⚖, it lives in this sticky row instead */}
+              <CompareOpenButton variant="bar" className="md:hidden" />
             </div>
             <FoundCount total={total} className="mb-3 sm:hidden" />
 

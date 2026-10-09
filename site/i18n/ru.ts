@@ -686,7 +686,7 @@ export const ru = {
   "compare.linkCopied": "Ссылка на сравнение скопирована",
   "compare.addMore": "Добавить товар",
   "compare.addMoreHint": "Добавьте ещё один товар этой категории, чтобы было с чем сравнить",
-  "compare.basics": "Основное",
+  "compare.basics": "Цена и наличие",
   "compare.row.price": "Цена",
   "compare.row.rating": "Рейтинг",
   "compare.row.stock": "Наличие",

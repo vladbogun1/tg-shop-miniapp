@@ -97,7 +97,8 @@ export function toggleCompare(id: string, group: string, t: (key: string, params
   if (result === "added") {
     track("compare_add", undefined, JSON.stringify({ productId: id }));
     const n = useCompare.getState().entries.filter((e) => e.group === group).length;
-    s.showToast(t("compare.added", { n }), "ok", n >= 2 ? group : null);
+    // always with the button: a toast that grew a button on the second add changed size and jumped
+    s.showToast(t("compare.added", { n }), "ok", group);
     return true;
   }
   if (result === "group-full") s.showToast(t("compare.groupFull", { n: COMPARE_MAX_PER_GROUP }), "error");

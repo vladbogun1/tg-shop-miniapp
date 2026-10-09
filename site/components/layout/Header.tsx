@@ -24,6 +24,7 @@ import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { useCart, useCartCount } from "@/lib/cart";
 import { useCompare, useCompareCount } from "@/lib/compare";
+import { CompareOpenButton } from "@/components/compare/CompareToggle";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 import { displayName, initials, rememberedUser, useSession } from "@/lib/session";
 import { LangMenu } from "./LangMenu";
@@ -130,7 +131,11 @@ export function Header({ tree }: { tree: MenuNode[] }) {
   );
 }
 
-/** Scales + count; only while something is in the comparison (the header is tight on phones). */
+/**
+ * Scales + count; only while something is in the comparison, and only from md up — on a phone the
+ * header has no room for a fifth button (it pushed the cart off screen); there it is in the catalog's
+ * sticky row and in the burger menu (CompareOpenButton).
+ */
 function CompareButton() {
   const { t } = useI18n();
   const hydrated = useHydrated();
@@ -143,7 +148,7 @@ function CompareButton() {
       onClick={() => open()}
       aria-label={t("compare.headerCount", { n: count })}
       title={t("compare.title")}
-      className="tap relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
+      className="tap relative hidden h-11 w-11 md:grid shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
     >
       <Scale className="h-5 w-5" strokeWidth={2.1} />
       <span
@@ -294,6 +299,7 @@ function MobileMenu({
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-4 py-4" aria-label={t("header.categories")}>
+              <CompareOpenButton variant="menu" className="mb-5" onOpen={onClose} />
               <p className="eyebrow mb-2 text-[11px]">{t("header.categories")}</p>
               <ul className="flex flex-col gap-1.5">
                 <li>

@@ -2,9 +2,7 @@
 
 /**
  * Small comparison controls of the Mini App:
- *   - CompareFab: floating «⚖ Порівняння · N» over the catalog, above the tab bar, thumb reach;
- *   - CompareCardToggle: round button in the top-right corner of a catalog tile (over the photo,
- *     outside the tile's own button — buttons cannot nest);
+ *   - CompareCardToggle: round button in the bottom-right corner of a catalog tile's photo;
  *   - CompareViewButton: chip in the product view (add / «У порівнянні · відкрити»);
  *   - CompareToastHost: the toast with the «Порівняти» button.
  */
@@ -12,7 +10,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Check, CheckCircle2, ChevronRight, Scale } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { toggleCompare, useCompare, useCompareCount, useInCompare } from "@/lib/compare";
+import { toggleCompare, useCompare, useInCompare } from "@/lib/compare";
 import { haptic } from "@/lib/telegram";
 
 /** Hydration guard: the list lives in localStorage, the first render must match the server's. */
@@ -22,61 +20,30 @@ function useMounted() {
   return m;
 }
 
-export function CompareFab() {
-  const t = useT();
-  const mounted = useMounted();
-  const count = useCompareCount();
-  const openScreen = useCompare((s) => s.openScreen);
-  const show = mounted && count > 0;
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.button
-          key="cmp-fab"
-          type="button"
-          initial={{ opacity: 0, y: 16, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 16, scale: 0.9 }}
-          transition={{ type: "spring", stiffness: 420, damping: 30 }}
-          onClick={() => {
-            haptic();
-            openScreen();
-          }}
-          aria-label={t("compare.headerCount", { n: count })}
-          className="nb-press font-display fixed right-4 z-[35] inline-flex h-11 items-center gap-2 rounded-full border border-[var(--accent)] pl-3.5 pr-4 text-[13px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)] shadow-[0_12px_30px_-10px_rgba(0,0,0,.85)] backdrop-blur-[10px]"
-          style={{ bottom: "calc(var(--tabbar-h) + max(8px, var(--safe-bottom)) + 12px)", background: "rgba(26,18,12,.92)" }}
-        >
-          <Scale className="h-[18px] w-[18px]" strokeWidth={2.25} />
-          {t("compare.title")}
-          <span key={count} className="cmp-bump grid h-[20px] min-w-[20px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[11px] leading-none text-[var(--accent-ink)]">
-            {count}
-          </span>
-        </motion.button>
-      )}
-    </AnimatePresence>
-  );
-}
-
 export function CompareCardToggle({ productId, group }: { productId: string; group: string }) {
   const t = useT();
   const mounted = useMounted();
   const on = useInCompare(productId) && mounted;
   return (
-    <button
-      type="button"
-      aria-pressed={on}
-      aria-label={on ? t("compare.remove") : t("compare.add")}
-      onClick={(e) => {
-        e.stopPropagation();
-        haptic();
-        toggleCompare(productId, group, t);
-      }}
-      className={`nb-press absolute right-1.5 top-1.5 z-10 grid h-9 w-9 place-items-center rounded-full border ${
-        on ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line-strong)] bg-[rgba(14,14,16,.86)] text-[var(--ink)]"
-      }`}
-    >
-      {on ? <Check className="h-4 w-4" strokeWidth={2.75} /> : <Scale className="h-4 w-4" strokeWidth={2.25} />}
-    </button>
+    // a square layer over the photo (the tile's photo is a button, buttons cannot nest); the ⚖ sits
+    // in its bottom-right corner — the top-right one ran into «В наличии» on a 320 px phone
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 aspect-square">
+      <button
+        type="button"
+        aria-pressed={on}
+        aria-label={on ? t("compare.remove") : t("compare.add")}
+        onClick={(e) => {
+          e.stopPropagation();
+          haptic();
+          toggleCompare(productId, group, t);
+        }}
+        className={`nb-press pointer-events-auto absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border ${
+          on ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]" : "border-[var(--line-strong)] bg-[rgba(14,14,16,.86)] text-[var(--ink)]"
+        }`}
+      >
+        {on ? <Check className="h-4 w-4" strokeWidth={2.75} /> : <Scale className="h-4 w-4" strokeWidth={2.25} />}
+      </button>
+    </div>
   );
 }
 
@@ -131,20 +98,23 @@ export function CompareToastHost() {
     <AnimatePresence>
       {toast && (
         <motion.div
-          key={toast.id}
+          // one element while toasts keep coming (re-keying made a quick second add flash and jump)
+          key="cmp-toast"
           initial={{ opacity: 0, y: 24, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.96 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
           className="font-display fixed inset-x-0 z-[80] mx-auto flex w-fit max-w-[92vw] items-center gap-2 rounded-[16px] border border-[var(--line-strong)] bg-[var(--surface-2)] py-2.5 pl-4 pr-2.5 text-[14px] font-semibold text-[var(--ink)] shadow-[0_18px_40px_-12px_rgba(0,0,0,.7)]"
-          style={{ bottom: screenOpen ? "calc(20px + var(--safe-bottom))" : "calc(var(--tabbar-h) + 84px + var(--safe-bottom))" }}
+          style={{ bottom: screenOpen ? "calc(20px + var(--safe-bottom))" : "calc(var(--tabbar-h) + 28px + var(--safe-bottom))" }}
         >
           {toast.kind === "ok" ? (
             <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ok)]" strokeWidth={2.75} />
           ) : (
             <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger)]" strokeWidth={2.5} />
           )}
-          <span className="min-w-0 py-1">{toast.text}</span>
+          <span key={toast.id} className="toast-pop min-w-0 py-1">
+            {toast.text}
+          </span>
           {toast.openGroup && !screenOpen && (
             <button
               type="button"

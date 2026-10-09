@@ -102,7 +102,8 @@ export function toggleCompare(id: string, group: string, t: TFunction): boolean 
   if (result === "added") {
     trackCompare("compare_add", id);
     const n = useCompare.getState().entries.filter((e) => e.group === group).length;
-    toast(t("compare.added", { n }), "ok", n >= 2 ? { label: t("compare.open"), onClick: () => useCompare.getState().openModal(group) } : undefined);
+    // always with the button: a toast that grew a button on the second add changed size and jumped
+    toast(t("compare.added", { n }), "ok", { label: t("compare.open"), onClick: () => useCompare.getState().openModal(group) });
     return true;
   }
   if (result === "group-full") toast(t("compare.groupFull", { n: COMPARE_MAX_PER_GROUP }), "error");

@@ -658,7 +658,7 @@ export const uk: RuDictionary = {
   "compare.linkCopied": "Посилання на порівняння скопійовано",
   "compare.addMore": "Додати товар",
   "compare.addMoreHint": "Додайте ще один товар цієї категорії, щоб було з чим порівняти",
-  "compare.basics": "Основне",
+  "compare.basics": "Ціна і наявність",
   "compare.row.price": "Ціна",
   "compare.row.rating": "Рейтинг",
   "compare.row.stock": "Наявність",

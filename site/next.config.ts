@@ -13,6 +13,8 @@ const DEV_IMG = process.env.DEV_IMG_ORIGIN ?? "http://localhost:8082";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // dev only: the «N» badge sat in the bottom-left corner over the tab bar / catalog tiles
+  devIndicators: false,
   output: "standalone",
   transpilePackages: ["@shop/shared"],
   outputFileTracingRoot: path.join(__dirname, ".."),

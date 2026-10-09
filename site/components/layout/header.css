@@ -20,6 +20,10 @@
     transition: opacity .2s ease, transform .2s ease;
   }
   .site-header .hdr-word { transition: opacity .2s ease; }
+  /* collapsed to zero width they still took a flex gap each — 16 px that pushed the cart past the
+     edge of a 320 px screen */
+  .site-header:not([data-compact]) .hdr-mark,
+  .site-header:not([data-compact]) .hdr-csearch { margin-left: -8px; }
 
   .site-header[data-compact] .hdr-word { display: none; }
   .site-header[data-compact] .hdr-mark { width: 36px; opacity: 1; }
@@ -28,6 +32,10 @@
   .site-header[data-compact] .container-site { gap: 6px; }
   .site-header[data-compact] .tap { height: 40px; min-width: 40px; width: 40px; }
   .site-header[data-compact] .tap svg { width: 18px; height: 18px; }
+}
+
+@media (max-width: 359.98px) {
+  .site-header .hdr-word svg { width: 116px; height: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

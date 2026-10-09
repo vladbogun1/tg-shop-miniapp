@@ -48,8 +48,11 @@ export function ToastHost() {
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-[90] flex justify-center px-4">
       <AnimatePresence>
         {message && (
+          // One element for as long as toasts keep coming: re-keying it per message made the old one
+          // slide out NEXT to the new one in this flex row, so a quick second add made it jump sideways.
+          // A new message only swaps the text (with a small pop) and restarts the timer.
           <motion.div
-            key={id}
+            key="toast"
             {...noFadeFlash}
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -62,7 +65,9 @@ export function ToastHost() {
             ) : (
               <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--danger)]" strokeWidth={2.25} />
             )}
-            {message}
+            <span key={id} className="toast-pop">
+              {message}
+            </span>
             {action && (
               <button
                 type="button"

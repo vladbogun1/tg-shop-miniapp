@@ -39,8 +39,6 @@ export function CompareSheet({ onOpenProduct, onBrowse }: { onOpenProduct: (p: P
   const open = useCompare((s) => s.open);
   const close = useCompare((s) => s.closeScreen);
   useBackButton(open, close);
-  // leaving the catalog through the tab bar (cart, account) must not bring the sheet back on return
-  useEffect(() => () => useCompare.getState().closeScreen(), []);
   return (
     <AnimatePresence>
       {open && <Body key="cmp" onClose={close} onOpenProduct={onOpenProduct} onBrowse={onBrowse} />}

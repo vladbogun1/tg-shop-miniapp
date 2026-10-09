@@ -58,7 +58,7 @@ export function AddToCartControl({
         onClick={stop}
         className={`nb-up inline-flex items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-4 font-semibold text-[var(--faint)] ${h} ${fullWidth ? "w-full" : ""}`}
       >
-        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+        <ShoppingCart className={`h-4 w-4 shrink-0 ${size === "sm" ? "max-[359px]:hidden" : ""}`} strokeWidth={2.25} />
         {needsVariant ? t("addToCart.chooseVariant") : t("product.outOfStock")}
       </button>
     );
@@ -77,7 +77,8 @@ export function AddToCartControl({
         }}
         className={`nb-accent nb-press nb-up inline-flex items-center justify-center gap-2 px-4 ${h} ${fullWidth ? "w-full" : ""}`}
       >
-        <ShoppingCart className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+        {/* tiles on a 320 px phone: without the icon «В корзину» stays on one line */}
+        <ShoppingCart className={`h-4 w-4 shrink-0 ${size === "sm" ? "max-[359px]:hidden" : ""}`} strokeWidth={2.5} />
         {t("addToCart.add")}
       </button>
     );

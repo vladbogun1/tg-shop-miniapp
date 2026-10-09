@@ -658,7 +658,7 @@ export const en: RuDictionary = {
   "compare.linkCopied": "Comparison link copied",
   "compare.addMore": "Add a product",
   "compare.addMoreHint": "Add one more product of this category to compare",
-  "compare.basics": "Basics",
+  "compare.basics": "Price & availability",
   "compare.row.price": "Price",
   "compare.row.rating": "Rating",
   "compare.row.stock": "Availability",

@@ -344,3 +344,6 @@ html[data-sheet] .tabbar { transform: none !important; }
 @keyframes cmp-bump { 0% { transform: scale(1); } 35% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .cmp-bump { animation: cmp-bump .35s ease-out; }
 @media (prefers-reduced-motion: reduce) { .cmp-bump { animation: none; } }
+@keyframes toast-pop { 0% { opacity: .35; transform: translateY(2px); } 100% { opacity: 1; transform: none; } }
+.toast-pop { display: inline-block; animation: toast-pop .22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .toast-pop { animation: none; } }
