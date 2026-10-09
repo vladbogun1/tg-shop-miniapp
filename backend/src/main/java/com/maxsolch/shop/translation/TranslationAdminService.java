@@ -12,6 +12,9 @@ import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
+import com.maxsolch.shop.translation.TranslationDtos.AcceptItem;
+import com.maxsolch.shop.translation.TranslationDtos.AcceptRequest;
+import com.maxsolch.shop.translation.TranslationDtos.AcceptResult;
 import com.maxsolch.shop.translation.TranslationDtos.Counts;
 import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportItem;
@@ -23,12 +26,15 @@ import com.maxsolch.shop.translation.TranslationDtos.SourceFixResult;
 import com.maxsolch.shop.translation.TranslationDtos.SourceRef;
 import com.maxsolch.shop.translation.TranslationDtos.Stats;
 import com.maxsolch.shop.translation.TranslationDtos.Status;
+import com.maxsolch.shop.translation.TranslationDtos.TextCounts;
 import com.maxsolch.shop.translation.TranslationService.Key;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +42,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -145,7 +152,9 @@ public class TranslationAdminService {
             out.add(new ExportItem(key.type().name(), key.entityId(), key.field(), src.text(), hash, st.name(),
                     row == null ? null : row.getText(),
                     row == null ? null : row.getOrigin().name(),
-                    src.productId(), src.productTitle()));
+                    src.productId(), src.productTitle(),
+                    st == Status.STALE ? row.getSourceText() : null,
+                    row != null && isReviewed(row)));
         }
         out.sort(EXPORT_ORDER);
         return out;
@@ -160,29 +169,52 @@ public class TranslationAdminService {
     public Stats stats() {
         Map<Key, Source> sources = sources();
         Map<String, Map<String, Counts>> locales = new LinkedHashMap<>();
+        // Bucket of every unique source text: 0 missing, 1 stale, 2 review, 3 done (lowest wins).
+        Map<String, Integer> textBucket = new HashMap<>();
+        Map<String, String> hashes = new HashMap<>();
         for (String l : ContentLocale.TRANSLATED) {
             Map<Key, ContentTranslation> rows = existing(l);
             Map<String, int[]> acc = new LinkedHashMap<>();
             for (TranslationEntityType t : TranslationEntityType.values()) {
                 if (t.translatable()) {
-                    acc.put(t.name(), new int[3]);
+                    acc.put(t.name(), new int[4]);
                 }
             }
-            acc.put("ALL", new int[3]);
+            acc.put("ALL", new int[4]);
             for (Map.Entry<Key, Source> e : sources.entrySet()) {
                 Source src = e.getValue();
                 if (!src.inScope() || isBlank(src.text())) {
                     continue;
                 }
-                Status st = statusOf(rows.get(e.getKey()), TranslationService.sha256Hex(src.text()));
-                acc.get(e.getKey().type().name())[st.ordinal()]++;
-                acc.get("ALL")[st.ordinal()]++;
+                String hash = hashes.computeIfAbsent(src.text(), TranslationService::sha256Hex);
+                ContentTranslation row = rows.get(e.getKey());
+                Status st = statusOf(row, hash);
+                boolean unreviewed = st == Status.TRANSLATED && !isReviewed(row);
+                for (int[] c : List.of(acc.get(e.getKey().type().name()), acc.get("ALL"))) {
+                    c[st.ordinal()]++;
+                    if (unreviewed) {
+                        c[3]++;
+                    }
+                }
+                int bucket = switch (st) {
+                    case MISSING -> 0;
+                    case STALE -> 1;
+                    case TRANSLATED -> unreviewed ? 2 : 3;
+                };
+                textBucket.merge(hash, bucket, Math::min);
             }
             Map<String, Counts> counts = new LinkedHashMap<>();
-            acc.forEach((k, v) -> counts.put(k, new Counts(v[0], v[1], v[2])));
+            acc.forEach((k, v) -> counts.put(k, new Counts(v[0], v[1], v[2], v[3])));
             locales.put(l, counts);
         }
-        return new Stats(locales);
+        int[] texts = new int[4];
+        textBucket.values().forEach(b -> texts[b]++);
+        return new Stats(locales, new TextCounts(texts[0], texts[1], texts[2], texts[3]));
+    }
+
+    /** MANUAL text is the admin's own; AI text counts once someone accepted it. */
+    static boolean isReviewed(ContentTranslation row) {
+        return row.getOrigin() == TranslationOrigin.MANUAL || row.getReviewedAt() != null;
     }
 
     private static Status statusOf(ContentTranslation row, String currentHash) {
@@ -267,7 +299,10 @@ public class TranslationAdminService {
             }
             row.setText(item.text());
             row.setSourceHash(currentHash);
+            row.setSourceText(src.text());
             row.setOrigin(origin);
+            // The admin's own text is checked by definition; AI output waits in «Проверить ИИ».
+            row.setReviewedAt(origin == TranslationOrigin.MANUAL ? Instant.now() : null);
             row.setUpdatedBy(adminId);
             toSave.put(key, row);
             applied++;
@@ -413,7 +448,9 @@ public class TranslationAdminService {
                     }
                     row.setText(e.getValue());
                     row.setSourceHash(newHash);
+                    row.setSourceText(newSource);
                     row.setOrigin(TranslationOrigin.AI);
+                    row.setReviewedAt(null);
                     row.setUpdatedBy(adminId);
                     toSave.add(row);
                 }
@@ -552,6 +589,104 @@ public class TranslationAdminService {
         }
         String h = TranslationService.sha256Hex(current);
         return h.equals(wantedHash) || h.equals(newHash);
+    }
+
+    // ------------------------------------------------------------------ accept (review)
+
+    /**
+     * «Принять»: marks translations as checked by a person. A STALE row whose text the admin
+     * confirmed for the current source (a typo fixed in Russian, the translation still fits) is
+     * re-bound to it. The admin must have seen the current source: {@code sourceHash} is compared
+     * with it, an older one is skipped.
+     */
+    @Transactional
+    public AcceptResult accept(AcceptRequest req, Long adminId) {
+        List<AcceptItem> items = req == null || req.items() == null ? List.of() : req.items();
+        if (items.size() > MAX_ITEMS) {
+            throw new BadRequestException("too many items (max " + MAX_ITEMS + ")");
+        }
+        Map<Key, Source> sources = sources();
+        Map<String, Map<Key, ContentTranslation>> rowsByLocale = new HashMap<>();
+        List<ContentTranslation> toSave = new ArrayList<>();
+        Instant now = Instant.now();
+        int rebased = 0;
+        int stale = 0;
+        int notFound = 0;
+        int invalid = 0;
+        for (AcceptItem item : items) {
+            String locale = item == null || item.locale() == null ? "" : item.locale().trim().toLowerCase(Locale.ROOT);
+            if (item == null || !ContentLocale.TRANSLATED.contains(locale)
+                    || validate(new ImportItem(item.entityType(), item.entityId(), item.field(), item.sourceHash(), "x"))
+                    != null) {
+                invalid++;
+                continue;
+            }
+            TranslationEntityType type = TranslationEntityType.parse(item.entityType());
+            Key key = new Key(type, UuidUtil.toString(UuidUtil.toBytes(item.entityId().trim())), item.field());
+            Source src = sources.get(key);
+            ContentTranslation row = rowsByLocale.computeIfAbsent(locale, this::existing).get(key);
+            if (src == null || isBlank(src.text()) || row == null) {
+                notFound++;
+                continue;
+            }
+            String currentHash = TranslationService.sha256Hex(src.text());
+            if (!currentHash.equals(item.sourceHash().trim().toLowerCase(Locale.ROOT))) {
+                stale++;
+                continue;
+            }
+            if (toSave.contains(row)) {
+                continue;
+            }
+            if (!currentHash.equals(row.getSourceHash())) {
+                row.setSourceHash(currentHash);
+                rebased++;
+            }
+            row.setSourceText(src.text());
+            row.setReviewedAt(now);
+            row.setUpdatedBy(adminId);
+            toSave.add(row);
+        }
+        if (!toSave.isEmpty()) {
+            repository.saveAll(toSave);
+            if (rebased > 0) {
+                invalidateAfterCommit();
+            }
+        }
+        return new AcceptResult(toSave.size(), rebased, stale, notFound, invalid);
+    }
+
+    /**
+     * Fills {@code source_text} (V56) of the rows that are current but were written before it, so
+     * that once their source changes the screen can show the difference. Idempotent and cheap after
+     * the first run (rows already filled or stale are skipped); does not touch {@code updated_at}.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void backfillSourceTexts() {
+        try {
+            Map<Key, Source> sources = sources();
+            Map<String, String> hashes = new HashMap<>();
+            int filled = 0;
+            for (String l : ContentLocale.TRANSLATED) {
+                for (Map.Entry<Key, ContentTranslation> e : existing(l).entrySet()) {
+                    ContentTranslation row = e.getValue();
+                    Source src = sources.get(e.getKey());
+                    if (row.getSourceText() != null || src == null || isBlank(src.text())
+                            || !hashes.computeIfAbsent(src.text(), TranslationService::sha256Hex)
+                            .equals(row.getSourceHash())) {
+                        continue;
+                    }
+                    ContentTranslationId id = row.getId();
+                    filled += repository.fillSourceText(id.getEntityType().name(), id.getEntityId(), id.getField(),
+                            id.getLocale(), src.text());
+                }
+            }
+            if (filled > 0) {
+                log.info("Saved the Russian source snapshot of {} translation(s)", filled);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Translation source snapshot backfill failed: {}", e.toString());
+        }
     }
 
     // ------------------------------------------------------------------ delete / orphans

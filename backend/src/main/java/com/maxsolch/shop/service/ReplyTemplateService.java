@@ -20,6 +20,7 @@ import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateUpsertRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -126,7 +127,6 @@ public class ReplyTemplateService {
         for (ContentTranslation row : translationRepository.findForEntity(TranslationEntityType.REPLY_TEMPLATE, key)) {
             rows.put(row.getId().getLocale(), row);
         }
-        String hash = TranslationService.sha256Hex(t.getBodyRu());
         boolean changed = false;
         for (String locale : List.of("uk", "en")) {
             String wanted = trimToNull("uk".equals(locale) ? req.bodyUk() : req.bodyEn());
@@ -146,8 +146,9 @@ public class ReplyTemplateService {
                         TranslationEntityType.BODY, locale));
             }
             row.setText(wanted);
-            row.setSourceHash(hash);
+            row.setSource(t.getBodyRu());
             row.setOrigin(TranslationOrigin.MANUAL);
+            row.setReviewedAt(Instant.now());
             translationRepository.save(row);
             changed = true;
         }

@@ -409,8 +409,10 @@ public class CardsService {
             row = new ContentTranslation(id);
         }
         row.setText(text);
-        row.setSourceHash(TranslationService.sha256Hex(source));
+        row.setSource(source);
         row.setOrigin(TranslationOrigin.AI);
+        // New AI text: back to «Проверить ИИ» on the «Переводы» screen.
+        row.setReviewedAt(null);
         row.setUpdatedBy(adminId);
         translationRepository.save(row);
         counts[0]++;

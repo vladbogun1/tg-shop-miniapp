@@ -231,8 +231,77 @@ class TranslationAdminServiceTest {
         assertThat(service.export("uk", "STALE", null)).hasSize(1);
 
         TranslationDtos.Counts product = service.stats().locales().get("uk").get("PRODUCT");
-        assertThat(product).isEqualTo(new TranslationDtos.Counts(0, 1, 1));
-        assertThat(service.stats().locales().get("en").get("ALL")).isEqualTo(new TranslationDtos.Counts(0, 0, 3));
+        assertThat(product).isEqualTo(new TranslationDtos.Counts(0, 1, 1, 0));
+        assertThat(service.stats().locales().get("en").get("ALL")).isEqualTo(new TranslationDtos.Counts(0, 0, 3, 0));
+        // Unique texts: every text lacks en, so all three are «missing» — each counted once.
+        assertThat(service.stats().texts()).isEqualTo(new TranslationDtos.TextCounts(3, 0, 0, 0));
+    }
+
+    @Test
+    void importStoresSourceSnapshot_andOnlyManualCountsAsReviewed() {
+        service.importTranslations(new ImportRequest("uk", "AI", null, List.of(item("title", HASH, "Килим"))), 1L);
+        ContentTranslation ai = saved().get(0);
+        assertThat(ai.getSourceText()).isEqualTo(TITLE);
+        assertThat(ai.getReviewedAt()).isNull();
+        assertThat(TranslationAdminService.isReviewed(ai)).isFalse();
+
+        ContentTranslation manual = existing(TranslationOrigin.AI);
+        when(repo.findByLocale("en")).thenReturn(List.of(manual));
+        service.importTranslations(new ImportRequest("en", "MANUAL", true, List.of(item("title", HASH, "Rug"))), 1L);
+        assertThat(manual.getReviewedAt()).isNotNull();
+        assertThat(manual.getSourceText()).isEqualTo(TITLE);
+    }
+
+    @Test
+    void exportShowsPreviousSourceOfStaleRows_andReviewedFlag() {
+        ContentTranslation stale = existing(TranslationOrigin.AI);
+        stale.setSource("Ковёр старый");
+        when(repo.findByLocale("uk")).thenReturn(List.of(stale));
+        ExportItem title = service.export("uk", "all", null).get(0);
+        assertThat(title.status()).isEqualTo("STALE");
+        assertThat(title.prevSource()).isEqualTo("Ковёр старый");
+        assertThat(title.reviewed()).isFalse();
+
+        stale.setSource(TITLE);
+        ExportItem current = service.export("uk", "all", null).get(0);
+        assertThat(current.status()).isEqualTo("TRANSLATED");
+        assertThat(current.prevSource()).isNull();
+        assertThat(service.stats().locales().get("uk").get("PRODUCT").unreviewed()).isEqualTo(1);
+    }
+
+    @Test
+    void acceptMarksReviewed_andRebindsStaleRowToCurrentSource() {
+        ContentTranslation stale = existing(TranslationOrigin.AI);
+        stale.setSource("Ковёр старый");
+        when(repo.findByLocale("uk")).thenReturn(List.of(stale));
+
+        TranslationDtos.AcceptResult r = service.accept(new TranslationDtos.AcceptRequest(List.of(
+                new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "title", "uk", HASH))), 7L);
+
+        assertThat(r.accepted()).isEqualTo(1);
+        assertThat(r.rebased()).isEqualTo(1);
+        assertThat(stale.getSourceHash()).isEqualTo(HASH);
+        assertThat(stale.getSourceText()).isEqualTo(TITLE);
+        assertThat(stale.getReviewedAt()).isNotNull();
+        assertThat(stale.getText()).isEqualTo("Старий");
+        assertThat(stale.getOrigin()).isEqualTo(TranslationOrigin.AI);
+    }
+
+    @Test
+    void acceptSkipsOutdatedHashMissingRowsAndGarbage() {
+        ContentTranslation row = existing(TranslationOrigin.AI);
+        when(repo.findByLocale("uk")).thenReturn(List.of(row));
+
+        TranslationDtos.AcceptResult r = service.accept(new TranslationDtos.AcceptRequest(List.of(
+                new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "title", "uk",
+                        TranslationService.sha256Hex("Было")),
+                new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "description", "uk",
+                        TranslationService.sha256Hex("Описание")),
+                new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "title", "de", HASH))), 7L);
+
+        assertThat(r).isEqualTo(new TranslationDtos.AcceptResult(0, 0, 1, 1, 1));
+        assertThat(row.getReviewedAt()).isNull();
+        verify(repo, never()).saveAll(any());
     }
 
     @Test

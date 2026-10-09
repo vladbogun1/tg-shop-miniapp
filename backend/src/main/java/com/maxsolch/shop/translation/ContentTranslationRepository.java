@@ -74,6 +74,14 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
             + "AND entity_id NOT IN (SELECT UNHEX(LPAD(HEX(id), 32, '0')) FROM reply_templates)")
     int deleteOrphanReplyTemplates();
 
+    /** V56 backfill of the source snapshot; keeps {@code updated_at} as it was. */
+    @Modifying
+    @Query(nativeQuery = true, value = "UPDATE content_translations SET source_text = :text, updated_at = updated_at "
+            + "WHERE entity_type = :type AND entity_id = :id AND field = :field AND locale = :locale "
+            + "AND source_text IS NULL")
+    int fillSourceText(@Param("type") String type, @Param("id") byte[] id, @Param("field") String field,
+                       @Param("locale") String locale, @Param("text") String text);
+
     @Query("select t from ContentTranslation t where t.id.entityType = :type and t.id.entityId = :id")
     List<ContentTranslation> findForEntity(@Param("type") TranslationEntityType type, @Param("id") byte[] id);
 
