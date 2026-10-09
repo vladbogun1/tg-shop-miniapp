@@ -243,6 +243,8 @@ export const en: RuDictionary = {
   "catalog.markdownTitle": "Discounted",
   "catalog.yes": "Yes",
   "catalog.no": "No",
+  "catalog.applyN": { one: "Apply · {n} item", other: "Apply · {n} items" },
+  "catalog.draftChanged": "Filters changed, not applied yet",
   "product.cond.NEW": "New",
   "product.cond.MARKDOWN": "Discounted",
   "product.cond.USED": "Used",

@@ -243,6 +243,8 @@ export const uk: RuDictionary = {
   "catalog.markdownTitle": "Уцінка",
   "catalog.yes": "Так",
   "catalog.no": "Ні",
+  "catalog.applyN": { one: "Застосувати · {n} товар", few: "Застосувати · {n} товари", many: "Застосувати · {n} товарів", other: "Застосувати · {n} товару" },
+  "catalog.draftChanged": "Фільтри змінено, ще не застосовано",
   "product.cond.NEW": "Новий",
   "product.cond.MARKDOWN": "Уцінка",
   "product.cond.USED": "Вживаний",

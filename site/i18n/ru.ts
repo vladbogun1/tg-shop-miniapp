@@ -261,6 +261,8 @@ export const ru = {
   "catalog.markdownTitle": "Уценка",
   "catalog.yes": "Да",
   "catalog.no": "Нет",
+  "catalog.applyN": { one: "Применить · {n} товар", few: "Применить · {n} товара", many: "Применить · {n} товаров", other: "Применить · {n} товара" },
+  "catalog.draftChanged": "Фильтры изменены, ещё не применены",
   "product.cond.NEW": "Новый",
   "product.cond.MARKDOWN": "Уценка",
   "product.cond.USED": "Б/у",

@@ -6,9 +6,9 @@ import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import { type CardContext, toCardProducts } from "@/lib/card";
 import { type Listing, type MenuNode } from "@/lib/catalog";
-import { type CatalogState, catalogHref, clearFilters, hasFilters } from "@/lib/catalog-params";
+import { type CatalogState, clearFilters, hasFilters } from "@/lib/catalog-params";
 import { DragScroller } from "@/components/ui/DragScroller";
-import { CatalogNavProvider, CatalogSortSelect, FacetPanel, FiltersDrawer, PendingRegion, StateLink } from "./CatalogFilters";
+import { CatalogNavProvider, CatalogSortSelect, FilterSidebar, FiltersDrawer, FoundCount, PendingRegion, RESULTS_ID, StateLink } from "./CatalogFilters";
 import { ProductGrid } from "./ProductCard";
 
 export type { CatalogState };
@@ -55,18 +55,18 @@ export function CatalogView({
   const filtered = hasFilters(state.filter);
   const reset = clearFilters(state);
 
-  const panel = <FacetPanel state={state} facets={facets} price={listing?.price ?? null} hint={hint} />;
-
   /*
    * Layout (owner's brief, 2026-10-09):
-   *   ≥1280  categories 240 | grid (3 cols) | filters 280, sticky with its own scroll
+   *   ≥1280  categories 240 | grid (3 cols) | filters 280 — no scroll of its own: sticks under the
+   *          header when short, scrolls with the page and sticks by its bottom when long
    *   1024+  categories | grid; filters in a right drawer behind «Фільтри (N)»
    *   768+   grid only (categories: chips row + header menu); filters in the right drawer
    *   <768   the same, filters in a full-screen sheet
-   * Categories are navigation, never inside the filter panel.
+   * Categories are navigation, never inside the filter panel. Filter choices are a draft until
+   * «Показати N» (see CatalogFilters); below 1280 the «Фільтри · sort» row sticks under the header.
    */
   return (
-    <CatalogNavProvider>
+    <CatalogNavProvider state={state} engine={listing?.engine ?? null}>
       <div className="container-site pt-6">
         <Breadcrumbs locale={locale} items={crumbs} />
         <div className="mb-5">
@@ -83,19 +83,17 @@ export function CatalogView({
           </aside>
 
           <div className="min-w-0 flex-1">
-            {/* top row: Фільтри (N) below 1280 · found N · sort */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 sm:gap-3">
-              <FiltersDrawer active={active} total={total} resetState={filtered ? reset : null}>
-                {panel}
-              </FiltersDrawer>
-              <p className="order-last flex w-full items-center gap-2 text-[14px] font-medium text-[var(--muted)] sm:order-none sm:w-auto" aria-live="polite">
-                <span aria-hidden className="tech-mark" />
-                {t("catalog.found", { n: total })}
-              </p>
+            {/* where a new selection or page scrolls back to (only when it is above the screen) */}
+            <div id={RESULTS_ID} aria-hidden className="h-0" />
+            {/* top row: Фільтри (N) below 1280 · found N · sort; sticky under the header below 1280 */}
+            <div className="sticky top-[var(--header-h)] z-30 -mx-4 mb-1 flex items-center gap-2 bg-[var(--bg)]/95 px-4 py-2 backdrop-blur-[10px] sm:gap-3 md:-mx-6 md:px-6 lg:mx-0 lg:px-0 xl:static xl:mb-3 xl:bg-transparent xl:py-0 xl:backdrop-blur-none">
+              <FiltersDrawer active={active} hint={hint} />
+              <FoundCount total={total} className="hidden sm:flex" />
               <div className="ml-auto flex min-w-0 flex-1 justify-end sm:flex-none">
                 <CatalogSortSelect state={state} />
               </div>
             </div>
+            <FoundCount total={total} className="mb-3 sm:hidden" />
 
             {filtered && <ActiveFilters locale={locale} state={state} facets={facets} reset={reset} />}
 
@@ -124,20 +122,7 @@ export function CatalogView({
           </div>
 
           <aside className="hidden w-[280px] shrink-0 xl:block" aria-label={t("catalog.filters")}>
-            <div className="nb no-scrollbar sticky top-[calc(var(--header-h)+16px)] max-h-[calc(100dvh-var(--header-h)-32px)] overflow-y-auto overscroll-contain px-4 pb-2 pt-3">
-              <div className="flex items-center justify-between gap-2 border-b border-[var(--line)] pb-3">
-                <h2 className="eyebrow flex items-center gap-2 text-[11px]">
-                  <span aria-hidden className="h-[2px] w-3 bg-[var(--accent)]" />
-                  {active > 0 ? t("catalog.filtersN", { n: active }) : t("catalog.filters")}
-                </h2>
-                {filtered && (
-                  <StateLink state={reset} className="link-ink text-[12px] font-semibold text-[var(--muted)]">
-                    {t("catalog.resetAll")}
-                  </StateLink>
-                )}
-              </div>
-              {panel}
-            </div>
+            <FilterSidebar hint={hint} resetState={filtered ? reset : null} />
           </aside>
         </div>
       </div>
@@ -295,10 +280,12 @@ function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state
     }
   }
   if (chips.length === 0) return null;
+  // Phones: one swipeable row (DragScroller); from 768 px the chips wrap.
   return (
-    <ul className="mb-4 flex flex-wrap items-center gap-2">
+    <DragScroller className="-mx-4 mb-4 px-4 scroll-px-4 md:mx-0 md:px-0 md:scroll-px-0">
+    <ul className="flex w-max items-center gap-2 md:w-auto md:flex-wrap">
       {chips.map((c) => (
-        <li key={c.key}>
+        <li key={c.key} className="shrink-0 snap-start">
           <StateLink
             state={c.state}
             aria-label={t("catalog.removeFilter", { label: c.label })}
@@ -310,11 +297,12 @@ function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state
         </li>
       ))}
       <li>
-        <StateLink state={reset} className="link-ink px-1 text-[13px] font-semibold text-[var(--muted)]">
+        <StateLink state={reset} className="link-ink whitespace-nowrap px-1 text-[13px] font-semibold text-[var(--muted)]">
           {t("catalog.resetAll")}
         </StateLink>
       </li>
     </ul>
+    </DragScroller>
   );
 }
 
@@ -322,7 +310,7 @@ function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state
 
 function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogState; pages: number }) {
   const t = makeT(locale);
-  const href = (page: number) => localePath(locale, catalogHref(state, { page }));
+  const at = (page: number): CatalogState => ({ ...state, page });
   const cur = state.page;
   const nums = pageWindow(cur, pages);
   const cell =
@@ -330,10 +318,10 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
   return (
     <nav aria-label={t("catalog.pagination")} className="mt-10 flex flex-wrap items-center justify-center gap-2">
       {cur > 1 ? (
-        <Link href={href(cur - 1)} rel="prev" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
+        <StateLink state={at(cur - 1)} toResults rel="prev" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
           <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
           <span className="sr-only">{t("catalog.prev")}</span>
-        </Link>
+        </StateLink>
       ) : null}
       {nums.map((n, i) =>
         n === null ? (
@@ -341,9 +329,10 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
             …
           </span>
         ) : (
-          <Link
+          <StateLink
             key={n}
-            href={href(n)}
+            state={at(n)}
+            toResults
             aria-current={n === cur ? "page" : undefined}
             aria-label={t("catalog.page", { n })}
             className={`${cell} ${
@@ -353,14 +342,14 @@ function Pagination({ locale, state, pages }: { locale: Locale; state: CatalogSt
             }`}
           >
             {n}
-          </Link>
+          </StateLink>
         )
       )}
       {cur < pages ? (
-        <Link href={href(cur + 1)} rel="next" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
+        <StateLink state={at(cur + 1)} toResults rel="next" className={`${cell} border-[var(--line)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]`}>
           <span className="sr-only">{t("catalog.next")}</span>
           <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
-        </Link>
+        </StateLink>
       ) : null}
     </nav>
   );
