@@ -44,20 +44,47 @@ export function BrandsMarquee({ brands }: { brands: CatalogBrand[] }) {
     [brands]
   );
   const [reps, setReps] = useState(() => Math.max(1, Math.ceil(GUESS_SCREEN / Math.max(1, list.length * GUESS_ITEM))));
-  const [cycle, setCycle] = useState(50);
+  /** Last applied copy width (px) and duration (ms) — to carry the visible offset across a change. */
+  const applied = useRef<{ copy: number; dur: number } | null>(null);
 
-  // Measure one pass of the list; repeat it until a copy covers the screen; derive the speed.
+  // Measure one copy exactly; repeat the list until a copy covers the screen; derive the speed.
+  // The duration (--bm-dur) is written straight onto the track. Whenever the copy width or the
+  // duration changes (a logo loads, a broken one falls back to its name, the font swaps, the strip
+  // resizes) the running animation is re-timed so the strip keeps the same pixel offset: otherwise
+  // the −50% track jumps by `progress × Δwidth` (a new duration — by `Δprogress × width`) on every
+  // change. Together with lazy logos loading one by one as they slid in, that was the "twitch"
+  // towards the end of the loop (the jump grows with progress).
   useIsoLayoutEffect(() => {
     const root = rootRef.current;
     const track = trackRef.current;
     if (!root || !track || list.length === 0) return;
     const measure = () => {
-      const copy = track.scrollWidth / 2;
+      const slots = track.children;
+      const half = slots.length / 2;
+      // Reduced motion hides the looping copy (display: none) — nothing to measure then.
+      if (half < 1 || (slots[half] as HTMLElement).offsetParent === null) return;
+      // Distance from copy 1 to copy 2 = one copy, sub-pixel exact (both rects share the transform).
+      const copy = (slots[half] as HTMLElement).getBoundingClientRect().left - (slots[0] as HTMLElement).getBoundingClientRect().left;
       if (copy <= 0) return;
       const pass = copy / reps;
       const need = Math.max(1, Math.ceil(root.clientWidth / pass));
+      const cycle = Math.min(MAX_CYCLE_S, Math.max(MIN_CYCLE_S, Math.round(pass / PX_PER_S)));
+      const dur = cycle * reps * 1000;
+      // Before the first measure the CSS default duration runs (50s) — re-time from it.
+      const prev = applied.current ?? { copy, dur: parseFloat(getComputedStyle(track).animationDuration) * 1000 || dur };
+      if (!applied.current || Math.abs(prev.copy - copy) > 0.01 || prev.dur !== dur) {
+        const anim = track.getAnimations().find((a) => (a as CSSAnimation).animationName === "bm-marquee");
+        const t = anim && typeof anim.currentTime === "number" ? anim.currentTime : null;
+        track.style.setProperty("--bm-dur", `${dur}ms`);
+        applied.current = { copy, dur };
+        if (anim && t !== null) {
+          // Same offset in px as before (modulo one copy — the content repeats every pass).
+          const offset = ((t % prev.dur) / prev.dur) * prev.copy;
+          void getComputedStyle(track).animationDuration; // apply the new duration before re-timing
+          anim.currentTime = ((offset % copy) / copy) * dur;
+        }
+      }
       if (need !== reps) setReps(need);
-      setCycle(Math.min(MAX_CYCLE_S, Math.max(MIN_CYCLE_S, Math.round(pass / PX_PER_S))));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -92,7 +119,6 @@ export function BrandsMarquee({ brands }: { brands: CatalogBrand[] }) {
       ref={rootRef}
       className="bm-strip"
       aria-label={t("home.brands.label")}
-      style={{ "--bm-dur": `${cycle * reps}s` } as React.CSSProperties}
     >
       <div className="container-site bm-inner">
         <span aria-hidden className="bm-label">
@@ -128,7 +154,9 @@ function BrandItem({ brand, href, hidden, countLabel }: { brand: CatalogBrand; h
     >
       {logo ? (
         // A logo has no fixed aspect ratio: fixed height, natural width (the strip re-measures on load).
-        <img src={logo} alt="" className="bm-logo" loading="lazy" decoding="async" draggable={false} onError={() => setBroken(true)} />
+        // Not lazy: a lazy logo near the end of the list would load only as it slides in and widen
+        // the track right then; eager ones settle in the first second.
+        <img src={logo} alt="" className="bm-logo" decoding="async" draggable={false} onError={() => setBroken(true)} />
       ) : (
         <span className="bm-word">{brand.name}</span>
       )}
