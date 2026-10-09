@@ -6,7 +6,9 @@
 --    переводов заполняется при старте бэкенда (TranslationAdminService.backfillSourceTexts),
 --    у уже устаревших прежний текст не восстановить — остаётся NULL.
 --  reviewed_at — перевод просмотрен и принят человеком; переводы ИИ без отметки попадают во
---    вкладку «Проверить ИИ». Ручные (MANUAL) считаются проверенными.
+--    вкладку «Проверить ИИ». Всё, что уже есть до V56 (ручные и ИИ), считается проверенным:
+--    эти тексты давно на витрине, и ~450 строк в очереди были бы шумом. В очередь попадают только
+--    переводы ИИ, импортированные после релиза.
 -- ============================================================
 
 ALTER TABLE content_translations
@@ -16,4 +18,4 @@ ALTER TABLE content_translations
 -- updated_at = updated_at: иначе ON UPDATE CURRENT_TIMESTAMP проставит всем строкам «сейчас».
 UPDATE content_translations
    SET reviewed_at = updated_at, updated_at = updated_at
- WHERE origin = 'MANUAL';
+ WHERE reviewed_at IS NULL;
