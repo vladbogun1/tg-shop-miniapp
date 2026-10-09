@@ -1,9 +1,12 @@
 "use client";
 
 /**
- * «Оформление с ИИ»: 1) choose products → prompt in batches → 2) paste the answer →
- * 3) review field by field → import. The prompt lives in lib/card-prompt.ts, parsing and the
- * schema checks in lib/card-check.ts (the backend re-validates everything on import).
+ * «Оформить с ИИ» (the batch wizard, opened from «Карточки» over the list): 1) the products —
+ * preselected by the caller (checked rows, else the current tab), editable here → prompt in
+ * batches → 2) paste the answer → 3) review field by field → import. Sure cards (overall ≥ 80,
+ * no guessed field) go straight to «Готово», the rest to «Проверить». The prompt lives in
+ * lib/card-prompt.ts, parsing and the schema checks in lib/card-check.ts (the backend re-validates
+ * everything on import).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -30,14 +33,10 @@ import { Toggle } from "@/components/ui/Toggle";
 import { CopyButton } from "@/components/translations/shared";
 import { AddOptionModal } from "@/components/cards/AddOptionModal";
 import { ReviewCard } from "@/components/cards/ReviewCard";
-import { buildImportItem, defaultSel, mergeSel, type ProductSel } from "@/components/cards/selection";
+import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "@/components/cards/selection";
 import { CardStatusChip, Check, ConfidencePill, Step, Thumb } from "@/components/cards/shared";
 
-type Mode = "unfinished" | "draft" | "review" | "incomplete" | "lowconf" | "hidden" | "all" | "manual";
 type ReviewFilter = "all" | "ok" | "warn" | "error";
-
-/** AI-filled cards below this overall confidence are offered for another pass. */
-const LOW_CONFIDENCE = 60;
 
 const REASON_RU: Record<string, string> = {
   NOT_FOUND: "товар не найден",
@@ -57,23 +56,34 @@ const REASON_RU: Record<string, string> = {
 };
 const reasonRu = (r: string) => REASON_RU[r] ?? REASON_RU[r?.toUpperCase?.()] ?? r;
 
-export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: CardSchema; ids: Map<string, string> }) {
+export function AiCards({
+  items,
+  schema,
+  ids,
+  preselect,
+  preselectLabel,
+}: {
+  items: CardItem[];
+  schema: CardSchema;
+  ids: Map<string, string>;
+  /** Products to start with (checked rows of the list, else its current tab); a new array = a new start. */
+  preselect: string[];
+  /** Where the preselection came from («отмеченные», «вкладка „Оформить“»). */
+  preselectLabel?: string;
+}) {
   const qc = useQueryClient();
   const { push } = useToast();
 
   // ---- 1. selection + prompt ------------------------------------------------
-  // Hidden unfinished products first (they are not on sale until completed), else the backlog.
-  const [mode, setMode] = useState<Mode>(() =>
-    items.some((i) => i.unfinished === true)
-      ? "unfinished"
-      : items.some((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.active === true)
-        ? "draft"
-        : items.some((i) => i.cardStatus === "AI_FILLED" && i.active === true)
-          ? "review"
-          : "unfinished"
-  );
-  const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const [manual, setManual] = useState<Set<string>>(new Set());
+  const [manual, setManual] = useState<Set<string>>(() => new Set(preselect));
+  const prevPreselect = useRef(preselect);
+  useEffect(() => {
+    // Opened again with another selection: start from it (a pasted answer stays).
+    if (prevPreselect.current !== preselect) {
+      prevPreselect.current = preselect;
+      setManual(new Set(preselect));
+    }
+  }, [preselect]);
   const [query, setQuery] = useState("");
   const [showList, setShowList] = useState(false);
   const [size, setSize] = useState<"4" | "8">("8");
@@ -87,29 +97,15 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
   }, [items, schema]);
   const sorted = useMemo(() => [...items].sort((a, b) => sortKey.get(a.id)!.localeCompare(sortKey.get(b.id)!, "ru")), [items, sortKey]);
 
-  const pools = useMemo(
-    () => ({
-      unfinished: sorted.filter((i) => i.unfinished === true),
-      // on the storefront without a card (legacy products the AI has not touched yet)
-      draft: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true && i.active === true),
-      review: sorted.filter((i) => i.cardStatus === "AI_FILLED" && i.active === true),
-      incomplete: sorted.filter((i) => i.active === true && (i.missingRequired?.length ?? 0) > 0),
-      // hidden old products (sold out / taken off sale): not a to-do, only on demand
-      hidden: sorted.filter((i) => (i.cardStatus ?? "DRAFT") === "DRAFT" && i.unfinished !== true && i.active !== true),
-      lowconf: sorted.filter((i) => i.cardStatus === "AI_FILLED" && (i.cardConfidence ?? 0) < LOW_CONFIDENCE),
-      all: sorted,
-    }),
-    [sorted]
-  );
-  const candidates = mode === "manual" ? sorted : pools[mode];
-  const chosen = useMemo(
-    () => (mode === "manual" ? sorted.filter((i) => manual.has(i.id)) : pools[mode].filter((i) => !excluded.has(i.id))),
-    [mode, sorted, manual, pools, excluded]
-  );
+  const chosen = useMemo(() => sorted.filter((i) => manual.has(i.id)), [sorted, manual]);
+  // Search over all products; the chosen ones first (the order is fixed while the list is open,
+  // so a row does not jump away from under the cursor when it is ticked).
+  const chosenAtOpen = useMemo(() => new Set(manual), [showList]); // eslint-disable-line react-hooks/exhaustive-deps
   const visibleList = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("ru");
-    return q ? candidates.filter((i) => `${i.title} ${i.brand ?? ""} ${i.categorySlug ?? ""}`.toLocaleLowerCase("ru").includes(q)) : candidates;
-  }, [candidates, query]);
+    const list = q ? sorted.filter((i) => `${i.title} ${i.brand ?? ""} ${i.categorySlug ?? ""}`.toLocaleLowerCase("ru").includes(q)) : sorted;
+    return [...list.filter((i) => chosenAtOpen.has(i.id)), ...list.filter((i) => !chosenAtOpen.has(i.id))];
+  }, [sorted, query, chosenAtOpen]);
 
   const batches = useMemo(() => {
     const split = splitIntoBatches(chosen, Number(size));
@@ -131,21 +127,11 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
     }
   }, [chosenKey]);
 
-  function isChosen(id: string) {
-    return mode === "manual" ? manual.has(id) : !excluded.has(id);
-  }
   function setChosen(id: string, on: boolean) {
-    if (mode === "manual") {
-      const n = new Set(manual);
-      if (on) n.add(id);
-      else n.delete(id);
-      setManual(n);
-    } else {
-      const n = new Set(excluded);
-      if (on) n.delete(id);
-      else n.add(id);
-      setExcluded(n);
-    }
+    const n = new Set(manual);
+    if (on) n.add(id);
+    else n.delete(id);
+    setManual(n);
   }
 
   // ---- 2. answer ---------------------------------------------------------------
@@ -202,7 +188,8 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
   // ---- 3. review -----------------------------------------------------------------
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
   const [replaceSpecs, setReplaceSpecs] = useState(false);
-  const [markReady, setMarkReady] = useState(false);
+  // Sure cards (overall ≥ 80, no guessed field) → «Готово»; the rest → «Проверить».
+  const [autoMark, setAutoMark] = useState(true);
   const [sending, setSending] = useState(false);
   const [summary, setSummary] = useState<{ result?: CardImportResult; error?: string; titles: Map<string, string> } | null>(null);
   const [addOption, setAddOption] = useState<Proposal | null>(null);
@@ -216,7 +203,10 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
     [reviews, reviewFilter]
   );
 
-  const payload = (reviews ?? []).map((r) => buildImportItem(r, sel.get(r.id), { markReady, model })).filter((x): x is CardImportItem => !!x);
+  const payload = (reviews ?? [])
+    .map((r) => buildImportItem(r, sel.get(r.id), { markReady: autoMark && autoReady(r, sel.get(r.id)), model }))
+    .filter((x): x is CardImportItem => !!x);
+  const toReady = payload.filter((p) => p.markReady).length;
 
   function patchSel(id: string, patch: Partial<ProductSel>) {
     setSel((prev) => {
@@ -270,35 +260,11 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
     return <EmptyState icon={PartyPopper} title="Товаров нет" description="Добавьте товары — и их карточки можно будет оформить здесь." />;
   }
 
-  const modeOptions = [
-    { value: "unfinished" as const, label: "Незавершённые", count: pools.unfinished.length },
-    { value: "draft" as const, label: "На витрине без оформления", count: pools.draft.length },
-    { value: "review" as const, label: "От ИИ — проверить", count: pools.review.length },
-    { value: "incomplete" as const, label: "Неполные на витрине", count: pools.incomplete.length },
-    { value: "lowconf" as const, label: `От ИИ < ${LOW_CONFIDENCE} %`, count: pools.lowconf.length },
-    { value: "hidden" as const, label: "Скрытые старые", count: pools.hidden.length },
-    { value: "all" as const, label: "Все", count: pools.all.length },
-    { value: "manual" as const, label: "Вручную", count: manual.size || undefined },
-  ];
 
   return (
     <div>
       {/* ---- Step 1 ---- */}
-      <Step
-        n={1}
-        title="Товары и промпт"
-        aside={
-          <SegmentedControl<Mode>
-            size="sm"
-            value={mode}
-            onChange={(v) => {
-              setMode(v);
-              if (v === "manual") setShowList(true);
-            }}
-            options={modeOptions}
-          />
-        }
-      >
+      <Step n={1} title="Товары и промпт" aside={preselectLabel ? <Badge tone="neutral">{preselectLabel}</Badge> : undefined}>
         <p className="mb-3 text-[13px] leading-relaxed text-[var(--text-muted)]">
           Скопируйте промпт в чат с ИИ, у которого есть поиск в интернете (ChatGPT, Claude, Gemini, Perplexity…), дождитесь ответа одним
           блоком кода и вставьте его ниже. Выбрано <b className="text-[var(--text)]">{chosen.length}</b> товаров →{" "}
@@ -313,7 +279,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
             onClick={() => setShowList(!showList)}
             iconRight={<ChevronDown className={cn("h-4 w-4 transition-transform", showList && "rotate-180")} />}
           >
-            {showList ? "Скрыть список" : mode === "manual" ? "Выбрать товары" : "Показать список"}
+            {showList ? "Скрыть список" : "Изменить список"}
           </Button>
           <span className="field-label !text-[11px]">Товаров в пакете</span>
           <SegmentedControl<"4" | "8">
@@ -325,12 +291,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
               { value: "8", label: "8" },
             ]}
           />
-          {mode !== "manual" && excluded.size > 0 && (
-            <Button size="sm" variant="ghost" onClick={() => setExcluded(new Set())}>
-              Вернуть исключённые ({excluded.size})
-            </Button>
-          )}
-          {mode === "manual" && manual.size > 0 && (
+          {manual.size > 0 && (
             <Button size="sm" variant="ghost" onClick={() => setManual(new Set())}>
               Снять выбор
             </Button>
@@ -354,14 +315,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
                     size="sm"
                     variant="ghost"
                     disabled={!visibleList.length}
-                    onClick={() => {
-                      if (mode === "manual") setManual(new Set([...manual, ...visibleList.map((i) => i.id)]));
-                      else {
-                        const n = new Set(excluded);
-                        visibleList.forEach((i) => n.delete(i.id));
-                        setExcluded(n);
-                      }
-                    }}
+                    onClick={() => setManual(new Set([...manual, ...visibleList.map((i) => i.id)]))}
                   >
                     Отметить все
                   </Button>
@@ -371,17 +325,17 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
                   {visibleList.map((i) => (
                     <li key={i.id}>
                       <label className="flex cursor-pointer items-center gap-3 border-b border-[var(--line)] px-3 py-1.5 last:border-b-0 hover:bg-[var(--surface-hover)]">
-                        <Check checked={isChosen(i.id)} onChange={(on) => setChosen(i.id, on)} label={`Выбрать ${i.title}`} />
+                        <Check checked={manual.has(i.id)} onChange={(on) => setChosen(i.id, on)} label={`Выбрать ${i.title}`} />
                         <Thumb src={i.imageUrl} alt={i.title} size={36} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-[13px] font-semibold text-[var(--text)]">{i.title}</span>
                           <span className="block truncate text-[11.5px] text-[var(--text-faint)]">
                             {categoryPathName(schema, i.categorySlug) || "без категории"}
                             {i.brand ? ` · ${i.brand}` : ""}
-                            {(i.missingRequired?.length ?? 0) > 0 ? ` · не заполнено: ${i.missingRequired!.length}` : ""}
+                            {(i.missingRequired?.length ?? 0) > 0 ? ` · нет ${i.missingRequired!.length} обяз. полей` : ""}
                           </span>
                         </span>
-                        {i.cardStatus === "AI_FILLED" && <ConfidencePill value={i.cardConfidence ?? null} />}
+                        {i.cardStatus === "AI_FILLED" && <ConfidencePill value={i.cardConfidence ?? null} label="ИИ" />}
                         <CardStatusChip status={i.cardStatus} />
                       </label>
                     </li>
@@ -394,11 +348,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
 
         {chosen.length === 0 ? (
           <div className="text-[13px] font-semibold text-[var(--text-faint)]">
-            {mode === "manual"
-              ? "Отметьте товары в списке."
-              : mode === "unfinished" || mode === "draft"
-                ? "Всё оформлено: новых и неоформленных товаров на витрине нет. Старые скрытые товары — в фильтре «Скрытые старые»."
-                : "По этому фильтру товаров нет."}
+            Товары не выбраны — нажмите «Изменить список» и отметьте нужные.
           </div>
         ) : batches.length === 1 ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -572,8 +522,8 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
               onChange={setReviewFilter}
               options={[
                 { value: "all", label: "Все", count: reviews.length },
-                { value: "ok", label: "Готово", count: counts.ok },
-                { value: "warn", label: "Проверить", count: counts.warn },
+                { value: "ok", label: "Без замечаний", count: counts.ok },
+                { value: "warn", label: "С замечаниями", count: counts.warn },
                 { value: "error", label: "Ошибки", count: counts.error },
               ]}
             />
@@ -596,7 +546,7 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
                   Снять все
                 </Button>
                 <span className="ml-auto text-[var(--text-muted)]">
-                  Поля с уверенностью ниже 40 % по умолчанию не отмечены. Красные поля не сохраняются.
+                  Поля с уверенностью ниже {RED_FIELD} % по умолчанию не отмечены. Ошибочные поля не сохраняются.
                 </span>
               </div>
               <div className="flex flex-col gap-3">
@@ -628,9 +578,25 @@ export function AiCards({ items, schema, ids }: { items: CardItem[]; schema: Car
               <Toggle checked={replaceSpecs} onChange={setReplaceSpecs} label="Заменить характеристики целиком" />
             </div>
             <div className="min-w-[220px]">
-              <Toggle checked={markReady} onChange={setMarkReady} label="Сразу отметить проверенными" />
+              <Toggle checked={autoMark} onChange={setAutoMark} label="Уверенные — сразу в «Готово»" />
             </div>
           </div>
+          {payload.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px] text-[var(--text-muted)]">
+              <Badge tone="ok" dot>
+                станут «Готово»: {toReady}
+              </Badge>
+              <Badge tone="info" dot>
+                уйдут в «Проверить»: {payload.length - toReady}
+              </Badge>
+              <span>
+                {autoMark
+                  ? `«Готово» — если ИИ уверена в карточке на ${AUTO_READY_OVERALL} % и больше и среди сохраняемых полей нет догадок (ниже ${RED_FIELD} %).`
+                  : "Все сохранённые карточки уйдут в «Проверить»."}
+              </span>
+            </div>
+          )}
+
           {replaceSpecs && (
             <div className="mt-2 text-[12px] font-semibold text-[color-mix(in_srgb,var(--warn)_80%,var(--text))]">
               ! Характеристики, которых нет среди отмеченных полей, будут удалены у товара.

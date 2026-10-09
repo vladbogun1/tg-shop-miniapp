@@ -4,11 +4,13 @@
  * slightly differently), so the screen only sees the normalized types.
  */
 import { apiGet, apiPatch, apiPut } from "@/lib/api";
+import type { TextField } from "@/lib/card-check";
 import { normalizeSchema, type CardItem, type CardSchema, type CardStatusCode } from "@/lib/card-prompt";
 
 export interface CardStats {
-  /** All DRAFT cards (hidden + on the storefront). */
+  /** All DRAFT cards (hidden + on the storefront) — the «Оформить» tab. */
   draft: number;
+  /** All AI_FILLED cards (hidden too) — the «Проверить» tab. */
   aiFilled: number;
   ready: number;
   incomplete: number;
@@ -36,6 +38,8 @@ export interface CardImportItem {
   title?: string;
   /** uk/en of the FINAL Russian texts (title, description, condition note). */
   translations?: Partial<Record<"uk" | "en", CardTextTranslations>>;
+  /** Source url per characteristic, when the AI named one (card_meta.fields[key].src). */
+  fieldSources?: Record<string, string>;
 }
 
 export interface CardTextTranslations {
@@ -78,9 +82,66 @@ export interface CardMeta {
   sources?: string[];
   notes?: string;
   model?: string;
+  overall?: number;
   importedAt?: string;
   reviewedAt?: string;
-  reviewedBy?: string;
+  /** Admin id — the review panel gets the name (CardReviewData.reviewedByName). */
+  reviewedBy?: string | number;
+  last?: CardLast;
+}
+
+/** One change of the last import: before → after (+ the AI's confidence / source of a characteristic). */
+export interface CardChange<T = unknown> {
+  before?: T | null;
+  after?: T | null;
+  c?: number;
+  src?: string;
+  /** The admin changed it in the review panel after the import. */
+  edited?: boolean;
+}
+
+/**
+ * card_meta.last — what the LAST AI import changed (replaced by every import; the admin's edits
+ * from the review panel are merged into it). Text keys are "lang/field": "ru/title", "uk/description".
+ */
+export interface CardLast {
+  at?: string;
+  editedAt?: string;
+  model?: string;
+  changed?: {
+    category?: CardChange<string>;
+    brand?: CardChange<string>;
+    specs?: Record<string, CardChange>;
+    texts?: Record<string, CardChange<string>>;
+  };
+}
+
+export interface CardTextState {
+  text: string;
+  origin: "AI" | "MANUAL";
+  /** Made for another Russian text (the site shows Russian until it is re-translated). */
+  stale: boolean;
+}
+
+/** GET /api/admin/cards/{id}/review — everything the review panel shows. */
+export interface CardReviewData {
+  item: CardItem;
+  last: CardLast | null;
+  importedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: number | null;
+  reviewedByName: string | null;
+  translations: Record<"uk" | "en", Partial<Record<TextField, CardTextState>>>;
+}
+
+/** PUT /api/admin/cards/{id}/accept — the admin's edits (all optional) + READY. */
+export interface CardAcceptBody {
+  title?: string;
+  description?: string;
+  specs?: Record<string, unknown>;
+  translations?: Partial<Record<"uk" | "en", CardTextTranslations>>;
+  /** false = save the edits but keep the status. Default true. */
+  ready?: boolean;
 }
 
 /** Option as PATCH /api/admin/spec-attributes/{id} takes it (the list replaces the old one). */
@@ -161,6 +222,27 @@ export const cardsApi = {
 
   async import(body: CardImportRequest): Promise<CardImportResult> {
     return adaptImportResult(await apiPut<unknown>("/api/admin/cards/import", body));
+  },
+
+  async review(productId: string): Promise<CardReviewData> {
+    const o = await apiGet<Record<string, unknown>>(`/api/admin/cards/${productId}/review`);
+    const tr = (o.translations && typeof o.translations === "object" ? o.translations : {}) as Record<string, unknown>;
+    return {
+      item: adaptItem((o.item ?? {}) as Record<string, unknown>),
+      last: o.last && typeof o.last === "object" ? (o.last as CardLast) : null,
+      importedAt: typeof o.importedAt === "string" ? o.importedAt : null,
+      reviewedAt: typeof o.reviewedAt === "string" ? o.reviewedAt : null,
+      reviewedBy: typeof o.reviewedBy === "number" ? o.reviewedBy : null,
+      reviewedByName: typeof o.reviewedByName === "string" && o.reviewedByName.trim() ? o.reviewedByName : null,
+      translations: {
+        uk: (tr.uk ?? {}) as CardReviewData["translations"]["uk"],
+        en: (tr.en ?? {}) as CardReviewData["translations"]["en"],
+      },
+    };
+  },
+
+  async accept(productId: string, body: CardAcceptBody = {}): Promise<CardImportResult> {
+    return adaptImportResult(await apiPut<unknown>(`/api/admin/cards/${productId}/accept`, body));
   },
 
   setCardStatus(productId: string, status: CardStatusCode): Promise<unknown> {

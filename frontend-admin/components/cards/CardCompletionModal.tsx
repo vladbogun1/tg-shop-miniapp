@@ -2,7 +2,7 @@
 
 /**
  * Completion of ONE product card by any external AI — right after a product is created with only
- * a title (it is saved hidden: active=false, card DRAFT) or from the product list / «Очередь»
+ * a title (it is saved hidden: active=false, card DRAFT) or from the product list / «Карточки»
  * («Оформить с ИИ»). Same prompt (batch of 1), same check and the same review card as step 3 of
  * «Оформление с ИИ», plus publishing: «Сразу выложить на витрину» sends `publish` with the import;
  * when the backend refuses because the price is missing, the price is asked for inline and the
@@ -29,7 +29,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { CopyButton } from "@/components/translations/shared";
 import { AddOptionModal } from "@/components/cards/AddOptionModal";
 import { ReviewCard } from "@/components/cards/ReviewCard";
-import { buildImportItem, defaultSel, mergeSel, type ProductSel } from "@/components/cards/selection";
+import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "@/components/cards/selection";
 
 export interface CardCompletionResult {
   saved: boolean;
@@ -42,7 +42,7 @@ function translatedNote(r: CardImportItemResult | undefined): string {
   return ` · переводы UA ${t.uk} / EN ${t.en}`;
 }
 
-const HIDDEN_TOAST = "Товар сохранён скрытым. Доделать — «Карточки → Незавершённые»";
+const HIDDEN_TOAST = "Товар сохранён скрытым. Доделать — «Карточки → Оформить»";
 
 function publishProblem(r: CardImportItemResult | undefined, priceMinor: number | null | undefined): { text: string; needPrice: boolean } | null {
   if (!r || r.published) return null;
@@ -51,7 +51,11 @@ function publishProblem(r: CardImportItemResult | undefined, priceMinor: number 
   const needPrice = missing.some((m) => m.includes("price")) || /цен|price/i.test(msg) || (r.reason === "PRODUCT_NOT_PUBLISHABLE" && !priceMinor);
   const needCategory = missing.some((m) => m.includes("categor")) || /категор|category/i.test(msg);
   if (r.reason === "CARD_NOT_READY") {
-    return { text: `Карточка не готова к показу${msg ? `: ${msg}` : ""} — заполните обязательные характеристики (отметьте поля из ответа ИИ или допишите в товаре).`, needPrice: false };
+    // The card stayed a DRAFT: nothing that fills it (characteristics / title / description) was applied.
+    return {
+      text: `Карточка осталась черновиком — из ответа ИИ не сохранено ни характеристик, ни текстов${msg ? ` (${msg})` : ""}. Черновик не выкладывается: отметьте поля из ответа или выложите товар из редактора кнопкой «Выложить без оформления».`,
+      needPrice: false,
+    };
   }
   const parts: string[] = [];
   if (needPrice) parts.push("не указана цена");
@@ -94,7 +98,8 @@ export function CardCompletionModal({
   const [review, setReview] = useState<ProductReview | null>(null);
   const [sel, setSel] = useState<ProductSel | null>(null);
   const [publish, setPublish] = useState(true);
-  const [markReady, setMarkReady] = useState(true);
+  // null = automatic: READY when the AI is sure (see autoReady), else «Проверить».
+  const [markReadyOverride, setMarkReadyOverride] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [published, setPublished] = useState(false);
@@ -113,7 +118,7 @@ export function CardCompletionModal({
     setReview(null);
     setSel(null);
     setPublish(true);
-    setMarkReady(true);
+    setMarkReadyOverride(null);
     setSaved(false);
     setPublished(false);
     setProblem(null);
@@ -156,6 +161,8 @@ export function CardCompletionModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schema]);
 
+  const sure = !!review && !!sel && autoReady(review, sel);
+  const markReady = markReadyOverride ?? sure;
   const payload = review && sel ? buildImportItem(review, sel, { markReady, model, publish }) : null;
 
   function close() {
@@ -392,10 +399,15 @@ export function CardCompletionModal({
               <div>
                 <div className="mb-2 flex flex-wrap items-center gap-3">
                   <span className="field-label">3 · Проверка</span>
-                  <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-[var(--text-muted)]">
-                    <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={markReady} onChange={(e) => setMarkReady(e.target.checked)} />
-                    Отметить карточку проверенной
+                  <label
+                    className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-[var(--text-muted)]"
+                    title={`Автоматически: «Готово», если ИИ уверена на ${AUTO_READY_OVERALL} % и больше и среди сохраняемых полей нет догадок (ниже ${RED_FIELD} %)`}
+                  >
+                    <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" checked={markReady} onChange={(e) => setMarkReadyOverride(e.target.checked)} />
+                    {markReady ? "Сразу в «Готово»" : "Уйдёт в «Проверить»"}
+                    {markReadyOverride === null && <span className="font-normal text-[var(--text-faint)]">· {sure ? "ИИ уверена" : "ИИ не уверена"}</span>}
                   </label>
+
                 </div>
                 <ReviewCard review={review} schema={schema} sel={sel} onSel={(patch) => setSel({ ...sel, ...patch })} onAddOption={setAddOption}
                   onEditText={(field, lang, value) => setReview(editText(review, field, lang, value))}

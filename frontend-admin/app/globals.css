@@ -452,6 +452,10 @@ body {
 @keyframes tab-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .tab-in { animation: tab-in .16s ease-out; }
 @media (prefers-reduced-motion: reduce) { .tab-in { animation: none; } }
+/* «Карточки → Оформить с ИИ»: the full-screen wizard layer (kept mounted, shown with [hidden] off). */
+@keyframes wizard-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.wizard-in { animation: wizard-in .22s cubic-bezier(.22, 1, .36, 1); }
+@media (prefers-reduced-motion: reduce) { .wizard-in { animation: none; } }
 /* A photo that was just dropped into a new place (or made the cover) blinks an accent ring once. */
 @keyframes photo-dropped { 0% { box-shadow: 0 0 0 3px rgba(255,102,0,.55); } 100% { box-shadow: 0 0 0 0 rgba(255,102,0,0); } }
 .photo-dropped { animation: photo-dropped .7s ease-out; }

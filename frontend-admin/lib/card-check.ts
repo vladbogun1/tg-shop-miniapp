@@ -390,6 +390,8 @@ export interface FieldReview {
   before: unknown;
   changed: boolean;
   confidence: number | null;
+  /** Source url of this value, when the AI named one ("field_sources"). */
+  src: string | null;
   issues: CardIssue[];
   level: Level;
   /** Default of the field checkbox. */
@@ -703,6 +705,11 @@ export function reviewProduct(id: string, item: CardItem, raw: unknown, schema: 
   const specsRaw = e.specs && typeof e.specs === "object" && !Array.isArray(e.specs) ? (e.specs as Record<string, unknown>) : {};
   if (e.specs !== undefined && (typeof e.specs !== "object" || Array.isArray(e.specs))) issues.push({ level: "warn", text: "«specs» не объект — пропущено" });
   const confRaw = e.confidence && typeof e.confidence === "object" && !Array.isArray(e.confidence) ? (e.confidence as Record<string, unknown>) : {};
+  const srcRaw = e.field_sources ?? e.fieldSources;
+  const srcOf = (key: string): string | null => {
+    const v = srcRaw && typeof srcRaw === "object" && !Array.isArray(srcRaw) ? (srcRaw as Record<string, unknown>)[key] : null;
+    return typeof v === "string" && /^https?:\/\/\S+$/i.test(v.trim()) ? v.trim() : null;
+  };
   const fields: FieldReview[] = [];
   const proposals: Proposal[] = [];
   const before = item.specs ?? {};
@@ -714,7 +721,7 @@ export function reviewProduct(id: string, item: CardItem, raw: unknown, schema: 
     const confidence = confidenceOf(confRaw[key] ?? confRaw[rawKey], fi, "поле");
     if (!attr) {
       fi.push({ level: "error", text: targetCategory ? "нет такого ключа в схеме категории" : "нет такого ключа (у товара нет категории)" });
-      fields.push({ key, attr: null, label: key, raw: rawVal, before: before[key], changed: true, confidence, issues: fi, level: "error", preselect: false });
+      fields.push({ key, attr: null, label: key, raw: rawVal, before: before[key], changed: true, confidence, src: null, issues: fi, level: "error", preselect: false });
       continue;
     }
     const vc = checkValue(attr, rawVal);
@@ -736,6 +743,7 @@ export function reviewProduct(id: string, item: CardItem, raw: unknown, schema: 
       before: before[key],
       changed,
       confidence,
+      src: srcOf(key),
       issues: fi,
       level,
       preselect: level !== "error" && (confidence === null || confidence >= 40),

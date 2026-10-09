@@ -2,7 +2,7 @@
 
 /**
  * Shared queries of the «Карточки» screen: the nav badge (cards waiting: drafts + filled by the AI
- * but not reviewed yet) and the counters on the page use the same stats cache entry.
+ * but not reviewed yet) uses the stats cache entry; the page counts its tabs from the items.
  */
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { isAuthenticated } from "@/lib/api";
@@ -32,12 +32,9 @@ export function useCatalogSchema() {
   return useQuery({ queryKey: CATALOG_SCHEMA_KEY, queryFn: () => cardsApi.schema(), staleTime: 5 * 60_000 });
 }
 
-/**
- * Badge: hidden unfinished products + AI-filled waiting for review. The legacy drafts that are
- * already on the storefront do not count — they are a backlog, not an alarm.
- */
+/** Badge: the «Оформить» (every DRAFT) + «Проверить» (every AI_FILLED) tabs of «Карточки». */
 export function pendingCards(stats: CardStats | undefined): number {
-  return stats ? stats.unfinished + stats.aiFilled : 0;
+  return stats ? stats.draft + stats.aiFilled : 0;
 }
 
 /** After any write: refresh the badge, the counters, the lists and the product screens. */

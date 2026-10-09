@@ -34,14 +34,19 @@ export function ConfidenceDot({ value, className }: { value: number | null | und
   );
 }
 
-/** Tinted pill "92 %" in the confidence colour. */
-export function ConfidencePill({ value, label }: { value: number | null | undefined; label?: string }) {
+/** What the overall confidence of the AI means — the tooltip of every «ИИ N %». */
+export const CONFIDENCE_HINT =
+  "Насколько ИИ уверена в карточке в целом: 90–100 % — данные с сайта производителя, 70–89 % — совпадают в нескольких магазинах/обзорах, ниже 60 % — стоит проверить.";
+
+/** Tinted pill "ИИ 92 %" in the confidence colour. */
+export function ConfidencePill({ value, label, title = CONFIDENCE_HINT }: { value: number | null | undefined; label?: string; title?: string }) {
   return (
     <span
       className="chip-tint tabular !gap-1 !px-2 !text-[11px] !leading-[18px]"
       style={{ "--chip": confidenceColor(value) } as CSSProperties}
-      title="Общая уверенность ИИ"
+      title={title}
     >
+
       {label ? `${label} ` : ""}
       {value == null ? "—" : `${value} %`}
     </span>

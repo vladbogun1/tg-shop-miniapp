@@ -212,7 +212,7 @@ function NavLinks({
             {cardsBadge && (
               <span
                 aria-label={`Карточек ждут завершения или проверки: ${cardsPending}`}
-                title="Незавершённые (скрытые) + заполненные ИИ, но не проверенные"
+                title="Карточки: «Оформить» (черновики) + «Проверить» (заполнены ИИ, ждут проверки)"
                 className={cn("count-badge count-badge--muted ml-auto", collapsed && "sr-only")}
               >
                 {cardsPending > 999 ? "999+" : cardsPending}

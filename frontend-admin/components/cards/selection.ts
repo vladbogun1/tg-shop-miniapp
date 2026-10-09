@@ -47,6 +47,21 @@ export function mergeSel(old: ProductSel | undefined, r: ProductReview, opts: { 
   return { ...old, fields: new Set([...old.fields, ...def.fields].filter(valid)) };
 }
 
+/** Overall confidence from which a card goes straight to «Готово» (READY) on import. */
+export const AUTO_READY_OVERALL = 80;
+/** A field below this confidence is a guess («red») — such a card goes to «Проверить». */
+export const RED_FIELD = 40;
+
+/**
+ * Should the import mark this card READY right away? Only when the AI is sure about the card
+ * (overall ≥ 80) and none of the fields being saved is a guess (< 40 %); otherwise it goes to
+ * «Проверить» (AI_FILLED) for the admin's eyes.
+ */
+export function autoReady(r: ProductReview, s: ProductSel | undefined): boolean {
+  if (!s?.on || r.level === "error" || (r.overall ?? 0) < AUTO_READY_OVERALL) return false;
+  return !r.fields.some((f) => s.fields.has(f.key) && f.value !== undefined && f.confidence != null && f.confidence < RED_FIELD);
+}
+
 const ruOk = (t: TextReview) => !t.issues.ru.some((i) => i.level === "error");
 
 /** Is the Russian text of this field going to be what the translations translate? */
@@ -69,12 +84,15 @@ export function buildImportItem(
   if (!s?.on || r.level === "error") return null;
   const specs: Record<string, unknown> = {};
   const confidence: Record<string, number> = {};
+  const fieldSources: Record<string, string> = {};
   for (const f of r.fields) {
     if (f.value === undefined || !s.fields.has(f.key)) continue;
     specs[f.key] = f.value;
     if (f.confidence != null) confidence[f.key] = f.confidence;
+    if (f.src) fieldSources[f.key] = f.src;
   }
   const item: CardImportItem = { productId: r.item.id, specs, confidence, markReady: opts.markReady };
+  if (Object.keys(fieldSources).length) item.fieldSources = fieldSources;
   if (opts.publish !== undefined) item.publish = opts.publish;
   if (r.overall != null) item.overall = r.overall;
   if (s.category && r.category?.valid) item.categorySlug = r.category.to;

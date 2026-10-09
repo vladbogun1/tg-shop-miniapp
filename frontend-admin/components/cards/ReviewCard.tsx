@@ -13,7 +13,7 @@ import type { ProductSel } from "@/components/cards/selection";
 import { CardIssues, CardStatusChip, Check, ConfidenceDot, ConfidencePill, Thumb } from "@/components/cards/shared";
 
 const LEVEL_TONE = { ok: "ok", warn: "warn", error: "danger" } as const;
-const LEVEL_LABEL = { ok: "готово", warn: "проверить", error: "ошибка" } as const;
+const LEVEL_LABEL = { ok: "без замечаний", warn: "есть замечания", error: "ошибка" } as const;
 
 function host(url: string): string {
   try {
