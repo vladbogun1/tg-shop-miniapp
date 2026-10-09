@@ -143,8 +143,10 @@ function ViewBody({
 
         <div
           className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4"
+          // Scrolls BELOW Telegram's fullscreen buttons (safe area), not under them.
           style={{
-            paddingTop: "max(14px, var(--safe-top))",
+            marginTop: "var(--safe-top)",
+            paddingTop: "14px",
             paddingBottom: barH ? `${barH + 28}px` : "calc(220px + var(--safe-bottom))",
           }}
         >
