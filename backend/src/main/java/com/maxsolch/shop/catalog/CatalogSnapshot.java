@@ -23,7 +23,7 @@ public final class CatalogSnapshot {
     }
 
     public record BrandInfo(String id, String name, String slug, List<String> aliases, String website,
-                            int sortOrder) {
+                            int sortOrder, String logoUrl, String logoMode) {
     }
 
     public record Group(String key, String labelRu, String labelUk, String labelEn, int sort) {

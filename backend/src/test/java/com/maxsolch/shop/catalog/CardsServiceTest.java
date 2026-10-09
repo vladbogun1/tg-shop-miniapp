@@ -6,6 +6,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportResult;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.translation.ContentTranslation;
 import com.maxsolch.shop.translation.ContentTranslationId;
 import com.maxsolch.shop.translation.TranslationEntityType;
@@ -32,7 +33,8 @@ class CardsServiceTest {
     @BeforeEach
     void setUp() {
         db = new InMemoryCatalog();
-        BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory);
+        BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
+                mock(ImageStorageService.class));
         service = new CardsService(db.productRepository, db.directory, brands, db.translationRepository,
                 mock(TranslationService.class));
         mice = db.category("myshki", "Мыши", null);

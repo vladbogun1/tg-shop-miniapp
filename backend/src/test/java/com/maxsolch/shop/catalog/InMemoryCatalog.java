@@ -54,6 +54,9 @@ final class InMemoryCatalog {
         lenient().when(brandRepository.save(any())).thenAnswer(i -> save(brands, i.getArgument(0)));
         lenient().when(brandRepository.existsBySlug(anyString())).thenAnswer(i -> brands.stream()
                 .anyMatch(b -> b.getSlug().equals(i.getArgument(0))));
+        lenient().when(brandRepository.findById(any())).thenAnswer(i -> brands.stream()
+                .filter(b -> Arrays.equals(b.getId(), (byte[]) i.getArgument(0))).findFirst());
+        lenient().doAnswer(i -> brands.remove(i.<Brand>getArgument(0))).when(brandRepository).delete(any());
 
         lenient().when(groupRepository.findAll()).thenAnswer(i -> new ArrayList<>(groups));
         lenient().when(groupRepository.findById(anyString())).thenAnswer(i -> groups.stream()

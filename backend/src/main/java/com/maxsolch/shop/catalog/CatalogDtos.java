@@ -22,7 +22,9 @@ public final class CatalogDtos {
                                      boolean showInMenu, String artKind, long productCount) {
     }
 
-    public record CatalogBrandDto(String id, String slug, String name, long productCount) {
+    /** {@code logoUrl}: MinIO key or absolute URL, null = no logo; {@code logoMode}: MONO | ORIGINAL. */
+    public record CatalogBrandDto(String id, String slug, String name, long productCount, String logoUrl,
+                                  String logoMode) {
     }
 
     public record SpecGroupDto(String key, String label, int sort) {
@@ -92,12 +94,17 @@ public final class CatalogDtos {
     // ------------------------------------------------------------------ admin: brands
 
     public record AdminBrandDto(String id, String name, String slug, List<String> aliases, String website,
-                                int sortOrder, long productCount) {
+                                int sortOrder, long productCount, String logoUrl, String logoMode) {
     }
 
+    /**
+     * {@code null} = keep. {@code logoUrl}: MinIO key from {@code POST /api/admin/brands/uploads} or an
+     * http(s) URL, {@code ""} removes the logo. {@code logoMode}: MONO | ORIGINAL.
+     */
     public record BrandUpsertRequest(@Size(max = 128) String name, @Size(max = 160) String slug,
                                      @Size(max = 200) List<@Size(max = 128) String> aliases,
-                                     @Size(max = 255) String website, Integer sortOrder) {
+                                     @Size(max = 255) String website, Integer sortOrder,
+                                     @Size(max = 2048) String logoUrl, @Size(max = 16) String logoMode) {
     }
 
     // ------------------------------------------------------------------ admin: attributes
