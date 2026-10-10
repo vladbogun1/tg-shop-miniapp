@@ -91,7 +91,8 @@ export interface FeedReview {
   text: string;
   publishedAt?: string | null;
   productTitle: string;
-  productSlug: string;
+  /** null — the product is sold out and hidden: show the quote without a link. */
+  productSlug: string | null;
   imageUrl?: string | null;
 }
 

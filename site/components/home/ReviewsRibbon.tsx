@@ -70,22 +70,25 @@ interface Slot {
  * with the most reviews left (newest first within a product) that is not the previous one.
  */
 export function spread(list: FeedReview[]): FeedReview[] {
+  // A hidden product has no slug — its title tells it apart.
+  const keyOf = (r: FeedReview | undefined) => (r ? (r.productSlug ?? `t:${r.productTitle}`) : undefined);
   const buckets = new Map<string, FeedReview[]>();
   for (const r of list) {
-    const b = buckets.get(r.productSlug);
+    const k = keyOf(r)!;
+    const b = buckets.get(k);
     if (b) b.push(r);
-    else buckets.set(r.productSlug, [r]);
+    else buckets.set(k, [r]);
   }
   const out: FeedReview[] = [];
   while (out.length < list.length) {
-    const prev = out[out.length - 1]?.productSlug;
+    const prev = keyOf(out[out.length - 1]);
     const last = out.length === list.length - 1;
     let best: FeedReview[] | null = null;
     let bestScore = -1;
     for (const [slug, b] of buckets) {
       if (b.length === 0 || (slug === prev && buckets.size > 1)) continue;
       // Prefer not to close the loop on the first card's product.
-      const score = b.length * 2 + (last && slug === out[0]?.productSlug ? -1 : 0);
+      const score = b.length * 2 + (last && slug === keyOf(out[0]) ? -1 : 0);
       if (score > bestScore) {
         best = b;
         bestScore = score;
@@ -279,15 +282,8 @@ function ReviewCard({ review, order, hidden }: { review: FeedReview; order: numb
   const author = review.author?.trim() || t("reviews.customer");
   const stars = Math.max(1, Math.min(5, review.rating));
 
-  return (
-    <Link
-      href={localePath(locale, `/product/${review.productSlug}#reviews`)}
-      className="rv-card"
-      data-tier={tier}
-      tabIndex={hidden ? -1 : undefined}
-      aria-label={hidden ? undefined : `${t("home.reviews.open", { title: review.productTitle })}: ${t("reviews.stars", { n: stars })}`}
-      style={{ "--k": order } as React.CSSProperties}
-    >
+  const body = (
+    <>
       <span aria-hidden className="rv-fx" />
       <span aria-hidden className="rv-shine" />
       <span className="rv-body">
@@ -327,6 +323,26 @@ function ReviewCard({ review, order, hidden }: { review: FeedReview; order: numb
           <span className="rv-ptitle">{review.productTitle}</span>
         </span>
       </span>
+    </>
+  );
+  // Sold out and hidden: the quote stays, but there is no product page to open.
+  if (!review.productSlug) {
+    return (
+      <div className="rv-card" data-tier={tier} aria-hidden={hidden || undefined} style={{ "--k": order } as React.CSSProperties}>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={localePath(locale, `/product/${review.productSlug}#reviews`)}
+      className="rv-card"
+      data-tier={tier}
+      tabIndex={hidden ? -1 : undefined}
+      aria-label={hidden ? undefined : `${t("home.reviews.open", { title: review.productTitle })}: ${t("reviews.stars", { n: stars })}`}
+      style={{ "--k": order } as React.CSSProperties}
+    >
+      {body}
     </Link>
   );
 }

@@ -40,8 +40,27 @@ class ReviewFeedServiceTest {
     }
 
     private static FeedRow row(String title) {
+        return row(title, true);
+    }
+
+    private static FeedRow row(String title, boolean live) {
         return new FeedRow(7, "Олена К.", 5, "Топ", Instant.parse("2026-10-01T10:00:00Z"), PID, title, "mouse",
-                "https://img/1.jpg");
+                "https://img/1.jpg", live);
+    }
+
+    @Test
+    void reviewOfAHiddenProductStaysButIsNotLinked() {
+        when(settings.get(SettingsRegistry.REVIEWS_ENABLED, true)).thenReturn(true);
+        when(translations.overlay("ru")).thenReturn(new TranslationService.Overlay(Map.of()));
+        when(store.latestFeed(24)).thenReturn(List.of(row("Мышка", false)));
+        when(store.shopSummary()).thenReturn(new Summary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
+
+        ReviewFeed feed = service().latest(24, "ru");
+
+        assertThat(feed.items()).singleElement().satisfies(r -> {
+            assertThat(r.productTitle()).isEqualTo("Мышка");
+            assertThat(r.productSlug()).isNull();
+        });
     }
 
     @Test

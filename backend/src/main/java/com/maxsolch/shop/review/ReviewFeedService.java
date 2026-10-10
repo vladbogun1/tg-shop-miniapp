@@ -47,7 +47,8 @@ public class ReviewFeedService {
     private static FeedReview toDto(FeedRow r, TranslationService.Overlay overlay) {
         String title = overlay.text(TranslationEntityType.PRODUCT, r.productId(), TranslationEntityType.TITLE,
                 r.productTitle());
-        return new FeedReview(r.id(), r.author(), r.rating(), r.text(), r.publishedAt(), title, r.productSlug(),
-                r.imageUrl());
+        // A hidden product has no page: no slug, the site shows the quote without a link.
+        return new FeedReview(r.id(), r.author(), r.rating(), r.text(), r.publishedAt(), title,
+                r.productLive() ? r.productSlug() : null, r.imageUrl());
     }
 }
