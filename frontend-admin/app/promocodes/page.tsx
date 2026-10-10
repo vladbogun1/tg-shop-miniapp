@@ -8,13 +8,23 @@
  *    for 30 min, which also take limited slots) and, on demand, the orders placed with the code
  *    (each opens over the page).
  *  - Editing a code that was already used warns what that means for existing orders.
+ *  - Three tabs, so the owner's codes are not buried under generated ones (`?tab=` keeps it):
+ *    «Наши» — shared codes made here (default); «Персональные скидки» — codes for one customer plus
+ *    orders with a manual amount/percent discount («Ручная скидка», not a code); «За отзывы» —
+ *    automatic review bonuses. Search and the status filter work inside the open tab.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Pencil, Percent, Plus, Ticket, Trash2, Wallet, AlertTriangle } from "lucide-react";
+import { ChevronDown, Pencil, Percent, Plus, Search, Ticket, Trash2, Wallet, AlertTriangle, UserRound } from "lucide-react";
 import { adminApi, ApiError, type PromoCode } from "@/lib/api";
-import { extApi, type PromoCodeFull } from "@/lib/api-extra";
+import {
+  extApi,
+  promoOrigin,
+  type ManualDiscountOrder,
+  type PromoCodeFull,
+  type PromoOrigin,
+} from "@/lib/api-extra";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { formatDateTime, shortId } from "@/lib/orders";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -32,8 +42,29 @@ import { useToast } from "@/lib/toast";
 import type { OrderStatus } from "@/lib/api";
 
 type Mode = "percent" | "amount";
+type StateFilter = "all" | "live" | "off";
 
 const usesOf = (p: PromoCodeFull) => p.usesCount ?? 0;
+
+const TABS: PromoOrigin[] = ["OURS", "PERSONAL", "REVIEW"];
+const TAB_LABEL: Record<PromoOrigin, string> = { OURS: "Наши", PERSONAL: "Персональные скидки", REVIEW: "За отзывы" };
+/** Phones: the full labels do not fit 343 px in one row. */
+const TAB_LABEL_SHORT: Record<PromoOrigin, string> = { OURS: "Наши", PERSONAL: "Личные", REVIEW: "За отзывы" };
+const TAB_EMPTY: Record<PromoOrigin, { title: string; text: string }> = {
+  OURS: { title: "Своих промокодов пока нет", text: "Создайте промокод, чтобы предлагать клиентам скидки на заказы." },
+  PERSONAL: {
+    title: "Персональных скидок нет",
+    text: "Здесь появятся коды для одного клиента и ручные скидки, которые вы дали в заказах.",
+  },
+  REVIEW: { title: "Бонусов за отзывы нет", text: "Код выдаётся автоматически, когда клиент оставляет отзыв о заказе." },
+};
+
+/** Can a customer still use it right now? */
+function isLive(p: PromoCodeFull, now: number) {
+  if (!p.active) return false;
+  if (p.expiresAt && new Date(p.expiresAt).getTime() < now) return false;
+  return !(p.maxUses && usesOf(p) >= p.maxUses);
+}
 
 export default function PromocodesPage() {
   const qc = useQueryClient();
@@ -48,8 +79,65 @@ export default function PromocodesPage() {
     queryKey: ["promocodes"],
     queryFn: () => extApi.promocodes(),
   });
-  const promos = promosQ.data ?? [];
+  const promos = useMemo(() => promosQ.data ?? [], [promosQ.data]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["promocodes"] });
+
+  // Tabs + filters (URL `?tab=personal|review` so a reload / a link keeps the tab).
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<PromoOrigin>("OURS");
+  const [query, setQuery] = useState("");
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab")?.toUpperCase() as PromoOrigin | undefined;
+    if (t && TABS.includes(t)) setTab(t);
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const qs = tab === "OURS" ? "" : `?tab=${tab.toLowerCase()}`;
+    window.history.replaceState(null, "", window.location.pathname + qs);
+  }, [ready, tab]);
+
+  // Manual order discounts are not codes: a separate list (an older backend has no endpoint → []).
+  const manualQ = useQuery({
+    queryKey: ["promocodes", "manual-discounts"],
+    queryFn: () => extApi.manualDiscounts().catch(() => [] as ManualDiscountOrder[]),
+  });
+  const manual = useMemo(() => manualQ.data ?? [], [manualQ.data]);
+
+  const byTab = useMemo(() => {
+    const m: Record<PromoOrigin, PromoCodeFull[]> = { OURS: [], PERSONAL: [], REVIEW: [] };
+    for (const p of promos) m[promoOrigin(p)].push(p);
+    return m;
+  }, [promos]);
+  const counts: Record<PromoOrigin, number> = {
+    OURS: byTab.OURS.length,
+    PERSONAL: byTab.PERSONAL.length + manual.length,
+    REVIEW: byTab.REVIEW.length,
+  };
+
+  const needle = query.trim().toLowerCase();
+  const now = Date.now();
+  const shown = byTab[tab].filter((p) => {
+    if (needle && !p.code.toLowerCase().includes(needle) && !String(p.ownerUserId ?? "").includes(needle)) return false;
+    if (stateFilter === "live") return isLive(p, now);
+    if (stateFilter === "off") return !isLive(p, now);
+    return true;
+  });
+  // A manual discount has no state of its own — the status filter hides it only when "выключенные".
+  const shownManual =
+    tab !== "PERSONAL" || stateFilter === "off"
+      ? []
+      : manual.filter(
+          (o) =>
+            !needle ||
+            (o.customerName ?? "").toLowerCase().includes(needle) ||
+            o.label.toLowerCase().includes(needle) ||
+            o.id.toLowerCase().startsWith(needle) ||
+            String(o.tgUserId ?? "").includes(needle)
+        );
+  const filtering = !!needle || stateFilter !== "all";
+  const reviewUsed = byTab.REVIEW.filter((p) => usesOf(p) > 0).length;
 
   // form state
   const [code, setCode] = useState("");
@@ -115,6 +203,8 @@ export default function PromocodesPage() {
       if (editing) await adminApi.updatePromo(editing.id, body);
       else await adminApi.createPromo(body);
       push("Сохранено", "ok");
+      // A code made here is always «Наши» — show it where it landed.
+      if (!editing) setTab("OURS");
       refresh();
       setOpen(false);
     } catch (e) {
@@ -150,27 +240,99 @@ export default function PromocodesPage() {
         }
       />
 
+      {/* Two copies, one per width: the full labels do not fit a phone in one row. The wrappers hide
+          them — SegmentedControl's own `inline-flex` would win over a `hidden` passed in. */}
+      <div className="mb-3 sm:hidden">
+        <SegmentedControl<PromoOrigin>
+          size="sm"
+          value={tab}
+          onChange={setTab}
+          options={TABS.map((t) => ({ value: t, label: TAB_LABEL_SHORT[t], count: promosQ.isSuccess ? counts[t] : undefined }))}
+        />
+      </div>
+      <div className="mb-3 hidden sm:block">
+        <SegmentedControl<PromoOrigin>
+          value={tab}
+          onChange={setTab}
+          options={TABS.map((t) => ({ value: t, label: TAB_LABEL[t], count: promosQ.isSuccess ? counts[t] : undefined }))}
+        />
+      </div>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <Input
+            aria-label="Поиск промокода"
+            placeholder={tab === "PERSONAL" ? "Код, клиент, № заказа или Telegram id" : "Код или Telegram id"}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            icon={<Search className="h-4 w-4" />}
+          />
+        </div>
+        <SegmentedControl<StateFilter>
+          size="sm"
+          value={stateFilter}
+          onChange={setStateFilter}
+          options={[
+            { value: "all", label: "Все" },
+            { value: "live", label: "Действуют" },
+            { value: "off", label: "Не действуют" },
+          ]}
+        />
+      </div>
+      {tab === "REVIEW" && byTab.REVIEW.length > 0 && (
+        <p className="mb-3 text-[12.5px] text-[var(--text-muted)]">
+          Выдаются автоматически за отзыв о заказе — личные, на один раз. Выдано {byTab.REVIEW.length}, использовано{" "}
+          {reviewUsed}.
+        </p>
+      )}
+
       <QueryState
-        isLoading={promosQ.isLoading}
+        isLoading={promosQ.isLoading || !ready}
         isError={promosQ.isError}
         error={promosQ.error}
         refetch={() => promosQ.refetch()}
         loadingLabel="Загрузка промокодов"
       >
-        {promos.length === 0 ? (
-          <EmptyState
-            icon={Ticket}
-            title="Промокодов пока нет"
-            description="Создайте первый промокод, чтобы предлагать клиентам скидки на заказы."
-            action={
-              <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-                Новый промокод
-              </Button>
-            }
-          />
+        {shown.length === 0 && shownManual.length === 0 ? (
+          filtering ? (
+            <EmptyState
+              icon={Search}
+              title="Ничего не найдено"
+              description="В этой вкладке нет кодов под условия поиска."
+              action={
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setQuery("");
+                    setStateFilter("all");
+                  }}
+                >
+                  Сбросить фильтры
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={Ticket}
+              title={TAB_EMPTY[tab].title}
+              description={TAB_EMPTY[tab].text}
+              action={
+                tab === "OURS" ? (
+                  <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                    Новый промокод
+                  </Button>
+                ) : undefined
+              }
+            />
+          )
         ) : (
-          <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-3">
-            {promos.map((p) => (
+          <motion.div
+            key={tab}
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="flex flex-col gap-3"
+          >
+            {shown.map((p) => (
               <PromoRow
                 key={p.id}
                 p={p}
@@ -179,6 +341,21 @@ export default function PromocodesPage() {
                 onOpenOrder={setOpenOrderId}
               />
             ))}
+            {shownManual.length > 0 && (
+              <>
+                <motion.div variants={riseItem} className="mt-2">
+                  <h2 className="font-display text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                    Ручные скидки в заказах · {shownManual.length}
+                  </h2>
+                  <p className="mt-0.5 text-[12px] text-[var(--text-faint)]">
+                    Сумма или процент, заданные вручную в «Скидке» заказа — это не промокод, повторно не применяется.
+                  </p>
+                </motion.div>
+                {shownManual.map((o) => (
+                  <ManualRow key={o.id} o={o} onOpen={() => setOpenOrderId(o.id)} />
+                ))}
+              </>
+            )}
           </motion.div>
         )}
       </QueryState>
@@ -345,8 +522,11 @@ function PromoRow({
             </Badge>
             {exhausted && <Badge tone="warn">лимит исчерпан</Badge>}
             {heldByReserve && <Badge tone="info">слоты в резерве</Badge>}
-            {(p.source === "REVIEW_BONUS" || p.ownerUserId != null) && (
-              <Badge tone="accent">{p.source === "REVIEW_BONUS" ? "личный · бонус за отзыв" : "личный"}</Badge>
+            {promoOrigin(p) !== "OURS" && (
+              <Badge tone="accent">
+                {promoOrigin(p) === "REVIEW" ? "бонус за отзыв" : "личный"}
+                {p.ownerUserId != null ? ` · tg ${p.ownerUserId}` : ""}
+              </Badge>
             )}
             {p.expiresAt && (
               <Badge tone={new Date(p.expiresAt).getTime() < Date.now() ? "warn" : "neutral"}>
@@ -430,5 +610,34 @@ function PromoRow({
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** An order with a manual amount/percent discount — opens the order. */
+function ManualRow({ o, onOpen }: { o: ManualDiscountOrder; onOpen: () => void }) {
+  return (
+    <motion.button
+      variants={riseItem}
+      type="button"
+      onClick={onOpen}
+      className="card card-hover flex items-center gap-4 px-4 py-3 text-left"
+    >
+      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)] bg-[var(--surface-3)] text-[var(--text-muted)]">
+        <UserRound className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="min-w-0 truncate text-[14px] font-semibold text-[var(--ink)]">{o.customerName || "Без имени"}</span>
+          <StatusBadge status={o.status as OrderStatus} />
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
+          <span>{o.label}</span>
+          <span className="font-semibold text-[var(--ok)]">−{money(o.discountMinor)}</span>
+          <span className="text-[var(--text-faint)]">
+            заказ {shortId(o.id)} · {money(o.totalMinor)} · {formatDateTime(o.createdAt)}
+          </span>
+        </div>
+      </div>
+    </motion.button>
   );
 }

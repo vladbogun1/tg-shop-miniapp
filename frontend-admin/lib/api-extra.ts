@@ -39,7 +39,33 @@ export type PromoCodeFull = PromoCode & {
   ownerUserId?: number | null;
   expiresAt?: string | null;
   source?: "REVIEW_BONUS" | null;
+  /** Backend `PromoOrigin` (absent on an older backend — use `promoOrigin()`). */
+  origin?: PromoOrigin | null;
 };
+
+/**
+ * Where a code came from: OURS — a shared code made on the «Промокоды» page; PERSONAL — a code for
+ * one customer; REVIEW — the automatic bonus for a review. Same rule as backend `PromoOrigin`.
+ */
+export type PromoOrigin = "OURS" | "PERSONAL" | "REVIEW";
+export function promoOrigin(p: PromoCodeFull): PromoOrigin {
+  if (p.origin) return p.origin;
+  if (p.source === "REVIEW_BONUS") return "REVIEW";
+  return p.ownerUserId != null || p.source ? "PERSONAL" : "OURS";
+}
+
+/** An order with an admin's manual amount/percent discount («Ручная скидка» — not a promo code). */
+export interface ManualDiscountOrder {
+  id: string;
+  status: string;
+  customerName?: string | null;
+  tgUserId?: number | null;
+  /** «Ручная скидка» or «Ручная скидка 10%». */
+  label: string;
+  totalMinor: number;
+  discountMinor: number;
+  createdAt: string;
+}
 export interface PromoOrder {
   id: string;
   status: string;
@@ -116,6 +142,7 @@ export const extApi = {
   // promo
   promocodes: () => apiGet<PromoCodeFull[]>("/api/admin/promocodes"),
   promoOrders: (id: string) => apiGet<PromoOrder[]>(`/api/admin/promocodes/${id}/orders`),
+  manualDiscounts: () => apiGet<ManualDiscountOrder[]>("/api/admin/promocodes/manual-discounts"),
 
   // broadcasts
   broadcastAudiences: (lang?: ShopLang | "") =>

@@ -152,7 +152,9 @@ export function DiscountModal({
         {mode === "promo" ? (
           <div className="thin-scroll flex max-h-56 flex-col gap-1.5 overflow-auto">
             {activePromos.length === 0 && (
-              <p className="text-[13px] text-[var(--text-faint)]">Нет активных промокодов.</p>
+              <p className="text-[13px] text-[var(--text-faint)]">
+                Нет действующих промокодов магазина. Создайте код на странице «Промокоды» или дайте ручную скидку.
+              </p>
             )}
             {activePromos.map((p, i) => (
               <Fragment key={p.id}>

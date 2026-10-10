@@ -3,6 +3,7 @@ package com.maxsolch.shop.web.controller;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.domain.PromoOrigin;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
 import com.maxsolch.shop.security.RequiredAdmin;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -53,14 +55,33 @@ public class AdminPromoController {
     }
 
     @GetMapping
-    @Operation(summary = "List promo codes (with live reservations)")
-    public List<PromoCodeDto> list() {
+    @Operation(summary = "List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW narrows the list")
+    public List<PromoCodeDto> list(@RequestParam(required = false) String origin) {
+        PromoOrigin only;
+        try {
+            only = PromoOrigin.parse(origin);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("origin: OURS, PERSONAL или REVIEW");
+        }
         Map<String, Long> reserved = new HashMap<>();
         for (Object[] r : reservationRepository.liveCounts(Instant.now())) {
             reserved.put(UuidUtil.toString((byte[]) r[0]), ((Number) r[1]).longValue());
         }
         return promoAdminService.list().stream()
+                .filter(p -> only == null || PromoOrigin.of(p) == only)
                 .map(p -> toDto(p, reserved.getOrDefault(UuidUtil.toString(p.getId()), 0L)))
+                .toList();
+    }
+
+    @GetMapping("/manual-discounts")
+    @Operation(summary = "Orders with a manual amount/percent discount, newest first (max 200)")
+    public List<PromoCodeDto.ManualDiscountDto> manualDiscounts() {
+        return promoCodeRepository.ordersWithManualDiscount(PromoOrigin.MANUAL_DISCOUNT_LABEL,
+                        org.springframework.data.domain.PageRequest.of(0, 200)).stream()
+                .map(o -> new PromoCodeDto.ManualDiscountDto(UuidUtil.toString(o.getId()),
+                        o.getStatus() == null ? null : o.getStatus().name(),
+                        o.getCustomerName(), o.getUserId(), o.getPromoCode(),
+                        o.getTotalMinor(), o.getDiscountMinor(), o.getCreatedAt()))
                 .toList();
     }
 
@@ -110,9 +131,9 @@ public class AdminPromoController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid id");
+            throw new BadRequestException("неверный идентификатор");
         }
-        return promoCodeRepository.findById(key).orElseThrow(() -> new NotFoundException("promo code not found"));
+        return promoCodeRepository.findById(key).orElseThrow(() -> new NotFoundException("промокод не найден"));
     }
 
     private PromoCodeDto toDto(PromoCode p) {
@@ -131,6 +152,7 @@ public class AdminPromoController {
                 reserved,
                 p.getOwnerUserId(),
                 p.getExpiresAt(),
-                p.getSource());
+                p.getSource(),
+                PromoOrigin.of(p).name());
     }
 }

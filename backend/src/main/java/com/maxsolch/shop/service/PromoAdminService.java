@@ -51,7 +51,7 @@ public class PromoAdminService {
     @Transactional
     public Updated update(String id, PromoCodeUpsertRequest req) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new NotFoundException("promo code not found"));
+                .orElseThrow(() -> new NotFoundException("промокод не найден"));
         String previousCode = p.getCode();
         String code = req.code().trim();
         if (!code.equals(previousCode)) {
@@ -76,7 +76,7 @@ public class PromoAdminService {
     @Transactional
     public PromoCode delete(String id) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new NotFoundException("promo code not found"));
+                .orElseThrow(() -> new NotFoundException("промокод не найден"));
         promoCodeRepository.delete(p);
         return p;
     }
@@ -97,7 +97,7 @@ public class PromoAdminService {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid id");
+            throw new BadRequestException("неверный идентификатор");
         }
     }
 }
