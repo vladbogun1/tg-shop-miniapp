@@ -44,6 +44,9 @@ DELETE FROM inbox_marks;
 DELETE FROM shop_settings;
 DELETE FROM admin_audit_log;
 DELETE FROM broadcasts;
+DELETE FROM product_reviews;
+DELETE FROM support_messages;
+DELETE FROM support_threads;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -230,3 +233,139 @@ INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snaps
 INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, type, text, created_at, delivered_at, read_at) VALUES
   (UUID_TO_BIN('e2e00003-0000-4000-8000-000000000003'), 'CUSTOMER', 900000003, 'Марія Чатова', 'TEXT',
    'Добрий день! Коли відправите?', NOW() - INTERVAL 25 MINUTE, NOW() - INTERVAL 25 MINUTE, NULL);
+
+-- ============================================================================
+--  Specs 23+ (sections that had no spec): their own rows, so the rows above stay as they were.
+-- ============================================================================
+
+-- ---------- «Товары» (32-products-list) and the «Карточки» badge regression (31-sidebar-badges) ----------
+INSERT INTO products (id, title, slug, description, price_minor, currency, stock, active, archived, card_status, unfinished, category_id) VALUES
+  -- On the storefront, finished: hidden / shown / archived / restored by the products-list spec.
+  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000006'), 'E2E Термос', 'e2e-termos',
+   'Сталь, 0,5 л.', 79900, 'UAH', 25, TRUE, FALSE, 'READY', FALSE, UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')),
+  -- An OLD hidden product the AI once filled: not work, so it must not count in the «Карточки» badge
+  -- (bug: the badge said 2 while «Оформить» and «Проверить» were empty).
+  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000007'), 'E2E Старый плеер', 'e2e-staryi-pleer',
+   'Снят с продажи.', 19900, 'UAH', 5, FALSE, FALSE, 'AI_FILLED', FALSE, UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002')),
+  -- Archived: its published review is not counted on the site (25-reviews).
+  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000008'), 'E2E Архивный чайник', 'e2e-arhivnyi-chainik',
+   'В архиве.', 29900, 'UAH', 0, FALSE, TRUE, 'READY', FALSE, UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002'));
+
+-- Characteristic group «Основное»: the attribute dialog offers «main» (with no groups at all the save
+-- fails with «group «main» не найдена» — see the 23-categories note).
+INSERT INTO spec_groups (`key`, label_ru, label_uk, label_en, sort_order) VALUES ('main', 'Основное', 'Основне', 'Main', 0);
+
+-- ---------- «Бренды» (24-brands): one seeded brand; the spec creates another and merges it in ----------
+INSERT INTO brands (id, name, slug, aliases, website, sort_order) VALUES
+  (UUID_TO_BIN('e2e0a001-0000-4000-8000-000000000001'), 'E2E Logitech', 'e2e-logitech', NULL, 'https://example.com', 0);
+
+-- ---------- Customers of the users / metrics / broadcast specs (invented Telegram ids) ----------
+INSERT INTO users (telegram_user_id, username, first_name, last_name, language_code, locale, bot_blocked, created_at) VALUES
+  (900000201, 'e2e_zinoviy', 'Зиновій', 'Метриченко', 'uk', 'uk', FALSE, '2025-03-01 09:00:00'),
+  (900000202, 'e2e_yaryna', 'Ярина', 'Каналова', 'uk', 'uk', FALSE, '2025-03-01 09:00:00'),
+  (900000203, 'e2e_stepan', 'Степан', 'Сайтовий', 'ru', 'ru', FALSE, '2025-03-01 09:00:00'),
+  (900000204, 'e2e_fedir', 'Федір', 'Заблокований', 'uk', 'uk', TRUE, '2025-03-01 09:00:00');
+
+-- ---------- «Метрики» (29-metrics-values): five orders in March 2025, both channels ----------
+-- Far in the past on purpose: the spec picks the custom period 2025-03-01 … 2025-03-31, where these
+-- are the only orders, so every number is known. None is NEW / APPROVED (no «Внимание» rows).
+--   #e2e00101 MINIAPP 900000201 DELIVERED, paid 1000 ₴ on 03-05            → sold, paid, shipped
+--   #e2e00102 MINIAPP 900000202 SHIPPED, cash on delivery 500 ₴ not paid   → sold, shipped
+--   #e2e00103 WEB     900000203 SHIPPED, paid 700 ₴ (promo E2ERESERVE −70) → sold, paid, shipped
+--   #e2e00104 WEB     900000204 REJECTED before shipping, 300 ₴            → not sold
+--   #e2e00105 MINIAPP 900000201 DELIVERED, paid 200 ₴ at delivery          → sold, paid, shipped
+-- All: 4 orders, sold 2400 ₴, received 1900 ₴, rejects 1 of 5 = 20 %.
+-- Funnel (unique buyers): ordered 4 (2 + 2), paid 2 (1 + 1), shipped 3 (2 + 1).
+INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, currency, customer_name, phone,
+                    status, approved_at, shipped_at, delivered_at, rejected_at, tracking_number,
+                    reject_reason, reject_reason_code, delivery_method, np_city_ref, np_city_name,
+                    np_warehouse_ref, np_warehouse_name, payment_option_id, payment_option_title,
+                    paid, paid_at, prepayment_minor, received_minor, promo_code,
+                    tg_user_id, tg_username, source, created_at) VALUES
+  (UUID_TO_BIN('e2e00101-0000-4000-8000-000000000101'), 900000201, 100000, 0, 100000, 'UAH', 'Зиновій Метриченко', '+380000000101',
+   'DELIVERED', '2025-03-03 12:00:00', '2025-03-04 12:00:00', '2025-03-06 12:00:00', NULL, '20450000000101', NULL, NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   TRUE, '2025-03-05 12:00:00', 0, 100000, NULL, 900000201, 'e2e_zinoviy', 'MINIAPP', '2025-03-03 10:00:00'),
+  (UUID_TO_BIN('e2e00102-0000-4000-8000-000000000102'), 900000202, 50000, 0, 50000, 'UAH', 'Ярина Каналова', '+380000000102',
+   'SHIPPED', '2025-03-10 12:00:00', '2025-03-11 12:00:00', NULL, NULL, '20450000000102', NULL, NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Оплата при получении',
+   FALSE, NULL, 0, 0, NULL, 900000202, 'e2e_yaryna', 'MINIAPP', '2025-03-10 10:00:00'),
+  (UUID_TO_BIN('e2e00103-0000-4000-8000-000000000103'), 900000203, 77000, 7000, 70000, 'UAH', 'Степан Сайтовий', '+380000000103',
+   'SHIPPED', '2025-03-12 12:00:00', '2025-03-13 12:00:00', NULL, NULL, '20450000000103', NULL, NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн',
+   TRUE, '2025-03-12 12:00:00', 0, 70000, 'E2ERESERVE', 900000203, 'e2e_stepan', 'WEB', '2025-03-11 10:00:00'),
+  (UUID_TO_BIN('e2e00104-0000-4000-8000-000000000104'), 900000204, 30000, 0, 30000, 'UAH', 'Федір Заблокований', '+380000000104',
+   'REJECTED', NULL, NULL, NULL, '2025-03-16 12:00:00', NULL, 'Передумал', NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Оплата при получении',
+   FALSE, NULL, 0, 0, NULL, 900000204, 'e2e_fedir', 'WEB', '2025-03-15 10:00:00'),
+  (UUID_TO_BIN('e2e00105-0000-4000-8000-000000000105'), 900000201, 20000, 0, 20000, 'UAH', 'Зиновій Метриченко', '+380000000101',
+   'DELIVERED', '2025-03-20 12:00:00', '2025-03-21 12:00:00', '2025-03-23 12:00:00', NULL, '20450000000105', NULL, NULL,
+   'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000002'), 'Оплата при получении',
+   TRUE, '2025-03-23 12:00:00', 0, 20000, NULL, 900000201, 'e2e_zinoviy', 'MINIAPP', '2025-03-20 10:00:00');
+
+INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snapshot, variant_id, variant_name_snapshot,
+                         quantity, gift, returned_qty, restocked_qty) VALUES
+  (UUID_TO_BIN('e2e00101-0000-4000-8000-000000000101'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), 'E2E Рюкзак городской', 100000, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e00102-0000-4000-8000-000000000102'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 50000, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e00103-0000-4000-8000-000000000103'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 77000, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e00104-0000-4000-8000-000000000104'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 30000, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e00105-0000-4000-8000-000000000105'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 20000, NULL, NULL, 1, FALSE, 0, 0);
+
+-- ---------- «Промокоды» (27-promocodes) ----------
+-- E2ERESERVE: 1 of 2 used + 1 live reservation → «слоты в резерве»; E2EFULL: limit reached.
+INSERT INTO promo_codes (id, code, discount_percent, discount_amount_minor, max_uses, uses_count, active) VALUES
+  (UUID_TO_BIN('e2e0aa01-0000-4000-8000-000000000001'), 'E2ERESERVE', 10, 0, 2, 1, TRUE),
+  (UUID_TO_BIN('e2e0aa01-0000-4000-8000-000000000002'), 'E2EFULL', 0, 5000, 1, 1, TRUE);
+-- «Персональные скидки»: a code for one customer; «За отзывы»: an automatic review bonus.
+INSERT INTO promo_codes (id, code, discount_percent, discount_amount_minor, max_uses, uses_count, active, owner_user_id, source, expires_at) VALUES
+  (UUID_TO_BIN('e2e0aa01-0000-4000-8000-000000000003'), 'E2EPERSONAL', 5, 0, 1, 0, TRUE, 900000201, NULL, NULL),
+  (UUID_TO_BIN('e2e0aa01-0000-4000-8000-000000000004'), 'E2EBONUS', 0, 10000, 1, 0, TRUE, 900000202, 'REVIEW_BONUS', NOW() + INTERVAL 30 DAY);
+-- A manual discount given in an order (not a code) — the «Ручные скидки в заказах» block.
+UPDATE orders SET subtotal_minor = 22000, discount_minor = 2000, promo_code = 'Ручная скидка'
+ WHERE id = UUID_TO_BIN('e2e00105-0000-4000-8000-000000000105');
+INSERT INTO promo_reservations (id, promo_code_id, telegram_user_id, expires_at) VALUES
+  (UUID_TO_BIN('e2e0aa02-0000-4000-8000-000000000001'), UUID_TO_BIN('e2e0aa01-0000-4000-8000-000000000001'), 900000202,
+   NOW() + INTERVAL 30 MINUTE);
+
+-- ---------- «Отзывы» (25-reviews): three waiting for moderation, one published ----------
+INSERT INTO product_reviews (id, product_id, order_id, order_item_id, user_id, tg_user_id, author_name, rating, text, status,
+                             admin_reply, admin_reply_at, created_at, updated_at, published_at) VALUES
+  (9001, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), NULL, NULL, 900000201, 900000201, 'Зиновій', 5,
+   'E2E: чудова футболка, рекомендую', 'PENDING', NULL, NULL, NOW() - INTERVAL 3 HOUR, NOW() - INTERVAL 3 HOUR, NULL),
+  (9002, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), NULL, NULL, 900000202, 900000202, 'Ярина', 2,
+   'E2E: кепка маломірить', 'PENDING', NULL, NULL, NOW() - INTERVAL 2 HOUR, NOW() - INTERVAL 2 HOUR, NULL),
+  (9003, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), NULL, NULL, 900000203, 900000203, 'Степан', 4,
+   'E2E: рюкзак нормальний, спам-тест', 'PENDING', NULL, NULL, NOW() - INTERVAL 1 HOUR, NOW() - INTERVAL 1 HOUR, NULL),
+  (9004, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), NULL, NULL, 900000203, 900000203, 'Степан', 5,
+   'E2E: вже опублікований відгук', 'PUBLISHED', NULL, NULL, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY),
+  -- Published review of a HIDDEN (sold out, not archived) product: counted on the site, without a link.
+  (9005, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000007'), NULL, NULL, 900000202, 900000202, 'Ярина', 4,
+   'E2E: плеер був хороший', 'PUBLISHED', NULL, NULL, NOW() - INTERVAL 6 DAY, NOW() - INTERVAL 6 DAY, NOW() - INTERVAL 6 DAY),
+  -- Published review of an ARCHIVED product: not counted on the site.
+  (9006, UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000008'), NULL, NULL, 900000201, 900000201, 'Зиновій', 3,
+   'E2E: чайник з архіву', 'PUBLISHED', NULL, NULL, NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 7 DAY);
+
+-- ---------- «Поддержка» (28-support): one question waiting for an answer, one closed ----------
+INSERT INTO support_threads (id, user_id, tg_user_id, customer_name, product_id, product_title, product_slug, subject, status,
+                             source, last_message_at, last_sender, last_preview, customer_unread, admin_unread,
+                             awaiting_since, created_at, closed_at, closed_by) VALUES
+  (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000001'), 900000203, 900000203, 'Степан Сайтовий',
+   UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000001'), 'E2E Футболка базовая', 'e2e-futbolka-bazovaya', NULL, 'OPEN',
+   'WEB', NOW() - INTERVAL 20 MINUTE, 'CUSTOMER', 'E2E: а розмір L буде?', 0, 1,
+   NOW() - INTERVAL 20 MINUTE, NOW() - INTERVAL 20 MINUTE, NULL, NULL),
+  (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000002'), 900000202, 900000202, 'Ярина Каналова',
+   NULL, NULL, NULL, 'Доставка', 'CLOSED',
+   'MINIAPP', NOW() - INTERVAL 2 DAY, 'ADMIN', 'E2E: відправляємо щодня', 0, 0,
+   NULL, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 2 DAY, 'ADMIN');
+INSERT INTO support_messages (thread_id, sender_type, sender_id, sender_name, type, text, created_at, read_at) VALUES
+  (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000001'), 'CUSTOMER', 900000203, 'Степан Сайтовий', 'TEXT',
+   'E2E: а розмір L буде?', NOW() - INTERVAL 20 MINUTE, NULL),
+  (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000002'), 'CUSTOMER', 900000202, 'Ярина Каналова', 'TEXT',
+   'E2E: коли відправляєте?', NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY),
+  (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000002'), 'ADMIN', 1, 'Bootstrap admin', 'TEXT',
+   'E2E: відправляємо щодня', NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY);
