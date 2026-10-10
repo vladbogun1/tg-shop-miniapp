@@ -95,10 +95,6 @@ test("«Обзор» за март 2025: продажи, поступления,
 });
 
 test("после перезагрузки поля «Свой» показывают сохранённые даты", async ({ page }) => {
-  // BUG: PeriodPicker keeps from/to in useState initialised on the first render with the default
-  // period, before useMetricsPeriod reads localStorage — after a reload the remembered custom period
-  // is applied (numbers are for March) but both date fields are empty and «Показать» is disabled.
-  test.fail();
   await page.goto("/metrics");
   await pickCustomMarch(page);
   await expect(kpi(page, "Заказов")).toHaveText(String(EXPECTED.all.orders));

@@ -37,6 +37,8 @@ public class SpecAttributeAdminService {
     public static final String IN_USE = "ATTRIBUTE_IN_USE";
     public static final String OPTION_IN_USE = "OPTION_IN_USE";
     public static final String GROUP_IN_USE = "GROUP_IN_USE";
+    /** The group the characteristic dialog falls back to («Основное»). */
+    static final String DEFAULT_GROUP = "main";
 
     private final SpecAttributeRepository attributeRepository;
     private final SpecOptionRepository optionRepository;
@@ -296,6 +298,15 @@ public class SpecAttributeAdminService {
         }
         if (req.group() != null) {
             String g = trimToNull(req.group());
+            if (DEFAULT_GROUP.equals(g) && groupRepository.findById(g).isEmpty()) {
+                // With no groups yet the dialog offers «Основное» — create it instead of failing.
+                SpecGroup main = new SpecGroup();
+                main.setKey(DEFAULT_GROUP);
+                main.setLabelRu("Основное");
+                main.setLabelUk("Основне");
+                main.setLabelEn("General");
+                groupRepository.save(main);
+            }
             if (g == null || groupRepository.findById(g).isEmpty()) {
                 throw new BadRequestException("group «" + req.group() + "» не найдена");
             }

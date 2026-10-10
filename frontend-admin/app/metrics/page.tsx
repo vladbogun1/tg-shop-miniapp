@@ -73,6 +73,13 @@ function Metrics() {
 function PeriodPicker({ params, onChange }: { params: PeriodParams; onChange: (p: PeriodParams) => void }) {
   const [from, setFrom] = useState(params.from ?? "");
   const [to, setTo] = useState(params.to ?? "");
+  // The remembered period arrives from localStorage after the first render: refill the fields then.
+  const [shown, setShown] = useState({ from: params.from, to: params.to });
+  if (shown.from !== params.from || shown.to !== params.to) {
+    setShown({ from: params.from, to: params.to });
+    setFrom(params.from ?? "");
+    setTo(params.to ?? "");
+  }
   const [customOpen, setCustomOpen] = useState(false);
   const showCustom = customOpen || params.period === "custom";
 

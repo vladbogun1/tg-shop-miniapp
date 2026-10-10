@@ -89,34 +89,34 @@ public class ReviewStore {
     /**
      * The newest published reviews that have a text, newest first. Rating-only reviews make no sense in
      * a ribbon of quotes. A sold-out (hidden) product keeps its reviews — they are still the shop's —
-     * but {@code productLive=false}: the site must not link to its page. Archived products are gone.
+     * but {@code productLive=false}: the site must not link to its page. Same for an archived product.
      */
     public List<FeedRow> latestFeed(int limit) {
         return jdbc.query("select r.id, r.author_name, r.rating, r.text, r.published_at, "
-                        + "p.id pid, p.title, p.slug, p.active, "
+                        + "p.id pid, p.title, p.slug, (p.active and not p.archived) live, "
                         + "(select i.url from product_images i where i.product_id = p.id "
                         + " order by i.sort_order, i.id limit 1) img "
                         + "from product_reviews r join products p on p.id = r.product_id "
-                        + "where r.status = 'PUBLISHED' and p.archived = false and char_length(trim(r.text)) > 0 "
+                        + "where r.status = 'PUBLISHED' and char_length(trim(r.text)) > 0 "
                         + "order by r.published_at desc, r.id desc limit ?",
                 (rs, i) -> {
                     Timestamp published = rs.getTimestamp("published_at");
                     return new FeedRow(rs.getLong("id"), rs.getString("author_name"), rs.getInt("rating"),
                             rs.getString("text"), published == null ? null : published.toInstant(),
                             UuidUtil.toString(rs.getBytes("pid")), rs.getString("title"), rs.getString("slug"),
-                            rs.getString("img"), rs.getBoolean("active"));
+                            rs.getString("img"), rs.getBoolean("live"));
                 }, limit);
     }
 
     /**
-     * {@code [avg, count]} over all published reviews of products not archived — sold-out (hidden) ones
-     * included, so the site shows the same count as the admin's «Опубликованы»; avg null when none.
+     * {@code [avg, count]} over all published reviews — of hidden and archived products too, so the site
+     * shows the same count as the admin's «Опубликованы»; avg null when none.
      */
     public Summary shopSummary() {
         long[] dist = new long[5];
         long[] total = {0, 0};
         jdbc.query("select r.rating, count(*) n from product_reviews r join products p on p.id = r.product_id "
-                + "where r.status = 'PUBLISHED' and p.archived = false group by r.rating", rs -> {
+                + "where r.status = 'PUBLISHED' group by r.rating", rs -> {
             int rating = rs.getInt(1);
             long n = rs.getLong(2);
             if (rating >= 1 && rating <= 5) {

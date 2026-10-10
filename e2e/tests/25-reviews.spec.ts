@@ -6,7 +6,7 @@
  * the admin's «Опубликованы».
  */
 import type { Locator, Page } from "@playwright/test";
-import { ARCHIVED_PRODUCT, EXTRA_PRODUCT, PRODUCT, REVIEW, REVIEW_OFF_SHELF } from "../lib/seed";
+import { EXTRA_PRODUCT, PRODUCT, REVIEW, REVIEW_OFF_SHELF } from "../lib/seed";
 import { dialog, expect, test, toast } from "../lib/test";
 import type { Api } from "../lib/api";
 
@@ -137,7 +137,7 @@ test("фильтр по товару из ссылки: только отзыв�
   await expect(page).not.toHaveURL(/productId=/);
 });
 
-test("сайт: счётчик отзывов учитывает скрытые (распроданные) товары, но не архивные, и равен «Опубликованы»", async ({
+test("сайт: счётчик отзывов учитывает скрытые и архивные товары и равен «Опубликованы»", async ({
   page,
   api,
 }) => {
@@ -153,20 +153,15 @@ test("сайт: счётчик отзывов учитывает скрытые 
   // Seed: a published review of the hidden «E2E Старый плеер» and of the archived «E2E Архивный чайник».
   expect(published.find((r) => r.id === REVIEW_OFF_SHELF.hidden)?.productId).toBe(EXTRA_PRODUCT.oldPlayer);
 
-  // The hidden product's review counts and comes without a link; the archived one is not there.
+  // Reviews of the hidden and the archived product count and come without a link.
   const hiddenItem = feed.items.find((i) => i.id === REVIEW_OFF_SHELF.hidden);
   expect(hiddenItem, "отзыв скрытого товара в ленте").toBeTruthy();
   expect(hiddenItem!.productSlug).toBeNull();
-  expect(feed.items.some((i) => i.id === REVIEW_OFF_SHELF.archived)).toBe(false);
-  const notArchived = published.filter((r) => r.productId !== ARCHIVED_PRODUCT).length;
-  expect(feed.summary.count).toBe(notArchived);
+  expect(feed.items.find((i) => i.id === REVIEW_OFF_SHELF.archived)?.productSlug).toBeNull();
+  expect(feed.summary.count).toBe(published.length);
 });
 
 test("«Опубликованы» в админке = счётчик отзывов на сайте (при отзыве у архивного товара)", async ({ page, api }) => {
-  // BUG: the site's summary.count skips reviews of archived products (946b39e), but the admin's
-  // «Опубликованы» (GET /api/admin/reviews → publishedCount) still counts them, so with one published
-  // review of an archived product the admin shows N+1 against the site's N.
-  test.fail();
   const pub = await api.raw("get", "/api/public/reviews/latest?size=100");
   const siteCount = (pub.body as unknown as { summary: { count: number } }).summary.count;
   const admin = await adminReviews(api, "PUBLISHED");
