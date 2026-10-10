@@ -93,9 +93,9 @@ public final class ReorderCalculator {
                 continue;
             }
             double age = Duration.between(o.createdAt(), now).toMinutes() / 1440.0;
-            byProduct.computeIfAbsent(it.productId(), k -> new Sales()).add(it.quantity(), age, o.createdAt());
+            byProduct.computeIfAbsent(it.productId(), k -> new Sales()).add(it.soldQuantity(), age, o.createdAt());
             if (it.variantId() != null) {
-                byVariant.computeIfAbsent(it.variantId(), k -> new Sales()).add(it.quantity(), age, o.createdAt());
+                byVariant.computeIfAbsent(it.variantId(), k -> new Sales()).add(it.soldQuantity(), age, o.createdAt());
             }
         }
 

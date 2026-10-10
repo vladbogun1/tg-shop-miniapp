@@ -27,10 +27,10 @@ export const CHANNEL_OPTIONS: { value: Channel; label: string }[] = [
 /** What the comparison period is called next to a ▲▼ delta. */
 export const PREV_LABEL: Record<PeriodToken, string> = {
   today: "к вчера на это время",
-  "7d": "к прошлым 7 дням",
+  "7d": "к прошлым 7 дням на это время",
   month: "к тем же дням прошлого месяца",
   prevmonth: "к позапрошлому месяцу",
-  "90d": "к прошлым 90 дням",
+  "90d": "к прошлым 90 дням на это время",
   year: "к тому же отрезку прошлого года",
   custom: "к такому же отрезку до",
 };

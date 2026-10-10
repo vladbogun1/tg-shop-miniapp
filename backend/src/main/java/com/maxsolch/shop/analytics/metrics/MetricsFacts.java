@@ -169,7 +169,12 @@ public record MetricsFacts(List<OrderFact> orders,
             }
             long upfront = received;
             Instant at = upfrontAt();
-            if (deliveredAt != null && at != null && at.isBefore(deliveredAt)) {
+            if (at == null) {
+                // No payment date (old or hand-edited rows): booked at delivery instead of being lost
+                // from "Получено" altogether; with neither date there is nothing to date it by.
+                return deliveredAt != null ? new long[] {0, received} : new long[] {received, 0};
+            }
+            if (deliveredAt != null && at.isBefore(deliveredAt)) {
                 if (onlinePaidMinor > 0) {
                     upfront = Math.min(onlinePaidMinor, received);
                 } else if (prepaymentMinor > 0) {
@@ -230,6 +235,10 @@ public record MetricsFacts(List<OrderFact> orders,
         }
     }
 
+    /**
+     * One order line. {@code returnedQty} = units the customer sent back (a registered return,
+     * {@code order_items.returned_qty}); the money side of a return is the order's refund.
+     */
     public record ItemFact(String orderId,
                            String productId,
                            String variantId,
@@ -237,7 +246,19 @@ public record MetricsFacts(List<OrderFact> orders,
                            String variantName,
                            long priceMinor,
                            int quantity,
-                           boolean gift) {
+                           boolean gift,
+                           int returnedQty) {
+
+        /** Without returns (tests and old callers). */
+        public ItemFact(String orderId, String productId, String variantId, String title, String variantName,
+                        long priceMinor, int quantity, boolean gift) {
+            this(orderId, productId, variantId, title, variantName, priceMinor, quantity, gift, 0);
+        }
+
+        /** Units that stayed sold: returned units do not count as sold or as demand. */
+        public int soldQuantity() {
+            return Math.max(0, quantity - Math.max(0, returnedQty));
+        }
     }
 
     public record VariantFact(String id, String name, int stock) {

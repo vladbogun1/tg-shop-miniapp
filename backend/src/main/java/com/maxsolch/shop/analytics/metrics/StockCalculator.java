@@ -163,7 +163,7 @@ public final class StockCalculator {
                 continue;
             }
             long[] a = acc.computeIfAbsent(it.productId(), k -> new long[2]);
-            a[0] += it.quantity();
+            a[0] += it.soldQuantity();
             a[1] += Math.round(it.priceMinor() * it.quantity() * o.soldShare());
             orderSets.computeIfAbsent(it.productId(), k -> new HashSet<>()).add(it.orderId());
             snapshotTitle.putIfAbsent(it.productId(), it.title());

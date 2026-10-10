@@ -52,6 +52,23 @@ class FunnelCalculatorTest {
     }
 
     @Test
+    void journalStartingMidPeriod_orderStepsStartThereToo() {
+        // Events exist from Oct 10: an order on Oct 5 must not make "ordered" exceed "started checkout".
+        List<EventClassifier.VisitorDay> visitors = List.of(
+                new EventClassifier.VisitorDay(LocalDate.parse("2026-10-12"), "MINIAPP", "t:7", 7L, 1 | 2 | 4 | 8, 5));
+        Instant before = LocalDateTime.parse("2026-10-05T12:00:00").atZone(KYIV).toInstant();
+        Instant after = LocalDateTime.parse("2026-10-12T12:00:00").atZone(KYIV).toInstant();
+        OrderFact early = order(before).tg(1L).paid(before, 100_00).build();
+        OrderFact late = order(after).tg(7L).paid(after, 100_00).build();
+
+        Funnel f = new FunnelCalculator(KYIV).compute(facts(now, List.of(early, late), List.of(), List.of()),
+                october, ChannelFilter.MINIAPP, visitors, List.of(), LocalDate.parse("2026-10-10"));
+
+        assertThat(f.steps()).extracting(MetricsDtos.FunnelStep::count).containsExactly(1L, 1L, 1L, 1L, 1L, 1L, 0L);
+        assertThat(f.note()).contains("2026-10-10");
+    }
+
+    @Test
     void lowConversion_listsWellViewedProductsThatDoNotSell() {
         Instant at = LocalDateTime.parse("2026-10-05T12:00:00").atZone(KYIV).toInstant();
         OrderFact o = order(at).tg(1L).build();

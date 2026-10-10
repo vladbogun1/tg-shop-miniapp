@@ -70,4 +70,28 @@ class ClientEventServiceTest {
         assertThat(service().recordWeb(null, new WebEventBatch("<script>", "t", List.of(ev("view", null))))).isZero();
         verify(repository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
     }
+
+    @Test
+    void web_fromACrawler_isNotAVisitor() {
+        WebEventBatch batch = new WebEventBatch("anon-1234567", "t", List.of(ev("view", null)));
+        String googlebot = "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 "
+                + "(KHTML, like Gecko) Chrome/129.0.6668.89 Mobile Safari/537.36 (compatible; Googlebot/2.1; "
+                + "+http://www.google.com/bot.html)";
+        assertThat(service().recordWeb(null, batch, googlebot)).isZero();
+        assertThat(service().recordWeb(null, batch, "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/120.0")).isZero();
+        assertThat(service().recordWeb(null, batch, null)).isZero();
+        verify(repository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void isBot_realPhonesAndBrowsersAreVisitors() {
+        assertThat(ClientEventService.isBot("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 "
+                + "(KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")).isFalse();
+        assertThat(ClientEventService.isBot("Mozilla/5.0 (Linux; Android 10; CUBOT X30) AppleWebKit/537.36 "
+                + "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36")).isFalse();
+        assertThat(ClientEventService.isBot("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                + "(KHTML, like Gecko) Chrome/129.0 Safari/537.36 Edg/129.0")).isFalse();
+        assertThat(ClientEventService.isBot("Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)")).isTrue();
+        assertThat(ClientEventService.isBot("facebookexternalhit/1.1")).isTrue();
+    }
 }

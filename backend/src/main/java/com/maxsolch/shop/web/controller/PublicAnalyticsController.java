@@ -39,7 +39,12 @@ public class PublicAnalyticsController {
     @Operation(summary = "Submit a batch of website events (anonymous or signed-in)")
     public ResponseEntity<Void> analytics(@RequestBody WebEventBatch batch, HttpServletRequest request) {
         Long customer = currentCustomerOrNull();
-        clientEventService.recordWeb(customer, batch);
+        String userAgent = request.getHeader("User-Agent");
+        // Crawlers that run JavaScript are not visitors: neither in the funnel nor on the users map.
+        if (ClientEventService.isBot(userAgent)) {
+            return ResponseEntity.noContent().build();
+        }
+        clientEventService.recordWeb(customer, batch, userAgent);
         // Users map: throttled, asynchronous, never throws.
         visitorLocations.touchWeb(customer, batch == null ? null : batch.anonId(), ClientIp.of(request));
         return ResponseEntity.noContent().build();

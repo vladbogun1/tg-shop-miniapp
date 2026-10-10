@@ -347,7 +347,7 @@ public final class OverviewCalculator {
             List<String> tags = p == null || p.tags().isEmpty() ? List.of(NO_CATEGORY) : p.tags();
             for (String tag : tags) {
                 long[] a = acc.computeIfAbsent(tag, k -> new long[2]);
-                a[0] += it.quantity();
+                a[0] += it.soldQuantity();
                 a[1] += revenue;
             }
         }
@@ -449,10 +449,10 @@ public final class OverviewCalculator {
             if (o == null || !o.sold() || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
                 continue;
             }
-            giftUnits += it.quantity();
+            giftUnits += it.soldQuantity();
             ProductFact p = products.get(it.productId());
             long price = it.priceMinor() > 0 ? it.priceMinor() : p == null ? 0 : p.priceMinor();
-            giftValue += price * it.quantity();
+            giftValue += price * it.soldQuantity();
         }
         return new Giveaways(discount, promoOrders, giftUnits, giftValue);
     }

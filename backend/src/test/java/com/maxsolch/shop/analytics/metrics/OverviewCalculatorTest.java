@@ -66,6 +66,20 @@ class OverviewCalculatorTest {
     }
 
     @Test
+    void received_withoutAPaymentDate_isBookedAtDelivery_notLost() {
+        // Received amount set, no paid_at (old / hand-edited row): it used to vanish from "Получено".
+        OrderFact o = new OrderFact("x", OrderStatus.DELIVERED, "MINIAPP", 700_00, 0, 0, 700_00, 0,
+                kyiv("2026-10-01T10:00:00"), null, null, kyiv("2026-10-04T10:00:00"), null, null, null, true,
+                1L, "Покупатель", "u", null, null, null, null, null);
+
+        Overview ov = calc.compute(facts(now, List.of(o), List.of(), List.of()), october, ChannelFilter.ALL, Map.of());
+
+        assertThat(ov.kpis().receivedMinor().value()).isEqualTo(700_00);
+        assertThat(ov.series()).filteredOn(p -> p.bucket().equals("2026-10-04"))
+                .singleElement().satisfies(p -> assertThat(p.receivedMinor()).isEqualTo(700_00));
+    }
+
+    @Test
     void codInTransit_andPaidOrdersAwaitingTheAdmin() {
         OrderFact shippedCod = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.SHIPPED).total(2000_00)
                 .paid(kyiv("2026-10-10T11:00:00"), 100_00).build();

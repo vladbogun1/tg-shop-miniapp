@@ -286,7 +286,7 @@ public final class CustomerCalculator {
                     || !period.contains(o.createdAt())) {
                 continue;
             }
-            units += it.quantity();
+            units += it.soldQuantity();
             counted.add(o.id());
         }
         return counted.isEmpty() ? 0 : Stats.round2((double) units / counted.size());

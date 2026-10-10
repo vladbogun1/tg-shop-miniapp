@@ -156,7 +156,7 @@ public class MetricsFactsLoader {
     private List<MetricsFacts.ItemFact> loadItems() {
         return jdbc.query("select bin_to_uuid(it.order_id) order_id, bin_to_uuid(it.product_id) product_id, "
                         + "bin_to_uuid(it.variant_id) variant_id, it.title_snapshot, it.variant_name_snapshot, "
-                        + "it.price_minor_snapshot, it.quantity, it.gift from order_items it",
+                        + "it.price_minor_snapshot, it.quantity, it.gift, it.returned_qty from order_items it",
                 (rs, i) -> new MetricsFacts.ItemFact(
                         rs.getString("order_id"),
                         rs.getString("product_id"),
@@ -165,7 +165,8 @@ public class MetricsFactsLoader {
                         rs.getString("variant_name_snapshot"),
                         rs.getLong("price_minor_snapshot"),
                         rs.getInt("quantity"),
-                        rs.getBoolean("gift")));
+                        rs.getBoolean("gift"),
+                        rs.getInt("returned_qty")));
     }
 
     private List<MetricsFacts.ProductFact> loadProducts() {

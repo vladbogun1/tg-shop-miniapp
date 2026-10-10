@@ -68,7 +68,30 @@ class MetricsPeriodTest {
         assertThat(p.from()).isEqualTo(kyiv("2026-09-28T00:00:00"));
         assertThat(p.to()).isEqualTo(kyiv("2026-10-05T00:00:00"));
         assertThat(p.prevFrom()).isEqualTo(kyiv("2026-09-21T00:00:00"));
-        assertThat(p.prevTo()).isEqualTo(p.from());
+        // 6 whole days + today until 15:00 -> the 7 days before, also cut at 15:00 of their last day
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-09-27T15:00:00"));
+    }
+
+    @Test
+    void ninetyDays_comparisonIsCutAtTheSameTimeOfDay() {
+        MetricsPeriod p = MetricsPeriod.parse("90d", null, null, KYIV, now);
+
+        assertThat(p.from()).isEqualTo(kyiv("2026-07-07T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-04-08T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-07-06T15:00:00"));
+        // equal spans: no "−1 day" bias in every comparison
+        assertThat(java.time.Duration.between(p.prevFrom(), p.prevTo()))
+                .isEqualTo(java.time.Duration.between(p.from(), now));
+    }
+
+    @Test
+    void custom_runningPastNow_comparesTheSameElapsedSpan() {
+        // "1–31 October" asked on Oct 4 at 15:00: 3 days 15 h of data, not a whole month vs 3 days.
+        MetricsPeriod p = MetricsPeriod.parse("custom", "2026-10-01", "2026-10-31", KYIV, now);
+
+        assertThat(p.to()).isEqualTo(now);
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-08-31T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-09-03T15:00:00"));
     }
 
     @Test

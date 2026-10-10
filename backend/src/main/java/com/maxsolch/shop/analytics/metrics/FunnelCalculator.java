@@ -50,11 +50,16 @@ public final class FunnelCalculator {
         long cart = stages.values().stream().filter(s -> (s & EventClassifier.STAGE_CART) != 0).count();
         long checkout = stages.values().stream().filter(s -> (s & EventClassifier.STAGE_CHECKOUT) != 0).count();
 
+        // When the journal starts inside the period, the order steps start there too: otherwise a month
+        // with two weeks of events showed more "ordered" than "started checkout" (e.g. 103 vs 69).
+        boolean partial = dataSince != null && Buckets.day(period.from(), zone).isBefore(dataSince);
+        java.time.Instant ordersFrom = partial ? dataSince.atStartOfDay(zone).toInstant() : period.from();
         Set<Long> ordered = new HashSet<>();
         Set<Long> paid = new HashSet<>();
         Set<Long> shipped = new HashSet<>();
         for (OrderFact o : facts.orders()) {
-            if (o.tgUserId() == null || !channel.matches(o.source()) || !period.contains(o.createdAt())) {
+            if (o.tgUserId() == null || !channel.matches(o.source())
+                    || !OverviewCalculator.in(o.createdAt(), ordersFrom, period.to())) {
                 continue;
             }
             ordered.add(o.tgUserId());
@@ -81,9 +86,9 @@ public final class FunnelCalculator {
         String note = null;
         if (dataSince == null) {
             note = "Событий поведения ещё нет — первые четыре шага появятся, когда покупатели начнут заходить.";
-        } else if (Buckets.day(period.from(), zone).isBefore(dataSince)) {
-            note = "Данные о поведении есть с " + dataSince + ": шаги «Зашли» … «Оформление» за более ранние дни "
-                    + "не собирались, а заказы считаются за весь период.";
+        } else if (partial) {
+            note = "Данные о поведении есть с " + dataSince + ": вся воронка, включая заказы, считается с этого дня, "
+                    + "чтобы шаги можно было сравнивать между собой.";
         }
         return new Funnel(MetricsDtos.PeriodInfo.of(period, channel), dataSince == null ? null : dataSince.toString(),
                 steps, lowConversion(facts, period, channel, productDays), note);
@@ -112,7 +117,7 @@ public final class FunnelCalculator {
                     || !period.contains(o.createdAt())) {
                 continue;
             }
-            sold.computeIfAbsent(it.productId(), k -> new long[1])[0] += it.quantity();
+            sold.computeIfAbsent(it.productId(), k -> new long[1])[0] += it.soldQuantity();
             if (o.tgUserId() != null) {
                 buyers.computeIfAbsent(it.productId(), k -> new HashSet<>()).add(o.tgUserId());
             }

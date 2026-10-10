@@ -71,6 +71,8 @@ function StockBody({
   const reorderRows = useLimited(s.reorder.rows, 12);
   const demandRows = useLimited(s.reorder.missedDemand, 8);
   const forgottenRows = useLimited(s.forgotten, 8);
+  // The backend counts "running out" with the setting metrics.lowStockDays — show the same number.
+  const lowStockDays = useShopSetting("metrics.lowStockDays", 14);
 
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-4">
@@ -82,7 +84,7 @@ function StockBody({
           hint="Склад / продажи в день за последние 30 дней (в рознице)"
         />
         <KpiTile label={`Не продаётся ${deadDays}+ дн`} value={uahShort(k.deadStockMinor)} hint={`${num(k.deadStockProducts)} товаров — деньги лежат на полке`} />
-        <KpiTile label="Заканчиваются ≤ 14 дн" value={num(k.runningOutProducts)} hint="Товары и варианты по скорости продаж" />
+        <KpiTile label={`Заканчиваются ≤ ${lowStockDays} дн`} value={num(k.runningOutProducts)} hint="Товары и варианты по скорости продаж" />
         <KpiTile label="Забытый сток" value={uahShort(k.forgottenMinor)} hint={`${num(k.forgottenProducts)} скрытых/архивных с остатком`} />
       </div>
 

@@ -185,6 +185,28 @@ class StockAndReorderTest {
         });
     }
 
+    @Test
+    void returnedUnits_areNotSoldUnits_norDemand() {
+        var p = product("p", 100_00, 1, longAgo);
+        // 3 bought, 2 sent back and refunded: 1 unit and 100 ₴ stay sold
+        OrderFact o = order(daysAgo(3)).total(300_00).delivered(daysAgo(2)).build();
+        o = new OrderFact(o.id(), o.status(), o.source(), o.totalMinor(), o.subtotalMinor(), o.discountMinor(),
+                o.receivedMinor(), 200_00, o.createdAt(), o.approvedAt(), o.shippedAt(), o.deliveredAt(),
+                o.rejectedAt(), o.paidAt(), daysAgo(1), o.paid(), o.tgUserId(), o.customerName(), o.tgUsername(),
+                o.deliveryMethod(), o.paymentOptionTitle(), o.promoCode(), o.rejectReason(), o.rejectReasonCode());
+        List<ItemFact> items = List.of(new ItemFact(o.id(), "p", null, "p", null, 100_00, 3, false, 2));
+
+        MetricsFacts f = facts(now, List.of(o), items, List.of(p));
+        Stock s = stock(f, 60);
+
+        assertThat(s.topProducts()).singleElement().satisfies(t -> {
+            assertThat(t.units()).isEqualTo(1);
+            assertThat(t.revenueMinor()).isEqualTo(100_00);
+        });
+        // 3 gross units in 14 days would make it a reorder candidate; 1 kept unit is "a single sale"
+        assertThat(new ReorderCalculator(LOW_STOCK_DAYS).compute(f, Map.of(), 30).rows()).isEmpty();
+    }
+
     private Stock stock(MetricsFacts f, int deadDays) {
         Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(f, Map.of(), 30);
         return new StockCalculator().compute(f, month, ChannelFilter.ALL, deadDays, LOW_STOCK_DAYS, Map.of(), r);

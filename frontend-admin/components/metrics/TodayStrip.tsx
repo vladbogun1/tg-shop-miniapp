@@ -9,6 +9,7 @@
  * board reads those query parameters; without that support the links simply open the board.
  */
 import { cn } from "@/lib/cn";
+import { useShopSetting } from "@/lib/settings";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Hourglass, PackageCheck, Send, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +42,8 @@ export function TodayStrip() {
 }
 
 function Strip({ t }: { t: Today }) {
+  // "Running out" is counted with the setting metrics.lowStockDays — the text must say the same.
+  const lowStockDays = useShopSetting("metrics.lowStockDays", 14);
   const soonTitles = t.reorderTop.map((r) => (r.variantName ? `${r.title} (${r.variantName})` : r.title)).join(", ");
   return (
     <div className="mx-root mb-4">
@@ -83,7 +86,7 @@ function Strip({ t }: { t: Today }) {
             label="Заканчиваются"
             value={num(t.runningOut)}
             alert={t.runningOut > 0}
-            sub={t.runningOut > 0 ? "за ≤ 14 дн — что дозаказать" : "в ближайшие 14 дн — ничего"}
+            sub={t.runningOut > 0 ? `за ≤ ${lowStockDays} дн — что дозаказать` : `в ближайшие ${lowStockDays} дн — ничего`}
             title={soonTitles}
           />
           <Cell

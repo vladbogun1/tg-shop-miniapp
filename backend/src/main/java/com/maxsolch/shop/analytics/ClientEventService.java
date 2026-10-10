@@ -84,6 +84,31 @@ public class ClientEventService {
                 sessionId == null ? anonId : sessionId, batch.events(), MAX_WEB_EVENTS_PER_BATCH, true));
     }
 
+    /**
+     * A website flush with the sender's User-Agent: crawlers that run JavaScript (Googlebot, Bing,
+     * link-preview and SEO bots, headless browsers) get a fresh {@code anonId} on every render and
+     * each one used to become a new "Зашли" visitor. Their batches are dropped.
+     */
+    @Transactional
+    public int recordWeb(Long telegramUserId, WebEventBatch batch, String userAgent) {
+        if (isBot(userAgent)) {
+            return 0;
+        }
+        return recordWeb(telegramUserId, batch);
+    }
+
+    private static final Pattern BOT_UA = Pattern.compile(
+            // (?<!cu): Cubot is a phone brand ("CUBOT X30"), not a crawler
+            "(?<!cu)bot|crawl|spider|slurp|preview|headless|lighthouse|pagespeed|phantomjs|puppeteer|playwright|selenium"
+                    + "|google-inspectiontool|chrome-lighthouse|facebookexternalhit|meta-externalagent|bingpreview"
+                    + "|yandex|baiduspider|petalbot|ahrefs|semrush|mj12|dataprovider|python-requests|curl/|wget|go-http",
+            Pattern.CASE_INSENSITIVE);
+
+    /** A crawler / automated browser by its User-Agent; a missing User-Agent is not a real browser either. */
+    public static boolean isBot(String userAgent) {
+        return userAgent == null || userAgent.isBlank() || BOT_UA.matcher(userAgent).find();
+    }
+
     private List<ClientEvent> build(EventChannel channel, Long telegramUserId, String anonId,
                                     String sessionId, List<ClientEventDto> events, int cap,
                                     boolean whitelistOnly) {

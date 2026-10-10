@@ -214,7 +214,7 @@ function OverviewBody({
         </Panel>
         <Panel title="Отданная выручка" icon={Gift} hint="Сколько денег ушло на скидки и подарки за период">
           <div className="flex flex-col gap-3 text-[13px]">
-            <Row label="Скидки по промокодам" value={uah(o.giveaways.discountMinor)} sub={`${num(o.giveaways.promoOrders)} заказов с промокодом`} />
+            <Row label="Скидки (промокоды и ручные)" value={uah(o.giveaways.discountMinor)} sub={`${num(o.giveaways.promoOrders)} заказов со скидкой`} />
             <Row
               label="Подарки (по розничной цене)"
               value={uah(o.giveaways.giftValueMinor)}

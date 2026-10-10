@@ -18,12 +18,14 @@ import java.time.temporal.ChronoUnit;
  * comparison at all, while the owner thinks in calendar months. Here:
  * <ul>
  *   <li>{@code today} — since local midnight; compared with yesterday up to the same time</li>
- *   <li>{@code 7d}, {@code 90d} — the last N whole days including today; compared with the N before</li>
+ *   <li>{@code 7d}, {@code 90d} — the last N whole days including today; compared with the N before, up to the
+ *       same time of day (today is not over yet)</li>
  *   <li>{@code month} — this calendar month to now; compared with the same number of days of the
  *       previous month (month-to-date vs month-to-date, so a half-month is not set against a full one)</li>
  *   <li>{@code prevmonth} — the whole previous month; compared with the month before it</li>
  *   <li>{@code year} — this calendar year to now; compared with the same span of last year</li>
- *   <li>{@code custom} — {@code from}..{@code to} inclusive dates; compared with the same length before</li>
+ *   <li>{@code custom} — {@code from}..{@code to} inclusive dates; compared with the same length before
+ *       (cut at the same elapsed time when the range runs past now)</li>
  * </ul>
  *
  * @param from     inclusive start
@@ -55,8 +57,8 @@ public record MetricsPeriod(String token,
                 yield new MetricsPeriod(t, todayStart, now, yStart,
                         yStart.plus(Duration.between(todayStart, now)), Granularity.HOUR);
             }
-            case "7d" -> lastDays(t, 7, today, zone, tomorrowStart);
-            case "90d" -> lastDays(t, 90, today, zone, tomorrowStart);
+            case "7d" -> lastDays(t, 7, today, zone, tomorrowStart, nowZ);
+            case "90d" -> lastDays(t, 90, today, zone, tomorrowStart, nowZ);
             case "prevmonth" -> {
                 LocalDate first = today.withDayOfMonth(1).minusMonths(1);
                 yield new MetricsPeriod(t,
@@ -89,10 +91,14 @@ public record MetricsPeriod(String token,
         };
     }
 
-    private static MetricsPeriod lastDays(String token, int days, LocalDate today, ZoneId zone, Instant end) {
+    private static MetricsPeriod lastDays(String token, int days, LocalDate today, ZoneId zone, Instant end,
+                                          ZonedDateTime nowZ) {
         Instant start = today.minusDays(days - 1L).atStartOfDay(zone).toInstant();
         Instant prevStart = today.minusDays(2L * days - 1).atStartOfDay(zone).toInstant();
-        return new MetricsPeriod(token, start, end, prevStart, start,
+        // Today is still running: the comparison stops at the same time of day N days ago, otherwise
+        // 6 days and a morning are set against 7 whole days and every morning looks like a drop.
+        Instant prevEnd = nowZ.minusDays(days).toInstant();
+        return new MetricsPeriod(token, start, end, prevStart, prevEnd.isAfter(start) ? start : prevEnd,
                 days > 92 ? Granularity.WEEK : Granularity.DAY);
     }
 
@@ -118,8 +124,11 @@ public record MetricsPeriod(String token,
         Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();
         Instant prevStart = from.minusDays(days).atStartOfDay(zone).toInstant();
         Granularity g = days <= 1 ? Granularity.HOUR : days > 92 ? Granularity.WEEK : Granularity.DAY;
-        return new MetricsPeriod("custom", start, end.isAfter(now) && start.isBefore(now) ? now : end,
-                prevStart, start, g);
+        boolean running = end.isAfter(now) && start.isBefore(now);
+        // A range reaching into the future is cut at now; the comparison is cut at the same elapsed
+        // time, so "1–31 October" on the 10th is set against 10 days, not a whole month.
+        Instant prevEnd = running ? now.atZone(zone).minusDays(days).toInstant() : start;
+        return new MetricsPeriod("custom", start, running ? now : end, prevStart, prevEnd, g);
     }
 
     public boolean contains(Instant t) {
