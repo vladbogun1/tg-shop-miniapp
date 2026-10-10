@@ -95,6 +95,9 @@ export function ActivityTab() {
   const [customer, setCustomer] = useState<{ id: number; label: string } | null>(null);
   const [source, setSource] = useState("");
   const [result, setResult] = useState("");
+  // Lifted here: a source picked on a stats card must drop an event of another source, else the
+  // filter is source=SITE&type=<bot event> — always empty.
+  const [type, setType] = useState("");
   const { push } = useToast();
 
   async function openCustomer(r: ActivityRow) {
@@ -135,6 +138,7 @@ export function ActivityTab() {
         onPick={(s, failedOnly) => {
           setView("feed");
           setSource(s === source && !failedOnly ? "" : s);
+          setType("");
           setResult(failedOnly ? "FAILED" : "");
         }}
       />
@@ -155,6 +159,8 @@ export function ActivityTab() {
         <Feed
           source={source}
           setSource={setSource}
+          type={type}
+          setType={setType}
           result={result}
           setResult={setResult}
           customer={customer}
@@ -236,6 +242,8 @@ function StatsStrip({ active, onPick }: { active: string; onPick: (source: strin
 function Feed({
   source,
   setSource,
+  type,
+  setType,
   result,
   setResult,
   customer,
@@ -244,13 +252,14 @@ function Feed({
 }: {
   source: string;
   setSource: (v: string) => void;
+  type: string;
+  setType: (v: string) => void;
   result: string;
   setResult: (v: string) => void;
   customer: { id: number; label: string } | null;
   clearCustomer: () => void;
   actions: RowActions;
 }) {
-  const [type, setType] = useState("");
   const [recipient, setRecipient] = useState("");
   const [errorCode, setErrorCode] = useState("");
   const [orderRaw, setOrderRaw] = useState("");

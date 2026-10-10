@@ -322,4 +322,51 @@ public record MetricsFacts(List<OrderFact> orders,
         }
         return map;
     }
+
+    /**
+     * Sold value of every order line (promo discount and refunds applied), keyed by identity: the
+     * per-product revenue of "Товары", categories and the stock pace. A refund is taken first from
+     * the lines whose units came back (their value at the charged price), and only what is left —
+     * a goodwill refund without goods — is spread over the whole order. Spreading every refund
+     * evenly made a returned mouse lower the revenue of the keyboard sold with it.
+     * Lines of orders that are not sold are absent (0).
+     */
+    public Map<ItemFact, Long> soldValueByItem() {
+        Map<String, OrderFact> byId = orderById();
+        Map<String, List<ItemFact>> lines = new HashMap<>();
+        for (ItemFact it : items) {
+            if (!it.gift()) {
+                lines.computeIfAbsent(it.orderId(), k -> new java.util.ArrayList<>()).add(it);
+            }
+        }
+        Map<ItemFact, Long> out = new java.util.IdentityHashMap<>(items.size() * 2);
+        lines.forEach((orderId, list) -> {
+            OrderFact o = byId.get(orderId);
+            if (o == null || !o.sold()) {
+                return;
+            }
+            double charged = o.chargedShare();
+            double[] base = new double[list.size()];
+            double[] back = new double[list.size()];
+            double sumBase = 0;
+            double sumBack = 0;
+            for (int i = 0; i < list.size(); i++) {
+                ItemFact it = list.get(i);
+                base[i] = it.priceMinor() * it.quantity() * charged;
+                back[i] = it.priceMinor() * Math.min(it.quantity(), Math.max(0, it.returnedQty())) * charged;
+                sumBase += base[i];
+                sumBack += back[i];
+            }
+            double refund = o.totalMinor() > 0 ? o.totalMinor() - o.soldMinor() : 0;
+            double fromReturned = Math.min(refund, sumBack);
+            double spread = refund - fromReturned;
+            for (int i = 0; i < list.size(); i++) {
+                double v = base[i]
+                        - (sumBack > 0 ? fromReturned * back[i] / sumBack : 0)
+                        - (sumBase > 0 ? spread * base[i] / sumBase : 0);
+                out.put(list.get(i), Math.max(0, Math.round(v)));
+            }
+        });
+        return out;
+    }
 }

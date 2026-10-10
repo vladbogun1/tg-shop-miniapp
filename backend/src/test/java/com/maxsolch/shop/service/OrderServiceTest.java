@@ -477,7 +477,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.approve(o.getId()))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("only NEW");
+                .hasMessageContaining("только новый");
     }
 
     @Test
@@ -487,7 +487,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.deliver(o.getId()))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("only SHIPPED");
+                .hasMessageContaining("только отправленный");
     }
 
     @Test
@@ -526,7 +526,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("already rejected");
+                .hasMessageContaining("уже отклонён");
     }
 
     @Test
@@ -576,6 +576,38 @@ class OrderServiceTest {
     }
 
     @Test
+    void reject_afterReturnWithoutRestock_doesNotPutWrittenOffUnitsBack() {
+        Order o = persistedOrder(OrderStatus.DELIVERED);
+        Product p = simpleProduct(0, 1_000);
+        OrderItem it = new OrderItem();
+        it.setProductId(p.getId());
+        it.setQuantity(3);
+        it.setTitleSnapshot("Test Product");
+        // One unit came back damaged: returned, but «на склад» was off — it is written off.
+        it.setReturnedQty(1);
+        it.setRestockedQty(0);
+        o.getItems().add(it);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+
+        service.reject(o.getId(), "возврат", true);
+
+        assertThat(p.getStock()).isEqualTo(2); // only the 2 units never returned
+    }
+
+    @Test
+    void ship_withPendingCancelRequest_throws() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setCancelRequestStatus(com.maxsolch.shop.domain.CancelRequestStatus.PENDING.name());
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        assertThatThrownBy(() -> service.ship(o.getId(), null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("запрос отмены");
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
+    }
+
+    @Test
     void cancelByCustomer_setsChangedMindCode() {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
@@ -593,7 +625,7 @@ class OrderServiceTest {
         // findById not needed: NEW case throws before any lookup
         assertThatThrownBy(() -> service.changeStatus(o.getId(), OrderStatus.NEW, null, null, true))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("cannot transition back to NEW");
+                .hasMessageContaining("«Новые» нельзя");
     }
 
     @Test
@@ -936,6 +968,34 @@ class OrderServiceTest {
         assertThat(cleared.isPaid()).isFalse();
         assertThat(cleared.getPaidAt()).isNull();
         assertThat(cleared.getReceivedMinor()).isZero();
+    }
+
+    @Test
+    void markPaid_correctingAPaidOrder_keepsTheOriginalPaymentDate() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        Instant paidAt = Instant.parse("2026-10-01T10:00:00Z");
+        o.setPaid(true);
+        o.setPaidAt(paidAt);
+        o.setReceivedMinor(10_000);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        Order fixed = service.markPaid(o.getId(), 50_000);
+
+        assertThat(fixed.getReceivedMinor()).isEqualTo(50_000);
+        assertThat(fixed.getPaidAt()).isEqualTo(paidAt);
+    }
+
+    @Test
+    void markPaid_firstPayment_isDatedNow() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(50_000);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        Instant before = Instant.now();
+
+        Order paid = service.markPaid(o.getId(), 10_000);
+
+        assertThat(paid.getPaidAt()).isNotNull().isAfterOrEqualTo(before);
     }
 
     // ---------- promo discount rules ----------

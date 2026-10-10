@@ -443,16 +443,16 @@ public class AdminOrderController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("order not found");
+            throw new NotFoundException("заказ не найден");
         }
-        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("order not found"));
+        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
     }
 
     private OrderStatus parseStatus(String s) {
         try {
             return OrderStatus.valueOf(s.trim().toUpperCase());
         } catch (Exception e) {
-            throw new BadRequestException("unknown status: " + s);
+            throw new BadRequestException("неизвестный статус: " + s);
         }
     }
 
@@ -460,7 +460,7 @@ public class AdminOrderController {
         try {
             return RejectReasonCode.parseOrNull(s);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("unknown reject reason code: " + s);
+            throw new BadRequestException("неизвестная причина отказа: " + s);
         }
     }
 

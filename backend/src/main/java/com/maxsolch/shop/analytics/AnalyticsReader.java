@@ -24,12 +24,14 @@ public class AnalyticsReader {
 
     private final JdbcTemplate jdbc;
     private final ZoneId zone;
+    private final StaffVisitors staffVisitors;
     private volatile EventClassifier.TitleIndex titles;
     private volatile long titlesAt;
 
-    public AnalyticsReader(JdbcTemplate jdbc, AppProperties props) {
+    public AnalyticsReader(JdbcTemplate jdbc, AppProperties props, StaffVisitors staffVisitors) {
         this.jdbc = jdbc;
         this.zone = AnalyticsZone.of(props);
+        this.staffVisitors = staffVisitors;
     }
 
     public record Window(List<EventClassifier.VisitorDay> visitors,
@@ -37,8 +39,13 @@ public class AnalyticsReader {
                          LocalDate dataSince) {
     }
 
-    /** Visitor-days and product-days whose local day starts in [from, to). */
+    /**
+     * Visitor-days and product-days whose local day starts in [from, to), without the shop's staff
+     * ({@link StaffVisitors}): their rolled-up visitor days are dropped on reading, their raw events
+     * before classifying.
+     */
     public Window read(Instant from, Instant to) {
+        StaffVisitors.Staff staff = staffVisitors.get();
         LocalDate fromDay = LocalDate.ofInstant(from, zone);
         if (fromDay.atStartOfDay(zone).toInstant().isBefore(from)) {
             fromDay = fromDay.plusDays(1); // a partial first day is not a rolled-up day
@@ -58,10 +65,12 @@ public class AnalyticsReader {
                             + "from analytics_daily_visitors where day between ? and ?",
                     (rs, i) -> {
                         long tg = rs.getLong("telegram_user_id");
+                        // wasNull() right after the read: later reads would overwrite it (null became 0)
+                        Long tgId = rs.wasNull() ? null : tg;
                         return new EventClassifier.VisitorDay(rs.getDate("day").toLocalDate(),
                                 rs.getString("channel"), rs.getString("visitor_key"),
-                                rs.wasNull() ? null : tg, rs.getInt("stages"), rs.getInt("events"));
-                    }, a, b));
+                                tgId, rs.getInt("stages"), rs.getInt("events"));
+                    }, a, b).stream().filter(v -> !staff.excludes(v)).toList());
             products.addAll(jdbc.query("select day, channel, bin_to_uuid(product_id) pid, views, viewers, cart_adds "
                             + "from analytics_daily where day between ? and ?",
                     (rs, i) -> new EventClassifier.ProductDay(rs.getDate("day").toLocalDate(),
@@ -73,7 +82,7 @@ public class AnalyticsReader {
             }
         }
         if (rawFrom.isBefore(to)) {
-            List<EventClassifier.RawEvent> raw = loadRaw(jdbc, rawFrom, to, null);
+            List<EventClassifier.RawEvent> raw = staff.filter(loadRaw(jdbc, rawFrom, to, null));
             if (!raw.isEmpty()) {
                 EventClassifier.DayResult r = new EventClassifier(zone, titleIndex()).classify(raw);
                 visitors.addAll(r.visitors());

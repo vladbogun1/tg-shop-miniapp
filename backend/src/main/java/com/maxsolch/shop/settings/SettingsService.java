@@ -186,7 +186,7 @@ public class SettingsService {
             if (next == null) {
                 if (row != null) {
                     repository.delete(row);
-                    diff.add(def.key() + ": " + show(def, before) + " → по умолчанию (" + show(def, def.defaultValue()) + ")");
+                    diff.add(auditName(def) + ": " + show(def, before) + " → по умолчанию (" + show(def, def.defaultValue()) + ")");
                 }
                 continue;
             }
@@ -204,7 +204,7 @@ public class SettingsService {
             row.setUpdatedByName(adminName);
             repository.save(row);
             if (!next.equals(before)) {
-                diff.add(def.key() + ": " + show(def, before) + " → " + show(def, next));
+                diff.add(auditName(def) + ": " + show(def, before) + " → " + show(def, next));
             }
         }
 
@@ -267,6 +267,12 @@ public class SettingsService {
                 }
                 if (def.maxLength() != null && v.length() > def.maxLength()) {
                     throw invalid(label + ": не длиннее " + def.maxLength() + " символов");
+                }
+                // Read as numbers by OnlinePaymentService.fiscalTaxCodes(): a word there was dropped
+                // silently, and Вчасно.Каса then refuses every invoice without a tax code.
+                if (SettingsRegistry.PAYMENT_FISCAL_TAX_CODES.equals(def.key())
+                        && !v.isEmpty() && !v.matches("\\d+([,;\\s]+\\d+)*")) {
+                    throw invalid(label + ": только числовые коды через запятую, например «1» или «1, 2»");
                 }
                 return v;
             }
@@ -361,9 +367,17 @@ public class SettingsService {
         }
     }
 
+    /** «Журнал» is read by the owner: the label of «Настройки», not the technical key. */
+    private static String auditName(SettingDefinition d) {
+        return d.label() == null || d.label().isBlank() ? d.key() : "«" + d.label() + "»";
+    }
+
     private static String show(SettingDefinition d, String value) {
         if (value == null) {
             return "—";
+        }
+        if (d.type() == SettingType.BOOL) {
+            return Boolean.parseBoolean(value.trim()) ? "вкл" : "выкл";
         }
         if (d.type() == SettingType.STRING || d.type() == SettingType.TEXT) {
             if (value.isEmpty()) {

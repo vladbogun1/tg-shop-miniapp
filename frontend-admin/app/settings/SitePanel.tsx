@@ -38,7 +38,13 @@ export function SitePanel() {
 
   const revalidate = useMutation({
     mutationFn: settingsApi.revalidateSite,
-    onSuccess: () => {
+    onSuccess: (res) => {
+      if (res && res.ok === false) {
+        // The backend answers 200 with ok:false (not configured, site down) — not a success.
+        push(`Сайт не обновился: ${res.error ?? "неизвестная ошибка"}`, "error");
+        statusQ.refetch();
+        return;
+      }
       push("Сайт обновляется — страницы пересоберутся в течение минуты", "ok");
       setTimeout(() => {
         statusQ.refetch();

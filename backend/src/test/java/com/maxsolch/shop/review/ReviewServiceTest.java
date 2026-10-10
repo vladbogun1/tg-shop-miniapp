@@ -282,4 +282,23 @@ class ReviewServiceTest {
         p.setUsesCount(1);
         assertThat(ReviewService.toBonus(p, NOW).state()).isEqualTo("USED");
     }
+
+    @Test
+    void adminListForOneProductCountsTabsOfThatProductOnly() {
+        byte[] product = com.maxsolch.shop.common.UuidUtil.randomBytes();
+        String productId = com.maxsolch.shop.common.UuidUtil.toString(product);
+        when(reviews.findByProductIdAndStatus(any(), eq(ReviewStatus.PENDING), any()))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+        when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.PENDING))).thenReturn(1L);
+        when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.PUBLISHED))).thenReturn(4L);
+        when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.HIDDEN))).thenReturn(0L);
+
+        ReviewDtos.AdminPage page = service.adminList("PENDING", productId, 0, 30);
+
+        assertThat(page.pendingCount()).isEqualTo(1);
+        assertThat(page.publishedCount()).isEqualTo(4);
+        assertThat(page.hiddenCount()).isZero();
+        // Not the whole shop's counters.
+        verify(reviews, never()).countByStatus(any());
+    }
 }

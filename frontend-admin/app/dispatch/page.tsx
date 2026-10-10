@@ -15,6 +15,7 @@ import { MapPin, Package, Phone, Send, Truck, Hash, RefreshCw, AlertTriangle, Us
 import { adminApi, ApiError } from "@/lib/api";
 import { ordersApi, type AdminDispatchOrder } from "@/lib/orders-api";
 import { isNovaPoshtaTtn } from "@/lib/orders";
+import { refreshInbox } from "@/lib/inbox";
 import { money } from "@/lib/money";
 import { useToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
@@ -129,9 +130,17 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="section-title !text-[var(--text-muted)]">{children}</h2>;
 }
 
-/** NEW order that requires a prepayment which has not been confirmed yet. */
+/**
+ * Online part still unpaid (backend `amountDueMinor`): the prepayment, or the whole order for «Полная
+ * оплата онлайн» (prepaymentMinor = 0 there, so the old prepayment-only check missed those).
+ */
+function onlineDue(o: AdminDispatchOrder): number {
+  return o.amountDueMinor ?? (o.prepaymentMinor > 0 ? Math.max(0, o.prepaymentMinor - o.receivedMinor) : 0);
+}
+
+/** NEW order whose online payment (prepayment or full) has not arrived yet. */
 function awaitingPrepayment(o: AdminDispatchOrder): boolean {
-  return o.status === "NEW" && o.prepaymentMinor > 0 && o.receivedMinor < o.prepaymentMinor;
+  return o.status === "NEW" && onlineDue(o) > 0;
 }
 
 function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void }) {
@@ -161,7 +170,8 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
       {waitPay && (
         <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-3 py-2.5 text-[13px] font-medium text-[var(--text)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
-          Ждём онлайн-предоплату {money(o.prepaymentMinor, o.currency)} — не отправляйте, пока она не придёт.
+          {o.prepaymentMinor > 0 ? "Ждём онлайн-предоплату" : "Ждём онлайн-оплату"} {money(onlineDue(o), o.currency)} — не
+          отправляйте, пока она не придёт.
         </div>
       )}
 
@@ -280,6 +290,8 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
       qc.invalidateQueries({ queryKey: ["board"] });
       qc.invalidateQueries({ queryKey: ["orders-table"] });
       qc.invalidateQueries({ queryKey: ["order", o.id] });
+      // «Одобрены, не отправлены» / payment rows of «Внимание» and the menu badge.
+      refreshInbox(qc);
     } catch (e) {
       // The typed number stays in the field.
       push(e instanceof ApiError ? e.message : "Не удалось отметить отправку", "error");
@@ -309,7 +321,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
         disabled={!clean || waitPay}
         icon={<Send className="h-4 w-4" />}
         onClick={ship}
-        title={waitPay ? "Сначала должна прийти онлайн-предоплата" : undefined}
+        title={waitPay ? "Сначала должна прийти онлайн-оплата" : undefined}
       >
         Отправлено
       </Button>

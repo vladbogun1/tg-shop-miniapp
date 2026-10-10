@@ -31,6 +31,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { adminApi, ApiError, type AdminCategory, type CategoryReorderItem } from "@/lib/api";
+import { invalidateCards } from "@/lib/cards";
 import { buildTree, byOrder, childrenOf, plural, productsWord } from "@/lib/catalog-admin";
 import { cn } from "@/lib/cn";
 import { staggerContainer, riseItem } from "@/lib/motion";
@@ -107,7 +108,8 @@ export default function CategoriesPage() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ["categories"] });
     qc.invalidateQueries({ queryKey: ["catalog-schema"] });
-    qc.invalidateQueries({ queryKey: ["products"] });
+    // Products + «Карточки» (its own schema query; required fields move cards to «Не заполнено»).
+    invalidateCards(qc, true);
   }
 
   async function saveOrder(rows: CategoryReorderItem[], optimistic: AdminCategory[], msg?: string) {

@@ -126,7 +126,13 @@ export default function TranslationsPage() {
       const r = await acceptAll(list, langs);
       push(
         r.outdated || r.failed
-          ? `Принято ${r.done}; оригинал изменился у ${r.outdated + r.failed} — они остались в списке`
+          ? `Принято ${r.done}; ${[
+              r.outdated ? `оригинал изменился у ${r.outdated}` : "",
+              // notFound + invalid: the product/field is gone or the text is broken — not a changed original.
+              r.failed ? `не удалось сохранить ${r.failed}` : "",
+            ]
+              .filter(Boolean)
+              .join(", ")} — они остались в списке`
           : `Принято: ${r.done}`,
         r.outdated || r.failed ? "info" : "ok"
       );

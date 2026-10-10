@@ -334,6 +334,7 @@ public final class OverviewCalculator {
         Map<String, OrderFact> byId = facts.orderById();
         Map<String, ProductFact> products = facts.productById();
         Map<String, long[]> acc = new HashMap<>(); // units, revenue
+        Map<ItemFact, Long> value = facts.soldValueByItem();
         long totalRevenue = 0;
         for (ItemFact it : facts.items()) {
             OrderFact o = byId.get(it.orderId());
@@ -341,7 +342,7 @@ public final class OverviewCalculator {
                     || !period.contains(o.createdAt())) {
                 continue;
             }
-            long revenue = Math.round(it.priceMinor() * it.quantity() * o.soldShare());
+            long revenue = value.getOrDefault(it, 0L);
             totalRevenue += revenue;
             ProductFact p = products.get(it.productId());
             List<String> tags = p == null || p.tags().isEmpty() ? List.of(NO_CATEGORY) : p.tags();

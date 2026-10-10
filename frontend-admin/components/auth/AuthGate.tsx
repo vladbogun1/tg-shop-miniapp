@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, isAuthenticated, onUnauthorized, authAdminTelegram, type AdminLoginResult } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram";
 import { Login } from "@/components/auth/Login";
@@ -25,6 +26,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
 function SignedIn({ children }: { children: React.ReactNode }) {
   const { push } = useToast();
+  const qc = useQueryClient();
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
   const [pending, setPending] = useState<AdminLoginResult | null>(null);
@@ -53,12 +55,17 @@ function SignedIn({ children }: { children: React.ReactNode }) {
       if (!cancelled) setBooting(false);
     }
     boot();
-    const off = onUnauthorized(() => setAuthed(false));
+    const off = onUnauthorized(() => {
+      // Drop the previous admin's cached data (name, role → «Админы», lists): another admin may sign
+      // in next in the same tab.
+      qc.clear();
+      setAuthed(false);
+    });
     return () => {
       cancelled = true;
       off();
     };
-  }, [push]);
+  }, [push, qc]);
 
   if (booting) return <CenterSpinner label="Загрузка…" />;
   if (!authed)

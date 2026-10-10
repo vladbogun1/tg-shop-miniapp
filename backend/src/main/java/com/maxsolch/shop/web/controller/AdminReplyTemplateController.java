@@ -75,7 +75,7 @@ public class AdminReplyTemplateController {
         try {
             key = UuidUtil.toBytes(orderId);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("order not found");
+            throw new NotFoundException("заказ не найден");
         }
         return service.renderForOrder(key);
     }

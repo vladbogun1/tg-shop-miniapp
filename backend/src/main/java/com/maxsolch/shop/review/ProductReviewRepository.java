@@ -37,4 +37,7 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
     List<Object[]> distribution(@Param("productId") byte[] productId);
 
     long countByStatus(ReviewStatus status);
+
+    /** Tab counters of «Отзывы» opened for one product ({@code /reviews?productId=…}). */
+    long countByProductIdAndStatus(byte[] productId, ReviewStatus status);
 }

@@ -111,11 +111,11 @@ public class AdminMetricsService {
         long unpaid = 0;
         long cod = 0;
         for (MetricsFacts.OrderFact o : facts.orders()) {
-            if (o.awaitingPaymentNew()) {
-                unpaid++;
+            if (o.awaitingPaymentNew() || o.status() == OrderStatus.APPROVED && o.awaitingPayment()) {
+                unpaid++; // still waiting for the online payment: neither to approve nor to ship
             } else if (o.status() == OrderStatus.NEW) {
                 toApprove++;
-            } else if (o.status() == OrderStatus.APPROVED) {
+            } else if (readyToShip(o)) {
                 toShip++;
             } else if (o.status() == OrderStatus.SHIPPED && o.totalMinor() > o.receivedMinor()) {
                 cod += o.totalMinor() - o.receivedMinor();
@@ -131,6 +131,14 @@ public class AdminMetricsService {
                 today.sold(), today.orders(), yesterday.sold(), ySameTime.sold(),
                 today.received(), yesterday.received(), cod, soon.size(),
                 soon.size() > 3 ? soon.subList(0, 3) : soon, month);
+    }
+
+    /**
+     * «К отправке»: approved and not an online order still waiting for its payment (the full amount
+     * or the prepayment) — an approved but unpaid online order is not a sale and is not shipped yet.
+     */
+    static boolean readyToShip(MetricsFacts.OrderFact o) {
+        return o.status() == OrderStatus.APPROVED && !o.awaitingPayment();
     }
 
     /**

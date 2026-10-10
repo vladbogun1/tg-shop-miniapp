@@ -116,9 +116,25 @@ class SettingsServiceTest {
         assertThat(saved.getValue().getType()).isEqualTo("INT");
         assertThat(saved.getValue().getUpdatedByName()).isEqualTo("Max");
         verify(audit).record(eq("SETTINGS_UPDATE"), eq("SETTINGS"), isNull(),
-                eq(SettingsRegistry.PROMO_HOLD_MINUTES + ": 30 → 45"));
+                eq("«Резерв промокода»: 30 → 45"));
         // The cache was dropped: the response of update() was re-read from the DB.
         verify(repository, times(2)).findAll();
+    }
+
+    @Test
+    void auditShowsTheLabelAndOnOffForSwitches() {
+        when(repository.findAllById(any())).thenReturn(List.of(row(SettingsRegistry.REVIEWS_PREMODERATION, "true")));
+        lenient().when(repository.findAll()).thenReturn(List.of());
+
+        Map<String, Object> changes = new HashMap<>();
+        changes.put(SettingsRegistry.REVIEWS_PREMODERATION, false);
+        service.update(changes);
+
+        ArgumentCaptor<String> details = ArgumentCaptor.forClass(String.class);
+        verify(audit).record(eq("SETTINGS_UPDATE"), eq("SETTINGS"), isNull(), details.capture());
+        assertThat(details.getValue())
+                .doesNotContain(SettingsRegistry.REVIEWS_PREMODERATION)
+                .endsWith(": вкл → выкл");
     }
 
     @Test
@@ -186,6 +202,16 @@ class SettingsServiceTest {
         assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(BadRequestException.class);
         assertThatThrownBy(() -> SettingsService.normalize(d, 0)).isInstanceOf(BadRequestException.class);
         assertThatThrownBy(() -> SettingsService.normalize(d, true)).isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void fiscalTaxCodesAcceptOnlyNumbers() {
+        SettingDefinition d = def(SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
+        assertThat(SettingsService.normalize(d, " 1, 2 ")).isEqualTo("1, 2");
+        assertThat(SettingsService.normalize(d, "")).isEqualTo("");
+        assertThatThrownBy(() -> SettingsService.normalize(d, "Без ПДВ"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("числовые коды");
     }
 
     @Test

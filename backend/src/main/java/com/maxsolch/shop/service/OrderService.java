@@ -233,7 +233,7 @@ public class OrderService {
     public Order approve(byte[] orderId) {
         Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.NEW) {
-            throw new BadRequestException("only NEW orders can be approved");
+            throw new BadRequestException("одобрить можно только новый заказ");
         }
         order.setStatus(OrderStatus.APPROVED);
         order.setApprovedAt(Instant.now());
@@ -245,7 +245,13 @@ public class OrderService {
     public Order ship(byte[] orderId, String trackingNumber) {
         Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.APPROVED && order.getStatus() != OrderStatus.NEW) {
-            throw new BadRequestException("order must be NEW or APPROVED to ship");
+            throw new BadRequestException("отправить можно только новый или одобренный заказ");
+        }
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Shipping would leave the customer's open request hanging forever (the inbox only
+            // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
+            throw new BadRequestException(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
         }
         order.setStatus(OrderStatus.SHIPPED);
         order.setShippedAt(Instant.now());
@@ -259,7 +265,7 @@ public class OrderService {
     public Order deliver(byte[] orderId) {
         Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.SHIPPED) {
-            throw new BadRequestException("only SHIPPED orders can be delivered");
+            throw new BadRequestException("доставленным можно отметить только отправленный заказ");
         }
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(Instant.now());
@@ -428,7 +434,7 @@ public class OrderService {
     public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock) {
         Order order = lock(orderId);
         if (order.getStatus() == OrderStatus.REJECTED) {
-            throw new BadRequestException("order already rejected");
+            throw new BadRequestException("заказ уже отклонён");
         }
         if (restock) {
             restoreStock(order);
@@ -462,7 +468,7 @@ public class OrderService {
             case SHIPPED -> ship(orderId, trackingNumber);
             case DELIVERED -> deliver(orderId);
             case REJECTED -> reject(orderId, reason, reasonCode, restock);
-            case NEW -> throw new BadRequestException("cannot transition back to NEW");
+            case NEW -> throw new BadRequestException("вернуть заказ в «Новые» нельзя");
         };
     }
 
@@ -543,8 +549,11 @@ public class OrderService {
         long received = receivedMinor;
         order.setReceivedMinor(received);
         boolean paid = received > 0;
+        // Correcting the amount of an order that is already paid keeps the original payment date:
+        // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
+        boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
         order.setPaid(paid);
-        order.setPaidAt(paid ? Instant.now() : null);
+        order.setPaidAt(!paid ? null : wasPaid ? order.getPaidAt() : Instant.now());
         Order saved = orderRepository.save(order);
         // COD on the seller's card changes with the received amount — keep it in sync.
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -873,7 +882,8 @@ public class OrderService {
      * an earlier return ({@link OrderItem#getRestockedQty()}), so nothing is restocked twice.
      */
     private void restoreItemStock(OrderItem item) {
-        restockItem(item, item.getQuantity() - item.getRestockedQty());
+        // Units returned without «на склад» were written off (damaged etc.) — they never go back.
+        restockItem(item, item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty()));
     }
 
     /**

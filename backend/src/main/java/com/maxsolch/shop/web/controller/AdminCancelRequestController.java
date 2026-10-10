@@ -84,8 +84,8 @@ public class AdminCancelRequestController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("order not found");
+            throw new NotFoundException("заказ не найден");
         }
-        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("order not found"));
+        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
     }
 }

@@ -95,7 +95,7 @@ public class AdminOnlinePaymentController {
         byte[] orderId = orderId(id);
         Long amount = req == null ? null : req.amountMinor();
         payments.refund(orderId, invoiceId, amount);
-        audit.record("ORDER_REFUND_ONLINE", "order", id,
+        audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
                 "счёт " + invoiceId + ", " + (amount == null ? "полностью" : MoneyFormat.uah(amount)));
         return list(id);
     }
@@ -139,7 +139,7 @@ public class AdminOnlinePaymentController {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("order not found");
+            throw new NotFoundException("заказ не найден");
         }
     }
 }

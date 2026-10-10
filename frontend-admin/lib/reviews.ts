@@ -3,7 +3,8 @@
  * work on that file does not collide. Same http client, same error type.
  */
 import type { AdminReview, AdminReviewPage, ReviewStatus } from "@shop/shared";
-import { apiDelete, apiGet, apiPost } from "./api";
+import { useQuery } from "@tanstack/react-query";
+import { apiDelete, apiGet, apiPost, isAuthenticated } from "./api";
 
 export type { AdminReview, AdminReviewPage, ReviewStatus };
 
@@ -47,3 +48,19 @@ export const reviewsApi = {
 };
 
 export const REVIEWS_QUERY_KEY = ["admin", "reviews"] as const;
+
+/**
+ * Menu badge «Отзывы»: every review waiting for moderation — the same number as the page's
+ * «На модерации» tab. (The «Внимание» group used before leaves out snoozed rows and stops at 100.)
+ * Under REVIEWS_QUERY_KEY, so the page's invalidation after publish/hide refreshes it too.
+ */
+export function useReviewsPending() {
+  return useQuery({
+    queryKey: [...REVIEWS_QUERY_KEY, "pending-count"],
+    queryFn: async () => (await reviewsApi.list({ status: "PENDING", page: 0, size: 1 })).pendingCount,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+    enabled: isAuthenticated(),
+  });
+}

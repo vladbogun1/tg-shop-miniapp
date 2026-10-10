@@ -1,7 +1,7 @@
 /**
  * «Карточки» list logic (docs/CATALOG-SPECS.md §5): one screen, three tabs by the card status —
  *   «Оформить»  — DRAFT (new hidden products first, then on the storefront, then old hidden ones);
- *   «Проверить» — AI_FILLED, hidden ones too (least sure first);
+ *   «Проверить» — AI_FILLED (least sure first);
  *   «Готово»    — READY (last reviewed first), with «только неполные».
  * The storefront filter applies to every tab. By default («в работе») old hidden products are left out:
  * ~180 retired products are DRAFT forever and would bury the real work (and the nav badge).

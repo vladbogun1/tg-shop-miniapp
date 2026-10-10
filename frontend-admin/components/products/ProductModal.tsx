@@ -58,6 +58,7 @@ import {
   plural,
 } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
+import { invalidateCards } from "@/lib/cards";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
@@ -496,8 +497,8 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
     try {
       await adminApi.setCardStatus(product.id, status);
       setCardStatus(status);
-      qc.invalidateQueries({ queryKey: ["products"] });
-      qc.invalidateQueries({ queryKey: ["cards"] });
+      // Products list + «Карточки» tabs and menu badge (there is no ["cards"] query).
+      invalidateCards(qc);
       push(status === "READY" ? "Карточка отмечена проверенной" : "Карточка возвращена в черновик", "ok");
     } catch (e) {
       push(e instanceof ApiError ? e.message : "Не удалось изменить статус", "error");

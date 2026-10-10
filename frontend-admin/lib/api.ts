@@ -5,6 +5,7 @@
  * `@shop/shared`; this file keeps only what is admin-specific — the localStorage-backed token,
  * the admin-only payloads, and the typed endpoint list.
  */
+import { markStaffBrowser } from "./staff-mark";
 import {
   ApiError,
   createHttpClient,
@@ -405,6 +406,7 @@ export function onUnauthorized(cb: () => void): () => void {
 
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+  if (token) markStaffBrowser();
   if (typeof window !== "undefined") {
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
@@ -415,6 +417,8 @@ export function getAccessToken(): string | null {
   if (accessToken) return accessToken;
   if (typeof window !== "undefined") {
     accessToken = localStorage.getItem(TOKEN_KEY);
+    // Admins already signed in before the staff mark existed get it on their next visit.
+    if (accessToken) markStaffBrowser();
   }
   return accessToken;
 }
@@ -513,6 +517,8 @@ const http = createHttpClient({
   // The «trusted device» cookie (HttpOnly, path /api/auth/admin) has to travel with the sign-in
   // calls; prod is same-origin anyway, the e2e/dev split origins need "include".
   credentials: "include",
+  // The admin is Russian-only: server errors must not follow the browser language (uk by default).
+  getLocale: () => "ru",
   getToken: () => {
     const token = getAccessToken();
     if (token) maybeRefresh(token);

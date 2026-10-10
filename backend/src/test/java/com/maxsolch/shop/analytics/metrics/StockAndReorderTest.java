@@ -207,6 +207,48 @@ class StockAndReorderTest {
         assertThat(new ReorderCalculator(LOW_STOCK_DAYS).compute(f, Map.of(), 30).rows()).isEmpty();
     }
 
+    @Test
+    void partialReturn_refundComesOffTheReturnedLine_notTheWholeOrder() {
+        var mouse = product("mouse", 100_00, 5, longAgo);
+        var keyboard = product("kb", 200_00, 5, longAgo);
+        // mouse + keyboard for 300 ₴; the mouse came back and its 100 ₴ were refunded
+        OrderFact o = order(daysAgo(3)).total(300_00).delivered(daysAgo(2)).build();
+        o = new OrderFact(o.id(), o.status(), o.source(), o.totalMinor(), o.subtotalMinor(), o.discountMinor(),
+                o.receivedMinor(), 100_00, o.createdAt(), o.approvedAt(), o.shippedAt(), o.deliveredAt(),
+                o.rejectedAt(), o.paidAt(), daysAgo(1), o.paid(), o.tgUserId(), o.customerName(), o.tgUsername(),
+                o.deliveryMethod(), o.paymentOptionTitle(), o.promoCode(), o.rejectReason(), o.rejectReasonCode());
+        List<ItemFact> items = List.of(
+                new ItemFact(o.id(), "mouse", null, "m", null, 100_00, 1, false, 1),
+                new ItemFact(o.id(), "kb", null, "k", null, 200_00, 1, false, 0));
+
+        Stock s = stock(facts(now, List.of(o), items, List.of(mouse, keyboard)), 60);
+
+        // before: 300 − 100 spread evenly -> mouse 66.67 ₴, keyboard 133.33 ₴
+        assertThat(s.topProducts()).singleElement().satisfies(t -> {
+            assertThat(t.productId()).isEqualTo("kb");
+            assertThat(t.revenueMinor()).isEqualTo(200_00);
+            assertThat(t.units()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void refundWithoutReturnedGoods_isStillSpreadOverTheOrder() {
+        var a = product("a", 100_00, 5, longAgo);
+        var b = product("b", 300_00, 5, longAgo);
+        OrderFact o = order(daysAgo(3)).total(400_00).delivered(daysAgo(2)).build();
+        o = new OrderFact(o.id(), o.status(), o.source(), o.totalMinor(), o.subtotalMinor(), o.discountMinor(),
+                o.receivedMinor(), 40_00, o.createdAt(), o.approvedAt(), o.shippedAt(), o.deliveredAt(),
+                o.rejectedAt(), o.paidAt(), daysAgo(1), o.paid(), o.tgUserId(), o.customerName(), o.tgUsername(),
+                o.deliveryMethod(), o.paymentOptionTitle(), o.promoCode(), o.rejectReason(), o.rejectReasonCode());
+        List<ItemFact> items = List.of(item(o, "a", 100_00, 1), item(o, "b", 300_00, 1));
+
+        Map<ItemFact, Long> v = facts(now, List.of(o), items, List.of(a, b)).soldValueByItem();
+
+        // a goodwill 40 ₴ (10%) comes off both lines
+        assertThat(v.get(items.get(0))).isEqualTo(90_00);
+        assertThat(v.get(items.get(1))).isEqualTo(270_00);
+    }
+
     private Stock stock(MetricsFacts f, int deadDays) {
         Reorder r = new ReorderCalculator(LOW_STOCK_DAYS).compute(f, Map.of(), 30);
         return new StockCalculator().compute(f, month, ChannelFilter.ALL, deadDays, LOW_STOCK_DAYS, Map.of(), r);

@@ -7,6 +7,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { isAuthenticated } from "@/lib/api";
 import { cardsApi, type CardStats } from "@/lib/cards-api";
+import { invalidateTranslations } from "@/lib/translations";
 
 export const CARDS_STATS_KEY = ["admin", "cards", "stats"] as const;
 export const CARDS_EXPORT_KEY = ["admin", "cards", "export"] as const;
@@ -37,11 +38,15 @@ export function pendingCards(stats: CardStats | undefined): number {
   return stats ? stats.draft + stats.aiFilled : 0;
 }
 
-/** After any write: refresh the badge, the counters, the lists and the product screens. */
+/**
+ * After any write: refresh the badge, the counters, the lists and the product screens — and
+ * «Переводы» (accepting a card with uk/en, renaming a product or category adds/stales texts there).
+ */
 export function invalidateCards(qc: QueryClient, schemaToo = false): void {
   qc.invalidateQueries({ queryKey: CARDS_STATS_KEY });
   qc.invalidateQueries({ queryKey: CARDS_EXPORT_KEY });
   qc.invalidateQueries({ queryKey: ["products"] });
+  invalidateTranslations(qc);
   if (schemaToo) {
     qc.invalidateQueries({ queryKey: CATALOG_SCHEMA_KEY });
     qc.invalidateQueries({ queryKey: ["admin", "catalog"] });

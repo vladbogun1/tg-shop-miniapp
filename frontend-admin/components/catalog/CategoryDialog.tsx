@@ -26,6 +26,7 @@ import {
   SPEC_TYPE_LABEL,
 } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
+import { invalidateCards } from "@/lib/cards";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/lib/toast";
 import { Badge } from "@/components/ui/Badge";
@@ -161,6 +162,8 @@ export function CategoryDialog({
 
   function refreshAttrs() {
     for (const k of schemaKeys) qc.invalidateQueries({ queryKey: [k] });
+    // «Карточки» has its own schema query; a new required field changes its tabs too.
+    invalidateCards(qc, true);
   }
 
   async function moveAttr(a: AdminSpecAttribute, dir: -1 | 1) {

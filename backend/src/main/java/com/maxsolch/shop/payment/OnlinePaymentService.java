@@ -359,7 +359,7 @@ public class OnlinePaymentService {
     public void refund(byte[] orderId, String invoiceId, Long amountMinor) {
         PaymentInvoice inv = invoices.findByProviderAndExternalId(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .filter(i -> java.util.Arrays.equals(i.getOrderId(), orderId))
-                .orElseThrow(() -> new BadRequestException("invoice not found"));
+                .orElseThrow(() -> new BadRequestException("счёт не найден"));
         if (inv.getAppliedAt() == null) {
             throw new BadRequestException("счёт не оплачен — возвращать нечего");
         }

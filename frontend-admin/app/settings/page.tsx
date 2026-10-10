@@ -38,6 +38,7 @@ import {
 } from "@/lib/settings";
 import { useToast } from "@/lib/toast";
 import { useIsDesktop } from "@/lib/use-media";
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { initialDraft, isDirty, parse, toRaw, validate, type Draft } from "./draft";
 import { DevicePanel } from "./DevicePanel";
 import { PanelHeader } from "./PanelHeader";
@@ -84,16 +85,8 @@ export default function SettingsPage() {
   const invalid = dirtyItems.some((it) => !draft[it.key].reset && validate(it, draft[it.key].raw));
   const dirty = dirtyItems.length > 0;
 
-  // Leaving the page with unsaved edits loses them — ask first.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  // Leaving the page with unsaved edits loses them — ask first (tab close and menu links alike).
+  useUnsavedGuard(dirty);
 
   function change(key: string, raw: string | boolean) {
     setDraft((d) => ({ ...d, [key]: { raw, reset: false } }));

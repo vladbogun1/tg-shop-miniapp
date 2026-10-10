@@ -139,7 +139,12 @@ export const OnlinePaymentBlock = forwardRef<HTMLElement, { order: AdminOrderDet
             <span className="min-w-0">
               <b className="font-semibold">Оплатить до {formatDateTime(order.paymentDueAt as string)}</b>
               {overdue ? (
-                <> · просрочено — заказ отменится автоматически</>
+                // Only NEW orders are auto-cancelled (OrderService.expireUnpaid); an approved one stays.
+                order.status === "NEW" ? (
+                  <> · просрочено — заказ отменится автоматически</>
+                ) : (
+                  <> · просрочено — заказ одобрен, сам не отменится</>
+                )
               ) : (
                 left && <> · осталось {left}</>
               )}

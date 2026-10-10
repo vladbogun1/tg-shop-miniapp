@@ -33,6 +33,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { QueryState } from "@/components/ui/QueryState";
 import { staggerContainer, riseItem } from "@/lib/motion";
 
 interface Props {
@@ -68,7 +69,7 @@ function telegramHref(u: UserCardDto): string {
 export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
   const router = useRouter();
 
-  const { data: orders, isLoading } = useQuery({
+  const { data: orders, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["user-orders", user?.telegramUserId],
     queryFn: () => adminApi.userOrders(user!.telegramUserId),
     enabled: !!user,
@@ -155,6 +156,11 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
                   <Skeleton key={i} className="h-[88px] rounded-[var(--r-md)]" />
                 ))}
               </div>
+            ) : isError ? (
+              // A failed load is not «Заказов нет».
+              <QueryState isLoading={false} isError error={error} refetch={refetch}>
+                {null}
+              </QueryState>
             ) : (orders ?? []).length === 0 ? (
               <EmptyState icon={Package} title="Заказов нет" />
             ) : (

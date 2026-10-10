@@ -31,6 +31,7 @@ import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
 import { useToast } from "@/lib/toast";
+import { refreshInbox } from "@/lib/inbox";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -53,6 +54,7 @@ const VIEW_OPTIONS: { value: View; label: string }[] = [
 
 /** Cards per closed column before "Показать ещё". */
 const CLOSED_PAGE = 20;
+const CLOSED_MAX = 300;
 
 /** Transitions that need a modal before they are applied. */
 const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
@@ -129,6 +131,8 @@ export default function BoardPage() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ["board"] });
     qc.invalidateQueries({ queryKey: ["orders-table"] });
+    // A status change adds/removes rows of «Внимание» (and its menu badge) — not only after 30 s.
+    refreshInbox(qc);
   }
 
   // ---- status change with optimistic update + rollback ----
@@ -207,7 +211,8 @@ export default function BoardPage() {
     requestMove(String(active.id), from, to);
   }
 
-  const showMore = () => setClosedLimit((n) => Math.min(300, n + CLOSED_PAGE));
+  // The backend caps a closed column at CLOSED_MAX cards; past it «Показать ещё» would do nothing.
+  const showMore = closedLimit < CLOSED_MAX ? () => setClosedLimit((n) => Math.min(CLOSED_MAX, n + CLOSED_PAGE)) : undefined;
   const loadingMore = boardQ.isFetching && !boardQ.isLoading;
   // The period matters only for the closed columns / the table.
   const showRange = view === "table" || isDesktop || CLOSED_STATUSES.includes(mobileTab);

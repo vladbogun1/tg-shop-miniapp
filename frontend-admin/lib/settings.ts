@@ -77,7 +77,8 @@ export const settingsApi = {
   save: (values: Record<string, SettingValue | null>) =>
     apiPut<SettingsResponse>("/api/admin/settings", { values }),
   system: () => apiGet<SystemInfo>("/api/admin/settings/system"),
-  revalidateSite: () => apiPost<unknown>("/api/admin/site/revalidate", {}),
+  /** 200 even when the site did not answer: `ok: false` + `error` then. */
+  revalidateSite: () => apiPost<{ ok: boolean; error?: string | null }>("/api/admin/site/revalidate", {}),
   revalidateStatus: () => apiGet<RevalidateStatus>("/api/admin/site/revalidate/status"),
 };
 

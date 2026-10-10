@@ -63,10 +63,30 @@ public class UserAdminService {
         }
     }
 
+    /**
+     * LIKE pattern of the users search, null when there is nothing to search. The field's hint is
+     * «имя, @username, ID», but usernames are stored without the «@» — so it is dropped. «%» is
+     * removed and «_» (common in usernames) escaped, so neither acts as a LIKE wildcard.
+     */
+    static String searchPattern(String q) {
+        if (q == null) {
+            return null;
+        }
+        String t = q.trim();
+        if (t.startsWith("@")) {
+            t = t.substring(1);
+        }
+        t = t.toLowerCase(java.util.Locale.ROOT).replace("%", "").replace("_", "\\_").trim();
+        return t.isEmpty() ? null : "%" + t + "%";
+    }
+
     @Transactional(readOnly = true)
     public List<UserCardDto> list(String q, boolean blockedOnly, int page, int size, String sortBy, String sortDir) {
-        boolean hasQ = q != null && !q.isBlank();
-        String like = hasQ ? "%" + q.trim().toLowerCase() + "%" : "";
+        String like = searchPattern(q);
+        boolean hasQ = like != null;
+        if (like == null) {
+            like = "";
+        }
         String col = SORT_SQL.getOrDefault(sortBy, "u.created_at");
         String dir = "asc".equalsIgnoreCase(sortDir) ? "ASC" : "DESC";
         int sz = Math.max(1, Math.min(size, 100));

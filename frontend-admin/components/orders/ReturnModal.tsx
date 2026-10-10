@@ -162,7 +162,7 @@ export function ReturnModal({
             error={tooMuch ? `Не больше полученного: ${money(refundable, cur)}` : undefined}
             hint={`Можно вернуть до ${money(refundable, cur)} (получено ${money(order.receivedMinor, cur)}${
               order.refundedMinor ? `, уже возвращено ${money(order.refundedMinor, cur)}` : ""
-            }).`}
+            }). Только запись о возврате наличными/переводом — на карту через monobank вернуть в блоке «Онлайн-оплата», а не здесь.`}
           />
           {returnedValue > 0 && (
             <button

@@ -188,7 +188,8 @@ export const ordersApi = {
     const rows = await apiGet<AuditEntry[]>(
       `/api/admin/audit?entityType=ORDER&entityId=${encodeURIComponent(id)}&size=200`
     );
-    return rows.filter((r) => r.entityType === "ORDER" && r.entityId === id);
+    // Older online refunds were logged as "order" (lower case) — keep them in the history.
+    return rows.filter((r) => r.entityType?.toUpperCase() === "ORDER" && r.entityId === id);
   },
 
   /** The customer's profile card, for opening it over the order. */

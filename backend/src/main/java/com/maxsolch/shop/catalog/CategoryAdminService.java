@@ -150,7 +150,9 @@ public class CategoryAdminService {
         long products = productRepository.countByCategory(c.getId());
         if (products > 0) {
             throw new ConflictException("в категории «" + c.getName() + "» товаров: " + products
-                    + " — сначала перенесите их", CategoryRules.HAS_PRODUCTS, Map.of("count", products));
+                    // The screen counts active products only; archived ones block the delete too.
+                    + " (с учётом архивных — они в «Товары → Архив») — сначала перенесите их",
+                    CategoryRules.HAS_PRODUCTS, Map.of("count", products));
         }
         Deleted deleted = new Deleted(c.getName(), c.getSlug());
         repository.delete(c);

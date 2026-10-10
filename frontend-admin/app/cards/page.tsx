@@ -329,7 +329,8 @@ export default function CardsPage() {
           }
         />
       ) : list.length === 0 ? (
-        query || vitrine !== "all" || (current === "ready" && onlyIncomplete) ? (
+        // «В работе» is the default filter: an empty tab under it is «всё сделано», not «ничего не найдено».
+        query || vitrine !== "work" || (current === "ready" && onlyIncomplete) ? (
           <EmptyState
             icon={Search}
             title="Ничего не найдено"
@@ -339,7 +340,7 @@ export default function CardsPage() {
                 variant="outline"
                 onClick={() => {
                   setQuery("");
-                  setVitrine("all");
+                  setVitrine("work");
                   setOnlyIncomplete(false);
                 }}
               >

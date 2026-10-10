@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { QueryState } from "@/components/ui/QueryState";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { cn } from "@/lib/cn";
 import { OrderCard } from "./OrderCard";
@@ -81,7 +82,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
     }
   }
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["orders-table", search, range, status, page, sortBy, sortDir],
     queryFn: () =>
       adminApi.orders({
@@ -110,7 +111,12 @@ export function OrdersTable({ search, range, onOpen }: Props) {
         />
       </div>
 
-      {isLoading ? (
+      {isError && !data ? (
+        // A failed load is not «Заказы не найдены».
+        <QueryState isLoading={false} isError error={error} refetch={refetch}>
+          {null}
+        </QueryState>
+      ) : isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-14 rounded-[var(--r-md)]" />

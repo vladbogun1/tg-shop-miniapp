@@ -63,6 +63,7 @@ import { useSupportUnread } from "@/lib/support-api";
 import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 import { pendingCards, useCardStats } from "@/lib/cards";
+import { useReviewsPending } from "@/lib/reviews";
 
 type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards";
 interface NavItem {
@@ -213,9 +214,9 @@ function useNavBadges(): Record<BadgeKey, BadgeInfo> {
   // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
-  // Reviews waiting for moderation — the «Отзывы на модерации» group of the same inbox answer.
-  const reviewsPending =
-    inbox?.groups.find((g) => g.id === "REVIEW")?.count ?? 0;
+  // Reviews waiting for moderation — the page's «На модерации» tab (snoozed ones included).
+  const { data: reviewsPendingData } = useReviewsPending();
+  const reviewsPending = reviewsPendingData ?? 0;
   // Support questions waiting for an answer (GET /api/admin/support/unread-count, every 30 s).
   const { data: supportUnread } = useSupportUnread();
   const supportWaiting = supportUnread?.count ?? 0;

@@ -39,11 +39,20 @@ public class AnalyticsAggregationService {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
     private final ZoneId zone;
+    private final StaffVisitors staffVisitors;
 
-    public AnalyticsAggregationService(JdbcTemplate jdbc, TransactionTemplate tx, AppProperties props) {
+    /**
+     * Days rolled up before this moment still counted the staff's own browsing in product interest
+     * ({@link StaffVisitors}); the ones still in the journal are rolled up again, once.
+     */
+    static final Instant STAFF_FILTER_SINCE = Instant.parse("2026-10-11T00:00:00Z");
+
+    public AnalyticsAggregationService(JdbcTemplate jdbc, TransactionTemplate tx, AppProperties props,
+                                       StaffVisitors staffVisitors) {
         this.jdbc = jdbc;
         this.tx = tx;
         this.zone = AnalyticsZone.of(props);
+        this.staffVisitors = staffVisitors;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -64,7 +73,10 @@ public class AnalyticsAggregationService {
         }
     }
 
-    /** Rolls up every closed day still fully present in the journal and not rolled up yet. */
+    /**
+     * Rolls up every closed day still fully present in the journal and not rolled up yet (or rolled
+     * up before the staff were left out).
+     */
     public int aggregatePending() {
         LocalDate yesterday = LocalDate.now(zone).minusDays(1);
         Timestamp oldest = jdbc.queryForObject("select min(created_at) from client_events", Timestamp.class);
@@ -74,8 +86,8 @@ public class AnalyticsAggregationService {
         // The oldest day is usually cut in half by the purge: start from the first complete one.
         LocalDate first = LocalDate.ofInstant(oldest.toInstant(), zone).plusDays(1);
         Set<LocalDate> done = new HashSet<>(jdbc.query(
-                "select day from analytics_daily_runs where day >= ?",
-                (rs, i) -> rs.getDate(1).toLocalDate(), Date.valueOf(first)));
+                "select day from analytics_daily_runs where day >= ? and aggregated_at >= ?",
+                (rs, i) -> rs.getDate(1).toLocalDate(), Date.valueOf(first), Timestamp.from(STAFF_FILTER_SINCE)));
         TitleLookup lookup = new TitleLookup(jdbc);
         int count = 0;
         for (LocalDate day = first; !day.isAfter(yesterday); day = day.plusDays(1)) {
@@ -94,7 +106,7 @@ public class AnalyticsAggregationService {
         Instant from = day.atStartOfDay(zone).toInstant();
         Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
         List<EventClassifier.RawEvent> events = AnalyticsReader.loadRaw(jdbc, from, to, null);
-        EventClassifier.DayResult result = new EventClassifier(zone, titles).classify(events);
+        EventClassifier.DayResult result = classifyWithoutStaff(events, staffVisitors.get(), titles);
         tx.executeWithoutResult(status -> {
             Date d = Date.valueOf(day);
             jdbc.update("delete from analytics_daily_visitors where day = ?", d);
@@ -124,6 +136,26 @@ public class AnalyticsAggregationService {
                     + "on duplicate key update events = values(events), aggregated_at = values(aggregated_at)",
                     d, events.size(), Timestamp.from(Instant.now()));
         });
+    }
+
+    /**
+     * Product interest without the staff's events. Their visitor days are kept (the reader drops
+     * them): a staff browser's sign-in day is what keeps it known after the journal is purged.
+     */
+    EventClassifier.DayResult classifyWithoutStaff(List<EventClassifier.RawEvent> events, StaffVisitors.Staff staff,
+                                                  EventClassifier.TitleIndex titles) {
+        EventClassifier classifier = new EventClassifier(zone, titles);
+        List<EventClassifier.RawEvent> customers = staff.filter(events);
+        EventClassifier.DayResult result = classifier.classify(customers);
+        if (customers.size() == events.size()) {
+            return result;
+        }
+        Set<Long> kept = new HashSet<>();
+        customers.forEach(e -> kept.add(e.id()));
+        List<EventClassifier.RawEvent> staffOnly = events.stream().filter(e -> !kept.contains(e.id())).toList();
+        List<EventClassifier.VisitorDay> visitors = new ArrayList<>(result.visitors());
+        visitors.addAll(classifier.classify(staffOnly).visitors());
+        return new EventClassifier.DayResult(visitors, result.products());
     }
 
     private static byte[] toBytesOrNull(String uuid) {

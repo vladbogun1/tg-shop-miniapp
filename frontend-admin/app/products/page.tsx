@@ -54,6 +54,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductModal, type ProductStepKey } from "@/components/products/ProductModal";
 
 import { useShopSetting } from "@/lib/settings";
+import { invalidateCards } from "@/lib/cards";
 
 /** Steps a deep link may open the product wizard on. */
 const STEP_KEYS = new Set<string>(["basics", "photos", "pricing", "category", "specs", "site", "review"]);
@@ -140,7 +141,11 @@ export default function ProductsPage() {
   }, [products, schema, categories]);
 
   function refresh() {
-    qc.invalidateQueries({ queryKey: ["products"] });
+    // Showing/hiding/archiving or editing a product moves it between the «Карточки» tabs (the menu
+    // badge counts only storefront work) and adds/stales texts of «Переводы» — refresh those too.
+    invalidateCards(qc);
+    // ProductModal's «переводы сбросятся» warning reads its own export of translated texts.
+    qc.invalidateQueries({ queryKey: ["translations"] });
   }
 
   // Deep link "/products?edit=<id>" (from the «Переводы» screen): open that product's editor once

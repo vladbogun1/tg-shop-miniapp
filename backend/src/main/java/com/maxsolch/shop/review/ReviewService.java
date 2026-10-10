@@ -345,9 +345,13 @@ public class ReviewService {
             found = reviews.findAll(pr);
         }
         List<AdminReview> items = toAdmin(found.getContent());
+        // Tab counters in the same scope as the list: opened for one product, count that product only.
+        java.util.function.ToLongFunction<ReviewStatus> count = product == null
+                ? reviews::countByStatus
+                : which -> reviews.countByProductIdAndStatus(product, which);
         return new AdminPage(items, p, s, found.getTotalPages(), found.getTotalElements(),
-                reviews.countByStatus(ReviewStatus.PENDING), reviews.countByStatus(ReviewStatus.PUBLISHED),
-                reviews.countByStatus(ReviewStatus.HIDDEN));
+                count.applyAsLong(ReviewStatus.PENDING), count.applyAsLong(ReviewStatus.PUBLISHED),
+                count.applyAsLong(ReviewStatus.HIDDEN));
     }
 
     /** Publishes (also a hidden one). The first published review of an order earns the bonus. */
@@ -410,7 +414,7 @@ public class ReviewService {
     }
 
     private ProductReview load(long id) {
-        return reviews.findById(id).orElseThrow(() -> new NotFoundException("review not found"));
+        return reviews.findById(id).orElseThrow(() -> new NotFoundException("отзыв не найден"));
     }
 
     // ================================================================== publish side effects
@@ -570,7 +574,7 @@ public class ReviewService {
         try {
             return ReviewStatus.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("unknown status: " + raw);
+            throw new BadRequestException("неизвестный статус: " + raw);
         }
     }
 
@@ -578,7 +582,7 @@ public class ReviewService {
         try {
             return UuidUtil.toBytes(id.trim());
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("not found");
+            throw new NotFoundException("отзыв не найден");
         }
     }
 }

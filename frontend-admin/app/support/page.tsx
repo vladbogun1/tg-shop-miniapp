@@ -111,7 +111,7 @@ function SupportScreen() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Клиент, товар или текст"
+            placeholder="Клиент или товар"
             aria-label="Поиск по вопросам"
             icon={<Search className="h-4 w-4" />}
             rightSlot={
@@ -141,7 +141,7 @@ function SupportScreen() {
           <EmptyState
             icon={LifeBuoy}
             title={q ? "Ничего не нашлось" : "Вопросов нет"}
-            description={q ? "Попробуйте другое имя, товар или слово из сообщения." : EMPTY_HINT[filter]}
+            description={q ? "Ищется по имени клиента и названию товара — попробуйте другое." : EMPTY_HINT[filter]}
           />
         ) : (
           <ul className="flex flex-col gap-2">

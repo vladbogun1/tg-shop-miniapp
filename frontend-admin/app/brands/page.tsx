@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { BadgeCheck, Check, ExternalLink, GitMerge, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { adminApi, ApiError, type AdminBrand, type BrandLogoMode } from "@/lib/api";
+import { invalidateCards } from "@/lib/cards";
 import { productsWord } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
@@ -90,7 +91,8 @@ export default function BrandsPage() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ["brands"] });
     qc.invalidateQueries({ queryKey: ["catalog-schema"] });
-    qc.invalidateQueries({ queryKey: ["products"] });
+    // Products + «Карточки» (its own schema query and the brand of every card).
+    invalidateCards(qc, true);
   }
 
   function openForm(b: AdminBrand | null) {

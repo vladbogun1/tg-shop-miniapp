@@ -47,6 +47,7 @@ public final class StockCalculator {
         Map<String, Instant> lastSale = new HashMap<>();
         Map<String, Long> sold30Value = new HashMap<>();
         Instant cut30 = now.minus(Duration.ofDays(30));
+        Map<ItemFact, Long> lineValues = facts.soldValueByItem();
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
             if (o == null || !o.sold() || it.gift() || o.createdAt() == null) {
@@ -54,8 +55,7 @@ public final class StockCalculator {
             }
             lastSale.merge(it.productId(), o.createdAt(), (a, b) -> a.isAfter(b) ? a : b);
             if (!o.createdAt().isBefore(cut30)) {
-                sold30Value.merge(it.productId(), Math.round(it.priceMinor() * it.quantity() * o.soldShare()),
-                        Long::sum);
+                sold30Value.merge(it.productId(), lineValues.getOrDefault(it, 0L), Long::sum);
             }
         }
 
@@ -156,15 +156,20 @@ public final class StockCalculator {
         Map<String, long[]> acc = new HashMap<>(); // units, revenue
         Map<String, Set<String>> orderSets = new HashMap<>();
         Map<String, String> snapshotTitle = new HashMap<>();
+        Map<ItemFact, Long> value = facts.soldValueByItem();
         for (ItemFact it : facts.items()) {
             OrderFact o = orders.get(it.orderId());
             if (o == null || !o.sold() || it.gift() || !channel.matches(o.source())
                     || !period.contains(o.createdAt())) {
                 continue;
             }
+            long lineValue = value.getOrDefault(it, 0L);
+            if (it.soldQuantity() == 0 && lineValue == 0) {
+                continue; // sent back in full and refunded: not a best seller
+            }
             long[] a = acc.computeIfAbsent(it.productId(), k -> new long[2]);
             a[0] += it.soldQuantity();
-            a[1] += Math.round(it.priceMinor() * it.quantity() * o.soldShare());
+            a[1] += lineValue;
             orderSets.computeIfAbsent(it.productId(), k -> new HashSet<>()).add(it.orderId());
             snapshotTitle.putIfAbsent(it.productId(), it.title());
         }

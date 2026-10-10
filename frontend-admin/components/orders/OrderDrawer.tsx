@@ -294,7 +294,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     if (!ok) return;
     const done = await run("delete", () => adminApi.deleteOrder(id), "Заказ удалён навсегда", "Ошибка удаления");
     if (done) {
-      qc.invalidateQueries({ queryKey: ["metrics"] });
+      // «Метрики» queries live under ["metrics2", …] — ["metrics"] matched nothing.
+      qc.invalidateQueries({ queryKey: ["metrics2"] });
       close();
     }
   }
