@@ -203,7 +203,7 @@ export function SourceText({ text, clamp = true }: { text: string; clamp?: boole
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="mt-1 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] hover:text-[var(--accent-hi)]"
+          className="hit mt-1 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] hover:text-[var(--accent-hi)]"
         >
           {open ? "Свернуть" : "Показать полностью"}
         </button>

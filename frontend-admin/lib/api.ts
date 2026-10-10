@@ -423,6 +423,11 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/** «Signed in, but this action / page is not allowed» — a 403 that does not end the session. */
+export function isForbidden(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 403 && e.code !== "TWO_FACTOR_REQUIRED";
+}
+
 export function isAuthenticated(): boolean {
   return !!getAccessToken();
 }
@@ -524,8 +529,13 @@ const http = createHttpClient({
     if (token) maybeRefresh(token);
     return token;
   },
-  onUnauthorized: () => {
-    dropSession();
+  onUnauthorized: (status, code) => {
+    // Only «not signed in» ends the session: 401 = no / expired / revoked token (also every device
+    // after «Выйти везде» — the backend treats a revoked token as anonymous), 403 TWO_FACTOR_REQUIRED
+    // = a half-finished sign-in token. Any other 403 is «signed in, but not allowed» (e.g. the
+    // «Админы» section for a non-main admin): the admin stays in, the caller shows the message
+    // («Недостаточно прав» — QueryState renders it as an empty state, actions as a toast).
+    if (status === 401 || code === "TWO_FACTOR_REQUIRED") dropSession();
   },
 });
 

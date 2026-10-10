@@ -494,7 +494,7 @@ function PanelBody({
           target="_blank"
           title="Открыть товар в редакторе на шаге «Характеристики» (новая вкладка)"
           aria-label="Открыть в редакторе"
-          className="focusable inline-flex h-10 items-center gap-1.5 rounded-[var(--r-md)] px-3 font-display text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-11"
+          className="focusable inline-flex h-10 min-w-11 items-center justify-center gap-1.5 rounded-[var(--r-md)] px-3 font-display text-[12px] font-bold uppercase tracking-[0.04em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-11"
         >
           <span className="max-sm:hidden">В редакторе</span> <ExternalLink className="h-3.5 w-3.5" />
         </Link>
@@ -847,7 +847,7 @@ function TextsSection({
               aria-selected={lang === l}
               onClick={() => setLang(l)}
               className={cn(
-                "focusable font-display flex items-center gap-1.5 rounded-[var(--r-sm)] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] transition-colors pointer-coarse:py-1.5",
+                "focusable hit font-display flex items-center gap-1.5 rounded-[var(--r-sm)] border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] transition-colors pointer-coarse:py-1.5",
                 lang === l
                   ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                   : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -949,7 +949,7 @@ function TextBlock({
               if (!editing && draft === undefined) onDraft(current);
               setEditing(!editing);
             }}
-            className="focusable ml-auto inline-flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] transition-colors hover:text-[var(--accent-hi)]"
+            className="focusable hit ml-auto inline-flex items-center gap-1 rounded-[var(--r-sm)] px-1.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] transition-colors hover:text-[var(--accent-hi)]"
           >
             <PencilLine className="h-3.5 w-3.5" /> {editing ? "Готово" : "Править"}
           </button>

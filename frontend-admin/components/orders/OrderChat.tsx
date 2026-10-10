@@ -27,8 +27,12 @@ import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
 import { cn } from "@/lib/cn";
 import { TemplatePicker } from "./ReplyTemplates";
+import { ChatDaySection, useChatDays } from "./ChatDays";
 
-function timeOf(iso: string): string {
+const messageTime = (m: MessageDto) => m.createdAt;
+
+function timeOf(iso: string | null | undefined): string {
+  if (!iso) return "";
   const d = new Date(iso);
   return isNaN(d.getTime())
     ? ""
@@ -186,6 +190,8 @@ export function OrderChat({ orderId }: { orderId: string }) {
     return [...older.filter((m) => !seen.has(m.id)), ...latest];
   }, [older, latest]);
 
+  const days = useChatDays(messages, messageTime);
+
   const canLoadOlder = !olderExhausted && latest.length >= CHAT_PAGE;
 
   const markRead = useCallback(() => {
@@ -322,8 +328,12 @@ export function OrderChat({ orderId }: { orderId: string }) {
             Сообщений пока нет
           </div>
         )}
-        {messages.map((m) => (
-          <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
+        {days.map((day) => (
+          <ChatDaySection key={day.key} label={day.label}>
+            {day.items.map((m) => (
+              <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
+            ))}
+          </ChatDaySection>
         ))}
       </div>
 

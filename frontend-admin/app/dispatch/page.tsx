@@ -13,8 +13,9 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Package, Phone, Send, Truck, Hash, RefreshCw, AlertTriangle, User } from "lucide-react";
 import { adminApi, ApiError } from "@/lib/api";
-import { ordersApi, type AdminDispatchOrder } from "@/lib/orders-api";
-import { isNovaPoshtaTtn } from "@/lib/orders";
+import { changeStatusConfirmingUnpaid, ordersApi, type AdminDispatchOrder } from "@/lib/orders-api";
+import { formatDateTime, isNovaPoshtaTtn } from "@/lib/orders";
+import { useConfirm } from "@/components/ui/ConfirmModal";
 import { refreshInbox } from "@/lib/inbox";
 import { money } from "@/lib/money";
 import { useToast } from "@/lib/toast";
@@ -143,9 +144,19 @@ function awaitingPrepayment(o: AdminDispatchOrder): boolean {
   return o.status === "NEW" && onlineDue(o) > 0;
 }
 
+/**
+ * APPROVED although its online payment never arrived (an online-payment order has a deadline; older
+ * ones do not). Shipping stays possible — «Отправлено» asks for a confirmation first.
+ */
+function approvedUnpaid(o: AdminDispatchOrder): boolean {
+  return o.status !== "NEW" && !!o.paymentDueAt && onlineDue(o) > 0;
+}
+
 function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void }) {
   const isPickup = o.deliveryMethod === "PICKUP";
   const waitPay = awaitingPrepayment(o);
+  const unpaid = approvedUnpaid(o);
+  const dueExpired = unpaid && !!o.paymentDueAt && Date.parse(o.paymentDueAt) <= Date.now();
 
   return (
     <div className="panel flex flex-col gap-4 p-4 sm:p-5">
@@ -172,6 +183,23 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
           {o.prepaymentMinor > 0 ? "Ждём онлайн-предоплату" : "Ждём онлайн-оплату"} {money(onlineDue(o), o.currency)} — не
           отправляйте, пока она не придёт.
+        </div>
+      )}
+
+      {unpaid && (
+        <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] px-3 py-2.5 text-[13px] text-[var(--text)]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+          <span className="min-w-0">
+            <b className="font-semibold text-[var(--danger-ink)]">
+              {o.prepaymentMinor > 0 ? "Предоплата не пришла" : "Онлайн-оплата не пришла"}
+            </b>
+            {": "}
+            <b className="tabular font-semibold">{money(onlineDue(o), o.currency)}</b>
+            {dueExpired && o.paymentDueAt && <> · срок оплаты прошёл {formatDateTime(o.paymentDueAt)}</>}
+            <span className="block text-[12px] text-[var(--text-muted)]">
+              Заказ одобрен без оплаты. Отправить можно — с подтверждением (например, если договорились в чате).
+            </span>
+          </span>
         </div>
       )}
 
@@ -278,12 +306,15 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
   const clean = ttn.replace(/\s+/g, "");
   const wrong = clean.length > 0 && !isNovaPoshtaTtn(clean);
   const waitPay = awaitingPrepayment(o);
+  const [confirm, confirmUi] = useConfirm();
 
   async function ship() {
     if (!clean) return;
     setSaving(true);
     try {
-      await ordersApi.changeStatus(o.id, { status: "SHIPPED", trackingNumber: clean });
+      // An approved order without its online payment asks «Отправить всё равно?» (server: ORDER_UNPAID_SHIP).
+      const updated = await changeStatusConfirmingUnpaid(o.id, { status: "SHIPPED", trackingNumber: clean }, confirm);
+      if (updated === null) return; // declined: the typed ТТН stays
       push(`#${o.shortId} отправлен, ТТН ушла клиенту`, "ok");
       setTtn("");
       qc.invalidateQueries({ queryKey: ["dispatch"] });
@@ -325,6 +356,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
       >
         Отправлено
       </Button>
+      {confirmUi}
     </div>
   );
 }

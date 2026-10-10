@@ -560,8 +560,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
               <Button variant="ghost" onClick={requestClose}>
                 Отмена
               </Button>
+              {/* 320-px phones: the full label is wider than the footer — «Создать с ИИ». */}
               <Button variant="accent" loading={saving} disabled={uploading} onClick={saveCreate} icon={<Wand2 className="h-4 w-4" />}>
-                Создать и оформить с ИИ
+                Создать <span className="max-[359px]:hidden">и оформить</span> с ИИ
               </Button>
             </div>
           )
@@ -661,8 +662,17 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
               <div className="flex items-center gap-2">
                 {/* Save from any step — a price fix should not mean clicking through seven. */}
                 {!isLast && (
-                  <Button variant="surface" loading={saving} disabled={!dirty} onClick={save} icon={<Check className="h-4 w-4" />}>
-                    Сохранить
+                  <Button
+                    variant="surface"
+                    loading={saving}
+                    disabled={!dirty}
+                    onClick={save}
+                    icon={<Check className="h-4 w-4" />}
+                    title="Сохранить"
+                    className="max-[359px]:w-11 max-[359px]:px-0"
+                  >
+                    {/* 320-px phones: three labelled buttons do not fit — this one becomes a ✓ icon. */}
+                    <span className="max-[359px]:sr-only">Сохранить</span>
                   </Button>
                 )}
                 {isLast ? (
@@ -1152,7 +1162,7 @@ function Stepper({ step, onJump }: { step: number; onJump: (i: number) => void }
             aria-label={`Шаг ${i + 1}: ${s.label}`}
             aria-current={i === step ? "step" : undefined}
             title={s.label}
-            className="focusable group flex h-4 flex-1 items-center rounded-full"
+            className="focusable group flex h-4 flex-1 items-center rounded-full pointer-coarse:h-10"
           >
             <span
               className={cn(

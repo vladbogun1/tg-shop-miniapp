@@ -48,7 +48,7 @@ function Strip({ t }: { t: Today }) {
   return (
     <div className="mx-root mb-4">
       <div className="thin-scroll -mx-1 overflow-x-auto px-1 pb-1">
-        <div className="grid min-w-[760px] grid-cols-7 gap-2">
+        <div className="grid min-w-[1120px] grid-cols-7 gap-2">
           <Cell
             href="/?status=NEW"
             icon={Hourglass}
@@ -142,7 +142,7 @@ function Cell({
     >
       {/* Something waits on the owner: orange hairline on top + orange icon (not colour alone — the number says it). */}
       {alert && <span aria-hidden className="absolute inset-x-0 top-0 h-[2px] bg-[var(--accent)] shadow-[var(--glow-sm)]" />}
-      <span className="font-display flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+      <span className="font-display flex items-center gap-1.5 text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] text-[var(--text-muted)]">
         <Icon className={cn("h-3.5 w-3.5 shrink-0", alert && "text-[var(--accent)]")} /> {label}
       </span>
       <span className="kpi-num truncate text-[20px]">{value}</span>

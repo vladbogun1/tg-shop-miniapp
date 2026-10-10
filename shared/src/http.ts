@@ -54,8 +54,12 @@ export interface HttpClientOptions {
   baseUrl: string;
   /** Current bearer token, or null when unauthenticated. */
   getToken: () => string | null;
-  /** Called on 401/403 so the app can drop the session and show a login screen. */
-  onUnauthorized?: (status: number) => void;
+  /**
+   * Called on 401/403 so the app can drop the session and show a login screen. `code` is the
+   * error code from the body (e.g. TWO_FACTOR_REQUIRED) — the admin panel tells «not signed in»
+   * from «signed in, but this action is not allowed» by it and keeps the session on the latter.
+   */
+  onUnauthorized?: (status: number, code?: string) => void;
   /**
    * Language to ask the server to answer in, as a BCP-47 tag. Sent as `Accept-Language` on every
    * request — including the unauthenticated ones, which is the only way the promo check in the
@@ -124,8 +128,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     }
 
     if (res.status === 401 || res.status === 403) {
-      onUnauthorized?.(res.status);
       const failure = await failureOf(res, texts.unauthorized());
+      onUnauthorized?.(res.status, failure.code);
       throw new ApiError(failure.message, res.status, failure.code);
     }
     if (!res.ok) {

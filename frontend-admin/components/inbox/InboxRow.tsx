@@ -39,6 +39,7 @@ import { money } from "@/lib/money";
 
 const PRIMARY: Record<KnownInboxType, { label: string; icon: LucideIcon }> = {
   PAYMENT: { label: "Открыть заказ", icon: ClipboardList },
+  APPROVED_UNPAID: { label: "Открыть заказ", icon: ClipboardList },
   CHAT: { label: "Ответить", icon: MessageCircle },
   NEW_STALE: { label: "Открыть заказ", icon: ClipboardList },
   APPROVED_STALE: { label: "Открыть заказ", icon: ClipboardList },

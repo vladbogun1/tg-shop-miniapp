@@ -3,8 +3,10 @@
  * that file does not collide. Same http client, same error type.
  */
 import type { NpCity, NpWarehouse } from "@shop/shared";
+import type { ConfirmOptions } from "@/components/ui/ConfirmModal";
 import {
   adminApi,
+  ApiError,
   apiDelete,
   apiGet,
   apiPatch,
@@ -72,6 +74,40 @@ export interface StatusChangeBody {
   rejectReason?: string;
   rejectReasonCode?: RejectReasonCode;
   restock?: boolean;
+  /** SHIPPED although the online payment has not arrived — the admin confirmed (see changeStatusConfirmingUnpaid). */
+  shipUnpaid?: boolean;
+}
+
+/** Backend code: SHIPPED refused because the online payment of the order has not arrived. */
+export const SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
+
+type Confirm = (options: ConfirmOptions) => Promise<boolean>;
+
+/**
+ * PATCH the status; when the server refuses SHIPPED because the prepayment / online payment has not
+ * arrived (ORDER_UNPAID_SHIP), asks the admin and repeats with `shipUnpaid` — the server then logs
+ * «отправлен без онлайн-оплаты по решению админа» in the order history. null = the admin declined.
+ */
+export async function changeStatusConfirmingUnpaid(
+  id: string,
+  body: StatusChangeBody,
+  confirm: Confirm
+): Promise<AdminOrderDetail | null> {
+  try {
+    return await ordersApi.changeStatus(id, body);
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.code !== SHIP_UNPAID_CODE) throw e;
+    // «Предоплата по заказу #… не пришла (не хватает …).» — the first sentence of the server text.
+    const head = e.message.match(/^.*?\)\./)?.[0] ?? e.message;
+    const ok = await confirm({
+      title: "Отправить без предоплаты?",
+      message: `${head} Отправить всё равно? (например, договорились в чате) В истории заказа запишется, что он отправлен без предоплаты по вашему решению.`,
+      confirmLabel: "Отправить всё равно",
+      danger: true,
+    });
+    if (!ok) return null;
+    return ordersApi.changeStatus(id, { ...body, shipUnpaid: true });
+  }
 }
 
 export interface DeliveryPatch {

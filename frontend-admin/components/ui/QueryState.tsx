@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { AlertTriangle, Lock, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError, isForbidden } from "@/lib/api";
 import { Button } from "./Button";
 import { EmptyState } from "./EmptyState";
 import { CenterSpinner } from "./Spinner";
@@ -27,6 +27,16 @@ export function QueryState({
   loadingLabel?: string;
   children: ReactNode;
 }) {
+  if (isError && isForbidden(error)) {
+    // 403: signed in, but this section is not for this admin — no «Повторить», it will not change.
+    return (
+      <EmptyState
+        icon={Lock}
+        title="Недостаточно прав"
+        description="У вашей учётной записи нет доступа к этому разделу. Если он нужен — попросите главного админа."
+      />
+    );
+  }
   if (isError) {
     return (
       <EmptyState

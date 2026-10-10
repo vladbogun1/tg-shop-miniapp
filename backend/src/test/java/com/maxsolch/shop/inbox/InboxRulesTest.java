@@ -349,7 +349,7 @@ class InboxRulesTest {
                 order().id(id(1)).paidOnline(Duration.ofMinutes(5)).created(Duration.ofHours(4)).row()), Map.of(), T);
 
         assertThat(inbox.groups()).extracting(Group::id).containsExactly(
-                "PAYMENT", "CHAT", "SUPPORT", "NEW_STALE", "APPROVED_STALE", "RETURN", "REVIEW", "LOW_STOCK",
+                "PAYMENT", "APPROVED_UNPAID", "CHAT", "SUPPORT", "NEW_STALE", "APPROVED_STALE", "RETURN", "REVIEW", "LOW_STOCK",
                 "SITE_ERROR");
         // the same order needs two different things: confirm the payment AND approve it
         assertThat(inbox.total()).isEqualTo(2);
@@ -416,5 +416,41 @@ class InboxRulesTest {
                 marks, T).total()).isZero();
         assertThat(InboxRules.build(facts(List.of(), List.of(), List.of(stockRow("p1", null, 2, 4.0)), null),
                 marks, T).total()).isEqualTo(1);
+    }
+
+    static OrderRow approvedOnline(String id, long total, long prepayment, long received, Instant dueAt) {
+        return new OrderRow(id, OrderStatus.APPROVED, "Оля", total, received, prepayment, 0,
+                NOW.minus(Duration.ofDays(2)), NOW.minus(Duration.ofHours(1)), null, null, null,
+                received > 0, received > 0 ? NOW.minus(Duration.ofHours(2)) : null, received > 0, null, null,
+                null, null, null, dueAt);
+    }
+
+    @Test
+    void approvedWithoutTheOnlinePayment_ownGroupCountedInTheBadge() {
+        Instant expired = NOW.minus(Duration.ofHours(5));
+        Inbox inbox = InboxRules.build(orders(
+                // prepayment 100 ₴ never came, deadline passed
+                approvedOnline(id(1), 135_000, 10_000, 0, expired),
+                // «Полная оплата онлайн» not paid yet, deadline ahead
+                approvedOnline(id(2), 50_000, 0, 0, NOW.plus(Duration.ofHours(3))),
+                // prepayment arrived — nothing to warn about
+                approvedOnline(id(3), 90_000, 10_000, 10_000, expired),
+                // an old order (no online deadline) is not an online-payment order
+                approvedOnline(id(4), 70_000, 0, 0, null)), Map.of(), T);
+
+        Group g = group(inbox, InboxItemType.APPROVED_UNPAID);
+        assertThat(g.items()).extracting(Item::entityId).containsExactlyInAnyOrder(id(1), id(2));
+        assertThat(g.count()).isEqualTo(2);
+        Item prepay = g.items().stream().filter(i -> i.entityId().equals(id(1))).findFirst().orElseThrow();
+        assertThat(prepay.amountMinor()).isEqualTo(10_000L);
+        assertThat(prepay.subtitle()).startsWith(InboxRules.APPROVED_UNPAID_TEXT).contains("срок оплаты прошёл");
+        assertThat(prepay.overdue()).isTrue();
+        Item full = g.items().stream().filter(i -> i.entityId().equals(id(2))).findFirst().orElseThrow();
+        assertThat(full.amountMinor()).isEqualTo(50_000L);
+        assertThat(full.overdue()).isFalse();
+        // One row per order: the unpaid ones are not repeated under «Одобрены, не отправлены».
+        assertThat(group(inbox, InboxItemType.APPROVED_STALE).items()).extracting(Item::entityId)
+                .doesNotContain(id(1), id(2));
+        assertThat(inbox.total()).isEqualTo(inbox.groups().stream().mapToInt(Group::count).sum());
     }
 }

@@ -9,5 +9,7 @@ public record UpdateOrderStatusRequest(
         /** For REJECTED: return items to stock? null = true (default). */
         Boolean restock,
         /** For REJECTED: RejectReasonCode name (NO_RESPONSE, CHANGED_MIND, …); text is then optional. */
-        String rejectReasonCode) {
+        String rejectReasonCode,
+        /** For SHIPPED: the admin confirmed shipping although the online payment has not arrived. */
+        Boolean shipUnpaid) {
 }

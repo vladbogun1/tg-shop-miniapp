@@ -5,6 +5,7 @@ import { Search, X, Loader2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
+import { menuPlacement } from "@/components/ui/Select";
 
 /**
  * Generic async autocomplete. Dropdown renders in a portal so it is never
@@ -138,12 +139,12 @@ export function Autocomplete<T>({
                 transition={{ duration: 0.14 }}
                 style={{
                   position: "fixed",
-                  top: rect.bottom + 6,
+                  ...menuPlacement(rect),
                   left: rect.left,
                   width: rect.width,
                   zIndex: 200,
                 }}
-                className="elevated thin-scroll max-h-72 overflow-auto p-1"
+                className="elevated thin-scroll overflow-auto p-1"
               >
                 {items.length === 0 ? (
                   <div className="px-3 py-3 text-[13px] text-[var(--text-faint)]">

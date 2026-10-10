@@ -10,11 +10,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Getter
 @Setter
@@ -60,7 +62,14 @@ public class OrderMessage {
     @Column(name = "reply_to_message_id")
     private Long replyToMessageId;
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
+    /**
+     * Set by {@link #prePersist} — NOT left to the column default: with {@code insertable = false}
+     * the entity stayed {@code createdAt = null} after save, so the POST answer and the WebSocket
+     * push of a new message carried {@code "createdAt": null} and every chat rendered it as
+     * 1970-01-01 00:00 UTC in the viewer's zone (03:00/04:00 instead of the real time, and a
+     * «1 января» day separator) until a reload read the row back.
+     */
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "delivered_at")
@@ -68,4 +77,12 @@ public class OrderMessage {
 
     @Column(name = "read_at")
     private Instant readAt;
+
+    @PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            // TIMESTAMP(0) column: whole seconds, so the value sent now equals the one read later.
+            createdAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        }
+    }
 }

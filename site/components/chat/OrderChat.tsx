@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Send, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Message, noFadeFlash, type SendMessageRequest } from "@shop/shared";
+import { dayKey, type Message, noFadeFlash, type SendMessageRequest } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/i18n/context";
 import { api, refreshSession } from "@/lib/api";
@@ -114,17 +114,15 @@ export function OrderChat({ orderId }: { orderId: string }) {
     return map;
   }, [messages]);
 
-  const items = useMemo(() => {
-    const out: ({ kind: "day"; label: string; key: string } | { kind: "msg"; msg: Message })[] = [];
-    let lastDay = "";
+  // Grouped by the viewer's calendar day (browser time zone), Telegram-style: each day is a
+  // section whose date chip sticks to the top of the chat while that day scrolls by.
+  const days = useMemo(() => {
+    const out: { key: string; label: string; msgs: Message[] }[] = [];
     for (const m of messages) {
-      const at = new Date(m.createdAt);
-      const key = Number.isNaN(at.getTime()) ? m.createdAt : `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
-      if (key !== lastDay) {
-        out.push({ kind: "day", label: fmt.dayLabel(m.createdAt), key });
-        lastDay = key;
-      }
-      out.push({ kind: "msg", msg: m });
+      const key = dayKey(m.createdAt);
+      const last = out[out.length - 1];
+      if (last && last.key === key) last.msgs.push(m);
+      else out.push({ key, label: fmt.dayLabel(m.createdAt), msgs: [m] });
     }
     return out;
   }, [messages, fmt]);
@@ -187,23 +185,24 @@ export function OrderChat({ orderId }: { orderId: string }) {
               </button>
             </div>
           )}
-          {items.map((it) =>
-            it.kind === "day" ? (
-              <div key={`d-${it.key}`} className="my-2 flex justify-center">
-                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
-                  {it.label}
+          {days.map((day) => (
+            <section key={`d-${day.key}`} className="flex flex-col gap-1.5" aria-label={day.label}>
+              <div className="pointer-events-none sticky top-0 z-[2] my-2 flex justify-center">
+                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] shadow-[0_2px_8px_rgba(0,0,0,.35)]">
+                  {day.label}
                 </span>
               </div>
-            ) : (
-              <MessageBubble
-                key={it.msg.id}
-                msg={it.msg}
-                outgoing={it.msg.senderType === "CUSTOMER"}
-                repliedTo={it.msg.replyToMessageId ? byId.get(it.msg.replyToMessageId) ?? null : null}
-                onImageClick={setLightbox}
-              />
-            )
-          )}
+              {day.msgs.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  msg={msg}
+                  outgoing={msg.senderType === "CUSTOMER"}
+                  repliedTo={msg.replyToMessageId ? byId.get(msg.replyToMessageId) ?? null : null}
+                  onImageClick={setLightbox}
+                />
+              ))}
+            </section>
+          ))}
         </div>
       </div>
 

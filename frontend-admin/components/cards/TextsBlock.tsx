@@ -105,7 +105,7 @@ function RuText({ t, sel, onSel, onEdit }: { t: TextReview; sel: ProductSel; onS
           <button
             type="button"
             onClick={() => setEditing(!editing)}
-            className="ml-auto inline-flex items-center gap-1 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] hover:text-[var(--accent-hi)]"
+            className="hit ml-auto inline-flex items-center gap-1 font-display text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--text-faint)] hover:text-[var(--accent-hi)]"
           >
             <PencilLine className="h-3.5 w-3.5" /> {editing ? "Готово" : "Править"}
           </button>

@@ -67,25 +67,42 @@ export function formatShortDateTime(iso: string, locale = DEFAULT_LOCALE): strin
 }
 
 export function formatTime(iso: string, locale = DEFAULT_LOCALE): string {
+  // null/"" would become 1970-01-01 00:00 UTC — a fake «03:00» is worse than no time at all.
+  if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Day label for chat separators: "today" / "yesterday" / a date. */
+/**
+ * Day label for chat separators, Telegram-style: "today" / "yesterday" / "7 октября", with the
+ * year for an earlier year ("7 октября 2025 г."). Days are the viewer's (browser time zone).
+ */
 export function dayLabel(
   iso: string,
   locale = DEFAULT_LOCALE,
-  labels: RelativeLabels = RU_LABELS
+  labels: RelativeLabels = RU_LABELS,
+  now: Date = new Date()
 ): string {
+  if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  const now = new Date();
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = (startOf(now) - startOf(d)) / 86_400_000;
+  // Math.round: a DST change makes one day 23 or 25 hours long.
+  const diff = Math.round((startOf(now) - startOf(d)) / 86_400_000);
   if (diff === 0) return labels.today;
   if (diff === 1) return labels.yesterday;
-  return d.toLocaleDateString(locale, { day: "2-digit", month: "long" });
+  return d.toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+}
+
+/** Key of the viewer's calendar day of a moment ("2026-9-7"), to group chat messages by day. */
+export function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? String(iso) : `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
 /** Relative-ish time label for cards: "just now" / "5 min" / "3 h" / a date. */

@@ -98,7 +98,10 @@ public final class InboxRules {
             if (isNewStale(o, now, t.newStaleHours())) {
                 all.get(InboxItemType.NEW_STALE).add(newStale(o, now, t.newStaleHours()));
             }
-            if (isApprovedStale(o, now, t.approvedStaleHours())) {
+            if (isApprovedUnpaid(o)) {
+                // More specific than «одобрен, не отправлен» — one row per order, not two.
+                all.get(InboxItemType.APPROVED_UNPAID).add(approvedUnpaid(o, now));
+            } else if (isApprovedStale(o, now, t.approvedStaleHours())) {
                 all.get(InboxItemType.APPROVED_STALE).add(approvedStale(o, now, t.approvedStaleHours()));
             }
             if (isReturnEvent(o, now)) {
@@ -173,6 +176,22 @@ public final class InboxRules {
     static boolean isPaidCancelled(OrderRow o) {
         return o.status() == OrderStatus.REJECTED && o.paidOnline() && o.shippedAt() == null
                 && o.refundedMinor() < o.receivedMinor();
+    }
+
+    /**
+     * Approved, an online-payment order (it has a deadline), and the online part — the prepayment,
+     * or the whole order for «Полная оплата онлайн» — has not arrived. A pending cancellation
+     * request is shown in «Оплаты» instead.
+     */
+    static boolean isApprovedUnpaid(OrderRow o) {
+        return o.status() == OrderStatus.APPROVED && o.paymentDueAt() != null && onlineDue(o) > 0
+                && !isCancelRequested(o);
+    }
+
+    /** Same as {@code OrderService.amountDueMinor}: what is still to pay online. */
+    static long onlineDue(OrderRow o) {
+        long due = o.prepaymentMinor() > 0 ? Math.min(o.prepaymentMinor(), o.totalMinor()) : o.totalMinor();
+        return Math.max(0, due - Math.max(0, o.receivedMinor()));
     }
 
     static boolean isNewStale(OrderRow o, Instant now, int hours) {
@@ -255,6 +274,19 @@ public final class InboxRules {
         Instant from = approvedFrom(o);
         return orderItem(InboxItemType.APPROVED_STALE, o, version(from), "Одобрен, но ещё не отправлен",
                 o.totalMinor(), null, null, from, now, overdue(from, now, Duration.ofHours(2L * hours)));
+    }
+
+    /** Subtitle of an {@link InboxItemType#APPROVED_UNPAID} row. */
+    public static final String APPROVED_UNPAID_TEXT = "Одобрен, но онлайн-оплата не пришла";
+
+    private static Item approvedUnpaid(OrderRow o, Instant now) {
+        Instant from = approvedFrom(o);
+        boolean expired = !o.paymentDueAt().isAfter(now);
+        // The version follows the received amount: a partial payment brings a snoozed row back.
+        return orderItem(InboxItemType.APPROVED_UNPAID, o, version(from) + ":" + o.receivedMinor(),
+                APPROVED_UNPAID_TEXT + (expired ? " · срок оплаты прошёл" : ""),
+                onlineDue(o), o.prepaymentMinor() > 0 ? "предоплата" : "оплата",
+                null, from, now, expired);
     }
 
     private static Item returned(OrderRow o, Instant now) {

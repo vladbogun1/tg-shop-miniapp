@@ -11,6 +11,22 @@ export interface SelectOption<T extends string> {
   label: string;
 }
 
+/**
+ * Where a fixed dropdown under `rect` goes: below the field (up to 288px tall), or above it when
+ * the field sits low on the screen (phone keyboard, last field of a modal) and there is more room
+ * there — so the list never runs past the screen edge. Shared with Autocomplete.
+ */
+export function menuPlacement(rect: DOMRect): { top?: number; bottom?: number; maxHeight: number } {
+  const MAX = 288;
+  const vh = window.innerHeight;
+  const below = vh - rect.bottom - 12;
+  const above = rect.top - 12;
+  if (below < Math.min(MAX, 200) && above > below) {
+    return { bottom: vh - rect.top + 6, maxHeight: Math.min(MAX, above - 6) };
+  }
+  return { top: rect.bottom + 6, maxHeight: Math.max(120, Math.min(MAX, below - 6)) };
+}
+
 export function Select<T extends string>({
   label,
   value,
@@ -64,12 +80,14 @@ export function Select<T extends string>({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className={cn(
           "focusable flex h-10 items-center justify-between gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 text-[14px] transition-[border-color,box-shadow] duration-150 hover:border-[var(--border-2)] pointer-coarse:h-11",
           open && "!border-[var(--accent)] shadow-[var(--ring-accent)]"
         )}
       >
-        <span className={selected ? "text-[var(--text)]" : "text-[var(--text-faint)]"}>
+        <span className={cn("min-w-0 truncate", selected ? "text-[var(--text)]" : "text-[var(--text-faint)]")}>
           {selected ? selected.label : placeholder}
         </span>
         <ChevronDown
@@ -89,12 +107,12 @@ export function Select<T extends string>({
                 transition={{ duration: 0.14 }}
                 style={{
                   position: "fixed",
-                  top: rect.bottom + 6,
+                  ...menuPlacement(rect),
                   left: rect.left,
                   width: rect.width,
                   zIndex: 200,
                 }}
-                className="elevated thin-scroll max-h-72 overflow-auto p-1"
+                className="elevated thin-scroll overflow-auto p-1"
               >
                 {options.map((o) => {
                   const active = o.value === value;

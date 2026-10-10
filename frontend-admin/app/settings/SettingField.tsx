@@ -110,7 +110,7 @@ export function SettingField({
           <button
             type="button"
             onClick={onReset}
-            className="focusable inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
+            className="focusable hit inline-flex items-center gap-1.5 rounded-[var(--r-sm)] px-2 py-1 font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Сбросить

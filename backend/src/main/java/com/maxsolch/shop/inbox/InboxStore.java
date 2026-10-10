@@ -37,7 +37,7 @@ public class InboxStore {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.customer_name, o.total_minor, o.received_minor, "
                 + "o.prepayment_minor, o.refunded_minor, o.created_at, o.approved_at, o.shipped_at, o.rejected_at, "
                 + "o.returned_at, o.paid, o.paid_at, o.reject_reason, o.reject_reason_code, "
-                + "o.cancel_request_status, o.cancel_request_reason, o.cancel_requested_at, "
+                + "o.cancel_request_status, o.cancel_request_reason, o.cancel_requested_at, o.payment_due_at, "
                 + "exists (select 1 from payment_invoices pi where pi.order_id = o.id "
                 + "and pi.applied_at is not null) paid_online "
                 + "from orders o "
@@ -46,6 +46,7 @@ public class InboxStore {
                 + "or (o.status = 'REJECTED' and o.shipped_at is null and o.received_minor > o.refunded_minor) "
                 + "or (o.status = 'NEW' and o.created_at <= ?) "
                 + "or (o.status = 'APPROVED' and coalesce(o.approved_at, o.created_at) <= ?) "
+                + "or (o.status = 'APPROVED' and o.payment_due_at is not null and o.received_minor < o.total_minor) "
                 + "or (o.status = 'REJECTED' and o.shipped_at is not null and o.rejected_at >= ?) "
                 + "or (o.returned_at >= ?) "
                 + "or o.id in (select m.order_id from order_messages m "
@@ -70,7 +71,8 @@ public class InboxStore {
                         rs.getString("reject_reason_code"),
                         rs.getString("cancel_request_status"),
                         rs.getString("cancel_request_reason"),
-                        ts(rs, "cancel_requested_at")),
+                        ts(rs, "cancel_requested_at"),
+                        ts(rs, "payment_due_at")),
                 Timestamp.from(newCutoff), Timestamp.from(approvedCutoff),
                 Timestamp.from(returnsSince), Timestamp.from(returnsSince));
     }

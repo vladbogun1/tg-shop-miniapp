@@ -607,6 +607,42 @@ class OrderServiceTest {
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
     }
 
+    private Order approvedPrepaymentNotPaid() {
+        Order o = persistedOrder(OrderStatus.APPROVED);
+        o.setTotalMinor(135_000);
+        o.setPrepaymentMinor(10_000);
+        o.setReceivedMinor(0);
+        o.setPaymentDueAt(Instant.now().minusSeconds(3600));
+        return o;
+    }
+
+    @Test
+    void ship_withoutTheOnlinePayment_needsTheAdminsConfirmation() {
+        Order o = approvedPrepaymentNotPaid();
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        assertThatThrownBy(() -> service.ship(o.getId(), "20450000000000"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Предоплата по заказу #")
+                .hasMessageContaining("не пришла")
+                .satisfies(e -> assertThat(((BadRequestException) e).getCode()).isEqualTo(OrderService.SHIP_UNPAID_CODE));
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
+
+        Order shipped = service.changeStatus(o.getId(), OrderStatus.SHIPPED, "20450000000000", null, null, true, true);
+        assertThat(shipped.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+    }
+
+    @Test
+    void onlinePaymentMissing_onlyForOnlineOrdersWithMoneyStillDue() {
+        Order o = approvedPrepaymentNotPaid();
+        assertThat(OrderService.onlinePaymentMissing(o)).isTrue();
+        o.setReceivedMinor(10_000); // the prepayment arrived; the rest is наложка
+        assertThat(OrderService.onlinePaymentMissing(o)).isFalse();
+        Order legacy = persistedOrder(OrderStatus.APPROVED);
+        legacy.setTotalMinor(50_000); // before online payments: no deadline, nothing "missing"
+        assertThat(OrderService.onlinePaymentMissing(legacy)).isFalse();
+    }
+
     @Test
     void cancelByCustomer_setsChangedMindCode() {
         Order o = persistedOrder(OrderStatus.NEW);
@@ -946,6 +982,66 @@ class OrderServiceTest {
 
         assertThat(d.restocked()).isFalse();
         verify(productRepository, never()).findByIdForUpdate(any());
+        verify(orderRepository).delete(o);
+    }
+
+    @Test
+    void delete_paidOnlineNotRefunded_isRejected_untilEverythingWentBack() {
+        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
+                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
+        service.setPaymentInvoices(invoices);
+        Order o = persistedOrder(OrderStatus.REJECTED);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        com.maxsolch.shop.payment.PaymentInvoice paid = new com.maxsolch.shop.payment.PaymentInvoice();
+        paid.setStatus(com.maxsolch.shop.payment.PaymentInvoice.SUCCESS);
+        paid.setAmountMinor(150_000);
+        paid.setAppliedAt(Instant.now());
+        paid.setRefundedMinor(100_000); // partly refunded: 500 ₴ still with the shop
+        com.maxsolch.shop.payment.PaymentInvoice expired = new com.maxsolch.shop.payment.PaymentInvoice();
+        expired.setStatus(com.maxsolch.shop.payment.PaymentInvoice.EXPIRED);
+        expired.setAmountMinor(150_000);
+        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(paid, expired));
+
+        assertThatThrownBy(() -> service.delete(o.getId(), false))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»");
+        verify(orderRepository, never()).delete(any());
+
+        paid.setRefundedMinor(150_000); // the rest went back to the card
+        service.delete(o.getId(), false);
+        verify(orderRepository).delete(o);
+    }
+
+    @Test
+    void delete_paymentStillProcessing_isRejected() {
+        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
+                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
+        service.setPaymentInvoices(invoices);
+        Order o = persistedOrder(OrderStatus.REJECTED);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        com.maxsolch.shop.payment.PaymentInvoice processing = new com.maxsolch.shop.payment.PaymentInvoice();
+        processing.setStatus(com.maxsolch.shop.payment.PaymentInvoice.PROCESSING);
+        processing.setAmountMinor(150_000);
+        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
+
+        assertThatThrownBy(() -> service.delete(o.getId(), false))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("банк ещё обрабатывает");
+        verify(orderRepository, never()).delete(any());
+    }
+
+    @Test
+    void delete_manualPaymentWithoutInvoices_staysAllowed() {
+        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
+                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
+        service.setPaymentInvoices(invoices);
+        Order o = persistedOrder(OrderStatus.DELIVERED);
+        o.setPaid(true); // «оплачен» by hand / card transfer — no bank record
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of());
+
+        service.delete(o.getId(), false);
+
         verify(orderRepository).delete(o);
     }
 

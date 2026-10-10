@@ -42,6 +42,11 @@ public class PushSubscriptionStore {
         jdbc.update("delete from admin_push_subscriptions where id = ?", id);
     }
 
+    /** Every device of one admin (sign-out everywhere, password change, 2FA reset, block, delete). */
+    public int deleteByAdmin(long adminId) {
+        return jdbc.update("delete from admin_push_subscriptions where admin_id = ?", adminId);
+    }
+
     public List<Subscription> all() {
         return jdbc.query("select " + COLUMNS + " from admin_push_subscriptions order by id", (rs, i) -> map(rs));
     }

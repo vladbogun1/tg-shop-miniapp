@@ -72,7 +72,11 @@ export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
   return [value, update];
 }
 
-/** yyyy-MM-dd of today in Kyiv (for the custom range inputs). */
+/**
+ * yyyy-MM-dd of today in Kyiv (for the custom range inputs). Deliberately NOT the browser's zone:
+ * the backend cuts periods into Europe/Kyiv calendar days, so «today» here must be its «today»
+ * (an admin abroad after midnight would otherwise ask for a day the server has not started).
+ */
 export function todayIso(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Kyiv" });
 }

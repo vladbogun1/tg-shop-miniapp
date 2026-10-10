@@ -25,7 +25,8 @@ import {
 } from "@dnd-kit/core";
 import { Search, RefreshCw, X } from "lucide-react";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
-import { ordersApi, type AdminBoard } from "@/lib/orders-api";
+import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
+import { useConfirm } from "@/components/ui/ConfirmModal";
 import { CLOSED_STATUSES, STATUS_LABEL, STATUS_ORDER, canTransition, shortId } from "@/lib/orders";
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useDebounced } from "@/lib/use-debounced";
@@ -62,6 +63,7 @@ const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 export default function BoardPage() {
   const qc = useQueryClient();
   const { push } = useToast();
+  const [confirm, confirmUi] = useConfirm();
   const isDesktop = useIsDesktop();
   const [view, setView] = useState<View>("board");
   const [search, setSearch] = useState("");
@@ -168,7 +170,12 @@ export default function BoardPage() {
       }
     }
     try {
-      await ordersApi.changeStatus(id, payload);
+      // SHIPPED without the online payment asks the admin first (server code ORDER_UNPAID_SHIP).
+      const updated = await changeStatusConfirmingUnpaid(id, payload, confirm);
+      if (updated === null) {
+        if (prev) qc.setQueryData(boardKey, prev); // declined — put the card back
+        return false;
+      }
       push(`Статус: ${STATUS_LABEL[payload.status]}`, "ok");
       setPending(null);
       refresh();
@@ -351,6 +358,8 @@ export default function BoardPage() {
         onClose={() => setPending(null)}
         onConfirm={(payload) => (pending ? commitStatus(payload, pending.order.id) : false)}
       />
+      {/* After the status modal so «Отправить без предоплаты?» stacks above it. */}
+      {confirmUi}
     </div>
   );
 }

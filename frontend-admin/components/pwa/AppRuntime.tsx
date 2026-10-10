@@ -5,14 +5,14 @@
  *  - PwaBoot (whole app, also the login screen): registers the service worker and catches
  *    Chrome's install prompt before anything else can miss it.
  *  - AppRuntime (inside the logged-in shell): opens the screen a tapped notification points to,
- *    keeps the app-icon badge = «Внимание», renews this device's push subscription, and tracks the
- *    on-screen keyboard (hides the tab bar, keeps the focused field in view).
+ *    keeps the app-icon badge = «Внимание» and tracks the on-screen keyboard (hides the tab bar,
+ *    keeps the focused field in view). The push subscription is renewed by PushOfferBanner.
  */
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useInbox } from "@/lib/inbox";
 import { startPwa } from "@/lib/pwa";
-import { setAppBadge, syncPush } from "@/lib/push";
+import { setAppBadge } from "@/lib/push";
 
 export function PwaBoot() {
   useEffect(() => {
@@ -89,9 +89,8 @@ export function AppRuntime() {
     if (typeof total === "number") setAppBadge(total);
   }, [total]);
 
-  useEffect(() => {
-    void syncPush();
-  }, []);
+  // This device's push subscription is renewed by <PushOfferBanner> (it also offers to turn push
+  // on when there is none — e.g. after «Выйти везде»).
 
   useKeyboardWatcher();
   return null;

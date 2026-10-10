@@ -25,7 +25,7 @@ import {
   Repeat,
 } from "lucide-react";
 import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
-import { ordersApi, type AdminOrderDetail, type DeliveryPatch, type ExchangeBody, type ReturnBody } from "@/lib/orders-api";
+import { changeStatusConfirmingUnpaid, ordersApi, type AdminOrderDetail, type DeliveryPatch, type ExchangeBody, type ReturnBody } from "@/lib/orders-api";
 import { allowedTargets, shortId, STATUS_ACTION_LABEL, STATUS_LABEL } from "@/lib/orders";
 import { useToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
@@ -52,6 +52,7 @@ import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
+import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
 type Tab = "details" | "chat" | "history";
 
@@ -188,17 +189,24 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       push("Заказ не выбран — откройте его заново", "error");
       return false;
     }
+    // SHIPPED without the online payment asks the admin first (server code ORDER_UNPAID_SHIP).
+    let declined = false;
     const ok = await run(
       `status:${payload.status}`,
-      () => ordersApi.changeStatus(id, payload),
-      `Статус: ${STATUS_LABEL[payload.status]}`,
+      async () => {
+        const updated = await changeStatusConfirmingUnpaid(id, payload, confirm);
+        if (updated === null) declined = true;
+        return updated;
+      },
+      undefined,
       "Ошибка смены статуса"
     );
-    if (ok) {
+    if (ok && !declined) {
+      push(`Статус: ${STATUS_LABEL[payload.status]}`, "ok");
       setPendingTarget(null);
       qc.invalidateQueries({ queryKey: ["products"] });
     }
-    return ok;
+    return ok && !declined;
   }
 
   async function applyPayment(receivedMinor: number): Promise<boolean> {
@@ -323,6 +331,20 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
 
   // Hard-delete only at a terminal stage — for purging test orders. Irreversible.
   const isTerminal = !!order && (order.status === "DELIVERED" || order.status === "REJECTED");
+  // An order paid through monobank cannot be deleted until the money is back on the card (the
+  // backend refuses with the same text) — same query/cache as the «Онлайн-оплата» block.
+  const paymentsQ = useQuery({
+    queryKey: orderPaymentsKey(orderId ?? ""),
+    queryFn: () => adminApi.getOrderPayments(orderId as string),
+    enabled: !!orderId && isTerminal,
+  });
+  const deleteBlockedReason = !isTerminal
+    ? null
+    : (paymentsQ.data ?? []).some((i) => !!i.appliedAt && i.refundedMinor < i.amountMinor)
+      ? "Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»"
+      : (paymentsQ.data ?? []).some((i) => i.status === "processing" || i.status === "hold")
+        ? "Банк ещё обрабатывает онлайн-платёж — дождитесь итога в блоке «Онлайн-оплата»"
+        : null;
   const canReturn =
     !!order &&
     (order.status === "SHIPPED" ||
@@ -421,9 +443,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
           ? [
               {
                 key: "delete",
-                label: "Удалить навсегда",
+                label: deleteBlockedReason ? (
+                  <span className="flex flex-col">
+                    Удалить навсегда
+                    <span className="text-[11.5px] font-normal text-[var(--text-muted)]">{deleteBlockedReason}</span>
+                  </span>
+                ) : (
+                  "Удалить навсегда"
+                ),
                 icon: <Trash2 className="h-4 w-4" />,
                 danger: true,
+                disabled: !!deleteBlockedReason,
                 onSelect: () => void applyDelete(),
               },
             ]
@@ -502,13 +532,19 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                   <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-5 py-3.5">
                     {payButton()}
                     {targets.map((t) => statusButton(t))}
+                    {isTerminal && deleteBlockedReason && (
+                      <span className="ml-auto max-w-[260px] text-right text-[11.5px] leading-snug text-[var(--text-muted)]">
+                        {deleteBlockedReason}
+                      </span>
+                    )}
                     {isTerminal && (
                       <Button
                         size="sm"
                         variant="danger"
-                        className="ml-auto"
+                        className={deleteBlockedReason ? undefined : "ml-auto"}
                         loading={busyKey === "delete"}
-                        disabled={!!busyKey && busyKey !== "delete"}
+                        disabled={(!!busyKey && busyKey !== "delete") || !!deleteBlockedReason}
+                        title={deleteBlockedReason ?? undefined}
                         icon={<Trash2 className="h-4 w-4" />}
                         onClick={applyDelete}
                       >

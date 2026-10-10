@@ -11,6 +11,11 @@ public enum InboxItemType {
      * order cancelled before shipping whose money has not gone back yet.
      */
     PAYMENT("Оплаты", "Оплаченные онлайн заказы ждут подтверждения; запросы отмены ждут решения; по отменённым после оплаты верните деньги.", "ORDER", false),
+    /**
+     * APPROVED although its online payment (prepayment or the whole order) never arrived: shipping it
+     * means sending goods without the money that insures the parcel — an admin decides.
+     */
+    APPROVED_UNPAID("Одобрены, оплата не пришла", "Заказ одобрен, но онлайн-предоплата или оплата по нему не пришла — договоритесь с покупателем или отправьте осознанно.", "ORDER", false),
     /** Unread customer messages in an order chat. */
     CHAT("Непрочитанные чаты", "Покупатели ждут ответа в чате заказа.", "ORDER", false),
     /** Support threads (questions not tied to an order) waiting for a shop answer. */

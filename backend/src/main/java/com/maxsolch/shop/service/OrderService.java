@@ -16,6 +16,8 @@ import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.i18n.CustomerRejectReason;
 import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.payment.PaymentInvoice;
+import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -71,6 +73,14 @@ public class OrderService {
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
     private int paymentDueHours = 24;
+
+    /** monobank invoices of an order — guards {@link #delete} (optional: unit tests build the service without it). */
+    private PaymentInvoiceRepository paymentInvoices;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPaymentInvoices(PaymentInvoiceRepository paymentInvoices) {
+        this.paymentInvoices = paymentInvoices;
+    }
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
@@ -243,6 +253,18 @@ public class OrderService {
 
     @Transactional
     public Order ship(byte[] orderId, String trackingNumber) {
+        return ship(orderId, trackingNumber, false);
+    }
+
+    /** {@link OrderService#ship} refuses an order whose online payment is missing unless the admin confirmed. */
+    public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
+
+    /**
+     * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or
+     *                    the whole order) has not arrived — e.g. agreed with the customer in the chat
+     */
+    @Transactional
+    public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
         Order order = lock(orderId);
         if (order.getStatus() != OrderStatus.APPROVED && order.getStatus() != OrderStatus.NEW) {
             throw new BadRequestException("отправить можно только новый или одобренный заказ");
@@ -252,6 +274,12 @@ public class OrderService {
             // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
             throw new BadRequestException(
                     "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+        }
+        if (!allowUnpaid && onlinePaymentMissing(order)) {
+            throw new BadRequestException((order.getPrepaymentMinor() > 0 ? "Предоплата" : "Онлайн-оплата")
+                    + " по заказу #" + shortId(order) + " не пришла (не хватает "
+                    + MoneyFormat.uah(amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
+                    SHIP_UNPAID_CODE);
         }
         order.setStatus(OrderStatus.SHIPPED);
         order.setShippedAt(Instant.now());
@@ -463,9 +491,16 @@ public class OrderService {
     @Transactional
     public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
                               String reason, RejectReasonCode reasonCode, boolean restock) {
+        return changeStatus(orderId, target, trackingNumber, reason, reasonCode, restock, false);
+    }
+
+    /** Same, with the admin's «отправить без предоплаты» confirmation for SHIPPED. */
+    @Transactional
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, RejectReasonCode reasonCode, boolean restock, boolean allowUnpaid) {
         return switch (target) {
             case APPROVED -> approve(orderId);
-            case SHIPPED -> ship(orderId, trackingNumber);
+            case SHIPPED -> ship(orderId, trackingNumber, allowUnpaid);
             case DELIVERED -> deliver(orderId);
             case REJECTED -> reject(orderId, reason, reasonCode, restock);
             case NEW -> throw new BadRequestException("вернуть заказ в «Новые» нельзя");
@@ -564,6 +599,19 @@ public class OrderService {
     public static long dueOnlineMinor(Order order) {
         long total = order.getTotalMinor();
         return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
+    }
+
+    /**
+     * An online-payment order (it got a deadline at checkout; older orders have none) whose online
+     * part — the prepayment, or the whole order — has not arrived.
+     */
+    public static boolean onlinePaymentMissing(Order order) {
+        return order.getPaymentDueAt() != null && amountDueMinor(order) > 0;
+    }
+
+    private static String shortId(Order order) {
+        String id = order.getId() == null ? "" : UuidUtil.toString(order.getId());
+        return id == null || id.length() < 8 ? String.valueOf(id) : id.substring(0, 8);
     }
 
     /** Still to pay online right now (0 once the online part is covered). */
@@ -810,6 +858,7 @@ public class OrderService {
             throw new BadRequestException(
                     "удалить можно только доставленный или отклонённый заказ — сначала отклоните его");
         }
+        requireNoOnlineMoneyKept(orderId);
         boolean restocked = status != OrderStatus.REJECTED && restock;
         if (restocked) {
             restoreStock(order);
@@ -828,6 +877,37 @@ public class OrderService {
         orderRepository.delete(order);
         events.publishEvent(new OrderEvents.Deleted(order.getId(), dispatchMessageId, attachmentKeys));
         return summary;
+    }
+
+    /** Shown in the admin when deleting an order whose online payment was not returned in full. */
+    public static final String DELETE_ONLINE_PAID =
+            "Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»";
+    public static final String DELETE_ONLINE_IN_FLIGHT =
+            "По заказу есть онлайн-платёж, который банк ещё обрабатывает — дождитесь итога в блоке «Онлайн-оплата»";
+
+    /**
+     * An order paid through monobank acquiring keeps the bank's record (RRN, fiscal receipt,
+     * refunds go through its invoice) — deleting it while the shop still holds any of that money
+     * would leave a payment with no order to refund it from. Old-style payments (marked paid by
+     * hand, card transfers) have no invoice and are not affected.
+     */
+    private void requireNoOnlineMoneyKept(byte[] orderId) {
+        if (paymentInvoices == null) {
+            return;
+        }
+        List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
+        if (invoices.stream().anyMatch(OrderService::keepsOnlineMoney)) {
+            throw new BadRequestException(DELETE_ONLINE_PAID, "ORDER_PAID_ONLINE");
+        }
+        if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
+                || PaymentInvoice.HOLD.equals(i.getStatus()))) {
+            throw new BadRequestException(DELETE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
+        }
+    }
+
+    /** Paid (credited to the order) and not everything has gone back to the card yet. */
+    static boolean keepsOnlineMoney(PaymentInvoice inv) {
+        return inv.getAppliedAt() != null && inv.getRefundedMinor() < inv.getAmountMinor();
     }
 
     // ----- helpers -----

@@ -385,7 +385,7 @@ export default function ProductsPage() {
                 aria-label="Список"
                 aria-pressed={view === "list"}
                 className={cn(
-                  "grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
+                  "hit grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
                   view === "list"
                     ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                     : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -399,7 +399,7 @@ export default function ProductsPage() {
                 aria-label="Карточки"
                 aria-pressed={view === "cards"}
                 className={cn(
-                  "grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
+                  "hit grid h-full w-9 place-items-center rounded-[var(--r-sm)] border transition-colors pointer-coarse:w-11",
                   view === "cards"
                     ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
                     : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"

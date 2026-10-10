@@ -26,8 +26,11 @@ import {
 import { useCoarsePointer } from "@/lib/use-media";
 import { useToast } from "@/lib/toast";
 import { Bubble } from "@/components/orders/OrderChat";
+import { ChatDaySection, useChatDays } from "@/components/orders/ChatDays";
 import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
+
+const messageTime = (m: SupportMessage) => m.createdAt;
 
 const drafts = new Map<string, string>();
 const DRAFT_KEY = (id: string) => `tgshop_admin_support_draft:${id}`;
@@ -103,6 +106,8 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
     const seen = new Set(latest.map((m) => m.id));
     return [...older.filter((m) => !seen.has(m.id)), ...latest];
   }, [older, latest]);
+
+  const days = useChatDays(messages, messageTime);
 
   const canLoadOlder = !olderExhausted && latest.length >= SUPPORT_CHAT_PAGE;
 
@@ -227,8 +232,12 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
             Сообщений пока нет
           </div>
         )}
-        {messages.map((m) => (
-          <Bubble key={m.id} m={supportAsChatMessage(m)} onOpenImage={setLightbox} />
+        {days.map((day) => (
+          <ChatDaySection key={day.key} label={day.label}>
+            {day.items.map((m) => (
+              <Bubble key={m.id} m={supportAsChatMessage(m)} onOpenImage={setLightbox} />
+            ))}
+          </ChatDaySection>
         ))}
       </div>
 

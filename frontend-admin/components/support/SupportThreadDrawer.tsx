@@ -96,7 +96,7 @@ export function SupportThreadDrawer({
           type="button"
           onClick={openCustomer}
           title="Открыть профиль клиента"
-          className="focusable group inline-flex min-w-0 items-center gap-1.5 self-start rounded-[var(--r-sm)] text-left"
+          className="focusable hit group inline-flex min-w-0 items-center gap-1.5 self-start rounded-[var(--r-sm)] text-left"
         >
           <UserRound className="h-4 w-4 shrink-0 text-[var(--text-faint)] group-hover:text-[var(--accent-hi)]" />
           <span className="font-display truncate text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)] underline-offset-4 group-hover:text-[var(--accent-hi)] group-hover:underline">
@@ -134,7 +134,7 @@ export function SupportThreadDrawer({
                     {thread.productId && (
                       <Link
                         href={`/products?edit=${encodeURIComponent(thread.productId)}`}
-                        className="focusable inline-flex items-center gap-1 rounded-[var(--r-sm)] text-[var(--text-muted)] hover:text-[var(--accent-hi)]"
+                        className="focusable hit inline-flex items-center gap-1 whitespace-nowrap rounded-[var(--r-sm)] text-[var(--text-muted)] hover:text-[var(--accent-hi)]"
                       >
                         <PencilLine className="h-3.5 w-3.5" />В админке
                       </Link>
@@ -144,7 +144,7 @@ export function SupportThreadDrawer({
                         href={siteProductUrl(thread.productSlug)}
                         target="_blank"
                         rel="noreferrer"
-                        className="focusable inline-flex items-center gap-1 rounded-[var(--r-sm)] text-[var(--text-muted)] hover:text-[var(--accent-hi)]"
+                        className="focusable hit inline-flex items-center gap-1 whitespace-nowrap rounded-[var(--r-sm)] text-[var(--text-muted)] hover:text-[var(--accent-hi)]"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         На сайте

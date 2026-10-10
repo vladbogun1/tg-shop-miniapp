@@ -1,4 +1,8 @@
-/** Formatting for the metrics page: money in UAH from kopecks, counts, hours, dates (Europe/Kyiv). */
+/**
+ * Formatting for the metrics page: money in UAH from kopecks, counts, hours, dates. Bucket and
+ * period labels are the backend's calendar days (Europe/Kyiv) and are shown as they come; a moment
+ * in time (dateTime) is shown in the browser's time zone, like everywhere else in the admin.
+ */
 
 const nf = new Intl.NumberFormat("ru-RU");
 
@@ -62,10 +66,9 @@ export function monthLabel(ym: string, full = false): string {
   return full ? MONTHS_FULL[i] : `${MONTHS[i]} ${y}`;
 }
 
-/** ISO instant -> "04.10 15:30" in Kyiv. */
+/** ISO instant -> "04.10 15:30" in the browser's time zone. */
 export function dateTime(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", {
-    timeZone: "Europe/Kyiv",
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",

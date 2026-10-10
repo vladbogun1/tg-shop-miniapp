@@ -28,7 +28,7 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
 import { haptic } from "@/lib/telegram";
-import { supportAsChatMessage } from "@shop/shared";
+import { dayKey, supportAsChatMessage } from "@shop/shared";
 
 /** Must match SupportService.DEFAULT_PAGE on the backend. */
 const PAGE_SIZE = 50;
@@ -162,19 +162,14 @@ function SupportChat() {
     return map;
   }, [messages]);
 
-  const items = useMemo(() => {
-    const out: ({ kind: "day"; label: string } | { kind: "msg"; msg: SupportMessage })[] = [];
-    let lastDay = "";
+  // Grouped by the viewer's calendar day; each day's date chip sticks while it scrolls by.
+  const days = useMemo(() => {
+    const out: { key: string; label: string; msgs: SupportMessage[] }[] = [];
     for (const m of messages) {
-      const at = new Date(m.createdAt);
-      const key = Number.isNaN(at.getTime())
-        ? m.createdAt
-        : `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
-      if (key !== lastDay) {
-        out.push({ kind: "day", label: dayLabel(m.createdAt) });
-        lastDay = key;
-      }
-      out.push({ kind: "msg", msg: m });
+      const key = dayKey(m.createdAt);
+      const last = out[out.length - 1];
+      if (last && last.key === key) last.msgs.push(m);
+      else out.push({ key, label: dayLabel(m.createdAt), msgs: [m] });
     }
     return out;
   }, [messages]);
@@ -342,32 +337,32 @@ function SupportChat() {
               </button>
             </div>
           )}
-          {items.map((it, i) =>
-            it.kind === "day" ? (
+          {days.map((day) => (
+            <section key={`d-${day.key}`} className="flex flex-col gap-1.5" aria-label={day.label}>
               <motion.div
-                key={`d-${i}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={spring}
-                className="my-2 flex justify-center"
+                className="pointer-events-none sticky top-0 z-[2] my-2 flex justify-center"
               >
-                <span className="font-display rounded-full bg-[rgba(34,34,34,.85)] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {it.label}
+                <span className="font-display rounded-full bg-[rgba(34,34,34,.85)] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] shadow-[0_2px_8px_rgba(0,0,0,.35)] backdrop-blur-[6px]">
+                  {day.label}
                 </span>
               </motion.div>
-            ) : (
-              <MessageBubble
-                key={it.msg.id}
-                msg={supportAsChatMessage(it.msg)}
-                outgoing={it.msg.senderType === "CUSTOMER"}
-                repliedTo={(() => {
-                  const r = it.msg.replyToMessageId ? byId.get(it.msg.replyToMessageId) : null;
-                  return r ? supportAsChatMessage(r) : null;
-                })()}
-                onImageClick={setLightbox}
-              />
-            )
-          )}
+              {day.msgs.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  msg={supportAsChatMessage(msg)}
+                  outgoing={msg.senderType === "CUSTOMER"}
+                  repliedTo={(() => {
+                    const r = msg.replyToMessageId ? byId.get(msg.replyToMessageId) : null;
+                    return r ? supportAsChatMessage(r) : null;
+                  })()}
+                  onImageClick={setLightbox}
+                />
+              ))}
+            </section>
+          ))}
         </div>
       </div>
 

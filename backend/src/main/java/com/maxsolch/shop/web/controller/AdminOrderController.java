@@ -247,8 +247,18 @@ public class AdminOrderController {
         if (reasonCode == RejectReasonCode.OTHER && (req.rejectReason() == null || req.rejectReason().isBlank())) {
             throw new BadRequestException("для причины «Другое» напишите пояснение");
         }
-        Order updated = orderService.changeStatus(load(id).getId(), target,
-                req.trackingNumber(), req.rejectReason(), reasonCode, restock);
+        Order before = load(id);
+        // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
+        boolean unpaidShip = target == OrderStatus.SHIPPED && OrderService.onlinePaymentMissing(before);
+        long missingMinor = unpaidShip ? OrderService.amountDueMinor(before) : 0;
+        Order updated = orderService.changeStatus(before.getId(), target,
+                req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
+        if (unpaidShip) {
+            // Shown in the order's «История»: who decided to send it without the money.
+            String who = audit.currentAdminName();
+            audit.record("ORDER_SHIP_UNPAID", "ORDER", id, "отправлен без онлайн-оплаты (не пришло "
+                    + MoneyFormat.uah(missingMinor) + ") по решению админа" + (who == null || who.isBlank() ? "" : " " + who));
+        }
         audit.record("ORDER_STATUS", "ORDER", id,
                 "статус → " + target.name()
                         + (req.trackingNumber() == null ? "" : ", ТТН " + req.trackingNumber())

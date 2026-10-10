@@ -56,7 +56,7 @@ export function Tabs<T extends string>({
               else if (e.key === "End") move(items.length - 1);
             }}
             className={cn(
-              "font-display focusable relative flex shrink-0 items-center gap-1.5 px-3 pb-2.5 pt-1.5 text-[12.5px] font-semibold uppercase tracking-[0.06em] transition-colors",
+              "font-display focusable relative flex shrink-0 items-center gap-1.5 px-3 pb-2.5 pt-1.5 text-[12.5px] pointer-coarse:min-h-11 font-semibold uppercase tracking-[0.06em] transition-colors",
               active ? "text-[var(--accent-hi)]" : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}
           >

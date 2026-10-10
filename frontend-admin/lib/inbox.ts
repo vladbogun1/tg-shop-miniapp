@@ -9,6 +9,8 @@ import { apiGet, apiPost, isAuthenticated } from "@/lib/api";
 /** Kinds the UI knows (icon, colour, main action). The server may add more — see `knownType`. */
 export const INBOX_TYPES = [
   "PAYMENT",
+  /** APPROVED, but the online prepayment / payment never arrived. */
+  "APPROVED_UNPAID",
   "CHAT",
   "NEW_STALE",
   "APPROVED_STALE",

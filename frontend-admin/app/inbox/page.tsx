@@ -61,6 +61,7 @@ import { useIsDesktop } from "@/lib/use-media";
 
 const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   PAYMENT: Wallet,
+  APPROVED_UNPAID: Wallet,
   CHAT: MessageCircle,
   NEW_STALE: Hourglass,
   APPROVED_STALE: Truck,
@@ -74,6 +75,7 @@ const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
 /** Group hue (icon tile tint, icon, count): money and people first, information last. */
 const GROUP_TONE: Record<KnownInboxType, string> = {
   PAYMENT: "var(--ok)",
+  APPROVED_UNPAID: "var(--danger)",
   CHAT: "var(--accent-hi)",
   NEW_STALE: "var(--st-new)",
   APPROVED_STALE: "var(--st-approved)",
@@ -217,6 +219,8 @@ export default function InboxPage() {
   function primary(item: InboxItem) {
     switch (item.type) {
       case "PAYMENT":
+      case "APPROVED_UNPAID":
+        // Both open the order on its payment block.
         if (item.orderId) setOrder({ id: item.orderId, tab: "details", payment: true });
         break;
       case "CHAT":

@@ -485,12 +485,12 @@ function CategoryRow({
             onClick={onToggle}
             aria-label={expanded ? "Свернуть подкатегории" : "Развернуть подкатегории"}
             aria-expanded={expanded}
-            className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+            className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-10 pointer-coarse:w-10"
           >
             <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", expanded && "rotate-90")} />
           </button>
         ) : (
-          <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)]" aria-hidden>
+          <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:w-10" aria-hidden>
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--line-strong)]" />
           </span>
         ))}

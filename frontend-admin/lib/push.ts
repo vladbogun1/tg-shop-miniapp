@@ -140,20 +140,48 @@ export async function disablePush(): Promise<void> {
  * On launch: keep the server in sync with this device — re-send a live subscription (the server
  * may have dropped it) and renew one the browser lost or that belongs to old VAPID keys.
  */
-export async function syncPush(): Promise<void> {
-  if (!pushSupported() || Notification.permission !== "granted") return;
+export async function syncPush(): Promise<boolean> {
+  if (!pushSupported() || Notification.permission !== "granted") return false;
   const reg = await getRegistration();
-  if (!reg) return;
+  if (!reg) return false;
   const existing = await reg.pushManager.getSubscription().catch(() => null);
-  if (!existing && !wanted()) return;
+  if (!existing && !wanted()) return false;
   const config = await pushApi.config().catch(() => null);
-  if (!config?.enabled || !config.publicKey) return;
+  if (!config?.enabled || !config.publicKey) return false;
   try {
     const sub = await subscribeWith(reg, config.publicKey);
     await pushApi.subscribe(sub.toJSON());
     setWanted(true);
+    return true;
   } catch {
     /* next launch tries again */
+    return false;
+  }
+}
+
+// ---- «Включить уведомления» offer after sign-in -------------------------------------------
+//
+// «Выйти везде», a password change and a 2FA reset drop every push subscription of the admin on
+// the server. After the next sign-in the shell offers to turn push back on for this device — once:
+// «Позже» hides the offer on this device for OFFER_SNOOZE_MS.
+
+const OFFER_LATER_KEY = "admin-push-offer-later";
+const OFFER_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export function pushOfferSnoozed(now = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(OFFER_LATER_KEY));
+    return Number.isFinite(at) && at > 0 && now - at < OFFER_SNOOZE_MS;
+  } catch {
+    return false;
+  }
+}
+
+export function snoozePushOffer(): void {
+  try {
+    localStorage.setItem(OFFER_LATER_KEY, String(Date.now()));
+  } catch {
+    /* private mode */
   }
 }
 

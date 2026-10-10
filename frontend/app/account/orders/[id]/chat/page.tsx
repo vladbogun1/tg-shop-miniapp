@@ -30,6 +30,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/i18n/context";
 import { dayLabel, shortOrderId } from "@/lib/format";
+import { dayKey } from "@shop/shared";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
@@ -152,25 +153,17 @@ export default function OrderChatPage() {
     return map;
   }, [messages]);
 
-  // Group with day separators.
-  const items = useMemo(() => {
-    const out: ({ kind: "day"; label: string } | { kind: "msg"; msg: Message })[] =
-      [];
-    // Group by the actual DAY, not by the rendered label. The label has no year in it
-    // ("18 вересня"), so comparing labels merged the same date from different years into one
-    // group — and it broke differently in each language, which is what comparing presentation
-    // strings to drive logic always ends up doing.
-    let lastDay = "";
+  // Messages grouped by the viewer's calendar day (browser time zone), Telegram-style: each day is
+  // a section whose date chip sticks to the top while that day scrolls by. Grouped by the actual
+  // DAY, not by the rendered label (comparing presentation strings merged equal dates of
+  // different years and broke differently in each language).
+  const days = useMemo(() => {
+    const out: { key: string; label: string; msgs: Message[] }[] = [];
     for (const m of messages) {
-      const at = new Date(m.createdAt);
-      const key = Number.isNaN(at.getTime())
-        ? m.createdAt
-        : `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`;
-      if (key !== lastDay) {
-        out.push({ kind: "day", label: dayLabel(m.createdAt) });
-        lastDay = key;
-      }
-      out.push({ kind: "msg", msg: m });
+      const key = dayKey(m.createdAt);
+      const last = out[out.length - 1];
+      if (last && last.key === key) last.msgs.push(m);
+      else out.push({ key, label: dayLabel(m.createdAt), msgs: [m] });
     }
     return out;
   }, [messages]);
@@ -290,33 +283,29 @@ export default function OrderChatPage() {
             </button>
           </div>
         )}
-        {items.map((it, i) =>
-            it.kind === "day" ? (
+        {days.map((day) => (
+            <section key={`d-${day.key}`} className="flex flex-col gap-1.5" aria-label={day.label}>
               <motion.div
-                key={`d-${i}`}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={spring}
-                className="my-2 flex justify-center"
+                className="pointer-events-none sticky top-0 z-[2] my-2 flex justify-center"
               >
-                <span className="font-display rounded-full bg-[rgba(34,34,34,.85)] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                  {it.label}
+                <span className="font-display rounded-full bg-[rgba(34,34,34,.85)] px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)] shadow-[0_2px_8px_rgba(0,0,0,.35)] backdrop-blur-[6px]">
+                  {day.label}
                 </span>
               </motion.div>
-            ) : (
-              <MessageBubble
-                key={it.msg.id}
-                msg={it.msg}
-                outgoing={it.msg.senderType === "CUSTOMER"}
-                repliedTo={
-                  it.msg.replyToMessageId
-                    ? byId.get(it.msg.replyToMessageId) ?? null
-                    : null
-                }
-                onImageClick={setLightbox}
-              />
-            )
-          )}
+              {day.msgs.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  msg={msg}
+                  outgoing={msg.senderType === "CUSTOMER"}
+                  repliedTo={msg.replyToMessageId ? byId.get(msg.replyToMessageId) ?? null : null}
+                  onImageClick={setLightbox}
+                />
+              ))}
+            </section>
+          ))}
         </div>
       </div>
 

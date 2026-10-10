@@ -314,9 +314,9 @@ public class AdminTeamService {
         AdminUser fresh = find(targetId);
         fresh.setActive(false);
         repo.save(fresh);
+        int push = facts.deletePushSubscriptions(targetId); // before revokeEverything, which also drops them: keeps the count for the journal
         int devices = sessions.revokeEverything(targetId);
         int links = inviteStore.revokeOpenFor(targetId, clock.instant());
-        int push = facts.deletePushSubscriptions(targetId);
         audit.recordFor(callerId, "ADMIN_BLOCKED", "ADMIN", String.valueOf(targetId),
                 who(fresh) + ": заблокирован; сессии завершены, забыто доверенных устройств: " + devices
                         + ", отозвано ссылок: " + links + ", отключено push-подписок: " + push + ", IP " + client.ip());

@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
-import { InstallBanner, UpdateBanner } from "@/components/pwa/Banners";
+import { InstallBanner, PushOfferBanner, UpdateBanner } from "@/components/pwa/Banners";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -1092,6 +1092,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <main className="min-w-0 flex-1 pb-[calc(var(--bottom-nav)+20px)] pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-4 lg:p-7">
           <InstallBanner />
+          <PushOfferBanner />
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 10 }}
