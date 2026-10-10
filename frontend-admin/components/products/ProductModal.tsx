@@ -669,10 +669,10 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                     onClick={save}
                     icon={<Check className="h-4 w-4" />}
                     title="Сохранить"
-                    className="max-[359px]:w-11 max-[359px]:px-0"
+                    className="max-[374px]:w-11 max-[374px]:px-0"
                   >
-                    {/* 320-px phones: three labelled buttons do not fit — this one becomes a ✓ icon. */}
-                    <span className="max-[359px]:sr-only">Сохранить</span>
+                    {/* 320–360-px phones: three labelled buttons do not fit — this one becomes a ✓ icon. */}
+                    <span className="max-[374px]:sr-only">Сохранить</span>
                   </Button>
                 )}
                 {isLast ? (

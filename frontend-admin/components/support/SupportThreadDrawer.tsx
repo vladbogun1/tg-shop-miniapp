@@ -123,9 +123,9 @@ export function SupportThreadDrawer({
         <div className="flex h-full min-h-0 flex-col">
           {thread && (
             <div className="shrink-0 border-b border-[var(--line)] px-4 py-3 sm:px-5">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <ProductThumb thread={thread} className="h-14 w-14" />
-                <div className="min-w-0 flex-1">
+                <div className="min-w-[9rem] flex-1">
                   <div className="field-label !text-[10.5px]">{thread.productId ? "Вопрос о товаре" : "Общий вопрос"}</div>
                   <div className="mt-0.5 line-clamp-2 text-[14px] font-semibold leading-snug text-[var(--text)]">
                     {threadTopic(thread)}
@@ -157,7 +157,7 @@ export function SupportThreadDrawer({
                   variant={thread.status === "OPEN" ? "outline" : "surface"}
                   size="sm"
                   loading={busy}
-                  className="shrink-0"
+                  className="shrink-0 max-sm:w-full"
                   icon={thread.status === "OPEN" ? <Lock className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                   onClick={toggleStatus}
                 >

@@ -212,7 +212,8 @@ export function PushOfferBanner() {
             icon={<BellRing className="h-4 w-4" />}
             onClick={() => void enable()}
           >
-            Включить уведомления
+            {/* Narrow phones: the text column is ~160px — the full label would stick out of the card. */}
+            Включить<span className="max-[399px]:hidden">&nbsp;уведомления</span>
           </Button>
           <Button variant="ghost" size="sm" className="h-10" onClick={later} disabled={busy}>
             Позже

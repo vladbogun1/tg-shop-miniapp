@@ -433,7 +433,7 @@ function OrderBtn({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-[17px] w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] disabled:opacity-30 pointer-coarse:h-8 pointer-coarse:w-10"
+      className="grid h-[17px] w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] disabled:opacity-30 pointer-coarse:h-10 pointer-coarse:w-10"
     >
       {children}
     </button>
@@ -590,7 +590,7 @@ function MonobankCard({
         >
           <Wallet className="h-5 w-5" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-64">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="section-title !text-[15px] text-[var(--ink)]">Эквайринг monobank</h2>
             {st && StIcon && (

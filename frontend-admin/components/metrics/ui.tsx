@@ -151,7 +151,7 @@ export function useLimited<T>(rows: T[], initial = 10): { visible: T[]; toggle: 
       <button
         type="button"
         onClick={() => setAll((v) => !v)}
-        className="mt-2 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline"
+        className="mt-2 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline max-sm:min-h-10"
       >
         {all ? "Свернуть" : `Показать все (${rows.length})`}
       </button>

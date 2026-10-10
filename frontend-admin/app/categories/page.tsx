@@ -498,7 +498,7 @@ function CategoryRow({
       <button
         type="button"
         onClick={() => onEdit()}
-        className="focusable flex min-w-0 flex-1 flex-col items-start rounded-[var(--r-sm)] text-left"
+        className="focusable flex min-w-0 flex-1 flex-col items-start justify-center rounded-[var(--r-sm)] text-left pointer-coarse:min-h-10"
       >
         <span className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn("truncate font-semibold", depth === 0 ? "text-[15px] text-[var(--ink)]" : "text-[14px] text-[var(--text)]")}>

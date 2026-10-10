@@ -407,7 +407,7 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                   <td className="r whitespace-nowrap">
                     <Link
                       href={editHref(d.productId)}
-                      className="mr-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline"
+                      className="mr-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--accent-hi)] hover:underline max-sm:min-h-10"
                       title="Открыть товар: поставить старую цену (скидку) или уценить (состояние «Уценка»)"
                     >
                       <PackageX className="h-3.5 w-3.5" /> Скидка
@@ -418,11 +418,11 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                           type="button"
                           disabled={hide.isPending}
                           onClick={() => hide.mutate(d.productId)}
-                          className="rounded-[var(--r-sm)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] px-1.5 py-0.5 text-[12px] font-semibold text-[var(--danger-ink)] hover:bg-[color-mix(in_srgb,var(--danger)_24%,transparent)]"
+                          className="rounded-[var(--r-sm)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] px-1.5 py-0.5 text-[12px] font-semibold text-[var(--danger-ink)] max-sm:min-h-10 hover:bg-[color-mix(in_srgb,var(--danger)_24%,transparent)]"
                         >
                           Скрыть?
                         </button>
-                        <button type="button" onClick={() => setConfirm(null)} className="text-[12px] text-[var(--text-muted)]">
+                        <button type="button" onClick={() => setConfirm(null)} className="text-[12px] text-[var(--text-muted)] max-sm:min-h-10 max-sm:px-2">
                           нет
                         </button>
                       </span>
@@ -430,7 +430,7 @@ function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: numb
                       <button
                         type="button"
                         onClick={() => setConfirm(d.productId)}
-                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)]"
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)] max-sm:min-h-10"
                       >
                         <EyeOff className="h-3.5 w-3.5" /> Скрыть
                       </button>

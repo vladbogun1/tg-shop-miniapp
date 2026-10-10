@@ -129,7 +129,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
             variants={staggerContainer}
             initial="initial"
             animate="animate"
-            className="grid gap-2.5 sm:hidden"
+            className="grid grid-cols-[minmax(0,1fr)] gap-2.5 sm:hidden"
           >
             {rows.length === 0 ? (
               <EmptyState
