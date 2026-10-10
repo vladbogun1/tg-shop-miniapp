@@ -55,3 +55,4 @@ e2e/playwright-report/
 
 # Agent worktrees (Claude Code)
 .claude/worktrees/
+_logs/

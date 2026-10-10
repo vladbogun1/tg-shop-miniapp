@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+:root {
+  /* Bundled variable fonts (see the app layout): the family names @fontsource-variable declares. */
+  --font-body: "Inter Variable";
+  --font-display: "Exo 2 Variable";
+}
+
 /* ============================================================================
    ChiSetup — Gaming Gear & Setup (v3). Customer Mini App.
    ----------------------------------------------------------------------------

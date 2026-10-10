@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Exo_2, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
@@ -12,22 +11,13 @@ import { SITE_URL } from "@/lib/config";
 import { pageMeta } from "@/lib/seo";
 import { getCategories, safe } from "@/lib/server-api";
 import { menuTree } from "@/lib/category-tree";
+// Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
+// a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/exo-2/wght.css";
+import "@fontsource-variable/exo-2/wght-italic.css";
 import "../globals.css";
 
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-/** Display face (DESIGN-V3 §3): headings, buttons, prices, labels; italic 800 for the wordmark. */
-const exo = Exo_2({
-  subsets: ["latin", "cyrillic"],
-  weight: ["500", "600", "700", "800"],
-  style: ["normal", "italic"],
-  variable: "--font-exo",
-  display: "swap",
-});
 
 /**
  * Nothing is prerendered at build time — the build has no backend to talk to. Every page is
@@ -83,7 +73,7 @@ export default async function LocaleLayout({
   const tree = menuTree(await safe(getCategories(locale), []));
 
   return (
-    <html lang={LOCALE_TAG[locale]} className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
+    <html lang={LOCALE_TAG[locale]} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
         {/* First-load overlay (logo + loading bar) — plain HTML, painted before fonts/React. */}
         <Preloader />

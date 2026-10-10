@@ -1,27 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Exo_2, Inter } from "next/font/google";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { TabBar } from "@/components/TabBar";
+// Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
+// a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/exo-2/wght.css";
+import "@fontsource-variable/exo-2/wght-italic.css";
 import "./globals.css";
 
-// Body text and fields.
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-body",
-  display: "swap",
-});
-
-// Display face (DESIGN-V3 §3): headings, buttons, prices, tabs, chips. No 900 in Exo 2 — 800 is
-// the heaviest; italic 800 is only for the ChiSetup wordmark (faces are fetched on use only).
-const exo = Exo_2({
-  subsets: ["latin", "cyrillic"],
-  weight: ["500", "600", "700", "800"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   // The brand, not a translated word: metadata is rendered on the server with no language, and
@@ -76,7 +64,7 @@ export default function RootLayout({
   return (
     // lang is rewritten by I18nProvider; "uk" here matches the app's own fallback so the
     // first paint is not lying about the most common case.
-    <html lang="uk" className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
+    <html lang="uk" suppressHydrationWarning>
       <head>
         {/* DEV ONLY. Outside Telegram there is no window.Telegram.WebApp, so the Mini App stays
             unauthenticated and half the screens cannot be opened — which made UI defects

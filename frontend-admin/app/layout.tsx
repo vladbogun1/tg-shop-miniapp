@@ -1,25 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Exo_2, Inter } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "@/components/Providers";
+// Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
+// a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/exo-2/wght.css";
+import "@fontsource-variable/exo-2/wght-italic.css";
 import "./globals.css";
 
-// Body text, tables and fields.
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-body",
-  display: "swap",
-});
-
-// Display face (DESIGN-V3 §3, §8): page titles, KPI numbers, nav, buttons, badges. No 900 in
-// Exo 2 — 800 is the heaviest; italic 800 is for the ChiSetup wordmark (faces are fetched on use).
-const exo = Exo_2({
-  subsets: ["latin", "cyrillic"],
-  weight: ["500", "600", "700", "800"],
-  style: ["normal", "italic"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "ChiSetup Admin",
@@ -55,7 +43,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${inter.variable} ${exo.variable}`} suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning>
       <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <div className="aurora" aria-hidden />
