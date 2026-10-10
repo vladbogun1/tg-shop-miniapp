@@ -51,8 +51,10 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
             <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
             {inStock ? t("product.inStock") : t("product.outOfStock")}
           </span>
+          {/* on the photo from sm up; a phone tile (~140–170 px) has no room for it next to «В наявності»
+              — there it sits in the price row instead */}
           {off > 0 && (
-            <span className="absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 font-display text-[12px] font-bold text-[var(--accent-ink)]">
+            <span className="absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 font-display text-[12px] font-bold text-[var(--accent-ink)] max-sm:hidden">
               {t("product.discount", { n: off })}
             </span>
           )}
@@ -80,6 +82,11 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
               <s className="font-display text-[13px] font-medium tabular-nums text-[var(--faint)]">
                 {fmt.money(product.compareAtMinor, product.currency)}
               </s>
+            )}
+            {off > 0 && (
+              <span className="self-center rounded-full bg-[var(--accent)] px-1.5 py-px font-display text-[11px] font-bold leading-[16px] text-[var(--accent-ink)] sm:hidden">
+                {t("product.discount", { n: off })}
+              </span>
             )}
           </div>
         </div>
