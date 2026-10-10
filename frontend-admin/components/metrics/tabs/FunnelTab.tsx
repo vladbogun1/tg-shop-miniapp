@@ -13,21 +13,20 @@ import { Empty, Note, Panel, StatusChip, TableWrap } from "../ui";
 import { editHref } from "./StockTab";
 
 export function FunnelTab({ params }: { params: PeriodParams }) {
-  // The funnel is per channel; "all" mixes two very different journeys, so it defaults to the Mini App.
-  const p: PeriodParams = params.channel === "all" ? { ...params, channel: "miniapp" } : params;
+  // "Все" is the sum of both channels: the backend keeps each channel's visitors apart.
   const q = useQuery({
-    queryKey: ["metrics2", "funnel", p],
-    queryFn: () => metricsApi.funnel(p),
+    queryKey: ["metrics2", "funnel", params],
+    queryFn: () => metricsApi.funnel(params),
     placeholderData: keepPreviousData,
   });
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Строим воронку…">
-      {q.data && <FunnelBody f={q.data} channelWasAll={params.channel === "all"} channel={p.channel} />}
+      {q.data && <FunnelBody f={q.data} channel={params.channel} />}
     </QueryState>
   );
 }
 
-function FunnelBody({ f, channelWasAll, channel }: { f: Funnel; channelWasAll: boolean; channel: string }) {
+function FunnelBody({ f, channel }: { f: Funnel; channel: string }) {
   const biggestDrop = f.steps
     .slice(1, 4)
     .filter((s) => s.fromPrevPct != null)
@@ -35,13 +34,18 @@ function FunnelBody({ f, channelWasAll, channel }: { f: Funnel; channelWasAll: b
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-4">
       <Panel
-        title={`Воронка — ${channel === "web" ? "сайт" : "Mini App"}`}
+        title={`Воронка — ${channel === "web" ? "сайт" : channel === "miniapp" ? "Mini App" : "все каналы"}`}
         icon={Filter}
         hint="Первые четыре шага — уникальные посетители по журналу событий; «Оформили», «Оплатили», «Отправлено» — уникальные покупатели по самим заказам."
       >
         <FunnelBars steps={f.steps} />
         <div className="mt-4 flex flex-col gap-2">
-          {channelWasAll && <Note>Воронка строится по одному каналу: показан Mini App. Переключите «Сайт», чтобы увидеть сайт.</Note>}
+          {channel === "all" && (
+            <Note>
+              Сумма сайта и Mini App. Кто заходил и туда, и туда, в первых четырёх шагах посчитан дважды: на сайте посетитель —
+              это браузер, в Mini App — аккаунт Telegram. Каналы по отдельности — переключателем «Mini App» / «Сайт».
+            </Note>
+          )}
           {biggestDrop && biggestDrop.fromPrevPct != null && (
             <Note>
               Больше всего теряем на шаге «{biggestDrop.label}»: доходят {pct(biggestDrop.fromPrevPct)} с предыдущего шага.

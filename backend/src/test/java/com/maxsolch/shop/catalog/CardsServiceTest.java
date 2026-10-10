@@ -202,6 +202,16 @@ class CardsServiceTest {
         assertThat(st.draft()).isEqualTo(2); // the legacy hidden one is not work
         assertThat(st.unfinished()).isEqualTo(1);
         assertThat(st.incomplete()).isEqualTo(1); // the active mouse misses weight_g
+        assertThat(st.aiFilled()).isZero();
+
+        // An old hidden product the AI once filled is not «Проверить» work (the tab hides it by default)
+        legacy.setCardStatus(CardStatus.AI_FILLED);
+        hidden.setCardStatus(CardStatus.AI_FILLED);
+        CatalogDtos.CardsStats st2 = service.stats();
+        assertThat(st2.aiFilled()).isEqualTo(1); // only the new unfinished one
+        assertThat(st2.draft()).isEqualTo(1);
+        hidden.setCardStatus(null);
+        legacy.setCardStatus(null);
 
         List<CatalogDtos.CardExportItem> items = service.export("incomplete", null);
         assertThat(items).hasSize(1);

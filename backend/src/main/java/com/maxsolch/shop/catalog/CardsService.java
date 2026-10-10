@@ -95,8 +95,13 @@ public class CardsService {
                         draft++;
                     }
                 }
-                // «Проверить» counts every AI-filled card, hidden ones too (the admin UI tab shows them all)
-                case AI_FILLED -> ai++;
+                // «Проверить» — the same scope as the screen's default «Витрина: в работе»: an old hidden
+                // product the AI once filled is not work, else the badge counts cards the tab does not list.
+                case AI_FILLED -> {
+                    if (p.isActive() || isUnfinished(p)) {
+                        ai++;
+                    }
+                }
                 case READY -> ready++;
             }
             if (isIncomplete(s, p)) {

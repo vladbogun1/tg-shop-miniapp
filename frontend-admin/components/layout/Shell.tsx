@@ -727,16 +727,17 @@ function LogoutEverywhereButton() {
     <button
       onClick={run}
       disabled={busy}
-      title={collapsed ? "Выйти на всех устройствах" : undefined}
+      title="Выйти на всех устройствах — отозвать вход везде, включая это устройство"
       className={cn(
-        "flex min-h-11 w-full items-center gap-3 rounded-[var(--r-md)] py-2 text-[12.5px] font-medium text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-60 lg:min-h-9",
+        "flex min-h-11 w-full items-center gap-3 whitespace-nowrap rounded-[var(--r-md)] py-2 text-left text-[12.5px] font-medium text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-60 lg:min-h-9",
         collapsed ? "justify-center px-0" : "px-3",
       )}
     >
-      <MonitorX className="h-[16px] w-[16px] shrink-0" />
-      <span className={cn(collapsed && "sr-only")}>
-        Выйти на всех устройствах
+      {/* 18px slot: the label lines up with «Мой аккаунт» / «Выйти» above. */}
+      <span className="grid w-[18px] shrink-0 place-items-center">
+        <MonitorX className="h-[16px] w-[16px]" />
       </span>
+      <span className={cn("truncate", collapsed && "sr-only")}>Выйти везде</span>
     </button>
   );
 }
@@ -835,11 +836,13 @@ function SidebarInner({
               collapsed ? "justify-center px-0" : "px-3",
             )}
           >
-            {collapsed ? (
-              <PanelLeftOpen className="h-[16px] w-[16px]" />
-            ) : (
-              <PanelLeftClose className="h-[16px] w-[16px]" />
-            )}
+            <span className="grid w-[18px] shrink-0 place-items-center">
+              {collapsed ? (
+                <PanelLeftOpen className="h-[16px] w-[16px]" />
+              ) : (
+                <PanelLeftClose className="h-[16px] w-[16px]" />
+              )}
+            </span>
             {!collapsed && <span>Свернуть</span>}
           </button>
         )}
