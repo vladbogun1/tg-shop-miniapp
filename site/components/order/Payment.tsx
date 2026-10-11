@@ -213,7 +213,9 @@ export function OrderPayment({
     router.replace(href(`/account/orders/${order.id}`), { scroll: false });
   }, [returnParam, shouldCheck, router, href, order.id]);
 
-  const dueAt = order.paymentDueAt ? Date.parse(order.paymentDueAt) : NaN;
+  // The deadline binds a NEW order only: once the shop approved it, paying late is fine until the
+  // shop cancels the order itself (they may have agreed in the chat).
+  const dueAt = order.paymentDueAt && order.status === "NEW" ? Date.parse(order.paymentDueAt) : NaN;
   const awaiting = paymentState(order) === "AWAITING" && order.amountDueMinor > 0;
   const now = useNow(awaiting && !Number.isNaN(dueAt));
 

@@ -5,6 +5,7 @@ import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -69,6 +70,7 @@ public class AdminOrderController {
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
     private final OrderAdjustmentService adjustments;
+    private final OnlinePaymentService payments;
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
@@ -77,7 +79,8 @@ public class AdminOrderController {
                                 AdminAuditService audit,
                                 ImageStorageService imageStorageService,
                                 UploadValidator uploadValidator,
-                                OrderAdjustmentService adjustments) {
+                                OrderAdjustmentService adjustments,
+                                OnlinePaymentService payments) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
@@ -86,6 +89,7 @@ public class AdminOrderController {
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
         this.adjustments = adjustments;
+        this.payments = payments;
     }
 
     /** Per-status column cap on the board so we never load all 10k orders. */
@@ -253,6 +257,11 @@ public class AdminOrderController {
         long missingMinor = unpaidShip ? OrderService.amountDueMinor(before) : 0;
         Order updated = orderService.changeStatus(before.getId(), target,
                 req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
+        if (target == OrderStatus.REJECTED) {
+            // An approved order stays payable past its deadline — close the open monobank pages, so
+            // nobody pays for an order we have just cancelled.
+            payments.closeOpenInvoices(updated.getId());
+        }
         if (unpaidShip) {
             // Shown in the order's «История»: who decided to send it without the money.
             String who = audit.currentAdminName();

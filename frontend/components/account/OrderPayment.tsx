@@ -183,7 +183,9 @@ export function OrderPayment({
   const now = useNow(30_000);
   const state = paymentState(order);
   const status = order.payment.status;
-  const dueAt = order.paymentDueAt ? new Date(order.paymentDueAt).getTime() : null;
+  // The deadline binds a NEW order only: once the shop approved it, paying late is fine until the
+  // shop cancels the order itself (they may have agreed in the chat).
+  const dueAt = order.paymentDueAt && order.status === "NEW" ? new Date(order.paymentDueAt).getTime() : null;
   const timeUp = dueAt !== null && dueAt <= now;
 
   // The deadline passed while the screen was open: the server cancels the order — show that.
@@ -430,7 +432,7 @@ export function OrderPayment({
         </p>
       )}
 
-      {order.paymentDueAt && (
+      {order.paymentDueAt && dueAt !== null && (
         <p className="mt-3 text-[13px] font-semibold text-[var(--ink)]">
           {timeUp ? (
             <span className="text-[var(--danger)]">{t("pay.timeUp")}</span>

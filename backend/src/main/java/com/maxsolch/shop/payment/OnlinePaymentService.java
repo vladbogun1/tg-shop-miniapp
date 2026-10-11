@@ -158,7 +158,10 @@ public class OnlinePaymentService {
         if (order.getStatus() == OrderStatus.REJECTED || order.getStatus() == OrderStatus.DELIVERED || amount <= 0) {
             throw new ConflictException(messages.current("api.payment.notPayable"), "NOT_PAYABLE");
         }
-        if (order.getPaymentDueAt() != null && !order.getPaymentDueAt().isAfter(now)) {
+        // The deadline binds a NEW order only (it is auto-cancelled after it). Once an admin approved the
+        // order, the customer may pay late (they may have agreed in the chat) until the admin rejects it.
+        boolean deadlineApplies = order.getStatus() == OrderStatus.NEW && order.getPaymentDueAt() != null;
+        if (deadlineApplies && !order.getPaymentDueAt().isAfter(now)) {
             throw new ConflictException(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
         }
 
@@ -179,7 +182,7 @@ public class OnlinePaymentService {
         }
 
         Instant expiresAt = now.plus(Duration.ofMinutes(Math.max(5, props.getPayment().getInvoiceTtlMinutes())));
-        if (order.getPaymentDueAt() != null && order.getPaymentDueAt().isBefore(expiresAt)) {
+        if (deadlineApplies && order.getPaymentDueAt().isBefore(expiresAt)) {
             // monobank must not take money after we have cancelled the order.
             expiresAt = order.getPaymentDueAt();
         }

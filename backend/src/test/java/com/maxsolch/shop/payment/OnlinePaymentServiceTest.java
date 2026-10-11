@@ -260,6 +260,25 @@ class OnlinePaymentServiceTest {
     }
 
     @Test
+    void start_approvedOrderIsPayablePastTheDeadline() {
+        // The shop approved it (maybe agreed in the chat): the customer may pay late until it is rejected.
+        Order o = order();
+        o.setStatus(OrderStatus.APPROVED);
+        o.setPrepaymentMinor(100_00);
+        o.setPaymentDueAt(Instant.now().minus(Duration.ofHours(5)));
+        given(o);
+        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-late", "https://pay/inv-late"));
+
+        OnlinePaymentService.StartedPayment started = service.start(o.getId(), OnlinePaymentService.ReturnTo.MINIAPP, "uk");
+
+        assertThat(started.amountMinor()).isEqualTo(100_00);
+        ArgumentCaptor<MonobankClient.CreateInvoice> req = ArgumentCaptor.forClass(MonobankClient.CreateInvoice.class);
+        verify(mono).createInvoice(req.capture());
+        // The page lives its normal TTL, not cut to the past deadline.
+        assertThat(req.getValue().validitySeconds()).isGreaterThan(60);
+    }
+
+    @Test
     void start_refusesWhenOnlinePaymentIsOff() {
         when(mono.isEnabled()).thenReturn(false);
 
