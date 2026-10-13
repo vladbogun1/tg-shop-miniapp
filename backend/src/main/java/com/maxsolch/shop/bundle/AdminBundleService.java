@@ -120,7 +120,7 @@ public class AdminBundleService {
         List<ProductDto> items = bundles.suggest(List.of(anchor), all, Set.of(productId),
                 settings.getInt(SettingsRegistry.BUNDLE_MAX_ADDON_PRICE_PERCENT),
                 settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS));
-        return new ProductOfferDto(productId, bundles.terms(), items);
+        return new ProductOfferDto(productId, bundles.terms(), items, null);
     }
 
     @Transactional(readOnly = true)

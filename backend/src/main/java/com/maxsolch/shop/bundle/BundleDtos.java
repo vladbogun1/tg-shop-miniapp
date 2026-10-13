@@ -19,7 +19,11 @@ public final class BundleDtos {
     }
 
     /** Product page: the accessories to offer with {@code productId}; empty when none fit. */
-    public record ProductOfferDto(String productId, TermsDto terms, List<ProductDto> items) {
+    /**
+     * {@code gift}: the gift for the order sum priced against this product alone — «with it you get a
+     * case» or «add N more» on the product page; null when the gift is off.
+     */
+    public record ProductOfferDto(String productId, TermsDto terms, List<ProductDto> items, GiftDto gift) {
     }
 
     public record QuoteLineRequest(String productId, String variantId, int quantity) {

@@ -216,17 +216,20 @@ public class BundleService {
     @Transactional(readOnly = true)
     public ProductOfferDto offerFor(String productId, String lang) {
         TermsDto terms = terms();
-        if (!terms.enabled()) {
-            return new ProductOfferDto(productId, terms, List.of());
-        }
         List<ProductDto> all = catalogService.listActiveProducts(lang);
         ProductDto anchor = all.stream().filter(p -> p.id().equals(productId)).findFirst().orElse(null);
         if (anchor == null) {
-            return new ProductOfferDto(productId, terms, List.of());
+            return new ProductOfferDto(productId, terms, List.of(), null);
+        }
+        Map<String, ProductDto> byId = new HashMap<>();
+        all.forEach(p -> byId.put(p.id(), p));
+        GiftDto gift = gift(anchor.priceMinor(), byId);
+        if (!terms.enabled()) {
+            return new ProductOfferDto(productId, terms, List.of(), gift);
         }
         List<ProductDto> items = suggest(List.of(anchor), all, Set.of(productId), terms.maxAddonPricePercent(),
                 settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS));
-        return new ProductOfferDto(productId, terms, items);
+        return new ProductOfferDto(productId, terms, items, gift);
     }
 
     /** Cart quote: the bundle discount line by line, which discount wins, suggestions and the gift. */
