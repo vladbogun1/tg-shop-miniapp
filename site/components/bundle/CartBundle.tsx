@@ -13,7 +13,9 @@ import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart, trackBundle } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
-import { Image } from "@/lib/image";
+import { Image, resolveImageSrc } from "@/lib/image";
+import { GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
+import { useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import { useFmt } from "@/lib/use-fmt";
 
 type Place = "cart" | "drawer";
@@ -82,11 +84,17 @@ export function CartTotals({
   );
 }
 
-/** «До подарунка ще N ₴» with a progress bar, or «🎁 Подарунок … додамо безкоштовно». */
+/**
+ * «До подарунка ще N ₴» with a progress bar, or «🎁 Подарунок … додамо безкоштовно». In CASE mode
+ * (gift case, V58): «До кейсу з подарунком ще N ₴» / «🎁 Кейс з подарунком — відкриєте після
+ * оформлення» with the case art and an expandable «Що може випасти».
+ */
 export function GiftProgress({ gift, compact = false }: { gift: BundleGift | null | undefined; compact?: boolean }) {
   const { t } = useI18n();
   const fmt = useFmt();
-  if (!gift?.product) return null;
+  const rarity = useCaseRarityNames();
+  const isCase = gift?.kind === "CASE";
+  if (!gift || (!isCase && !gift.product) || (isCase && !gift.caseItems?.length)) return null;
   const done = gift.reached || gift.remainingMinor <= 0;
   const pct = done
     ? 100
@@ -94,44 +102,70 @@ export function GiftProgress({ gift, compact = false }: { gift: BundleGift | nul
       ? Math.max(4, Math.min(100, ((gift.thresholdMinor - gift.remainingMinor) / gift.thresholdMinor) * 100))
       : 0;
   const thumb = compact ? "h-10 w-10" : "h-12 w-12";
+  const text = isCase
+    ? done
+      ? t("case.reached")
+      : t("case.progress", { amount: fmt.money(gift.remainingMinor) })
+    : done
+      ? t("bundle.gift.reached", { title: gift.product!.title })
+      : t("bundle.gift.progress", { amount: fmt.money(gift.remainingMinor) });
   return (
     <div
-      className={`flex items-center gap-3 rounded-[var(--r-card)] border p-2.5 ${
+      className={`rounded-[var(--r-card)] border p-2.5 ${
         done
-          ? "border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_8%,transparent)]"
+          ? isCase
+            ? "border-[color-mix(in_srgb,var(--accent)_50%,transparent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
+            : "border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_8%,transparent)]"
           : "border-[var(--line)] bg-[var(--surface-2)]"
       }`}
     >
-      <span className={`relative ${thumb} shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)]`}>
-        <Image src={firstImage(gift.product)} alt="" size={120} className="h-full w-full" />
-        <span className="absolute bottom-0 right-0 grid h-4 w-4 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[#0e0e10]">
-          <Gift className="h-3 w-3" strokeWidth={2.5} />
-        </span>
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={`${compact ? "line-clamp-2" : "line-clamp-3"} ${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-snug ${done ? "text-[var(--ok)]" : "text-[var(--ink)]"}`}>
-          {done
-            ? t("bundle.gift.reached", { title: gift.product.title })
-            : t("bundle.gift.progress", { amount: fmt.money(gift.remainingMinor) })}
-        </p>
-        {!done && (
-          <>
-            <div
-              className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface)]"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(pct)}
-            >
-              <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="mt-1 line-clamp-1 text-[11px] font-medium text-[var(--muted)]">{gift.product.title}</p>
-          </>
+      <div className="flex items-center gap-3">
+        {isCase ? (
+          <span className={`relative ${compact ? "h-10 w-14" : "h-12 w-[72px]"} shrink-0`}>
+            <img src="/case/case-closed-sm.webp" alt="" className={`h-full w-full object-contain ${done ? "drop-shadow-[0_0_10px_rgba(255,106,0,.55)]" : ""}`} />
+          </span>
+        ) : (
+          <span className={`relative ${thumb} shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)]`}>
+            <Image src={firstImage(gift.product!)} alt="" size={120} className="h-full w-full" />
+            <span className="absolute bottom-0 right-0 grid h-4 w-4 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[#0e0e10]">
+              <Gift className="h-3 w-3" strokeWidth={2.5} />
+            </span>
+          </span>
         )}
+        <div className="min-w-0 flex-1">
+          <p
+            className={`${compact ? "line-clamp-2" : "line-clamp-3"} ${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-snug ${
+              done ? (isCase ? "text-[var(--accent-hi)]" : "text-[var(--ok)]") : "text-[var(--ink)]"
+            }`}
+          >
+            {text}
+          </p>
+          {!done && (
+            <>
+              <div
+                className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface)]"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(pct)}
+              >
+                <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500" style={{ width: `${pct}%` }} />
+              </div>
+              {!isCase && <p className="mt-1 line-clamp-1 text-[11px] font-medium text-[var(--muted)]">{gift.product!.title}</p>}
+            </>
+          )}
+        </div>
       </div>
+      {isCase && (
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1">
+          <GiftCasePrizeRows items={gift.caseItems} rarity={rarity} resolveImage={caseImage} />
+        </GiftCasePrizeDisclosure>
+      )}
     </div>
   );
 }
+
+const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
 
 /** «Докинь до замовлення»: 1–3 accessories for what is in the cart, one click to add. */
 export function BundleSuggestions({

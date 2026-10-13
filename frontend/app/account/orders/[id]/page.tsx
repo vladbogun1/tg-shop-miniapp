@@ -41,6 +41,7 @@ import { OrderReceipts } from "@/components/account/OrderReceipts";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
+import { CasePrizeNote, useOrderGiftCase } from "@/components/case/OrderGiftCase";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
@@ -174,6 +175,9 @@ function OrderBody({
     if (created) router.replace(`/account/orders/${id}`, { scroll: false });
   }, [created, router, id]);
 
+  // Gift case (V58): the sealed card on top, the opening screen, the replay from the prize line.
+  const giftCase = useOrderGiftCase(order, created);
+
   const [cancelOpen, setCancelOpen] = useState(false);
   const cancelRef = useRef<HTMLDivElement>(null);
   const openCancel = () => {
@@ -204,6 +208,8 @@ function OrderBody({
         // leave room for the sticky chat bar (button + safe area)
         className="flex flex-col gap-4 pb-28"
       >
+        {giftCase.card && <motion.div variants={riseItem}>{giftCase.card}</motion.div>}
+
         {/* Payment due or just paid: the action / «Оплачено» goes first, receipts right under it. */}
         {payFirst && (
           <motion.div variants={riseItem} className="flex flex-col gap-4">
@@ -291,6 +297,7 @@ function OrderBody({
                       {it.variantName}
                     </p>
                   )}
+                  {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} onReplay={giftCase.replay} />}
                   <p className="mt-0.5 text-[12px] font-medium text-[var(--faint)]">
                     {it.gift || it.autoGift
                       ? it.quantity > 1
@@ -394,6 +401,8 @@ function OrderBody({
           </motion.section>
         )}
       </motion.div>
+
+      {giftCase.overlay}
 
       {/* sticky chat CTA — within thumb reach, above the TabBar */}
       <div

@@ -27,6 +27,7 @@ import { useFmt } from "@/lib/use-fmt";
 import { PaymentBadge } from "./PaymentBadge";
 import { StatusTimeline } from "./StatusTimeline";
 import { OrderReviewCta } from "@/components/reviews/OrderReviewCta";
+import { CasePrizeNote, useOrderGiftCase } from "@/components/case/OrderGiftCase";
 
 export function OrderDetailView({ id }: { id: string }) {
   const { t, href, locale } = useI18n();
@@ -78,6 +79,8 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const router = useRouter();
   const isPickup = order.deliveryMethod === "PICKUP";
   const cancelMode = customerCancelMode(order);
+  // Gift case (V58): the sealed card on top, the opening screen, the replay from the prize line.
+  const giftCase = useOrderGiftCase(order);
   // «Разом дешевше» part of the discount (V57) and the rest (promo code / manual).
   const bundleDiscount = Math.min(order.bundleDiscountMinor ?? 0, order.discountMinor);
   const otherDiscount = order.discountMinor - bundleDiscount;
@@ -115,6 +118,9 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       <p className="-mt-3 text-[13px] font-semibold text-[var(--muted)]">
         {t("order.createdAt", { when: fmt.dateTime(order.createdAt) })}
       </p>
+
+      {giftCase.card}
+      {giftCase.overlay}
 
       {/* payment comes first: while it is due, it is the one thing to do on this page */}
       <OrderPayment
@@ -183,6 +189,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                   {it.title}
                 </p>
                 {it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>}
+                {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} onReplay={giftCase.replay} />}
                 {it.bundleAddon && !it.gift && !it.autoGift && (
                   <p className="text-[12px] font-semibold text-[var(--accent-hi)]">{t("order.bundleAddon")}</p>
                 )}

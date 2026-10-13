@@ -17,6 +17,8 @@ import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
+import { caseImage, useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import type { Product } from "@/lib/api";
 
 const hasVariants = (p: Product) => (p.variants?.length ?? 0) > 0;
@@ -127,42 +129,68 @@ export function BundleSuggestions({
   );
 }
 
-/** Progress to the gift for the order sum, or the gift that is already earned. */
+/**
+ * Progress to the gift for the order sum, or the gift that is already earned. CASE mode (gift case,
+ * V58): «До кейсу з подарунком ще N ₴» / «🎁 Кейс з подарунком — відкриєте після оформлення» with the
+ * case art and an expandable «Що може випасти».
+ */
 export function GiftProgress({ gift, currency }: { gift: BundleGift | null | undefined; currency: string }) {
   const t = useT();
+  const rarity = useCaseRarityNames();
   if (!gift) return null;
+  const isCase = gift.kind === "CASE";
+  if (isCase ? !gift.caseItems?.length : !gift.product) return null;
   const done = gift.reached || gift.remainingMinor <= 0;
   const share = gift.thresholdMinor > 0 ? Math.min(1, Math.max(0, 1 - gift.remainingMinor / gift.thresholdMinor)) : 1;
   return (
-    <div className="nb mt-4 flex items-center gap-3 p-3">
-      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
-        <Image src={gift.product.images?.[0]?.url} alt={gift.product.title} size={120} className="h-full w-full" />
-        <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
-          <Gift className="h-3 w-3" strokeWidth={2.75} />
-        </span>
-      </div>
-      <div className="min-w-0 flex-1">
-        {done ? (
-          <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">
-            🎁 {t("bundle.giftReached", { title: gift.product.title })}
-          </p>
+    <div className={`nb mt-4 p-3 ${isCase && done ? "border-[color-mix(in_srgb,var(--accent)_50%,transparent)]" : ""}`}>
+      <div className="flex items-center gap-3">
+        {isCase ? (
+          <div className="relative h-12 w-[72px] shrink-0">
+            <img
+              src="/case/case-closed-sm.webp"
+              alt=""
+              className={`h-full w-full object-contain ${done ? "drop-shadow-[0_0_10px_rgba(255,102,0,.6)]" : ""}`}
+            />
+          </div>
         ) : (
-          <>
-            <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">
-              {t("bundle.giftLeft", { amount: money(gift.remainingMinor, currency) })}
-            </p>
-            <p className="line-clamp-1 text-[11px] text-[var(--muted)]">{gift.product.title}</p>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
-              <motion.div
-                className="h-full rounded-full bg-[var(--accent)]"
-                initial={false}
-                animate={{ width: `${Math.round(share * 100)}%` }}
-                transition={spring}
-              />
-            </div>
-          </>
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
+            <Image src={gift.product!.images?.[0]?.url} alt={gift.product!.title} size={120} className="h-full w-full" />
+            <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
+              <Gift className="h-3 w-3" strokeWidth={2.75} />
+            </span>
+          </div>
         )}
+        <div className="min-w-0 flex-1">
+          {done ? (
+            <p className={`text-[13px] font-semibold leading-snug ${isCase ? "text-[var(--accent-hi)]" : "text-[var(--ink)]"}`}>
+              {isCase ? t("case.reached") : <>🎁 {t("bundle.giftReached", { title: gift.product!.title })}</>}
+            </p>
+          ) : (
+            <>
+              <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">
+                {isCase
+                  ? t("case.progress", { amount: money(gift.remainingMinor, currency) })
+                  : t("bundle.giftLeft", { amount: money(gift.remainingMinor, currency) })}
+              </p>
+              {!isCase && <p className="line-clamp-1 text-[11px] text-[var(--muted)]">{gift.product!.title}</p>}
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
+                <motion.div
+                  className="h-full rounded-full bg-[var(--accent)]"
+                  initial={false}
+                  animate={{ width: `${Math.round(share * 100)}%` }}
+                  transition={spring}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
+      {isCase && (
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1">
+          <GiftCasePrizeRows items={gift.caseItems} rarity={rarity} resolveImage={caseImage} />
+        </GiftCasePrizeDisclosure>
+      )}
     </div>
   );
 }

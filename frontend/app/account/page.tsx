@@ -198,6 +198,11 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
             </span>
             <StatusChip status={order.status} />
             <PaymentBadge state={paymentState(order)} size="sm" />
+            {order.giftCaseStatus === "SEALED" && (
+              <span className="font-display rounded-full border border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] shadow-[0_0_10px_rgba(255,102,0,.35)]">
+                {t("case.waiting")}
+              </span>
+            )}
           </div>
           <p className="mt-1.5 text-[13px] text-[var(--muted)]">
             {formatDate(order.createdAt)} · {t("account.itemsCount", { n: order.itemsCount })}

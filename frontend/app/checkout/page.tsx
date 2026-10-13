@@ -95,6 +95,7 @@ import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { markGiftCaseAutoOpen } from "@shop/shared/case-ui";
 
 const STEP_KEYS = [
   "checkout.step.contacts",
@@ -345,6 +346,7 @@ export default function CheckoutPage() {
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       trackOrderCreated(orderId);
+      markGiftCaseAutoOpen(orderId);
       haptic();
       cartAfterOrder(lines.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
@@ -509,7 +511,7 @@ export default function CheckoutPage() {
               discount={discount}
               discountKind={discountKind}
               promoDiscount={promo.discount}
-              gift={gift ? { title: gift.product.title } : null}
+              gift={gift ? (gift.kind === "CASE" || !gift.product ? { title: t("case.line"), isCase: true } : { title: gift.product.title }) : null}
               total={total}
               dueNow={dueNow}
               currency={currency}
@@ -1022,7 +1024,7 @@ function ConfirmStep({
   /** What the promo code alone would give (0 = no code / not valid). */
   promoDiscount: number;
   /** The gift for the order sum, when this order earns it. */
-  gift: { title: string } | null;
+  gift: { title: string; isCase?: boolean } | null;
   total: number;
   /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
   dueNow: number;
@@ -1054,10 +1056,17 @@ function ConfirmStep({
         ))}
         {gift && (
           <div className="flex items-center justify-between gap-2 py-1.5">
-            <span className="min-w-0 flex-1 text-[14px] font-semibold text-[var(--ink)]">
-              <span className="line-clamp-2">{gift.title}</span>
-              <span className="block text-[12px] font-medium text-[var(--muted)]">{t("bundle.giftLine")}</span>
-            </span>
+            {gift.isCase ? (
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-[14px] font-semibold text-[var(--ink)]">
+                <img src="/case/case-closed-sm.webp" alt="" className="h-8 w-12 shrink-0 object-contain" />
+                <span className="line-clamp-2">{gift.title}</span>
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 text-[14px] font-semibold text-[var(--ink)]">
+                <span className="line-clamp-2">{gift.title}</span>
+                <span className="block text-[12px] font-medium text-[var(--muted)]">{t("bundle.giftLine")}</span>
+              </span>
+            )}
             <span className="font-display text-[14px] font-semibold tabular-nums text-[var(--ok)]">{money(0, currency)}</span>
           </div>
         )}

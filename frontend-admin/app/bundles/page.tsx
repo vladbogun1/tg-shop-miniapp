@@ -25,9 +25,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
 import { initialDraft, isDirty, parse, validate, type Draft } from "../settings/draft";
 import { PanelHeader } from "../settings/PanelHeader";
+import { CasePanel } from "./CasePanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { ProductPickModal } from "./ProductPickModal";
 import { RulesPanel } from "./RulesPanel";
@@ -43,6 +45,7 @@ const K = {
   giftEnabled: "gift.enabled",
   giftThreshold: "gift.thresholdUah",
   giftProduct: "gift.productId",
+  giftCase: "gift.caseEnabled",
 } as const;
 
 export default function BundlesPage() {
@@ -146,6 +149,7 @@ export default function BundlesPage() {
               <GiftSection
                 enabled={field(K.giftEnabled)}
                 threshold={field(K.giftThreshold)}
+                caseMode={field(K.giftCase)}
                 productId={String(draft[K.giftProduct]?.raw ?? "")}
                 productDirty={!!byKey.get(K.giftProduct) && isDirty(byKey.get(K.giftProduct)!, draft[K.giftProduct])}
                 onChange={change}
@@ -235,12 +239,15 @@ function BoolRow({ item, entry, label, onChange }: FieldProps & { label: string;
 function GiftSection({
   enabled,
   threshold,
+  caseMode,
   productId,
   productDirty,
   onChange,
 }: {
   enabled: FieldProps | null;
   threshold: FieldProps | null;
+  /** `gift.caseEnabled`: null = an old backend without the case. */
+  caseMode: FieldProps | null;
   productId: string;
   productDirty: boolean;
   onChange: (key: string, raw: string | boolean) => void;
@@ -252,6 +259,8 @@ function GiftSection({
   const variants = product?.variants ?? [];
   const best = variants.length ? [...variants].sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))[0] : null;
   const on = !!enabled && Boolean(enabled.entry.raw);
+  const isCase = !!caseMode && Boolean(caseMode.entry.raw);
+  const thresholdUah = threshold && !validate(threshold.item, threshold.entry.raw) ? Number(threshold.entry.raw) : null;
 
   return (
     <section className="panel min-w-0 p-4 sm:p-5">
@@ -264,9 +273,31 @@ function GiftSection({
           </div>
         )}
 
+        {caseMode && (
+          <div>
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="field-label">Что получает покупатель</span>
+              {isDirty(caseMode.item, caseMode.entry) && <Badge tone="accent">Не сохранено</Badge>}
+            </div>
+            <SegmentedControl
+              value={isCase ? "case" : "one"}
+              onChange={(v) => onChange(K.giftCase, v === "case")}
+              options={[
+                { value: "one", label: "Один товар" },
+                { value: "case", label: "Кейс" },
+              ]}
+            />
+            <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--text-muted)]">
+              {isCase
+                ? "Кейс как в CS: приз случайно выбирается при оформлении, покупатель открывает кейс в заказе."
+                : "В заказ всегда кладётся один и тот же товар."}
+            </p>
+          </div>
+        )}
+
         <div>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="field-label">Товар-подарок</span>
+            <span className="field-label">{isCase ? "Запасной товар-подарок" : "Товар-подарок"}</span>
             {productDirty && <Badge tone="accent">Не сохранено</Badge>}
           </div>
           <div className="card-2 flex min-w-0 items-center gap-3 p-2.5">
@@ -308,8 +339,17 @@ function GiftSection({
               {best.stock ? ` (сейчас «${best.name}», ${best.stock} шт)` : ""}.
             </Warn>
           )}
-          {on && !productId && <Warn>Подарок включён, но товар не выбран — подарка не будет.</Warn>}
+          {on && !productId && !isCase && <Warn>Подарок включён, но товар не выбран — подарка не будет.</Warn>}
+          {isCase && (
+            <Warn tone="info">Кладётся вместо кейса, если ни одного приза нет в наличии{productId ? "" : " — сейчас не выбран, тогда подарка не будет"}.</Warn>
+          )}
         </div>
+
+        {isCase && (
+          <div className="border-t border-[var(--line)] pt-4">
+            <CasePanel thresholdUah={thresholdUah} />
+          </div>
+        )}
       </div>
 
       <ProductPickModal
@@ -346,6 +386,9 @@ function StatsStrip() {
     { label: "Скидка отдана", value: s ? money(s.bundleDiscountMinor) : "—" },
     { label: "Выручка этих заказов", value: s ? money(s.bundleRevenueMinor) : "—" },
     { label: "Подарков за сумму", value: s ? String(s.giftOrders) : "—", hint: s ? "заказов с подарком" : undefined },
+    ...(s?.caseOrders != null
+      ? [{ label: "Кейсов открыто", value: `${s.casesOpened ?? 0} из ${s.caseOrders}`, hint: "покупатель открыл в заказе" }]
+      : []),
   ];
   return (
     <section className="mb-4 min-w-0 lg:mb-6" aria-label="Статистика за 30 дней">
@@ -354,9 +397,12 @@ function StatsStrip() {
         <span className="field-label">Статистика за 30 дней</span>
         {q.isError && <span className="text-[12px] text-[var(--danger-ink)]">не загрузилась</span>}
       </div>
-      <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-        {tiles.map((t) => (
-          <div key={t.label} className="card-2 min-w-0 px-3 py-2.5">
+      <div className={cn("grid min-w-0 grid-cols-2 gap-2 lg:gap-3", tiles.length > 4 ? "sm:grid-cols-3 lg:grid-cols-5" : "lg:grid-cols-4")}>
+        {tiles.map((t, i) => (
+          <div
+            key={t.label}
+            className={cn("card-2 min-w-0 px-3 py-2.5", tiles.length % 2 === 1 && i === tiles.length - 1 && "col-span-2 sm:col-span-1")}
+          >
             <div className="text-[11.5px] leading-tight text-[var(--text-faint)]">{t.label}</div>
             <div className={cn("tabular mt-1 break-words font-display text-[18px] font-bold leading-tight text-[var(--ink)]", q.isLoading && "opacity-40")}>
               {t.value}

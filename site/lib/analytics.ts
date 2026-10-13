@@ -123,6 +123,11 @@ export function trackBundle(event: "bundle_view" | "bundle_add", place: "product
   track(event, { place, ids });
 }
 
+/** The gift case of an order was opened (the prize shown); `rarity` of the prize. */
+export function trackGiftCaseOpen(orderId: string, rarity: string) {
+  track("gift_case_open", { orderId, rarity });
+}
+
 export function trackCheckoutStart() {
   track("checkout_start");
 }

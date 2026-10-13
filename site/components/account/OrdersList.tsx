@@ -76,6 +76,11 @@ function OrderRow({ order }: { order: OrderSummary }) {
             </span>
             <StatusChip status={order.status} />
             <PaymentBadge state={paymentState(order)} />
+            {order.giftCaseStatus === "SEALED" && (
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[var(--accent-soft)] px-2.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)] shadow-[0_0_12px_rgba(255,106,0,.35)]">
+                {t("case.waiting")}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-[13px] text-[var(--muted)]">
             {fmt.date(order.createdAt)} · {t("account.orders.items", { n: order.itemsCount })}

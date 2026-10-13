@@ -16,6 +16,7 @@ import {
   type Conversation,
   createHttpClient,
   type CreateOrderResult,
+  type GiftCaseOpen,
   getActiveLocale,
   getActiveTag,
   type Message,
@@ -316,6 +317,8 @@ export const customerApi = {
   refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and server-relative. */
   getReceipts: (id: string) => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`),
+  /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
+  openGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

@@ -56,6 +56,7 @@ import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
+import { markGiftCaseAutoOpen } from "@shop/shared/case-ui";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -342,6 +343,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
       trackOrderCreated(created.orderId);
+      markGiftCaseAutoOpen(created.orderId);
       cartAfterOrder(orderable.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
@@ -606,13 +608,23 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
               {gift && (
                 <li className="flex items-center gap-3">
                   <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--r)] border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[var(--surface-2)]">
-                    <Image src={gift.product.images?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null} alt="" size={120} className="h-full w-full" />
+                    {gift.kind === "CASE" || !gift.product ? (
+                      <img src="/case/case-closed-sm.webp" alt="" className="h-full w-full object-contain p-0.5" />
+                    ) : (
+                      <Image src={gift.product.images?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null} alt="" size={120} className="h-full w-full" />
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[12px] font-bold text-[var(--ok)]">{t("bundle.gift.line")}</span>
-                    <span className="line-clamp-2 text-[13px] font-medium text-[var(--ink)]">{gift.product.title}</span>
+                    {gift.kind === "CASE" || !gift.product ? (
+                      <span className="line-clamp-2 text-[13px] font-bold text-[var(--ink)]">{t("case.line")}</span>
+                    ) : (
+                      <>
+                        <span className="block text-[12px] font-bold text-[var(--ok)]">{t("bundle.gift.line")}</span>
+                        <span className="line-clamp-2 text-[13px] font-medium text-[var(--ink)]">{gift.product.title}</span>
+                      </>
+                    )}
                   </span>
-                  <span className="shrink-0 font-display text-[13px] font-bold text-[var(--ok)]">{t("bundle.gift.free")}</span>
+                  <span className="shrink-0 font-display text-[13px] font-bold text-[var(--ok)]">{gift.kind === "CASE" ? fmt.money(0, currency) : t("bundle.gift.free")}</span>
                 </li>
               )}
             </ul>

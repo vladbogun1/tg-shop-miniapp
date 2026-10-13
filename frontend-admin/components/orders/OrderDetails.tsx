@@ -23,7 +23,9 @@ import {
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
+import { CASE_RARITY_COLOR } from "@shop/shared";
 import { money } from "@/lib/money";
+import { CASE_RARITY_LABEL } from "@/lib/bundles";
 import {
   codMinor,
   DELIVERY_LABEL,
@@ -211,7 +213,15 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               <div className="min-w-0 flex-1">
                 {/* Two lines, not one: on a phone a single truncated line hid what was ordered. */}
                 <div className="line-clamp-2 break-words text-[14px] leading-snug text-[var(--text)]" title={it.title}>
-                  {it.gift && (
+                  {it.gift && it.caseRarity && (
+                    <span
+                      className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]"
+                      style={{ "--chip": CASE_RARITY_COLOR[it.caseRarity] } as React.CSSProperties}
+                    >
+                      🎁 Кейс · {CASE_RARITY_LABEL[it.caseRarity]}
+                    </span>
+                  )}
+                  {it.gift && !it.caseRarity && (
                     <span className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]" style={{ "--chip": "var(--accent-hi)" } as React.CSSProperties}>
                       {it.autoGift ? "🎁 За сумму" : "🎁 Подарок"}
                     </span>
@@ -224,6 +234,9 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   {it.title}
                 </div>
                 {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
+                {it.caseRarity && order.giftCaseStatus === "SEALED" && (
+                  <div className="text-[12px] text-[var(--text-faint)]">покупатель ещё не открыл кейс</div>
+                )}
                 {(it.returnedQty ?? 0) > 0 && (
                   <div className="text-[12px] font-semibold text-[var(--warn)]">↩ возвращено {it.returnedQty} шт.</div>
                 )}
