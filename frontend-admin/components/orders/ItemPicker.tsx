@@ -147,7 +147,7 @@ export function ItemPicker({
                   )}
                 >
                   <Image src={p.images?.[0]?.url} alt={p.title} size={96} className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]" />
-                  <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[var(--text)]">{p.title}</span>
+                  <span className="min-w-0 flex-1 line-clamp-2 break-words text-[14px] leading-snug font-semibold text-[var(--text)]">{p.title}</span>
                   <span className="tabular shrink-0 pr-1 text-[12px] font-medium text-[var(--text-faint)]">{eff} шт</span>
                 </button>
               );
@@ -162,7 +162,7 @@ export function ItemPicker({
           <div className="flex items-center gap-3">
             <Image src={selected.images?.[0]?.url} alt={selected.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]" />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-semibold text-[var(--text)]">{selected.title}</div>
+              <div className="line-clamp-2 break-words text-[15px] leading-snug font-semibold text-[var(--text)]">{selected.title}</div>
               <div className="text-[12px] text-[var(--text-faint)]">
                 {gift
                   ? `Цена ${money(selected.priceMinor, selected.currency)} → в подарок 0 ₴`

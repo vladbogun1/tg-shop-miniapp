@@ -236,7 +236,7 @@ export function ExchangeModal({
                   className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13.5px] font-semibold text-[var(--text)]">{l.product.title}</div>
+                  <div className="line-clamp-2 break-words text-[13.5px] leading-snug font-semibold text-[var(--text)]">{l.product.title}</div>
                   <div className="text-[12px] text-[var(--text-faint)]">
                     {l.variant ? `${l.variant.name} · ` : ""}
                     {money(l.product.priceMinor, cur)} × {l.qty} = {money(l.product.priceMinor * l.qty, cur)}
@@ -321,7 +321,7 @@ export function ExchangeModal({
                         size={96}
                         className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]"
                       />
-                      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[var(--text)]">{p.title}</span>
+                      <span className="min-w-0 flex-1 line-clamp-2 break-words text-[14px] leading-snug font-semibold text-[var(--text)]">{p.title}</span>
                       <span className="tabular shrink-0 text-[12.5px] font-semibold text-[var(--text-muted)]">
                         {money(p.priceMinor, p.currency)}
                       </span>
