@@ -4,8 +4,12 @@
  *   POST /api/me/orders/{id}/gift-case/open → GiftCaseOpen
  *   quote.gift.kind === "CASE" → quote.gift.caseItems (prizes with chances) for the cart.
  *
- * The prize is decided by the SERVER at checkout; the reel here is only the show: a long strip of
- * random prizes (by their chances) with the real prize planted near the end, where the reel stops.
+ * The prize is decided by the SERVER (at checkout, or when an admin gives a case); the reel here is
+ * only the show: a long strip of random prizes (by their chances) with the real prize planted near
+ * the end, where the reel stops. The client never picks or computes the prize.
+ *
+ * Rules (server-enforced): the case opens only once the order is paid (`giftCaseOpenable`), and
+ * exactly once — 400 GIFT_CASE_UNPAID / GIFT_CASE_ALREADY_OPENED otherwise; no replays.
  */
 
 export type CaseRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
@@ -16,7 +20,7 @@ export interface CaseItem {
   imageUrl: string | null;
   priceMinor: number;
   rarity: CaseRarity;
-  /** Chance among the prizes in stock, % (one decimal). */
+  /** Chance among the prizes in stock, % (up to 4 decimals: 0.0011). Show it with {@link formatCaseChance}. */
   chancePercent: number;
 }
 
@@ -28,6 +32,35 @@ export interface GiftCaseOpen {
 }
 
 export type GiftCaseStatus = "SEALED" | "OPENED";
+
+/** Error codes of POST …/gift-case/open the apps handle gracefully (close the screen, refetch). */
+export type GiftCaseOpenErrorCode = "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED";
+
+/** The {@link GiftCaseOpenErrorCode} of a failed open call (an ApiError with `code`), else null. */
+export function giftCaseOpenErrorCode(e: unknown): GiftCaseOpenErrorCode | null {
+  const code = e && typeof e === "object" && "code" in e ? (e as { code?: unknown }).code : undefined;
+  return code === "GIFT_CASE_UNPAID" || code === "GIFT_CASE_ALREADY_OPENED" ? code : null;
+}
+
+/**
+ * A prize chance for people: «24,6%», «3%», «0,45%», «0,001%». ≥ 1 % → at most one decimal; below
+ * 1 % → two significant digits (never «0%» for a positive chance). The decimal separator follows
+ * `locale` («,» for uk/ru, «.» for en; default «,»). Not positive / not a number → «—».
+ */
+export function formatCaseChance(p: number, locale?: string): string {
+  if (!Number.isFinite(p) || p <= 0) return "—";
+  let s: string;
+  if (p >= 1) {
+    s = String(Math.round(p * 10) / 10);
+  } else {
+    // two significant digits, at most 4 decimals (the server's precision), trailing zeros dropped
+    const decimals = Math.min(4, Math.max(1, 1 - Math.floor(Math.log10(p))));
+    s = String(Number(p.toFixed(decimals)));
+    if (Number(s) <= 0) s = "0.0001";
+  }
+  const sep = locale && /^en/i.test(locale) ? "." : ",";
+  return `${s.replace(".", sep)}%`;
+}
 
 /** CS colours: Mil-Spec blue-grey → Restricted blue → Classified purple → Covert red → gold. */
 export const CASE_RARITY_COLOR: Record<CaseRarity, string> = {
@@ -44,6 +77,14 @@ export const CASE_RARITY_ORDER: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGEN
 export function caseRarityRank(r: CaseRarity | string | null | undefined): number {
   const i = CASE_RARITY_ORDER.indexOf(r as CaseRarity);
   return i < 0 ? 0 : i;
+}
+
+/** The rarest prize (ties: the smallest chance) — the «можна вибити: …» teaser; null for an empty list. */
+export function rarestCasePrize(items: CaseItem[] | null | undefined): CaseItem | null {
+  if (!items?.length) return null;
+  return [...items].sort(
+    (a, b) => caseRarityRank(b.rarity) - caseRarityRank(a.rarity) || (a.chancePercent || 0) - (b.chancePercent || 0)
+  )[0];
 }
 
 /** Tiles in the reel and where the prize sits (the reel scrolls left until that tile is centred). */

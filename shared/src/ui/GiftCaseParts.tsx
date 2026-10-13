@@ -5,42 +5,78 @@
  * page, the prize rows of the cart («Що може випасти») and the rarity chip of the prize line.
  */
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { CASE_RARITY_COLOR, caseRarityRank, type CaseItem, type CaseRarity } from "../giftcase";
-import { CaseStyles, formatChance } from "./GiftCaseOpening";
+import { CASE_RARITY_COLOR, caseRarityRank, formatCaseChance, type CaseItem, type CaseRarity } from "../giftcase";
+import { CaseStyles } from "./GiftCaseOpening";
 
 const rc = (r: CaseRarity | string | null | undefined) =>
   ({ ["--rc" as string]: CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON }) as CSSProperties;
 
-/** Order page: the sealed case with a glowing bob, a headline, a hint and «Відкрити». */
+const LockIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 018 0v3" />
+  </svg>
+);
+
+/**
+ * Order page: the sealed case with a glowing bob, a headline, a hint and «Відкрити».
+ * `locked` (not paid yet): the case is dimmed with a lock, no «Відкрити»; `action`/`onOpen` then
+ * point to the payment block of the page (omit them when there is nothing to pay).
+ */
 export function GiftCaseSealedCard({
   title,
   text,
   action,
   onOpen,
+  locked = false,
+  lockLabel,
   assetBase = "/case",
 }: {
   title: string;
   text: string;
-  action: string;
-  onOpen: () => void;
+  action?: string;
+  onOpen?: () => void;
+  locked?: boolean;
+  /** Screen-reader name of the lock («Закрито до оплати»). */
+  lockLabel?: string;
   assetBase?: string;
 }) {
   return (
-    <section className="gc-sealed">
+    <section className={`gc-sealed${locked ? " is-locked" : ""}`}>
       <CaseStyles />
-      <div className="gc-sealed-art" aria-hidden>
-        <img src={`${assetBase}/case-closed-sm.webp`} alt="" draggable={false} />
+      <div className="gc-sealed-art">
+        <img src={`${assetBase}/case-closed-sm.webp`} alt="" draggable={false} aria-hidden />
+        {locked && (
+          <span className="gc-lock" role="img" aria-label={lockLabel}>
+            {LockIcon}
+          </span>
+        )}
       </div>
       <div className="gc-sealed-text">
         <b className="gc-disp">{title}</b>
         <span>{text}</span>
-        <div className="gc-btn-wrap" style={{ marginTop: 0, display: "inline-block" }}>
-          <button type="button" className="gc-btn gc-disp" onClick={onOpen}>
-            {action}
-          </button>
-        </div>
+        {action && onOpen && (
+          <div className="gc-btn-wrap" style={{ marginTop: 0, display: "inline-block" }}>
+            <button type="button" className={`gc-btn gc-disp${locked ? " ghost" : ""}`} onClick={onOpen}>
+              {action}
+            </button>
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+/**
+ * The small case art for banners (product page, cart, checkout). `glow`: a pulsing glow and a slow bob
+ * (the gift is earned) — off under prefers-reduced-motion.
+ */
+export function GiftCaseArt({ glow = false, className, assetBase = "/case" }: { glow?: boolean; className?: string; assetBase?: string }) {
+  return (
+    <span className={`gc-art${glow ? " is-glow" : ""}${className ? ` ${className}` : ""}`} aria-hidden>
+      <CaseStyles />
+      <img src={`${assetBase}/case-closed-sm.webp`} alt="" draggable={false} />
+    </span>
   );
 }
 
@@ -49,10 +85,13 @@ export function GiftCasePrizeRows({
   items,
   rarity,
   resolveImage,
+  locale,
 }: {
   items: CaseItem[];
   rarity: Record<CaseRarity, string>;
   resolveImage: (src: string, size: number) => string;
+  /** For the chance's decimal separator (uk/ru «,», en «.»). */
+  locale?: string;
 }) {
   const sorted = [...items].sort((a, b) => caseRarityRank(b.rarity) - caseRarityRank(a.rarity) || a.chancePercent - b.chancePercent);
   return (
@@ -68,7 +107,7 @@ export function GiftCasePrizeRows({
               {rarity[p.rarity]}
             </em>
           </span>
-          <b className="gc-disp">{formatChance(p.chancePercent)}</b>
+          <b className="gc-disp">{formatCaseChance(p.chancePercent, locale)}</b>
         </li>
       ))}
     </ul>

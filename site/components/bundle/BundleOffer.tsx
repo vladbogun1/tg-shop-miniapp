@@ -10,7 +10,6 @@
  * `bundleDiscount` (all offered items are eligible by construction); the cart asks the server again.
  * An accessory with variants links to its own page (a variant must be chosen there).
  */
-import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronRight, PackagePlus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,10 +17,9 @@ import { bundleDiscount, type Product, type ProductVariant, type StorefrontProdu
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
-import { api } from "@/lib/api";
 import { trackAddToCart, trackBundle } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
-import { useHydrated } from "@/lib/hooks";
+import { useBundleOfferQuery } from "./ProductGiftBanner";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
@@ -95,18 +93,12 @@ export function BundleOffer({
 }) {
   const { t, href } = useI18n();
   const fmt = useFmt();
-  const hydrated = useHydrated();
   const add = useCart((s) => s.add);
   const openDrawer = useCart((s) => s.openDrawer);
   const lines = useCart((s) => s.lines);
 
-  const { data } = useQuery({
-    queryKey: ["bundle-offer", product.id],
-    queryFn: () => api.bundleOffer(product.id),
-    enabled: hydrated,
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
+  // shared with ProductGiftBanner (one request)
+  const { data } = useBundleOfferQuery(product.id);
 
   const items = useMemo(
     () => (data?.terms?.enabled ? data.items.filter((p) => stockOf(p, null) > 0).slice(0, 3) : []),

@@ -26,6 +26,11 @@ export interface BundleProductOffer {
   terms: BundleTerms;
   /** Accessories to offer, best first; empty = show nothing. */
   items: Product[];
+  /**
+   * The gift for the order sum as seen from this product (remainingMinor = threshold − its price);
+   * comes even when «Разом дешевше» is off; null = the gift is off.
+   */
+  gift?: BundleGift | null;
 }
 
 export interface BundleQuoteLineRequest {

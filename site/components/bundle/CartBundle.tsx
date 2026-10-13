@@ -8,13 +8,13 @@
 import { ChevronRight, Gift, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import type { BundleGift, BundleQuote, Product, StorefrontProduct } from "@shop/shared";
+import { rarestCasePrize, type BundleGift, type BundleQuote, type Product, type StorefrontProduct } from "@shop/shared";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart, trackBundle } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
 import { Image, resolveImageSrc } from "@/lib/image";
-import { GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
+import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
 import { useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import { useFmt } from "@/lib/use-fmt";
 
@@ -86,11 +86,11 @@ export function CartTotals({
 
 /**
  * «До подарунка ще N ₴» with a progress bar, or «🎁 Подарунок … додамо безкоштовно». In CASE mode
- * (gift case, V58): «До кейсу з подарунком ще N ₴» / «🎁 Кейс з подарунком — відкриєте після
- * оформлення» with the case art and an expandable «Що може випасти».
+ * (gift case, V58): «Купіть ще на N ₴ — і отримаєте кейс з дропом» / the celebratory «🎉 Вітаємо! …»
+ * with a glowing case, the rarest prize teaser and an expandable «Що може випасти».
  */
 export function GiftProgress({ gift, compact = false }: { gift: BundleGift | null | undefined; compact?: boolean }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const fmt = useFmt();
   const rarity = useCaseRarityNames();
   const isCase = gift?.kind === "CASE";
@@ -102,6 +102,7 @@ export function GiftProgress({ gift, compact = false }: { gift: BundleGift | nul
       ? Math.max(4, Math.min(100, ((gift.thresholdMinor - gift.remainingMinor) / gift.thresholdMinor) * 100))
       : 0;
   const thumb = compact ? "h-10 w-10" : "h-12 w-12";
+  const rarest = isCase ? rarestCasePrize(gift.caseItems) : null;
   const text = isCase
     ? done
       ? t("case.reached")
@@ -121,9 +122,7 @@ export function GiftProgress({ gift, compact = false }: { gift: BundleGift | nul
     >
       <div className="flex items-center gap-3">
         {isCase ? (
-          <span className={`relative ${compact ? "h-10 w-14" : "h-12 w-[72px]"} shrink-0`}>
-            <img src="/case/case-closed-sm.webp" alt="" className={`h-full w-full object-contain ${done ? "drop-shadow-[0_0_10px_rgba(255,106,0,.55)]" : ""}`} />
-          </span>
+          <GiftCaseArt glow={done} className={compact ? "h-10 w-14" : "h-12 w-[72px]"} />
         ) : (
           <span className={`relative ${thumb} shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)]`}>
             <Image src={firstImage(gift.product!)} alt="" size={120} className="h-full w-full" />
@@ -134,12 +133,15 @@ export function GiftProgress({ gift, compact = false }: { gift: BundleGift | nul
         )}
         <div className="min-w-0 flex-1">
           <p
-            className={`${compact ? "line-clamp-2" : "line-clamp-3"} ${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-snug ${
+            className={`${isCase && done ? "" : compact ? "line-clamp-2" : "line-clamp-3"} ${compact ? "text-[12px]" : "text-[13px]"} font-semibold leading-snug ${
               done ? (isCase ? "text-[var(--accent-hi)]" : "text-[var(--ok)]") : "text-[var(--ink)]"
             }`}
           >
             {text}
           </p>
+          {isCase && rarest && (
+            <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[var(--muted)]">{t("case.teaser", { title: rarest.title })}</p>
+          )}
           {!done && (
             <>
               <div
@@ -158,7 +160,7 @@ export function GiftProgress({ gift, compact = false }: { gift: BundleGift | nul
       </div>
       {isCase && (
         <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1">
-          <GiftCasePrizeRows items={gift.caseItems} rarity={rarity} resolveImage={caseImage} />
+          <GiftCasePrizeRows items={gift.caseItems} rarity={rarity} resolveImage={caseImage} locale={locale} />
         </GiftCasePrizeDisclosure>
       )}
     </div>

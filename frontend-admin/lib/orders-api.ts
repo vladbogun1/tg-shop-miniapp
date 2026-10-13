@@ -192,6 +192,14 @@ export const ordersApi = {
   registerReturn: (id: string, body: ReturnBody) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return`, body),
 
+  /**
+   * POST /api/admin/orders/{id}/gift-case — give a gift case: the server draws the prize now among the
+   * case prizes in stock and adds it for free (SEALED; the customer opens it after paying).
+   * 400 (Russian message): the order already has a case / no prizes in stock / not editable.
+   */
+  grantGiftCase: (id: string, notifyCustomer: boolean) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/gift-case`, { notifyCustomer }),
+
   /** POST /api/admin/orders/{id}/exchange — swap goods in a paid order, back to NEW for a new ТТН. */
   exchange: (id: string, body: ExchangeBody) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/exchange`, body),

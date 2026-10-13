@@ -178,6 +178,25 @@ export const CASE_CSS = `
 .gc-sealed-text span{display:block;margin-top:3px;font-size:12px;line-height:1.35;color:rgba(255,255,255,.66)}
 .gc-sealed .gc-btn{min-height:44px;padding:0 18px;font-size:14px;margin-top:10px}
 @media (min-width:520px){.gc-sealed-art{width:150px}.gc-sealed-text b{font-size:17px}}
+.gc-sealed.is-locked{background:linear-gradient(180deg,#1c1c1c,#141414);border-color:rgba(255,255,255,.14)}
+.gc-sealed.is-locked .gc-sealed-art img{filter:grayscale(.85) brightness(.55);animation:none}
+.gc-sealed.is-locked .gc-sealed-art::before{display:none}
+.gc-sealed.is-locked .gc-btn-wrap{filter:none}
+.gc-sealed.is-locked .gc-btn{margin-top:10px}
+.gc-lock{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;display:grid;place-items:center;border-radius:50%;
+  background:rgba(10,10,10,.82);border:1px solid rgba(255,255,255,.28);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.gc-lock svg{width:17px;height:17px}
+.gc-art{position:relative;display:inline-block;flex:none}
+.gc-art img{position:relative;display:block;width:100%;height:100%;object-fit:contain}
+.gc-art.is-glow::before{content:"";position:absolute;inset:-22%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,106,0,.6),transparent 70%);animation:gc-glow 2.6s ease-in-out infinite}
+.gc-art.is-glow{animation:gc-bob 2.6s ease-in-out infinite;will-change:transform}
+.gc-art.is-glow img{filter:drop-shadow(0 0 8px rgba(255,106,0,.55))}
+.gc-art.is-glow::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent 35%,rgba(255,230,170,.55) 50%,transparent 65%) no-repeat;background-size:250% 100%;
+  -webkit-mask:url(/case/case-closed-sm.webp) center/contain no-repeat;mask:url(/case/case-closed-sm.webp) center/contain no-repeat;
+  animation:gc-art-shine 3.2s ease-in-out 1s infinite}
+@keyframes gc-art-shine{0%{background-position:120% 0}55%,100%{background-position:-120% 0}}
+@media (prefers-reduced-motion:reduce){.gc-art.is-glow,.gc-art.is-glow::before,.gc-art.is-glow::after{animation:none !important}.gc-art.is-glow::after{display:none}}
 .gc-rows{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
 .gc-row{display:flex;align-items:center;gap:8px;min-height:30px;font-size:12px;line-height:1.25}
 .gc-row i{flex:none;width:4px;align-self:stretch;min-height:22px;border-radius:2px;background:var(--rc)}

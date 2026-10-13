@@ -317,6 +317,8 @@ export interface OrderSummary {
   cancelRequestStatus?: CancelRequestStatus | null;
   /** Gift case (V58): SEALED = waits to be opened. */
   giftCaseStatus?: "SEALED" | "OPENED" | null;
+  /** SEALED and the order is paid (not rejected): the customer can open it now. */
+  giftCaseOpenable?: boolean;
 }
 
 /** Customer's request to cancel a PAID order (one per order). */
@@ -342,6 +344,8 @@ export interface OrderDetail {
   /** Gift case (V58): null = none; SEALED = waits to be opened (its prize line is hidden until then); OPENED. */
   giftCaseStatus?: "SEALED" | "OPENED" | null;
   giftCaseOpenedAt?: string | null;
+  /** SEALED and the order is paid (not rejected): opens now; otherwise only after payment. Opens once. */
+  giftCaseOpenable?: boolean;
   totalMinor: number;
   currency: string;
   customerName: string;

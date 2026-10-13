@@ -424,8 +424,9 @@ export default function CheckoutPage() {
     );
   }
 
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
   const primaryLabel =
-    step < 3 ? t("common.next") : t("checkout.submit");
+    step < 3 ? t("common.next") : gift?.kind === "CASE" ? t("case.submit") : t("checkout.submit");
 
   return (
     <div className="pt-1">

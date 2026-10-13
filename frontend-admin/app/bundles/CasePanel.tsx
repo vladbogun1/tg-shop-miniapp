@@ -2,9 +2,11 @@
 
 /**
  * «Призы кейса» (gift case, V58): what can drop out of the case the customer gets for the order sum.
- * The server draws the prize at checkout by weights among the active prizes in stock; the chance
- * shown here comes from the server and is refreshed after every change. Each change goes to the
- * server at once (like «Пары категорий»).
+ * The server draws the prize (at checkout, or when an admin gives a case) among the active prizes in
+ * stock. The admin sets each prize's chance in % (stored as `weight` in millionths: 1 = 0.0001 %,
+ * 10 000 = 1 %, 1 000 000 = 100 %); the server re-normalises the chances over the prizes in stock,
+ * and that real chance (`chancePercent`, refreshed after every change) is shown next to the input.
+ * Each change goes to the server at once (like «Пары категорий»).
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,7 +28,27 @@ import { ProductPickModal } from "./ProductPickModal";
 
 export const CASE_ITEMS_KEY = ["bundles", "case-items"] as const;
 
-const DEFAULT_WEIGHT: Record<CaseRarity, number> = { COMMON: 60, RARE: 24, EPIC: 10, LEGENDARY: 4, GOLD: 1 };
+/** `weight` units per 1 % (the server's BundleService.CASE_WEIGHT_PER_PERCENT). */
+const WEIGHT_PER_PERCENT = 10_000;
+
+/** Default chance (%) of a new prize by rarity. */
+const DEFAULT_CHANCE: Record<CaseRarity, number> = { COMMON: 20, RARE: 8, EPIC: 3, LEGENDARY: 0.5, GOLD: 0.001 };
+
+const weightToPercent = (w: number) => w / WEIGHT_PER_PERCENT;
+const percentToWeight = (p: number) => Math.round(p * WEIGHT_PER_PERCENT);
+
+/** «24,58», «0,001»: up to 4 decimals, Russian separator. */
+function fmtPercent(p: number): string {
+  return p.toLocaleString("ru-RU", { maximumFractionDigits: 4 });
+}
+
+/** «0,001» / «0.001» → 0.001; null when it is not a number in 0…100 with at most 4 decimals. */
+function parsePercent(raw: string): number | null {
+  const v = raw.trim().replace(",", ".");
+  if (!/^\d{1,3}(\.\d{0,4})?$/.test(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
+}
 
 /** Default rarity of a new prize by its retail price (₴): just a starting point, editable. */
 function rarityByPrice(priceMinor: number): CaseRarity {
@@ -127,8 +149,8 @@ export function CasePanel({ thresholdUah }: { thresholdUah: number | null }) {
     const rarity = rarityByPrice(p.priceMinor);
     setBusy("add");
     try {
-      await bundlesApi.createCaseItem({ productId: p.id, rarity, weight: DEFAULT_WEIGHT[rarity], active: true });
-      push(`Приз добавлен: ${CASE_RARITY_LABEL[rarity].toLowerCase()}`, "ok");
+      await bundlesApi.createCaseItem({ productId: p.id, rarity, weight: percentToWeight(DEFAULT_CHANCE[rarity]), active: true });
+      push(`Приз добавлен: ${CASE_RARITY_LABEL[rarity].toLowerCase()}, шанс ${fmtPercent(DEFAULT_CHANCE[rarity])} %`, "ok");
       refresh();
     } catch (e) {
       fail(e, "Не удалось добавить приз");
@@ -138,6 +160,9 @@ export function CasePanel({ thresholdUah }: { thresholdUah: number | null }) {
   }
 
   const live = items.filter((it) => it.chancePercent > 0);
+  /** Sum of the set chances of the prizes that can drop now — the server scales them to 100 %. */
+  const setSum = live.reduce((s, it) => s + it.weight, 0) / WEIGHT_PER_PERCENT;
+  // the real (re-normalised) chances, as the server draws
   const avgMinor = live.reduce((s, it) => s + (it.chancePercent / 100) * it.priceMinor, 0);
   const share = thresholdUah && thresholdUah > 0 ? (avgMinor / 100 / thresholdUah) * 100 : null;
 
@@ -148,7 +173,8 @@ export function CasePanel({ thresholdUah }: { thresholdUah: number | null }) {
         <div className="min-w-0">
           <div className="font-display text-[15px] font-bold text-[var(--ink)]">Призы кейса</div>
           <p className="text-[12.5px] leading-snug text-[var(--text-muted)]">
-            Приз выпадает случайно по весам среди включённых призов в наличии. Число рядом с редкостью — вес: чем больше, тем чаще выпадает. Шанс считает сервер.
+            Приз разыгрывает сервер среди включённых призов в наличии. «Шанс, %» — от 0,0001 до 100 (например, 0,001 для очень
+            редкого приза). Шансы приводятся к 100 % по призам в наличии — справа фактический шанс.
           </p>
         </div>
       </div>
@@ -180,6 +206,13 @@ export function CasePanel({ thresholdUah }: { thresholdUah: number | null }) {
       {live.length > 0 && (
         <div className="card-2 mt-3 px-3 py-2.5 text-[13px] leading-snug">
           <div className="text-[var(--text)]">
+            Сумма шансов: <b className="tabular">{fmtPercent(Math.round(setSum * 10000) / 10000)} %</b>
+            <span className="text-[var(--text-muted)]">
+              {" "}
+              (призы в наличии){Math.abs(setSum - 100) > 0.00005 && " — сервер приводит её к 100 %, фактические шансы справа"}
+            </span>
+          </div>
+          <div className="mt-0.5 text-[var(--text)]">
             Средняя стоимость приза ≈ <b className="tabular">{money(Math.round(avgMinor / 100) * 100)}</b>{" "}
             <span className="text-[var(--text-faint)]">(по рознице)</span>
           </div>
@@ -208,7 +241,8 @@ export function CasePanel({ thresholdUah }: { thresholdUah: number | null }) {
         Добавить приз
       </Button>
       <p className="mt-2 text-[12px] leading-snug text-[var(--text-faint)]">
-        Редкость и вес новому призу подставляются по цене — их можно поменять. Товар-подарок выше остаётся запасным: он
+        Редкость новому призу подставляется по цене, шанс — по редкости (обычный 20 %, редкий 8 %, эпический 3 %,
+        легендарный 0,5 %, золотой 0,001 %) — их можно поменять. Товар-подарок выше остаётся запасным: он
         кладётся в заказ, если ни одного приза нет в наличии.
       </p>
 
@@ -237,19 +271,24 @@ function CaseRow({
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
 }) {
-  const [weight, setWeight] = useState(String(it.weight));
-  useEffect(() => setWeight(String(it.weight)), [it.weight]);
-  const w = Number(weight);
-  const weightError = weight === "" || !Number.isInteger(w) || w < 0 || w > 100000;
+  const setPercent = weightToPercent(it.weight);
+  const [chance, setChance] = useState(fmtPercent(setPercent));
+  useEffect(() => setChance(fmtPercent(weightToPercent(it.weight))), [it.weight]);
+  const parsed = parsePercent(chance);
+  const chanceError = parsed === null;
   const color = CASE_RARITY_COLOR[it.rarity];
   const cantDrop = it.stock <= 0 || !it.productActive;
+  // Real chance differs from the set one: the server re-normalised over the prizes in stock.
+  const differs = it.chancePercent > 0 && Math.abs(it.chancePercent - setPercent) >= 0.00005;
 
-  function commitWeight() {
-    if (weightError) {
-      setWeight(String(it.weight));
+  function commitChance() {
+    if (parsed === null) {
+      setChance(fmtPercent(setPercent));
       return;
     }
-    if (w !== it.weight) onPatch({ weight: w }, `Вес: ${w}`);
+    const w = percentToWeight(parsed);
+    if (w !== it.weight) onPatch({ weight: w }, `Шанс: ${fmtPercent(parsed)} %`);
+    else setChance(fmtPercent(setPercent));
   }
 
   return (
@@ -280,9 +319,9 @@ function CaseRow({
         </div>
         <div className="shrink-0 text-right">
           <div className={cn("tabular font-display text-[16px] font-bold leading-tight", it.chancePercent > 0 ? "text-[var(--ink)]" : "text-[var(--text-faint)]")}>
-            {it.chancePercent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} %
+            {fmtPercent(it.chancePercent)} %
           </div>
-          <div className="text-[11px] text-[var(--text-faint)]">шанс</div>
+          <div className="text-[11px] text-[var(--text-faint)]">{differs ? "фактически" : "шанс"}</div>
         </div>
       </div>
 
@@ -296,21 +335,23 @@ function CaseRow({
             onChange={(r) => r !== it.rarity && onPatch({ rarity: r }, `Редкость: ${CASE_RARITY_LABEL[r].toLowerCase()}`)}
           />
         </div>
-        <label className="flex items-center" title="Вес: чем больше, тем чаще выпадает">
+        <label className="flex items-center gap-1.5" title="Шанс выпадения, % (0,0001…100). Сервер приводит сумму шансов к 100 % по призам в наличии">
+          <span className="text-[12px] font-semibold text-[var(--text-muted)]">Шанс, %</span>
           <input
-            inputMode="numeric"
-            aria-label="Вес"
-            value={weight}
+            inputMode="decimal"
+            aria-label="Шанс, %"
+            aria-invalid={chanceError || undefined}
+            value={chance}
             disabled={locked}
-            onChange={(e) => setWeight(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
-            onBlur={commitWeight}
+            onChange={(e) => setChance(e.target.value.replace(/[^\d.,]/g, "").slice(0, 9))}
+            onBlur={commitChance}
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              if (e.key === "Escape") setWeight(String(it.weight));
+              if (e.key === "Escape") setChance(fmtPercent(setPercent));
             }}
             className={cn(
-              "tabular focusable h-10 w-[56px] rounded-[var(--r-md)] border bg-[var(--surface-2)] px-2 text-center text-[14px] text-[var(--text)] pointer-coarse:h-11",
-              weightError ? "border-[var(--danger)]" : "border-[var(--line)]"
+              "tabular focusable h-10 w-[84px] rounded-[var(--r-md)] border bg-[var(--surface-2)] px-2 text-center text-[14px] text-[var(--text)] pointer-coarse:h-11",
+              chanceError ? "border-[var(--danger)]" : "border-[var(--line)]"
             )}
           />
         </label>

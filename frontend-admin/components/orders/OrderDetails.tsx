@@ -46,6 +46,8 @@ export interface DetailHandlers {
   onChangeQty: (id: number, qty: number) => void;
   onRemoveItem: (id: number, title: string) => void;
   onAddItem: () => void;
+  /** «🎁 Выдать кейс» (editable orders without a case): opens the confirm dialog. */
+  onGiftCase?: () => void;
   onDiscount: () => void;
   onEditDelivery: () => void;
   onEditTracking: () => void;
@@ -235,7 +237,9 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 </div>
                 {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
                 {it.caseRarity && order.giftCaseStatus === "SEALED" && (
-                  <div className="text-[12px] text-[var(--text-faint)]">покупатель ещё не открыл кейс</div>
+                  <div className="text-[12px] text-[var(--text-faint)]">
+                    покупатель ещё не открыл кейс{!order.giftCaseOpenable && order.status !== "REJECTED" && " · откроет после оплаты"}
+                  </div>
                 )}
                 {(it.returnedQty ?? 0) > 0 && (
                   <div className="text-[12px] font-semibold text-[var(--warn)]">↩ возвращено {it.returnedQty} шт.</div>
@@ -307,6 +311,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 <Button size="sm" variant="surface" icon={<Percent className="h-4 w-4" />} onClick={h.onDiscount}>
                   {order.discountMinor > 0 ? "Изменить скидку" : "Скидка"}
                 </Button>
+                {h.onGiftCase && order.giftCaseStatus == null && (
+                  <Button size="sm" variant="surface" onClick={h.onGiftCase} disabled={!!h.busyKey}>
+                    🎁 Выдать кейс
+                  </Button>
+                )}
               </>
             )}
             {h.onExchange && (

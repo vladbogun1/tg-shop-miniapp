@@ -79,7 +79,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const router = useRouter();
   const isPickup = order.deliveryMethod === "PICKUP";
   const cancelMode = customerCancelMode(order);
-  // Gift case (V58): the sealed card on top, the opening screen, the replay from the prize line.
+  // Gift case (V58): the case card on top (locked until paid), the opening screen (once).
   const giftCase = useOrderGiftCase(order);
   // «Разом дешевше» part of the discount (V57) and the rest (promo code / manual).
   const bundleDiscount = Math.min(order.bundleDiscountMinor ?? 0, order.discountMinor);
@@ -189,7 +189,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                   {it.title}
                 </p>
                 {it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>}
-                {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} onReplay={giftCase.replay} />}
+                {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} />}
                 {it.bundleAddon && !it.gift && !it.autoGift && (
                   <p className="text-[12px] font-semibold text-[var(--accent-hi)]">{t("order.bundleAddon")}</p>
                 )}

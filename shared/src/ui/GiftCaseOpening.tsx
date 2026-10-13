@@ -11,9 +11,11 @@
  *   reveal  → the prize tile pops, everything else dims, a burst in the rarity colour (bigger, with
  *             screen shake, a golden sheen and a fanfare for LEGENDARY/GOLD), then the prize card
  *
- * The prize is decided by the server at checkout: `openCase()` only reveals it (and replays the same
- * prize when called again). Everything app-specific — texts, image URLs, haptics, analytics — comes in
- * through props. `prefers-reduced-motion`: no spin, a short fade to the prize.
+ * The prize is decided by the server (checkout / an admin's gift): `openCase()` only reveals it. A case
+ * opens exactly once and only after the order is paid — there is no replay; a refused open
+ * (GIFT_CASE_UNPAID / GIFT_CASE_ALREADY_OPENED) goes to `onOpenRefused`, and the caller closes the
+ * screen. Everything app-specific — texts, image URLs, haptics, analytics — comes in through props.
+ * `prefers-reduced-motion`: no spin, a short fade to the prize.
  */
 import { animate, AnimatePresence, motion, useMotionValue, type AnimationPlaybackControls } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -24,6 +26,8 @@ import {
   CASE_REEL_WIN_INDEX,
   caseRarityRank,
   caseReelOffset,
+  formatCaseChance,
+  giftCaseOpenErrorCode,
   type CaseItem,
   type CaseRarity,
   type GiftCaseOpen,
@@ -43,7 +47,6 @@ export interface GiftCaseTexts {
   youGot: string;
   addedFree: string;
   take: string;
-  replay: string;
   close: string;
   soundOn: string;
   soundOff: string;
@@ -65,10 +68,15 @@ export interface GiftCaseOpeningProps {
   onClose: () => void;
   /** Reveals the prize (POST …/gift-case/open). Called once per overlay session. */
   openCase: () => Promise<GiftCaseOpen>;
+  /**
+   * The server refused to open (not paid yet / already opened): the caller closes the screen, shows a
+   * toast and refetches the order. Without it the error is shown like any other.
+   */
+  onOpenRefused?: (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => void;
   /** Prizes for «Що може випасти» before the case is opened (empty = the list is hidden). */
   prizes: CaseItem[];
-  /** "replay": the case is already opened — start the show right away (the click that opened us unlocked the audio). */
-  mode?: "sealed" | "replay";
+  /** For the chance's decimal separator (uk/ru «,», en «.»). */
+  locale?: string;
   texts: GiftCaseTexts;
   /** Product image key/url → a URL of roughly `size` px. */
   resolveImage: (src: string, size: number) => string;
@@ -171,8 +179,9 @@ export function GiftCaseOpening(props: GiftCaseOpeningProps) {
 function CaseOverlay({
   onClose,
   openCase,
+  onOpenRefused,
   prizes,
-  mode = "sealed",
+  locale,
   texts,
   resolveImage,
   assetBase = "/case",
@@ -395,35 +404,23 @@ function CaseOverlay({
       if (!alive.current) return;
       if (reduced) reveal(res, true);
       else void spin(res);
-    } catch {
+    } catch (e) {
       if (!alive.current) return;
+      const code = giftCaseOpenErrorCode(e);
+      if (code && onOpenRefused) {
+        onOpenRefused(code);
+        return;
+      }
       setLidOpen(false);
       setStage("sealed");
       setError(true);
     }
-  }, [openCase, result, reveal, spin, urls]);
-
-  // Replay mode: the click on «Переглянути відкриття» is the gesture — start at once.
-  const started = useRef(false);
-  useEffect(() => {
-    if (mode === "replay" && !started.current) {
-      started.current = true;
-      void start();
-    }
-  }, [mode, start]);
+  }, [openCase, onOpenRefused, result, reveal, spin, urls]);
 
   // Warm the reel images while the customer looks at the sealed case.
   useEffect(() => {
     if (prizes.length) void preload(urls(prizes, 240), 4000);
   }, [prizes, urls]);
-
-  const replay = () => {
-    if (!result) return;
-    unlockCaseAudio();
-    if (reducedMotion()) return;
-    setLidOpen(true);
-    void spin(result);
-  };
 
   const toggleMute = () => {
     const m = !muted;
@@ -534,7 +531,7 @@ function CaseOverlay({
                         <li key={p.productId} className="gc-drop" style={rc(p.rarity)} title={`${texts.rarity[p.rarity]} · ${p.title}`}>
                           <PrizeImg item={p} resolveImage={resolveImage} size={200} />
                           <p>{p.title}</p>
-                          <b className="gc-disp">{formatChance(p.chancePercent)}</b>
+                          <b className="gc-disp">{formatCaseChance(p.chancePercent, locale)}</b>
                         </li>
                       ))}
                     </ul>
@@ -644,9 +641,6 @@ function CaseOverlay({
                   <button type="button" className="gc-btn gc-disp" onClick={onClose} autoFocus>
                     {texts.take}
                   </button>
-                  <button type="button" className="gc-btn ghost gc-disp" onClick={replay}>
-                    ↻ {texts.replay}
-                  </button>
                 </div>
               </motion.div>
             </motion.div>
@@ -667,9 +661,4 @@ function CaseOverlay({
       </div>
     </motion.div>
   );
-}
-
-export function formatChance(p: number): string {
-  if (!Number.isFinite(p) || p <= 0) return "—";
-  return `${p < 1 ? p.toFixed(1) : (Math.round(p * 10) / 10).toString()}%`;
 }

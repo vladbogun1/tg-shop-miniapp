@@ -366,7 +366,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     }
   }
 
-  const submitLabel = t("checkout.submit");
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
+  const submitLabel = gift?.kind === "CASE" ? t("case.submit") : t("checkout.submit");
   // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
   // the fields and the map open, so it can be changed in place.
   const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
