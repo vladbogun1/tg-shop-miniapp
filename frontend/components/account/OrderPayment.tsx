@@ -31,7 +31,7 @@
 import { motion } from "framer-motion";
 import { Ban, CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { codMinor, paymentState, shortOrderId, type OnlinePaymentStatus } from "@shop/shared";
+import { codMinor, needsTopUp, paymentState, shortOrderId, type OnlinePaymentStatus } from "@shop/shared";
 import { PaymentSheet, type PaymentSheetClose } from "@/components/account/PaymentSheet";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
@@ -50,7 +50,7 @@ const POLL_MS = 3_000;
 const WATCH_MS = 60_000;
 
 function awaitingOnline(o: OrderDetail): boolean {
-  return paymentState(o) === "AWAITING" && o.payment.enabled;
+  return (paymentState(o) === "AWAITING" || needsTopUp(o)) && o.payment.enabled;
 }
 
 function pendingPayment(o: OrderDetail): boolean {
@@ -142,7 +142,7 @@ export function OrderPayment({
     if (!pendingPayment(o) || Date.now() >= watchUntil.current || sheetOpen.current) {
       running.current = false;
       setWatching(false);
-      if (o.paid) celebrate();
+      if (o.paid && !needsTopUp(o)) celebrate();
       return;
     }
     timer.current = window.setTimeout(() => void poll(), POLL_MS);
@@ -182,10 +182,12 @@ export function OrderPayment({
 
   const now = useNow(30_000);
   const state = paymentState(order);
+  /** Paid, then the shop added an item: the difference is paid here ("Доплатити"). */
+  const topUp = needsTopUp(order);
   const status = order.payment.status;
   // The deadline binds a NEW order only: once the shop approved it, paying late is fine until the
   // shop cancels the order itself (they may have agreed in the chat).
-  const dueAt = order.paymentDueAt && order.status === "NEW" ? new Date(order.paymentDueAt).getTime() : null;
+  const dueAt = order.paymentDueAt && order.status === "NEW" && !order.paid ? new Date(order.paymentDueAt).getTime() : null;
   const timeUp = dueAt !== null && dueAt <= now;
 
   // The deadline passed while the screen was open: the server cancels the order — show that.
@@ -278,7 +280,7 @@ export function OrderPayment({
         const fresh = await customerApi.refreshPayment(orderRef.current.id);
         if (stopped) return;
         onOrderRef.current(fresh);
-        if (fresh.paid) {
+        if (fresh.paid && !needsTopUp(fresh)) {
           celebrate();
           setSheetUrl(null);
           return;
@@ -319,7 +321,7 @@ export function OrderPayment({
   );
 
   // ---- paid ------------------------------------------------------------------------------------
-  if (order.paid) {
+  if (order.paid && !topUp) {
     const received = order.receivedMinor > 0 ? order.receivedMinor : order.totalMinor;
     const method = methodLabel(order, t);
     const rest = state === "PARTIAL" ? codMinor(order) : 0;
@@ -346,7 +348,7 @@ export function OrderPayment({
     );
   }
 
-  if (state !== "AWAITING") return withSheet(null);
+  if (state !== "AWAITING" && !topUp) return withSheet(null);
 
   // ---- online payment switched off on the server -----------------------------------------------
   if (!order.payment.enabled) {
@@ -417,7 +419,7 @@ export function OrderPayment({
       )}
       <div className="flex items-center justify-between gap-3">
         <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
-          <CreditCard className="h-4 w-4" strokeWidth={2.25} /> {t("pay.title")}
+          <CreditCard className="h-4 w-4" strokeWidth={2.25} /> {t(topUp ? "pay.topUpTitle" : "pay.title")}
         </h3>
         <span className="font-display text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
           {t("pay.due")}
@@ -426,6 +428,11 @@ export function OrderPayment({
       <p className="font-display mt-1 text-right text-[26px] font-bold leading-tight tabular-nums text-[var(--accent)]">
         {money(due, order.currency)}
       </p>
+      {topUp && (
+        <p className="mt-1 text-[12px] text-[var(--muted)]">
+          {t("pay.topUpText", { paid: money(order.receivedMinor, order.currency) })}
+        </p>
+      )}
       {restOnDelivery > 0 && (
         <p className="mt-1 text-[12px] text-[var(--muted)]">
           {t("pay.prepayment", { amount: money(restOnDelivery, order.currency) })}
@@ -468,7 +475,7 @@ export function OrderPayment({
           >
             {failed
               ? t("pay.retry", { amount: money(due, order.currency) })
-              : t("pay.button", { amount: money(due, order.currency) })}
+              : t(topUp ? "pay.topUpButton" : "pay.button", { amount: money(due, order.currency) })}
           </Button>
           <p className="mt-2 flex items-start gap-1.5 text-[11.5px] text-[var(--muted)]">
             <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
@@ -492,7 +499,7 @@ export function OrderPayment({
               {t("pay.openBrowser")}
             </span>
           </button>
-          {onCancel && (
+          {onCancel && !topUp && (
             <button
               type="button"
               onClick={() => {

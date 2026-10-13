@@ -21,7 +21,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { noFadeFlash, type OrderDetail, shortOrderId } from "@shop/shared";
+import { needsTopUp, noFadeFlash, type OrderDetail, shortOrderId } from "@shop/shared";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
@@ -199,7 +199,7 @@ function PaymentDialog({
       if (cancelled) return;
       if (d) {
         cb.current.onOrder(d);
-        if (d.paid || d.payment.status === "success") {
+        if (!needsTopUp(d) && (d.paid || d.payment.status === "success")) {
           close("paid");
           return;
         }

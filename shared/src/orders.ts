@@ -121,6 +121,18 @@ export function codMinor(order: { totalMinor: number; receivedMinor?: number }):
 }
 
 /**
+ * A paid order that still has money due online: the shop added an item after the payment, the
+ * customer pays the difference ("Доплатити"). Only while the order can still change (NEW / APPROVED).
+ */
+export function needsTopUp(order: { paid: boolean; status?: OrderStatus; amountDueMinor?: number }): boolean {
+  return (
+    order.paid &&
+    (order.amountDueMinor ?? 0) > 0 &&
+    (order.status === "NEW" || order.status === "APPROVED")
+  );
+}
+
+/**
  * How an order's payment stands. AWAITING = placed, online payment still due before the deadline
  * (paymentDueAt); UNPAID = nothing received and nothing pending (old orders, cancelled ones).
  */

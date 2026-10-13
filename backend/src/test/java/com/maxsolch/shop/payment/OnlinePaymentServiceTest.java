@@ -279,6 +279,27 @@ class OnlinePaymentServiceTest {
     }
 
     @Test
+    void start_topUpOfAPaidOrderAfterAnItemWasAdded() {
+        // Paid 1000 in full, then the shop added a 250 item: only the difference is invoiced,
+        // and the long-gone checkout deadline does not apply to a paid order.
+        Order o = order();
+        o.setPaid(true);
+        o.setReceivedMinor(1000_00);
+        o.setTotalMinor(1250_00);
+        o.setPaymentDueAt(Instant.now().minus(Duration.ofDays(2)));
+        given(o);
+        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-top", "https://pay/inv-top"));
+
+        OnlinePaymentService.StartedPayment started = service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk");
+
+        assertThat(started.amountMinor()).isEqualTo(250_00);
+        ArgumentCaptor<MonobankClient.CreateInvoice> req = ArgumentCaptor.forClass(MonobankClient.CreateInvoice.class);
+        verify(mono).createInvoice(req.capture());
+        assertThat(req.getValue().amount()).isEqualTo(250_00);
+        assertThat(req.getValue().validitySeconds()).isGreaterThan(60);
+    }
+
+    @Test
     void start_refusesWhenOnlinePaymentIsOff() {
         when(mono.isEnabled()).thenReturn(false);
 

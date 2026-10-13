@@ -387,8 +387,12 @@ public class OrderQueryService {
         if (list.isEmpty()) {
             return new OnlinePaymentDto(monobank.isEnabled(), "none", null, null, 0, null, null, null);
         }
-        // A paid invoice wins over a newer abandoned one (the card/method is what the customer wants to see).
-        PaymentInvoice inv = list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
+        // A paid invoice wins over a newer abandoned one (the card/method is what the customer wants to see) —
+        // unless money is still due on a paid order (an item was added: a top-up), then the latest attempt
+        // is what the customer is paying right now.
+        PaymentInvoice inv = OrderService.amountDueMinor(o) > 0
+                ? list.get(0)
+                : list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
         boolean live = inv.isPayable(java.time.Instant.now());
         return new OnlinePaymentDto(monobank.isEnabled(), inv.getStatus(), live ? inv.getPageUrl() : null,
                 inv.getExpiresAt(), inv.getAmountMinor(), inv.getMaskedPan(), inv.getPaymentMethod(),

@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock, CreditCard, Loader2, ShieldCheck, Truck, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { codMinor, paymentState, shortOrderId, type OnlinePayment, type OrderDetail } from "@shop/shared";
+import { codMinor, needsTopUp, paymentState, shortOrderId, type OnlinePayment, type OrderDetail } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import type { TFunction } from "@/i18n";
@@ -158,7 +158,7 @@ export function OrderPayment({
 
   const inFlight = IN_FLIGHT.has(p.status);
   // While the form is open the modal polls on its own.
-  const shouldCheck = !order.paid && order.status !== "REJECTED" && (returning || inFlight) && !stalled && !payUrl;
+  const shouldCheck = (!order.paid || needsTopUp(order)) && order.status !== "REJECTED" && (returning || inFlight) && !stalled && !payUrl;
 
   // The latest order setter, without restarting the polling loop on every render.
   const apply = useRef<(d: OrderDetail) => void>(() => {});
@@ -187,7 +187,7 @@ export function OrderPayment({
       const s = d?.payment.status;
       const settled =
         !!d &&
-        (d.paid ||
+        ((d.paid && !needsTopUp(d)) ||
           d.status === "REJECTED" ||
           (s !== undefined && FINAL.has(s)) ||
           ((s === "created" || s === "none") && elapsed >= GIVE_UP_UNPAID_MS));
@@ -215,8 +215,10 @@ export function OrderPayment({
 
   // The deadline binds a NEW order only: once the shop approved it, paying late is fine until the
   // shop cancels the order itself (they may have agreed in the chat).
-  const dueAt = order.paymentDueAt && order.status === "NEW" ? Date.parse(order.paymentDueAt) : NaN;
-  const awaiting = paymentState(order) === "AWAITING" && order.amountDueMinor > 0;
+  const dueAt = order.paymentDueAt && order.status === "NEW" && !order.paid ? Date.parse(order.paymentDueAt) : NaN;
+  /** Paid, then the shop added an item: the difference is paid here ("Доплатити"). */
+  const topUp = needsTopUp(order);
+  const awaiting = (paymentState(order) === "AWAITING" || topUp) && order.amountDueMinor > 0;
   const now = useNow(awaiting && !Number.isNaN(dueAt));
 
   async function pay() {
@@ -278,7 +280,7 @@ export function OrderPayment({
       );
     }
 
-    if (order.paid) {
+    if (order.paid && !topUp) {
       const received = order.receivedMinor > 0 ? order.receivedMinor : p.amountMinor;
       const method = paymentMethodLabel(p, t);
       const cod = codMinor(order);
@@ -359,7 +361,7 @@ export function OrderPayment({
           </div>
         ) : (
           <h3 className="eyebrow mb-4 flex items-center gap-2 text-[11px]">
-            <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t("order.payment")}
+            <CreditCard className="h-4 w-4 text-[var(--accent)]" strokeWidth={2.25} /> {t(topUp ? "pay.topUpTitle" : "order.payment")}
           </h3>
         )}
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -381,6 +383,11 @@ export function OrderPayment({
             </div>
           )}
         </div>
+        {topUp && (
+          <p className="mt-2 text-[13px] font-semibold text-[var(--muted)]">
+            {t("pay.topUpText", { paid: fmt.money(order.receivedMinor, order.currency) })}
+          </p>
+        )}
         {afterPayment > 0 && (
           <p className="mt-2 text-[13px] font-semibold text-[var(--muted)]">
             {t("checkout.rest", { amount: fmt.money(afterPayment, order.currency) })}
@@ -406,9 +413,9 @@ export function OrderPayment({
           icon={<CreditCard className="h-4 w-4" strokeWidth={2.25} />}
           onClick={() => void pay()}
         >
-          {t("pay.button", { amount: fmt.money(order.amountDueMinor, order.currency) })}
+          {t(topUp ? "pay.topUpButton" : "pay.button", { amount: fmt.money(order.amountDueMinor, order.currency) })}
         </Button>
-        {onCancel && (
+        {onCancel && !topUp && (
           <Button
             type="button"
             variant="surface"
