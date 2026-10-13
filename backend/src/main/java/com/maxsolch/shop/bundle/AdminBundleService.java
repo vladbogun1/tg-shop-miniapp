@@ -180,7 +180,7 @@ public class AdminBundleService {
         GiftCaseItem item = new GiftCaseItem();
         item.setProductId(pid);
         item.setRarity(rarity(body.rarity(), GiftCaseItem.Rarity.COMMON));
-        item.setWeight(weight(body.weight(), 10));
+        item.setWeight(weight(body.weight(), 10 * BundleService.CASE_WEIGHT_PER_PERCENT));
         item.setSortOrder(body.sortOrder() != null ? body.sortOrder()
                 : caseRepository.findAll().stream().mapToInt(GiftCaseItem::getSortOrder).max().orElse(0) + 10);
         item.setActive(body.active() == null || body.active());
@@ -227,7 +227,7 @@ public class AdminBundleService {
 
     private static BundleDtos.CaseItemAdminDto caseDto(GiftCaseItem i, ProductDto p, long total) {
         boolean live = i.isActive() && inStock(p);
-        double chance = live && total > 0 ? Math.round(i.getWeight() * 1000.0 / total) / 10.0 : 0;
+        double chance = live ? BundleService.chancePercent(i.getWeight(), total) : 0;
         String img = p == null || p.images() == null || p.images().isEmpty() ? null : p.images().get(0).url();
         return new BundleDtos.CaseItemAdminDto(i.getId(), UuidUtil.toString(i.getProductId()),
                 p == null ? "(товар скрыт или удалён)" : p.title(), img, p == null ? 0 : p.priceMinor(),
@@ -250,8 +250,8 @@ public class AdminBundleService {
         if (value == null) {
             return def;
         }
-        if (value < 0 || value > 100000) {
-            throw new BadRequestException("Вес — от 0 до 100000");
+        if (value < 0 || value > 100 * BundleService.CASE_WEIGHT_PER_PERCENT) {
+            throw new BadRequestException("Шанс — от 0 до 100 %");
         }
         return value;
     }

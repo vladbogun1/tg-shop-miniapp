@@ -814,6 +814,11 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order item not found"));
         restoreItemStock(item);
         order.getItems().remove(item);
+        if (item.isAutoGift() && item.getCaseRarity() != null) {
+            // The case prize is gone: no case left to open.
+            order.setGiftCaseStatus(null);
+            order.setGiftCaseOpenedAt(null);
+        }
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -1196,27 +1201,83 @@ public class OrderService {
 
     private static final java.security.SecureRandom CASE_RANDOM = new java.security.SecureRandom();
 
-    /** Customer opens the gift case of their order: SEALED → OPENED (again = no-op). Returns the prize line. */
+    /**
+     * Customer opens the gift case of their order: SEALED → OPENED, exactly once. Only a paid order
+     * (the online part arrived) — otherwise a customer could order, peek and cancel. The prize was
+     * drawn by the server before (checkout / admin), opening only reveals it.
+     */
     @Transactional
     public OrderItem openGiftCase(byte[] orderId) {
         Order order = lock(orderId);
-        if (order.getGiftCaseStatus() == null) {
-            throw new BadRequestException(messages.current("api.giftCase.none"));
+        OrderItem prize = caseprize(order)
+                .orElseThrow(() -> new BadRequestException(messages.current("api.giftCase.none"), GIFT_CASE_NONE));
+        if (GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
+            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GIFT_CASE_ALREADY_OPENED);
         }
-        OrderItem prize = order.getItems().stream()
-                .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
-                .findFirst()
-                .orElseThrow(() -> new BadRequestException(messages.current("api.giftCase.none")));
-        if (!GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
-            order.setGiftCaseStatus(GIFT_CASE_OPENED);
-            order.setGiftCaseOpenedAt(Instant.now());
-            orderRepository.save(order);
+        if (!giftCaseOpenable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GIFT_CASE_UNPAID);
         }
+        order.setGiftCaseStatus(GIFT_CASE_OPENED);
+        order.setGiftCaseOpenedAt(Instant.now());
+        orderRepository.save(order);
         return prize;
+    }
+
+    /** A sealed case can be opened: the order is paid (online part arrived) and not rejected. */
+    public static boolean giftCaseOpenable(Order order) {
+        if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
+            return false;
+        }
+        return order.isPaid() || (order.getReceivedMinor() > 0 && amountDueMinor(order) == 0);
+    }
+
+    private static Optional<OrderItem> caseprize(Order order) {
+        if (order.getGiftCaseStatus() == null) {
+            return Optional.empty();
+        }
+        return order.getItems().stream().filter(i -> i.isAutoGift() && i.getCaseRarity() != null).findFirst();
+    }
+
+    /**
+     * Admin gives a gift case to an order (any sum): the prize is drawn now among the case prizes in
+     * stock and added at price 0; the customer opens it once the order is paid.
+     */
+    @Transactional
+    public Order grantGiftCase(byte[] orderId, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (order.getGiftCaseStatus() != null) {
+            throw new BadRequestException("У заказа уже есть кейс");
+        }
+        List<BundleService.CaseEntry> pool = bundleService == null ? List.of() : bundleService.casePool();
+        if (pool.isEmpty()) {
+            throw new BadRequestException("В кейсе нет призов — добавьте их в разделе «Вместе дешевле»");
+        }
+        // Prize rows locked in id order, like the checkout.
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        for (String id : new java.util.TreeSet<>(pool.stream().map(BundleService.CaseEntry::productId).toList())) {
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        BundleService.CaseEntry prize = BundleService.draw(pool,
+                        id -> locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent(),
+                        CASE_RANDOM)
+                .orElseThrow(() -> new BadRequestException("Ни одного приза кейса нет в наличии"));
+        List<Product> toSave = new ArrayList<>();
+        addThresholdGift(order, locked.get(prize.productId()).orElseThrow(), toSave, prize.rarity());
+        productRepository.saveAll(toSave);
+        order.setGiftCaseStatus(GIFT_CASE_SEALED);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
+                null, null, 1));
+        return saved;
     }
 
     public static final String GIFT_CASE_SEALED = "SEALED";
     public static final String GIFT_CASE_OPENED = "OPENED";
+    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
+    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
+    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
 
     /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
     private void releasePromoUsage(String code) {

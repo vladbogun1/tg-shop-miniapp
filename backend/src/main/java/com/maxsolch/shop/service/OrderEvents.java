@@ -44,6 +44,8 @@ public final class OrderEvents {
         DISCOUNT,
         /** A free gift was added. */
         GIFT,
+        /** An admin gave a gift case (the prize stays a secret until the customer opens it). */
+        GIFT_CASE,
         /** The tracking number was corrected after shipping: tell the customer the new one. */
         TRACKING,
         /** Recipient / delivery address corrected: refresh the seller's cards, nothing for the customer. */

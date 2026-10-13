@@ -20,5 +20,6 @@ public record OrderSummaryDto(
         /** PENDING | APPROVED | DECLINED — my cancellation request; null = none. */
         String cancelRequestStatus,
         /** Gift case (V58): null | SEALED (waits to be opened) | OPENED. */
-        String giftCaseStatus) {
+        String giftCaseStatus,
+        boolean giftCaseOpenable) {
 }

@@ -138,7 +138,8 @@ public class OrderQueryService {
                 o.getPaymentDueAt(),
                 OrderService.amountDueMinor(o),
                 o.getCancelRequestStatus(),
-                o.getGiftCaseStatus());
+                o.getGiftCaseStatus(),
+                OrderService.giftCaseOpenable(o));
     }
 
     @Transactional(readOnly = true)
@@ -277,7 +278,8 @@ public class OrderQueryService {
                         .toList(),
                 o.getBundleDiscountMinor(),
                 o.getGiftCaseStatus(),
-                o.getGiftCaseOpenedAt());
+                o.getGiftCaseOpenedAt(),
+                OrderService.giftCaseOpenable(o));
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

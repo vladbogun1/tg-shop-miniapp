@@ -108,6 +108,7 @@ public class OrderNotificationListener {
             switch (event.kind()) {
                 case GIFT -> notificationService.notifyCustomerGift(
                         order, event.productTitle(), event.variantName(), event.quantity());
+                case GIFT_CASE -> notificationService.notifyCustomerGiftCase(order);
                 case DISCOUNT -> {
                     if (order.getDiscountMinor() > 0) {
                         notificationService.notifyCustomerDiscount(order);

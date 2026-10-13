@@ -365,6 +365,21 @@ public class AdminOrderController {
         return orderQueryService.toDetail(updated);
     }
 
+    @PostMapping("/{id}/gift-case")
+    @Operation(summary = "Give the order a gift case: the server draws a prize now among the case prizes "
+            + "in stock (added at price 0); the customer opens it once the order is paid")
+    public OrderDetailDto grantGiftCase(@PathVariable String id,
+                                        @RequestBody(required = false) java.util.Map<String, Object> body) {
+        boolean notify = body == null || !Boolean.FALSE.equals(body.get("notifyCustomer"));
+        Order updated = orderService.grantGiftCase(load(id).getId(), notify);
+        String prize = updated.getItems().stream()
+                .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
+                .map(i -> i.getTitleSnapshot() + " (" + i.getCaseRarity() + ")")
+                .findFirst().orElse("?");
+        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс, приз: " + prize);
+        return orderQueryService.toDetail(updated);
+    }
+
     @PatchMapping("/{id}/items/{itemId}")
     @Operation(summary = "Change an order item's quantity (reserves/releases stock)")
     public OrderDetailDto changeItemQty(@PathVariable String id, @PathVariable long itemId,

@@ -63,7 +63,9 @@ public record OrderDetailDto(
         long bundleDiscountMinor,
         /** Gift case (V58): null = none, SEALED (the customer has not opened it; the prize line is hidden from them), OPENED. */
         String giftCaseStatus,
-        Instant giftCaseOpenedAt) {
+        Instant giftCaseOpenedAt,
+        /** SEALED and the order is paid — the customer may open it now (once). */
+        boolean giftCaseOpenable) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

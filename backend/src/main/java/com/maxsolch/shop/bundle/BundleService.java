@@ -169,6 +169,27 @@ public class BundleService {
     }
 
     /**
+     * Weight of a prize = its chance in millionths of the case (1 = 0.0001 %, 1 000 000 = 100 %).
+     * Chances shown to customers are re-normalised over the prizes in stock.
+     */
+    public static final int CASE_WEIGHT_PER_PERCENT = 10_000;
+
+    /** Active prizes of the case regardless of the gift switches — for an admin giving a case by hand. */
+    @Transactional(readOnly = true)
+    public List<CaseEntry> casePool() {
+        return caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                .filter(GiftCaseItem::isActive)
+                .filter(c -> c.getWeight() > 0)
+                .map(c -> new CaseEntry(UuidUtil.toString(c.getProductId()), c.getRarity().name(), c.getWeight()))
+                .toList();
+    }
+
+    /** Chance in percent with 4 decimals (0.0001 % resolution). */
+    public static double chancePercent(long weight, long total) {
+        return total <= 0 ? 0 : Math.round(weight * 1_000_000.0 / total) / 10_000.0;
+    }
+
+    /**
      * Weighted draw among the prizes that can be given now ({@code available}: productId → in stock).
      * Empty when none is available.
      */
@@ -317,7 +338,7 @@ public class BundleService {
                 .map(c -> {
                     ProductDto p = byId.get(c.productId());
                     String img = p.images() == null || p.images().isEmpty() ? null : p.images().get(0).url();
-                    double chance = Math.round(c.weight() * 1000.0 / total) / 10.0;
+                    double chance = chancePercent(c.weight(), total);
                     return new CaseItemDto(p.id(), p.title(), img, p.priceMinor(), c.rarity(), chance);
                 })
                 .sorted(Comparator.comparingInt((CaseItemDto d) -> GiftCaseItem.Rarity.valueOf(d.rarity()).ordinal())
