@@ -11,6 +11,9 @@ import {
   ApiError,
   type AuthUser,
   type BonusCode,
+  type BundleProductOffer,
+  type BundleQuote,
+  type BundleQuoteRequest,
   type CatalogSchema,
   type CartLineInput,
   createHttpClient,
@@ -189,6 +192,11 @@ export const api = {
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
   paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+  /** «Разом дешевше»: accessories offered next to a product (empty items = show nothing). */
+  bundleOffer: (productId: string) =>
+    http.get<BundleProductOffer>(`/api/public/bundles/product/${encodeURIComponent(productId)}`),
+  /** Prices the cart: bundle vs promo (one wins), add-on lines, suggestions, the gift for the sum. */
+  bundleQuote: (body: BundleQuoteRequest) => http.post<BundleQuote>("/api/public/bundles/quote", body),
   /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
   orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   previewPromo: (code: string, subtotalMinor: number) =>

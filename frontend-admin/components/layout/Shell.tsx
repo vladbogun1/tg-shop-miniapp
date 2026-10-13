@@ -18,6 +18,7 @@ import {
   FolderTree,
   BadgeCheck,
   Ticket,
+  Layers,
   CreditCard,
   Users,
   Send,
@@ -123,6 +124,7 @@ const SECTIONS: NavSection[] = [
       { href: "/users", label: "Пользователи", icon: Users },
       { href: "/broadcasts", label: "Рассылки", icon: Send },
       { href: "/promocodes", label: "Промокоды", icon: Ticket },
+      { href: "/bundles", label: "Вместе дешевле", icon: Layers },
     ],
   },
   {
@@ -168,6 +170,7 @@ const TITLE: Record<string, string> = {
   "/categories": "Категории",
   "/brands": "Бренды",
   "/promocodes": "Промокоды",
+  "/bundles": "Вместе дешевле",
   "/payment": "Оплата",
   "/translations": "Переводы",
   "/cards": "Карточки",

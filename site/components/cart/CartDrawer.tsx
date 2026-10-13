@@ -12,16 +12,16 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
+import { BundleSuggestions, CartTotals, GiftProgress } from "@/components/bundle/CartBundle";
+import { useBundleQuote, useCartPromoDiscount } from "@/lib/bundle";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { useEscape, useScrollLock } from "@/lib/hooks";
-import { useFmt } from "@/lib/use-fmt";
 import { CartEmpty, CartLines } from "./CartLines";
 import { noFadeFlash } from "@shop/shared";
 
 export function CartDrawer() {
   const { t, href } = useI18n();
-  const fmt = useFmt();
   const open = useCart((s) => s.drawerOpen);
   const close = useCart((s) => s.closeDrawer);
   const lines = useCart((s) => s.lines);
@@ -30,6 +30,9 @@ export function CartDrawer() {
   const pathname = usePathname();
   const { validating } = useCartValidation(open);
   const hasProblems = lines.some((l) => l.stock <= 0);
+  const promoDiscount = useCartPromoDiscount(open ? subtotal : 0);
+  const bundle = useBundleQuote(promoDiscount, open);
+  const quote = bundle.quote;
 
   useScrollLock(open);
   useEscape(open, close);
@@ -85,17 +88,30 @@ export function CartDrawer() {
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              {lines.length === 0 ? <CartEmpty onNavigate={close} /> : <CartLines onNavigate={close} compact />}
+              {lines.length === 0 ? (
+                <CartEmpty onNavigate={close} />
+              ) : (
+                <>
+                  <CartLines onNavigate={close} compact addonPercent={bundle.addonPercent} />
+                  {quote?.gift && (
+                    <div className="mt-3">
+                      <GiftProgress gift={quote.gift} compact />
+                    </div>
+                  )}
+                  <BundleSuggestions
+                    suggestions={quote?.suggestions}
+                    nextPercent={bundle.nextPercent}
+                    place="drawer"
+                    max={2}
+                    onNavigate={close}
+                  />
+                </>
+              )}
             </div>
 
             {lines.length > 0 && (
               <footer className="border-t border-[var(--line)] bg-[var(--surface)] px-4 py-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[15px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("cart.total")}</span>
-                  <span className="font-display text-[20px] font-bold tabular-nums text-[var(--accent)]">
-                    {fmt.money(subtotal)}
-                  </span>
-                </div>
+                <CartTotals subtotal={subtotal} promoDiscount={promoDiscount} quote={quote} compact />
                 <p className="mt-1.5 text-[12px] font-medium text-[var(--muted)]">{t("cart.deliveryNote")}</p>
                 {hasProblems && (
                   <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{t("cart.hasProblems")}</p>

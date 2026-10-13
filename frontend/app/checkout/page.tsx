@@ -89,6 +89,7 @@ import {
   type NpWarehouse,
   type PaymentOption,
 } from "@/lib/api";
+import { useBundleQuote } from "@/lib/bundle";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
@@ -259,9 +260,15 @@ export default function CheckoutPage() {
   // refreshing the hold on a limited code while the customer works through the steps.
   const promo = usePromoPreview(promoCode, subtotal);
   const promoPreview = promo.data;
-  const discount = promo.discount;
   const promoValid = promo.data?.valid === true;
-  const total = Math.max(0, subtotal - discount);
+  // One discount per order — the bundle («Разом дешевше») or the code, whichever is better; the
+  // server prices the order the same way, so the total here is what will be charged. Until the
+  // quote for these exact lines arrives, the promo-only sum stands.
+  const { quote, last: lastQuote } = useBundleQuote(lines, promo.discount);
+  const discount = quote ? quote.discountMinor : promo.discount;
+  const discountKind = quote ? quote.discountKind : promo.discount > 0 ? "PROMO" : null;
+  const total = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
+  const gift = lastQuote?.gift?.reached ? lastQuote.gift : null;
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If the
   // customer had picked one and the total then dropped (promo, quantity), the choice moves to the
@@ -500,6 +507,9 @@ export default function CheckoutPage() {
               promoMessage={promoPreview && !promoPreview.valid ? promoPreview.message ?? null : null}
               subtotal={subtotal}
               discount={discount}
+              discountKind={discountKind}
+              promoDiscount={promo.discount}
+              gift={gift ? { title: gift.product.title } : null}
               total={total}
               dueNow={dueNow}
               currency={currency}
@@ -988,6 +998,9 @@ function ConfirmStep({
   promoMessage,
   subtotal,
   discount,
+  discountKind,
+  promoDiscount,
+  gift,
   total,
   dueNow,
   currency,
@@ -1004,6 +1017,12 @@ function ConfirmStep({
   promoMessage: string | null;
   subtotal: number;
   discount: number;
+  /** Which discount the order gets — the bundle or the promo code, never both. */
+  discountKind: "BUNDLE" | "PROMO" | null;
+  /** What the promo code alone would give (0 = no code / not valid). */
+  promoDiscount: number;
+  /** The gift for the order sum, when this order earns it. */
+  gift: { title: string } | null;
   total: number;
   /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
   dueNow: number;
@@ -1033,6 +1052,15 @@ function ConfirmStep({
             </span>
           </div>
         ))}
+        {gift && (
+          <div className="flex items-center justify-between gap-2 py-1.5">
+            <span className="min-w-0 flex-1 text-[14px] font-semibold text-[var(--ink)]">
+              <span className="line-clamp-2">{gift.title}</span>
+              <span className="block text-[12px] font-medium text-[var(--muted)]">{t("bundle.giftLine")}</span>
+            </span>
+            <span className="font-display text-[14px] font-semibold tabular-nums text-[var(--ok)]">{money(0, currency)}</span>
+          </div>
+        )}
         <div className="my-3 h-px bg-[var(--line)]" />
 
         {discount > 0 && (
@@ -1045,9 +1073,11 @@ function ConfirmStep({
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-[13px] font-semibold text-[var(--muted)]">
-                {promoCode
-                  ? t("checkout.confirm.discountWithCode", { code: promoCode })
-                  : t("checkout.confirm.discount")}
+                {discountKind === "BUNDLE"
+                  ? t("bundle.title")
+                  : promoCode
+                    ? t("checkout.confirm.discountWithCode", { code: promoCode })
+                    : t("checkout.confirm.discount")}
               </span>
               <span className="font-display text-[14px] font-bold tabular-nums text-[var(--ok)]">
                 −{money(discount, currency)}
@@ -1081,7 +1111,10 @@ function ConfirmStep({
           </p>
         )}
 
-        {promoCode && discount === 0 && (
+        {discountKind === "BUNDLE" && promoDiscount > 0 && (
+          <p className="mt-2 text-[12px] font-semibold text-[var(--muted)]">{t("bundle.notStacking")}</p>
+        )}
+        {promoCode && promoDiscount === 0 && (
           <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">
             {t("checkout.confirm.promoProblem", {
               code: promoCode,

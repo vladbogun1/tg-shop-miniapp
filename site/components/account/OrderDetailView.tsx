@@ -78,6 +78,9 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const router = useRouter();
   const isPickup = order.deliveryMethod === "PICKUP";
   const cancelMode = customerCancelMode(order);
+  // «Разом дешевше» part of the discount (V57) and the rest (promo code / manual).
+  const bundleDiscount = Math.min(order.bundleDiscountMinor ?? 0, order.discountMinor);
+  const otherDiscount = order.discountMinor - bundleDiscount;
   const refresh = () => {
     onChange();
     void qc.invalidateQueries({ queryKey: ["me", "orders"] });
@@ -172,16 +175,19 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
               </span>
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-[14px] font-semibold text-[var(--ink)]">
-                  {it.gift && (
+                  {(it.gift || it.autoGift) && (
                     <span className="mr-1 inline-block rounded-full bg-[var(--accent-soft)] px-2 py-0.5 align-middle font-display text-[10px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)]">
-                      {t("order.giftBadge")}
+                      {it.autoGift ? t("bundle.gift.line") : t("order.giftBadge")}
                     </span>
                   )}
                   {it.title}
                 </p>
                 {it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>}
+                {it.bundleAddon && !it.gift && !it.autoGift && (
+                  <p className="text-[12px] font-semibold text-[var(--accent-hi)]">{t("order.bundleAddon")}</p>
+                )}
                 <p className="text-[12px] font-medium text-[var(--faint)]">
-                  {it.gift
+                  {it.gift || it.autoGift
                     ? it.quantity > 1
                       ? t("order.giftMany", { n: it.quantity })
                       : t("order.gift")
@@ -189,7 +195,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                 </p>
               </div>
               <span className="shrink-0 font-display text-[15px] font-bold tabular-nums text-[var(--ink)]">
-                {fmt.money(it.gift ? 0 : it.priceMinor * it.quantity, it.currency ?? order.currency)}
+                {fmt.money(it.gift || it.autoGift ? 0 : it.priceMinor * it.quantity, it.currency ?? order.currency)}
               </span>
             </li>
           ))}
@@ -199,10 +205,16 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
             <span>{t("order.sum")}</span>
             <span className="font-semibold text-[var(--ink)]">{fmt.money(order.subtotalMinor, order.currency)}</span>
           </div>
-          {order.discountMinor > 0 && (
+          {bundleDiscount > 0 && (
+            <div className="flex justify-between font-semibold text-[var(--muted)]">
+              <span>{t("bundle.title")}</span>
+              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(bundleDiscount, order.currency)}</span>
+            </div>
+          )}
+          {otherDiscount > 0 && (
             <div className="flex justify-between font-semibold text-[var(--muted)]">
               <span>{order.promoCode ? t("order.discountWithCode", { code: order.promoCode }) : t("order.discount")}</span>
-              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(order.discountMinor, order.currency)}</span>
+              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(otherDiscount, order.currency)}</span>
             </div>
           )}
           <div className="mt-1 flex items-center justify-between">

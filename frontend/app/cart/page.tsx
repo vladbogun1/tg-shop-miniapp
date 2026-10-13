@@ -18,12 +18,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { BundleSuggestions, GiftProgress } from "@/components/cart/BundleCart";
+import { PercentChip } from "@/components/catalog/BundleBlock";
+import { ProductView } from "@/components/catalog/ProductView";
 import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
 import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
+import { addonPercent, useBundleQuote } from "@/lib/bundle";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
+import type { Product } from "@/lib/api";
 import { maxQty } from "@shop/shared";
 import { useOrderLimits } from "@/lib/order-limits";
 import { money } from "@/lib/money";
@@ -46,7 +52,16 @@ export default function CartPage() {
   // While the promo code is being typed the bottom dock is pure obstruction: the tab bar already
   // hides itself, and this bar sat on top of the field and its answer ("промокод не найден").
   const keyboardOpen = useKeyboardOpen();
-  const total = Math.max(0, subtotal - promo.discount);
+  // One discount per order — the bundle or the promo code, whichever is better (the server decides
+  // the same way at checkout). Until its answer for these exact lines arrives, the old sum stands.
+  const { quote, last } = useBundleQuote(lines, promo.discount);
+  const total = quote ? quote.totalMinor : Math.max(0, subtotal - promo.discount);
+  const bundleDiscount = quote?.discountKind === "BUNDLE" ? quote.discountMinor : 0;
+  const promoAmount = quote ? (quote.discountKind === "PROMO" ? quote.discountMinor : 0) : promo.discount;
+  // Both apply to this cart but only one counts — say so, or a vanished code looks like a bug.
+  const notStacking = !!quote && promo.discount > 0 && quote.bundleDiscountMinor > 0;
+  // A product opened from the suggestions (one with variants to choose).
+  const [opened, setOpened] = useState<Product | null>(null);
 
   const empty = lines.length === 0;
   const currency = lines[0]?.currency ?? "UAH";
@@ -127,8 +142,13 @@ export default function CartPage() {
                         {l.variantName}
                       </span>
                     )}
-                    <div className="mt-1 text-[11px] font-medium text-[var(--faint)]">
-                      {money(l.priceMinor, l.currency)} {t("common.currencyPerItem")}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-[var(--faint)]">
+                      <span>
+                        {money(l.priceMinor, l.currency)} {t("common.currencyPerItem")}
+                      </span>
+                      {addonPercent(quote, l.productId, l.variantId) > 0 && (
+                        <PercentChip percent={addonPercent(quote, l.productId, l.variantId)} />
+                      )}
                     </div>
                   </div>
 
@@ -169,6 +189,8 @@ export default function CartPage() {
         </AnimatePresence>
       </div>
 
+      <BundleSuggestions quote={last} onOpenProduct={setOpened} />
+
       <PromoField
         code={promoCode}
         onChange={setPromoCode}
@@ -177,10 +199,17 @@ export default function CartPage() {
         preview={promo}
       />
 
+      <GiftProgress gift={last?.gift} currency={currency} />
+
       {/* totals card */}
       <div className="nb hud-frame mt-5 p-4">
         <Row label={t("cart.rowItems")} value={money(subtotal, currency)} />
-        {promo.discount > 0 && (
+        {bundleDiscount > 0 && (
+          <div className="mt-2">
+            <Row label={t("bundle.title")} value={`−${money(bundleDiscount, currency)}`} />
+          </div>
+        )}
+        {promoAmount > 0 && (
           <div className="mt-2">
             <Row
               label={
@@ -188,13 +217,25 @@ export default function CartPage() {
                   ? t("cart.rowDiscountWithCode", { code: promoCode.trim() })
                   : t("cart.rowDiscount")
               }
-              value={`−${money(promo.discount, currency)}`}
+              value={`−${money(promoAmount, currency)}`}
             />
           </div>
+        )}
+        {notStacking && (
+          <p className="mt-1.5 text-[11px] font-medium leading-snug text-[var(--muted)]">
+            {t("bundle.notStacking")}
+          </p>
         )}
         <div className="my-3 h-px bg-[var(--line)]" />
         <Row label={t("cart.total")} value={money(total, currency)} strong />
       </div>
+
+      <ProductView
+        product={opened}
+        onClose={() => setOpened(null)}
+        onAdded={() => setOpened(null)}
+        onOpenProduct={setOpened}
+      />
 
       {/* spacer so content never hides behind the sticky bar */}
       <div aria-hidden className="h-24" />

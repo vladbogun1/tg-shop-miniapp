@@ -500,6 +500,24 @@ export const ru = {
   "compare.best": "лучшее",
   "compare.error": "Не удалось загрузить сравнение",
   "compare.swipeHint": "Листайте вбок, чтобы увидеть все {n}",
+  // ---- «Разом дешевше» + gift for the order sum ----
+  "bundle.title": "Вместе дешевле",
+  "bundle.subtitle": "Аксессуар к товару — скидка до {max}%",
+  "bundle.thisItem": "Этот товар",
+  "bundle.inCart": "Уже в корзине",
+  "bundle.choose": "Выбрать",
+  "bundle.total": "Комплект",
+  "bundle.save": "Экономия {amount}",
+  "bundle.addSet": "Добавить комплект",
+  "bundle.added": "Комплект в корзине",
+  "bundle.notStacking": "Скидки не суммируются — применена выгоднее",
+  "bundle.suggestTitle": "Добавь к заказу",
+  "bundle.suggestHint": "Аксессуары со скидкой до {max}%",
+  "bundle.addOne": "Добавить {title}",
+  "bundle.giftLeft": "До подарка ещё {amount}",
+  "bundle.giftReached": "Подарок: {title} — добавим к заказу бесплатно",
+  "bundle.giftLine": "🎁 Подарок за сумму",
+  "bundle.addonNote": "вместе дешевле",
 } satisfies Dictionary;
 
 /**

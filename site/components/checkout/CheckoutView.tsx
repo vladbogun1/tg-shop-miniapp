@@ -45,6 +45,7 @@ import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
+import { useBundleQuote } from "@/lib/bundle";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
@@ -269,8 +270,15 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
 
   const promo = usePromoPreview(promoCode, subtotal);
   const promoValid = promo.data?.valid === true;
-  const discount = promo.discount;
-  const total = Math.max(0, subtotal - discount);
+  // «Разом дешевше» vs the promo code: one discount per order, the server picks the better one (and
+  // does it again when the order is placed). Until the quote is in, the promo-only numbers are shown.
+  const bundle = useBundleQuote(promo.discount);
+  const quote = bundle.quote;
+  const discountKind = quote ? quote.discountKind : promo.discount > 0 ? "PROMO" : null;
+  const discount = quote ? quote.discountMinor : promo.discount;
+  const total = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
+  const bundleBeatsPromo = promoValid && promo.discount > 0 && discountKind === "BUNDLE";
+  const gift = quote?.gift?.reached ? quote.gift : null;
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If it
   // was picked and the total then dropped (promo, quantity), the choice moves to the first
@@ -550,6 +558,11 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
               currency={currency}
               preview={{ data: promo.data, loading: promo.loading }}
             />
+            {bundleBeatsPromo && (
+              <p className="mt-2 text-[12px] font-semibold text-[var(--warn)]">
+                {t("bundle.beatsPromo", { amount: fmt.money(discount, currency) })}
+              </p>
+            )}
             <label className="mt-5 block">
               <span className="eyebrow mb-1.5 block text-[11px]">{t("checkout.comment")}</span>
               <textarea
@@ -590,12 +603,30 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
                 </li>
               ))}
+              {gift && (
+                <li className="flex items-center gap-3">
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--r)] border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[var(--surface-2)]">
+                    <Image src={gift.product.images?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null} alt="" size={120} className="h-full w-full" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12px] font-bold text-[var(--ok)]">{t("bundle.gift.line")}</span>
+                    <span className="line-clamp-2 text-[13px] font-medium text-[var(--ink)]">{gift.product.title}</span>
+                  </span>
+                  <span className="shrink-0 font-display text-[13px] font-bold text-[var(--ok)]">{t("bundle.gift.free")}</span>
+                </li>
+              )}
             </ul>
             <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
-              <Row label={t("checkout.sum")} value={fmt.money(subtotal, currency)} />
+              <Row label={t("checkout.sum")} value={fmt.money(quote ? quote.subtotalMinor : subtotal, currency)} />
               {discount > 0 && (
                 <Row
-                  label={promoCode ? t("checkout.discountWithCode", { code: promoCode }) : t("checkout.discount")}
+                  label={
+                    discountKind === "BUNDLE"
+                      ? t("bundle.title")
+                      : promoCode
+                        ? t("checkout.discountWithCode", { code: promoCode })
+                        : t("checkout.discount")
+                  }
                   value={`−${fmt.money(discount, currency)}`}
                   tone="ok"
                 />

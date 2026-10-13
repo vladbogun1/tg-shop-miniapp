@@ -9,6 +9,7 @@ import { Check, ShoppingBag, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { maxQty, type ProductVariant, type StorefrontProduct } from "@shop/shared";
+import { BundleOffer } from "@/components/bundle/BundleOffer";
 import { Button } from "@/components/ui/Button";
 import { RatingLink } from "@/components/reviews/RatingLink";
 import { CompareToggle } from "@/components/compare/CompareToggle";
@@ -177,6 +178,8 @@ export function BuyBox({ product, compareGroup }: { product: StorefrontProduct; 
           <CompareToggle productId={product.id} group={compareGroup} variant="full" />
         </div>
       )}
+
+      <BundleOffer product={product} variant={variant} needVariant={needVariant} />
     </div>
   );
 }

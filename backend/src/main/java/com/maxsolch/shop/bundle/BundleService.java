@@ -251,6 +251,8 @@ public class BundleService {
         }
         var path = pathFunction();
         int pct = Math.max(1, Math.min(100, maxAddonPricePercent));
+        // The gift for the order sum comes free — offering it for money next to the gift bar is odd.
+        String giftId = giftConfig().map(GiftConfig::productId).orElse(null);
         Set<String> cartLeafCategories = new HashSet<>();
         anchors.forEach(a -> {
             if (a.categoryId() != null) {
@@ -273,7 +275,7 @@ public class BundleService {
                     continue;
                 }
                 List<ProductDto> q = all.stream()
-                        .filter(p -> !exclude.contains(p.id()))
+                        .filter(p -> !exclude.contains(p.id()) && !p.id().equals(giftId))
                         .filter(p -> p.effectiveStock() > 0 && p.priceMinor() > 0)
                         .filter(p -> p.categoryId() != null && !cartLeafCategories.contains(p.categoryId()))
                         .filter(p -> path.apply(p.categoryId()).contains(rule.targetCategoryId()))

@@ -279,9 +279,9 @@ function OrderBody({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-[14px] font-semibold text-[var(--ink)]">
-                    {it.gift && (
+                    {(it.gift || it.autoGift) && (
                       <span className="font-display mr-1 inline-block rounded-full bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
-                        {t("order.giftBadge")}
+                        {it.autoGift ? t("bundle.giftLine") : t("order.giftBadge")}
                       </span>
                     )}
                     {it.title}
@@ -292,15 +292,18 @@ function OrderBody({
                     </p>
                   )}
                   <p className="mt-0.5 text-[12px] font-medium text-[var(--faint)]">
-                    {it.gift
+                    {it.gift || it.autoGift
                       ? it.quantity > 1
                         ? t("order.giftMany", { n: it.quantity })
                         : t("order.gift")
                       : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
+                    {it.bundleAddon && !it.gift && !it.autoGift && (
+                      <span className="font-semibold text-[var(--ok)]"> · {t("bundle.addonNote")}</span>
+                    )}
                   </p>
                 </div>
                 <span className="font-display shrink-0 text-[14px] font-bold tabular-nums text-[var(--ink)]">
-                  {it.gift
+                  {it.gift || it.autoGift
                     ? "0 ₴"
                     : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
                 </span>
@@ -316,9 +319,11 @@ function OrderBody({
             {order.discountMinor > 0 && (
               <TotalRow
                 label={
-                  order.promoCode
-                    ? t("order.discountWithCode", { code: order.promoCode })
-                    : t("order.discount")
+                  (order.bundleDiscountMinor ?? 0) > 0
+                    ? t("bundle.title")
+                    : order.promoCode
+                      ? t("order.discountWithCode", { code: order.promoCode })
+                      : t("order.discount")
                 }
                 value={`− ${money(order.discountMinor, order.currency)}`}
                 discount
