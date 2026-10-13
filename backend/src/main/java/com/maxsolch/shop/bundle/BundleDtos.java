@@ -40,7 +40,34 @@ public final class BundleDtos {
      * Gift for the order sum; null in the quote when switched off or the gift is out of stock.
      * {@code remainingMinor}: still to add to the cart (after the discount) for the gift; 0 = reached.
      */
-    public record GiftDto(long thresholdMinor, long remainingMinor, boolean reached, ProductDto product) {
+    public record GiftDto(long thresholdMinor, long remainingMinor, boolean reached,
+                          /** PRODUCT: the gift; null for a case. */
+                          ProductDto product,
+                          /** PRODUCT | CASE (a random prize from {@code caseItems}). */
+                          String kind,
+                          List<CaseItemDto> caseItems) {
+    }
+
+    /** A prize of the gift case as the customer sees it; {@code chancePercent} among the prizes in stock. */
+    public record CaseItemDto(String productId, String title, String imageUrl, long priceMinor,
+                              String rarity, double chancePercent) {
+    }
+
+    /**
+     * Opening the case of an order: the prize (fixed at checkout) and the prizes for the reel.
+     * Opening again replays the same prize.
+     */
+    public record CaseOpenDto(String status, CaseItemDto won, List<CaseItemDto> reel) {
+    }
+
+    // ---- admin: case prizes ----
+
+    public record CaseItemAdminDto(long id, String productId, String title, String imageUrl, long priceMinor,
+                                   int stock, boolean productActive, String rarity, int weight,
+                                   double chancePercent, int sortOrder, boolean active) {
+    }
+
+    public record CaseItemRequest(String productId, String rarity, Integer weight, Integer sortOrder, Boolean active) {
     }
 
     /**
@@ -74,6 +101,9 @@ public final class BundleDtos {
                            long bundleOrders,
                            long bundleDiscountMinor,
                            long bundleRevenueMinor,
-                           long giftOrders) {
+                           long giftOrders,
+                           /** Orders with a gift case / of them opened by the customer. */
+                           long caseOrders,
+                           long casesOpened) {
     }
 }

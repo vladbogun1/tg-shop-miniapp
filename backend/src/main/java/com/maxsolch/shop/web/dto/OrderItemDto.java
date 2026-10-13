@@ -15,5 +15,7 @@ public record OrderItemDto(
         /** Got the «Вместе дешевле» discount (V57). */
         boolean bundleAddon,
         /** Gift the shop added for the order sum (V57). */
-        boolean autoGift) {
+        boolean autoGift,
+        /** Rarity of the gift-case prize (V58); null = not from a case. */
+        String caseRarity) {
 }

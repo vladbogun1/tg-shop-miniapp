@@ -190,6 +190,10 @@ public class NotificationService {
             String text = customerStatusHeader(order, locale) + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + statusCustomerNote(order, locale);
+            if ("SEALED".equals(order.getGiftCaseStatus()) && order.getStatus() != OrderStatus.REJECTED) {
+                // The gift case waits in the order until the customer opens it in the shop.
+                text += (text.endsWith("\n") ? "" : "\n") + messages.get(locale, "bot.giftCase.sealed");
+            }
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
@@ -792,7 +796,9 @@ public class NotificationService {
                 long line = it.getPriceMinorSnapshot() * (long) it.getQuantity();
                 sb.append(" × ").append(it.getQuantity())
                         .append(" — ").append(money(line)).append(' ').append(cur);
-                if (it.isAutoGift()) {
+                if (it.isAutoGift() && it.getCaseRarity() != null) {
+                    sb.append(" 🎁 <i>из кейса (").append(it.getCaseRarity()).append(")</i>");
+                } else if (it.isAutoGift()) {
                     sb.append(" 🎁 <i>подарок за сумму</i>");
                 } else if (it.isBundleAddon()) {
                     sb.append(" <i>(вместе дешевле)</i>");

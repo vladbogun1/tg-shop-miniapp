@@ -55,7 +55,12 @@ export interface BundleGift {
   /** Still to add (after the discount) to get the gift; 0 = reached. */
   remainingMinor: number;
   reached: boolean;
-  product: Product;
+  /** PRODUCT: one known gift; CASE: a random prize from caseItems (gift case, see ./giftcase). */
+  kind: "PRODUCT" | "CASE";
+  /** The gift (kind PRODUCT); null for a case. */
+  product: Product | null;
+  /** Prizes of the case with chances, most common first (kind CASE). */
+  caseItems: import("./giftcase").CaseItem[];
 }
 
 export type BundleDiscountKind = "BUNDLE" | "PROMO";

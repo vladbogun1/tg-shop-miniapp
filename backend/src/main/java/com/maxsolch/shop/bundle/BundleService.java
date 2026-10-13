@@ -1,5 +1,6 @@
 package com.maxsolch.shop.bundle;
 
+import com.maxsolch.shop.bundle.BundleDtos.CaseItemDto;
 import com.maxsolch.shop.bundle.BundleDtos.GiftDto;
 import com.maxsolch.shop.bundle.BundleDtos.ProductOfferDto;
 import com.maxsolch.shop.bundle.BundleDtos.QuoteDto;
@@ -45,13 +46,16 @@ public class BundleService {
     private final SettingsService settings;
     private final CatalogDirectory directory;
     private final CatalogService catalogService;
+    private final GiftCaseItemRepository caseRepository;
 
     public BundleService(BundleRuleRepository ruleRepository, SettingsService settings,
-                         CatalogDirectory directory, CatalogService catalogService) {
+                         CatalogDirectory directory, CatalogService catalogService,
+                         GiftCaseItemRepository caseRepository) {
         this.ruleRepository = ruleRepository;
         this.settings = settings;
         this.directory = directory;
         this.catalogService = catalogService;
+        this.caseRepository = caseRepository;
     }
 
     // ---- configuration ----
@@ -113,24 +117,76 @@ public class BundleService {
         return BundlePricing.compute(lines, rules(), pathFunction(), cfg);
     }
 
-    /** Gift threshold in minor units, or empty when the gift is off or not configured. */
+    /**
+     * The gift for the order sum, or empty when it is off or has nothing to give: one product
+     * ({@code productId}, may be null in case mode) and/or the prizes of the gift case
+     * ({@code caseItems}, empty unless gift.caseEnabled). The case wins when one of its prizes is
+     * in stock; otherwise the single product is the fallback.
+     */
+    @Transactional(readOnly = true)
     public Optional<GiftConfig> giftConfig() {
         if (!settings.getBool(SettingsRegistry.GIFT_ENABLED)) {
             return Optional.empty();
         }
         String id = settings.getString(SettingsRegistry.GIFT_PRODUCT_ID);
-        if (id == null || id.isBlank()) {
+        String productId = null;
+        if (id != null && !id.isBlank()) {
+            try {
+                UuidUtil.toBytes(id.trim());
+                productId = id.trim();
+            } catch (IllegalArgumentException e) {
+                productId = null;
+            }
+        }
+        List<CaseEntry> caseItems = settings.getBool(SettingsRegistry.GIFT_CASE_ENABLED)
+                ? caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                        .filter(GiftCaseItem::isActive)
+                        .filter(c -> c.getWeight() > 0)
+                        .map(c -> new CaseEntry(UuidUtil.toString(c.getProductId()), c.getRarity().name(), c.getWeight()))
+                        .toList()
+                : List.of();
+        if (productId == null && caseItems.isEmpty()) {
             return Optional.empty();
         }
-        try {
-            UuidUtil.toBytes(id.trim());
-        } catch (IllegalArgumentException e) {
-            return Optional.empty();
-        }
-        return Optional.of(new GiftConfig(id.trim(), settings.getInt(SettingsRegistry.GIFT_THRESHOLD_UAH) * 100L));
+        return Optional.of(new GiftConfig(productId, settings.getInt(SettingsRegistry.GIFT_THRESHOLD_UAH) * 100L,
+                caseItems));
     }
 
-    public record GiftConfig(String productId, long thresholdMinor) {
+    public record GiftConfig(String productId, long thresholdMinor, List<CaseEntry> caseItems) {
+
+        /** Every product the checkout may give away (locked up front, in id order). */
+        public List<String> productIds() {
+            List<String> out = new ArrayList<>();
+            if (productId != null) {
+                out.add(productId);
+            }
+            caseItems.forEach(c -> out.add(c.productId()));
+            return out;
+        }
+    }
+
+    public record CaseEntry(String productId, String rarity, int weight) {
+    }
+
+    /**
+     * Weighted draw among the prizes that can be given now ({@code available}: productId → in stock).
+     * Empty when none is available.
+     */
+    public static Optional<CaseEntry> draw(List<CaseEntry> items, java.util.function.Predicate<String> available,
+                                           java.util.random.RandomGenerator random) {
+        List<CaseEntry> pool = items.stream().filter(c -> c.weight() > 0 && available.test(c.productId())).toList();
+        long total = pool.stream().mapToLong(CaseEntry::weight).sum();
+        if (total <= 0) {
+            return Optional.empty();
+        }
+        long r = random.nextLong(total);
+        for (CaseEntry c : pool) {
+            r -= c.weight();
+            if (r < 0) {
+                return Optional.of(c);
+            }
+        }
+        return Optional.of(pool.get(pool.size() - 1));
     }
 
     // ---- storefront ----
@@ -229,12 +285,56 @@ public class BundleService {
         if (cfg.isEmpty()) {
             return null;
         }
-        ProductDto p = byId.get(cfg.get().productId());
+        long remaining = Math.max(0, cfg.get().thresholdMinor() - total);
+        boolean reached = remaining == 0 && total > 0;
+        List<CaseItemDto> prizes = casePrizes(cfg.get(), byId);
+        if (!prizes.isEmpty()) {
+            return new GiftDto(cfg.get().thresholdMinor(), remaining, reached, null, GIFT_KIND_CASE, prizes);
+        }
+        ProductDto p = cfg.get().productId() == null ? null : byId.get(cfg.get().productId());
         if (p == null || p.effectiveStock() <= 0) {
             return null;
         }
-        long remaining = Math.max(0, cfg.get().thresholdMinor() - total);
-        return new GiftDto(cfg.get().thresholdMinor(), remaining, remaining == 0 && total > 0, p);
+        return new GiftDto(cfg.get().thresholdMinor(), remaining, reached, p, GIFT_KIND_PRODUCT, List.of());
+    }
+
+    public static final String GIFT_KIND_PRODUCT = "PRODUCT";
+    public static final String GIFT_KIND_CASE = "CASE";
+
+    /** The case prizes in stock with their chances (%), rarest last; empty = no case now. */
+    public static List<CaseItemDto> casePrizes(GiftConfig cfg, Map<String, ProductDto> byId) {
+        List<CaseEntry> live = cfg.caseItems().stream()
+                .filter(c -> {
+                    ProductDto p = byId.get(c.productId());
+                    return p != null && p.effectiveStock() > 0;
+                })
+                .toList();
+        long total = live.stream().mapToLong(CaseEntry::weight).sum();
+        if (total <= 0) {
+            return List.of();
+        }
+        return live.stream()
+                .map(c -> {
+                    ProductDto p = byId.get(c.productId());
+                    String img = p.images() == null || p.images().isEmpty() ? null : p.images().get(0).url();
+                    double chance = Math.round(c.weight() * 1000.0 / total) / 10.0;
+                    return new CaseItemDto(p.id(), p.title(), img, p.priceMinor(), c.rarity(), chance);
+                })
+                .sorted(Comparator.comparingInt((CaseItemDto d) -> GiftCaseItem.Rarity.valueOf(d.rarity()).ordinal())
+                        .thenComparing(CaseItemDto::priceMinor))
+                .toList();
+    }
+
+    /** Case prizes for the customer's language (the reel of the opening screen). */
+    @Transactional(readOnly = true)
+    public List<CaseItemDto> casePrizes(String lang) {
+        Optional<GiftConfig> cfg = giftConfig();
+        if (cfg.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ProductDto> byId = new HashMap<>();
+        catalogService.listActiveProducts(lang).forEach(p -> byId.put(p.id(), p));
+        return casePrizes(cfg.get(), byId);
     }
 
     /**
@@ -252,7 +352,7 @@ public class BundleService {
         var path = pathFunction();
         int pct = Math.max(1, Math.min(100, maxAddonPricePercent));
         // The gift for the order sum comes free — offering it for money next to the gift bar is odd.
-        String giftId = giftConfig().map(GiftConfig::productId).orElse(null);
+        Set<String> giftIds = giftConfig().map(g -> (Set<String>) new HashSet<>(g.productIds())).orElse(Set.of());
         Set<String> cartLeafCategories = new HashSet<>();
         anchors.forEach(a -> {
             if (a.categoryId() != null) {
@@ -275,7 +375,7 @@ public class BundleService {
                     continue;
                 }
                 List<ProductDto> q = all.stream()
-                        .filter(p -> !exclude.contains(p.id()) && !p.id().equals(giftId))
+                        .filter(p -> !exclude.contains(p.id()) && !giftIds.contains(p.id()))
                         .filter(p -> p.effectiveStock() > 0 && p.priceMinor() > 0)
                         .filter(p -> p.categoryId() != null && !cartLeafCategories.contains(p.categoryId()))
                         .filter(p -> path.apply(p.categoryId()).contains(rule.targetCategoryId()))

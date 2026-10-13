@@ -75,6 +75,7 @@ public final class SettingsRegistry {
     public static final String GIFT_ENABLED = "gift.enabled";
     public static final String GIFT_THRESHOLD_UAH = "gift.thresholdUah";
     public static final String GIFT_PRODUCT_ID = "gift.productId";
+    public static final String GIFT_CASE_ENABLED = "gift.caseEnabled";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -186,6 +187,12 @@ public final class SettingsRegistry {
                     "Товар-подарок",
                     "Выбирается в разделе «Вместе дешевле». Нет в наличии — подарок не кладётся.",
                     "", 64),
+            boolSetting(GIFT_CASE_ENABLED, BUNDLES_GROUP,
+                    "Подарок — кейс",
+                    "Вместо одного товара — кейс как в CS: приз выпадает случайно из списка призов "
+                            + "(шансы по весам), покупатель открывает кейс в заказе. Нет призов в наличии — "
+                            + "кладётся обычный товар-подарок.",
+                    false),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

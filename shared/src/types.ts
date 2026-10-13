@@ -218,6 +218,8 @@ export interface OrderItem {
   bundleAddon?: boolean;
   /** Gift the shop added by itself for the order sum (V57). */
   autoGift?: boolean;
+  /** Rarity of the gift-case prize (V58); null = not from a case. */
+  caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
@@ -313,6 +315,8 @@ export interface OrderSummary {
   amountDueMinor?: number;
   /** My cancellation request of a paid order; null = none. */
   cancelRequestStatus?: CancelRequestStatus | null;
+  /** Gift case (V58): SEALED = waits to be opened. */
+  giftCaseStatus?: "SEALED" | "OPENED" | null;
 }
 
 /** Customer's request to cancel a PAID order (one per order). */
@@ -335,6 +339,9 @@ export interface OrderDetail {
   discountMinor: number;
   /** Part of discountMinor given by «Вместе дешевле» (V57); 0 = a promo code or a manual discount. */
   bundleDiscountMinor?: number;
+  /** Gift case (V58): null = none; SEALED = waits to be opened (its prize line is hidden until then); OPENED. */
+  giftCaseStatus?: "SEALED" | "OPENED" | null;
+  giftCaseOpenedAt?: string | null;
   totalMinor: number;
   currency: string;
   customerName: string;

@@ -79,6 +79,14 @@ public class MeController {
     /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
     private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** Opening the gift case (V58); a setter so the unit tests' constructor stays as it is. */
+    private com.maxsolch.shop.bundle.GiftCaseService giftCaseService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setGiftCaseService(com.maxsolch.shop.bundle.GiftCaseService giftCaseService) {
+        this.giftCaseService = giftCaseService;
+    }
+
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
                         OrderRepository orderRepository,
@@ -213,6 +221,18 @@ public class MeController {
     @Operation(summary = "Get one of my orders")
     public OrderDetailDto myOrder(@PathVariable String id, Locale locale) {
         return orderQueryService.toDetail(ownedOrder(id), ContentLocale.normalize(locale));
+    }
+
+    @PostMapping("/orders/{id}/gift-case/open")
+    @Operation(summary = "Open the gift case of my order: the prize (drawn at checkout) and the prizes for "
+            + "the reel. Opening again replays the same prize")
+    public com.maxsolch.shop.bundle.BundleDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
+        Order order = ownedOrder(id);
+        com.maxsolch.shop.bundle.BundleDtos.CaseOpenDto opened =
+                giftCaseService.open(order.getId(), ContentLocale.normalize(locale));
+        journal(ActivityLog.fromRequest("GIFT_CASE_OPENED").order(order.getId())
+                .text("Покупатель открыл кейс: " + opened.won().title() + " (" + opened.won().rarity() + ")"));
+        return opened;
     }
 
     @GetMapping("/orders/{id}/messages")

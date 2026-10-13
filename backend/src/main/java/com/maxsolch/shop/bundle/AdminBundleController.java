@@ -64,6 +64,30 @@ public class AdminBundleController {
         return service.preview(productId);
     }
 
+    @GetMapping("/case-items")
+    @Operation(summary = "Prizes of the gift case with their current chances")
+    public List<BundleDtos.CaseItemAdminDto> caseItems() {
+        return service.caseItems();
+    }
+
+    @PostMapping("/case-items")
+    @Operation(summary = "Add a prize to the gift case")
+    public BundleDtos.CaseItemAdminDto addCaseItem(@RequestBody BundleDtos.CaseItemRequest body) {
+        return service.addCaseItem(body);
+    }
+
+    @PatchMapping("/case-items/{id}")
+    @Operation(summary = "Change rarity / weight / order / on-off of a prize")
+    public BundleDtos.CaseItemAdminDto updateCaseItem(@PathVariable long id, @RequestBody BundleDtos.CaseItemRequest body) {
+        return service.updateCaseItem(id, body);
+    }
+
+    @DeleteMapping("/case-items/{id}")
+    @Operation(summary = "Remove a prize from the gift case")
+    public void deleteCaseItem(@PathVariable long id) {
+        service.deleteCaseItem(id);
+    }
+
     @GetMapping("/stats")
     @Operation(summary = "Last 30 days: orders with the bundle discount, the discount given, gifts")
     public StatsDto stats() {

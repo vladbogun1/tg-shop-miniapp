@@ -137,7 +137,8 @@ public class OrderQueryService {
                 receivedMinor(o),
                 o.getPaymentDueAt(),
                 OrderService.amountDueMinor(o),
-                o.getCancelRequestStatus());
+                o.getCancelRequestStatus(),
+                o.getGiftCaseStatus());
     }
 
     @Transactional(readOnly = true)
@@ -206,7 +207,10 @@ public class OrderQueryService {
                         orderItems.stream().map(OrderItem::getVariantId).filter(java.util.Objects::nonNull).toList(),
                         lang)
                 : TranslationService.ItemNames.EMPTY;
+        // A sealed gift case keeps its prize a surprise: the customer sees the line after opening.
+        boolean sealed = customer && OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
         List<OrderItemDto> items = orderItems.stream()
+                .filter(it -> !(sealed && it.isAutoGift() && it.getCaseRarity() != null))
                 .map(it -> toItemDto(it, thumbnails, names))
                 .toList();
         OnlinePaymentDto payment = onlinePayment(o);
@@ -271,7 +275,9 @@ public class OrderQueryService {
                                 e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
                                 e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName()))
                         .toList(),
-                o.getBundleDiscountMinor());
+                o.getBundleDiscountMinor(),
+                o.getGiftCaseStatus(),
+                o.getGiftCaseOpenedAt());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
@@ -383,7 +389,8 @@ public class OrderQueryService {
                 it.isGift(),
                 it.getReturnedQty(),
                 it.isBundleAddon(),
-                it.isAutoGift());
+                it.isAutoGift(),
+                it.getCaseRarity());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */
