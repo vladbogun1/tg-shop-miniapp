@@ -314,26 +314,28 @@ public class OrderQueryService {
      */
     @Transactional(readOnly = true)
     public List<DispatchOrderDto> dispatchList(boolean includeNew) {
-        List<DispatchOrderDto> rows = new ArrayList<>(
-                orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED).stream()
-                        .map(this::toDispatch)
-                        .toList());
+        List<Order> orders = new ArrayList<>(orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED));
         if (includeNew) {
-            orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.NEW).stream()
-                    .map(this::toDispatch)
-                    .forEach(rows::add);
+            orders.addAll(orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.NEW));
         }
-        return rows;
+        // One query for the photos of every line on the page: packing goes by the picture, not the text.
+        Map<String, String> thumbnails = thumbnailsFor(orders.stream().flatMap(o -> o.getItems().stream()).toList());
+        return orders.stream().map(o -> toDispatch(o, thumbnails)).toList();
     }
 
     @Transactional(readOnly = true)
     public DispatchOrderDto toDispatch(Order o) {
+        return toDispatch(o, thumbnailsFor(o.getItems()));
+    }
+
+    private DispatchOrderDto toDispatch(Order o, Map<String, String> thumbnails) {
         long received = receivedMinor(o);
         long cod = codMinor(o);
         List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
                 .map(it -> new DispatchOrderDto.DispatchItem(
                         it.getTitleSnapshot(), it.getVariantNameSnapshot(),
-                        it.getQuantity(), it.getPriceMinorSnapshot()))
+                        it.getQuantity(), it.getPriceMinorSnapshot(),
+                        it.getProductId() == null ? null : thumbnails.get(UuidUtil.toString(it.getProductId()))))
                 .toList();
         String shortId = UuidUtil.toString(o.getId());
         if (shortId != null && shortId.length() >= 8) {
