@@ -58,7 +58,9 @@ public record OrderDetailDto(
         /** Admin's answer (decline reason) shown to the customer. */
         String cancelRequestAdminComment,
         /** Exchanges made on this order (V51), oldest first; empty when none. */
-        List<ExchangeDto> exchanges) {
+        List<ExchangeDto> exchanges,
+        /** Part of discountMinor given by «Вместе дешевле» (V57); 0 = promo code / manual discount. */
+        long bundleDiscountMinor) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

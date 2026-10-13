@@ -63,6 +63,18 @@ public final class SettingsRegistry {
     public static final String SUPPORT_AUTO_CLOSE_DAYS = "support.autoCloseDays";
     /** Prefix of the per-language /start greeting overrides: {@code bot.startText.uk} etc. */
     public static final String BOT_START_TEXT_PREFIX = "bot.startText.";
+    // «Вместе дешевле» and the gift for the order sum (V57, BundleService).
+    public static final String BUNDLES_GROUP = "bundles";
+    public static final String BUNDLE_ENABLED = "bundle.enabled";
+    public static final String BUNDLE_TIER1_PERCENT = "bundle.tier1Percent";
+    public static final String BUNDLE_TIER2_PERCENT = "bundle.tier2Percent";
+    public static final String BUNDLE_TIER3_PERCENT = "bundle.tier3Percent";
+    public static final String BUNDLE_MAX_ADDON_PRICE_PERCENT = "bundle.maxAddonPricePercent";
+    public static final String BUNDLE_MAX_DISCOUNT_UAH = "bundle.maxDiscountUah";
+    public static final String BUNDLE_MAX_SUGGESTIONS = "bundle.maxSuggestions";
+    public static final String GIFT_ENABLED = "gift.enabled";
+    public static final String GIFT_THRESHOLD_UAH = "gift.thresholdUah";
+    public static final String GIFT_PRODUCT_ID = "gift.productId";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -81,7 +93,10 @@ public final class SettingsRegistry {
             new Group("novaposhta", "Новая Почта", "Справочник отделений и почтоматов."),
             new Group("inbox", "Внимание", "Когда заказ попадает на экран «Внимание» как застрявший."),
             new Group("antibot", "Защита от ботов и спама",
-                    "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."));
+                    "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
+            new Group(BUNDLES_GROUP, "Вместе дешевле и подарок",
+                    "Скидка на аксессуары к товару и подарок за сумму заказа. Пары категорий — "
+                            + "в разделе «Вместе дешевле»."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -126,6 +141,51 @@ public final class SettingsRegistry {
                     "Обращение без новых сообщений дольше этого срока закрывается само (проверка раз в час). "
                             + "Вопрос без ответа магазина не закрывается. 0 — не закрывать.",
                     7, 0, 365, "дн."),
+
+            boolSetting(BUNDLE_ENABLED, BUNDLES_GROUP,
+                    "«Вместе дешевле» включено",
+                    "К товару предлагаются аксессуары (пары категорий — в разделе «Вместе дешевле»), "
+                            + "а на аксессуары в корзине — скидка. С промокодом не суммируется: "
+                            + "заказ получает то, что выгоднее покупателю.",
+                    true),
+            intSetting(BUNDLE_TIER1_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 1 аксессуар",
+                    "Процент на аксессуар, когда к основному товару взят один.",
+                    5, 0, 50, "%"),
+            intSetting(BUNDLE_TIER2_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 2 аксессуара",
+                    "Процент на каждый из двух аксессуаров.",
+                    10, 0, 50, "%"),
+            intSetting(BUNDLE_TIER3_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 3 аксессуара",
+                    "Процент на каждый из трёх (больше трёх со скидкой не идёт — самые дорогие три).",
+                    15, 0, 50, "%"),
+            intSetting(BUNDLE_MAX_ADDON_PRICE_PERCENT, BUNDLES_GROUP,
+                    "Аксессуар не дороже",
+                    "Аксессуар идёт со скидкой и предлагается, только если стоит не больше этой доли "
+                            + "цены основного товара. 50 — к мыши за 3 000 ₴ коврик до 1 500 ₴.",
+                    50, 10, 100, "%"),
+            intSetting(BUNDLE_MAX_DISCOUNT_UAH, BUNDLES_GROUP,
+                    "Потолок скидки на заказ",
+                    "Больше этой суммы скидка «Вместе дешевле» не даёт. 0 — без потолка.",
+                    0, 0, 100000, "₴"),
+            intSetting(BUNDLE_MAX_SUGGESTIONS, BUNDLES_GROUP,
+                    "Сколько предлагать",
+                    "Сколько аксессуаров показывать на странице товара и в корзине.",
+                    3, 1, 6, "шт"),
+            boolSetting(GIFT_ENABLED, BUNDLES_GROUP,
+                    "Подарок за сумму включён",
+                    "Заказ от порога получает выбранный товар в подарок (цена 0, со склада списывается). "
+                            + "В корзине покупатель видит, сколько осталось до подарка.",
+                    false),
+            intSetting(GIFT_THRESHOLD_UAH, BUNDLES_GROUP,
+                    "Порог подарка",
+                    "Сумма заказа после скидки, с которой кладётся подарок.",
+                    3000, 100, 1000000, "₴"),
+            textSetting(GIFT_PRODUCT_ID, BUNDLES_GROUP,
+                    "Товар-подарок",
+                    "Выбирается в разделе «Вместе дешевле». Нет в наличии — подарок не кладётся.",
+                    "", 64),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

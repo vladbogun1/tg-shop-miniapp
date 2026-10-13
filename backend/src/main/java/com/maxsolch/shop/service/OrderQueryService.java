@@ -270,7 +270,8 @@ public class OrderQueryService {
                         .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
                                 e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
                                 e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName()))
-                        .toList());
+                        .toList(),
+                o.getBundleDiscountMinor());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
@@ -380,7 +381,9 @@ public class OrderQueryService {
                 it.getQuantity(),
                 productId == null ? null : thumbnails.get(productId),
                 it.isGift(),
-                it.getReturnedQty());
+                it.getReturnedQty(),
+                it.isBundleAddon(),
+                it.isAutoGift());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

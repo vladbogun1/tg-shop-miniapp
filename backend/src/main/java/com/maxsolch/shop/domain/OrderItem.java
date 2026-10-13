@@ -49,6 +49,14 @@ public class OrderItem {
     @Column(name = "gift", nullable = false)
     private boolean gift = false;
 
+    /** The line got the «Вместе дешевле» discount at checkout (V57; the money is in orders.bundle_discount_minor). */
+    @Column(name = "bundle_addon", nullable = false)
+    private boolean bundleAddon = false;
+
+    /** Gift the shop added by itself for the order sum (V57, BundleService); always with {@code gift}. */
+    @Column(name = "auto_gift", nullable = false)
+    private boolean autoGift = false;
+
     /** Units of this line the customer sent back (partial or full return). */
     @Column(name = "returned_qty", nullable = false)
     private int returnedQty = 0;

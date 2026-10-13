@@ -214,6 +214,10 @@ export interface OrderItem {
   currency?: string;
   imageUrl?: string | null;
   gift?: boolean;
+  /** Got the «Вместе дешевле» discount at checkout (V57). */
+  bundleAddon?: boolean;
+  /** Gift the shop added by itself for the order sum (V57). */
+  autoGift?: boolean;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
@@ -329,6 +333,8 @@ export interface OrderDetail {
   status: OrderStatus;
   subtotalMinor: number;
   discountMinor: number;
+  /** Part of discountMinor given by «Вместе дешевле» (V57); 0 = a promo code or a manual discount. */
+  bundleDiscountMinor?: number;
   totalMinor: number;
   currency: string;
   customerName: string;
