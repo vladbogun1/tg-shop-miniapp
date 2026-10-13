@@ -785,6 +785,8 @@ export interface DispatchItem {
   variantName?: string | null;
   quantity: number;
   priceMinor: number;
+  /** First photo of the product; null when it has none. */
+  imageUrl?: string | null;
 }
 
 /**
