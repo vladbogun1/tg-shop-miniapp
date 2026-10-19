@@ -353,7 +353,10 @@ export function CaseTestModal({
         texts={TEXTS}
         money={money}
         resolveImage={caseImage}
-        onClosableChange={(c) => (closable.current = c)}
+        onClosableChange={(c) => {
+          // Block body: the screen calls this inside an effect, a returned value would be taken for its cleanup.
+          closable.current = c;
+        }}
         onAgain={() => setReel((n) => n + 1)}
         againLabel="Открыть ещё"
       />
