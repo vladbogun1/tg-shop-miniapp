@@ -41,6 +41,7 @@ import { OrderReceipts } from "@/components/account/OrderReceipts";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
+import { CasePrizeNote, ORDER_PAY_ANCHOR, useOrderGiftCase } from "@/components/case/OrderGiftCase";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
@@ -174,6 +175,9 @@ function OrderBody({
     if (created) router.replace(`/account/orders/${id}`, { scroll: false });
   }, [created, router, id]);
 
+  // Gift case (V57): the case card on top (locked until paid), the opening screen (once).
+  const giftCase = useOrderGiftCase(order, created);
+
   const [cancelOpen, setCancelOpen] = useState(false);
   const cancelRef = useRef<HTMLDivElement>(null);
   const openCancel = () => {
@@ -204,9 +208,11 @@ function OrderBody({
         // leave room for the sticky chat bar (button + safe area)
         className="flex flex-col gap-4 pb-28"
       >
+        {giftCase.card && <motion.div variants={riseItem}>{giftCase.card}</motion.div>}
+
         {/* Payment due or just paid: the action / «Оплачено» goes first, receipts right under it. */}
         {payFirst && (
-          <motion.div variants={riseItem} className="flex flex-col gap-4">
+          <motion.div variants={riseItem} id={ORDER_PAY_ANCHOR} className="flex scroll-mt-4 flex-col gap-4">
             {payment}
             {receipts}
           </motion.div>
@@ -279,9 +285,9 @@ function OrderBody({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-[14px] font-semibold text-[var(--ink)]">
-                    {it.gift && (
+                    {(it.gift || it.autoGift) && (
                       <span className="font-display mr-1 inline-block rounded-full bg-[var(--c3)] px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
-                        {t("order.giftBadge")}
+                        {it.autoGift ? t("case.giftLine") : t("order.giftBadge")}
                       </span>
                     )}
                     {it.title}
@@ -291,8 +297,9 @@ function OrderBody({
                       {it.variantName}
                     </p>
                   )}
+                  {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} />}
                   <p className="mt-0.5 text-[12px] font-medium text-[var(--faint)]">
-                    {it.gift
+                    {it.gift || it.autoGift
                       ? it.quantity > 1
                         ? t("order.giftMany", { n: it.quantity })
                         : t("order.gift")
@@ -300,7 +307,7 @@ function OrderBody({
                   </p>
                 </div>
                 <span className="font-display shrink-0 text-[14px] font-bold tabular-nums text-[var(--ink)]">
-                  {it.gift
+                  {it.gift || it.autoGift
                     ? "0 ₴"
                     : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
                 </span>
@@ -389,6 +396,8 @@ function OrderBody({
           </motion.section>
         )}
       </motion.div>
+
+      {giftCase.overlay}
 
       {/* sticky chat CTA — within thumb reach, above the TabBar */}
       <div

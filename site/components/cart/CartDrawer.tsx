@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { useEscape, useScrollLock } from "@/lib/hooks";
@@ -85,7 +86,14 @@ export function CartDrawer() {
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              {lines.length === 0 ? <CartEmpty onNavigate={close} /> : <CartLines onNavigate={close} compact />}
+              {lines.length === 0 ? (
+                <CartEmpty onNavigate={close} />
+              ) : (
+                <>
+                  <CartLines onNavigate={close} compact />
+                  <CartGiftProgress totalMinor={subtotal} compact className="mt-3" />
+                </>
+              )}
             </div>
 
             {lines.length > 0 && (

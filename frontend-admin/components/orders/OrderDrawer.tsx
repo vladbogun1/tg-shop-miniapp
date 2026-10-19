@@ -51,6 +51,10 @@ import { TrackingModal } from "./TrackingModal";
 import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
+import { GiftCaseModal } from "./GiftCaseModal";
+import { CASE_RARITY_LABEL } from "@/lib/gift";
+import { caseDiscountText, type CaseTier } from "@shop/shared";
+import { money } from "@/lib/money";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
@@ -93,6 +97,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [caseOpen, setCaseOpen] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -281,6 +286,31 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       setExchangeOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["order-audit", id] });
+    }
+  }
+
+  /** «🎁 Выдать кейс»: the server draws the prize now; the toast names it. */
+  async function grantCase(tier: CaseTier, notifyCustomer: boolean) {
+    const id = orderId;
+    if (!id) return;
+    let prize = "";
+    const ok = await run(
+      "gift-case",
+      async () => {
+        const updated = await ordersApi.grantGiftCase(id, tier, notifyCustomer);
+        const it = updated.items.find((x) => x.gift && x.caseRarity);
+        const won = updated.gift?.prize;
+        if (it?.caseRarity) prize = `${it.title} · ${CASE_RARITY_LABEL[it.caseRarity]}`;
+        else if (won?.kind === "DISCOUNT") prize = `скидка ${caseDiscountText(won, (m) => money(m, updated.currency))} · ${CASE_RARITY_LABEL[won.rarity]}`;
+        return updated;
+      },
+      undefined,
+      "Не удалось выдать кейс"
+    );
+    if (ok) {
+      push(prize ? `Выпало: ${prize}` : "Кейс выдан", "ok");
+      setCaseOpen(false);
+      qc.invalidateQueries({ queryKey: ["products"] });
     }
   }
 
@@ -513,6 +543,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onChangeQty: changeQty,
                       onRemoveItem: removeItem,
                       onAddItem: () => setGiftOpen(true),
+                      onGiftCase: () => setCaseOpen(true),
                       onDiscount: () => setDiscountOpen(true),
                       onEditDelivery: () => setDeliveryOpen(true),
                       onEditTracking: () => setTrackingOpen(true),
@@ -655,6 +686,13 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         orderId={orderId}
         onClose={() => setGiftOpen(false)}
         onDone={refreshLists}
+      />
+
+      <GiftCaseModal
+        open={caseOpen}
+        loading={busyKey === "gift-case"}
+        onClose={() => setCaseOpen(false)}
+        onConfirm={(tier, notify) => void grantCase(tier, notify)}
       />
 
       <DiscountModal

@@ -18,6 +18,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
 import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
@@ -176,6 +177,8 @@ export default function CartPage() {
         currency={currency}
         preview={promo}
       />
+
+      <CartGiftProgress totalMinor={total} currency={currency} />
 
       {/* totals card */}
       <div className="nb hud-frame mt-5 p-4">

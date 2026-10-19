@@ -25,13 +25,16 @@ public final class StructuredEvents {
     public static final String ORDER_CREATED = "order_created";
     public static final String COMPARE_ADD = "compare_add";
     public static final String COMPARE_OPEN = "compare_open";
+    /** Gift case: the opening screen played (meta: orderId, rarity). */
+    public static final String GIFT_CASE_OPEN = "gift_case_open";
 
     /**
      * What an anonymous website visitor may write. Clicks carry only a label of what was tapped and,
      * in {@code meta}, a description of the element actually hit — never field values.
      */
     public static final Set<String> WEB_ALLOWED = Set.of(
-            "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED, COMPARE_ADD, COMPARE_OPEN);
+            "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED, COMPARE_ADD, COMPARE_OPEN,
+            GIFT_CASE_OPEN);
 
     private StructuredEvents() {
     }

@@ -102,6 +102,11 @@ export function trackAddToCart(productId: string, variantId: string | null, qty:
   track("add_to_cart", undefined, JSON.stringify({ productId, variantId, qty }));
 }
 
+/** The gift case of an order was opened (the prize shown); `rarity` of the prize. */
+export function trackGiftCaseOpen(orderId: string, rarity: string) {
+  track("gift_case_open", undefined, JSON.stringify({ orderId, rarity }));
+}
+
 /** The checkout screen was opened with something in the cart. */
 export function trackCheckoutStart() {
   track("checkout_start");

@@ -1,5 +1,8 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.gift.GiftCaseTier;
+import com.maxsolch.shop.gift.GiftService;
+import com.maxsolch.shop.gift.OrderGiftCase;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
@@ -35,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +84,14 @@ public class OrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setPaymentInvoices(PaymentInvoiceRepository paymentInvoices) {
         this.paymentInvoices = paymentInvoices;
+    }
+
+    /** The gift for the order sum / the gift case (optional: unit tests build the service without it). */
+    private GiftService giftService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGiftService(GiftService giftService) {
+        this.giftService = giftService;
     }
 
     public OrderService(OrderRepository orderRepository,
@@ -166,10 +178,21 @@ public class OrderService {
         // pair of products would otherwise be able to deadlock against each other.
         List<AccLine> lines = new ArrayList<>(acc.values());
         lines.sort(Comparator.comparing(l -> l.productId));
-        for (AccLine line : lines) {
+        // The gift for the order sum is locked in the same id order, up front: taking its row after
+        // the cart's could deadlock with an order that has the gift product in its cart.
+        Optional<GiftService.GiftConfig> giftCfg = giftService == null
+                ? Optional.empty() : giftService.giftConfig();
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
+        lines.forEach(l -> lockIds.add(l.productId));
+        giftCfg.ifPresent(g -> lockIds.addAll(g.productIds()));
+        for (String id : lockIds) {
             // FOR UPDATE: the stock check and the decrement below must not interleave with another
             // checkout, or both orders pass "one left in stock" and the shop oversells.
-            Product product = productRepository.findByIdForUpdate(toBytes(line.productId, "productId"))
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        for (AccLine line : lines) {
+            Product product = locked.get(line.productId)
                     .orElseThrow(() -> new BadRequestException(messages.current("api.order.productUnknown")));
             if (!product.isActive() || product.isArchived()) {
                 throw new BadRequestException(messages.current("api.order.unavailable", product.getTitle()));
@@ -220,8 +243,17 @@ public class OrderService {
         order.setDiscountMinor(discount);
         order.setTotalMinor(Math.max(0, subtotal - discount));
 
+        // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
+        // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
+        OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave))
+                .orElse(null);
+
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
+        if (drawn != null) {
+            drawn.setOrderId(saved.getId());
+            giftService.saveOrderCase(drawn);
+        }
 
         // The ordered lines leave the customer's server cart in the same transaction, so every
         // device sees them gone at once — and a failed order leaves the cart untouched.
@@ -745,6 +777,17 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order item not found"));
         restoreItemStock(item);
         order.getItems().remove(item);
+        if (item.isAutoGift() && item.getCaseRarity() != null) {
+            // The case prize is gone: no case left to open.
+            order.setGiftCaseStatus(null);
+            order.setGiftCaseOpenedAt(null);
+            if (order.getGiftDiscountMinor() <= 0) {
+                order.setGiftTier(null);
+            }
+            if (giftService != null) {
+                giftService.deleteOrderCase(order.getId());
+            }
+        }
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -820,7 +863,9 @@ public class OrderService {
         }
 
         order.setSubtotalMinor(subtotal);
-        order.setDiscountMinor(Math.min(Math.max(0, discount), subtotal));
+        // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
+        order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
+        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
         order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
@@ -1073,8 +1118,228 @@ public class OrderService {
         order.setSubtotalMinor(subtotal);
         long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
         order.setDiscountMinor(discount);
+        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
         order.setTotalMinor(Math.max(0, subtotal - discount));
     }
+
+    /**
+     * The gift for the order sum (settings «Подарок за сумму (кейсы)»): one unit at price 0, the
+     * variant with the most stock. Out of stock or hidden — the order simply goes without it.
+     */
+    private boolean addThresholdGift(Order order, Product product, List<Product> toSave, String caseRarity) {
+        if (!giftable(product)) {
+            return false;
+        }
+        ProductVariant variant = null;
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            variant = product.getVariants().stream()
+                    .filter(v -> v.getStock() > 0)
+                    .max(Comparator.comparingInt(ProductVariant::getStock))
+                    .orElseThrow();
+        }
+        reserveStock(product, variant, 1);
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProductId(product.getId());
+        item.setTitleSnapshot(product.getTitle());
+        item.setPriceMinorSnapshot(0);
+        item.setQuantity(1);
+        item.setGift(true);
+        item.setAutoGift(true);
+        item.setCaseRarity(caseRarity);
+        if (variant != null) {
+            item.setVariantId(variant.getId());
+            item.setVariantNameSnapshot(variant.getName());
+        }
+        order.getItems().add(item);
+        toSave.add(product);
+        return true;
+    }
+
+    /** Can be given away now: visible, and a unit (of some variant) in stock. */
+    private static boolean giftable(Product product) {
+        if (!product.isActive() || product.isArchived()) {
+            return false;
+        }
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            return product.getVariants().stream().anyMatch(v -> v.getStock() > 0);
+        }
+        return product.getStock() > 0;
+    }
+
+    private static final java.security.SecureRandom CASE_RANDOM = new java.security.SecureRandom();
+
+    /**
+     * The gift of a new order: walks the tiers its total reaches, dearest first. The customer took the
+     * guaranteed discount ({@code choice} DISCOUNT, the tier offers one) — it comes off this order and
+     * there is no case. Otherwise a prize of the tier is drawn among those that can drop (a cheaper
+     * tier when none can). Without a case the single gift product is the fallback.
+     *
+     * @return the prize record to save once the order has its id; null = no case
+     */
+    private OrderGiftCase applyThresholdGift(Order order, GiftService.GiftConfig g, String choice,
+                                             Map<String, Optional<Product>> locked, List<Product> toSave) {
+        long total = order.getTotalMinor();
+        List<GiftService.TierConfig> reached = g.reached(total);
+        if (!reached.isEmpty() && GiftService.CHOICE_DISCOUNT.equalsIgnoreCase(String.valueOf(choice))) {
+            GiftService.TierConfig top = reached.get(0);
+            long d = top.guaranteedDiscountMinor(total);
+            if (d > 0) {
+                order.setGiftTier(top.tier().name());
+                order.setGiftDiscountMinor(d);
+                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
+                order.setTotalMinor(Math.max(0, order.getSubtotalMinor() - order.getDiscountMinor()));
+                return null;
+            }
+        }
+        for (GiftService.TierConfig tier : reached) {
+            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftableIn(locked), CASE_RANDOM);
+            if (prize.isPresent()) {
+                OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
+                if (rec != null) {
+                    return rec;
+                }
+            }
+        }
+        if (g.productId() != null && total >= g.thresholdMinor()) {
+            locked.getOrDefault(g.productId(), Optional.empty())
+                    .ifPresent(p -> addThresholdGift(order, p, toSave, null));
+        }
+        return null;
+    }
+
+    private static java.util.function.Predicate<String> giftableIn(Map<String, Optional<Product>> locked) {
+        return id -> id != null && locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent();
+    }
+
+    /** Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening. */
+    private OrderGiftCase placeCasePrize(Order order, GiftCaseTier.Tier tier, GiftService.CaseEntry prize,
+                                         Map<String, Optional<Product>> locked, List<Product> toSave) {
+        String title = null;
+        if (!prize.isDiscount()) {
+            Product p = locked.getOrDefault(prize.productId(), Optional.empty()).orElse(null);
+            if (p == null || !addThresholdGift(order, p, toSave, prize.rarity())) {
+                return null;
+            }
+            title = p.getTitle();
+        }
+        order.setGiftTier(tier.name());
+        order.setGiftCaseStatus(GIFT_CASE_SEALED);
+        order.setGiftCaseOpenedAt(null);
+        return GiftService.record(order.getId(), prize, title);
+    }
+
+    /**
+     * Customer opens the gift case of their order: SEALED → OPENED, exactly once. Only a paid order
+     * (the online part arrived) — otherwise a customer could order, peek and cancel. The prize was
+     * drawn by the server before (checkout / admin), opening only reveals it.
+     */
+    @Transactional
+    public Order openGiftCase(byte[] orderId) {
+        Order order = lock(orderId);
+        if (order.getGiftCaseStatus() == null) {
+            throw new BadRequestException(messages.current("api.giftCase.none"), GIFT_CASE_NONE);
+        }
+        if (GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
+            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GIFT_CASE_ALREADY_OPENED);
+        }
+        if (!giftCaseOpenable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GIFT_CASE_UNPAID);
+        }
+        order.setGiftCaseStatus(GIFT_CASE_OPENED);
+        order.setGiftCaseOpenedAt(Instant.now());
+        return orderRepository.save(order);
+    }
+
+    /** A sealed case can be opened: the order is paid (online part arrived) and not rejected. */
+    public static boolean giftCaseOpenable(Order order) {
+        if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
+            return false;
+        }
+        return order.isPaid() || (order.getReceivedMinor() > 0 && amountDueMinor(order) == 0);
+    }
+
+    /** The prize line of the order's case (a product prize that is still in the order). */
+    public static Optional<OrderItem> casePrizeLine(Order order) {
+        return order.getItems().stream().filter(i -> i.isAutoGift() && i.getCaseRarity() != null).findFirst();
+    }
+
+    /** Swapping the case prize is possible while the order is still being put together. */
+    public static boolean giftCaseSwappable(Order order) {
+        return GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())
+                && (order.getStatus() == OrderStatus.NEW || order.getStatus() == OrderStatus.APPROVED)
+                && casePrizeLine(order).isPresent();
+    }
+
+    /**
+     * The customer swaps the opened case's product prize for a code (GiftCaseService decides whether
+     * it is similar and what it is worth): the line leaves the order and its unit goes back to stock.
+     */
+    @Transactional
+    public Order removeCasePrizeForSwap(byte[] orderId) {
+        Order order = lock(orderId);
+        if (!giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GIFT_CASE_SWAP_UNAVAILABLE);
+        }
+        OrderItem item = casePrizeLine(order).orElseThrow();
+        restoreItemStock(item);
+        order.getItems().remove(item);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /** The order locked for an update (the gift case reads and changes it in one transaction). */
+    @Transactional
+    public Order lockForGiftCase(byte[] orderId) {
+        return lock(orderId);
+    }
+
+    /**
+     * Admin gives a gift case of a tier to an order (any sum): the prize is drawn now among the tier's
+     * prizes (products in stock, discounts) and sealed into the order; the customer opens it once the
+     * order is paid.
+     */
+    @Transactional
+    public Order grantGiftCase(byte[] orderId, GiftCaseTier.Tier tier, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (order.getGiftCaseStatus() != null) {
+            throw new BadRequestException("У заказа уже есть кейс");
+        }
+        GiftService.TierConfig cfg = (giftService == null
+                ? Optional.<GiftService.TierConfig>empty() : giftService.tier(tier))
+                .orElseThrow(() -> new BadRequestException("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
+        // Prize rows locked in id order, like the checkout.
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        for (String id : new java.util.TreeSet<>(cfg.prizes().stream().map(GiftService.CaseEntry::productId)
+                .filter(java.util.Objects::nonNull).toList())) {
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableIn(locked), CASE_RANDOM)
+                .orElseThrow(() -> new BadRequestException("Ни одного приза этого кейса нет в наличии"));
+        List<Product> toSave = new ArrayList<>();
+        OrderGiftCase rec = placeCasePrize(order, tier, prize, locked, toSave);
+        if (rec == null) {
+            throw new BadRequestException("Приз закончился — попробуйте ещё раз");
+        }
+        productRepository.saveAll(toSave);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        rec.setOrderId(saved.getId());
+        giftService.saveOrderCase(rec);
+        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
+                null, null, 1));
+        return saved;
+    }
+
+    public static final String GIFT_CASE_SEALED = "SEALED";
+    public static final String GIFT_CASE_OPENED = "OPENED";
+    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
+    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
+    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
+    public static final String GIFT_CASE_SWAP_UNAVAILABLE = "GIFT_CASE_SWAP_UNAVAILABLE";
 
     /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
     private void releasePromoUsage(String code) {
@@ -1096,6 +1361,10 @@ public class OrderService {
      * depending on whether the order still awaits shipment.
      */
     private Order afterTransition(Order order) {
+        if (order.getStatus() == OrderStatus.REJECTED && giftService != null) {
+            // An unused code from the case (a discount prize, a swap) goes with the order.
+            giftService.revokeCasePromo(order.getId());
+        }
         Order saved = orderRepository.save(order);
         events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
         return saved;

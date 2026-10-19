@@ -23,6 +23,7 @@ import type { TFunction } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { toast } from "@/components/ui/Toast";
 import { api, ApiError } from "@/lib/api";
+import { ORDER_PAY_ANCHOR } from "@/components/case/OrderGiftCase";
 import { useFmt } from "@/lib/use-fmt";
 import { PaymentModal, type PaymentModalClose } from "./PaymentModal";
 
@@ -350,7 +351,7 @@ export function OrderPayment({
     const failed = p.status === "failure";
 
     return (
-      <section className="nb hud-frame p-5 sm:p-6">
+      <section id={ORDER_PAY_ANCHOR} className="nb hud-frame scroll-mt-24 p-5 sm:p-6">
         {created ? (
           <div className="mb-4">
             <p className="flex items-center gap-2 font-display text-[18px] font-bold uppercase tracking-[.04em] text-[var(--ok)] sm:text-[20px]">

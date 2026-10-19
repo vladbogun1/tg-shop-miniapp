@@ -94,6 +94,10 @@ import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { giftProgress, guaranteedDiscountMinor, type GiftChoice, type GiftTierInfo } from "@shop/shared";
+import { caseTierAsset, GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
+import { caseMoney } from "@/components/case/OrderGiftCase";
+import { useGift } from "@/lib/gift";
 
 const STEP_KEYS = [
   "checkout.step.contacts",
@@ -261,7 +265,15 @@ export default function CheckoutPage() {
   const promoPreview = promo.data;
   const discount = promo.discount;
   const promoValid = promo.data?.valid === true;
-  const total = Math.max(0, subtotal - discount);
+  const baseTotal = Math.max(0, subtotal - discount);
+  const giftNow = giftProgress(useGift(), baseTotal);
+  const gift = giftNow?.reached ? giftNow : null;
+  // Gift tier reached: the customer picks the case (default) or the tier's guaranteed discount on
+  // this order — the server counts both from the total after the promo code, like here.
+  const [giftChoice, setGiftChoice] = useState<GiftChoice>("CASE");
+  const giftTier = gift?.kind === "CASE" ? gift.tier : null;
+  const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
+  const total = baseTotal - giftDiscount;
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If the
   // customer had picked one and the total then dropped (promo, quantity), the choice moves to the
@@ -330,6 +342,7 @@ export default function CheckoutPage() {
       npWarehouseName:
         delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
       paymentOptionId: chosenPayment!.id,
+      giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
     };
     try {
       // A quantity change still in its debounce must reach the server cart BEFORE the order removes
@@ -338,6 +351,7 @@ export default function CheckoutPage() {
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       trackOrderCreated(orderId);
+      if (giftTier && giftDiscount === 0) markGiftCaseAutoOpen(orderId);
       haptic();
       cartAfterOrder(lines.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
@@ -415,8 +429,9 @@ export default function CheckoutPage() {
     );
   }
 
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
   const primaryLabel =
-    step < 3 ? t("common.next") : t("checkout.submit");
+    step < 3 ? t("common.next") : gift?.kind === "CASE" && giftDiscount === 0 ? t("case.submit") : t("checkout.submit");
 
   return (
     <div className="pt-1">
@@ -500,6 +515,20 @@ export default function CheckoutPage() {
               promoMessage={promoPreview && !promoPreview.valid ? promoPreview.message ?? null : null}
               subtotal={subtotal}
               discount={discount}
+              gift={
+                gift
+                  ? gift.kind === "CASE" || !gift.product
+                    ? giftDiscount > 0
+                      ? null
+                      : { title: giftTier ? t(`case.tier.${giftTier.tier}`) : t("case.line"), isCase: true, tier: giftTier?.tier ?? null }
+                    : { title: gift.product.title }
+                  : null
+              }
+              giftTier={giftTier && giftTier.guaranteedPercent > 0 ? giftTier : null}
+              giftChoice={giftChoice}
+              onGiftChoice={setGiftChoice}
+              giftDiscount={giftDiscount}
+              baseTotal={baseTotal}
               total={total}
               dueNow={dueNow}
               currency={currency}
@@ -988,6 +1017,12 @@ function ConfirmStep({
   promoMessage,
   subtotal,
   discount,
+  gift,
+  giftTier,
+  giftChoice,
+  onGiftChoice,
+  giftDiscount,
+  baseTotal,
   total,
   dueNow,
   currency,
@@ -1004,6 +1039,16 @@ function ConfirmStep({
   promoMessage: string | null;
   subtotal: number;
   discount: number;
+  /** The gift for the order sum, when this order earns it. */
+  gift: { title: string; isCase?: boolean; tier?: GiftTierInfo["tier"] | null } | null;
+  /** The reached tier when it offers a guaranteed discount instead of the case (null = no choice). */
+  giftTier: GiftTierInfo | null;
+  giftChoice: GiftChoice;
+  onGiftChoice: (v: GiftChoice) => void;
+  /** The guaranteed gift discount chosen (part of the total shown, on top of `discount`). */
+  giftDiscount: number;
+  /** The total before the gift discount (what the discount is counted from). */
+  baseTotal: number;
   total: number;
   /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
   dueNow: number;
@@ -1018,6 +1063,26 @@ function ConfirmStep({
 
   return (
     <div className="flex flex-col gap-4">
+      {giftTier && (
+        <GiftChoicePicker
+          tier={giftTier}
+          totalMinor={baseTotal}
+          value={giftChoice}
+          onChange={(v) => {
+            haptic();
+            onGiftChoice(v);
+          }}
+          money={caseMoney}
+          texts={{
+            title: t("case.choice.title"),
+            tierName: t(`case.tier.${giftTier.tier}`),
+            caseTitle: t("case.choice.caseTitle"),
+            caseText: t("case.choice.caseText"),
+            discountTitle: t("case.choice.discountTitle"),
+            discountText: t("case.choice.discountText"),
+          }}
+        />
+      )}
       <section className="hud-frame rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]">
         <h3 className="eyebrow mb-2 !text-[10px] !tracking-[0.2em]">
           {t("checkout.confirm.items")}
@@ -1033,9 +1098,25 @@ function ConfirmStep({
             </span>
           </div>
         ))}
+        {gift && (
+          <div className="flex items-center justify-between gap-2 py-1.5">
+            {gift.isCase ? (
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-[14px] font-semibold text-[var(--ink)]">
+                <img src={caseTierAsset("/case", gift.tier ?? null, "case-closed-sm.webp")} alt="" className="h-8 w-12 shrink-0 object-contain" />
+                <span className="line-clamp-2">{gift.title}</span>
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 text-[14px] font-semibold text-[var(--ink)]">
+                <span className="line-clamp-2">{gift.title}</span>
+                <span className="block text-[12px] font-medium text-[var(--muted)]">{t("case.giftLine")}</span>
+              </span>
+            )}
+            <span className="font-display text-[14px] font-semibold tabular-nums text-[var(--ok)]">{money(0, currency)}</span>
+          </div>
+        )}
         <div className="my-3 h-px bg-[var(--line)]" />
 
-        {discount > 0 && (
+        {(discount > 0 || giftDiscount > 0) && (
           <>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.confirm.sum")}</span>
@@ -1043,6 +1124,7 @@ function ConfirmStep({
                 {money(subtotal, currency)}
               </span>
             </div>
+            {discount > 0 && (
             <div className="flex items-center justify-between py-0.5">
               <span className="text-[13px] font-semibold text-[var(--muted)]">
                 {promoCode
@@ -1053,6 +1135,13 @@ function ConfirmStep({
                 −{money(discount, currency)}
               </span>
             </div>
+            )}
+            {giftDiscount > 0 && (
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-[13px] font-semibold text-[var(--muted)]">{t("case.lineDiscount")}</span>
+                <span className="font-display text-[14px] font-bold tabular-nums text-[var(--ok)]">−{money(giftDiscount, currency)}</span>
+              </div>
+            )}
             <div className="my-2 h-px bg-[var(--line)]" />
           </>
         )}

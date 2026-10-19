@@ -79,6 +79,14 @@ public class MeController {
     /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
     private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** Opening the gift case (V57); a setter so the unit tests' constructor stays as it is. */
+    private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setGiftCaseService(com.maxsolch.shop.gift.GiftCaseService giftCaseService) {
+        this.giftCaseService = giftCaseService;
+    }
+
     public MeController(UserRepository userRepository,
                         AdminUserRepository adminUserRepository,
                         OrderRepository orderRepository,
@@ -213,6 +221,40 @@ public class MeController {
     @Operation(summary = "Get one of my orders")
     public OrderDetailDto myOrder(@PathVariable String id, Locale locale) {
         return orderQueryService.toDetail(ownedOrder(id), ContentLocale.normalize(locale));
+    }
+
+    @PostMapping("/orders/{id}/gift-case/open")
+    @Operation(summary = "Open the gift case of my order (once, paid orders only): the prize drawn at checkout, "
+            + "the tier's prizes for the reel, the code of a discount prize and the swap offer")
+    public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
+        Order order = ownedOrder(id);
+        com.maxsolch.shop.gift.GiftDtos.CaseOpenDto opened =
+                giftCaseService.open(order.getId(), ContentLocale.normalize(locale));
+        journal(ActivityLog.fromRequest("GIFT_CASE_OPENED").order(order.getId())
+                .text("Покупатель открыл кейс (" + opened.tier() + "): " + prizeText(opened.won())
+                        + " (" + opened.won().rarity() + ")"));
+        return opened;
+    }
+
+    @PostMapping("/orders/{id}/gift-case/swap")
+    @Operation(summary = "Swap the case prize (similar to what I bought) for a personal code on the next order; "
+            + "the prize leaves the order. 400 GIFT_CASE_SWAP_UNAVAILABLE when it is not offered")
+    public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapGiftCase(@PathVariable String id, Locale locale) {
+        Order order = ownedOrder(id);
+        com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapped =
+                giftCaseService.swap(order.getId(), ContentLocale.normalize(locale));
+        journal(ActivityLog.fromRequest("GIFT_CASE_SWAPPED").order(order.getId())
+                .text("Покупатель заменил приз кейса «" + swapped.won().title() + "» на промокод −"
+                        + swapped.swap().amountMinor() / 100 + " ₴"));
+        return swapped;
+    }
+
+    private static String prizeText(com.maxsolch.shop.gift.GiftDtos.CaseItemDto won) {
+        if ("DISCOUNT".equals(won.kind())) {
+            return won.discountPercent() > 0 ? "скидка " + won.discountPercent() + " %"
+                    : "скидка " + won.discountAmountMinor() / 100 + " ₴";
+        }
+        return won.title();
     }
 
     @GetMapping("/orders/{id}/messages")

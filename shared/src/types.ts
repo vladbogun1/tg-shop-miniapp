@@ -16,6 +16,7 @@ export type TimeRange = "month" | "halfyear" | "year" | "all";
 // ---- catalog ----------------------------------------------------------------
 
 import type { CatalogFields } from "./catalog";
+import type { OrderGift } from "./giftcase";
 
 export interface ProductImage {
   /** Auto-increment id from the database. */
@@ -214,6 +215,10 @@ export interface OrderItem {
   currency?: string;
   imageUrl?: string | null;
   gift?: boolean;
+  /** Gift the shop added by itself for the order sum (V57). */
+  autoGift?: boolean;
+  /** Rarity of the gift-case prize (V57); null = not from a case. */
+  caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
@@ -309,6 +314,10 @@ export interface OrderSummary {
   amountDueMinor?: number;
   /** My cancellation request of a paid order; null = none. */
   cancelRequestStatus?: CancelRequestStatus | null;
+  /** Gift case (V57): SEALED = waits to be opened. */
+  giftCaseStatus?: "SEALED" | "OPENED" | null;
+  /** SEALED and the order is paid (not rejected): the customer can open it now. */
+  giftCaseOpenable?: boolean;
 }
 
 /** Customer's request to cancel a PAID order (one per order). */
@@ -329,6 +338,15 @@ export interface OrderDetail {
   status: OrderStatus;
   subtotalMinor: number;
   discountMinor: number;
+  /** Gift case (V57): null = none; SEALED = waits to be opened (its prize line is hidden until then); OPENED. */
+  giftCaseStatus?: "SEALED" | "OPENED" | null;
+  giftCaseOpenedAt?: string | null;
+  /** SEALED and the order is paid (not rejected): opens now; otherwise only after payment. Opens once. */
+  giftCaseOpenable?: boolean;
+  /** Part of discountMinor that is the guaranteed gift discount (the customer chose it instead of the case). */
+  giftDiscountMinor?: number;
+  /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
+  gift?: OrderGift | null;
   totalMinor: number;
   currency: string;
   customerName: string;

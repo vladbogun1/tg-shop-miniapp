@@ -13,6 +13,8 @@ import {
   type Conversation,
   createHttpClient,
   type CreateOrderResult,
+  type GiftCaseOpen,
+  type GiftResponse,
   getActiveLocale,
   getActiveTag,
   type Message,
@@ -191,6 +193,8 @@ export interface CreateOrderRequest {
   npWarehouseRef?: string;
   npWarehouseName?: string;
   paymentOptionId: string;
+  /** Gift for the order sum: CASE (default) or the tier's guaranteed DISCOUNT on this order. */
+  giftChoice?: "CASE" | "DISCOUNT";
 }
 
 /** GET /api/app-info — public, no sign-in needed (the payment return page uses it). */
@@ -222,6 +226,8 @@ export const customerApi = {
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   /** Anti-bot order limits (0 = no limit): quantity steppers clamp to maxQtyPerProduct. */
   getOrderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
+  /** Gift for the order sum / gift case (lib/gift.ts); `gift: null` = off. */
+  getGift: () => http.get<GiftResponse>("/api/public/gift"),
   /** What a promo code is worth for this cart — read-only, does not consume a use. */
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(
@@ -308,6 +314,9 @@ export const customerApi = {
   refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and server-relative. */
   getReceipts: (id: string) => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`),
+  /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
+  openGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`),
+  swapGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/swap`),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

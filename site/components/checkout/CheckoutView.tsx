@@ -25,6 +25,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type DeliveryMethod,
   formatPhone,
+  giftProgress,
+  guaranteedDiscountMinor,
+  type GiftChoice,
   isOrderLimitCode,
   isValidPhone,
   type NpCity,
@@ -37,6 +40,7 @@ import {
   resolveNpWarehouse,
   visiblePaymentOptions,
 } from "@shop/shared";
+import { CheckoutGiftLine } from "@/components/case/CheckoutGiftLine";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -45,6 +49,7 @@ import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
+import { useGift } from "@/lib/gift";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
@@ -55,6 +60,8 @@ import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
+import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
+import { useCaseMoney } from "@/components/case/OrderGiftCase";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -270,7 +277,17 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const promo = usePromoPreview(promoCode, subtotal);
   const promoValid = promo.data?.valid === true;
   const discount = promo.discount;
-  const total = Math.max(0, subtotal - discount);
+  const baseTotal = Math.max(0, subtotal - discount);
+  const giftInfo = useGift();
+  const giftNow = giftProgress(giftInfo, baseTotal);
+  const gift = giftNow?.reached ? giftNow : null;
+  // Gift tier reached: the case (default) or the tier's guaranteed discount on this order — counted
+  // from the total after the promo code, like the server does.
+  const [giftChoice, setGiftChoice] = useState<GiftChoice>("CASE");
+  const giftTier = gift?.kind === "CASE" ? gift.tier : null;
+  const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
+  const total = baseTotal - giftDiscount;
+  const caseMoney = useCaseMoney();
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If it
   // was picked and the total then dropped (promo, quantity), the choice moves to the first
@@ -327,6 +344,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
       npWarehouseName: delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
       paymentOptionId: chosen!.id,
+      giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
     };
     try {
       // A quantity change still in its debounce must reach the server cart BEFORE the order removes
@@ -334,6 +352,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
       trackOrderCreated(created.orderId);
+      if (giftTier && giftDiscount === 0) markGiftCaseAutoOpen(created.orderId);
       cartAfterOrder(orderable.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
@@ -356,7 +375,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     }
   }
 
-  const submitLabel = t("checkout.submit");
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
+  const submitLabel = gift?.kind === "CASE" && giftDiscount === 0 ? t("case.submit") : t("checkout.submit");
   // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
   // the fields and the map open, so it can be changed in place.
   const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
@@ -590,7 +610,25 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
                 </li>
               ))}
+              {gift && giftDiscount === 0 && <CheckoutGiftLine gift={gift} currency={currency} />}
             </ul>
+            {giftTier && giftTier.guaranteedPercent > 0 && (
+              <GiftChoicePicker
+                tier={giftTier}
+                totalMinor={baseTotal}
+                value={giftChoice}
+                onChange={setGiftChoice}
+                money={caseMoney}
+                texts={{
+                  title: t("case.choice.title"),
+                  tierName: t(`case.tier.${giftTier.tier}` as "case.tier.GOLD"),
+                  caseTitle: t("case.choice.caseTitle"),
+                  caseText: t("case.choice.caseText"),
+                  discountTitle: t("case.choice.discountTitle"),
+                  discountText: t("case.choice.discountText"),
+                }}
+              />
+            )}
             <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
               <Row label={t("checkout.sum")} value={fmt.money(subtotal, currency)} />
               {discount > 0 && (
@@ -600,6 +638,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   tone="ok"
                 />
               )}
+              {giftDiscount > 0 && <Row label={t("case.lineDiscount")} value={`−${fmt.money(giftDiscount, currency)}`} tone="ok" />}
               <Row label={t("checkout.deliveryCost")} value={t("checkout.deliveryCostValue")} muted />
             </div>
             <div className="flex items-center justify-between">

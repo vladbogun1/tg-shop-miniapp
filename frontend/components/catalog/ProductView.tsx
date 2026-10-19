@@ -11,6 +11,7 @@ import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
+import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { CompareViewButton } from "@/components/compare/CompareBits";
 import { compareGroupOf } from "@shop/shared";
 import { useCompare } from "@/lib/compare";
@@ -219,6 +220,8 @@ function ViewBody({
                 </div>
               </div>
             )}
+
+            <ProductGiftBanner priceMinor={product.priceMinor} currency={product.currency ?? "UAH"} />
 
             <SpecsTable schema={schema} product={product} />
 

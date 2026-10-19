@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { useHydrated } from "@/lib/hooks";
@@ -38,6 +39,7 @@ export function CartPageBody() {
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <CartLines />
           <aside className="nb hud-frame h-fit p-5 lg:sticky lg:top-[140px]">
+            <CartGiftProgress totalMinor={subtotal} className="mb-4" />
             <div className="flex items-center justify-between">
               <span className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("cart.total")}</span>
               <span className="font-display text-[22px] font-bold tabular-nums text-[var(--accent)]">

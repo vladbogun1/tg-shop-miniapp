@@ -1,0 +1,5 @@
+Visual style for the ChiSetup gaming-gear shop "gift case" (a loot case like Counter-Strike weapon cases, but our own brand):
+- Palette: near-black graphite #141414 / #1a1a1a, matte carbon-fibre texture, crisp white #f2f2f2 accents, hot orange #ff6a00 → #ff8a1f as the only accent colour, glowing.
+- Shapes: angular, chamfered (cut) corners at 45°, like the ChiSetup logo — corner brackets, sharp bevels, no rounded cartoon shapes.
+- Rendering: high-end 3D product render, studio lighting, subtle rim light in orange, realistic materials (matte plastic, brushed metal latches, carbon), sharp details, game UI quality like CS2 / Valorant item art.
+- No real third-party brands, no words or letters except the given emblem, no watermark.

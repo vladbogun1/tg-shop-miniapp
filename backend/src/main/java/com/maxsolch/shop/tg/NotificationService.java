@@ -10,6 +10,7 @@ import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.payment.ReceiptKind;
 import com.maxsolch.shop.service.OrderQueryService;
+import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -190,6 +191,11 @@ public class NotificationService {
             String text = customerStatusHeader(order, locale) + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + statusCustomerNote(order, locale);
+            if ("SEALED".equals(order.getGiftCaseStatus()) && order.getStatus() != OrderStatus.REJECTED) {
+                // The gift case waits in the order until the customer opens it in the shop.
+                text += (text.endsWith("\n") ? "" : "\n") + messages.get(locale, OrderService.giftCaseOpenable(order)
+                        ? "bot.giftCase.grantedOpen" : "bot.giftCase.sealed");
+            }
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
@@ -232,6 +238,32 @@ public class NotificationService {
                     .build());
         } catch (Exception e) {
             log.warn("notifyCustomerGift failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** DM the customer that an admin gave them a gift case (no prize name — it is a surprise). */
+    public void notifyCustomerGiftCase(Order order) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String text = messages.get(locale, "bot.giftCase.grantedTitle") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, OrderService.giftCaseOpenable(order)
+                            ? "bot.giftCase.grantedOpen" : "bot.giftCase.grantedAfterPay");
+            dm("ORDER_GIFT_CASE", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerGiftCase failed for order {}: {}", idStr(order), e.getMessage());
         }
     }
 
@@ -791,7 +823,13 @@ public class NotificationService {
                 }
                 long line = it.getPriceMinorSnapshot() * (long) it.getQuantity();
                 sb.append(" × ").append(it.getQuantity())
-                        .append(" — ").append(money(line)).append(' ').append(cur).append('\n');
+                        .append(" — ").append(money(line)).append(' ').append(cur);
+                if (it.isAutoGift() && it.getCaseRarity() != null) {
+                    sb.append(" 🎁 <i>из кейса (").append(it.getCaseRarity()).append(")</i>");
+                } else if (it.isAutoGift()) {
+                    sb.append(" 🎁 <i>подарок за сумму</i>");
+                }
+                sb.append('\n');
             }
         }
         // totals

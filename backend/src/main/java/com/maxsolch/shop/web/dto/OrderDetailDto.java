@@ -58,7 +58,16 @@ public record OrderDetailDto(
         /** Admin's answer (decline reason) shown to the customer. */
         String cancelRequestAdminComment,
         /** Exchanges made on this order (V51), oldest first; empty when none. */
-        List<ExchangeDto> exchanges) {
+        List<ExchangeDto> exchanges,
+        /** Gift case (V57): null = none, SEALED (the customer has not opened it; the prize line is hidden from them), OPENED. */
+        String giftCaseStatus,
+        Instant giftCaseOpenedAt,
+        /** SEALED and the order is paid — the customer may open it now (once). */
+        boolean giftCaseOpenable,
+        /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
+        com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
+        /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
+        long giftDiscountMinor) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

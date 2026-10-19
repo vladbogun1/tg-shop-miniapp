@@ -18,5 +18,8 @@ public record OrderSummaryDto(
         /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
         long amountDueMinor,
         /** PENDING | APPROVED | DECLINED — my cancellation request; null = none. */
-        String cancelRequestStatus) {
+        String cancelRequestStatus,
+        /** Gift case (V57): null | SEALED (waits to be opened) | OPENED. */
+        String giftCaseStatus,
+        boolean giftCaseOpenable) {
 }
