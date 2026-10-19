@@ -233,7 +233,14 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   )}
                   <span className="truncate text-[14px] text-[var(--text)]">{it.title}</span>
                 </div>
-                {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
+                {it.variantPending ? (
+                  <div className="text-[12px] font-semibold text-[var(--warn)]">
+                    ⚠ размер не выбран{order.giftCaseStatus === "SEALED" ? " (выберет после открытия кейса)" : ""}
+                    {it.variantName && <span className="font-normal text-[var(--text-faint)]"> · пока забронирован {it.variantName}</span>}
+                  </div>
+                ) : (
+                  it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>
+                )}
                 {it.caseRarity && gift?.tier && (
                   <div className="text-[12px] font-semibold" style={{ color: CASE_TIER_METAL[gift.tier].ga }}>
                     {CASE_TIER_LABEL[gift.tier]} кейс{gift.swap?.swappedAt ? " · заменён на промокод" : ""}

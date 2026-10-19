@@ -13,6 +13,7 @@ import {
   type Conversation,
   createHttpClient,
   type CreateOrderResult,
+  type CaseSize,
   type GiftCaseOpen,
   type GiftResponse,
   getActiveLocale,
@@ -317,6 +318,9 @@ export const customerApi = {
   /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
   openGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`),
   swapGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/swap`),
+  /** Picks the size of the case prize (a product with sizes) among those in stock. */
+  chooseGiftCaseSize: (id: string, variantId: string) =>
+    http.post<CaseSize>(`/api/me/orders/${id}/gift-case/size`, { variantId }),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

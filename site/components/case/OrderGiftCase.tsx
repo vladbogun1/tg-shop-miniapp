@@ -26,6 +26,7 @@ import {
   takeGiftCaseAutoOpen,
   unlockCaseAudio,
   type CasePromoTexts,
+  type CaseSizeTexts,
   type GiftCaseTexts,
   type GiftOrderPanelTexts,
 } from "@shop/shared/case-ui";
@@ -73,6 +74,20 @@ export function useCasePromoTexts(): CasePromoTexts {
   );
 }
 
+/** «Оберіть розмір» etc. — the size picker of a prize with sizes. */
+export function useCaseSizeTexts(): CaseSizeTexts {
+  const { t } = useI18n();
+  return useMemo(
+    () => ({
+      choose: t("case.size.choose"),
+      label: t("case.size.label"),
+      chosen: t("case.size.chosen"),
+      error: t("case.size.error"),
+    }),
+    [t]
+  );
+}
+
 /** Money in minor units for the case pieces (the language on screen). */
 export function useCaseMoney(): (minor: number) => string {
   const fmt = useFmt();
@@ -97,6 +112,7 @@ export function useOrderGiftCase(order: OrderDetail) {
   const rarity = useCaseRarityNames();
   const tierName = useCaseTierNames();
   const promoTexts = useCasePromoTexts();
+  const sizeTexts = useCaseSizeTexts();
   const tier = order.gift?.tier ?? null;
   const sealed = order.giftCaseStatus === "SEALED" && order.status !== "REJECTED";
   const openable = sealed && order.giftCaseOpenable === true;
@@ -149,8 +165,9 @@ export function useOrderGiftCase(order: OrderDetail) {
       swapAction: t("case.swapAction"),
       swapped: t("case.swapped"),
       swapError: t("case.swapError"),
+      size: sizeTexts,
     }),
-    [t, order.id, rarity, tierName, promoTexts]
+    [t, order.id, rarity, tierName, promoTexts, sizeTexts]
   );
   const panelTexts: GiftOrderPanelTexts = useMemo(
     () => ({
@@ -164,10 +181,11 @@ export function useOrderGiftCase(order: OrderDetail) {
       swapAction: t("case.swapAction"),
       swapped: t("case.swapped"),
       swapError: t("case.swapError"),
+      size: sizeTexts,
       guaranteedTitle: t("case.order.discountTitle"),
       guaranteedText: t("case.order.discountText"),
     }),
-    [t, tierName, rarity, promoTexts]
+    [t, tierName, rarity, promoTexts, sizeTexts]
   );
 
   const openCase = useCallback(() => api.openGiftCase(order.id), [order.id]);
@@ -176,6 +194,14 @@ export function useOrderGiftCase(order: OrderDetail) {
     void qc.invalidateQueries({ queryKey: ["me", "orders"] });
     return res;
   }, [order.id, qc]);
+  const chooseSize = useCallback(
+    async (variantId: string) => {
+      const res = await api.chooseGiftCaseSize(order.id, variantId);
+      void qc.invalidateQueries({ queryKey: ["me", "orders"] });
+      return res;
+    },
+    [order.id, qc]
+  );
   const onRevealed = useCallback(
     (res: { won: { rarity: string } }) => {
       trackGiftCaseOpen(order.id, res.won.rarity);
@@ -233,6 +259,7 @@ export function useOrderGiftCase(order: OrderDetail) {
       prizes={prizes.data ?? []}
       tier={tier}
       onSwap={swapCase}
+      onSize={chooseSize}
       texts={texts}
       money={money}
       formatDate={fmt.date}
@@ -250,6 +277,7 @@ export function useOrderGiftCase(order: OrderDetail) {
         money={money}
         formatDate={fmt.date}
         onSwap={order.gift.swap?.available ? swapCase : undefined}
+        onSize={chooseSize}
       />
     ) : null;
 

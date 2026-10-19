@@ -13,12 +13,14 @@ import {
   sortCasePrizes,
   type CaseItem,
   type CaseRarity,
+  type CaseSize,
   type CaseTier,
   type GiftChoice,
   type GiftTierInfo,
   type OrderGift,
 } from "../giftcase";
 import { CaseStyles } from "./GiftCaseOpening";
+import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { CaseDiscountTile, CasePromoBox, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts } from "./case-tier";
 
 const LockIcon = (
@@ -287,6 +289,8 @@ export interface GiftOrderPanelTexts {
   guaranteedTitle: string;
   /** «{amount} вже враховано в сумі замовлення» */
   guaranteedText: string;
+  /** The size picker of a prize with sizes; without it the size is not shown. */
+  size?: CaseSizeTexts;
 }
 
 /** Whether {@link GiftCaseOrderPanel} has anything to show for the order's gift (so the page skips its wrapper). */
@@ -294,7 +298,7 @@ export function hasGiftCaseOrderPanel(gift: OrderGift | null | undefined): boole
   if (!gift) return false;
   if (gift.guaranteedDiscountMinor > 0) return true;
   if (gift.caseStatus !== "OPENED" || !gift.prize) return false;
-  return !!gift.promo || (!!gift.swap?.available && !gift.swap.swappedAt && gift.prize.kind === "PRODUCT");
+  return !!gift.promo || (!gift.swap?.swappedAt && gift.prize.kind === "PRODUCT" && (!!gift.swap?.available || !!gift.size));
 }
 
 /**
@@ -309,6 +313,7 @@ export function GiftCaseOrderPanel({
   money,
   formatDate,
   onSwap,
+  onSize,
   assetBase = "/case",
 }: {
   gift: OrderGift;
@@ -317,6 +322,8 @@ export function GiftCaseOrderPanel({
   formatDate?: (iso: string) => string;
   /** Swap the prize (POST …/gift-case/swap); the caller refetches the order. Omit to hide the offer. */
   onSwap?: () => Promise<unknown>;
+  /** Pick the prize's size (POST …/gift-case/size); the caller refetches the order. Omit: read-only. */
+  onSize?: (variantId: string) => Promise<CaseSize>;
   assetBase?: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -341,7 +348,9 @@ export function GiftCaseOrderPanel({
   if (gift.caseStatus !== "OPENED" || !prize) return null;
   const swapped = !!gift.swap?.swappedAt;
   const canSwap = !!onSwap && !!gift.swap?.available && !swapped && prize.kind === "PRODUCT";
-  if (!gift.promo && !canSwap) return null;
+  const size = !swapped && prize.kind === "PRODUCT" && texts.size ? gift.size ?? null : null;
+  const sizePending = !!size?.pending && !!onSize && size.changeable;
+  if (!gift.promo && !canSwap && !size) return null;
   const swap = async () => {
     if (!onSwap || busy) return;
     setBusy(true);
@@ -367,17 +376,22 @@ export function GiftCaseOrderPanel({
       <div className="gc-sealed-text">
         {tier && <span className="gc-tier gc-disp">{texts.tierName[tier]}</span>}
         <b className="gc-disp">
-          {canSwap
-            ? texts.swapTitle
-            : prize.kind === "DISCOUNT"
-              ? texts.discountPrize.replace("{d}", caseDiscountText(prize, money))
-              : texts.swapped}
+          {sizePending && texts.size
+            ? texts.size.choose
+            : canSwap
+              ? texts.swapTitle
+              : prize.kind === "DISCOUNT"
+                ? texts.discountPrize.replace("{d}", caseDiscountText(prize, money))
+                : swapped
+                  ? texts.swapped
+                  : texts.prizeTitle}
         </b>
         {prize.kind === "PRODUCT" && (
           <span>
             {texts.prizeTitle}: {prize.title} · {texts.rarity[prize.rarity]}
           </span>
         )}
+        {size && texts.size && <CaseSizePicker size={size} texts={texts.size} onChoose={onSize} />}
         {canSwap && <span>{texts.swapHint}</span>}
         {gift.promo && <CasePromoBox promo={gift.promo} texts={texts.promo} money={money} formatDate={formatDate} compact />}
         {canSwap && gift.swap && (

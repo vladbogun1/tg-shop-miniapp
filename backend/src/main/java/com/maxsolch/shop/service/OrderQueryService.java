@@ -398,7 +398,8 @@ public class OrderQueryService {
                 it.isGift(),
                 it.getReturnedQty(),
                 it.isAutoGift(),
-                it.getCaseRarity());
+                it.getCaseRarity(),
+                it.isVariantPending());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

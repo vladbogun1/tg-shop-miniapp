@@ -57,7 +57,21 @@ public final class GiftDtos {
      * the tier's prizes for the reel, the issued code (a discount prize) and the swap offer.
      */
     public record CaseOpenDto(String status, String tier, CaseItemDto won, List<CaseItemDto> reel,
-                              PromoDto promo, SwapDto swap) {
+                              PromoDto promo, SwapDto swap, SizeDto size) {
+    }
+
+    /**
+     * The size of a product prize with sizes (null for one without).
+     *
+     * @param pending    the customer has not chosen yet — {@code variantId} is only the one held for them
+     * @param changeable may be (re)chosen now (the order is still being put together)
+     * @param options    sizes to choose from: in stock or held now
+     */
+    public record SizeDto(boolean pending, boolean changeable, String variantId, String name,
+                          List<SizeOption> options) {
+    }
+
+    public record SizeOption(String variantId, String name) {
     }
 
     /** A personal code the case gave: {@code percent} or {@code amountMinor} off the next order. */
@@ -79,7 +93,7 @@ public final class GiftDtos {
      * or the case (prize details only after opening).
      */
     public record OrderGiftDto(String tier, long guaranteedDiscountMinor, String caseStatus, boolean openable,
-                               CaseItemDto prize, PromoDto promo, SwapDto swap) {
+                               CaseItemDto prize, PromoDto promo, SwapDto swap, SizeDto size) {
     }
 
     // ---- admin ----

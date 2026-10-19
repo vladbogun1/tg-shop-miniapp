@@ -114,6 +114,17 @@
 `quote.totalMinor` корзины или подытог минус промокод; на странице товара итог — цена товара.
 Сервер при оформлении всё проверяет заново.
 
+### Размер приза (V58)
+
+Если выпал товар с размерами (рукава и т. п.) и в наличии больше одного размера, при оформлении
+бронируется размер, которого больше всего на складе, а строка приза помечается
+`order_items.variant_pending = 1`. Покупатель выбирает свой размер из тех, что есть
+(`CaseSizePicker`), на карточке приза сразу после открытия и в панели кейса на странице заказа
+(там же заголовок «Оберіть розмір», в строке приза — «Оберіть розмір» вместо размера). Бронь
+переезжает на выбранный размер (`OrderService.chooseCasePrizeSize`). Менять можно, пока заказ
+NEW/APPROVED. Закончившийся размер — 400 `GIFT_CASE_SIZE_UNAVAILABLE`. Если в наличии только
+один размер, вопроса нет. В админке у строки приза — «⚠ размер не выбран · пока забронирован M».
+
 ## Конструктор кейсов (админка)
 
 Решения владельца 19.10: доска по редкостям + автосборка; правки — в черновике с «Опубликовать»;
@@ -155,6 +166,7 @@
 | GET | `/api/public/gift` | `{gift: GiftInfo \| null}`: `thresholdMinor`, `kind` PRODUCT/CASE, `product`, `tiers[]` (порог, гарантированная скидка, `swap`, призы без шансов). Без входа |
 | POST | `/api/me/orders/{id}/gift-case/open` | открыть кейс своего заказа → `{status, tier, won, reel, promo, swap}`; журнал `GIFT_CASE_OPENED` |
 | POST | `/api/me/orders/{id}/gift-case/swap` | заменить похожий приз на промокод → то же |
+| POST | `/api/me/orders/{id}/gift-case/size` | выбрать размер приза `{variantId}` → `CaseSize` (`pending, changeable, variantId, name, options[]`); журнал `GIFT_CASE_SIZE` |
 | GET/PATCH | `/api/admin/gift/tiers[/{tier}]` | уровни кейсов (+ `promoValidDays`; в ответе `marginPercent`, `monthlyOrders`) |
 | PUT | `/api/admin/gift/tiers/{tier}/items` | «Опубликовать» черновик: `{items: [{id?, kind, productId?, discountPercent?, discountUah?, rarity, weight, active}]}` (≤ 40) → все призы |
 | POST | `/api/admin/gift/tiers/{tier}/autofill` | «Автособрать»: `{prizes, costShare, discounts, categories[], superCategories[], jackpot, newOnly, locked[], seed}` → `{items, avgCostMinor, targetCostMinor, warnings[]}`, ничего не сохраняет |
@@ -166,8 +178,8 @@
 
 Поля заказа: `OrderSummary/OrderDetail.giftCaseStatus` (null / SEALED / OPENED),
 `giftCaseOpenedAt`, `giftCaseOpenable`, `giftDiscountMinor`, `gift` (`OrderGift`: tier,
-guaranteedDiscountMinor, caseStatus, openable, prize, promo, swap; покупателю приз и промокод
-приходят только после открытия); у позиции — `autoGift`, `caseRarity`. Событие аналитики
+guaranteedDiscountMinor, caseStatus, openable, prize, promo, swap, size; покупателю приз и промокод
+приходят только после открытия); у позиции — `autoGift`, `caseRarity`, `variantPending`. Событие аналитики
 `gift_case_open` (meta: orderId, rarity).
 
 ## Тест кейса (админка)
@@ -196,7 +208,7 @@ guaranteedDiscountMinor, caseStatus, openable, prize, promo, swap; покупа�
 `orders.gift_case_status / gift_case_opened_at / gift_tier / gift_discount_minor`,
 `order_items.auto_gift / case_rarity`. Миграция ещё не выпущена и правилась на месте (раньше была
 V58 поверх «Вместе дешевле»): где старая версия уже применена (локалка) — перезаливка базы. Ветка
-`feat/bundles` после слияния кейсов переносит свою миграцию на V58. Демо (19.10) — с бэкапа на V56.
+`feat/bundles` после слияния кейсов переносит свою миграцию на V59 (V58 — размер приза, `order_items.variant_pending`). Демо (19.10) — с бэкапа на V56.
 
 ## Код
 
