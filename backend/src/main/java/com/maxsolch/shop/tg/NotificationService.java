@@ -791,13 +791,18 @@ public class NotificationService {
                 }
                 long line = it.getPriceMinorSnapshot() * (long) it.getQuantity();
                 sb.append(" × ").append(it.getQuantity())
-                        .append(" — ").append(money(line)).append(' ').append(cur).append('\n');
+                        .append(" — ").append(money(line)).append(' ').append(cur);
+                if (it.isBundleAddon()) {
+                    sb.append(" <i>(вместе дешевле)</i>");
+                }
+                sb.append('\n');
             }
         }
         // totals
         sb.append("\n💰 <b>Итого: ").append(money(order.getTotalMinor())).append(' ').append(cur).append("</b>");
         if (order.getDiscountMinor() > 0) {
-            sb.append(" <i>(скидка ").append(money(order.getDiscountMinor())).append(' ').append(cur).append(")</i>");
+            sb.append(" <i>(скидка ").append(money(order.getDiscountMinor())).append(' ').append(cur)
+                    .append(order.getBundleDiscountMinor() > 0 ? ", «Вместе дешевле»" : "").append(")</i>");
         }
         sb.append('\n');
         if (order.getPaymentOptionTitle() != null) {

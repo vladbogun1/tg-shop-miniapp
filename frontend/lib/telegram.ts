@@ -276,6 +276,7 @@ interface WebApp {
   HapticFeedback?: {
     impactOccurred?: (s: string) => void;
     notificationOccurred?: (s: "error" | "success" | "warning") => void;
+    selectionChanged?: () => void;
   };
   /** Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath. */
   openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
@@ -354,6 +355,24 @@ export function useHideMainButton(): void {
 export function haptic(): void {
   try {
     webApp()?.HapticFeedback?.impactOccurred?.("light");
+  } catch {
+    /* noop */
+  }
+}
+
+/** Best-effort selection tick (the gift case reel crossing a tile). */
+export function hapticSelection(): void {
+  try {
+    webApp()?.HapticFeedback?.selectionChanged?.();
+  } catch {
+    /* noop */
+  }
+}
+
+/** Best-effort impact of a given strength ("light" | "medium" | "heavy" | "rigid" | "soft"). */
+export function hapticImpact(style: "light" | "medium" | "heavy" | "rigid" | "soft"): void {
+  try {
+    webApp()?.HapticFeedback?.impactOccurred?.(style);
   } catch {
     /* noop */
   }

@@ -11,5 +11,7 @@ public record OrderItemDto(
         String imageUrl,
         boolean gift,
         /** Units of this line the customer sent back. */
-        int returnedQty) {
+        int returnedQty,
+        /** Got the «Вместе дешевле» discount (V57). */
+        boolean bundleAddon) {
 }

@@ -216,6 +216,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                       🎁 Подарок
                     </span>
                   )}
+                  {it.bundleAddon && !it.gift && (
+                    <span className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]" style={{ "--chip": "var(--ok)" } as React.CSSProperties}>
+                      Вместе дешевле
+                    </span>
+                  )}
                   {it.title}
                 </div>
                 {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
@@ -266,7 +271,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           </div>
           {order.discountMinor > 0 && (
             <div className="flex justify-between font-semibold text-[var(--ok)]">
-              <span>Скидка{order.promoCode ? ` (${order.promoCode})` : ""}</span>
+              <span>
+                {(order.bundleDiscountMinor ?? 0) > 0
+                  ? "Вместе дешевле"
+                  : `Скидка${order.promoCode ? ` (${order.promoCode})` : ""}`}
+              </span>
               <span>−{money(order.discountMinor, order.currency)}</span>
             </div>
           )}

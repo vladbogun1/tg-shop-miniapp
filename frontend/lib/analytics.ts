@@ -102,6 +102,16 @@ export function trackAddToCart(productId: string, variantId: string | null, qty:
   track("add_to_cart", undefined, JSON.stringify({ productId, variantId, qty }));
 }
 
+/** The «Разом дешевше» block (product page) or the suggestions strip (cart) was shown. */
+export function trackBundleView(place: "product" | "cart", ids: string[]) {
+  track("bundle_view", undefined, JSON.stringify({ place, ids }));
+}
+
+/** Accessories were added from the bundle block / the cart strip. */
+export function trackBundleAdd(place: "product" | "cart", productIds: string[]) {
+  track("bundle_add", undefined, JSON.stringify({ place, productIds }));
+}
+
 /** The checkout screen was opened with something in the cart. */
 export function trackCheckoutStart() {
   track("checkout_start");

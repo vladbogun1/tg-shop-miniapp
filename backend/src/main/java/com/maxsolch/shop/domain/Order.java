@@ -38,6 +38,10 @@ public class Order {
     @Column(name = "discount_minor", nullable = false)
     private long discountMinor = 0;
 
+    /** Part of {@code discountMinor} given by «Вместе дешевле» (V57); 0 = a promo code or a manual discount. */
+    @Column(name = "bundle_discount_minor", nullable = false)
+    private long bundleDiscountMinor = 0;
+
     @Column(name = "total_minor", nullable = false)
     private long totalMinor;
 
