@@ -223,7 +223,7 @@ export interface OrderItem {
   autoGift?: boolean;
   /** Rarity of the gift-case prize (V57); null = not from a case. */
   caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
-  /** A case prize whose size the customer has not chosen yet (V58). */
+  /** A case prize whose size the customer has not chosen yet (V59). */
   variantPending?: boolean;
 }
 

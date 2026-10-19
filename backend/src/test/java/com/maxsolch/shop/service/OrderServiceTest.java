@@ -1116,7 +1116,7 @@ class OrderServiceTest {
         assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
     }
 
-    // ---------- the size of a case prize (V58) ----------
+    // ---------- the size of a case prize (V59) ----------
 
     private record SizedPrize(Order order, OrderItem line, Product product, ProductVariant m, ProductVariant l,
                               ProductVariant xl) {

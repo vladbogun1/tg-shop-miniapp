@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The size of a case prize with sizes (V58): at checkout the fullest size was held, the customer picks
+ * The size of a case prize with sizes (V59): at checkout the fullest size was held, the customer picks
  * theirs among those in stock — on the prize card of the opening screen and in the order page panel.
  * While `pending` no size is marked (the held one is only a guess); once chosen it stays marked and
  * may be changed while the order is still being put together (`changeable`).

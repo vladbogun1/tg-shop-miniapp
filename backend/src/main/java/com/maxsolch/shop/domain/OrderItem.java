@@ -57,7 +57,7 @@ public class OrderItem {
     @Column(name = "case_rarity", length = 16)
     private String caseRarity;
 
-    /** A case prize with sizes whose size the customer has not chosen yet (V58): the reserved one is a guess. */
+    /** A case prize with sizes whose size the customer has not chosen yet (V59): the reserved one is a guess. */
     @Column(name = "variant_pending", nullable = false)
     private boolean variantPending = false;
 

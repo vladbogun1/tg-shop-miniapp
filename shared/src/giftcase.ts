@@ -5,7 +5,7 @@
  *   GET  /api/public/gift → GiftResponse (tiers with thresholds and prizes, or one product)
  *   POST /api/me/orders/{id}/gift-case/open → GiftCaseOpen
  *   POST /api/me/orders/{id}/gift-case/swap → GiftCaseOpen (the prize swapped for a code)
- *   POST /api/me/orders/{id}/gift-case/size {variantId} → CaseSize (the prize's size, V58)
+ *   POST /api/me/orders/{id}/gift-case/size {variantId} → CaseSize (the prize's size, V59)
  * The clients count «add N more» themselves with {@link giftProgress} (the cart total after the
  * discount, or the product price on the product page); the checkout decides it again on the server.
  *
@@ -141,7 +141,7 @@ export interface CaseSwap {
 }
 
 /**
- * The size of a product prize with sizes (V58). At checkout the fullest size is held; while `pending`
+ * The size of a product prize with sizes (V59). At checkout the fullest size is held; while `pending`
  * the customer has not chosen — the apps ask for it (POST …/gift-case/size {variantId} → CaseSize).
  */
 export interface CaseSize {
