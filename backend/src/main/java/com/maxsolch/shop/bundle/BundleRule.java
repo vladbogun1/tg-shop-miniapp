@@ -12,7 +12,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/** «К товару категории source предлагать товары категории target» (V58); subcategories match too. */
+/** «К товару категории source предлагать товары категории target» (V61); subcategories match too. */
 @Getter
 @Setter
 @Entity

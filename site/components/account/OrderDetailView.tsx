@@ -81,7 +81,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const cancelMode = customerCancelMode(order);
   // Gift case (V57): the case card on top (locked until paid), the opening screen (once).
   const giftCase = useOrderGiftCase(order);
-  // «Разом дешевше» part of the discount (V58) and the rest (promo code / manual).
+  // «Разом дешевше» part of the discount (V61) and the rest (promo code / manual).
   const bundleDiscount = Math.min(order.bundleDiscountMinor ?? 0, order.discountMinor);
   const otherDiscount = order.discountMinor - bundleDiscount;
   const refresh = () => {

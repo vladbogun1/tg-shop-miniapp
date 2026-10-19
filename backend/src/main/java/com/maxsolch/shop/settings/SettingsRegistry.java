@@ -74,7 +74,7 @@ public final class SettingsRegistry {
     public static final String GIFT_MARGIN_PERCENT = "gift.marginPercent";
     public static final String GIFT_CASE_CATEGORIES = "gift.caseCategories";
     public static final String GIFT_CASE_SUPER_CATEGORIES = "gift.caseSuperCategories";
-    // «Вместе дешевле» (V58, BundleService).
+    // «Вместе дешевле» (V61, BundleService).
     public static final String BUNDLES_GROUP = "bundles";
     public static final String BUNDLE_ENABLED = "bundle.enabled";
     public static final String BUNDLE_TIER1_PERCENT = "bundle.tier1Percent";
@@ -83,7 +83,7 @@ public final class SettingsRegistry {
     public static final String BUNDLE_MAX_ADDON_PRICE_PERCENT = "bundle.maxAddonPricePercent";
     public static final String BUNDLE_MAX_DISCOUNT_UAH = "bundle.maxDiscountUah";
     public static final String BUNDLE_MAX_SUGGESTIONS = "bundle.maxSuggestions";
-    // «Разом дешевше» 2.0 (V60): скидка от маржи, контрольная группа, автонастройка, «Собери сетап».
+    // «Разом дешевше» 2.0 (V62): скидка от маржи, контрольная группа, автонастройка, «Собери сетап».
     public static final String BUNDLE_SAFETY_MARGIN_PERCENT = "bundle.safetyMarginPercent";
     public static final String BUNDLE_HOLDOUT_PERCENT = "bundle.holdoutPercent";
     public static final String BUNDLE_EXPLORE_PERCENT = "bundle.explorePercent";

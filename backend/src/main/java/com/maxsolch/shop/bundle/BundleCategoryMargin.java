@@ -12,7 +12,7 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * Margin of a category and the discount its products may get as an add-on (V60). A subcategory's
+ * Margin of a category and the discount its products may get as an add-on (V62). A subcategory's
  * row wins over its parent's; no row = the average margin {@code gift.marginPercent}.
  */
 @Getter

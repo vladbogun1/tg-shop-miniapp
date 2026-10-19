@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Margin table of «Вместе дешевле» 2.0 (V60 {@code bundle_category_margins}), resolved per category:
+ * Margin table of «Вместе дешевле» 2.0 (V62 {@code bundle_category_margins}), resolved per category:
  * the row of the category itself wins over its parent's, the parent's over the average
  * {@code gift.marginPercent}. A discount never eats the margin: {@code cap ≤ margin − safety}.
  *

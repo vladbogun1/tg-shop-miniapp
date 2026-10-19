@@ -52,7 +52,7 @@ public class Order {
     /** Part of discountMinor the customer took as the tier's guaranteed discount instead of a case (V57). */
     @Column(name = "gift_discount_minor", nullable = false)
     private long giftDiscountMinor = 0;
-    /** Part of {@code discountMinor} given by «Вместе дешевле» (V58); 0 = a promo code or a manual discount. */
+    /** Part of {@code discountMinor} given by «Вместе дешевле» (V61); 0 = a promo code or a manual discount. */
     @Column(name = "bundle_discount_minor", nullable = false)
     private long bundleDiscountMinor = 0;
 

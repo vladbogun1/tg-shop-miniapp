@@ -12,7 +12,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 
-/** «Собери сетап» (V60): to a big product of category source offer big products of target. */
+/** «Собери сетап» (V62): to a big product of category source offer big products of target. */
 @Getter
 @Setter
 @Entity
