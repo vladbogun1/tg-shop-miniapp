@@ -14,7 +14,8 @@
  * Three tiers (bronze/silver/gold) share the screen; the tier only re-skins it (art, metal colours).
  * A prize is a product (added to the order for free) or a discount (a personal code, shown with «copy»).
  * A product similar to what the customer bought may be swapped for a code right on the prize card
- * (`swap.available`, `onSwap`). Chances are never shown.
+ * (`swap.available`, `onSwap`). A product with sizes asks for the size there (`size`, `onSize`).
+ * Chances are never shown.
  *
  * The prize is decided by the server (checkout / an admin's gift): `openCase()` only reveals it. A case
  * opens exactly once and only after the order is paid — there is no replay; a refused open
@@ -38,8 +39,10 @@ import {
   type CaseItem,
   type CaseRarity,
   type CaseTier,
+  type CaseSize,
   type GiftCaseOpen,
 } from "../giftcase";
+import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { caseOpenSound, caseRevealSound, caseStopSound, caseTick, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
 import { CaseBurst } from "./case-particles";
 import { CASE_CSS } from "./case-styles";
@@ -75,6 +78,8 @@ export interface GiftCaseTexts {
   /** «Подарунок замінено на промокод» */
   swapped: string;
   swapError: string;
+  /** The size picker of a prize with sizes; without it the size is not asked here. */
+  size?: CaseSizeTexts;
 }
 
 export interface GiftCaseHaptics {
@@ -105,6 +110,8 @@ export interface GiftCaseOpeningProps {
    * offer is not shown.
    */
   onSwap?: () => Promise<GiftCaseOpen>;
+  /** Pick the size of a product prize with sizes (POST …/gift-case/size). Without it the size is not asked. */
+  onSize?: (variantId: string) => Promise<CaseSize>;
   texts: GiftCaseTexts;
   /** Minor units → «1 299 ₴» in the app's style. */
   money: (minor: number) => string;
@@ -239,6 +246,7 @@ function CaseOverlay({
   prizes,
   tier: tierProp = null,
   onSwap,
+  onSize,
   texts,
   money,
   formatDate,
@@ -733,6 +741,9 @@ function CaseOverlay({
                   <p className="gc-free">✓ {texts.swapped}</p>
                 ) : (
                   <p className="gc-free">✓ {texts.addedFree}</p>
+                )}
+                {won.kind === "PRODUCT" && !swapped && result?.size && onSize && texts.size && (
+                  <CaseSizePicker size={result.size} texts={texts.size} onChoose={onSize} />
                 )}
                 {promo && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

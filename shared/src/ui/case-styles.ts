@@ -305,4 +305,17 @@ export const CASE_CSS = `
 .gc-step-label em{font-style:normal;font-weight:700;letter-spacing:0;text-transform:none;white-space:nowrap}
 .gc-step.is-on .gc-step-label{opacity:1;color:var(--ga,#ff6a00)}
 @media (prefers-reduced-motion:reduce){.gc-step-bar i{transition:none}}
+.gc-size{position:relative;margin-top:12px;text-align:left}
+.gc-card .gc-size{text-align:center}
+.gc-size-label{display:block;margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.gc-size.is-pending .gc-size-label{color:var(--ga,#ff6a00)}
+.gc-size-list{display:flex;flex-wrap:wrap;gap:8px}
+.gc-card .gc-size-list{justify-content:center}
+.gc-size-opt{min-width:48px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#fff;font:800 15px/1 inherit;letter-spacing:.02em;cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+.gc-size-opt:hover{background:rgba(255,255,255,.12)}
+.gc-size-opt:active{transform:scale(.96)}
+.gc-size-opt:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.gc-size-opt[aria-pressed="true"]{background:var(--ga,#ff6a00);border-color:var(--ga,#ff6a00);color:#140a02}
+.gc-size-opt:disabled{opacity:.55;cursor:default}
+.gc-size-done{display:block;margin-top:8px;font-size:13px;font-weight:600;color:#7ee2a0}
 `;

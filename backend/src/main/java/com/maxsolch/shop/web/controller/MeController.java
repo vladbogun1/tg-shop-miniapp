@@ -249,6 +249,21 @@ public class MeController {
         return swapped;
     }
 
+    public record CaseSizeRequest(String variantId) {
+    }
+
+    @PostMapping("/orders/{id}/gift-case/size")
+    @Operation(summary = "Pick the size of my case prize (a product with sizes) among those in stock while the order "
+            + "is being put together; 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone or it is too late")
+    public com.maxsolch.shop.gift.GiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id,
+                                                                      @RequestBody CaseSizeRequest req) {
+        Order order = ownedOrder(id);
+        com.maxsolch.shop.gift.GiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
+        journal(ActivityLog.fromRequest("GIFT_CASE_SIZE").order(order.getId())
+                .text("Покупатель выбрал размер приза кейса: " + size.name()));
+        return size;
+    }
+
     private static String prizeText(com.maxsolch.shop.gift.GiftDtos.CaseItemDto won) {
         if ("DISCOUNT".equals(won.kind())) {
             return won.discountPercent() > 0 ? "скидка " + won.discountPercent() + " %"

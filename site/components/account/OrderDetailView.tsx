@@ -185,7 +185,11 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                   )}
                   {it.title}
                 </p>
-                {it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>}
+                {it.variantPending ? (
+                  <p className="text-[12px] font-semibold text-[var(--accent-hi)]">{t("case.size.choose")}</p>
+                ) : (
+                  it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>
+                )}
                 {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} />}
                 <p className="text-[12px] font-medium text-[var(--faint)]">
                   {it.gift || it.autoGift
