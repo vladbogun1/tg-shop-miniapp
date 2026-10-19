@@ -217,21 +217,22 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]"
               />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
+                {/* Two lines, not one: on a phone a single truncated line hid what was ordered. */}
+                <div className="line-clamp-2 break-words text-[14px] leading-snug text-[var(--text)]" title={it.title}>
                   {it.gift && it.caseRarity && (
                     <span
-                      className="chip-tint shrink-0 !px-2 !text-[10px]"
+                      className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]"
                       style={{ "--chip": CASE_RARITY_COLOR[it.caseRarity] } as React.CSSProperties}
                     >
                       🎁 Кейс · {CASE_RARITY_LABEL[it.caseRarity]}
                     </span>
                   )}
                   {it.gift && !it.caseRarity && (
-                    <span className="chip-tint shrink-0 !px-2 !text-[10px]" style={{ "--chip": "var(--accent-hi)" } as React.CSSProperties}>
+                    <span className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]" style={{ "--chip": "var(--accent-hi)" } as React.CSSProperties}>
                       {it.autoGift ? "🎁 За сумму" : "🎁 Подарок"}
                     </span>
                   )}
-                  <span className="truncate text-[14px] text-[var(--text)]">{it.title}</span>
+                  {it.title}
                 </div>
                 {it.variantPending ? (
                   <div className="text-[12px] font-semibold text-[var(--warn)]">

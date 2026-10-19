@@ -29,12 +29,15 @@ import { QueryState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CopyButton } from "@/components/orders/CopyButton";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { Lightbox } from "@/components/ui/Lightbox";
+import { Image, resolveImageFull } from "@/lib/image";
 
 export default function DispatchPage() {
   const { push } = useToast();
   const qc = useQueryClient();
   const [broadcasting, setBroadcasting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<string | null>(null);
 
   const q = useQuery({
     queryKey: ["dispatch"],
@@ -100,7 +103,7 @@ export default function DispatchPage() {
               <section className="flex flex-col gap-3">
                 <SectionTitle>Одобрены · {approved.length}</SectionTitle>
                 {approved.map((o) => (
-                  <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} />
+                  <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} onZoom={setZoom} />
                 ))}
               </section>
             )}
@@ -108,13 +111,15 @@ export default function DispatchPage() {
               <section className="flex flex-col gap-3">
                 <SectionTitle>Новые — можно отправить сразу · {fresh.length}</SectionTitle>
                 {fresh.map((o) => (
-                  <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} />
+                  <DispatchCard key={o.id} o={o} onOpen={() => setOpenId(o.id)} onZoom={setZoom} />
                 ))}
               </section>
             )}
           </div>
         )}
       </QueryState>
+
+      <Lightbox src={zoom} onClose={() => setZoom(null)} />
 
       <OrderDrawer
         orderId={openId}
@@ -152,7 +157,7 @@ function approvedUnpaid(o: AdminDispatchOrder): boolean {
   return o.status !== "NEW" && !!o.paymentDueAt && onlineDue(o) > 0;
 }
 
-function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void }) {
+function DispatchCard({ o, onOpen, onZoom }: { o: AdminDispatchOrder; onOpen: () => void; onZoom: (src: string) => void }) {
   const isPickup = o.deliveryMethod === "PICKUP";
   const waitPay = awaitingPrepayment(o);
   const unpaid = approvedUnpaid(o);
@@ -218,19 +223,43 @@ function DispatchCard({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void
         ) : (
           <>
             <CopyField icon={<Truck className="h-4 w-4" />} label="Город" value={o.npCityName ?? "—"} />
-            <CopyField icon={<MapPin className="h-4 w-4" />} label="Отделение" value={o.npWarehouseName ?? "—"} />
+            <CopyField icon={<MapPin className="h-4 w-4" />} label="Отделение" value={o.npWarehouseName ?? "—"} wrap />
           </>
         )}
       </div>
 
-      {/* Items */}
+      {/* Items — with the photo: packing goes by the picture, the text alone was hard to match at the post office */}
       <div>
         <div className="field-label mb-1.5">Товары</div>
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {o.items.map((it, idx) => (
-            <li key={idx} className="text-[14px] font-medium text-[var(--text)]">
-              <span className="text-[var(--accent)]">•</span> {it.title}
-              {it.variantName ? ` (${it.variantName})` : ""} <span className="tabular font-semibold text-[var(--accent-hi)]">× {it.quantity}</span>
+            <li key={idx} className="flex items-center gap-3">
+              {it.imageUrl ? (
+                <button
+                  type="button"
+                  onClick={() => onZoom(resolveImageFull(it.imageUrl!))}
+                  className="nb-press shrink-0 rounded-[var(--r-md)]"
+                  aria-label={`Фото: ${it.title}`}
+                >
+                  <Image
+                    src={it.imageUrl}
+                    alt={it.title}
+                    size={160}
+                    className="h-16 w-16 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]"
+                  />
+                </button>
+              ) : (
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-faint)]">
+                  <Package className="h-6 w-6" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="line-clamp-2 break-words text-[14px] font-medium leading-snug text-[var(--text)]" title={it.title}>
+                  {it.title}
+                </div>
+                {it.variantName && <div className="truncate text-[12.5px] text-[var(--text-muted)]">{it.variantName}</div>}
+              </div>
+              <span className="font-display tabular shrink-0 text-[18px] font-bold text-[var(--accent-hi)]">×{it.quantity}</span>
             </li>
           ))}
         </ul>
@@ -260,6 +289,7 @@ function CopyField({
   href,
   mono,
   noCopy,
+  wrap,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -267,6 +297,8 @@ function CopyField({
   href?: string;
   mono?: boolean;
   noCopy?: boolean;
+  /** Wrap instead of «…»: the branch / parcel-locker number sits at the very end of the name. */
+  wrap?: boolean;
 }) {
   return (
     <div className="card-2 flex min-w-0 items-center gap-2.5 px-3 py-2">
@@ -278,7 +310,7 @@ function CopyField({
             {value}
           </a>
         ) : (
-          <div className={cn("truncate text-[14px] font-semibold text-[var(--text)]", mono && "tabular")} title={value}>
+          <div className={cn(wrap ? "break-words leading-snug" : "truncate", "text-[14px] font-semibold text-[var(--text)]", mono && "tabular")} title={value}>
             {value}
           </div>
         )}
