@@ -27,6 +27,9 @@ public final class StructuredEvents {
     public static final String COMPARE_OPEN = "compare_open";
     /** Gift case: the opening screen played (meta: orderId, rarity). */
     public static final String GIFT_CASE_OPEN = "gift_case_open";
+    /** «Вместе дешевле»: the block was shown (meta: place, productIds) / an accessory or the set was added. */
+    public static final String BUNDLE_VIEW = "bundle_view";
+    public static final String BUNDLE_ADD = "bundle_add";
 
     /**
      * What an anonymous website visitor may write. Clicks carry only a label of what was tapped and,
@@ -34,7 +37,7 @@ public final class StructuredEvents {
      */
     public static final Set<String> WEB_ALLOWED = Set.of(
             "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED, COMPARE_ADD, COMPARE_OPEN,
-            GIFT_CASE_OPEN);
+            GIFT_CASE_OPEN, BUNDLE_VIEW, BUNDLE_ADD);
 
     private StructuredEvents() {
     }

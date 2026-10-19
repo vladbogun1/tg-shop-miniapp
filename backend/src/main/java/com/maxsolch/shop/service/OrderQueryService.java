@@ -288,7 +288,8 @@ public class OrderQueryService {
                 o.getGiftCaseOpenedAt(),
                 OrderService.giftCaseOpenable(o),
                 giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
-                o.getGiftDiscountMinor());
+                o.getGiftDiscountMinor(),
+                o.getBundleDiscountMinor());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
@@ -400,7 +401,8 @@ public class OrderQueryService {
                 it.isGift(),
                 it.getReturnedQty(),
                 it.isAutoGift(),
-                it.getCaseRarity());
+                it.getCaseRarity(),
+                it.isBundleAddon());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

@@ -915,6 +915,8 @@ public class NotificationService {
                     sb.append(" 🎁 <i>из кейса (").append(it.getCaseRarity()).append(")</i>");
                 } else if (it.isAutoGift()) {
                     sb.append(" 🎁 <i>подарок за сумму</i>");
+                } else if (it.isBundleAddon()) {
+                    sb.append(" <i>(вместе дешевле)</i>");
                 }
                 sb.append('\n');
             }
@@ -922,7 +924,8 @@ public class NotificationService {
         // totals
         sb.append("\n💰 <b>Итого: ").append(money(order.getTotalMinor())).append(' ').append(cur).append("</b>");
         if (order.getDiscountMinor() > 0) {
-            sb.append(" <i>(скидка ").append(money(order.getDiscountMinor())).append(' ').append(cur).append(")</i>");
+            sb.append(" <i>(скидка ").append(money(order.getDiscountMinor())).append(' ').append(cur)
+                    .append(order.getBundleDiscountMinor() > 0 ? ", «Вместе дешевле»" : "").append(")</i>");
         }
         sb.append('\n');
         if (order.getPaymentOptionTitle() != null) {

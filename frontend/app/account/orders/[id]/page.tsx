@@ -304,6 +304,9 @@ function OrderBody({
                         ? t("order.giftMany", { n: it.quantity })
                         : t("order.gift")
                       : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
+                    {it.bundleAddon && !it.gift && (
+                      <span className="font-semibold text-[var(--ok)]"> · {t("bundle.addonNote")}</span>
+                    )}
                   </p>
                 </div>
                 <span className="font-display shrink-0 text-[14px] font-bold tabular-nums text-[var(--ink)]">
@@ -323,9 +326,11 @@ function OrderBody({
             {order.discountMinor > 0 && (
               <TotalRow
                 label={
-                  order.promoCode
-                    ? t("order.discountWithCode", { code: order.promoCode })
-                    : t("order.discount")
+                  (order.bundleDiscountMinor ?? 0) > 0
+                    ? t("bundle.title")
+                    : order.promoCode
+                      ? t("order.discountWithCode", { code: order.promoCode })
+                      : t("order.discount")
                 }
                 value={`− ${money(order.discountMinor, order.currency)}`}
                 discount

@@ -18,6 +18,7 @@ import {
   Boxes,
   ChevronRight,
   Gift,
+  Layers,
   LifeBuoy,
   Save,
   ShieldAlert,
@@ -145,9 +146,9 @@ export default function SettingsPage() {
             {(q.data?.groups ?? []).map((g, i) => {
               const groupItems = items.filter((it) => it.group === g.id);
               if (groupItems.length === 0) return null;
-              // Edited on their own pages (gift: with the case prizes).
-              if (g.id === "gift") {
-                const page = { href: "/gift", Icon: Gift, name: "Кейс" };
+              // Edited on their own pages (bundles: with the category pairs; gift: with the case prizes).
+              if (g.id === "bundles" || g.id === "gift") {
+                const page = g.id === "gift" ? { href: "/gift", Icon: Gift, name: "Кейс" } : { href: "/bundles", Icon: Layers, name: "Вместе дешевле" };
                 return (
                   <Link
                     key={g.id}

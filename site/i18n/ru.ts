@@ -783,6 +783,27 @@ export const ru = {
   "case.gift.reached": "🎁 Подарок «{title}» добавим бесплатно",
   "case.gift.line": "🎁 Подарок за сумму",
   "case.gift.free": "Бесплатно",
+  // ---- bundle («Разом дешевше») ----
+  "bundle.title": "Вместе дешевле",
+  "bundle.subtitle": "Аксессуары к этому товару — скидка до {n}%",
+  "bundle.thisItem": "Этот товар",
+  "bundle.total": "Комплект",
+  "bundle.save": "Экономия {amount}",
+  "bundle.add": "Добавить комплект",
+  "bundle.added": "Комплект в корзине",
+  "bundle.chooseVariant": "Сначала выберите вариант выше",
+  "bundle.pickSome": "Отметьте хотя бы один аксессуар",
+  "bundle.pickVariant": "Выбрать вариант",
+  "bundle.include": "Добавить в комплект: {title}",
+  "bundle.inCart": "Уже в корзине",
+  "bundle.notStack": "Скидки не суммируются — применяем более выгодную",
+  "bundle.beatsPromo": "Скидки не суммируются: «Вместе дешевле» выгоднее (−{amount}), применяем её",
+  "bundle.addonChip": "Скидка «Вместе дешевле»",
+  "bundle.suggest.title": "Докинь к заказу",
+  "bundle.suggest.percent": "−{n}% в комплекте",
+  "bundle.suggest.add": "Добавить",
+  "bundle.suggest.addTitle": "Добавить в корзину: {title}",
+  "order.bundleAddon": "Со скидкой «Вместе дешевле»",
 } satisfies Dictionary;
 
 export type RuDictionary = {

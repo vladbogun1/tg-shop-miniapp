@@ -74,6 +74,15 @@ public final class SettingsRegistry {
     public static final String GIFT_MARGIN_PERCENT = "gift.marginPercent";
     public static final String GIFT_CASE_CATEGORIES = "gift.caseCategories";
     public static final String GIFT_CASE_SUPER_CATEGORIES = "gift.caseSuperCategories";
+    // «Вместе дешевле» (V58, BundleService).
+    public static final String BUNDLES_GROUP = "bundles";
+    public static final String BUNDLE_ENABLED = "bundle.enabled";
+    public static final String BUNDLE_TIER1_PERCENT = "bundle.tier1Percent";
+    public static final String BUNDLE_TIER2_PERCENT = "bundle.tier2Percent";
+    public static final String BUNDLE_TIER3_PERCENT = "bundle.tier3Percent";
+    public static final String BUNDLE_MAX_ADDON_PRICE_PERCENT = "bundle.maxAddonPricePercent";
+    public static final String BUNDLE_MAX_DISCOUNT_UAH = "bundle.maxDiscountUah";
+    public static final String BUNDLE_MAX_SUGGESTIONS = "bundle.maxSuggestions";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -94,7 +103,9 @@ public final class SettingsRegistry {
             new Group("antibot", "Защита от ботов и спама",
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
             new Group(GIFT_GROUP, "Подарок за сумму (кейсы)",
-                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."));
+                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."),
+            new Group(BUNDLES_GROUP, "Вместе дешевле",
+                    "Скидка на аксессуары к товару. Пары категорий — в разделе «Вместе дешевле»."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -178,6 +189,37 @@ public final class SettingsRegistry {
                     "Категории суперприза",
                     "Корневые категории (slug через запятую) для джекпота золотого кейса.",
                     "klaviatury,myshki", 500),
+            boolSetting(BUNDLE_ENABLED, BUNDLES_GROUP,
+                    "«Вместе дешевле» включено",
+                    "К товару предлагаются аксессуары (пары категорий — в разделе «Вместе дешевле»), "
+                            + "а на аксессуары в корзине — скидка. С промокодом не суммируется: "
+                            + "заказ получает то, что выгоднее покупателю.",
+                    true),
+            intSetting(BUNDLE_TIER1_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 1 аксессуар",
+                    "Процент на аксессуар, когда к основному товару взят один.",
+                    5, 0, 50, "%"),
+            intSetting(BUNDLE_TIER2_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 2 аксессуара",
+                    "Процент на каждый из двух аксессуаров.",
+                    10, 0, 50, "%"),
+            intSetting(BUNDLE_TIER3_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 3 аксессуара",
+                    "Процент на каждый из трёх (больше трёх со скидкой не идёт — самые дорогие три).",
+                    15, 0, 50, "%"),
+            intSetting(BUNDLE_MAX_ADDON_PRICE_PERCENT, BUNDLES_GROUP,
+                    "Аксессуар не дороже",
+                    "Аксессуар идёт со скидкой и предлагается, только если стоит не больше этой доли "
+                            + "цены основного товара. 50 — к мыши за 3 000 ₴ коврик до 1 500 ₴.",
+                    50, 10, 100, "%"),
+            intSetting(BUNDLE_MAX_DISCOUNT_UAH, BUNDLES_GROUP,
+                    "Потолок скидки на заказ",
+                    "Больше этой суммы скидка «Вместе дешевле» не даёт. 0 — без потолка.",
+                    0, 0, 100000, "₴"),
+            intSetting(BUNDLE_MAX_SUGGESTIONS, BUNDLES_GROUP,
+                    "Сколько предлагать",
+                    "Сколько аксессуаров показывать на странице товара и в корзине.",
+                    3, 1, 6, "шт"),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

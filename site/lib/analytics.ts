@@ -124,6 +124,14 @@ export function trackGiftCaseOpen(orderId: string, rarity: string) {
 
 // ---- /gift case ----
 
+/**
+ * «Разом дешевше»: bundle_view (the block/suggestions were shown) / bundle_add (accessories added
+ * from it). `place` — product page, cart page or drawer; `ids` — the products shown/added.
+ */
+export function trackBundle(event: "bundle_view" | "bundle_add", place: "product" | "cart" | "drawer", ids: string[]) {
+  track(event, { place, ids });
+}
+
 export function trackCheckoutStart() {
   track("checkout_start");
 }
