@@ -1115,4 +1115,83 @@ class OrderServiceTest {
         assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000);
         assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
     }
+
+    // ---------- the size of a case prize (V59) ----------
+
+    private record SizedPrize(Order order, OrderItem line, Product product, ProductVariant m, ProductVariant l,
+                              ProductVariant xl) {
+    }
+
+    /** An opened case whose prize (a product with sizes) holds one M; L has one left, XL none. */
+    private SizedPrize sizedPrize(OrderStatus status) {
+        Product p = simpleProduct(0, 50_000);
+        ProductVariant m = variant(p, 3);
+        m.setName("M");
+        ProductVariant l = variant(p, 1);
+        l.setName("L");
+        l.setSortOrder(1);
+        ProductVariant xl = variant(p, 0);
+        xl.setName("XL");
+        xl.setSortOrder(2);
+        p.setVariants(new ArrayList<>(List.of(m, l, xl)));
+        Order o = new Order();
+        o.setId(UuidUtil.randomBytes());
+        o.setStatus(status);
+        o.setGiftCaseStatus(OrderService.GIFT_CASE_OPENED);
+        OrderItem line = new OrderItem();
+        line.setOrder(o);
+        line.setProductId(productId);
+        line.setTitleSnapshot(p.getTitle());
+        line.setQuantity(1);
+        line.setGift(true);
+        line.setAutoGift(true);
+        line.setCaseRarity("RARE");
+        line.setVariantId(m.getId());
+        line.setVariantNameSnapshot("M");
+        line.setVariantPending(true);
+        o.getItems().add(line);
+        lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        lenient().when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(p));
+        lenient().when(productRepository.findById(productId)).thenReturn(Optional.of(p));
+        return new SizedPrize(o, line, p, m, l, xl);
+    }
+
+    @Test
+    void casePrizeSizesAreTheHeldOneAndThoseInStock() {
+        SizedPrize s = sizedPrize(OrderStatus.NEW);
+        assertThat(service.casePrizeSizes(s.order())).extracting(OrderService.PrizeSize::name).containsExactly("M", "L");
+        assertThat(service.casePrizeSizes(s.order()).get(0).current()).isTrue();
+    }
+
+    @Test
+    void choosingAnotherSizeMovesTheHold() {
+        SizedPrize s = sizedPrize(OrderStatus.APPROVED);
+        service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.l().getId()));
+        assertThat(s.m().getStock()).isEqualTo(4);
+        assertThat(s.l().getStock()).isZero();
+        assertThat(s.product().getStock()).isEqualTo(4); // rollup
+        assertThat(s.line().getVariantId()).isEqualTo(s.l().getId());
+        assertThat(s.line().getVariantNameSnapshot()).isEqualTo("L");
+        assertThat(s.line().isVariantPending()).isFalse();
+    }
+
+    @Test
+    void choosingTheHeldSizeOnlyConfirmsIt() {
+        SizedPrize s = sizedPrize(OrderStatus.NEW);
+        service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.m().getId()));
+        assertThat(s.m().getStock()).isEqualTo(3);
+        assertThat(s.line().isVariantPending()).isFalse();
+    }
+
+    @Test
+    void aSizeOutOfStockOrAShippedOrderIsRefused() {
+        SizedPrize s = sizedPrize(OrderStatus.NEW);
+        assertThatThrownBy(() -> service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.xl().getId())))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(s.line().isVariantPending()).isTrue();
+        SizedPrize shipped = sizedPrize(OrderStatus.SHIPPED);
+        assertThatThrownBy(() -> service.chooseCasePrizeSize(shipped.order().getId(), UuidUtil.toString(shipped.l().getId())))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(shipped.l().getStock()).isEqualTo(1);
+    }
 }

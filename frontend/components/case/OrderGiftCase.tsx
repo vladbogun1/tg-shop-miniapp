@@ -13,7 +13,8 @@
  * the prize list for «Що може випасти» is that tier's from the public gift (GET /api/public/gift, no
  * chances); after opening, the server's own list (`reel`) drives the reel. After the case the order
  * page shows `panel`: the guaranteed discount the customer chose, the code of a discount prize, or the
- * swap of a product prize similar to what they bought (POST …/gift-case/swap).
+ * swap of a product prize similar to what they bought (POST …/gift-case/swap), and the size of a prize
+ * with sizes (POST …/gift-case/size).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import {
   unlockCaseAudio,
   type GiftCaseHaptics,
   type CasePromoTexts,
+  type CaseSizeTexts,
   type GiftCaseTexts,
   type GiftOrderPanelTexts,
 } from "@shop/shared/case-ui";
@@ -71,7 +73,21 @@ export function useCasePromoTexts(): CasePromoTexts {
   );
 }
 
-export const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
+/** «Оберіть розмір» etc. — the size picker of a prize with sizes. */
+export function useCaseSizeTexts(): CaseSizeTexts {
+  const t = useT();
+  return useMemo(
+    () => ({
+      choose: t("case.size.choose"),
+      label: t("case.size.label"),
+      chosen: t("case.size.chosen"),
+      error: t("case.size.error"),
+    }),
+    [t]
+  );
+}
+
+export const caseImage =(src: string, size: number) => resolveImageSrc(src, size);
 export const caseMoney = (minor: number) => money(minor);
 
 const HAPTICS: GiftCaseHaptics = {
@@ -94,6 +110,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
   const rarity = useCaseRarityNames();
   const tierName = useCaseTierNames();
   const promoTexts = useCasePromoTexts();
+  const sizeTexts = useCaseSizeTexts();
   const tier = order.gift?.tier ?? null;
   const sealed = order.giftCaseStatus === "SEALED" && order.status !== "REJECTED";
   const openable = sealed && order.giftCaseOpenable === true;
@@ -161,8 +178,9 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
       swapAction: t("case.swapAction"),
       swapped: t("case.swapped"),
       swapError: t("case.swapError"),
+      size: sizeTexts,
     }),
-    [t, order.id, rarity, tierName, promoTexts]
+    [t, order.id, rarity, tierName, promoTexts, sizeTexts]
   );
   const panelTexts: GiftOrderPanelTexts = useMemo(
     () => ({
@@ -178,8 +196,9 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
       swapError: t("case.swapError"),
       guaranteedTitle: t("case.order.discountTitle"),
       guaranteedText: t("case.order.discountText"),
+      size: sizeTexts,
     }),
-    [t, tierName, rarity, promoTexts]
+    [t, tierName, rarity, promoTexts, sizeTexts]
   );
 
   const openCase = useCallback(() => customerApi.openGiftCase(order.id), [order.id]);
@@ -189,6 +208,16 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
     void qc.invalidateQueries({ queryKey: ["me", "orders"] });
     return res;
   }, [order.id, qc]);
+  const chooseSize = useCallback(
+    async (variantId: string) => {
+      hapticSelection();
+      const res = await customerApi.chooseGiftCaseSize(order.id, variantId);
+      hapticSuccess();
+      void qc.invalidateQueries({ queryKey: ["me", "orders"] });
+      return res;
+    },
+    [order.id, qc]
+  );
   const onRevealed = useCallback(
     (res: GiftCaseOpen) => {
       trackGiftCaseOpen(order.id, res.won.rarity);
@@ -250,6 +279,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
         prizes={prizes}
         tier={tier}
         onSwap={swapCase}
+        onSize={chooseSize}
         texts={texts}
         money={caseMoney}
         formatDate={formatDate}
@@ -271,6 +301,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
         money={caseMoney}
         formatDate={formatDate}
         onSwap={order.gift.swap?.available ? swapCase : undefined}
+        onSize={chooseSize}
       />
     ) : null;
 
