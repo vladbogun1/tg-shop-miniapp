@@ -5,6 +5,7 @@
  *   GET  /api/public/gift → GiftResponse (tiers with thresholds and prizes, or one product)
  *   POST /api/me/orders/{id}/gift-case/open → GiftCaseOpen
  *   POST /api/me/orders/{id}/gift-case/swap → GiftCaseOpen (the prize swapped for a code)
+ *   POST /api/me/orders/{id}/gift-case/size {variantId} → CaseSize (the prize's size, V59)
  * The clients count «add N more» themselves with {@link giftProgress} (the cart total after the
  * discount, or the product price on the product page); the checkout decides it again on the server.
  *
@@ -139,6 +140,21 @@ export interface CaseSwap {
   swappedAt: string | null;
 }
 
+/**
+ * The size of a product prize with sizes (V59). At checkout the fullest size is held; while `pending`
+ * the customer has not chosen — the apps ask for it (POST …/gift-case/size {variantId} → CaseSize).
+ */
+export interface CaseSize {
+  /** Not chosen yet: `variantId` is only the size held for now. */
+  pending: boolean;
+  /** May be (re)chosen now — the order is still being put together. */
+  changeable: boolean;
+  variantId: string;
+  name: string;
+  /** Sizes to choose from: in stock, or held now. */
+  options: { variantId: string; name: string }[];
+}
+
 export interface GiftCaseOpen {
   status: "OPENED";
   tier: CaseTier;
@@ -148,6 +164,8 @@ export interface GiftCaseOpen {
   /** The code of a discount prize / of a swap. */
   promo: CasePromo | null;
   swap: CaseSwap | null;
+  /** The prize's size (a product with sizes); null otherwise. */
+  size?: CaseSize | null;
 }
 
 export type GiftCaseStatus = "SEALED" | "OPENED";
@@ -163,6 +181,8 @@ export interface OrderGift {
   prize: CaseItem | null;
   promo: CasePromo | null;
   swap: CaseSwap | null;
+  /** The prize's size (a product with sizes); null otherwise. */
+  size?: CaseSize | null;
 }
 
 /** Error codes of POST …/gift-case/open the apps handle gracefully (close the screen, refetch). */

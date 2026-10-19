@@ -7,6 +7,8 @@ import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseOpenDto;
 import com.maxsolch.shop.gift.GiftDtos.OrderGiftDto;
 import com.maxsolch.shop.gift.GiftDtos.PromoDto;
+import com.maxsolch.shop.gift.GiftDtos.SizeDto;
+import com.maxsolch.shop.gift.GiftDtos.SizeOption;
 import com.maxsolch.shop.gift.GiftDtos.SwapDto;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.service.OrderService;
@@ -99,8 +101,30 @@ public class GiftCaseService {
         CaseItemDto prize = rec == null || hidden ? null : wonDto(rec, lang);
         PromoDto promo = rec == null || hidden ? null : promoDto(rec.getPromoCode());
         SwapDto swap = rec == null || hidden ? null : swapOffer(order, rec);
+        SizeDto size = order.getGiftCaseStatus() == null || hidden ? null : sizeDto(order);
         return new OrderGiftDto(order.getGiftTier(), order.getGiftDiscountMinor(), order.getGiftCaseStatus(),
-                OrderService.giftCaseOpenable(order), prize, promo, swap);
+                OrderService.giftCaseOpenable(order), prize, promo, swap, size);
+    }
+
+    /** POST …/gift-case/size: the customer picks the size of the product prize (the hold moves to it). */
+    @Transactional
+    public SizeDto chooseSize(byte[] orderId, String variantId) {
+        return sizeDto(orderService.chooseCasePrizeSize(orderId, variantId));
+    }
+
+    /** The size block of the case prize line; null when the prize has no sizes or has left the order. */
+    SizeDto sizeDto(Order order) {
+        var line = OrderService.casePrizeLine(order).orElse(null);
+        if (line == null || line.getVariantId() == null) {
+            return null;
+        }
+        List<OrderService.PrizeSize> sizes = orderService.casePrizeSizes(order);
+        if (sizes.isEmpty()) {
+            return null;
+        }
+        return new SizeDto(line.isVariantPending(), OrderService.giftCaseSwappable(order),
+                UuidUtil.toString(line.getVariantId()), line.getVariantNameSnapshot(),
+                sizes.stream().map(s -> new SizeOption(s.variantId(), s.name())).toList());
     }
 
     private CaseOpenDto openDto(Order order, OrderGiftCase rec, String lang) {
@@ -112,7 +136,7 @@ public class GiftCaseService {
         }
         return new CaseOpenDto(OrderService.GIFT_CASE_OPENED, tier, won, reel,
                 rec == null ? null : promoDto(rec.getPromoCode()),
-                rec == null ? new SwapDto(false, 0, null) : swapOffer(order, rec));
+                rec == null ? new SwapDto(false, 0, null) : swapOffer(order, rec), sizeDto(order));
     }
 
     /** What dropped, for the customer's language (the product as it is in the catalog now). */

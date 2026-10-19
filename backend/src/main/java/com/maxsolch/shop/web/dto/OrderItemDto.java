@@ -17,5 +17,7 @@ public record OrderItemDto(
         /** Rarity of the gift-case prize (V57); null = not from a case. */
         String caseRarity,
         /** Got the «Вместе дешевле» discount (V58). */
-        boolean bundleAddon) {
+        boolean bundleAddon,
+        /** A case prize whose size the customer has not chosen yet (V59). */
+        boolean variantPending) {
 }

@@ -7,3 +7,4 @@ export * from "./GiftCaseOpening";
 export * from "./GiftCaseParts";
 export { unlockCaseAudio, isCaseAudioMuted, setCaseAudioMuted } from "./case-audio";
 export * from "./case-tier";
+export * from "./case-size";

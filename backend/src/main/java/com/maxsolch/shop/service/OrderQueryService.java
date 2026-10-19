@@ -402,7 +402,8 @@ public class OrderQueryService {
                 it.getReturnedQty(),
                 it.isAutoGift(),
                 it.getCaseRarity(),
-                it.isBundleAddon());
+                it.isBundleAddon(),
+                it.isVariantPending());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

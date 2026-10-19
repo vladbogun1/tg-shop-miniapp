@@ -225,6 +225,8 @@ export interface OrderItem {
   caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
   /** Got the «Вместе дешевле» discount at checkout (V58). */
   bundleAddon?: boolean;
+  /** A case prize whose size the customer has not chosen yet (V59). */
+  variantPending?: boolean;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */

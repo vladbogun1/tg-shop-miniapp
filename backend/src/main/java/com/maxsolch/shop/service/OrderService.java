@@ -1190,6 +1190,10 @@ public class OrderService {
         if (variant != null) {
             item.setVariantId(variant.getId());
             item.setVariantNameSnapshot(variant.getName());
+            // A case prize with a choice of sizes: the fullest one is held until the customer picks theirs.
+            ProductVariant held = variant;
+            item.setVariantPending(caseRarity != null
+                    && product.getVariants().stream().anyMatch(v -> v != held && v.getStock() > 0));
         }
         order.getItems().add(item);
         toSave.add(product);
@@ -1330,6 +1334,69 @@ public class OrderService {
         return saved;
     }
 
+    /** A size the customer may pick for the case prize: in stock, or the one held for them now. */
+    public record PrizeSize(String variantId, String name, boolean current) {
+    }
+
+    /**
+     * Sizes of the case prize line to choose from (empty when the prize has none): the one held now and
+     * every other one in stock, in the product's order.
+     */
+    @Transactional(readOnly = true)
+    public List<PrizeSize> casePrizeSizes(Order order) {
+        OrderItem line = casePrizeLine(order).orElse(null);
+        if (line == null || line.getVariantId() == null) {
+            return List.of();
+        }
+        Product product = productRepository.findById(line.getProductId()).orElse(null);
+        if (product == null || product.getVariants() == null) {
+            return List.of();
+        }
+        return product.getVariants().stream()
+                .sorted(Comparator.comparingInt(ProductVariant::getSortOrder))
+                .filter(v -> v.getStock() > 0 || java.util.Arrays.equals(v.getId(), line.getVariantId()))
+                .map(v -> new PrizeSize(UuidUtil.toString(v.getId()), v.getName(),
+                        java.util.Arrays.equals(v.getId(), line.getVariantId())))
+                .toList();
+    }
+
+    /**
+     * The customer picks the size of the opened case's product prize while the order is still being put
+     * together: the held unit goes back to stock and one of the chosen size is reserved instead. Picking
+     * the held size just confirms it. 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone.
+     */
+    @Transactional
+    public Order chooseCasePrizeSize(byte[] orderId, String variantId) {
+        Order order = lock(orderId);
+        if (!giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+        }
+        OrderItem item = casePrizeLine(order).orElseThrow();
+        Product product = productRepository.findByIdForUpdate(item.getProductId()).orElse(null);
+        ProductVariant target = product == null || variantId == null ? null : findVariant(product, variantId);
+        if (target == null || item.getVariantId() == null) {
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+        }
+        if (!java.util.Arrays.equals(target.getId(), item.getVariantId())) {
+            if (target.getStock() < item.getQuantity()) {
+                throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+            }
+            ProductVariant held = product.getVariants().stream()
+                    .filter(v -> java.util.Arrays.equals(v.getId(), item.getVariantId())).findFirst().orElse(null);
+            if (held != null) {
+                releaseStock(product, held, item.getQuantity());
+            }
+            reserveStock(product, target, item.getQuantity());
+            productRepository.save(product);
+            item.setVariantId(target.getId());
+            item.setVariantNameSnapshot(target.getName());
+        }
+        item.setVariantPending(false);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
     /** The order locked for an update (the gift case reads and changes it in one transaction). */
     @Transactional
     public Order lockForGiftCase(byte[] orderId) {
@@ -1380,6 +1447,7 @@ public class OrderService {
     public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
     public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
     public static final String GIFT_CASE_SWAP_UNAVAILABLE = "GIFT_CASE_SWAP_UNAVAILABLE";
+    public static final String GIFT_CASE_SIZE_UNAVAILABLE = "GIFT_CASE_SIZE_UNAVAILABLE";
 
     /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
     private void releasePromoUsage(String code) {

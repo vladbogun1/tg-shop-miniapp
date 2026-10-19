@@ -60,6 +60,10 @@ public class OrderItem {
     @Column(name = "bundle_addon", nullable = false)
     private boolean bundleAddon = false;
 
+    /** A case prize with sizes whose size the customer has not chosen yet (V59): the reserved one is a guess. */
+    @Column(name = "variant_pending", nullable = false)
+    private boolean variantPending = false;
+
     /** Units of this line the customer sent back (partial or full return). */
     @Column(name = "returned_qty", nullable = false)
     private int returnedQty = 0;
