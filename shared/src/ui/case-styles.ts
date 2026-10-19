@@ -229,6 +229,9 @@ export const CASE_CSS = `
 .gc-disc.is-sm{width:30px;height:30px;flex:none}
 .gc-disc.is-sm .gc-disc-ticket{width:100%;border-radius:3px}
 .gc-disc.is-sm .gc-disc-ticket b{font-size:11px;letter-spacing:-.04em}
+.gc-disc-ticket b[data-len=xl]{font-size:12cqw}
+.gc-disc.is-sm .gc-disc-ticket b[data-len=long]{font-size:8.5px}
+.gc-disc.is-sm .gc-disc-ticket b[data-len=xl]{font-size:7px;letter-spacing:-.06em}
 .gc-disc.is-sm .gc-disc-ticket b[data-len=long]{font-size:8px}
 .gc-disc.is-lg .gc-disc-ticket{width:96%;box-shadow:inset 0 0 0 3px rgba(255,255,255,.3),0 10px 40px color-mix(in srgb,var(--rc) 45%,transparent)}
 

@@ -53,11 +53,14 @@ export function GiftCaseTierBadge({ tier, label, className }: { tier: CaseTier; 
 
 /** A discount prize in a tile: a big «−10%» on a coupon in the rarity colour. */
 export function CaseDiscountTile({ item, money, size = "md" }: { item: CaseItem; money: (minor: number) => string; size?: "sm" | "md" | "lg" }) {
-  const text = caseDiscountText(item, money);
+  const full = caseDiscountText(item, money);
+  // The 30 px tile of a list row: «−1000₴» without the spaces still has to fit.
+  const text = size === "sm" ? full.replace(/\s/g, "") : full;
+  const len = text.length > 7 ? "xl" : text.length > 5 ? "long" : undefined;
   return (
     <span className={`gc-disc is-${size}`} style={rarityVars(item.rarity)} aria-hidden>
       <span className="gc-disc-ticket">
-        <b className="gc-disp" data-len={text.length > 6 ? "long" : undefined}>
+        <b className="gc-disp" data-len={len}>
           {text}
         </b>
       </span>
