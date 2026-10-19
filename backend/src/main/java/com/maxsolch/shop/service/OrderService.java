@@ -4,6 +4,8 @@ import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.gift.OrderGiftCase;
+import com.maxsolch.shop.bundle.BundlePricing;
+import com.maxsolch.shop.bundle.BundleService;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
@@ -103,6 +105,14 @@ public class OrderService {
         this.caseLowMargin = caseLowMargin;
     }
 
+    /** «Вместе дешевле» (optional: unit tests build the service without it). */
+    private BundleService bundleService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setBundleService(BundleService bundleService) {
+        this.bundleService = bundleService;
+    }
+
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
@@ -200,6 +210,8 @@ public class OrderService {
             // checkout, or both orders pass "one left in stock" and the shop oversells.
             locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
         }
+        List<BundlePricing.Line> bundleLines = new ArrayList<>();
+        Map<String, OrderItem> itemsByKey = new HashMap<>();
         for (AccLine line : lines) {
             Product product = locked.get(line.productId)
                     .orElseThrow(() -> new BadRequestException(messages.current("api.order.productUnknown")));
@@ -231,14 +243,39 @@ public class OrderService {
             subtotal += product.getPriceMinor() * (long) line.quantity;
             order.getItems().add(item);
             toSave.add(product);
+            String key = BundleService.key(UuidUtil.toString(product.getId()),
+                    variant == null ? null : UuidUtil.toString(variant.getId()));
+            itemsByKey.put(key, item);
+            bundleLines.add(new BundlePricing.Line(key,
+                    product.getCategoryId() == null ? null : UuidUtil.toString(product.getCategoryId()),
+                    product.getPriceMinor(), line.quantity));
         }
 
-        // Promo: fixed amount takes priority over percent.
+        // One discount per order: «Вместе дешевле» or the promo code, whichever is better for the
+        // customer (the cart showed the same choice — BundleService.quote).
+        BundlePricing.Result bundle = bundleService == null
+                ? BundlePricing.Result.EMPTY : bundleService.price(bundleLines);
         long discount = 0;
         PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
         long lowMarginMinor = lowMarginMinor(order);
-        if (promo != null) {
-            discount = discountFor(promo, subtotal, casePromoExcluded(promo, lowMarginMinor, subtotal));
+        long promoDiscount = promo == null ? 0
+                : discountFor(promo, subtotal, casePromoExcluded(promo, lowMarginMinor, subtotal));
+        if (bundle.discountMinor() > 0 && bundle.discountMinor() > promoDiscount) {
+            discount = Math.min(bundle.discountMinor(), subtotal);
+            order.setBundleDiscountMinor(discount);
+            bundle.lines().keySet().forEach(k -> {
+                OrderItem it = itemsByKey.get(k);
+                if (it != null) {
+                    it.setBundleAddon(true);
+                }
+            });
+            if (promo != null && cmd.tgUserId() != null) {
+                // The code was not used: free its hold for the next order instead of waiting it out.
+                promoService.release(promo.getCode(), cmd.tgUserId());
+            }
+        } else if (promo != null) {
+            // Promo: fixed amount takes priority over percent.
+            discount = promoDiscount;
             order.setPromoCode(promo.getCode());
             promo.setUsesCount(promo.getUsesCount() + 1);
             promoCodeRepository.save(promo);
@@ -877,6 +914,9 @@ public class OrderService {
         // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
+        // The admin's discount replaces «Вместе дешевле» (one discount per order).
+        order.setBundleDiscountMinor(0);
+        order.getItems().forEach(i -> i.setBundleAddon(false));
         order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
@@ -1130,6 +1170,7 @@ public class OrderService {
         long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
         order.setDiscountMinor(discount);
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
+        order.setBundleDiscountMinor(Math.min(order.getBundleDiscountMinor(), discount));
         order.setTotalMinor(Math.max(0, subtotal - discount));
     }
 

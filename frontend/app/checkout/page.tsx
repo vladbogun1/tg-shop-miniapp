@@ -89,6 +89,7 @@ import {
   type NpWarehouse,
   type PaymentOption,
 } from "@/lib/api";
+import { useBundleQuote } from "@/lib/bundle";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
@@ -263,13 +264,18 @@ export default function CheckoutPage() {
   // refreshing the hold on a limited code while the customer works through the steps.
   const promo = usePromoPreview(promoCode, subtotal);
   const promoPreview = promo.data;
-  const discount = promo.discount;
   const promoValid = promo.data?.valid === true;
-  const baseTotal = Math.max(0, subtotal - discount);
+  // One discount per order — the bundle («Разом дешевше») or the code, whichever is better; the
+  // server prices the order the same way, so the total here is what will be charged. Until the
+  // quote for these exact lines arrives, the promo-only sum stands.
+  const { quote } = useBundleQuote(lines, promo.discount);
+  const discount = quote ? quote.discountMinor : promo.discount;
+  const discountKind = quote ? quote.discountKind : promo.discount > 0 ? "PROMO" : null;
+  const baseTotal = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
   const giftNow = giftProgress(useGift(), baseTotal);
   const gift = giftNow?.reached ? giftNow : null;
   // Gift tier reached: the customer picks the case (default) or the tier's guaranteed discount on
-  // this order — the server counts both from the total after the promo code, like here.
+  // this order — the server counts both from the total after the promo code / bundle, like here.
   const [giftChoice, setGiftChoice] = useState<GiftChoice>("CASE");
   const giftTier = gift?.kind === "CASE" ? gift.tier : null;
   const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
@@ -529,6 +535,8 @@ export default function CheckoutPage() {
               onGiftChoice={setGiftChoice}
               giftDiscount={giftDiscount}
               baseTotal={baseTotal}
+              discountKind={discountKind}
+              promoDiscount={promo.discount}
               total={total}
               dueNow={dueNow}
               currency={currency}
@@ -1023,6 +1031,8 @@ function ConfirmStep({
   onGiftChoice,
   giftDiscount,
   baseTotal,
+  discountKind,
+  promoDiscount,
   total,
   dueNow,
   currency,
@@ -1049,6 +1059,10 @@ function ConfirmStep({
   giftDiscount: number;
   /** The total before the gift discount (what the discount is counted from). */
   baseTotal: number;
+  /** Which discount the order gets — the bundle or the promo code, never both. */
+  discountKind: "BUNDLE" | "PROMO" | null;
+  /** What the promo code alone would give (0 = no code / not valid). */
+  promoDiscount: number;
   total: number;
   /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
   dueNow: number;
@@ -1130,9 +1144,11 @@ function ConfirmStep({
             {discount > 0 && (
             <div className="flex items-center justify-between py-0.5">
               <span className="text-[13px] font-semibold text-[var(--muted)]">
-                {promoCode
-                  ? t("checkout.confirm.discountWithCode", { code: promoCode })
-                  : t("checkout.confirm.discount")}
+                {discountKind === "BUNDLE"
+                  ? t("bundle.title")
+                  : promoCode
+                    ? t("checkout.confirm.discountWithCode", { code: promoCode })
+                    : t("checkout.confirm.discount")}
               </span>
               <span className="font-display text-[14px] font-bold tabular-nums text-[var(--ok)]">
                 −{money(discount, currency)}
@@ -1173,7 +1189,10 @@ function ConfirmStep({
           </p>
         )}
 
-        {promoCode && discount === 0 && (
+        {discountKind === "BUNDLE" && promoDiscount > 0 && (
+          <p className="mt-2 text-[12px] font-semibold text-[var(--muted)]">{t("bundle.notStacking")}</p>
+        )}
+        {promoCode && promoDiscount === 0 && (
           <p className="mt-2 text-[12px] font-bold text-[var(--danger)]">
             {t("checkout.confirm.promoProblem", {
               code: promoCode,

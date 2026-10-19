@@ -67,7 +67,9 @@ public record OrderDetailDto(
         /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
         com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
-        long giftDiscountMinor) {
+        long giftDiscountMinor,
+        /** Part of discountMinor given by «Вместе дешевле» (V61); 0 = promo code / manual discount. */
+        long bundleDiscountMinor) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

@@ -81,6 +81,9 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const cancelMode = customerCancelMode(order);
   // Gift case (V57): the case card on top (locked until paid), the opening screen (once).
   const giftCase = useOrderGiftCase(order);
+  // «Разом дешевше» part of the discount (V61) and the rest (promo code / manual).
+  const bundleDiscount = Math.min(order.bundleDiscountMinor ?? 0, order.discountMinor);
+  const otherDiscount = order.discountMinor - bundleDiscount;
   const refresh = () => {
     onChange();
     void qc.invalidateQueries({ queryKey: ["me", "orders"] });
@@ -191,6 +194,9 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                   it.variantName && <p className="text-[12px] font-semibold text-[var(--muted)]">{it.variantName}</p>
                 )}
                 {it.autoGift && it.caseRarity && <CasePrizeNote rarity={it.caseRarity} />}
+                {it.bundleAddon && !it.gift && (
+                  <p className="text-[12px] font-semibold text-[var(--accent-hi)]">{t("order.bundleAddon")}</p>
+                )}
                 <p className="text-[12px] font-medium text-[var(--faint)]">
                   {it.gift || it.autoGift
                     ? it.quantity > 1
@@ -210,10 +216,16 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
             <span>{t("order.sum")}</span>
             <span className="font-semibold text-[var(--ink)]">{fmt.money(order.subtotalMinor, order.currency)}</span>
           </div>
-          {order.discountMinor > 0 && (
+          {bundleDiscount > 0 && (
+            <div className="flex justify-between font-semibold text-[var(--muted)]">
+              <span>{t("bundle.title")}</span>
+              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(bundleDiscount, order.currency)}</span>
+            </div>
+          )}
+          {otherDiscount > 0 && (
             <div className="flex justify-between font-semibold text-[var(--muted)]">
               <span>{order.promoCode ? t("order.discountWithCode", { code: order.promoCode }) : t("order.discount")}</span>
-              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(order.discountMinor, order.currency)}</span>
+              <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(otherDiscount, order.currency)}</span>
             </div>
           )}
           <div className="mt-1 flex items-center justify-between">

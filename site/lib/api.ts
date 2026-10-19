@@ -11,6 +11,9 @@ import {
   ApiError,
   type AuthUser,
   type BonusCode,
+  type BundleProductOffer,
+  type BundleQuote,
+  type BundleQuoteRequest,
   type CatalogSchema,
   type CartLineInput,
   createHttpClient,
@@ -201,6 +204,11 @@ export const api = {
   paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
   /** The gift for the order sum / the gift case (null gift = off). The clients count the progress themselves. */
   gift: () => http.get<GiftResponse>("/api/public/gift"),
+  /** «Разом дешевше»: accessories offered next to a product (empty items = show nothing). */
+  bundleOffer: (productId: string) =>
+    http.get<BundleProductOffer>(`/api/public/bundles/product/${encodeURIComponent(productId)}`),
+  /** Prices the cart: bundle vs promo (one wins), add-on lines, suggestions. */
+  bundleQuote: (body: BundleQuoteRequest) => http.post<BundleQuote>("/api/public/bundles/quote", body),
   /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
   orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   /** `items` — the cart lines (`promoItems`): a code from the gift case skips low-margin products. */

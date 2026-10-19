@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
+import { BundleBlock } from "@/components/catalog/BundleBlock";
 import { CompareViewButton } from "@/components/compare/CompareBits";
 import { compareGroupOf } from "@shop/shared";
 import { useCompare } from "@/lib/compare";
@@ -32,6 +33,8 @@ interface Nav {
   onCategory?: (slug: string | null) => void;
   /** Brand tap: back to the catalog filtered by this brand. */
   onBrand?: (slug: string) => void;
+  /** Opens another product in this sheet (an accessory with variants from «Разом дешевше»). */
+  onOpenProduct?: (p: Product) => void;
 }
 
 export function ProductView({
@@ -40,6 +43,7 @@ export function ProductView({
   onAdded,
   onCategory,
   onBrand,
+  onOpenProduct,
 }: {
   product: Product | null;
   onClose: () => void;
@@ -48,7 +52,7 @@ export function ProductView({
   return (
     <AnimatePresence>
       {product && (
-        <ViewBody key={product.id} product={product} onClose={onClose} onAdded={onAdded} onCategory={onCategory} onBrand={onBrand} />
+        <ViewBody key={product.id} product={product} onClose={onClose} onAdded={onAdded} onCategory={onCategory} onBrand={onBrand} onOpenProduct={onOpenProduct} />
       )}
     </AnimatePresence>
   );
@@ -60,6 +64,7 @@ function ViewBody({
   onAdded,
   onCategory,
   onBrand,
+  onOpenProduct,
 }: {
   product: Product;
   onClose: () => void;
@@ -222,6 +227,13 @@ function ViewBody({
             )}
 
             <ProductGiftBanner priceMinor={product.priceMinor} currency={product.currency ?? "UAH"} />
+            <BundleBlock
+              product={product}
+              variant={variant}
+              needsVariant={needsVariant}
+              onOpenProduct={onOpenProduct}
+              onAdded={() => onAdded?.()}
+            />
 
             <SpecsTable schema={schema} product={product} />
 

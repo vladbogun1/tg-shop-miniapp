@@ -107,6 +107,31 @@ export function trackGiftCaseOpen(orderId: string, rarity: string) {
   track("gift_case_open", undefined, JSON.stringify({ orderId, rarity }));
 }
 
+/**
+ * The «Разом дешевше» block (product page) or the suggestions strip (cart) was shown; `ex` — slots
+ * whose first item was the second-best this time (BundleSlot.explore).
+ */
+export function trackBundleView(place: "product" | "cart", ids: string[], ex = 0) {
+  track("bundle_view", undefined, JSON.stringify({ place, g: "B", ids, ex }));
+}
+
+/** The visitor is in the control group: the block would have shown these ids but stayed hidden. */
+export function trackBundleHoldout(place: "product" | "cart", ids: string[]) {
+  track("bundle_holdout", undefined, JSON.stringify({ place, g: "H", ids }));
+}
+
+/**
+ * Accessories were added from the bundle block / the cart strip. `slot` — 1-based slot position (0 —
+ * none), `kind` — primary | color | alt | setup | cart, `ex` — the slot was an explore show.
+ */
+export function trackBundleAdd(
+  place: "product" | "cart",
+  productIds: string[],
+  extra: { slot?: number; kind?: string; ex?: boolean } = {},
+) {
+  track("bundle_add", undefined, JSON.stringify({ place, productIds, ...extra }));
+}
+
 /** The checkout screen was opened with something in the cart. */
 export function trackCheckoutStart() {
   track("checkout_start");

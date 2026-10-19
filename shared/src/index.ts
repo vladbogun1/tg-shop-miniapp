@@ -29,6 +29,7 @@ export * from "./receipts";
 export * from "./telegram-html";
 export * from "./bonuses";
 export * from "./giftcase";
+export * from "./bundle";
 export * from "./support";
 export * from "./types";
 export * from "./ws";
