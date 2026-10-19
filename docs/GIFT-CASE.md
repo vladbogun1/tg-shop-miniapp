@@ -6,6 +6,40 @@
 `feat/bundles` («Вместе дешевле» — [`BUNDLES.md`](BUNDLES.md)), но от неё не зависит: каждая
 фича включается своим выключателем.
 
+**Переработка (2026-10-19):** три кейса — **бронзовый, серебряный, золотой** (свои пороги и призы);
+призы-скидки; шансы покупателям больше не показываются; при оформлении — выбор «гарантированная
+скидка сразу или кейс»; приз, похожий на купленный товар, можно заменить на промокод.
+
+## Уровни кейсов
+
+| Уровень | Порог по умолчанию | Гарантированная скидка | Потолок | Замена похожего приза |
+|---|---|---|---|---|
+| BRONZE | 1 500 ₴ | 3 % | 100 ₴ | 50 % цены приза |
+| SILVER | 3 000 ₴ | 5 % | 250 ₴ | 50 % |
+| GOLD | 6 000 ₴ | 7 % | 600 ₴ | 60 % |
+
+- Заказ получает **самый дорогой уровень**, до порога которого дотянул итог (после промокода и
+  комплекта). Если в этом уровне нечего разыграть (выключен, нет призов, которые могут выпасть),
+  берётся уровень дешевле; если ни одного — запасной товар-подарок (`gift.productId` от своего
+  порога `gift.thresholdUah`).
+- **Выбор при оформлении** (`giftChoice` в запросе заказа: `CASE` по умолчанию / `DISCOUNT`):
+  если у уровня гарантированная скидка > 0, покупатель видит две карточки (`GiftChoicePicker`).
+  `DISCOUNT` — целые гривны от итога в пределах потолка (`guaranteedDiscountMinor`), хранится в
+  `orders.gift_discount_minor` и входит в `discountMinor`; кейса тогда нет. Сумму считает сервер,
+  клиент только показывает.
+- **Призы-скидки** (`kind = DISCOUNT`, % или фиксированные ₴): выпадают как обычный приз; при
+  открытии покупатель получает личный промокод `GIFT_CASE` на следующий заказ сроком
+  `gift.promoValidDays` (30 дней). При отмене заказа (REJECTED) код отзывается.
+- **Замена похожего приза** (`POST /api/me/orders/{id}/gift-case/swap`): выпал товар, который
+  покупатель уже покупал (тот же товар или та же категория в заказах не REJECTED, включая
+  текущий), — пока заказ NEW/APPROVED, приз можно один раз заменить на промокод на `swapPercent` %
+  его цены (фиксированные ₴). Строка приза уходит из заказа, остаток возвращается. Нельзя → 400
+  `GIFT_CASE_SWAP_UNAVAILABLE`.
+- **Шансы** видит только админ. Покупатель видит список «Що може випасти» с редкостями и ценами.
+- Арт уровней: `public/case/<bronze|silver|gold>/case-{closed,open,closed-sm}.webp` (промпты
+  `docs/case-art/tier-*.txt`); цвета металла — `CASE_TIER_METAL` (CSS-переменные
+  `--ga/--ga2/--gb1/--gb2/--gink`).
+
 ## Правила (решения владельца, против абуза)
 
 - **Приз определяет только сервер**, при оформлении заказа (или когда админ выдаёт кейс):
@@ -43,29 +77,35 @@
 | Ключ | По умолчанию | Что |
 |---|---|---|
 | `gift.enabled` | false | **Главный выключатель подарка за сумму.** Выключено: ни баннеров, ни прогресса в корзине, ни подарка в заказе |
-| `gift.thresholdUah` | 3000 | порог, ₴, по итогу после скидки |
+| `gift.thresholdUah` | 3000 | порог товара-подарка, ₴ (в режиме кейса — порог запасного товара; пороги кейсов — в `gift_case_tiers`) |
+| `gift.promoValidDays` | 30 | срок промокода приза-скидки / замены, дней |
 | `gift.caseEnabled` | false | подарок — кейс (иначе один товар) |
 | `gift.productId` | — | товар-подарок; в режиме кейса это запасной вариант, если призов нет в наличии |
 
-В разделе: статистика за 30 дней (заказы с подарком, с кейсом, кейсов открыто), настройки и
-**призы кейса** (`CasePanel`): товар из каталога, редкость (COMMON / RARE / EPIC / LEGENDARY /
-GOLD — цвет рамки как в CS), шанс в %, порядок, вкл/выкл. Видно фактический шанс среди призов в
-наличии, остаток, сумму шансов и среднюю стоимость приза. Выдача кейса заказу —
-`components/orders/GiftCaseModal.tsx`.
+В разделе: статистика за 30 дней (подарки, кейсов открыто, скидка вместо кейса, призов-скидок /
+замен, по уровням), настройки и **кейсы** (`CasePanel`): вкладки уровней с артом; у уровня —
+выключатель, порог, гарантированная скидка и её потолок, процент замены (сохраняются сразу); призы
+уровня — товар из каталога или скидка (% / ₴), редкость (COMMON / RARE / EPIC / LEGENDARY / GOLD),
+шанс в %, порядок, вкл/выкл; фактический шанс, сумма шансов, средняя ценность приза. Выдача кейса
+заказу — `components/orders/GiftCaseModal.tsx` (с выбором уровня). В карточке заказа: уровень
+кейса, приз-скидка с промокодом, замена, строка «🎁 Вместо кейса» в итогах.
 
 ## Что видит покупатель (сайт и Mini App одинаково)
 
 - **Товар** (`ProductGiftBanner`): если товар дороже порога — «🎁 З цим товаром — кейс у
   подарунок: після оплати відкриєте й виб'єте ще девайс», иначе «Замовлення від 3 000 ₴ — кейс з
   дропом» и сколько добрать. Под этим тизер самого редкого приза («Можна вибити: …») и
-  раскрывающийся список «Що може випасти» с шансами.
+  раскрывающийся список «Що може випасти» (без шансов). В корзине уровни — лесенкой.
 - **Корзина** (`CartGiftProgress`): «Купіть ще на N ₴ — і отримаєте кейс з дропом» с полосой
   прогресса, по достижении — «🎉 Вітаємо! …» и светящийся кейс.
-- **Оформление**: строка «🎁 Кейс з подарунком» в сводке, кнопка «Оформити + 🎁 кейс».
+- **Оформление**: выбор «кейс / гарантована знижка», в сводке строка кейса нужного уровня или
+  «🎁 Гарантована знижка», кнопка «Оформити + 🎁 кейс».
 - **Заказ**: до оплаты кейс под замком («відкриється після оплати»), после оплаты кнопка
   «Відкрити кейс». Сразу после оплаты экран открытия запускается сам (`markGiftCaseAutoOpen`).
   Открытие идёт на весь экран: лента, звук (`case-audio`), частицы и вспышка по редкости
   (`case-particles`), вибрация в Telegram. В списке заказов бейдж «🎁 Кейс чекає / після оплати».
+  После открытия — промокод приза-скидки (с копированием) или кнопка «Замінити на −N ₴»; на
+  странице заказа то же в панели `GiftCaseOrderPanel`.
 - **Бот**: в сообщении о статусе есть строка про кейс; когда админ выдаёт кейс, приходит
   отдельное сообщение.
 
@@ -77,27 +117,36 @@ GOLD — цвет рамки как в CS), шанс в %, порядок, вк�
 
 | Метод | Путь | Что |
 |---|---|---|
-| GET | `/api/public/gift` | `{gift: GiftInfo \| null}`: `thresholdMinor`, `kind` PRODUCT/CASE, `product`, `caseItems` (призы в наличии с шансами). Без входа |
-| POST | `/api/me/orders/{id}/gift-case/open` | открыть кейс своего заказа → `{status, won, reel}`; журнал `GIFT_CASE_OPENED` |
-| GET/POST/PATCH/DELETE | `/api/admin/gift/case-items[/{id}]` | призы кейса (аудит `GIFT_CASE_ITEM_*`) |
-| GET | `/api/admin/gift/stats` | 30 дней: orders, giftOrders, caseOrders, casesOpened |
-| POST | `/api/admin/orders/{id}/gift-case` | выдать кейс (`{notifyCustomer}`); аудит `ORDER_GIFT_CASE` |
+| GET | `/api/public/gift` | `{gift: GiftInfo \| null}`: `thresholdMinor`, `kind` PRODUCT/CASE, `product`, `tiers[]` (порог, гарантированная скидка, `swap`, призы без шансов). Без входа |
+| POST | `/api/me/orders/{id}/gift-case/open` | открыть кейс своего заказа → `{status, tier, won, reel, promo, swap}`; журнал `GIFT_CASE_OPENED` |
+| POST | `/api/me/orders/{id}/gift-case/swap` | заменить похожий приз на промокод → то же |
+| GET/PATCH | `/api/admin/gift/tiers[/{tier}]` | уровни кейсов |
+| GET/POST/PATCH/DELETE | `/api/admin/gift/case-items[/{id}]` | призы (`tier`, `kind` PRODUCT/DISCOUNT; аудит `GIFT_CASE_ITEM_*`) |
+| GET | `/api/admin/gift/stats` | 30 дней: orders, giftOrders, caseOrders, casesOpened, guaranteedOrders/Minor, swaps, discountPrizes, tiers[] |
+| POST | `/api/admin/orders/{id}/gift-case` | выдать кейс (`{tier, notifyCustomer}`, по умолчанию SILVER); аудит `ORDER_GIFT_CASE` |
 
 Поля заказа: `OrderSummary/OrderDetail.giftCaseStatus` (null / SEALED / OPENED),
-`giftCaseOpenedAt`, `giftCaseOpenable`; у позиции — `autoGift`, `caseRarity`. Событие аналитики
+`giftCaseOpenedAt`, `giftCaseOpenable`, `giftDiscountMinor`, `gift` (`OrderGift`: tier,
+guaranteedDiscountMinor, caseStatus, openable, prize, promo, swap; покупателю приз и промокод
+приходят только после открытия); у позиции — `autoGift`, `caseRarity`. Событие аналитики
 `gift_case_open` (meta: orderId, rarity).
 
 ## База
 
-`V58__gift_case.sql`, только добавление: таблица `gift_case_items` (product_id уникален, FK на
-products с каскадом), `orders.gift_case_status`, `orders.gift_case_opened_at`,
-`order_items.auto_gift`, `order_items.case_rarity`. Колонок V57 миграция не касается.
+`V58__gift_case.sql`, только добавление: `gift_case_tiers` (три строки с умолчаниями),
+`gift_case_items` (tier, kind, товар уникален в пределах уровня, FK на products с каскадом, размер
+скидки в % или копейках), `order_gift_cases` (выпавший приз заказа, промокод, замена),
+`orders.gift_case_status / gift_case_opened_at / gift_tier / gift_discount_minor`,
+`order_items.auto_gift / case_rarity`. Колонок V57 миграция не касается. V58 не выпущена и правилась
+на месте: где старая V58 уже применена (локалка) — `flyway repair` и пересоздание таблиц кейса или
+перезаливка базы. На демо (19.10) V57/V58 накатились с нуля.
 
 ## Код
 
 - Бэкенд, пакет `backend/.../gift/`:
   - `GiftService` — настройки, пул, `draw`, шансы, `info` для витрины;
-  - `GiftCaseService` — открытие;
+  - `GiftCaseService` — открытие, замена, блок `gift` заказа;
+  - `GiftCaseTier` / `OrderGiftCase` (+ репозитории);
   - `GiftController`, `AdminGiftController` / `AdminGiftService`;
   - `GiftCaseItem` (enum `Rarity`) / `GiftCaseItemRepository`, `GiftDtos`.
 - Бэкенд, в заказе — `OrderService`:
@@ -111,8 +160,8 @@ products с каскадом), `orders.gift_case_status`, `orders.gift_case_open
 - Бэкенд, тесты: `GiftCaseDrawTest`, `GiftCaseOpenableTest`.
 - `BundleService.suggest` не предлагает за деньги товары, которые раздаются в подарок (`GiftService` подключается через setter).
 - Общий модуль:
-  - `shared/src/giftcase.ts` — типы, `giftProgress`, `buildCaseReel`, `caseReelOffset`, `formatCaseChance`, `rarestCasePrize`, цвета редкостей, `giftCaseOpenErrorCode`;
-  - `shared/src/ui/` — экспорт `@shop/shared/case-ui`: `GiftCaseOpening` (экран открытия), `GiftCaseParts`, стили, звук, частицы.
+  - `shared/src/giftcase.ts` — типы, `giftProgress`, `guaranteedDiscountMinor`, `buildCaseReel`, `caseReelOffset`, `rarestCasePrize`, `caseDiscountText`, цвета редкостей и `CASE_TIER_METAL`, `giftCaseOpenErrorCode`;
+  - `shared/src/ui/` — экспорт `@shop/shared/case-ui`: `GiftCaseOpening` (экран открытия), `GiftCaseParts` (`GiftChoicePicker`, `GiftCaseOrderPanel`, `GiftCaseTierLadder`…), `case-tier` (скин уровня, плитка скидки, промокод), стили, звук, частицы.
 - Mini App:
   - `frontend/lib/gift.ts` (`useGift`, react-query `["gift", locale]`);
   - `frontend/components/case/{OrderGiftCase,CartGiftProgress,ProductGiftBanner}.tsx`;
