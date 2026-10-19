@@ -65,8 +65,12 @@ public final class ReviewDtos {
      *
      * @param state ACTIVE | USED | EXPIRED
      */
+    /**
+     * A personal promo code. {@code source}: REVIEW_BONUS (for a review) or GIFT_CASE (a case prize,
+     * docs/GIFT-CASE.md); {@code amountMinor} — a fixed discount when {@code percent} is 0.
+     */
     public record Bonus(String code, int percent, Instant expiresAt, String state, String orderId,
-                        Instant createdAt) {
+                        Instant createdAt, String source, long amountMinor) {
     }
 
     // ------------------------------------------------------------------ admin

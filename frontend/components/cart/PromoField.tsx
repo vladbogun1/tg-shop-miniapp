@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { isBonusCode } from "@shop/shared";
+import { bonusKind } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { ApiError, customerApi, type PromoPreview } from "@/lib/api";
@@ -101,7 +101,7 @@ export function PromoField({
         )}
       </div>
 
-      <PromoHint state={state} bonus={isBonusCode(code, bonuses)} preview={preview.data} subtotal={subtotal} currency={currency} />
+      <PromoHint state={state} bonus={bonusKind(code, bonuses)} preview={preview.data} subtotal={subtotal} currency={currency} />
     </div>
   );
 }
@@ -114,8 +114,8 @@ function PromoHint({
   currency,
 }: {
   state: "empty" | "checking" | "ok" | "bad";
-  /** The code is one of my review bonuses — said so, not just a bare discount. */
-  bonus: boolean;
+  /** The code is one of my personal codes (a review bonus / a case prize) — said so, not just a bare discount. */
+  bonus: "review" | "case" | null;
   preview: PromoPreview | null;
   subtotal: number;
   currency: string;
@@ -146,7 +146,7 @@ function PromoHint({
   const discount = preview?.discountMinor ?? 0;
   return (
     <p className="mt-1.5 px-1 text-[12px] font-semibold text-[var(--ok)]">
-      {bonus ? `${t("promo.bonus.applied")} · ` : ""}
+      {bonus ? `${t(bonus === "case" ? "promo.case.applied" : "promo.bonus.applied")} · ` : ""}
       {t("promo.discount", {
         discount: money(discount, currency),
         subtotal: money(subtotal, currency),

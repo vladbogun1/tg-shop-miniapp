@@ -153,6 +153,10 @@ export interface BonusCode {
   state: "ACTIVE" | "USED" | "EXPIRED";
   orderId?: string | null;
   createdAt?: string | null;
+  /** REVIEW_BONUS (for a review) | GIFT_CASE (a case prize, docs/GIFT-CASE.md). */
+  source?: string | null;
+  /** A fixed discount (kopecks) when `percent` is 0 — case prizes only. */
+  amountMinor?: number;
 }
 
 /** `POST /api/me/reviews` body. */

@@ -322,7 +322,7 @@ public class ReviewService {
         }
         return new Bonus(p.getCode(), p.getDiscountPercent(), p.getExpiresAt(), state,
                 p.getSourceOrderId() == null ? null : UuidUtil.toString(p.getSourceOrderId()),
-                p.getCreatedAt());
+                p.getCreatedAt(), p.getSource(), p.getDiscountAmountMinor());
     }
 
     // ================================================================== admin
@@ -462,7 +462,8 @@ public class ReviewService {
         AfterCommit.run(() -> notifier.bonusIssued(chat, code, pc, expires));
         log.info("Review bonus {} issued to {} for order {}", code, review.getUserId(),
                 UuidUtil.toString(review.getOrderId()));
-        return new Bonus(code, pc, expires, "ACTIVE", UuidUtil.toString(review.getOrderId()), now);
+        return new Bonus(code, pc, expires, "ACTIVE", UuidUtil.toString(review.getOrderId()), now,
+                PromoCode.SOURCE_REVIEW_BONUS, 0);
     }
 
     private String uniqueCode() {

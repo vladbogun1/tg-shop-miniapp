@@ -104,6 +104,8 @@ export const uk: RuDictionary = {
   "promo.bonus.expiresIn": "Згорає через {n} дн.",
   "promo.bonus.apply": "Застосувати",
   "promo.bonus.applied": "Бонус за відгук",
+  "promo.case.title": "Приз із кейса: {d}",
+  "promo.case.applied": "Приз із кейса",
 
   // ── каталог ───────────────────────────────────────────────────────────────
   "catalog.tagline": "Обирай і кидай у кошик",

@@ -104,6 +104,8 @@ export const en: RuDictionary = {
   "promo.bonus.expiresIn": "Expires in {n} d",
   "promo.bonus.apply": "Apply",
   "promo.bonus.applied": "Review bonus",
+  "promo.case.title": "Case prize: {d}",
+  "promo.case.applied": "Case prize",
 
   // ── catalogue ─────────────────────────────────────────────────────────────
   "catalog.tagline": "Pick it and add to cart",

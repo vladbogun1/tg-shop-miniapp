@@ -11,6 +11,7 @@ import { ArrowLeft, Gift, MessageSquareText, Pencil, WifiOff } from "lucide-reac
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { isCaseBonus, type BonusCode } from "@shop/shared";
 import { BonusCodeCard, ReviewForm } from "@/components/reviews/ReviewForm";
 import { PendingReviewList } from "@/components/reviews/PendingReviewList";
 import { ShopReply } from "@/components/reviews/ProductReviews";
@@ -42,6 +43,8 @@ export default function AccountReviewsPage() {
   const bonuses = useQuery({
     queryKey: reviewKeys.bonuses,
     queryFn: () => reviewsApi.bonuses(),
+    // Case prize codes live in their order and the cart offer, not among the review bonuses.
+    select: (list: BonusCode[]) => list.filter((b) => !isCaseBonus(b)),
     enabled: !!token,
   });
 

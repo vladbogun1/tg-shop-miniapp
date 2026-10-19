@@ -10,7 +10,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift } from "lucide-react";
-import { BONUS_EXPIRING_DAYS, pickBonusOffer, type BonusCode } from "@shop/shared";
+import { BONUS_EXPIRING_DAYS, caseDiscountText, isCaseBonus, pickBonusOffer, type BonusCode } from "@shop/shared";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -75,7 +75,9 @@ export function BonusOffer({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[14px] font-bold leading-tight text-[var(--ink)]">
-                  {t("promo.bonus.title", { n: offer.bonus.percent })}
+                  {isCaseBonus(offer.bonus)
+                    ? t("promo.case.title", { d: caseDiscountText(offer.bonus, (m) => fmt.money(m)) })
+                    : t("promo.bonus.title", { n: offer.bonus.percent })}
                 </p>
                 <p className="font-display mt-0.5 truncate text-[12px] font-semibold tracking-[0.06em] text-[var(--muted)]">
                   {offer.bonus.code}

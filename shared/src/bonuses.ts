@@ -40,6 +40,26 @@ export function pickBonusOffer(bonuses: readonly BonusCode[] | null | undefined,
   return { bonus: best, daysLeft, more: usable.length - 1 };
 }
 
+/** The promo source of a gift-case prize code (GiftService.PROMO_SOURCE). */
+export const CASE_PROMO_SOURCE = "GIFT_CASE";
+
+/** A case prize code rather than a review bonus. */
+export function isCaseBonus(b: Pick<BonusCode, "source">): boolean {
+  return b.source === CASE_PROMO_SOURCE;
+}
+
+/** My personal code by its text, or null. */
+export function findBonus(code: string, bonuses: readonly BonusCode[] | null | undefined): BonusCode | null {
+  const c = code.trim().toUpperCase();
+  return c.length > 0 ? (bonuses ?? []).find((b) => b.code.toUpperCase() === c) ?? null : null;
+}
+
+/** Which of my codes this is — the field says so instead of a bare discount. */
+export function bonusKind(code: string, bonuses: readonly BonusCode[] | null | undefined): "review" | "case" | null {
+  const b = findBonus(code, bonuses);
+  return b ? (isCaseBonus(b) ? "case" : "review") : null;
+}
+
 /** Is this code one of my review bonuses (the field then says so instead of a bare discount)? */
 export function isBonusCode(code: string, bonuses: readonly BonusCode[] | null | undefined): boolean {
   const c = code.trim().toUpperCase();

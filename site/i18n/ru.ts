@@ -417,6 +417,8 @@ export const ru = {
   "promo.bonus.expiresIn": "Сгорает через {n} дн.",
   "promo.bonus.apply": "Применить",
   "promo.bonus.applied": "Бонус за отзыв",
+  "promo.case.title": "Приз из кейса: {d}",
+  "promo.case.applied": "Приз из кейса",
 
   // ── account ───────────────────────────────────────────────────────────────
   "account.title": "Личный кабинет",

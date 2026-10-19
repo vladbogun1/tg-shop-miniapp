@@ -238,8 +238,8 @@ export const CASE_CSS = `
 .gc-promo{position:relative;margin:14px 0 0;padding:12px 12px 10px;text-align:left;
   background:rgba(255,255,255,.05);border:1px dashed color-mix(in srgb,var(--ga,#ff6a00) 65%,transparent);border-radius:10px}
 .gc-promo-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ga2,#ff8533)}
-.gc-promo-row{display:flex;align-items:center;gap:8px;margin-top:6px}
-.gc-promo-code{flex:1;min-width:0;font:800 20px/1.15 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;letter-spacing:.12em;color:#fff;overflow-wrap:anywhere;user-select:all}
+.gc-promo-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+.gc-promo-code{flex:1 0 auto;max-width:100%;font:800 20px/1.15 ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;letter-spacing:.12em;color:#fff;white-space:nowrap;user-select:all}
 .gc-promo-copy{flex:none;min-height:40px;padding:0 14px;border:0;cursor:pointer;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--gink,#0e0e10);background:linear-gradient(180deg,var(--gb1,#ff8a33),var(--gb2,#e65c00));border-radius:8px}
 .gc-promo-copy:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -247,7 +247,7 @@ export const CASE_CSS = `
 .gc-promo.is-used{opacity:.6}
 .gc-promo.is-used .gc-promo-code{text-decoration:line-through}
 .gc-promo.is-compact{margin-top:10px}
-.gc-promo.is-compact .gc-promo-code{font-size:17px}
+.gc-promo.is-compact .gc-promo-code{font-size:16px;letter-spacing:.08em}
 .gc-free.is-note{color:rgba(255,255,255,.72)}
 .gc-swap{position:relative;margin:14px 0 0;font-size:12.5px;line-height:1.4;color:rgba(255,255,255,.75)}
 .gc-btn[disabled]{opacity:.6;cursor:default}

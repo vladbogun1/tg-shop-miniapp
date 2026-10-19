@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gift, MessageSquareText, PartyPopper, Pencil, Ticket } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { BonusCode, MyReview, PendingReviewLine, ReviewStatus, SubmitReviewResult } from "@shop/shared";
+import { isCaseBonus, type BonusCode, type MyReview, type PendingReviewLine, type ReviewStatus, type SubmitReviewResult } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import type { MessageKey } from "@/i18n";
@@ -26,7 +26,12 @@ export function AccountReviews() {
   const qc = useQueryClient();
   const pending = useQuery({ queryKey: ["me", "reviews", "pending", locale], queryFn: () => api.pendingReviews() });
   const mine = useQuery({ queryKey: ["me", "reviews", "mine", locale], queryFn: () => api.myReviews() });
-  const bonuses = useQuery({ queryKey: ["me", "bonuses"], queryFn: () => api.myBonuses() });
+  // Case prize codes live in their order and the cart offer, not among the review bonuses.
+  const bonuses = useQuery({
+    queryKey: ["me", "bonuses"],
+    queryFn: () => api.myBonuses(),
+    select: (list: BonusCode[]) => list.filter((b) => !isCaseBonus(b)),
+  });
   const [last, setLast] = useState<SubmitReviewResult | null>(null);
   const [focusOrder, setFocusOrder] = useState<string | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
