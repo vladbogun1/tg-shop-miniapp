@@ -9,14 +9,14 @@
  * with its rarity chip. Before payment the card is locked and points to the payment block.
  *
  * Three tiers (bronze/silver/gold): the order's tier (`order.gift.tier`) skins the card and the screen;
- * the prize list for «Що може випасти» is that tier's from the public gift (useGift, no chances);
+ * the prize list for «Що може бути в кейсі» is that tier's from the public gift (useGift, no chances);
  * after opening, the server's own list (`reel`) drives the reel. After the case the page shows
  * `panel`: the guaranteed discount the customer chose, the code of a discount prize, or the swap of a
  * product prize similar to what they bought (POST …/gift-case/swap).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CASE_TIER_ORDER, paymentState, shortOrderId, type CaseRarity, type CaseTier, type OrderDetail } from "@shop/shared";
+import { CASE_RULES_PATH, CASE_TIER_ORDER, paymentState, shortOrderId, type CaseRarity, type CaseTier, type OrderDetail } from "@shop/shared";
 import {
   GiftCaseOpening,
   GiftCaseOrderPanel,
@@ -26,6 +26,7 @@ import {
   takeGiftCaseAutoOpen,
   unlockCaseAudio,
   type CasePromoTexts,
+  type CaseRulesLinkProps,
   type CaseSizeTexts,
   type GiftCaseTexts,
   type GiftOrderPanelTexts,
@@ -94,6 +95,33 @@ export function useCaseMoney(): (minor: number) => string {
   return useCallback((minor: number) => fmt.money(minor), [fmt]);
 }
 
+/** «Правила акції» — the promotion rules page, in a new tab so the checkout / the case stays (docs/GIFT-CASE.md «Юридическое»). */
+export function useCaseRules(): CaseRulesLinkProps {
+  const { t, href } = useI18n();
+  return useMemo(() => ({ label: t("case.rules"), href: href(CASE_RULES_PATH) }), [t, href]);
+}
+
+/** The same link, quiet, in the app's own colours — next to «Що може бути в кейсі» on the product and in the cart. */
+export function CaseRulesInline() {
+  const { label, href, onOpen } = useCaseRules();
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      onClick={(e) => {
+        if (onOpen) {
+          e.preventDefault();
+          onOpen(href);
+        }
+      }}
+      className="inline-flex min-h-8 items-center text-[11px] font-medium text-[var(--muted)] underline decoration-[var(--line)] underline-offset-2 hover:text-[var(--ink)]"
+    >
+      {label}
+    </a>
+  );
+}
+
 export const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
 const resolveImage = caseImage;
 
@@ -141,6 +169,7 @@ export function useOrderGiftCase(order: OrderDetail) {
     return () => window.clearTimeout(id);
   }, [openable, order.id]);
 
+  const rules = useCaseRules();
   const texts: GiftCaseTexts = useMemo(
     () => ({
       title: t("case.title", { id: shortOrderId(order.id) }),
@@ -265,6 +294,7 @@ export function useOrderGiftCase(order: OrderDetail) {
       formatDate={fmt.date}
       resolveImage={resolveImage}
       onRevealed={onRevealed}
+      rules={rules}
     />
   );
 

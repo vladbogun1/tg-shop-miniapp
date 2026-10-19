@@ -280,6 +280,12 @@ export const CASE_CSS = `
 .gc-opt-text{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
 .gc-opt-text b{font-size:14px;line-height:1.2;font-weight:800;overflow-wrap:anywhere}
 .gc-opt-text small{font-size:11.5px;line-height:1.3;color:rgba(255,255,255,.62);overflow-wrap:anywhere}
+.gc-choice-hint{margin:-4px 0 10px;font-size:12px;line-height:1.35;color:rgba(255,255,255,.7);overflow-wrap:anywhere}
+.gc-rules{display:inline-flex;align-items:center;min-height:32px;margin-top:14px;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(255,255,255,.3)}
+.gc-rules:hover{color:#fff}
+.gc-rules:focus-visible{outline:2px solid var(--ga,#ff6a00);outline-offset:2px;border-radius:4px}
+.gc-rules.is-choice{margin-top:6px;min-height:28px}
 .gc-opt-dot{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.3);transition:border-color .2s}
 .gc-opt.is-on .gc-opt-dot{border-color:var(--ga,#ff6a00);background:radial-gradient(circle,var(--ga,#ff6a00) 0 4px,transparent 4.5px)}
 @media (prefers-reduced-motion:reduce){.gc-opt.is-on .gc-opt-art img{animation:none}}

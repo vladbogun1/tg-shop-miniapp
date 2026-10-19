@@ -306,7 +306,7 @@ public class NotificationService {
 
     /**
      * "Your code from the case runs out on …" (GiftCasePromoReminderJob): once per code, to the order's
-     * chat, with the cart button — at checkout the code is offered as «Приз із кейса».
+     * chat, with the cart button — at checkout the code is offered as «Подарунок із кейса».
      *
      * @return whether the message went out
      */

@@ -5,14 +5,14 @@
  * Data: `useGift` (GET /api/public/gift),
  * progress counted on the product's price.
  *
- *   CASE, reached     → «🎁 З цим товаром — срібний кейс у подарунок…» + «Можна вибити: <rarest>» + «Що може випасти»
- *   CASE, not reached → «Замовлення від 3 000 ₴ — кейс з дропом у подарунок» + «З цим товаром ще N ₴»
+ *   CASE, reached     → «🎁 З цим товаром — срібний кейс у подарунок…» + «Усередині, наприклад: <rarest>» + «Що може бути в кейсі»
+ *   CASE, not reached → «Замовлення від 3 000 ₴ — кейс із подарунком» + «З цим товаром ще N ₴»
  *   PRODUCT           → the same for the single known gift
  */
 import { Gift } from "lucide-react";
 import { rarestCasePrize } from "@shop/shared";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
-import { useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
+import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useGiftProgress } from "@/lib/gift";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -74,7 +74,7 @@ export function ProductGiftBanner({ priceMinor }: { priceMinor: number }) {
         </div>
       </div>
       {isCase && shownTier && (
-        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier}>
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier} aside={<CaseRulesInline />}>
           <GiftCasePrizeRows items={shownTier.prizes} rarity={rarity} resolveImage={caseImage} money={money} discountLabel={t("case.discountRow")} />
         </GiftCasePrizeDisclosure>
       )}

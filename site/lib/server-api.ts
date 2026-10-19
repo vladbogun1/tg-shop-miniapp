@@ -18,6 +18,7 @@ import type {
   PublicCategoryDetail,
   PublicProductPage,
   PublicSitemap,
+  GiftResponse,
   ReviewFeed,
   ReviewPage,
   StorefrontProduct,
@@ -150,6 +151,14 @@ export async function getProductReviews(slug: string, locale: Locale, size = 10)
 /** Newest published reviews across the shop for the home-page ribbon; product titles in `locale`. */
 export async function getReviewFeed(locale: Locale, size = 24): Promise<ReviewFeed> {
   return getJson<ReviewFeed>(`/api/public/reviews/latest?size=${size}`, locale, ["reviews"]);
+}
+
+/**
+ * What the shop gives for the order sum now — the live part of the promotion rules page (thresholds,
+ * gifts in stock; never the chances). Short cache: the admin's edits do not revalidate the site.
+ */
+export async function getGift(locale: Locale): Promise<GiftResponse> {
+  return getJson<GiftResponse>("/api/public/gift", locale, ["catalog", "gift"], 300);
 }
 
 /** Slugs only — language-independent. */

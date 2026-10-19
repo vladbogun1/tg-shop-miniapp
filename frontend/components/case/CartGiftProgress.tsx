@@ -5,13 +5,13 @@
  * `totalMinor` = the cart total after the discount. CASE mode, three
  * tiers: «Купіть ще на N ₴ — і отримаєте бронзовий кейс» / the celebratory «🎉 Вітаємо! …» with the
  * reached tier's glowing case and «ще N ₴ — і кейс стане кращим: золотий кейс»; the tier ladder, the
- * rarest prize teaser and an expandable «Що може випасти» of the tier (no chances).
+ * rarest prize teaser and an expandable «Що може бути в кейсі» of the tier (no chances).
  */
 import { motion } from "framer-motion";
 import { Gift } from "lucide-react";
 import { CASE_TIER_ORDER, giftProgress, rarestCasePrize, type CaseTier } from "@shop/shared";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/shared/case-ui";
-import { caseImage, caseMoney, useCaseRarityNames } from "@/components/case/OrderGiftCase";
+import { caseImage, caseMoney, CaseRulesInline, useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import { useT } from "@/i18n/context";
 import { useGift } from "@/lib/gift";
 import { Image } from "@/lib/image";
@@ -93,7 +93,7 @@ export function CartGiftProgress({ totalMinor, currency }: { totalMinor: number;
       </div>
       {isCase && gift.tiers.length > 1 && <GiftCaseTierLadder tiers={gift.tiers} totalMinor={totalMinor} names={short} money={caseMoney} />}
       {isCase && shownTier && (
-        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier}>
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier} aside={<CaseRulesInline />}>
           <GiftCasePrizeRows items={shownTier.prizes} rarity={rarity} resolveImage={caseImage} money={caseMoney} discountLabel={t("case.discountRow")} />
         </GiftCasePrizeDisclosure>
       )}
