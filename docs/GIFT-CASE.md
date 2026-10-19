@@ -122,6 +122,7 @@
 | GET/PATCH | `/api/admin/gift/tiers[/{tier}]` | уровни кейсов |
 | GET/POST/PATCH/DELETE | `/api/admin/gift/case-items[/{id}]` | призы (`tier`, `kind` PRODUCT/DISCOUNT; аудит `GIFT_CASE_ITEM_*`) |
 | GET | `/api/admin/gift/stats` | 30 дней: orders, giftOrders, caseOrders, casesOpened, guaranteedOrders/Minor, swaps, discountPrizes, tiers[] |
+| POST | `/api/admin/gift/tiers/{tier}/test-draw?count=N` | «Тест кейса»: N розыгрышей (1…10 000) без сохранения → `{tier, count, won, drops[≤20], reel, hits[{id, key, hits, chancePercent}]}`; выключенный уровень тоже можно |
 | POST | `/api/admin/orders/{id}/gift-case` | выдать кейс (`{tier, notifyCustomer}`, по умолчанию SILVER); аудит `ORDER_GIFT_CASE` |
 
 Поля заказа: `OrderSummary/OrderDetail.giftCaseStatus` (null / SEALED / OPENED),
@@ -129,6 +130,24 @@
 guaranteedDiscountMinor, caseStatus, openable, prize, promo, swap; покупателю приз и промокод
 приходят только после открытия); у позиции — `autoGift`, `caseRarity`. Событие аналитики
 `gift_case_open` (meta: orderId, rarity).
+
+## Тест кейса (админка)
+
+Кнопка «Тест кейса» под призами выбранного уровня (`/gift`, вкладка кейсов) открывает модалку
+`frontend-admin/app/gift/CaseTestModal.tsx`:
+
+- «Открыть кейс» — тот же экран, что у покупателя (`GiftCaseOpening`: печать, вспышка, лента,
+  раскрытие); на карточке приза «Открыть ещё» — заново, сколько угодно раз. Кнопка «Открыть ещё»
+  есть только когда передан `onAgain` (у покупателя её нет: кейс открывается один раз).
+- «Быстрое открытие» — без анимации, приз сразу в модалке; «×10 / ×100 / ×1000» — массовый прогон
+  одним запросом, показываются первые 20 выпавших.
+- Статистика сессии (по уровню, пока открыта страница): сколько раз выпал каждый приз, доля в
+  тесте против фактического шанса (вес / сумма весов призов, которые могут выпасть), отклонение
+  больше 3σ при 100+ открытиях — жёлтым; «Сбросить». Если шансы поменялись (правка, товар
+  закончился) — статистика начинается заново сама.
+- Розыгрыш — на сервере `GiftService.testDraw`: тот же пул, что при заказе (активные, `weight > 0`,
+  товар только в наличии), тот же `draw`, `SecureRandom`. Ничего не пишет: ни заказа, ни
+  `order_gift_cases`, ни промокода, ни резерва склада, ни журнала/аудита. Тест — `GiftCaseTestDrawTest`.
 
 ## База
 
@@ -156,7 +175,7 @@ V58 поверх «Вместе дешевле»): где старая верс�
   - `NotificationService.notifyCustomerGiftCase` и строка в статусе, `OrderEvents.EditKind.GIFT_CASE`;
   - `MeController` / `AdminOrderController`;
   - i18n `api.giftCase.*`, `bot.giftCase.*`.
-- Бэкенд, тесты: `GiftCaseDrawTest`, `GiftCaseOpenableTest`.
+- Бэкенд, тесты: `GiftCaseDrawTest`, `GiftCaseOpenableTest`, `GiftCaseTestDrawTest`.
 - Общий модуль:
   - `shared/src/giftcase.ts` — типы, `giftProgress`, `guaranteedDiscountMinor`, `buildCaseReel`, `caseReelOffset`, `rarestCasePrize`, `caseDiscountText`, цвета редкостей и `CASE_TIER_METAL`, `giftCaseOpenErrorCode`;
   - `shared/src/ui/` — экспорт `@shop/shared/case-ui`: `GiftCaseOpening` (экран открытия), `GiftCaseParts` (`GiftChoicePicker`, `GiftCaseOrderPanel`, `GiftCaseTierLadder`…), `case-tier` (скин уровня, плитка скидки, промокод), стили, звук, частицы.
@@ -171,11 +190,11 @@ V58 поверх «Вместе дешевле»): где старая верс�
   - места в `BuyBox`, `CartDrawer`, `CartPageBody`, `CheckoutView`, `OrderDetailView`, `OrdersList`, `order/Payment.tsx`;
   - ключи `case.*`.
 - Админка:
-  - `frontend-admin/app/gift/{page,CasePanel}.tsx`, `lib/gift.ts`;
+  - `frontend-admin/app/gift/{page,CasePanel,CaseTestModal}.tsx`, `lib/gift.ts`;
   - `components/orders/GiftCaseModal.tsx`, метки в `OrderDetails` / `OrderDrawer`;
   - пункт меню в `Shell`.
 - Арт (ChatGPT, скилл gpt-image):
-  - `{frontend,site}/public/case/` — case-closed, case-open, case-closed-sm, scene-wide, scene-tall (webp);
+  - `{frontend,site,frontend-admin}/public/case/` — case-closed, case-open, case-closed-sm, scene-wide, scene-tall (webp);
   - промпты — `docs/case-art/`.
 
 ## Проверка

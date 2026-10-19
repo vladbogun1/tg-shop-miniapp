@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Package, Percent, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Dices, Package, Percent, Trash2 } from "lucide-react";
 import { CASE_RARITY_COLOR, CASE_RARITY_ORDER, CASE_TIER_METAL, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/shared";
 import type { AdminProduct } from "@/lib/api";
 import { ApiError } from "@/lib/api";
@@ -38,6 +38,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { ProductPickModal } from "@/components/ProductPickModal";
+import { CaseTestModal } from "./CaseTestModal";
 
 export const CASE_ITEMS_KEY = ["gift", "case-items"] as const;
 export const CASE_TIERS_KEY = ["gift", "tiers"] as const;
@@ -95,6 +96,7 @@ export function CasePanel() {
   const items = useMemo(() => (itemsQ.data ?? []).filter((it) => it.tier === tier).sort(byOrder), [itemsQ.data, tier]);
   const [busy, setBusy] = useState<number | "add" | "tier" | null>(null);
   const [picking, setPicking] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: CASE_ITEMS_KEY });
@@ -352,6 +354,15 @@ export function CasePanel() {
         >
           Добавить скидку
         </Button>
+        <Button
+          className="flex-1 sm:ml-auto sm:flex-none"
+          variant="outline"
+          icon={<Dices className="h-4 w-4" />}
+          disabled={items.length === 0}
+          onClick={() => setTesting(true)}
+        >
+          Тест кейса
+        </Button>
       </div>
       <p className="mt-2 text-[12px] leading-snug text-[var(--text-faint)]">
         Редкость новому товару подставляется по цене, шанс — по редкости (обычный 20 %, редкий 8 %, эпический 3 %, легендарный 0,5 %,
@@ -367,6 +378,7 @@ export function CasePanel() {
           void addProduct(p);
         }}
       />
+      <CaseTestModal open={testing} onClose={() => setTesting(false)} tier={tier} items={items} />
       {confirmUi}
     </div>
   );

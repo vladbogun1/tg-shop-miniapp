@@ -3,6 +3,7 @@ package com.maxsolch.shop.gift;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemRequest;
 import com.maxsolch.shop.gift.GiftDtos.GiftStatsDto;
+import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.GiftDtos.TierAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.TierRequest;
 import com.maxsolch.shop.security.RequiredAdmin;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -32,9 +34,11 @@ import java.util.List;
 public class AdminGiftController {
 
     private final AdminGiftService service;
+    private final GiftService giftService;
 
-    public AdminGiftController(AdminGiftService service) {
+    public AdminGiftController(AdminGiftService service, GiftService giftService) {
         this.service = service;
+        this.giftService = giftService;
     }
 
     @GetMapping("/tiers")
@@ -47,6 +51,12 @@ public class AdminGiftController {
     @Operation(summary = "Change a case tier")
     public TierAdminDto updateTier(@PathVariable String tier, @RequestBody TierRequest body) {
         return service.updateTier(tier, body);
+    }
+
+    @PostMapping("/tiers/{tier}/test-draw")
+    @Operation(summary = "«Тест кейса»: draw the tier N times (1…10 000) like the checkout; nothing is saved")
+    public TestDrawDto testDraw(@PathVariable String tier, @RequestParam(defaultValue = "1") int count) {
+        return giftService.testDraw(tier, count);
     }
 
     @GetMapping("/case-items")

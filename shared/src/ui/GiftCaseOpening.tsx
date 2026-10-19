@@ -119,6 +119,13 @@ export interface GiftCaseOpeningProps {
   onRevealed?: (res: GiftCaseOpen) => void;
   /** Whether closing is allowed right now (false during the opening and the spin) — for a native back button. */
   onClosableChange?: (closable: boolean) => void;
+  /**
+   * The admin's «Тест кейса»: a second button on the prize card that opens the case once more (the
+   * caller remounts the screen). Customers never get it — a real case opens once.
+   */
+  onAgain?: () => void;
+  /** Label of that button («Открыть ещё»). */
+  againLabel?: string;
 }
 
 type Stage = "sealed" | "opening" | "spin" | "reveal";
@@ -238,6 +245,8 @@ function CaseOverlay({
   haptics,
   onRevealed,
   onClosableChange,
+  onAgain,
+  againLabel,
 }: GiftCaseOpeningProps) {
   const [stage, setStage] = useState<Stage>("sealed");
   const [result, setResult] = useState<GiftCaseOpen | null>(null);
@@ -732,6 +741,11 @@ function CaseOverlay({
                   <button type="button" className="gc-btn gc-disp" onClick={onClose} autoFocus>
                     {texts.take}
                   </button>
+                  {onAgain && (
+                    <button type="button" className="gc-btn gc-disp ghost" onClick={onAgain}>
+                      {againLabel}
+                    </button>
+                  )}
                   {canSwap && swap && (
                     <button type="button" className="gc-btn gc-disp ghost" onClick={() => void doSwap()} disabled={swapBusy} aria-busy={swapBusy}>
                       {texts.swapAction.replace("{d}", `−${money(swap.amountMinor)}`)}

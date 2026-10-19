@@ -115,4 +115,21 @@ public final class GiftDtos {
 
     public record TierStatsDto(String tier, long cases, long opened, long guaranteed) {
     }
+
+    /**
+     * «Тест кейса» (POST /api/admin/gift/tiers/{tier}/test-draw): {@code count} draws of the checkout
+     * algorithm with nothing saved — no order, code, stock or journal.
+     *
+     * @param won   the first draw (the prize of a single opening with the reel)
+     * @param drops the first draws in order (up to {@link GiftService#TEST_DROPS_SHOWN})
+     * @param reel  the tier's prizes that can drop now, for the reel of the opening screen
+     * @param hits  how often each prize of the pool dropped, with its real chance (% of the pool)
+     */
+    public record TestDrawDto(String tier, int count, CaseItemDto won, List<CaseItemDto> drops,
+                              List<CaseItemDto> reel, List<TestHitDto> hits) {
+    }
+
+    /** A prize of the test pool: {@code id} of gift_case_items, its drops and real chance, %. */
+    public record TestHitDto(long id, String key, int hits, double chancePercent) {
+    }
 }

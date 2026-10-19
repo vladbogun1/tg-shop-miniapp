@@ -4,11 +4,14 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.GiftDtos.GiftInfoDto;
+import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
+import com.maxsolch.shop.gift.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.GiftDtos.TierInfoDto;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -223,6 +226,55 @@ public class GiftService {
             }
         }
         return Optional.of(pool.get(pool.size() - 1));
+    }
+
+    // ---- «Тест кейса» in the admin ----
+
+    /** Upper bound of one test run. */
+    public static final int TEST_MAX_COUNT = 10_000;
+    /** How many draws of a run come back one by one (the strip of ×10). */
+    public static final int TEST_DROPS_SHOWN = 20;
+
+    private static final SecureRandom TEST_RANDOM = new SecureRandom();
+
+    /**
+     * «Тест кейса»: {@code count} draws of the tier exactly as the checkout draws them (the same pool —
+     * active prizes with weight &gt; 0, a product only in stock — and {@link #draw}), read-only: no order,
+     * promo code, stock reserve or journal entry. A disabled tier may be tested too.
+     */
+    @Transactional(readOnly = true)
+    public TestDrawDto testDraw(String tierCode, int count) {
+        return testDraw(tierCode, count, TEST_RANDOM);
+    }
+
+    TestDrawDto testDraw(String tierCode, int count, RandomGenerator random) {
+        GiftCaseTier.Tier tier = parseTier(tierCode)
+                .orElseThrow(() -> new BadRequestException("Неизвестный кейс: " + tierCode));
+        if (count < 1 || count > TEST_MAX_COUNT) {
+            throw new BadRequestException("Число открытий — от 1 до " + TEST_MAX_COUNT);
+        }
+        Map<String, ProductDto> byId = byId("ru");
+        TierConfig cfg = tier(tier).orElse(null);
+        List<CaseEntry> pool = cfg == null ? List.of()
+                : cfg.prizes().stream().filter(c -> c.isDiscount() || inStock(byId.get(c.productId()))).toList();
+        if (pool.isEmpty()) {
+            throw new BadRequestException("Ни один приз этого кейса сейчас не может выпасть");
+        }
+        long total = pool.stream().mapToLong(CaseEntry::weight).sum();
+        Map<Long, Integer> hits = new HashMap<>();
+        List<CaseItemDto> drops = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            CaseEntry c = draw(pool, id -> true, random).orElseThrow();
+            hits.merge(c.id(), 1, Integer::sum);
+            if (drops.size() < TEST_DROPS_SHOWN) {
+                drops.add(itemDto(c, c.isDiscount() ? null : byId.get(c.productId())));
+            }
+        }
+        List<TestHitDto> out = pool.stream()
+                .map(c -> new TestHitDto(c.id(), c.isDiscount() ? "d" + c.id() : "p" + c.productId(),
+                        hits.getOrDefault(c.id(), 0), chancePercent(c.weight(), total)))
+                .toList();
+        return new TestDrawDto(tier.name(), count, drops.get(0), drops, casePrizes(cfg, byId), out);
     }
 
     // ---- the order's prize ----

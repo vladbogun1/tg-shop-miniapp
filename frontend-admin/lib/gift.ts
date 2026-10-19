@@ -4,7 +4,7 @@
  * of the `gift` group (lib/settings.ts). The three case tiers (bronze/silver/gold: threshold,
  * guaranteed discount, swap), their prizes and the stats have their own endpoints under /api/admin/gift.
  */
-import type { CaseRarity, CaseTier } from "@shop/shared";
+import type { CaseItem, CaseRarity, CaseTier } from "@shop/shared";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 
 export const GIFT_GROUP = "gift";
@@ -104,6 +104,35 @@ export type CaseItemPatch = {
   discountUah?: number;
 };
 
+/** A prize of the test pool: how often it dropped in this run and its real chance among the prizes that can drop. */
+export interface CaseTestHit {
+  /** gift_case_items.id */
+  id: number;
+  /** «p<productId>» / «d<id>» (= CaseItem.key). */
+  key: string;
+  hits: number;
+  chancePercent: number;
+}
+
+/**
+ * «Тест кейса» (POST /api/admin/gift/tiers/{tier}/test-draw?count=N): N draws of the checkout's
+ * algorithm with nothing saved — no order, promo code, stock reserve or journal entry.
+ */
+export interface CaseTestDraw {
+  tier: CaseTier;
+  count: number;
+  /** The first draw (a single opening with the reel). */
+  won: CaseItem;
+  /** The first draws in order (up to 20). */
+  drops: CaseItem[];
+  /** The tier's prizes that can drop now — for the reel. */
+  reel: CaseItem[];
+  hits: CaseTestHit[];
+}
+
+/** Upper bound of one test run (the server's GiftService.TEST_MAX_COUNT). */
+export const CASE_TEST_MAX = 10_000;
+
 export type CaseItemCreate = CaseItemPatch & { tier: CaseTier; kind: "PRODUCT" | "DISCOUNT"; productId?: string };
 
 export const giftApi = {
@@ -114,4 +143,5 @@ export const giftApi = {
   patchCaseItem: (id: number, body: CaseItemPatch) => apiPatch<CaseItemAdmin>(`/api/admin/gift/case-items/${id}`, body),
   deleteCaseItem: (id: number) => apiDelete<void>(`/api/admin/gift/case-items/${id}`),
   stats: () => apiGet<GiftStats>("/api/admin/gift/stats"),
+  testDraw: (tier: CaseTier, count: number) => apiPost<CaseTestDraw>(`/api/admin/gift/tiers/${tier}/test-draw?count=${count}`),
 };
