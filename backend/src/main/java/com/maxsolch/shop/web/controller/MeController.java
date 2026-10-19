@@ -137,8 +137,11 @@ public class MeController {
     @PostMapping("/promo/reserve")
     @Operation(summary = "Validate a promo code and hold it for this customer")
     public PromoPreviewDto reservePromo(@RequestParam String code,
-                                        @RequestParam long subtotalMinor) {
-        PromoPreviewDto preview = promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId());
+                                        @RequestParam long subtotalMinor,
+                                        @RequestParam(required = false) String items) {
+        // items: the cart's lines "id*qty,…" — a case code is counted without the low-margin products.
+        PromoPreviewDto preview = promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId(),
+                com.maxsolch.shop.gift.CaseLowMargin.parseItems(items));
         // Only accepted codes: the cart checks as the code is typed, so refusals are mostly half-typed words.
         if (preview != null && preview.valid()) {
             journal(ActivityLog.fromRequest("PROMO_APPLIED")

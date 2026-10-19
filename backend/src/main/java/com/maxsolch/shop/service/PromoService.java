@@ -1,6 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.domain.PromoReservation;
 import com.maxsolch.shop.repository.PromoCodeRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -55,6 +57,14 @@ public class PromoService {
         this.settings = settings;
     }
 
+    /** Low-margin products a case promo code does not apply to (optional: unit tests build without it). */
+    private CaseLowMargin caseLowMargin;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setCaseLowMargin(CaseLowMargin caseLowMargin) {
+        this.caseLowMargin = caseLowMargin;
+    }
+
     /** Current hold length: the admin setting, or {@link #HOLD} when it is not set. */
     Duration hold() {
         return Duration.ofMinutes(settings.get(SettingsRegistry.PROMO_HOLD_MINUTES, (int) HOLD.toMinutes()));
@@ -67,6 +77,15 @@ public class PromoService {
      */
     @Transactional(readOnly = true)
     public PromoPreviewDto preview(String code, long subtotalMinor, Long userId) {
+        return preview(code, subtotalMinor, userId, Map.of());
+    }
+
+    /**
+     * @param items the cart's lines (product id → quantity), so a case code is counted without the
+     *              low-margin products it does not apply to, like the checkout does; empty = unknown
+     */
+    @Transactional(readOnly = true)
+    public PromoPreviewDto preview(String code, long subtotalMinor, Long userId, Map<String, Integer> items) {
         long subtotal = Math.max(0, subtotalMinor);
         String normalized = normalize(code);
         if (normalized == null) {
@@ -84,7 +103,7 @@ public class PromoService {
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
         }
-        return valid(promo, subtotal, null);
+        return checked(promo, subtotal, null, items);
     }
 
     /**
@@ -93,6 +112,12 @@ public class PromoService {
      */
     @Transactional
     public PromoPreviewDto reserve(String code, long subtotalMinor, long userId) {
+        return reserve(code, subtotalMinor, userId, Map.of());
+    }
+
+    /** {@link #reserve(String, long, long)} for a cart with these lines (see {@link #preview(String, long, Long, Map)}). */
+    @Transactional
+    public PromoPreviewDto reserve(String code, long subtotalMinor, long userId, Map<String, Integer> items) {
         long subtotal = Math.max(0, subtotalMinor);
         String normalized = normalize(code);
         if (normalized == null) {
@@ -112,8 +137,12 @@ public class PromoService {
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
         }
+        long excluded = excludedFor(promo, items);
+        if (excluded > 0 && subtotal - excluded <= 0) {
+            return invalid(subtotal, messages.current("api.promo.caseExcluded"));
+        }
         if (promo.getMaxUses() == null) {
-            return valid(promo, subtotal, null);
+            return valid(promo, subtotal, null, excluded);
         }
 
         Instant until = Instant.now().plus(hold());
@@ -127,7 +156,7 @@ public class PromoService {
                 });
         reservation.setExpiresAt(until);
         reservationRepository.save(reservation);
-        return valid(promo, subtotal, until);
+        return valid(promo, subtotal, until, excluded);
     }
 
     /** Gives the hold back — the customer cleared or replaced the code. */
@@ -219,8 +248,24 @@ public class PromoService {
         return new PromoPreviewDto(false, 0, subtotal, message, null);
     }
 
-    private static PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil) {
-        long discount = OrderService.discountFor(promo, subtotal);
+    private PromoPreviewDto checked(PromoCode promo, long subtotal, Instant reservedUntil, Map<String, Integer> items) {
+        long excluded = excludedFor(promo, items);
+        if (excluded > 0 && subtotal - excluded <= 0) {
+            return invalid(subtotal, messages.current("api.promo.caseExcluded"));
+        }
+        return valid(promo, subtotal, reservedUntil, excluded);
+    }
+
+    /** The low-margin part of the cart for a code the gift case gave; 0 for any other code. */
+    private long excludedFor(PromoCode promo, Map<String, Integer> items) {
+        if (caseLowMargin == null || items == null || items.isEmpty() || !OrderService.isCasePromo(promo)) {
+            return 0;
+        }
+        return caseLowMargin.excludedMinor(items);
+    }
+
+    private static PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil, long excludedMinor) {
+        long discount = OrderService.discountFor(promo, subtotal, excludedMinor);
         return new PromoPreviewDto(true, discount, subtotal - discount, null, reservedUntil);
     }
 }

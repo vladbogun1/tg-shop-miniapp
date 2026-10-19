@@ -72,6 +72,18 @@ public class CaseAutofill {
     private final SettingsService settings;
     private final AdminGiftService adminGift;
 
+    /** Low-margin products: never proposed as prizes (a prize costs the shop its full price). */
+    private CaseLowMargin lowMargin;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLowMargin(CaseLowMargin lowMargin) {
+        this.lowMargin = lowMargin;
+    }
+
+    private Set<String> lowMarginIds() {
+        return lowMargin == null || lowMargin.none() ? Set.of() : lowMargin.productIds();
+    }
+
     public CaseAutofill(CatalogService catalogService, CategoryRepository categoryRepository,
                         GiftCaseTierRepository tierRepository, SettingsService settings, AdminGiftService adminGift) {
         this.catalogService = catalogService;
@@ -133,8 +145,9 @@ public class CaseAutofill {
         Map<String, Category> categories = categories();
         List<Candidate> pool = new ArrayList<>();
         List<Candidate> superPool = new ArrayList<>();
+        Set<String> lowMarginIds = lowMarginIds();
         for (ProductDto p : products) {
-            if (!usable(p, newOnly) || lockedProducts.contains(p.id())) {
+            if (!usable(p, newOnly) || lockedProducts.contains(p.id()) || lowMarginIds.contains(p.id())) {
                 continue;
             }
             Category root = root(p.categoryId(), categories);
@@ -175,8 +188,10 @@ public class CaseAutofill {
         long lo = Math.round(t.thresholdMinor() * band[0] * 0.67);
         long hi = Math.round(t.thresholdMinor() * band[1] * 1.5);
         List<Candidate> list = new ArrayList<>();
+        Set<String> lowMarginIds = lowMarginIds();
         for (ProductDto p : catalogService.listActiveProducts(ADMIN_LANG)) {
-            if (!usable(p, false) || skip.contains(p.id()) || p.priceMinor() < lo || p.priceMinor() >= hi) {
+            if (!usable(p, false) || skip.contains(p.id()) || lowMarginIds.contains(p.id())
+                    || p.priceMinor() < lo || p.priceMinor() >= hi) {
                 continue;
             }
             Category root = root(p.categoryId(), categories);

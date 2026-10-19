@@ -26,6 +26,10 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
     @Query("select p from Product p where p.id = :id")
     Optional<Product> findByIdWithDetails(@Param("id") byte[] id);
 
+    /** Products of these brands, archived too (the low-margin marks of the gift case). */
+    @Query("select p from Product p where p.brandId in :brandIds")
+    List<Product> findByBrandIdIn(@Param("brandIds") Collection<byte[]> brandIds);
+
     /**
      * Same lookup, but takes a row lock (SELECT ... FOR UPDATE) on the product.
      *

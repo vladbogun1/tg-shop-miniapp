@@ -46,11 +46,13 @@ public class AdminGiftService {
     private final AdminAuditService audit;
     private final JdbcTemplate jdbc;
     private final SettingsService settings;
+    private final CaseLowMargin lowMargin;
 
     public AdminGiftService(GiftCaseItemRepository caseRepository, GiftCaseTierRepository tierRepository,
                             CatalogService catalogService, AdminAuditService audit, JdbcTemplate jdbc,
-                            SettingsService settings) {
+                            SettingsService settings, CaseLowMargin lowMargin) {
         this.settings = settings;
+        this.lowMargin = lowMargin;
         this.caseRepository = caseRepository;
         this.tierRepository = tierRepository;
         this.catalogService = catalogService;
@@ -109,7 +111,8 @@ public class AdminGiftService {
                             .mapToDouble(i -> i.chancePercent() / 100 * i.priceMinor()).sum());
                     return new TierAdminDto(t.getTier().name(), t.isEnabled(), t.getThresholdUah(),
                             t.getGuaranteedPercent(), t.getGuaranteedMaxUah(), t.getSwapPercent(), t.getPromoValidDays(), mine.size(),
-                            live.size(), avg, margin, monthly.getOrDefault(t.getTier(), 0.0));
+                            live.size(), avg, margin, monthly.getOrDefault(t.getTier(), 0.0),
+                            t.getLowMarginProductPercent());
                 })
                 .toList();
     }
@@ -156,13 +159,69 @@ public class AdminGiftService {
             if (body.promoValidDays() != null) {
                 t.setPromoValidDays(range(body.promoValidDays(), 1, 365, "Срок промокода — от 1 до 365 дней"));
             }
+            if (body.lowMarginProductPercent() != null) {
+                t.setLowMarginProductPercent(range(body.lowMarginProductPercent(), 0, 100,
+                        "Доля товарных призов — от 0 до 100 %"));
+            }
         }
         tierRepository.save(t);
         audit.record("GIFT_CASE_TIER_UPDATE", "GIFT_CASE_TIER", tier.name(),
                 (t.isEnabled() ? "вкл" : "выкл") + " · от " + t.getThresholdUah() + " ₴ · гарантия "
                         + t.getGuaranteedPercent() + " % (до " + t.getGuaranteedMaxUah() + " ₴) · замена "
-                        + t.getSwapPercent() + " % · промокод " + t.getPromoValidDays() + " дн.");
+                        + t.getSwapPercent() + " % · промокод " + t.getPromoValidDays() + " дн. · с упором на скидки "
+                        + t.getLowMarginProductPercent() + " % товаров");
         return tiers().stream().filter(d -> d.tier().equals(tier.name())).findFirst().orElseThrow();
+    }
+
+    // ---- low-margin products ----
+
+    /** Brands and products whose orders get the case leaning to discounts. */
+    @Transactional(readOnly = true)
+    public GiftDtos.LowMarginDto lowMargin() {
+        Map<String, ProductDto> byId = new HashMap<>();
+        catalogService.listActiveProducts(ADMIN_LANG).forEach(p -> byId.put(p.id(), p));
+        List<GiftDtos.LowMarginBrandDto> brands = lowMargin.brands().stream()
+                .map(b -> new GiftDtos.LowMarginBrandDto(b.getSlug(), b.getName(), byId.values().stream()
+                        .filter(p -> p.brandRef() != null && b.getSlug().equals(p.brandRef().slug())).count()))
+                .toList();
+        List<GiftDtos.LowMarginProductDto> products = lowMargin.productIdsMarked().stream()
+                .map(id -> {
+                    ProductDto p = byId.get(id);
+                    return new GiftDtos.LowMarginProductDto(id, p == null ? "(товар скрыт или удалён)" : p.title(),
+                            GiftService.image(p), p == null ? 0 : p.priceMinor());
+                })
+                .toList();
+        return new GiftDtos.LowMarginDto(brands, products,
+                (int) lowMargin.productIds().stream().filter(byId::containsKey).count());
+    }
+
+    /** Replaces both lists (settings gift.lowMarginBrands / gift.lowMarginProducts). */
+    @Transactional
+    public GiftDtos.LowMarginDto updateLowMargin(GiftDtos.LowMarginRequest body) {
+        Map<String, Object> changes = new HashMap<>();
+        if (body != null && body.brands() != null) {
+            changes.put(SettingsRegistry.GIFT_LOW_MARGIN_BRANDS, String.join(",", clean(body.brands())));
+        }
+        if (body != null && body.products() != null) {
+            List<String> ids = clean(body.products());
+            ids.forEach(id -> {
+                try {
+                    UuidUtil.toBytes(id);
+                } catch (IllegalArgumentException e) {
+                    throw new BadRequestException("Неверный id товара: " + id);
+                }
+            });
+            changes.put(SettingsRegistry.GIFT_LOW_MARGIN_PRODUCTS, String.join(",", ids));
+        }
+        if (!changes.isEmpty()) {
+            settings.update(changes);
+        }
+        return lowMargin();
+    }
+
+    private static List<String> clean(List<String> values) {
+        return values.stream().filter(java.util.Objects::nonNull)
+                .map(s -> s.trim().toLowerCase(java.util.Locale.ROOT)).filter(s -> !s.isEmpty()).distinct().toList();
     }
 
     // ---- prizes ----

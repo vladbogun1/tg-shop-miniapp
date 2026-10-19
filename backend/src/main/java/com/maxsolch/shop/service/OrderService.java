@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.gift.OrderGiftCase;
@@ -92,6 +93,14 @@ public class OrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setGiftService(GiftService giftService) {
         this.giftService = giftService;
+    }
+
+    /** Low-margin products of the gift case (optional like the gift itself). */
+    private CaseLowMargin caseLowMargin;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setCaseLowMargin(CaseLowMargin caseLowMargin) {
+        this.caseLowMargin = caseLowMargin;
     }
 
     public OrderService(OrderRepository orderRepository,
@@ -227,8 +236,9 @@ public class OrderService {
         // Promo: fixed amount takes priority over percent.
         long discount = 0;
         PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
+        long lowMarginMinor = lowMarginMinor(order);
         if (promo != null) {
-            discount = discountFor(promo, subtotal);
+            discount = discountFor(promo, subtotal, casePromoExcluded(promo, lowMarginMinor, subtotal));
             order.setPromoCode(promo.getCode());
             promo.setUsesCount(promo.getUsesCount() + 1);
             promoCodeRepository.save(promo);
@@ -245,7 +255,8 @@ public class OrderService {
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
-        OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave))
+        boolean lowMargin = lowMarginMinor > 0;
+        OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
         productRepository.saveAll(toSave);
@@ -847,7 +858,7 @@ public class OrderService {
             // holds do not stand in their way — only the code's own usage limit does.
             // The order's customer is passed for the owner check of personal codes (V44).
             PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
-            discount = discountFor(p, subtotal);
+            discount = discountFor(p, subtotal, casePromoExcluded(p, lowMarginMinor(order), subtotal));
             p.setUsesCount(p.getUsesCount() + 1);
             promoCodeRepository.save(p);
             order.setPromoCode(p.getCode());
@@ -1182,7 +1193,8 @@ public class OrderService {
      * @return the prize record to save once the order has its id; null = no case
      */
     private OrderGiftCase applyThresholdGift(Order order, GiftService.GiftConfig g, String choice,
-                                             Map<String, Optional<Product>> locked, List<Product> toSave) {
+                                             Map<String, Optional<Product>> locked, List<Product> toSave,
+                                             boolean lowMargin) {
         long total = order.getTotalMinor();
         List<GiftService.TierConfig> reached = g.reached(total);
         if (!reached.isEmpty() && GiftService.CHOICE_DISCOUNT.equalsIgnoreCase(String.valueOf(choice))) {
@@ -1197,10 +1209,13 @@ public class OrderService {
             }
         }
         for (GiftService.TierConfig tier : reached) {
-            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftableIn(locked), CASE_RANDOM);
+            // An order with a low-margin product: product prizes drop rarer, discounts on the next order more often.
+            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftableIn(locked), CASE_RANDOM,
+                    tier.productPercent(lowMargin));
             if (prize.isPresent()) {
                 OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
                 if (rec != null) {
+                    rec.setLowMargin(lowMargin && tier.lowMarginProductPercent() < 100);
                     return rec;
                 }
             }
@@ -1384,13 +1399,16 @@ public class OrderService {
                 .filter(java.util.Objects::nonNull).toList())) {
             locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
         }
-        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableIn(locked), CASE_RANDOM)
+        boolean lowMargin = hasLowMargin(order);
+        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableIn(locked), CASE_RANDOM,
+                        cfg.productPercent(lowMargin))
                 .orElseThrow(() -> new BadRequestException("Ни одного приза этого кейса нет в наличии"));
         List<Product> toSave = new ArrayList<>();
         OrderGiftCase rec = placeCasePrize(order, tier, prize, locked, toSave);
         if (rec == null) {
             throw new BadRequestException("Приз закончился — попробуйте ещё раз");
         }
+        rec.setLowMargin(lowMargin && cfg.lowMarginProductPercent() < 100);
         productRepository.saveAll(toSave);
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
@@ -1501,6 +1519,59 @@ public class OrderService {
      * or a stored discount larger than the order itself.
      */
     public static long discountFor(PromoCode promo, long subtotal) {
+        return discountFor(promo, subtotal, 0);
+    }
+
+    /**
+     * The same against the subtotal without {@code excludedMinor} (the low-margin products a case promo
+     * code does not apply to, {@link #casePromoExcluded}); capped at what is left.
+     */
+    public static long discountFor(PromoCode promo, long subtotal, long excludedMinor) {
+        long base = Math.max(0, subtotal - Math.max(0, excludedMinor));
+        long discount = discountOn(promo, base);
+        return Math.min(discount, base);
+    }
+
+    /**
+     * What of the subtotal a code does not touch: the low-margin products for a code the gift case gave
+     * (a discount prize, a swap), nothing for any other code. A case code on a cart of only such products
+     * is refused, so the use is not wasted.
+     */
+    private long casePromoExcluded(PromoCode promo, long lowMarginMinor, long subtotal) {
+        if (promo == null || lowMarginMinor <= 0 || !isCasePromo(promo)) {
+            return 0;
+        }
+        if (subtotal - lowMarginMinor <= 0) {
+            throw new BadRequestException(messages.current("api.promo.caseExcluded"), PROMO_REJECTED);
+        }
+        return lowMarginMinor;
+    }
+
+    public static boolean isCasePromo(PromoCode promo) {
+        return promo != null && GiftService.PROMO_SOURCE.equals(promo.getSource());
+    }
+
+    /** Price × quantity of the order's own lines (not gifts) whose product is low-margin. */
+    private long lowMarginMinor(Order order) {
+        java.util.Set<String> ids = lowMarginIds();
+        return ids.isEmpty() ? 0 : order.getItems().stream()
+                .filter(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())))
+                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity())
+                .sum();
+    }
+
+    /** The order has a low-margin product of its own (not a gift): its case leans to discounts. */
+    private boolean hasLowMargin(Order order) {
+        java.util.Set<String> ids = lowMarginIds();
+        return !ids.isEmpty() && order.getItems().stream()
+                .anyMatch(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())));
+    }
+
+    private java.util.Set<String> lowMarginIds() {
+        return caseLowMargin == null || caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
+    }
+
+    private static long discountOn(PromoCode promo, long subtotal) {
         long discount;
         if (promo.getDiscountAmountMinor() > 0) {
             discount = promo.getDiscountAmountMinor();

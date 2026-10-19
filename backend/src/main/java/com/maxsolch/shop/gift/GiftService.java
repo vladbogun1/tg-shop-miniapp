@@ -20,6 +20,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -135,8 +136,22 @@ public class GiftService {
         }
     }
 
+    /**
+     * @param lowMarginProductPercent share of all product prizes together in an order with a low-margin
+     *                                product ({@link CaseLowMargin}), %; 100 = the usual odds
+     */
     public record TierConfig(GiftCaseTier.Tier tier, long thresholdMinor, int guaranteedPercent, int guaranteedMaxUah,
-                             int swapPercent, List<CaseEntry> prizes) {
+                             int swapPercent, List<CaseEntry> prizes, int lowMarginProductPercent) {
+
+        public TierConfig(GiftCaseTier.Tier tier, long thresholdMinor, int guaranteedPercent, int guaranteedMaxUah,
+                          int swapPercent, List<CaseEntry> prizes) {
+            this(tier, thresholdMinor, guaranteedPercent, guaranteedMaxUah, swapPercent, prizes, 100);
+        }
+
+        /** Product prizes' share for this order: the low-margin one, or 100 (as usual). */
+        public int productPercent(boolean lowMargin) {
+            return lowMargin ? lowMarginProductPercent : 100;
+        }
 
         public long guaranteedDiscountMinor(long totalMinor) {
             return GiftCaseTier.guaranteedDiscountMinor(guaranteedPercent, guaranteedMaxUah, totalMinor);
@@ -169,7 +184,8 @@ public class GiftService {
                 .filter(t -> byTier.containsKey(t.getTier()))
                 .sorted(Comparator.comparingInt(GiftCaseTier::getThresholdUah).thenComparing(GiftCaseTier::getTier))
                 .map(t -> new TierConfig(t.getTier(), t.thresholdMinor(), t.getGuaranteedPercent(),
-                        t.getGuaranteedMaxUah(), t.getSwapPercent(), List.copyOf(byTier.get(t.getTier()))))
+                        t.getGuaranteedMaxUah(), t.getSwapPercent(), List.copyOf(byTier.get(t.getTier())),
+                        t.getLowMarginProductPercent()))
                 .toList();
     }
 
@@ -211,21 +227,52 @@ public class GiftService {
      * {@code available} (productId → in stock). Empty when none can.
      */
     public static Optional<CaseEntry> draw(List<CaseEntry> items, Predicate<String> available, RandomGenerator random) {
+        return draw(items, available, random, 100);
+    }
+
+    /**
+     * The same draw with product prizes' share set to {@code productPercent} % (an order with a
+     * low-margin product, {@link #skewedWeights}); 100 = the usual odds.
+     */
+    public static Optional<CaseEntry> draw(List<CaseEntry> items, Predicate<String> available, RandomGenerator random,
+                                           int productPercent) {
         List<CaseEntry> pool = items.stream()
                 .filter(c -> c.weight() > 0 && (c.isDiscount() || available.test(c.productId())))
                 .toList();
-        long total = pool.stream().mapToLong(CaseEntry::weight).sum();
+        long[] weights = skewedWeights(pool, productPercent);
+        long total = Arrays.stream(weights).sum();
         if (total <= 0) {
             return Optional.empty();
         }
         long r = random.nextLong(total);
-        for (CaseEntry c : pool) {
-            r -= c.weight();
+        for (int i = 0; i < pool.size(); i++) {
+            r -= weights[i];
             if (r < 0) {
-                return Optional.of(c);
+                return Optional.of(pool.get(i));
             }
         }
         return Optional.of(pool.get(pool.size() - 1));
+    }
+
+    /**
+     * Weights of a pool that can drop now, with all product prizes together making {@code productPercent} %
+     * of the total and discount prizes the rest; the ratios inside each group stay (the jackpot is still
+     * the rarest product). Unchanged when the share is 100 or the pool has only products or only
+     * discounts — there is nothing to move the chance to.
+     */
+    static long[] skewedWeights(List<CaseEntry> pool, int productPercent) {
+        long[] w = pool.stream().mapToLong(CaseEntry::weight).toArray();
+        int pct = Math.max(0, Math.min(100, productPercent));
+        long products = pool.stream().filter(c -> !c.isDiscount()).mapToLong(CaseEntry::weight).sum();
+        long discounts = pool.stream().filter(CaseEntry::isDiscount).mapToLong(CaseEntry::weight).sum();
+        if (pct >= 100 || products <= 0 || discounts <= 0) {
+            return w;
+        }
+        // products : discounts = pct : (100 − pct), exact in integers (weights ≤ 10⁶, a tier ≤ ~10⁸).
+        for (int i = 0; i < w.length; i++) {
+            w[i] = pool.get(i).isDiscount() ? w[i] * (100 - pct) * products : w[i] * pct * discounts;
+        }
+        return w;
     }
 
     // ---- «Тест кейса» in the admin ----
@@ -244,11 +291,11 @@ public class GiftService {
      */
     @Transactional(readOnly = true)
     public TestDrawDto testDraw(String tierCode, int count) {
-        return testDraw(tierCode, count, TEST_RANDOM);
+        return testDraw(tierCode, count, null, false, TEST_RANDOM);
     }
 
     TestDrawDto testDraw(String tierCode, int count, RandomGenerator random) {
-        return testDraw(tierCode, count, null, random);
+        return testDraw(tierCode, count, null, false, random);
     }
 
     /**
@@ -257,10 +304,24 @@ public class GiftService {
      */
     @Transactional(readOnly = true)
     public TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft) {
-        return testDraw(tierCode, count, draft, TEST_RANDOM);
+        return testDraw(tierCode, count, draft, false, TEST_RANDOM);
+    }
+
+    /**
+     * @param lowMargin draw as for an order with a low-margin product: product prizes get the tier's
+     *                  {@code lowMarginProductPercent} of the chance ({@link #skewedWeights})
+     */
+    @Transactional(readOnly = true)
+    public TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, boolean lowMargin) {
+        return testDraw(tierCode, count, draft, lowMargin, TEST_RANDOM);
     }
 
     TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, RandomGenerator random) {
+        return testDraw(tierCode, count, draft, false, random);
+    }
+
+    TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, boolean lowMargin,
+                         RandomGenerator random) {
         GiftCaseTier.Tier tier = parseTier(tierCode)
                 .orElseThrow(() -> new BadRequestException("Неизвестный кейс: " + tierCode));
         if (count < 1 || count > TEST_MAX_COUNT) {
@@ -273,11 +334,17 @@ public class GiftService {
         if (pool.isEmpty()) {
             throw new BadRequestException("Ни один приз этого кейса сейчас не может выпасть");
         }
-        long total = pool.stream().mapToLong(CaseEntry::weight).sum();
+        int productPercent = cfg.productPercent(lowMargin);
+        long[] weights = skewedWeights(pool, productPercent);
+        Map<Long, Long> chanceWeight = new HashMap<>();
+        for (int i = 0; i < pool.size(); i++) {
+            chanceWeight.put(pool.get(i).id(), weights[i]);
+        }
+        long total = Arrays.stream(weights).sum();
         Map<Long, Integer> hits = new HashMap<>();
         List<CaseItemDto> drops = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            CaseEntry c = draw(pool, id -> true, random).orElseThrow();
+            CaseEntry c = draw(pool, id -> true, random, productPercent).orElseThrow();
             hits.merge(c.id(), 1, Integer::sum);
             if (drops.size() < TEST_DROPS_SHOWN) {
                 drops.add(itemDto(c, c.isDiscount() ? null : byId.get(c.productId())));
@@ -285,7 +352,7 @@ public class GiftService {
         }
         List<TestHitDto> out = pool.stream()
                 .map(c -> new TestHitDto(c.id(), c.isDiscount() ? "d" + c.id() : "p" + c.productId(),
-                        hits.getOrDefault(c.id(), 0), chancePercent(c.weight(), total)))
+                        hits.getOrDefault(c.id(), 0), chancePercent(chanceWeight.get(c.id()), total)))
                 .toList();
         return new TestDrawDto(tier.name(), count, drops.get(0), drops, casePrizes(cfg, byId), out);
     }
@@ -308,7 +375,7 @@ public class GiftService {
                     parseRarity(d.rarity()), weight));
         }
         return new TierConfig(tier, t.thresholdMinor(), t.getGuaranteedPercent(), t.getGuaranteedMaxUah(),
-                t.getSwapPercent(), List.copyOf(prizes));
+                t.getSwapPercent(), List.copyOf(prizes), t.getLowMarginProductPercent());
     }
 
     private static String parseRarity(String value) {

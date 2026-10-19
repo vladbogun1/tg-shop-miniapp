@@ -103,7 +103,8 @@ public class GiftCaseService {
         SwapDto swap = rec == null || hidden ? null : swapOffer(order, rec);
         SizeDto size = order.getGiftCaseStatus() == null || hidden ? null : sizeDto(order);
         return new OrderGiftDto(order.getGiftTier(), order.getGiftDiscountMinor(), order.getGiftCaseStatus(),
-                OrderService.giftCaseOpenable(order), prize, promo, swap, size);
+                OrderService.giftCaseOpenable(order), prize, promo, swap, size,
+                customer || rec == null ? null : rec.isLowMargin());
     }
 
     /** POST …/gift-case/size: the customer picks the size of the product prize (the hold moves to it). */

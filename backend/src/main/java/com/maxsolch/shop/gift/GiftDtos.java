@@ -94,8 +94,9 @@ public final class GiftDtos {
      * The gift of an order for its page: the tier, the guaranteed discount taken instead of a case,
      * or the case (prize details only after opening).
      */
+    /** @param lowMargin admin only (null for the customer): the case was drawn leaning to discounts */
     public record OrderGiftDto(String tier, long guaranteedDiscountMinor, String caseStatus, boolean openable,
-                               CaseItemDto prize, PromoDto promo, SwapDto swap, SizeDto size) {
+                               CaseItemDto prize, PromoDto promo, SwapDto swap, SizeDto size, Boolean lowMargin) {
     }
 
     // ---- admin ----
@@ -104,10 +105,29 @@ public final class GiftDtos {
      * @param avgPrizeMinor  average product prize by the real chances (retail)
      * @param marginPercent  gift.marginPercent — the shop's average margin, for the prize cost in the admin
      * @param monthlyOrders  orders per month whose total falls into this tier (last 90 days) — expected cases
+     * @param lowMarginProductPercent share of product prizes in an order with a low-margin product, %
      */
     public record TierAdminDto(String tier, boolean enabled, int thresholdUah, int guaranteedPercent,
                                int guaranteedMaxUah, int swapPercent, int promoValidDays, int prizes,
-                               int livePrizes, long avgPrizeMinor, int marginPercent, double monthlyOrders) {
+                               int livePrizes, long avgPrizeMinor, int marginPercent, double monthlyOrders,
+                               int lowMarginProductPercent) {
+    }
+
+    /**
+     * Products with the case leaning to discounts (GET/PUT /api/admin/gift/low-margin): whole brands and
+     * single products; {@code productCount} — every product they cover.
+     */
+    public record LowMarginDto(List<LowMarginBrandDto> brands, List<LowMarginProductDto> products, int productCount) {
+    }
+
+    public record LowMarginBrandDto(String slug, String name, long productCount) {
+    }
+
+    public record LowMarginProductDto(String id, String title, String imageUrl, long priceMinor) {
+    }
+
+    /** PUT /api/admin/gift/low-margin: the whole lists (brand slugs, product ids). */
+    public record LowMarginRequest(List<String> brands, List<String> products) {
     }
 
     /**
@@ -164,7 +184,8 @@ public final class GiftDtos {
     }
 
     public record TierRequest(Boolean enabled, Integer thresholdUah, Integer guaranteedPercent,
-                              Integer guaranteedMaxUah, Integer swapPercent, Integer promoValidDays) {
+                              Integer guaranteedMaxUah, Integer swapPercent, Integer promoValidDays,
+                              Integer lowMarginProductPercent) {
     }
 
     public record CaseItemAdminDto(long id, String tier, String kind, String productId, String title, String imageUrl,

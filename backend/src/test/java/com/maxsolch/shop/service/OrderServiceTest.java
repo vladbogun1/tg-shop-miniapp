@@ -379,6 +379,71 @@ class OrderServiceTest {
         verify(promoCodeRepository).save(promo);
     }
 
+    // ---------- a case promo code and low-margin products (docs/GIFT-CASE.md) ----------
+
+    /** A mouse at 4 000 ₴ marked low-margin + this test's product (a pad) at 800 ₴; returns the mouse id. */
+    private String lowMarginCart() {
+        Product pad = simpleProduct(10, 80_000);
+        String mouseUuid = UUID.randomUUID().toString();
+        Product mouse = simpleProduct(10, 400_000);
+        mouse.setId(UuidUtil.toBytes(mouseUuid));
+        when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
+                java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? pad : mouse));
+        com.maxsolch.shop.gift.CaseLowMargin lowMargin = org.mockito.Mockito.mock(com.maxsolch.shop.gift.CaseLowMargin.class);
+        lenient().when(lowMargin.none()).thenReturn(false);
+        lenient().when(lowMargin.productIds()).thenReturn(java.util.Set.of(mouseUuid));
+        service.setCaseLowMargin(lowMargin);
+        return mouseUuid;
+    }
+
+    private PromoCode casePromo(String code, int percent) {
+        PromoCode promo = new PromoCode();
+        promo.setCode(code);
+        promo.setDiscountPercent(percent);
+        promo.setActive(true);
+        promo.setSource(com.maxsolch.shop.gift.GiftService.PROMO_SOURCE);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate(code)).thenReturn(Optional.of(promo));
+        return promo;
+    }
+
+    @Test
+    void createOrder_casePromo_skipsLowMarginProducts() {
+        String mouse = lowMarginCart();
+        casePromo("CASE10", 10);
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
+                new CreateOrderCommand.Line(productUuid, null, 1)), "CASE10"));
+
+        assertThat(order.getSubtotalMinor()).isEqualTo(480_000);
+        assertThat(order.getDiscountMinor()).isEqualTo(8_000); // 10 % of the pad only
+    }
+
+    @Test
+    void createOrder_ordinaryPromo_stillCoversLowMarginProducts() {
+        String mouse = lowMarginCart();
+        PromoCode promo = new PromoCode();
+        promo.setCode("SAVE10");
+        promo.setDiscountPercent(10);
+        promo.setActive(true);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
+                new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE10"));
+
+        assertThat(order.getDiscountMinor()).isEqualTo(48_000);
+    }
+
+    @Test
+    void createOrder_casePromo_onlyLowMarginProducts_isRefusedAndNotUsed() {
+        String mouse = lowMarginCart();
+        PromoCode promo = casePromo("CASE10", 10);
+
+        assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "CASE10")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("api.promo.caseExcluded");
+        assertThat(promo.getUsesCount()).isZero();
+    }
+
     @Test
     void createOrder_fixedAmount_takesPriorityOverPercent() {
         Product p = simpleProduct(10, 10_000);

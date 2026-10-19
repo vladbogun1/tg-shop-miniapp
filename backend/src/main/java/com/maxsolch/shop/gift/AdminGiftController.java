@@ -60,12 +60,25 @@ public class AdminGiftController {
         return service.updateTier(tier, body);
     }
 
+    @GetMapping("/low-margin")
+    @Operation(summary = "Brands and products whose orders get the case leaning to discounts")
+    public GiftDtos.LowMarginDto lowMargin() {
+        return service.lowMargin();
+    }
+
+    @PutMapping("/low-margin")
+    @Operation(summary = "Replace the low-margin brands (slugs) and products (ids)")
+    public GiftDtos.LowMarginDto updateLowMargin(@RequestBody GiftDtos.LowMarginRequest body) {
+        return service.updateLowMargin(body);
+    }
+
     @PostMapping("/tiers/{tier}/test-draw")
-    @Operation(summary = "«Тест кейса»: draw the tier N times (1…10 000) like the checkout; nothing is saved")
+    @Operation(summary = "«Тест кейса»: draw the tier N times (1…10 000) like the checkout; nothing is saved. "
+            + "lowMargin=true — as for an order with a low-margin product (product prizes rarer)")
     public TestDrawDto testDraw(@PathVariable String tier, @RequestParam(defaultValue = "1") int count,
+                                @RequestParam(defaultValue = "false") boolean lowMargin,
                                 @RequestBody(required = false) CaseDraftRequest body) {
-        return body == null || body.items() == null ? giftService.testDraw(tier, count)
-                : giftService.testDraw(tier, count, body.items());
+        return giftService.testDraw(tier, count, body == null ? null : body.items(), lowMargin);
     }
 
     @PutMapping("/tiers/{tier}/items")

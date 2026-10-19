@@ -74,6 +74,9 @@ public final class SettingsRegistry {
     public static final String GIFT_MARGIN_PERCENT = "gift.marginPercent";
     public static final String GIFT_CASE_CATEGORIES = "gift.caseCategories";
     public static final String GIFT_CASE_SUPER_CATEGORIES = "gift.caseSuperCategories";
+    /** Товары с упором на скидки в кейсе (gift.CaseLowMargin): бренды (slug) и отдельные товары (id). */
+    public static final String GIFT_LOW_MARGIN_BRANDS = "gift.lowMarginBrands";
+    public static final String GIFT_LOW_MARGIN_PRODUCTS = "gift.lowMarginProducts";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -178,6 +181,16 @@ public final class SettingsRegistry {
                     "Категории суперприза",
                     "Корневые категории (slug через запятую) для джекпота золотого кейса.",
                     "klaviatury,myshki", 500),
+            textSetting(GIFT_LOW_MARGIN_BRANDS, GIFT_GROUP,
+                    "Бренды с упором на скидки",
+                    "Бренды (slug через запятую) с маржой около нуля. Заказ с их товаром получает кейс как "
+                            + "обычно, но товарные призы выпадают реже (доля — у каждого уровня), а промокоды из "
+                            + "кейса на эти товары не действуют. Настраивается в разделе «Кейс».",
+                    "", 1000),
+            textSetting(GIFT_LOW_MARGIN_PRODUCTS, GIFT_GROUP,
+                    "Товары с упором на скидки",
+                    "Отдельные товары (id через запятую) — то же, что бренды выше. Настраивается в разделе «Кейс».",
+                    "", 4000),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

@@ -54,8 +54,10 @@ public class PublicController {
     @GetMapping("/promo-codes/preview")
     @Operation(summary = "Preview a promo code's discount for a subtotal")
     public PromoPreviewDto previewPromo(@RequestParam String code,
-                                        @RequestParam long subtotalMinor) {
-        return promoService.preview(code, subtotalMinor, null);
+                                        @RequestParam long subtotalMinor,
+                                        @RequestParam(required = false) String items) {
+        // items: the cart's lines "id*qty,…" — a case code is counted without the low-margin products.
+        return promoService.preview(code, subtotalMinor, null, com.maxsolch.shop.gift.CaseLowMargin.parseItems(items));
     }
 
     @GetMapping("/payment-options")

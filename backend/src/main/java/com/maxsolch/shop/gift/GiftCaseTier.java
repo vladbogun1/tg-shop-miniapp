@@ -52,6 +52,13 @@ public class GiftCaseTier {
     @Column(name = "promo_valid_days", nullable = false)
     private int promoValidDays = 30;
 
+    /**
+     * An order with a low-margin product ({@link CaseLowMargin}): all product prizes together get this %
+     * of the chance, discount prizes share the rest (V61). 100 = the usual odds.
+     */
+    @Column(name = "low_margin_product_percent", nullable = false)
+    private int lowMarginProductPercent = 10;
+
     public long thresholdMinor() {
         return thresholdUah * 100L;
     }
