@@ -65,7 +65,11 @@ public record OrderDetailDto(
         String giftCaseStatus,
         Instant giftCaseOpenedAt,
         /** SEALED and the order is paid — the customer may open it now (once). */
-        boolean giftCaseOpenable) {
+        boolean giftCaseOpenable,
+        /** Gift of the order (V58): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
+        com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
+        /** Part of discountMinor taken as the case tier's guaranteed discount (V58). */
+        long giftDiscountMinor) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

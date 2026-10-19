@@ -8,5 +8,5 @@ public interface GiftCaseItemRepository extends JpaRepository<GiftCaseItem, Long
 
     List<GiftCaseItem> findAllByOrderBySortOrderAscIdAsc();
 
-    boolean existsByProductId(byte[] productId);
+    boolean existsByTierAndProductId(GiftCaseTier.Tier tier, byte[] productId);
 }

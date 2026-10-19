@@ -224,15 +224,37 @@ public class MeController {
     }
 
     @PostMapping("/orders/{id}/gift-case/open")
-    @Operation(summary = "Open the gift case of my order: the prize (drawn at checkout) and the prizes for "
-            + "the reel. Opening again replays the same prize")
+    @Operation(summary = "Open the gift case of my order (once, paid orders only): the prize drawn at checkout, "
+            + "the tier's prizes for the reel, the code of a discount prize and the swap offer")
     public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
         com.maxsolch.shop.gift.GiftDtos.CaseOpenDto opened =
                 giftCaseService.open(order.getId(), ContentLocale.normalize(locale));
         journal(ActivityLog.fromRequest("GIFT_CASE_OPENED").order(order.getId())
-                .text("Покупатель открыл кейс: " + opened.won().title() + " (" + opened.won().rarity() + ")"));
+                .text("Покупатель открыл кейс (" + opened.tier() + "): " + prizeText(opened.won())
+                        + " (" + opened.won().rarity() + ")"));
         return opened;
+    }
+
+    @PostMapping("/orders/{id}/gift-case/swap")
+    @Operation(summary = "Swap the case prize (similar to what I bought) for a personal code on the next order; "
+            + "the prize leaves the order. 400 GIFT_CASE_SWAP_UNAVAILABLE when it is not offered")
+    public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapGiftCase(@PathVariable String id, Locale locale) {
+        Order order = ownedOrder(id);
+        com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapped =
+                giftCaseService.swap(order.getId(), ContentLocale.normalize(locale));
+        journal(ActivityLog.fromRequest("GIFT_CASE_SWAPPED").order(order.getId())
+                .text("Покупатель заменил приз кейса «" + swapped.won().title() + "» на промокод −"
+                        + swapped.swap().amountMinor() / 100 + " ₴"));
+        return swapped;
+    }
+
+    private static String prizeText(com.maxsolch.shop.gift.GiftDtos.CaseItemDto won) {
+        if ("DISCOUNT".equals(won.kind())) {
+            return won.discountPercent() > 0 ? "скидка " + won.discountPercent() + " %"
+                    : "скидка " + won.discountAmountMinor() / 100 + " ₴";
+        }
+        return won.title();
     }
 
     @GetMapping("/orders/{id}/messages")

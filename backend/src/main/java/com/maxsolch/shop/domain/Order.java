@@ -49,6 +49,14 @@ public class Order {
     @Column(name = "gift_case_opened_at")
     private java.time.Instant giftCaseOpenedAt;
 
+    /** Gift case tier of the order (V58): BRONZE | SILVER | GOLD — of its case or its guaranteed discount. */
+    @Column(name = "gift_tier", length = 8)
+    private String giftTier;
+
+    /** Part of discountMinor the customer took as the tier's guaranteed discount instead of a case (V58). */
+    @Column(name = "gift_discount_minor", nullable = false)
+    private long giftDiscountMinor = 0;
+
     @Column(name = "total_minor", nullable = false)
     private long totalMinor;
 

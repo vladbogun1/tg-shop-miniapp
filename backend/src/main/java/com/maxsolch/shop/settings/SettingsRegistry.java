@@ -78,6 +78,7 @@ public final class SettingsRegistry {
     public static final String GIFT_THRESHOLD_UAH = "gift.thresholdUah";
     public static final String GIFT_PRODUCT_ID = "gift.productId";
     public static final String GIFT_CASE_ENABLED = "gift.caseEnabled";
+    public static final String GIFT_PROMO_VALID_DAYS = "gift.promoValidDays";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -99,8 +100,8 @@ public final class SettingsRegistry {
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
             new Group(BUNDLES_GROUP, "Вместе дешевле",
                     "Скидка на аксессуары к товару. Пары категорий — в разделе «Вместе дешевле»."),
-            new Group(GIFT_GROUP, "Подарок за сумму (кейс)",
-                    "Подарок или кейс с призом за заказ от порога. Призы кейса — в разделе «Кейс»."));
+            new Group(GIFT_GROUP, "Подарок за сумму (кейсы)",
+                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -179,23 +180,28 @@ public final class SettingsRegistry {
                     3, 1, 6, "шт"),
             boolSetting(GIFT_ENABLED, GIFT_GROUP,
                     "Подарок за сумму включён",
-                    "Заказ от порога получает выбранный товар в подарок (цена 0, со склада списывается). "
-                            + "В корзине покупатель видит, сколько осталось до подарка.",
+                    "Главный выключатель: заказ от порога получает подарок — кейс или товар (цена 0, со "
+                            + "склада списывается). В корзине покупатель видит, сколько осталось до подарка.",
+                    false),
+            boolSetting(GIFT_CASE_ENABLED, GIFT_GROUP,
+                    "Подарок — кейсы",
+                    "Кейсы трёх уровней (бронзовый, серебряный, золотой) — у каждого свой порог и свои призы "
+                            + "(товары и скидки), настраиваются в разделе «Кейс». Покупатель перед оформлением "
+                            + "выбирает: гарантированная скидка или крутить кейс. Нет призов — кладётся товар-подарок.",
                     false),
             intSetting(GIFT_THRESHOLD_UAH, GIFT_GROUP,
-                    "Порог подарка",
-                    "Сумма заказа после скидки, с которой кладётся подарок.",
+                    "Порог товара-подарка",
+                    "Сумма заказа после скидки, с которой кладётся товар-подарок (без кейсов или когда в кейсе "
+                            + "нет призов). Пороги кейсов — у уровней в разделе «Кейс».",
                     3000, 100, 1000000, "₴"),
             textSetting(GIFT_PRODUCT_ID, GIFT_GROUP,
                     "Товар-подарок",
                     "Выбирается в разделе «Кейс». Нет в наличии — подарок не кладётся.",
                     "", 64),
-            boolSetting(GIFT_CASE_ENABLED, GIFT_GROUP,
-                    "Подарок — кейс",
-                    "Вместо одного товара — кейс как в CS: приз выпадает случайно из списка призов "
-                            + "(шансы по весам), покупатель открывает кейс в заказе. Нет призов в наличии — "
-                            + "кладётся обычный товар-подарок.",
-                    false),
+            intSetting(GIFT_PROMO_VALID_DAYS, GIFT_GROUP,
+                    "Срок промокодов из кейса",
+                    "Сколько дней действует личный промокод, выпавший из кейса или полученный заменой приза.",
+                    30, 1, 365, "дн."),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

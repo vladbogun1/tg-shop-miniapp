@@ -54,6 +54,14 @@ public class OrderQueryService {
     private final CustomerRejectReason customerRejectReason;
     private final OrderExchangeRepository exchangeRepository;
 
+    /** The gift block of the order page (docs/GIFT-CASE.md); a setter so the tests' constructor stays. */
+    private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGiftCaseService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.gift.GiftCaseService giftCaseService) {
+        this.giftCaseService = giftCaseService;
+    }
+
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
@@ -279,7 +287,9 @@ public class OrderQueryService {
                 o.getBundleDiscountMinor(),
                 o.getGiftCaseStatus(),
                 o.getGiftCaseOpenedAt(),
-                OrderService.giftCaseOpenable(o));
+                OrderService.giftCaseOpenable(o),
+                giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
+                o.getGiftDiscountMinor());
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

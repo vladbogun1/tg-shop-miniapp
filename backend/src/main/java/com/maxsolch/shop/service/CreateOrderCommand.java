@@ -23,7 +23,19 @@ public record CreateOrderCommand(
         String npWarehouseRef,
         String npWarehouseName,
         String paymentOptionId,
-        OrderSource source) {
+        OrderSource source,
+        /** Gift case tier with a guaranteed discount: CASE (spin, the default) | DISCOUNT (take the discount now). */
+        String giftChoice) {
+
+    public CreateOrderCommand(Long userId, Long tgUserId, String tgUsername, List<Line> items,
+                              String customerName, String phone, String comment, String promoCode,
+                              String deliveryMethod, String npCityRef, String npCityName,
+                              String npWarehouseRef, String npWarehouseName, String paymentOptionId,
+                              OrderSource source) {
+        this(userId, tgUserId, tgUsername, items, customerName, phone, comment, promoCode,
+                deliveryMethod, npCityRef, npCityName, npWarehouseRef, npWarehouseName,
+                paymentOptionId, source, null);
+    }
 
     /** Without a source = the Mini App (the only channel before the site existed). */
     public CreateOrderCommand(Long userId, Long tgUserId, String tgUsername, List<Line> items,

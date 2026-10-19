@@ -2,15 +2,16 @@
 
 /**
  * Gift for the order sum in the cart (page and drawer): «До подарунка ще N ₴» with a progress bar, or
- * «🎁 Подарунок … додамо безкоштовно». In CASE mode (gift case, V58): «Купіть ще на N ₴ — і отримаєте
- * кейс з дропом» / the celebratory «🎉 Вітаємо! …» with a glowing case, the rarest prize teaser and an
- * expandable «Що може випасти». Independent of «Разом дешевше»; `totalMinor` = the cart total after
+ * «🎁 Подарунок … додамо безкоштовно». In CASE mode (gift cases of three tiers, V58): «Купіть ще на N ₴ —
+ * і отримаєте бронзовий кейс» / the celebratory «🎉 Вітаємо! …» with the reached tier's glowing case,
+ * «ще N ₴ — і кейс стане кращим», the tier ladder, the rarest prize teaser and an expandable «Що може
+ * випасти» of the tier (no chances). Independent of «Разом дешевше»; `totalMinor` = the cart total after
  * the discount (what the server counts against the threshold).
  */
 import { Gift } from "lucide-react";
 import { rarestCasePrize, type Product } from "@shop/shared";
-import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
-import { useCaseRarityNames } from "@/components/case/OrderGiftCase";
+import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/shared/case-ui";
+import { useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useGiftProgress } from "@/lib/gift";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -32,24 +33,26 @@ export function CartGiftProgress({
   compact?: boolean;
   className?: string;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const fmt = useFmt();
+  const money = useCaseMoney();
   const rarity = useCaseRarityNames();
+  const short = useCaseTierNames("tierShort");
+  const acc = useCaseTierNames("tierAcc");
   const gift = useGiftProgress(totalMinor);
   if (!gift) return null;
   const isCase = gift.kind === "CASE";
-  const done = gift.reached || gift.remainingMinor <= 0;
-  const pct = done
-    ? 100
-    : gift.thresholdMinor > 0
-      ? Math.max(4, Math.min(100, ((gift.thresholdMinor - gift.remainingMinor) / gift.thresholdMinor) * 100))
-      : 0;
+  const shownTier = isCase ? (gift.tier ?? gift.next ?? gift.tiers[0] ?? null) : null;
+  if (isCase && !shownTier?.prizes.length) return null;
+  const done = gift.reached;
+  const pct = Math.max(done ? 0 : 4, Math.min(100, gift.share * 100));
   const thumb = compact ? "h-10 w-10" : "h-12 w-12";
-  const rarest = isCase ? rarestCasePrize(gift.caseItems) : null;
+  const rarest = shownTier ? rarestCasePrize(shownTier.prizes) : null;
+  const ladder = isCase && gift.tiers.length > 1;
   const text = isCase
-    ? done
-      ? t("case.reached")
-      : t("case.progress", { amount: fmt.money(gift.remainingMinor) })
+    ? done && gift.tier
+      ? t("case.reached", { tier: acc[gift.tier.tier] })
+      : t("case.progress", { amount: fmt.money(gift.remainingMinor), tier: acc[shownTier!.tier] })
     : done
       ? t("case.gift.reached", { title: gift.product!.title })
       : t("case.gift.progress", { amount: fmt.money(gift.remainingMinor) });
@@ -65,7 +68,7 @@ export function CartGiftProgress({
     >
       <div className="flex items-center gap-3">
         {isCase ? (
-          <GiftCaseArt glow={done} className={compact ? "h-10 w-14" : "h-12 w-[72px]"} />
+          <GiftCaseArt glow={done} tier={shownTier?.tier} className={compact ? "h-10 w-14" : "h-12 w-[72px]"} />
         ) : (
           <span className={`relative ${thumb} shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface)]`}>
             <Image src={firstImage(gift.product!)} alt="" size={120} className="h-full w-full" />
@@ -82,10 +85,15 @@ export function CartGiftProgress({
           >
             {text}
           </p>
-          {isCase && rarest && (
+          {isCase && done && gift.next && (
+            <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
+              {t("case.upgrade", { amount: fmt.money(gift.remainingMinor), tier: acc[gift.next.tier] })}
+            </p>
+          )}
+          {isCase && rarest?.title && (
             <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[var(--muted)]">{t("case.teaser", { title: rarest.title })}</p>
           )}
-          {!done && (
+          {!done && !ladder && (
             <>
               <div
                 className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface)]"
@@ -101,9 +109,10 @@ export function CartGiftProgress({
           )}
         </div>
       </div>
-      {isCase && (
-        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1">
-          <GiftCasePrizeRows items={gift.caseItems} rarity={rarity} resolveImage={caseImage} locale={locale} />
+      {ladder && <GiftCaseTierLadder tiers={gift.tiers} totalMinor={totalMinor} names={short} money={money} />}
+      {isCase && shownTier && (
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier}>
+          <GiftCasePrizeRows items={shownTier.prizes} rarity={rarity} resolveImage={caseImage} money={money} discountLabel={t("case.discountRow")} />
         </GiftCasePrizeDisclosure>
       )}
     </div>

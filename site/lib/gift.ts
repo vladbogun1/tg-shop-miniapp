@@ -27,7 +27,7 @@ export function useGift(enabled = true): GiftInfo | null {
   const g = data?.gift;
   if (!g) return null;
   // Nothing to show: a case without prizes in stock / a product gift without the product.
-  return g.kind === "CASE" ? (g.caseItems?.length ? g : null) : g.product ? g : null;
+  return g.kind === "CASE" ? (g.tiers?.some((t) => t.prizes.length) ? g : null) : g.product ? g : null;
 }
 
 /** Progress of `totalMinor` to the gift; null without a (showable) gift. */

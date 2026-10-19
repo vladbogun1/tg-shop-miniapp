@@ -16,6 +16,7 @@ export type TimeRange = "month" | "halfyear" | "year" | "all";
 // ---- catalog ----------------------------------------------------------------
 
 import type { CatalogFields } from "./catalog";
+import type { OrderGift } from "./giftcase";
 
 export interface ProductImage {
   /** Auto-increment id from the database. */
@@ -346,6 +347,10 @@ export interface OrderDetail {
   giftCaseOpenedAt?: string | null;
   /** SEALED and the order is paid (not rejected): opens now; otherwise only after payment. Opens once. */
   giftCaseOpenable?: boolean;
+  /** Part of discountMinor that is the guaranteed gift discount (the customer chose it instead of the case). */
+  giftDiscountMinor?: number;
+  /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
+  gift?: OrderGift | null;
   totalMinor: number;
   currency: string;
   customerName: string;

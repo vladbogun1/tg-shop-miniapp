@@ -4,14 +4,16 @@
  * «Кейс» (route "/gift"): the gift for the order sum — a fixed product or a CS-style case.
  *  - The switch, the threshold, the gift product and the case mode are settings of the `gift` group
  *    (GET/PUT /api/admin/settings, one save bar). The generic «Настройки» page hides this group.
- *  - The case prizes and the stats — /api/admin/gift/*.
+ *  - The three case tiers (threshold, guaranteed discount, swap), their prizes and the stats —
+ *    /api/admin/gift/* (CasePanel saves each change at once).
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, BarChart3, Gift, Save, Undo2 } from "lucide-react";
 import { adminApi, ApiError } from "@/lib/api";
-import { GIFT_GROUP, giftApi } from "@/lib/gift";
+import { CASE_TIER_LABEL, GIFT_GROUP, giftApi } from "@/lib/gift";
+import { CASE_TIER_METAL } from "@shop/shared";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -86,7 +88,7 @@ export default function GiftPage() {
     <div className="min-w-0">
       <PageHeader
         title="Кейс"
-        subtitle="Подарок за сумму заказа: один товар или кейс со случайным призом."
+        subtitle="Подарок за сумму заказа: один товар или бронзовый, серебряный и золотой кейсы со случайным призом."
       />
 
       <StatsStrip />
@@ -206,16 +208,28 @@ function GiftSection({
   const best = variants.length ? [...variants].sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))[0] : null;
   const on = !!enabled && Boolean(enabled.entry.raw);
   const isCase = !!caseMode && Boolean(caseMode.entry.raw);
-  const thresholdUah = threshold && !validate(threshold.item, threshold.entry.raw) ? Number(threshold.entry.raw) : null;
 
   return (
     <section className="panel min-w-0 p-4 sm:p-5">
-      <PanelHeader icon={Gift} title="Подарок за сумму" description="Товар, который магазин сам кладёт в заказ от указанной суммы (после скидки)." />
+      <PanelHeader
+        icon={Gift}
+        title="Подарок за сумму"
+        description={
+          isCase
+            ? "Кейс, который магазин сам кладёт в заказ от суммы (после скидки). Пороги — у каждого кейса ниже."
+            : "Товар, который магазин сам кладёт в заказ от указанной суммы (после скидки)."
+        }
+      />
       <div className="flex min-w-0 flex-col gap-4">
         {enabled && <BoolRow {...enabled} label="Включено" onChange={(v) => onChange(K.giftEnabled, v)} />}
         {threshold && (
           <div className="max-w-[260px]">
-            <NumField {...threshold} label="Порог суммы заказа" hideHint onChange={(v) => onChange(K.giftThreshold, v)} />
+            <NumField
+              {...threshold}
+              label={isCase ? "Порог запасного товара-подарка" : "Порог суммы заказа"}
+              hideHint
+              onChange={(v) => onChange(K.giftThreshold, v)}
+            />
           </div>
         )}
 
@@ -235,7 +249,7 @@ function GiftSection({
             />
             <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--text-muted)]">
               {isCase
-                ? "Кейс как в CS: приз случайно выбирается при оформлении, покупатель открывает кейс в заказе."
+                ? "Кейс как в CS: приз (товар или скидка) случайно выбирается при оформлении, покупатель открывает кейс в заказе. Вместо кейса можно предложить гарантированную скидку."
                 : "В заказ всегда кладётся один и тот же товар."}
             </p>
           </div>
@@ -287,13 +301,16 @@ function GiftSection({
           )}
           {on && !productId && !isCase && <Warn>Подарок включён, но товар не выбран — подарка не будет.</Warn>}
           {isCase && (
-            <Warn tone="info">Кладётся вместо кейса, если ни одного приза нет в наличии{productId ? "" : " — сейчас не выбран, тогда подарка не будет"}.</Warn>
+            <Warn tone="info">
+              Кладётся от своего порога, если ни один кейс разыграть нельзя (выключены или нет призов)
+              {productId ? "" : " — сейчас не выбран, тогда подарка не будет"}.
+            </Warn>
           )}
         </div>
 
         {isCase && (
           <div className="border-t border-[var(--line)] pt-4">
-            <CasePanel thresholdUah={thresholdUah} />
+            <CasePanel />
           </div>
         )}
       </div>
@@ -329,9 +346,19 @@ function StatsStrip() {
   const share = s && s.orders > 0 ? Math.round((s.giftOrders / s.orders) * 100) : 0;
   const tiles = [
     { label: "Заказов с подарком", value: s ? `${s.giftOrders} из ${s.orders}` : "—", hint: s ? `${share}% заказов` : undefined },
-    { label: "Заказов с кейсом", value: s ? String(s.caseOrders) : "—" },
     { label: "Кейсов открыто", value: s ? `${s.casesOpened} из ${s.caseOrders}` : "—", hint: "покупатель открыл в заказе" },
+    {
+      label: "Скидка вместо кейса",
+      value: s ? String(s.guaranteedOrders ?? 0) : "—",
+      hint: s && (s.guaranteedMinor ?? 0) > 0 ? `на ${money(s.guaranteedMinor!)}` : undefined,
+    },
+    {
+      label: "Призов-скидок / замен",
+      value: s ? `${s.discountPrizes ?? 0} / ${s.swaps ?? 0}` : "—",
+      hint: "выпало скидок / заменено товаров",
+    },
   ];
+  const tiers = s?.tiers?.filter((t) => t.cases + t.guaranteed > 0) ?? [];
   return (
     <section className="mb-4 min-w-0 lg:mb-6" aria-label="Статистика за 30 дней">
       <div className="mb-2 flex items-center gap-2 text-[var(--text-muted)]">
@@ -339,9 +366,9 @@ function StatsStrip() {
         <span className="field-label">Статистика за 30 дней</span>
         {q.isError && <span className="text-[12px] text-[var(--danger-ink)]">не загрузилась</span>}
       </div>
-      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:gap-3">
-        {tiles.map((t, i) => (
-          <div key={t.label} className={cn("card-2 min-w-0 px-3 py-2.5", i === tiles.length - 1 && "col-span-2 sm:col-span-1")}>
+      <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+        {tiles.map((t) => (
+          <div key={t.label} className="card-2 min-w-0 px-3 py-2.5">
             <div className="text-[11.5px] leading-tight text-[var(--text-faint)]">{t.label}</div>
             <div className={cn("tabular mt-1 break-words font-display text-[18px] font-bold leading-tight text-[var(--ink)]", q.isLoading && "opacity-40")}>
               {t.value}
@@ -350,6 +377,16 @@ function StatsStrip() {
           </div>
         ))}
       </div>
+      {tiers.length > 0 && (
+        <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
+          {tiers.map((t) => (
+            <span key={t.tier} className="tabular">
+              <b style={{ color: CASE_TIER_METAL[t.tier].ga }}>{CASE_TIER_LABEL[t.tier]}</b>: кейсов {t.cases}, открыто {t.opened}
+              {t.guaranteed > 0 ? `, скидкой ${t.guaranteed}` : ""}
+            </span>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

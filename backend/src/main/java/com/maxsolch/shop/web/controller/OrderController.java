@@ -117,7 +117,8 @@ public class OrderController {
                 req.npWarehouseName(),
                 req.paymentOptionId(),
                 // A site token (cookie, chn=web) marks the order as placed on the website.
-                SecurityUtil.currentPrincipal().isWeb() ? OrderSource.WEB : OrderSource.MINIAPP);
+                SecurityUtil.currentPrincipal().isWeb() ? OrderSource.WEB : OrderSource.MINIAPP,
+                req.giftChoice());
         return orderService.createOrder(cmd);
     }
 

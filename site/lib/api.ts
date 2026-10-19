@@ -147,6 +147,8 @@ export interface CreateOrderRequest {
   npWarehouseRef?: string;
   npWarehouseName?: string;
   paymentOptionId: string;
+  /** Gift for the order sum: CASE (default) or the tier's guaranteed DISCOUNT on this order. */
+  giftChoice?: "CASE" | "DISCOUNT";
 }
 
 export interface NpBboxParams {
@@ -290,6 +292,7 @@ export const api = {
   receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
   /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
   openGiftCase: (id: string) => authed(() => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`)),
+  swapGiftCase: (id: string) => authed(() => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/swap`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

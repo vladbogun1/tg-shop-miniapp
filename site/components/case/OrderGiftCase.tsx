@@ -8,19 +8,26 @@
  * (`giftCaseOpenable`) and exactly once — no replays; after opening the order shows the prize line
  * with its rarity chip. Before payment the card is locked and points to the payment block.
  *
- * The prize list for «Що може випасти» comes from the public gift (useGift, GET /api/public/gift);
- * after opening, the server's own list (`reel`) drives the reel.
+ * Three tiers (bronze/silver/gold): the order's tier (`order.gift.tier`) skins the card and the screen;
+ * the prize list for «Що може випасти» is that tier's from the public gift (useGift, no chances);
+ * after opening, the server's own list (`reel`) drives the reel. After the case the page shows
+ * `panel`: the guaranteed discount the customer chose, the code of a discount prize, or the swap of a
+ * product prize similar to what they bought (POST …/gift-case/swap).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { paymentState, shortOrderId, type CaseRarity, type OrderDetail } from "@shop/shared";
+import { CASE_TIER_ORDER, paymentState, shortOrderId, type CaseRarity, type CaseTier, type OrderDetail } from "@shop/shared";
 import {
   GiftCaseOpening,
+  GiftCaseOrderPanel,
+  hasGiftCaseOrderPanel,
   GiftCaseRarityChip,
   GiftCaseSealedCard,
   takeGiftCaseAutoOpen,
   unlockCaseAudio,
+  type CasePromoTexts,
   type GiftCaseTexts,
+  type GiftOrderPanelTexts,
 } from "@shop/shared/case-ui";
 import { toast } from "@/components/ui/Toast";
 import type { MessageKey } from "@/i18n";
@@ -29,6 +36,7 @@ import { trackGiftCaseOpen } from "@/lib/analytics";
 import { api } from "@/lib/api";
 import { useGift } from "@/lib/gift";
 import { resolveImageSrc } from "@/lib/image";
+import { useFmt } from "@/lib/use-fmt";
 
 const RARITIES: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"];
 
@@ -43,23 +51,57 @@ export function useCaseRarityNames(): Record<CaseRarity, string> {
   );
 }
 
-const resolveImage = (src: string, size: number) => resolveImageSrc(src, size);
+export function useCaseTierNames(kind: "tier" | "tierShort" | "tierAcc" = "tier"): Record<CaseTier, string> {
+  const { t } = useI18n();
+  return useMemo(
+    () => Object.fromEntries(CASE_TIER_ORDER.map((r) => [r, t(`case.${kind}.${r}` as MessageKey)])) as Record<CaseTier, string>,
+    [t, kind]
+  );
+}
 
-/** Case prizes with chances (the public gift; `enabled` = ask only when they are needed). */
-export function useCasePrizes(enabled: boolean) {
+export function useCasePromoTexts(): CasePromoTexts {
+  const { t } = useI18n();
+  return useMemo(
+    () => ({
+      label: t("case.promo.label"),
+      copy: t("case.promo.copy"),
+      copied: t("case.promo.copied"),
+      validUntil: t("case.promo.validUntil"),
+      used: t("case.promo.used"),
+    }),
+    [t]
+  );
+}
+
+/** Money in minor units for the case pieces (the language on screen). */
+export function useCaseMoney(): (minor: number) => string {
+  const fmt = useFmt();
+  return useCallback((minor: number) => fmt.money(minor), [fmt]);
+}
+
+export const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
+const resolveImage = caseImage;
+
+/** Prizes of the tier (the public gift; `enabled` = ask only when they are needed). */
+export function useCasePrizes(enabled: boolean, tier: CaseTier | null | undefined) {
   const gift = useGift(enabled);
-  return { data: gift?.kind === "CASE" ? gift.caseItems : [] };
+  return { data: (gift?.kind === "CASE" && tier && gift.tiers.find((x) => x.tier === tier)?.prizes) || [] };
 }
 
 /** Everything the order page needs: `card` (top of the page while SEALED) and `overlay` (render once). */
 export function useOrderGiftCase(order: OrderDetail) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
+  const fmt = useFmt();
+  const money = useCaseMoney();
   const qc = useQueryClient();
   const rarity = useCaseRarityNames();
+  const tierName = useCaseTierNames();
+  const promoTexts = useCasePromoTexts();
+  const tier = order.gift?.tier ?? null;
   const sealed = order.giftCaseStatus === "SEALED" && order.status !== "REJECTED";
   const openable = sealed && order.giftCaseOpenable === true;
   const [open, setOpen] = useState(false);
-  const prizes = useCasePrizes(openable || open);
+  const prizes = useCasePrizes(openable || open, tier);
 
   // Straight from the checkout or back from the bank: show the case screen once by itself — but only
   // when it can actually be opened. An unpaid order keeps the wish until it gets paid on this page.
@@ -99,11 +141,41 @@ export function useOrderGiftCase(order: OrderDetail) {
       soundOff: t("case.soundOff"),
       error: t("case.error"),
       retry: t("case.retry"),
+      tierName,
+      discountTitle: t("case.discountTitle"),
+      discountNext: t("case.discountNext"),
+      promo: promoTexts,
+      swapHint: t("case.swapHint"),
+      swapAction: t("case.swapAction"),
+      swapped: t("case.swapped"),
+      swapError: t("case.swapError"),
     }),
-    [t, order.id, rarity]
+    [t, order.id, rarity, tierName, promoTexts]
+  );
+  const panelTexts: GiftOrderPanelTexts = useMemo(
+    () => ({
+      tierName,
+      rarity,
+      prizeTitle: t("case.order.prizeTitle"),
+      discountPrize: t("case.order.discountPrize"),
+      promo: promoTexts,
+      swapTitle: t("case.order.swapTitle"),
+      swapHint: t("case.swapHint"),
+      swapAction: t("case.swapAction"),
+      swapped: t("case.swapped"),
+      swapError: t("case.swapError"),
+      guaranteedTitle: t("case.order.discountTitle"),
+      guaranteedText: t("case.order.discountText"),
+    }),
+    [t, tierName, rarity, promoTexts]
   );
 
   const openCase = useCallback(() => api.openGiftCase(order.id), [order.id]);
+  const swapCase = useCallback(async () => {
+    const res = await api.swapGiftCase(order.id);
+    void qc.invalidateQueries({ queryKey: ["me", "orders"] });
+    return res;
+  }, [order.id, qc]);
   const onRevealed = useCallback(
     (res: { won: { rarity: string } }) => {
       trackGiftCaseOpen(order.id, res.won.rarity);
@@ -131,10 +203,19 @@ export function useOrderGiftCase(order: OrderDetail) {
   const toPayment = () => document.getElementById(ORDER_PAY_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   const card = !sealed ? null : openable ? (
-    <GiftCaseSealedCard title={t("case.sealedTitle")} text={t("case.sealedText")} action={t("case.openShort")} onOpen={start} />
+    <GiftCaseSealedCard
+      tier={tier}
+      tierLabel={tier ? tierName[tier] : undefined}
+      title={t("case.sealedTitle")}
+      text={t("case.sealedText")}
+      action={t("case.openShort")}
+      onOpen={start}
+    />
   ) : (
     <GiftCaseSealedCard
       locked
+      tier={tier}
+      tierLabel={tier ? tierName[tier] : undefined}
       lockLabel={t("case.locked")}
       title={t("case.sealedTitle")}
       text={t("case.lockedText")}
@@ -150,14 +231,29 @@ export function useOrderGiftCase(order: OrderDetail) {
       openCase={openCase}
       onOpenRefused={onOpenRefused}
       prizes={prizes.data ?? []}
-      locale={locale}
+      tier={tier}
+      onSwap={swapCase}
       texts={texts}
+      money={money}
+      formatDate={fmt.date}
       resolveImage={resolveImage}
       onRevealed={onRevealed}
     />
   );
 
-  return { card, overlay, rarity };
+  // After the case (or instead of it): the guaranteed discount, the prize code, the swap offer.
+  const panel =
+    !sealed && order.gift && order.status !== "REJECTED" && hasGiftCaseOrderPanel(order.gift) ? (
+      <GiftCaseOrderPanel
+        gift={order.gift}
+        texts={panelTexts}
+        money={money}
+        formatDate={fmt.date}
+        onSwap={order.gift.swap?.available ? swapCase : undefined}
+      />
+    ) : null;
+
+  return { card: card ?? panel, overlay, rarity };
 }
 
 /** «Епічний · з кейса» under the prize line of an opened case (no replay — a case opens once). */

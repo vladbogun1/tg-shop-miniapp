@@ -2,7 +2,7 @@
  * Order endpoints added in admin v2 (package B) — kept apart from lib/api.ts so parallel work on
  * that file does not collide. Same http client, same error type.
  */
-import type { NpCity, NpWarehouse } from "@shop/shared";
+import type { CaseTier, NpCity, NpWarehouse } from "@shop/shared";
 import type { ConfirmOptions } from "@/components/ui/ConfirmModal";
 import {
   adminApi,
@@ -197,8 +197,8 @@ export const ordersApi = {
    * case prizes in stock and adds it for free (SEALED; the customer opens it after paying).
    * 400 (Russian message): the order already has a case / no prizes in stock / not editable.
    */
-  grantGiftCase: (id: string, notifyCustomer: boolean) =>
-    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/gift-case`, { notifyCustomer }),
+  grantGiftCase: (id: string, tier: CaseTier, notifyCustomer: boolean) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/gift-case`, { tier, notifyCustomer }),
 
   /** POST /api/admin/orders/{id}/exchange — swap goods in a paid order, back to NEW for a new ТТН. */
   exchange: (id: string, body: ExchangeBody) =>

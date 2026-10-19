@@ -53,6 +53,8 @@ import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
 import { GiftCaseModal } from "./GiftCaseModal";
 import { CASE_RARITY_LABEL } from "@/lib/gift";
+import { caseDiscountText, type CaseTier } from "@shop/shared";
+import { money } from "@/lib/money";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
@@ -288,16 +290,18 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   }
 
   /** «🎁 Выдать кейс»: the server draws the prize now; the toast names it. */
-  async function grantCase(notifyCustomer: boolean) {
+  async function grantCase(tier: CaseTier, notifyCustomer: boolean) {
     const id = orderId;
     if (!id) return;
     let prize = "";
     const ok = await run(
       "gift-case",
       async () => {
-        const updated = await ordersApi.grantGiftCase(id, notifyCustomer);
+        const updated = await ordersApi.grantGiftCase(id, tier, notifyCustomer);
         const it = updated.items.find((x) => x.gift && x.caseRarity);
+        const won = updated.gift?.prize;
         if (it?.caseRarity) prize = `${it.title} · ${CASE_RARITY_LABEL[it.caseRarity]}`;
+        else if (won?.kind === "DISCOUNT") prize = `скидка ${caseDiscountText(won, (m) => money(m, updated.currency))} · ${CASE_RARITY_LABEL[won.rarity]}`;
         return updated;
       },
       undefined,
@@ -688,7 +692,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         open={caseOpen}
         loading={busyKey === "gift-case"}
         onClose={() => setCaseOpen(false)}
-        onConfirm={(notify) => void grantCase(notify)}
+        onConfirm={(tier, notify) => void grantCase(tier, notify)}
       />
 
       <DiscountModal

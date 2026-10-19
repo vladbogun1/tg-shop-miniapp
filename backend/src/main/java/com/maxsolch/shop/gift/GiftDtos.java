@@ -5,7 +5,7 @@ import com.maxsolch.shop.web.dto.ProductDto;
 import java.time.Instant;
 import java.util.List;
 
-/** API of the gift for the order sum and the gift case (docs/GIFT-CASE.md). */
+/** API of the gift for the order sum and the gift cases (docs/GIFT-CASE.md). */
 public final class GiftDtos {
 
     private GiftDtos() {
@@ -13,40 +13,106 @@ public final class GiftDtos {
 
     /**
      * The gift for the order sum as the storefront shows it (GET /api/public/gift). The clients count
-     * «add N more» themselves: {@code thresholdMinor} − the cart total after the discount (or − the
-     * product price on the product page); the checkout decides it again on the server.
+     * «add N more» themselves: the next tier's {@code thresholdMinor} − the cart total after the
+     * discount (or − the product price on the product page); the checkout decides it again on the server.
      *
-     * @param kind      PRODUCT (one known gift) | CASE (a random prize from {@code caseItems})
-     * @param product   the gift (kind PRODUCT); null for a case
-     * @param caseItems prizes of the case in stock with their chances, most common first (kind CASE)
+     * @param thresholdMinor the cheapest way to get anything (the bronze tier, or the single product)
+     * @param kind           PRODUCT (one known gift) | CASE (a random prize of the reached tier)
+     * @param product        the gift (kind PRODUCT); null for a case
+     * @param tiers          case tiers with prizes, cheapest first (kind CASE)
      */
-    public record GiftInfoDto(long thresholdMinor, String kind, ProductDto product, List<CaseItemDto> caseItems) {
+    public record GiftInfoDto(long thresholdMinor, String kind, ProductDto product, List<TierInfoDto> tiers) {
     }
 
-    /** GET /api/public/gift; {@code gift} null = the gift is off or has nothing in stock. */
+    /**
+     * A case tier for the storefront.
+     *
+     * @param guaranteedPercent  the «guaranteed discount instead of the case» choice, %; 0 = no choice
+     * @param guaranteedMaxMinor its cap; 0 = no cap
+     * @param swap               a similar prize may be swapped for a discount
+     * @param prizes             what can drop, most common first — without chances (never shown)
+     */
+    public record TierInfoDto(String tier, long thresholdMinor, int guaranteedPercent, long guaranteedMaxMinor,
+                              boolean swap, List<CaseItemDto> prizes) {
+    }
+
+    /** GET /api/public/gift; {@code gift} null = the gift is off or has nothing to give. */
     public record GiftResponse(GiftInfoDto gift) {
     }
 
-    /** A prize of the gift case as the customer sees it; {@code chancePercent} among the prizes in stock. */
-    public record CaseItemDto(String productId, String title, String imageUrl, long priceMinor,
-                              String rarity, double chancePercent) {
+    /**
+     * A prize of a case as the customer sees it.
+     *
+     * @param key                 stable key («p&lt;productId&gt;» / «d&lt;id&gt;»)
+     * @param kind                PRODUCT | DISCOUNT
+     * @param discountPercent     DISCOUNT: % off the next order (0 = see {@code discountAmountMinor})
+     * @param discountAmountMinor DISCOUNT: fixed amount off the next order
+     */
+    public record CaseItemDto(String key, String kind, String productId, String title, String imageUrl,
+                              long priceMinor, String rarity, int discountPercent, long discountAmountMinor) {
     }
 
-    /** Opening the case of an order: the prize (drawn at checkout) and the prizes for the reel. */
-    public record CaseOpenDto(String status, CaseItemDto won, List<CaseItemDto> reel) {
+    /**
+     * Opening the case of an order (or reading it again once opened): the prize drawn at checkout,
+     * the tier's prizes for the reel, the issued code (a discount prize) and the swap offer.
+     */
+    public record CaseOpenDto(String status, String tier, CaseItemDto won, List<CaseItemDto> reel,
+                              PromoDto promo, SwapDto swap) {
+    }
+
+    /** A personal code the case gave: {@code percent} or {@code amountMinor} off the next order. */
+    public record PromoDto(String code, int percent, long amountMinor, Instant expiresAt, boolean used) {
+    }
+
+    /**
+     * Swap of a product prize similar to what the customer bought.
+     *
+     * @param available   may be swapped now
+     * @param amountMinor what the swap gives (a fixed-amount code)
+     * @param swappedAt   done (the prize left the order)
+     */
+    public record SwapDto(boolean available, long amountMinor, Instant swappedAt) {
+    }
+
+    /**
+     * The gift of an order for its page: the tier, the guaranteed discount taken instead of a case,
+     * or the case (prize details only after opening).
+     */
+    public record OrderGiftDto(String tier, long guaranteedDiscountMinor, String caseStatus, boolean openable,
+                               CaseItemDto prize, PromoDto promo, SwapDto swap) {
     }
 
     // ---- admin ----
 
-    public record CaseItemAdminDto(long id, String productId, String title, String imageUrl, long priceMinor,
-                                   int stock, boolean productActive, String rarity, int weight,
-                                   double chancePercent, int sortOrder, boolean active) {
+    public record TierAdminDto(String tier, boolean enabled, int thresholdUah, int guaranteedPercent,
+                               int guaranteedMaxUah, int swapPercent, int prizes, int livePrizes,
+                               long avgPrizeMinor) {
     }
 
-    public record CaseItemRequest(String productId, String rarity, Integer weight, Integer sortOrder, Boolean active) {
+    public record TierRequest(Boolean enabled, Integer thresholdUah, Integer guaranteedPercent,
+                              Integer guaranteedMaxUah, Integer swapPercent) {
     }
 
-    /** Orders since {@code since} (30 days): with an automatic gift, with a case / of them opened. */
-    public record GiftStatsDto(Instant since, long orders, long giftOrders, long caseOrders, long casesOpened) {
+    public record CaseItemAdminDto(long id, String tier, String kind, String productId, String title, String imageUrl,
+                                   long priceMinor, int stock, boolean productActive, int discountPercent,
+                                   int discountUah, String rarity, int weight, double chancePercent, int sortOrder,
+                                   boolean active) {
+    }
+
+    public record CaseItemRequest(String tier, String kind, String productId, Integer discountPercent,
+                                  Integer discountUah, String rarity, Integer weight, Integer sortOrder,
+                                  Boolean active) {
+    }
+
+    /**
+     * Orders since {@code since} (30 days): with an automatic gift, with a case / of them opened, that
+     * took the guaranteed discount instead, prizes swapped; per tier.
+     */
+    public record GiftStatsDto(Instant since, long orders, long giftOrders, long caseOrders, long casesOpened,
+                               long guaranteedOrders, long guaranteedMinor, long swaps, long discountPrizes,
+                               List<TierStatsDto> tiers) {
+    }
+
+    public record TierStatsDto(String tier, long cases, long opened, long guaranteed) {
     }
 }

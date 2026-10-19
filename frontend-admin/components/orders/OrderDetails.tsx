@@ -23,9 +23,9 @@ import {
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
-import { CASE_RARITY_COLOR } from "@shop/shared";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText } from "@shop/shared";
 import { money } from "@/lib/money";
-import { CASE_RARITY_LABEL } from "@/lib/gift";
+import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "@/lib/gift";
 import {
   codMinor,
   DELIVERY_LABEL,
@@ -63,6 +63,10 @@ export interface DetailHandlers {
 
 export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
   const editable = order.status === "NEW" || order.status === "APPROVED";
+  const gift = order.gift ?? null;
+  const giftDiscount = order.giftDiscountMinor ?? 0;
+  // A case prize that is not an order line: a discount code, or a product prize swapped for a code.
+  const casePromo = gift?.promo && (gift.prize?.kind === "DISCOUNT" || gift.swap?.swappedAt) ? gift.promo : null;
   const deliveryEditable = editable || order.status === "SHIPPED";
   const isNp = order.deliveryMethod === "NOVA_POSHTA";
   const address = [order.npCityName, order.npWarehouseName].filter(Boolean).join(", ");
@@ -236,6 +240,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   {it.title}
                 </div>
                 {it.variantName && <div className="text-[12px] text-[var(--text-faint)]">{it.variantName}</div>}
+                {it.caseRarity && gift?.tier && (
+                  <div className="text-[12px] font-semibold" style={{ color: CASE_TIER_METAL[gift.tier].ga }}>
+                    {CASE_TIER_LABEL[gift.tier]} кейс{gift.swap?.swappedAt ? " · заменён на промокод" : ""}
+                  </div>
+                )}
                 {it.caseRarity && order.giftCaseStatus === "SEALED" && (
                   <div className="text-[12px] text-[var(--text-faint)]">
                     покупатель ещё не открыл кейс{!order.giftCaseOpenable && order.status !== "REJECTED" && " · откроет после оплаты"}
@@ -280,20 +289,48 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               </div>
             </div>
           ))}
+          {gift?.tier && casePromo && (
+            <div className="flex items-start gap-3">
+              <img src={`/case/${gift.tier.toLowerCase()}/case-closed-sm.webp`} alt="" className="h-12 w-12 shrink-0 object-contain" />
+              <div className="min-w-0 flex-1 text-[13px] leading-snug">
+                <div className="font-semibold" style={{ color: CASE_TIER_METAL[gift.tier].ga }}>
+                  {CASE_TIER_LABEL[gift.tier]} кейс ·{" "}
+                  {gift.swap?.swappedAt
+                    ? `приз «${gift.prize?.title ?? "товар"}» заменён`
+                    : `скидка ${caseDiscountText(gift.prize!, (m) => money(m, order.currency))}${gift.prize ? ` · ${CASE_RARITY_LABEL[gift.prize.rarity]}` : ""}`}
+                </div>
+                <div className="text-[12px] text-[var(--text-faint)]">
+                  промокод <span className="font-mono font-semibold text-[var(--text)]">{casePromo.code}</span>
+                  {casePromo.used ? " · использован" : casePromo.expiresAt ? ` · до ${formatDateTime(casePromo.expiresAt)}` : ""}
+                </div>
+              </div>
+            </div>
+          )}
+          {gift?.tier && giftDiscount > 0 && !gift.caseStatus && (
+            <div className="text-[12px] text-[var(--text-faint)]">
+              🎁 Покупатель выбрал гарантированную скидку вместо {CASE_TIER_LABEL[gift.tier].toLowerCase().replace(/ый$/, "ого")} кейса.
+            </div>
+          )}
         </div>
         <div className="tabular mt-4 space-y-1 border-t border-[var(--line)] pt-3 text-[13px]">
           <div className="flex justify-between text-[var(--text-muted)]">
             <span>Сумма</span>
             <span>{money(order.subtotalMinor, order.currency)}</span>
           </div>
-          {order.discountMinor > 0 && (
+          {order.discountMinor - giftDiscount > 0 && (
             <div className="flex justify-between font-semibold text-[var(--ok)]">
               <span>
                 {(order.bundleDiscountMinor ?? 0) > 0
                   ? "Вместе дешевле"
                   : `Скидка${order.promoCode ? ` (${order.promoCode})` : ""}`}
               </span>
-              <span>−{money(order.discountMinor, order.currency)}</span>
+              <span>−{money(order.discountMinor - giftDiscount, order.currency)}</span>
+            </div>
+          )}
+          {giftDiscount > 0 && (
+            <div className="flex justify-between font-semibold text-[var(--ok)]">
+              <span>🎁 Вместо кейса{gift?.tier ? ` (${CASE_TIER_LABEL[gift.tier].toLowerCase()})` : ""}</span>
+              <span>−{money(giftDiscount, order.currency)}</span>
             </div>
           )}
           <div className="font-display flex items-baseline justify-between pt-0.5 text-[16px] font-bold text-[var(--ink)]">

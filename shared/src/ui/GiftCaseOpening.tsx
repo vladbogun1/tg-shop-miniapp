@@ -11,6 +11,11 @@
  *   reveal  → the prize tile pops, everything else dims, a burst in the rarity colour (bigger, with
  *             screen shake, a golden sheen and a fanfare for LEGENDARY/GOLD), then the prize card
  *
+ * Three tiers (bronze/silver/gold) share the screen; the tier only re-skins it (art, metal colours).
+ * A prize is a product (added to the order for free) or a discount (a personal code, shown with «copy»).
+ * A product similar to what the customer bought may be swapped for a code right on the prize card
+ * (`swap.available`, `onSwap`). Chances are never shown.
+ *
  * The prize is decided by the server (checkout / an admin's gift): `openCase()` only reveals it. A case
  * opens exactly once and only after the order is paid — there is no replay; a refused open
  * (GIFT_CASE_UNPAID / GIFT_CASE_ALREADY_OPENED) goes to `onOpenRefused`, and the caller closes the
@@ -26,15 +31,19 @@ import {
   CASE_REEL_WIN_INDEX,
   caseRarityRank,
   caseReelOffset,
-  formatCaseChance,
+  caseDiscountText,
+  CASE_TIER_METAL,
   giftCaseOpenErrorCode,
+  sortCasePrizes,
   type CaseItem,
   type CaseRarity,
+  type CaseTier,
   type GiftCaseOpen,
 } from "../giftcase";
 import { caseOpenSound, caseRevealSound, caseStopSound, caseTick, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
 import { CaseBurst } from "./case-particles";
 import { CASE_CSS } from "./case-styles";
+import { CaseDiscountTile, CasePromoBox, caseTierAsset, caseTierVars, type CasePromoTexts } from "./case-tier";
 
 export interface GiftCaseTexts {
   /** «Кейс за замовлення #A1B2» */
@@ -52,6 +61,20 @@ export interface GiftCaseTexts {
   soundOff: string;
   error: string;
   retry: string;
+  /** «Бронзовий кейс» … — the badge over the title. */
+  tierName?: Record<CaseTier, string>;
+  /** «Знижка {d}» — the title of a discount prize. */
+  discountTitle: string;
+  /** «на наступне замовлення — промокод нижче» */
+  discountNext: string;
+  promo: CasePromoTexts;
+  /** «Вже маєте схожий товар? Замініть приз на знижку» */
+  swapHint: string;
+  /** «Замінити на {d}» */
+  swapAction: string;
+  /** «Приз замінено на промокод» */
+  swapped: string;
+  swapError: string;
 }
 
 export interface GiftCaseHaptics {
@@ -73,11 +96,20 @@ export interface GiftCaseOpeningProps {
    * toast and refetches the order. Without it the error is shown like any other.
    */
   onOpenRefused?: (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => void;
-  /** Prizes for «Що може випасти» before the case is opened (empty = the list is hidden). */
+  /** Prizes of the tier for «Що може випасти» before the case is opened (empty = the list is hidden). */
   prizes: CaseItem[];
-  /** For the chance's decimal separator (uk/ru «,», en «.»). */
-  locale?: string;
+  /** The tier of the case (the order's); the open response's tier wins. */
+  tier?: CaseTier | null;
+  /**
+   * Swap the opened product prize for a discount code (POST …/gift-case/swap). Without it the swap
+   * offer is not shown.
+   */
+  onSwap?: () => Promise<GiftCaseOpen>;
   texts: GiftCaseTexts;
+  /** Minor units → «1 299 ₴» in the app's style. */
+  money: (minor: number) => string;
+  /** ISO date → «12.11.2026» (the code's expiry). */
+  formatDate?: (iso: string) => string;
   /** Product image key/url → a URL of roughly `size` px. */
   resolveImage: (src: string, size: number) => string;
   /** Where case-*.webp / scene-*.webp live. Default "/case". */
@@ -124,6 +156,10 @@ function preload(urls: string[], ms = 2500): Promise<void> {
   return Promise.race([Promise.all(all).then(() => undefined), wait(ms)]);
 }
 
+function itemTitle(item: CaseItem, texts: GiftCaseTexts, money: (m: number) => string): string {
+  return item.kind === "DISCOUNT" ? texts.discountTitle.replace("{d}", caseDiscountText(item, money)) : item.title ?? "";
+}
+
 function rc(r: CaseRarity | string | null | undefined): CSSProperties {
   return { ["--rc" as string]: CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON } as CSSProperties;
 }
@@ -137,8 +173,19 @@ export function CaseStyles() {
   );
 }
 
-function PrizeImg({ item, resolveImage, size }: { item: CaseItem; resolveImage: (s: string, n: number) => string; size: number }) {
+function PrizeImg({
+  item,
+  resolveImage,
+  size,
+  money,
+}: {
+  item: CaseItem;
+  resolveImage: (s: string, n: number) => string;
+  size: number;
+  money: (m: number) => string;
+}) {
   const [failed, setFailed] = useState(false);
+  if (item.kind === "DISCOUNT") return <CaseDiscountTile item={item} money={money} size={size >= 400 ? "lg" : "md"} />;
   if (!item.imageUrl || failed) return <span className="gc-noimg">🎁</span>;
   return <img src={resolveImage(item.imageUrl, size)} alt="" draggable={false} decoding="async" onError={() => setFailed(true)} />;
 }
@@ -181,8 +228,11 @@ function CaseOverlay({
   openCase,
   onOpenRefused,
   prizes,
-  locale,
+  tier: tierProp = null,
+  onSwap,
   texts,
+  money,
+  formatDate,
   resolveImage,
   assetBase = "/case",
   haptics,
@@ -200,6 +250,9 @@ function CaseOverlay({
   const [muted, setMuted] = useState(() => isCaseAudioMuted());
   const [tile, setTile] = useState({ w: 120, gap: 8 });
   const [run, setRun] = useState(0);
+  const [swapBusy, setSwapBusy] = useState(false);
+  const [swapErr, setSwapErr] = useState(false);
+  const tier = result?.tier ?? tierProp;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const shakeRef = useRef<HTMLDivElement>(null);
@@ -278,6 +331,7 @@ function CaseOverlay({
   const reveal = useCallback(
     (res: GiftCaseOpen, reduced: boolean) => {
       const rank = caseRarityRank(res.won.rarity);
+      const accent = res.tier ? CASE_TIER_METAL[res.tier].ga2 : "#ff8533";
       const color = CASE_RARITY_COLOR[res.won.rarity] ?? CASE_RARITY_COLOR.COMMON;
       setStage("reveal");
       caseRevealSound(rank);
@@ -292,7 +346,7 @@ function CaseOverlay({
         const cx = vp ? vp.left + vp.width / 2 : window.innerWidth / 2;
         const cy = vp ? vp.top + vp.height / 2 : window.innerHeight / 2;
         const big = rank >= 3;
-        b.burst({ x: cx, y: cy, colors: [color, color, "#ffffff", "#ff8533"], count: big ? 170 : 70 + rank * 25, power: big ? 900 : 560 });
+        b.burst({ x: cx, y: cy, colors: [color, color, "#ffffff", accent], count: big ? 170 : 70 + rank * 25, power: big ? 900 : 560 });
         if (big) {
           window.setTimeout(() => alive.current && b.burst({ x: cx, y: cy - 40, colors: [color, "#ffe28a", "#fff"], count: 120, power: 1100, sparks: 0.6 }), 260);
           if (shakeRef.current) {
@@ -431,10 +485,26 @@ function CaseOverlay({
 
   const won = result?.won ?? null;
   const rank = won ? caseRarityRank(won.rarity) : 0;
-  const sortedPrizes = useMemo(
-    () => [...prizes].sort((a, b) => caseRarityRank(b.rarity) - caseRarityRank(a.rarity) || a.chancePercent - b.chancePercent),
-    [prizes]
-  );
+  const sortedPrizes = useMemo(() => sortCasePrizes(prizes), [prizes]);
+  const promo = result?.promo ?? null;
+  const swap = result?.swap ?? null;
+  const swapped = !!swap?.swappedAt;
+  const canSwap = !!onSwap && !!swap?.available && !swapped && won?.kind === "PRODUCT";
+  const doSwap = async () => {
+    if (!onSwap || swapBusy) return;
+    setSwapBusy(true);
+    setSwapErr(false);
+    try {
+      const res = await onSwap();
+      if (!alive.current) return;
+      setResult(res);
+      hapticsRef.current?.success?.();
+    } catch {
+      if (alive.current) setSwapErr(true);
+    } finally {
+      if (alive.current) setSwapBusy(false);
+    }
+  };
   const sparks = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => ({
@@ -459,7 +529,7 @@ function CaseOverlay({
         />
       ))}
       <div className="gc-case">
-        <img src={`${assetBase}/${lidOpen ? "case-open" : "case-closed"}.webp`} alt="" draggable={false} />
+        <img src={caseTierAsset(assetBase, tier, lidOpen ? "case-open.webp" : "case-closed.webp")} alt="" draggable={false} />
       </div>
     </>
   );
@@ -468,6 +538,7 @@ function CaseOverlay({
     <motion.div
       ref={rootRef}
       className="gc-root"
+      style={caseTierVars(tier, assetBase)}
       role="dialog"
       aria-modal="true"
       aria-label={texts.title}
@@ -486,7 +557,7 @@ function CaseOverlay({
       </div>
       <div className="gc-rays" aria-hidden />
       {/* the case art is preloaded so the swap at the flash is instant */}
-      <link rel="preload" as="image" href={`${assetBase}/case-open.webp`} />
+      <link rel="preload" as="image" href={caseTierAsset(assetBase, tier, "case-open.webp")} />
 
       <div ref={shakeRef} className="gc-shake" style={{ position: "absolute", inset: 0 }}>
         <div className="gc-body">
@@ -500,6 +571,7 @@ function CaseOverlay({
                 exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.25 } }}
               >
                 <p className="gc-eyebrow gc-disp">{texts.eyebrow}</p>
+                {tier && texts.tierName && <span className="gc-tier gc-disp is-hero">{texts.tierName[tier]}</span>}
                 <h2 className="gc-title gc-disp">{texts.title}</h2>
                 <div className={`gc-stage ${stage === "opening" ? (lidOpen ? "is-open" : "is-opening") : ""}`} aria-hidden>
                   {caseArt}
@@ -528,10 +600,10 @@ function CaseOverlay({
                     <h3 className="gc-disp">{texts.canDrop}</h3>
                     <ul>
                       {sortedPrizes.map((p) => (
-                        <li key={p.productId} className="gc-drop" style={rc(p.rarity)} title={`${texts.rarity[p.rarity]} · ${p.title}`}>
-                          <PrizeImg item={p} resolveImage={resolveImage} size={200} />
-                          <p>{p.title}</p>
-                          <b className="gc-disp">{formatCaseChance(p.chancePercent, locale)}</b>
+                        <li key={p.key} className="gc-drop" style={rc(p.rarity)} title={`${texts.rarity[p.rarity]} · ${itemTitle(p, texts, money)}`}>
+                          <PrizeImg item={p} resolveImage={resolveImage} size={200} money={money} />
+                          <p>{itemTitle(p, texts, money)}</p>
+                          <b className="gc-disp">{texts.rarity[p.rarity]}</b>
                         </li>
                       ))}
                     </ul>
@@ -556,7 +628,7 @@ function CaseOverlay({
                   animate={{ opacity: 0.9, y: 0, scale: 1 }}
                   transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
                 >
-                  <img src={`${assetBase}/case-open.webp`} alt="" draggable={false} />
+                  <img src={caseTierAsset(assetBase, tier, "case-open.webp")} alt="" draggable={false} />
                 </motion.div>
                 <motion.div
                   className="gc-reel"
@@ -584,8 +656,8 @@ function CaseOverlay({
                           style={rc(it.rarity)}
                           aria-hidden={i !== CASE_REEL_WIN_INDEX}
                         >
-                          <PrizeImg item={it} resolveImage={resolveImage} size={240} />
-                          <p>{it.title}</p>
+                          <PrizeImg item={it} resolveImage={resolveImage} size={240} money={money} />
+                          <p>{itemTitle(it, texts, money)}</p>
                         </div>
                       ))}
                     </motion.div>
@@ -632,15 +704,39 @@ function CaseOverlay({
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 220, damping: 13, delay: 0.08 }}
                 >
-                  <PrizeImg item={won} resolveImage={resolveImage} size={480} />
+                  <PrizeImg item={won} resolveImage={resolveImage} size={480} money={money} />
                 </motion.div>
                 <span className="gc-rarity gc-disp">{texts.rarity[won.rarity]}</span>
-                <p className="gc-prize-title gc-disp">{won.title}</p>
-                <p className="gc-free">✓ {texts.addedFree}</p>
+                <p className="gc-prize-title gc-disp" style={swapped ? { textDecoration: "line-through", opacity: 0.55 } : undefined}>
+                  {itemTitle(won, texts, money)}
+                </p>
+                {won.kind === "DISCOUNT" ? (
+                  <p className="gc-free is-note">{texts.discountNext}</p>
+                ) : swapped ? (
+                  <p className="gc-free">✓ {texts.swapped}</p>
+                ) : (
+                  <p className="gc-free">✓ {texts.addedFree}</p>
+                )}
+                {promo && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+                    <CasePromoBox promo={promo} texts={texts.promo} money={money} formatDate={formatDate} />
+                  </motion.div>
+                )}
+                {canSwap && <p className="gc-swap">{texts.swapHint}</p>}
+                {swapErr && (
+                  <p className="gc-err" role="alert">
+                    {texts.swapError}
+                  </p>
+                )}
                 <div className="gc-actions">
                   <button type="button" className="gc-btn gc-disp" onClick={onClose} autoFocus>
                     {texts.take}
                   </button>
+                  {canSwap && swap && (
+                    <button type="button" className="gc-btn gc-disp ghost" onClick={() => void doSwap()} disabled={swapBusy} aria-busy={swapBusy}>
+                      {texts.swapAction.replace("{d}", `−${money(swap.amountMinor)}`)}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             </motion.div>

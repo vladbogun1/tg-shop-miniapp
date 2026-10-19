@@ -17,7 +17,9 @@ public record CreateOrderRequest(
         String npCityName,
         String npWarehouseRef,
         String npWarehouseName,
-        String paymentOptionId) {
+        String paymentOptionId,
+        /** Gift case: CASE (spin, default) | DISCOUNT (the tier's guaranteed discount instead), docs/GIFT-CASE.md. */
+        String giftChoice) {
 
     public record Item(
             @NotBlank String productId,

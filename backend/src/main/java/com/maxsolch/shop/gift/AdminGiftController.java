@@ -3,6 +3,8 @@ package com.maxsolch.shop.gift;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemRequest;
 import com.maxsolch.shop.gift.GiftDtos.GiftStatsDto;
+import com.maxsolch.shop.gift.GiftDtos.TierAdminDto;
+import com.maxsolch.shop.gift.GiftDtos.TierRequest;
 import com.maxsolch.shop.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,8 +37,20 @@ public class AdminGiftController {
         this.service = service;
     }
 
+    @GetMapping("/tiers")
+    @Operation(summary = "Case tiers (bronze / silver / gold): thresholds, guaranteed discount, swap percent")
+    public List<TierAdminDto> tiers() {
+        return service.tiers();
+    }
+
+    @PatchMapping("/tiers/{tier}")
+    @Operation(summary = "Change a case tier")
+    public TierAdminDto updateTier(@PathVariable String tier, @RequestBody TierRequest body) {
+        return service.updateTier(tier, body);
+    }
+
     @GetMapping("/case-items")
-    @Operation(summary = "Prizes of the gift case with their current chances")
+    @Operation(summary = "Prizes of every tier with their current chances (per tier)")
     public List<CaseItemAdminDto> caseItems() {
         return service.caseItems();
     }

@@ -371,12 +371,15 @@ public class AdminOrderController {
     public OrderDetailDto grantGiftCase(@PathVariable String id,
                                         @RequestBody(required = false) java.util.Map<String, Object> body) {
         boolean notify = body == null || !Boolean.FALSE.equals(body.get("notifyCustomer"));
-        Order updated = orderService.grantGiftCase(load(id).getId(), notify);
+        com.maxsolch.shop.gift.GiftCaseTier.Tier tier = com.maxsolch.shop.gift.GiftService
+                .parseTier(body == null ? null : String.valueOf(body.get("tier")))
+                .orElse(com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER);
+        Order updated = orderService.grantGiftCase(load(id).getId(), tier, notify);
         String prize = updated.getItems().stream()
                 .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
                 .map(i -> i.getTitleSnapshot() + " (" + i.getCaseRarity() + ")")
-                .findFirst().orElse("?");
-        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс, приз: " + prize);
+                .findFirst().orElse("скидка");
+        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс " + tier + ", приз: " + prize);
         return orderQueryService.toDetail(updated);
     }
 
