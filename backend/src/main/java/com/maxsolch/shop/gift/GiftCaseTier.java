@@ -48,6 +48,10 @@ public class GiftCaseTier {
     @Column(name = "swap_percent", nullable = false)
     private int swapPercent = 0;
 
+    /** Days a personal code of this tier's case is valid (a discount prize, a swap), from issue. */
+    @Column(name = "promo_valid_days", nullable = false)
+    private int promoValidDays = 30;
+
     public long thresholdMinor() {
         return thresholdUah * 100L;
     }

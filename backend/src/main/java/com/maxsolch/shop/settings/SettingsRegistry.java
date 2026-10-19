@@ -69,7 +69,11 @@ public final class SettingsRegistry {
     public static final String GIFT_THRESHOLD_UAH = "gift.thresholdUah";
     public static final String GIFT_PRODUCT_ID = "gift.productId";
     public static final String GIFT_CASE_ENABLED = "gift.caseEnabled";
-    public static final String GIFT_PROMO_VALID_DAYS = "gift.promoValidDays";
+    public static final String GIFT_PROMO_REMINDER_DAYS = "gift.promoReminderDays";
+    /** «Автособрать» кейс (gift.CaseAutofill): средняя наценка и категории призов. */
+    public static final String GIFT_MARGIN_PERCENT = "gift.marginPercent";
+    public static final String GIFT_CASE_CATEGORIES = "gift.caseCategories";
+    public static final String GIFT_CASE_SUPER_CATEGORIES = "gift.caseSuperCategories";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -156,10 +160,24 @@ public final class SettingsRegistry {
                     "Товар-подарок",
                     "Выбирается в разделе «Кейс». Нет в наличии — подарок не кладётся.",
                     "", 64),
-            intSetting(GIFT_PROMO_VALID_DAYS, GIFT_GROUP,
-                    "Срок промокодов из кейса",
-                    "Сколько дней действует личный промокод, выпавший из кейса или полученный заменой приза.",
-                    30, 1, 365, "дн."),
+            intSetting(GIFT_PROMO_REMINDER_DAYS, GIFT_GROUP,
+                    "Напомнить, что промокод из кейса сгорает, за",
+                    "За сколько дней до конца срока бот напомнит о неиспользованном промокоде из кейса "
+                            + "(один раз на код). Срок самого промокода — у каждого кейса. 0 — не напоминать.",
+                    3, 0, 30, "дн."),
+            intSetting(GIFT_MARGIN_PERCENT, GIFT_GROUP,
+                    "Средняя маржа товаров",
+                    "Для «Автособрать» и сводки кейса: сколько процентов цены — прибыль магазина. "
+                            + "Себестоимость приза = цена × (100 − маржа) %.",
+                    15, 1, 90, "%"),
+            textSetting(GIFT_CASE_CATEGORIES, GIFT_GROUP,
+                    "Категории призов кейса",
+                    "Корневые категории (slug через запятую), из которых «Автособрать» берёт обычные призы.",
+                    "glaydy,kabelya,keykapy,kovriki,rukava", 500),
+            textSetting(GIFT_CASE_SUPER_CATEGORIES, GIFT_GROUP,
+                    "Категории суперприза",
+                    "Корневые категории (slug через запятую) для джекпота золотого кейса.",
+                    "klaviatury,myshki", 500),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

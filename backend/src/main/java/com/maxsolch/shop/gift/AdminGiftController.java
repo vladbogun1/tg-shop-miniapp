@@ -1,6 +1,10 @@
 package com.maxsolch.shop.gift;
 
+import com.maxsolch.shop.gift.GiftDtos.AutofillDto;
+import com.maxsolch.shop.gift.GiftDtos.AutofillRequest;
+import com.maxsolch.shop.gift.GiftDtos.CaseDraftRequest;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemAdminDto;
+import com.maxsolch.shop.gift.GiftDtos.DraftItemDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemRequest;
 import com.maxsolch.shop.gift.GiftDtos.GiftStatsDto;
 import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,10 +40,12 @@ public class AdminGiftController {
 
     private final AdminGiftService service;
     private final GiftService giftService;
+    private final CaseAutofill autofill;
 
-    public AdminGiftController(AdminGiftService service, GiftService giftService) {
+    public AdminGiftController(AdminGiftService service, GiftService giftService, CaseAutofill autofill) {
         this.service = service;
         this.giftService = giftService;
+        this.autofill = autofill;
     }
 
     @GetMapping("/tiers")
@@ -55,8 +62,29 @@ public class AdminGiftController {
 
     @PostMapping("/tiers/{tier}/test-draw")
     @Operation(summary = "«Тест кейса»: draw the tier N times (1…10 000) like the checkout; nothing is saved")
-    public TestDrawDto testDraw(@PathVariable String tier, @RequestParam(defaultValue = "1") int count) {
-        return giftService.testDraw(tier, count);
+    public TestDrawDto testDraw(@PathVariable String tier, @RequestParam(defaultValue = "1") int count,
+                                @RequestBody(required = false) CaseDraftRequest body) {
+        return body == null || body.items() == null ? giftService.testDraw(tier, count)
+                : giftService.testDraw(tier, count, body.items());
+    }
+
+    @PutMapping("/tiers/{tier}/items")
+    @Operation(summary = "«Опубликовать» the case builder's draft: the tier's prizes become exactly these, at once")
+    public List<CaseItemAdminDto> replaceItems(@PathVariable String tier, @RequestBody CaseDraftRequest body) {
+        return service.replaceItems(tier, body == null ? null : body.items());
+    }
+
+    @PostMapping("/tiers/{tier}/autofill")
+    @Operation(summary = "«Автособрать»: a draft of prizes and chances for the tier from the catalog (nothing is saved)")
+    public AutofillDto autofill(@PathVariable String tier, @RequestBody(required = false) AutofillRequest body) {
+        return autofill.autofill(tier, body);
+    }
+
+    @GetMapping("/tiers/{tier}/alternatives")
+    @Operation(summary = "Products that fit a rarity of the tier by price (replacing a prize in the builder)")
+    public List<DraftItemDto> alternatives(@PathVariable String tier, @RequestParam String rarity,
+                                           @RequestParam(required = false) List<String> exclude) {
+        return autofill.alternatives(tier, rarity, exclude == null ? List.of() : exclude);
     }
 
     @GetMapping("/case-items")

@@ -52,7 +52,7 @@ public class GiftCaseService {
         Order order = orderService.openGiftCase(orderId);
         OrderGiftCase rec = giftService.orderCase(orderId).orElse(null);
         if (rec != null && rec.isDiscount() && rec.getPromoCode() == null) {
-            PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getDiscountPercent(),
+            PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getTier(), rec.getDiscountPercent(),
                     rec.getDiscountAmountMinor());
             rec.setPromoCode(promo.getCode());
             rec = giftService.saveOrderCase(rec);
@@ -76,7 +76,7 @@ public class GiftCaseService {
             throw swapUnavailable();
         }
         Order saved = orderService.removeCasePrizeForSwap(orderId);
-        PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, 0, offer.amountMinor());
+        PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getTier(), 0, offer.amountMinor());
         rec.setPromoCode(promo.getCode());
         rec.setSwappedAt(Instant.now());
         rec.setSwapAmountMinor(offer.amountMinor());

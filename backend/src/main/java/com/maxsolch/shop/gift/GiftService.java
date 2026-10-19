@@ -248,13 +248,26 @@ public class GiftService {
     }
 
     TestDrawDto testDraw(String tierCode, int count, RandomGenerator random) {
+        return testDraw(tierCode, count, null, random);
+    }
+
+    /**
+     * «Тест кейса» of the case builder's unpublished draft ({@code draft} non-null) instead of the saved
+     * prizes. A draft prize without an id gets {@code -(index + 1)} as its id in the hits.
+     */
+    @Transactional(readOnly = true)
+    public TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft) {
+        return testDraw(tierCode, count, draft, TEST_RANDOM);
+    }
+
+    TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, RandomGenerator random) {
         GiftCaseTier.Tier tier = parseTier(tierCode)
                 .orElseThrow(() -> new BadRequestException("Неизвестный кейс: " + tierCode));
         if (count < 1 || count > TEST_MAX_COUNT) {
             throw new BadRequestException("Число открытий — от 1 до " + TEST_MAX_COUNT);
         }
         Map<String, ProductDto> byId = byId("ru");
-        TierConfig cfg = tier(tier).orElse(null);
+        TierConfig cfg = draft == null ? tier(tier).orElse(null) : draftConfig(tier, draft);
         List<CaseEntry> pool = cfg == null ? List.of()
                 : cfg.prizes().stream().filter(c -> c.isDiscount() || inStock(byId.get(c.productId()))).toList();
         if (pool.isEmpty()) {
@@ -275,6 +288,35 @@ public class GiftService {
                         hits.getOrDefault(c.id(), 0), chancePercent(c.weight(), total)))
                 .toList();
         return new TestDrawDto(tier.name(), count, drops.get(0), drops, casePrizes(cfg, byId), out);
+    }
+
+    private TierConfig draftConfig(GiftCaseTier.Tier tier, List<GiftDtos.CaseDraftItem> draft) {
+        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new BadRequestException("Неизвестный кейс"));
+        List<CaseEntry> prizes = new ArrayList<>();
+        for (int i = 0; i < draft.size(); i++) {
+            GiftDtos.CaseDraftItem d = draft.get(i);
+            boolean discount = "DISCOUNT".equalsIgnoreCase(d.kind());
+            int pc = d.discountPercent() == null ? 0 : Math.max(0, Math.min(50, d.discountPercent()));
+            int uah = d.discountUah() == null ? 0 : Math.max(0, d.discountUah());
+            int weight = d.weight() == null ? 0 : Math.max(0, d.weight());
+            if (Boolean.FALSE.equals(d.active()) || weight <= 0 || (discount ? pc == 0 && uah == 0 : d.productId() == null)) {
+                continue;
+            }
+            prizes.add(new CaseEntry(d.id() != null ? d.id() : -(i + 1L), tier,
+                    discount ? GiftCaseItem.Kind.DISCOUNT : GiftCaseItem.Kind.PRODUCT,
+                    discount ? null : d.productId().trim().toLowerCase(Locale.ROOT), pc, pc > 0 ? 0 : uah,
+                    parseRarity(d.rarity()), weight));
+        }
+        return new TierConfig(tier, t.thresholdMinor(), t.getGuaranteedPercent(), t.getGuaranteedMaxUah(),
+                t.getSwapPercent(), List.copyOf(prizes));
+    }
+
+    private static String parseRarity(String value) {
+        try {
+            return GiftCaseItem.Rarity.valueOf(value == null ? "" : value.trim().toUpperCase(Locale.ROOT)).name();
+        } catch (IllegalArgumentException e) {
+            return GiftCaseItem.Rarity.COMMON.name();
+        }
     }
 
     // ---- the order's prize ----
@@ -313,10 +355,10 @@ public class GiftService {
 
     /**
      * A personal single-use code on the next order: the discount prize (issued on opening) or the
-     * swap of a prize. Valid gift.promoValidDays.
+     * swap of a prize. Valid the case tier's {@code promo_valid_days} (30 when the tier is unknown).
      */
     @Transactional
-    public PromoCode issuePromo(Long ownerUserId, byte[] orderId, int percent, long amountMinor) {
+    public PromoCode issuePromo(Long ownerUserId, byte[] orderId, String tier, int percent, long amountMinor) {
         PromoCode promo = new PromoCode();
         promo.setCode(uniqueCode());
         promo.setDiscountPercent(percent > 0 ? Math.min(100, percent) : 0);
@@ -325,7 +367,7 @@ public class GiftService {
         promo.setUsesCount(0);
         promo.setActive(true);
         promo.setOwnerUserId(ownerUserId);
-        int days = Math.max(1, settings.getInt(SettingsRegistry.GIFT_PROMO_VALID_DAYS));
+        int days = Math.max(1, tierSettings(tier).map(GiftCaseTier::getPromoValidDays).orElse(30));
         promo.setExpiresAt(Instant.now().plus(Duration.ofDays(days)));
         promo.setSource(PROMO_SOURCE);
         promo.setSourceOrderId(orderId);

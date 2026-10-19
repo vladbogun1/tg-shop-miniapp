@@ -4,8 +4,9 @@
  * «Кейс» (route "/gift"): the gift for the order sum — a fixed product or a CS-style case.
  *  - The switch, the threshold, the gift product and the case mode are settings of the `gift` group
  *    (GET/PUT /api/admin/settings, one save bar). The generic «Настройки» page hides this group.
- *  - The three case tiers (threshold, guaranteed discount, swap), their prizes and the stats —
- *    /api/admin/gift/* (CasePanel saves each change at once).
+ *  - The three case tiers (threshold, guaranteed discount, swap, promo validity), their prizes and the
+ *    stats — /api/admin/gift/*: CasePanel, the case builder (prizes in a draft, «Опубликовать»), full width
+ *    under the settings.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +39,8 @@ const K = {
   giftThreshold: "gift.thresholdUah",
   giftProduct: "gift.productId",
   giftCase: "gift.caseEnabled",
+  promoReminder: "gift.promoReminderDays",
+  margin: "gift.marginPercent",
 } as const;
 
 export default function GiftPage() {
@@ -78,6 +81,10 @@ export default function GiftPage() {
     }
   }
 
+  const isCase = Boolean(draft[K.giftCase]?.raw);
+  const savedReminder = byKey.get(K.promoReminder)?.value;
+  const reminderDays = typeof savedReminder === "number" ? savedReminder : null;
+
   const field = (key: string) => {
     const item = byKey.get(key);
     const entry = draft[key];
@@ -106,9 +113,16 @@ export default function GiftPage() {
               caseMode={field(K.giftCase)}
               productId={String(draft[K.giftProduct]?.raw ?? "")}
               productDirty={!!byKey.get(K.giftProduct) && isDirty(byKey.get(K.giftProduct)!, draft[K.giftProduct])}
+              reminder={field(K.promoReminder)}
+              margin={field(K.margin)}
               onChange={change}
             />
           </div>
+        )}
+        {isCase && (
+          <section className="panel mt-4 min-w-0 p-4 sm:p-5">
+            <CasePanel reminderDays={reminderDays} />
+          </section>
         )}
       </QueryState>
 
@@ -190,6 +204,8 @@ function GiftSection({
   caseMode,
   productId,
   productDirty,
+  reminder,
+  margin,
   onChange,
 }: {
   enabled: FieldProps | null;
@@ -198,6 +214,9 @@ function GiftSection({
   caseMode: FieldProps | null;
   productId: string;
   productDirty: boolean;
+  /** gift.promoReminderDays / gift.marginPercent: null = an old backend. */
+  reminder: FieldProps | null;
+  margin: FieldProps | null;
   onChange: (key: string, raw: string | boolean) => void;
 }) {
   const [picking, setPicking] = useState(false);
@@ -308,9 +327,12 @@ function GiftSection({
           )}
         </div>
 
-        {isCase && (
-          <div className="border-t border-[var(--line)] pt-4">
-            <CasePanel />
+        {isCase && (reminder || margin) && (
+          <div className="grid min-w-0 grid-cols-1 gap-3 border-t border-[var(--line)] pt-4 min-[480px]:grid-cols-2">
+            {reminder && (
+              <NumField {...reminder} label="Напомнить о промокоде из кейса" onChange={(v) => onChange(K.promoReminder, v)} />
+            )}
+            {margin && <NumField {...margin} label="Средняя маржа товаров" onChange={(v) => onChange(K.margin, v)} />}
           </div>
         )}
       </div>

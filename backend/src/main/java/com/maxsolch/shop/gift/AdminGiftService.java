@@ -2,6 +2,7 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.gift.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemRequest;
 import com.maxsolch.shop.gift.GiftDtos.GiftStatsDto;
@@ -9,6 +10,8 @@ import com.maxsolch.shop.gift.GiftDtos.TierAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.TierRequest;
 import com.maxsolch.shop.gift.GiftDtos.TierStatsDto;
 import com.maxsolch.shop.service.CatalogService;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
@@ -22,10 +25,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** The gift cases in the admin: tiers, prizes with chances, the numbers (docs/GIFT-CASE.md). */
 @Service
@@ -39,9 +45,12 @@ public class AdminGiftService {
     private final CatalogService catalogService;
     private final AdminAuditService audit;
     private final JdbcTemplate jdbc;
+    private final SettingsService settings;
 
     public AdminGiftService(GiftCaseItemRepository caseRepository, GiftCaseTierRepository tierRepository,
-                            CatalogService catalogService, AdminAuditService audit, JdbcTemplate jdbc) {
+                            CatalogService catalogService, AdminAuditService audit, JdbcTemplate jdbc,
+                            SettingsService settings) {
+        this.settings = settings;
         this.caseRepository = caseRepository;
         this.tierRepository = tierRepository;
         this.catalogService = catalogService;
@@ -88,6 +97,8 @@ public class AdminGiftService {
     @Transactional(readOnly = true)
     public List<TierAdminDto> tiers() {
         List<CaseItemAdminDto> items = caseItems();
+        int margin = settings.getInt(SettingsRegistry.GIFT_MARGIN_PERCENT);
+        Map<GiftCaseTier.Tier, Double> monthly = monthlyOrders();
         return tierRepository.findAll().stream()
                 .sorted(Comparator.comparing(GiftCaseTier::getTier))
                 .map(t -> {
@@ -97,10 +108,29 @@ public class AdminGiftService {
                     long avg = Math.round(live.stream().filter(i -> "PRODUCT".equals(i.kind()))
                             .mapToDouble(i -> i.chancePercent() / 100 * i.priceMinor()).sum());
                     return new TierAdminDto(t.getTier().name(), t.isEnabled(), t.getThresholdUah(),
-                            t.getGuaranteedPercent(), t.getGuaranteedMaxUah(), t.getSwapPercent(), mine.size(),
-                            live.size(), avg);
+                            t.getGuaranteedPercent(), t.getGuaranteedMaxUah(), t.getSwapPercent(), t.getPromoValidDays(), mine.size(),
+                            live.size(), avg, margin, monthly.getOrDefault(t.getTier(), 0.0));
                 })
                 .toList();
+    }
+
+    /**
+     * Orders a month (last 90 days, not rejected) whose total falls between a tier's threshold and the
+     * next dearer one: how many cases of the tier to expect if every such order takes the case.
+     */
+    Map<GiftCaseTier.Tier, Double> monthlyOrders() {
+        List<GiftCaseTier> sorted = tierRepository.findAll().stream()
+                .sorted(Comparator.comparingInt(GiftCaseTier::getThresholdUah)).toList();
+        Map<GiftCaseTier.Tier, Double> out = new EnumMap<>(GiftCaseTier.Tier.class);
+        Timestamp since = Timestamp.from(Instant.now().minus(Duration.ofDays(90)));
+        for (int i = 0; i < sorted.size(); i++) {
+            long from = sorted.get(i).thresholdMinor();
+            long to = i + 1 < sorted.size() ? sorted.get(i + 1).thresholdMinor() : Long.MAX_VALUE;
+            Long n = jdbc.queryForObject("select count(*) from orders where created_at >= ? and status <> 'REJECTED' "
+                    + "and total_minor >= ? and total_minor < ?", Long.class, since, from, to);
+            out.put(sorted.get(i).getTier(), Math.round((n == null ? 0 : n) / 3.0 * 10) / 10.0);
+        }
+        return out;
     }
 
     @Transactional
@@ -123,12 +153,15 @@ public class AdminGiftService {
             if (body.swapPercent() != null) {
                 t.setSwapPercent(range(body.swapPercent(), 0, 100, "Замена — от 0 до 100 %"));
             }
+            if (body.promoValidDays() != null) {
+                t.setPromoValidDays(range(body.promoValidDays(), 1, 365, "Срок промокода — от 1 до 365 дней"));
+            }
         }
         tierRepository.save(t);
         audit.record("GIFT_CASE_TIER_UPDATE", "GIFT_CASE_TIER", tier.name(),
                 (t.isEnabled() ? "вкл" : "выкл") + " · от " + t.getThresholdUah() + " ₴ · гарантия "
                         + t.getGuaranteedPercent() + " % (до " + t.getGuaranteedMaxUah() + " ₴) · замена "
-                        + t.getSwapPercent() + " %");
+                        + t.getSwapPercent() + " % · промокод " + t.getPromoValidDays() + " дн.");
         return tiers().stream().filter(d -> d.tier().equals(tier.name())).findFirst().orElseThrow();
     }
 
@@ -225,6 +258,75 @@ public class AdminGiftService {
                 item.getTier() + " · " + (item.isDiscount() ? discountLabel(item) + " · " : "") + item.getRarity()
                         + " · вес " + item.getWeight() + (item.isActive() ? "" : " (выключен)"));
         return caseItems().stream().filter(d -> d.id() == id).findFirst().orElseThrow();
+    }
+
+    /**
+     * «Опубликовать» the case builder's draft: the tier's prizes become exactly {@code draft}, in one
+     * transaction, so customers never draw from a half-edited case. A row with a known {@code id} of this
+     * tier keeps its id (a product prize only while it is the same product); the rest are created; prizes
+     * missing from the draft are removed. One audit entry for the whole publish.
+     */
+    @Transactional
+    public List<CaseItemAdminDto> replaceItems(String code, List<CaseDraftItem> draft) {
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new NotFoundException("уровень не найден"));
+        List<CaseDraftItem> items = draft == null ? List.of() : draft;
+        if (items.size() > 40) {
+            throw new BadRequestException("Слишком много призов: не больше 40 в кейсе");
+        }
+        Map<Long, GiftCaseItem> existing = new HashMap<>();
+        caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                .filter(i -> i.getTier() == tier).forEach(i -> existing.put(i.getId(), i));
+        Set<String> products = new HashSet<>();
+        List<GiftCaseItem> out = new ArrayList<>();
+        for (int k = 0; k < items.size(); k++) {
+            CaseDraftItem d = items.get(k);
+            GiftCaseItem.Kind kind = kind(d.kind());
+            byte[] pid = null;
+            if (kind == GiftCaseItem.Kind.PRODUCT) {
+                String id = d.productId() == null ? "" : d.productId().trim().toLowerCase(Locale.ROOT);
+                try {
+                    pid = UuidUtil.toBytes(id);
+                } catch (IllegalArgumentException e) {
+                    throw new BadRequestException("Неверный товар в призе №" + (k + 1));
+                }
+                if (!products.add(id)) {
+                    throw new BadRequestException("Товар повторяется в кейсе — оставьте его один раз");
+                }
+                if (catalogService.getProduct(id, ADMIN_LANG).isEmpty()) {
+                    throw new BadRequestException("Товар приза №" + (k + 1) + " не найден или скрыт");
+                }
+            }
+            GiftCaseItem row = d.id() == null ? null : existing.get(d.id());
+            if (row != null && (row.getKind() != kind || (pid != null && !Arrays.equals(pid, row.getProductId())))) {
+                row = null; // another prize under an old id: a new row
+            }
+            if (row == null) {
+                row = new GiftCaseItem();
+                row.setTier(tier);
+                row.setKind(kind);
+                row.setProductId(pid);
+            } else {
+                existing.remove(row.getId());
+            }
+            if (kind == GiftCaseItem.Kind.DISCOUNT) {
+                setDiscount(row, d.discountPercent(), d.discountUah());
+            }
+            row.setRarity(rarity(d.rarity(), GiftCaseItem.Rarity.COMMON));
+            row.setWeight(weight(d.weight(), 10 * GiftService.CASE_WEIGHT_PER_PERCENT));
+            row.setSortOrder((k + 1) * 10);
+            row.setActive(d.active() == null || d.active());
+            out.add(row);
+        }
+        // Removed first: a product moved to a new row must not hit the (tier, product) key of its old one.
+        caseRepository.deleteAll(existing.values());
+        caseRepository.flush();
+        caseRepository.saveAll(out);
+        long total = out.stream().filter(GiftCaseItem::isActive).mapToLong(GiftCaseItem::getWeight).sum();
+        audit.record("GIFT_CASE_ITEMS_REPLACE", "GIFT_CASE_TIER", tier.name(),
+                out.size() + " призов (скидок " + out.stream().filter(GiftCaseItem::isDiscount).count() + "), убрано "
+                        + existing.size() + ", сумма шансов " + String.format(Locale.ROOT, "%.2f",
+                        total / (double) GiftService.CASE_WEIGHT_PER_PERCENT) + " %");
+        return caseItems();
     }
 
     @Transactional

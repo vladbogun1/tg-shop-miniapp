@@ -27,7 +27,7 @@ import {
 } from "@shop/shared";
 import { GiftCaseOpening, type GiftCaseTexts } from "@shop/shared/case-ui";
 import { ApiError } from "@/lib/api";
-import { CASE_RARITY_LABEL, CASE_TIER_LABEL, giftApi, type CaseItemAdmin, type CaseTestDraw } from "@/lib/gift";
+import { CASE_RARITY_LABEL, CASE_TIER_LABEL, giftApi, type CaseDraftItem, type CaseItemAdmin, type CaseTestDraw } from "@/lib/gift";
 import { cn } from "@/lib/cn";
 import { resolveImageSrc } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -127,12 +127,15 @@ export function CaseTestModal({
   onClose,
   tier,
   items,
+  draft,
 }: {
   open: boolean;
   onClose: () => void;
   tier: CaseTier;
-  /** Prizes of the tier (titles, pictures, rarities of the stats rows). */
+  /** Prizes of the tier (titles, pictures, rarities of the stats rows); of the draft — new ones with id −(index + 1). */
   items: CaseItemAdmin[];
+  /** The case builder's unpublished draft: tested instead of the saved prizes. */
+  draft?: CaseDraftItem[] | null;
 }) {
   const { push } = useToast();
   const [fast, setFast] = useState(false);
@@ -169,7 +172,7 @@ export function CaseTestModal({
   async function run(count: number) {
     setBusy(count);
     try {
-      const res = await giftApi.testDraw(tier, count);
+      const res = await giftApi.testDraw(tier, count, draft ?? undefined);
       record(res);
       setLast((l) => ({ tier: res.tier, run: (l?.run ?? 0) + 1, drops: res.drops, count: res.count }));
     } catch (e) {
@@ -183,7 +186,7 @@ export function CaseTestModal({
   // the admin closes the screen before it stops — they can't, but the count must not depend on it).
   const openCase = useCallback(async (): Promise<GiftCaseOpen> => {
     try {
-      const res = await giftApi.testDraw(tier, 1);
+      const res = await giftApi.testDraw(tier, 1, draft ?? undefined);
       record(res);
       setLast((l) => ({ tier: res.tier, run: (l?.run ?? 0) + 1, drops: res.drops, count: 1 }));
       const reelItems = res.reel.some((c) => c.key === res.won.key) ? res.reel : [...res.reel, res.won];
@@ -192,7 +195,7 @@ export function CaseTestModal({
       fail(e);
       throw e;
     }
-  }, [tier, record, fail]);
+  }, [tier, draft, record, fail]);
 
   const openOnce = () => {
     if (fast) void run(1);
@@ -243,6 +246,7 @@ export function CaseTestModal({
         }
       >
         <p className="text-[12.5px] leading-snug text-[var(--text-muted)]">
+          {draft ? <b className="text-[var(--warn)]">Тестируется черновик — он ещё не опубликован. </b> : null}
           Розыгрыш на сервере тем же алгоритмом, что при заказе: активные призы с шансом больше 0, товар — только в наличии.{" "}
           <b className="text-[var(--text)]">Ничего не сохраняется</b> — ни заказа, ни промокода, ни резерва склада, ни записи в журнале.
         </p>

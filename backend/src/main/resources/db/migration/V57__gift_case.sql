@@ -17,7 +17,8 @@
 --  Если выпал товар, похожий на купленный (тот же товар или та же категория в его заказах),
 --  покупатель может заменить его на скидку: swap_percent от цены приза личным промокодом.
 --
---  gift_case_tiers — уровни: порог, гарантированная скидка, процент замены.
+--  gift_case_tiers — уровни: порог, гарантированная скидка, процент замены, срок промокодов кейса
+--    (promo_valid_days: приз-скидка и замена приза, дней от выдачи кода).
 --  gift_case_items — призы: уровень, вид (PRODUCT — товар, DISCOUNT — скидка % или ₴), редкость
 --    (COMMON/RARE/EPIC/LEGENDARY/GOLD — цвет рамки), вес (шанс = вес / сумма весов призов уровня
 --    в наличии). Включается настройкой gift.caseEnabled.
@@ -37,14 +38,15 @@ CREATE TABLE gift_case_tiers (
     guaranteed_percent INT        NOT NULL DEFAULT 0,
     guaranteed_max_uah INT        NOT NULL DEFAULT 0,
     swap_percent       INT        NOT NULL DEFAULT 0,
+    promo_valid_days   INT        NOT NULL DEFAULT 30,
     updated_at         TIMESTAMP  NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (tier)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-INSERT INTO gift_case_tiers (tier, enabled, threshold_uah, guaranteed_percent, guaranteed_max_uah, swap_percent) VALUES
-    ('BRONZE', TRUE, 1500, 3, 100, 50),
-    ('SILVER', TRUE, 3000, 5, 250, 50),
-    ('GOLD',   TRUE, 6000, 7, 600, 60);
+INSERT INTO gift_case_tiers (tier, enabled, threshold_uah, guaranteed_percent, guaranteed_max_uah, swap_percent, promo_valid_days) VALUES
+    ('BRONZE', TRUE, 1500, 3, 100, 50, 14),
+    ('SILVER', TRUE, 3000, 5, 250, 50, 30),
+    ('GOLD',   TRUE, 6000, 7, 600, 60, 60);
 
 CREATE TABLE gift_case_items (
     id                  BIGINT      NOT NULL AUTO_INCREMENT,

@@ -108,6 +108,25 @@ class GiftCaseTestDrawTest {
     }
 
     @Test
+    void testsTheUnpublishedDraft() {
+        GiftCaseTier silver = tiers.findAll().get(0);
+        when(tiers.findById(GiftCaseTier.Tier.SILVER)).thenReturn(java.util.Optional.of(silver));
+        int w = GiftService.CASE_WEIGHT_PER_PERCENT;
+        List<GiftDtos.CaseDraftItem> draft = List.of(
+                new GiftDtos.CaseDraftItem(1L, "PRODUCT", IN_STOCK, null, null, "COMMON", 50 * w, true),
+                new GiftDtos.CaseDraftItem(null, "DISCOUNT", null, null, 200, "RARE", 50 * w, true),
+                new GiftDtos.CaseDraftItem(null, "PRODUCT", SOLD_OUT, null, null, "EPIC", 10 * w, true),
+                new GiftDtos.CaseDraftItem(null, "DISCOUNT", null, 10, null, "RARE", 10 * w, false));
+        GiftDtos.TestDrawDto res = service.testDraw("SILVER", 2000, draft, new SplittableRandom(7));
+        Map<Long, GiftDtos.TestHitDto> hits = res.hits().stream()
+                .collect(Collectors.toMap(GiftDtos.TestHitDto::id, h -> h));
+        // The saved prizes are ignored; new draft prizes get -(index + 1); sold out and switched off drop out.
+        assertThat(hits.keySet()).containsExactlyInAnyOrder(1L, -2L);
+        assertThat(hits.get(-2L).chancePercent()).isEqualTo(50.0);
+        verify(items, never()).save(any());
+    }
+
+    @Test
     void refusesBadInput() {
         assertThatThrownBy(() -> service.testDraw("PLATINUM", 1, new SplittableRandom(1)))
                 .isInstanceOf(BadRequestException.class);

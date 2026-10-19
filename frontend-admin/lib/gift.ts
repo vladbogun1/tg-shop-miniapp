@@ -5,7 +5,7 @@
  * guaranteed discount, swap), their prizes and the stats have their own endpoints under /api/admin/gift.
  */
 import type { CaseItem, CaseRarity, CaseTier } from "@shop/shared";
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 
 export const GIFT_GROUP = "gift";
 
@@ -53,9 +53,17 @@ export interface GiftTierAdmin {
   livePrizes: number;
   /** Average prize value by the real chances (discounts by their ₴ / not counted for %). */
   avgPrizeMinor: number;
+  /** Days a promo code won from this tier's case is valid (V57; the reminder comes before it runs out). */
+  promoValidDays?: number;
+  /** The shop's average margin, % (setting gift.marginPercent): a product prize costs price × (1 − margin). */
+  marginPercent?: number;
+  /** Orders a month (last 90 days) between this tier's threshold and the next one — expected cases. */
+  monthlyOrders?: number;
 }
 
-export type GiftTierPatch = Partial<Pick<GiftTierAdmin, "enabled" | "thresholdUah" | "guaranteedPercent" | "guaranteedMaxUah" | "swapPercent">>;
+export type GiftTierPatch = Partial<
+  Pick<GiftTierAdmin, "enabled" | "thresholdUah" | "guaranteedPercent" | "guaranteedMaxUah" | "swapPercent" | "promoValidDays">
+>;
 
 /** A prize of a case tier: a product, or a discount on the next order (a personal promo code). */
 export interface CaseItemAdmin {
@@ -135,6 +143,64 @@ export const CASE_TEST_MAX = 10_000;
 
 export type CaseItemCreate = CaseItemPatch & { tier: CaseTier; kind: "PRODUCT" | "DISCOUNT"; productId?: string };
 
+/**
+ * A prize of the case builder's draft (PUT /tiers/{tier}/items publishes the whole list; test-draw and
+ * autofill take it too). `id` — of a saved prize; null — a new one (the test numbers it −(index + 1)).
+ */
+export interface CaseDraftItem {
+  id: number | null;
+  kind: "PRODUCT" | "DISCOUNT";
+  productId: string | null;
+  discountPercent: number;
+  discountUah: number;
+  rarity: CaseRarity;
+  weight: number;
+  active: boolean;
+}
+
+/** A draft prize with what the board shows (autofill / alternatives answer with these). */
+export interface DraftItem extends CaseDraftItem {
+  title: string;
+  imageUrl: string | null;
+  priceMinor: number;
+  stock: number;
+  productActive: boolean;
+  /** Root category name (autofill / alternatives only). */
+  category: string | null;
+}
+
+/** «Автособрать» options; omitted = the server's defaults. */
+export interface AutofillRequest {
+  prizes?: number;
+  /** Expected cost of a case as % of the margin on an order at the threshold. */
+  costShare?: number;
+  marginPercent?: number;
+  discounts?: number;
+  /** Root category slugs of ordinary prizes / of the jackpot. */
+  categories?: string[];
+  superCategories?: string[];
+  /** A jackpot (gold tier only). */
+  jackpot?: boolean;
+  newOnly?: boolean;
+  minStock?: number;
+  /** Kept as they are (rarity too); the rest is picked around them. */
+  locked?: CaseDraftItem[];
+  seed?: number;
+}
+
+export interface AutofillResult {
+  tier: CaseTier;
+  items: DraftItem[];
+  avgPrizeMinor: number;
+  avgCostMinor: number;
+  marginMinor: number;
+  targetCostMinor: number;
+  warnings: string[];
+}
+
+/** Defaults of «Автособрать» by tier: share of the margin a case may cost, %. */
+export const AUTOFILL_COST_SHARE: Record<CaseTier, number> = { BRONZE: 60, SILVER: 50, GOLD: 60 };
+
 export const giftApi = {
   tiers: () => apiGet<GiftTierAdmin[]>("/api/admin/gift/tiers"),
   patchTier: (tier: CaseTier, body: GiftTierPatch) => apiPatch<GiftTierAdmin>(`/api/admin/gift/tiers/${tier}`, body),
@@ -143,5 +209,15 @@ export const giftApi = {
   patchCaseItem: (id: number, body: CaseItemPatch) => apiPatch<CaseItemAdmin>(`/api/admin/gift/case-items/${id}`, body),
   deleteCaseItem: (id: number) => apiDelete<void>(`/api/admin/gift/case-items/${id}`),
   stats: () => apiGet<GiftStats>("/api/admin/gift/stats"),
-  testDraw: (tier: CaseTier, count: number) => apiPost<CaseTestDraw>(`/api/admin/gift/tiers/${tier}/test-draw?count=${count}`),
+  /** With `draft` — the unpublished draft is tested instead of the saved prizes. */
+  testDraw: (tier: CaseTier, count: number, draft?: CaseDraftItem[]) =>
+    apiPost<CaseTestDraw>(`/api/admin/gift/tiers/${tier}/test-draw?count=${count}`, draft ? { items: draft } : undefined),
+  /** «Опубликовать»: the tier's prizes become exactly these. */
+  replaceItems: (tier: CaseTier, items: CaseDraftItem[]) => apiPut<CaseItemAdmin[]>(`/api/admin/gift/tiers/${tier}/items`, { items }),
+  autofill: (tier: CaseTier, body: AutofillRequest) => apiPost<AutofillResult>(`/api/admin/gift/tiers/${tier}/autofill`, body),
+  alternatives: (tier: CaseTier, rarity: CaseRarity, exclude: string[]) => {
+    const q = new URLSearchParams({ rarity });
+    exclude.forEach((id) => q.append("exclude", id));
+    return apiGet<DraftItem[]>(`/api/admin/gift/tiers/${tier}/alternatives?${q}`);
+  },
 };

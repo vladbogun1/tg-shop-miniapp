@@ -304,6 +304,41 @@ public class NotificationService {
         }
     }
 
+    /**
+     * "Your code from the case runs out on …" (GiftCasePromoReminderJob): once per code, to the order's
+     * chat, with the cart button — at checkout the code is offered as «Приз із кейса».
+     *
+     * @return whether the message went out
+     */
+    public boolean notifyCustomerCasePromoExpiring(Order order, String code, int percent, long amountMinor,
+                                                   Instant expiresAt) {
+        if (!enabled() || code == null || code.isBlank() || expiresAt == null) {
+            return false;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return false;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
+            String text = messages.get(locale, "bot.giftCase.promoExpiringTitle", discount) + "\n"
+                    + messages.get(locale, "bot.giftCase.promoExpiringBody", "<code>" + escHtml(code) + "</code>",
+                            expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n"
+                    + messages.get(locale, "bot.giftCase.promoHint");
+            dm("ORDER_CASE_PROMO_EXPIRING", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(cartButton(locale))
+                    .build());
+            return true;
+        } catch (Exception e) {
+            log.warn("notifyCustomerCasePromoExpiring failed for order {}: {}", idStr(order), e.getMessage());
+            return false;
+        }
+    }
+
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     /** DM the customer that an admin applied a discount to their order. */

@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -68,7 +69,7 @@ class GiftCasePromoNotifyTest {
         promo.setCode("CASE-ABC123");
         promo.setDiscountPercent(10);
         promo.setExpiresAt(Instant.parse("2026-11-18T10:00:00Z"));
-        when(giftService.issuePromo(42L, ORDER_ID, 10, 0)).thenReturn(promo);
+        when(giftService.issuePromo(eq(42L), eq(ORDER_ID), any(), eq(10), eq(0L))).thenReturn(promo);
         when(giftService.saveOrderCase(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service().open(ORDER_ID, "uk");
@@ -88,7 +89,7 @@ class GiftCasePromoNotifyTest {
 
         service().open(ORDER_ID, "uk");
 
-        verify(giftService, never()).issuePromo(any(), any(), anyInt(), anyLong());
+        verify(giftService, never()).issuePromo(any(), any(), any(), anyInt(), anyLong());
         verify(events, never()).publishEvent(any(Object.class));
     }
 }

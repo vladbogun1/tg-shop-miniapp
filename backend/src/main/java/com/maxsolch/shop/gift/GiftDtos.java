@@ -84,13 +84,71 @@ public final class GiftDtos {
 
     // ---- admin ----
 
+    /**
+     * @param avgPrizeMinor  average product prize by the real chances (retail)
+     * @param marginPercent  gift.marginPercent — the shop's average margin, for the prize cost in the admin
+     * @param monthlyOrders  orders per month whose total falls into this tier (last 90 days) — expected cases
+     */
     public record TierAdminDto(String tier, boolean enabled, int thresholdUah, int guaranteedPercent,
-                               int guaranteedMaxUah, int swapPercent, int prizes, int livePrizes,
-                               long avgPrizeMinor) {
+                               int guaranteedMaxUah, int swapPercent, int promoValidDays, int prizes,
+                               int livePrizes, long avgPrizeMinor, int marginPercent, double monthlyOrders) {
+    }
+
+    /**
+     * A prize of a case draft (the admin's case builder): what «Опубликовать» saves for a tier, what the
+     * test draws from and what «Автособрать» proposes. {@code id} — an existing gift_case_items row (kept
+     * on publish), null for a new prize.
+     */
+    public record CaseDraftItem(Long id, String kind, String productId, Integer discountPercent, Integer discountUah,
+                                String rarity, Integer weight, Boolean active) {
+    }
+
+    /** PUT /api/admin/gift/tiers/{tier}/items, POST …/test-draw (optional body). */
+    public record CaseDraftRequest(List<CaseDraftItem> items) {
+    }
+
+    /**
+     * «Автособрать» (POST /api/admin/gift/tiers/{tier}/autofill). Everything optional: defaults by tier
+     * and the gift.* settings.
+     *
+     * @param prizes          how many prizes (4…14), with the jackpot
+     * @param costShare       % of the shop's margin on an order at the threshold an average prize may cost
+     * @param marginPercent   the shop's average margin, % (gift.marginPercent)
+     * @param discounts       how many discount prizes (0…4)
+     * @param categories      root category slugs of ordinary prizes (gift.caseCategories)
+     * @param superCategories root category slugs of the jackpot (gift.caseSuperCategories; gold only)
+     * @param jackpot         a super prize (gold tier only)
+     * @param newOnly         only new products (not markdown / used)
+     * @param minStock        a product prize needs at least this many units
+     * @param locked          prizes to keep (the chances are recounted)
+     * @param seed            another seed = another set
+     */
+    public record AutofillRequest(Integer prizes, Integer costShare, Integer marginPercent, Integer discounts,
+                                  List<String> categories, List<String> superCategories, Boolean jackpot,
+                                  Boolean newOnly, Integer minStock, List<CaseDraftItem> locked, Long seed) {
+    }
+
+    /** A prize of a draft with what the admin shows; {@code id} null = new. */
+    public record DraftItemDto(Long id, String kind, String productId, String title, String imageUrl, long priceMinor,
+                               int stock, boolean productActive, String category, int discountPercent,
+                               int discountUah, String rarity, int weight, boolean active) {
+    }
+
+    /**
+     * What «Автособрать» proposes (nothing saved).
+     *
+     * @param avgPrizeMinor   average prize, retail (discounts by their ₴)
+     * @param avgCostMinor    average prize cost to the shop (products × (100 − margin) %, discounts in full)
+     * @param marginMinor     the shop's margin on an order at the threshold
+     * @param targetCostMinor what the average cost aimed at
+     * @param warnings        what did not fit (few products in a price range, a prize runs out…)
+     */
+    public record AutofillDto(String tier, List<DraftItemDto> items, long avgPrizeMinor, long avgCostMinor,
+                              long marginMinor, long targetCostMinor, List<String> warnings) {
     }
 
     public record TierRequest(Boolean enabled, Integer thresholdUah, Integer guaranteedPercent,
-                              Integer guaranteedMaxUah, Integer swapPercent) {
+                              Integer guaranteedMaxUah, Integer swapPercent, Integer promoValidDays) {
     }
 
     public record CaseItemAdminDto(long id, String tier, String kind, String productId, String title, String imageUrl,

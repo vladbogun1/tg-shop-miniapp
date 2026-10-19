@@ -1,87 +1,78 @@
 "use client";
 
 /**
- * «Кейсы» (gift cases, V57): three tiers — bronze, silver, gold — each with its own threshold of the
- * order sum, its own prizes (products or discounts on the next order), the guaranteed discount the
- * customer may take at checkout instead of the case, and the swap of a product prize similar to what
- * they bought for a discount code. The order gets the dearest tier its sum reaches.
+ * «Кейсы» (gift cases, V57) — the case builder (docs/GIFT-CASE.md, «Конструктор»). Three tiers —
+ * bronze, silver, gold — each with its threshold of the order sum and its own prizes (products, or
+ * discounts on the next order as personal promo codes). The order gets the dearest tier its sum reaches.
  *
- * The server draws the prize (at checkout, or when an admin gives a case) among the tier's active
- * prizes that can drop (a product in stock; a discount always). The admin sets each prize's chance in %
- * (stored as `weight` in millionths: 10 000 = 1 %); the server re-normalises the chances over the
- * prizes that can drop, and that real chance (`chancePercent`) is shown next to the input. Customers
- * never see the chances. Each change goes to the server at once (like «Пары категорий»).
+ * The prizes are a board by rarity. Every edit goes into a per-tier draft (chances always sum to 100 %
+ * over the prizes that can drop: one change rescales the others) and reaches customers only on
+ * «Опубликовать» (PUT …/tiers/{tier}/items, one transaction). «Тест кейса» runs on the draft, «Автособрать»
+ * fills it from the catalog. The summary weighs a case against the margin on an order at the threshold
+ * (no cost price in the shop: a product prize costs price × (1 − average margin), a discount its amount).
+ *
+ * Tier settings (threshold, guaranteed discount, swap, promo validity) are saved at once, apart from the draft.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Dices, Package, Percent, Trash2 } from "lucide-react";
-import { CASE_RARITY_COLOR, CASE_RARITY_ORDER, CASE_TIER_METAL, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/shared";
+import { AlertTriangle, Dices, Lock, Package, Percent, Rocket, Settings2, Sparkles, Undo2 } from "lucide-react";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/shared";
 import type { AdminProduct } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import {
   CASE_RARITY_LABEL,
   CASE_TIER_LABEL,
   giftApi,
+  type AutofillResult,
   type CaseItemAdmin,
-  type CaseItemPatch,
   type GiftTierAdmin,
   type GiftTierPatch,
 } from "@/lib/gift";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
+import { productStock } from "@/lib/stock";
 import { useToast } from "@/lib/toast";
-import { Badge } from "@/components/ui/Badge";
+import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { Button } from "@/components/ui/Button";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { QueryState } from "@/components/ui/QueryState";
-import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { ProductPickModal } from "@/components/ProductPickModal";
+import { CaseAutofillModal } from "./CaseAutofillModal";
+import { CasePrizeModal, DiscountBadge } from "./CasePrizeModal";
 import { CaseTestModal } from "./CaseTestModal";
+import { CaseTierSettingsModal } from "./CaseTierSettings";
+import {
+  addRow,
+  canDrop,
+  changes,
+  defaultDiscountUah,
+  fmtPct,
+  fromDraftItem,
+  fromServer,
+  lanesOf,
+  newKey,
+  normalize,
+  parsePct,
+  removeRow,
+  setChance,
+  setLaneShare,
+  sortRows,
+  summarize,
+  toDraft,
+  type Row,
+  type Summary,
+} from "./case-draft";
 
 export const CASE_ITEMS_KEY = ["gift", "case-items"] as const;
 export const CASE_TIERS_KEY = ["gift", "tiers"] as const;
 
-/** `weight` units per 1 % (the server's GiftService.CASE_WEIGHT_PER_PERCENT). */
-const WEIGHT_PER_PERCENT = 10_000;
-
-/** Default chance (%) of a new prize by rarity. */
-const DEFAULT_CHANCE: Record<CaseRarity, number> = { COMMON: 20, RARE: 8, EPIC: 3, LEGENDARY: 0.5, GOLD: 0.001 };
-
-const weightToPercent = (w: number) => w / WEIGHT_PER_PERCENT;
-const percentToWeight = (p: number) => Math.round(p * WEIGHT_PER_PERCENT);
-
-/** «24,58», «0,001»: up to 4 decimals, Russian separator. */
-function fmtPercent(p: number): string {
-  return p.toLocaleString("ru-RU", { maximumFractionDigits: 4 });
-}
-
-/** «0,001» / «0.001» → 0.001; null when it is not a number in 0…100 with at most 4 decimals. */
-function parsePercent(raw: string): number | null {
-  const v = raw.trim().replace(",", ".");
-  if (!/^\d{1,3}(\.\d{0,4})?$/.test(v)) return null;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
-}
-
-/** Default rarity of a new prize by its retail price (₴): just a starting point, editable. */
-function rarityByPrice(priceMinor: number): CaseRarity {
-  const uah = priceMinor / 100;
-  if (uah < 300) return "COMMON";
-  if (uah < 700) return "RARE";
-  if (uah < 1200) return "EPIC";
-  if (uah < 2000) return "LEGENDARY";
-  return "GOLD";
-}
-
-const RARITY_OPTIONS = CASE_RARITY_ORDER.map((r) => ({ value: r, label: CASE_RARITY_LABEL[r] }));
+const tierArt = (t: CaseTier) => `/case/${t.toLowerCase()}/case-closed-sm.webp`;
 
 const byOrder = (a: CaseItemAdmin, b: CaseItemAdmin) => a.sortOrder - b.sortOrder || a.id - b.id;
 
-const tierArt = (t: CaseTier) => `/case/${t.toLowerCase()}/case-closed-sm.webp`;
-
-export function CasePanel() {
+export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
   const qc = useQueryClient();
   const { push } = useToast();
   const [confirm, confirmUi] = useConfirm();
@@ -93,17 +84,31 @@ export function CasePanel() {
     [tiersQ.data]
   );
   const current = tiers.find((t) => t.tier === tier) ?? null;
-  const items = useMemo(() => (itemsQ.data ?? []).filter((it) => it.tier === tier).sort(byOrder), [itemsQ.data, tier]);
-  const [busy, setBusy] = useState<number | "add" | "tier" | null>(null);
-  const [picking, setPicking] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const publishedOf = (t: CaseTier) => (itemsQ.data ?? []).filter((it) => it.tier === t).sort(byOrder);
+  const published = useMemo(() => publishedOf(tier), [itemsQ.data, tier]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: CASE_ITEMS_KEY });
-    qc.invalidateQueries({ queryKey: CASE_TIERS_KEY });
-    qc.invalidateQueries({ queryKey: ["gift", "stats"] });
-  };
+  /** Drafts by tier; absent = the published case. */
+  const [drafts, setDrafts] = useState<Partial<Record<CaseTier, Row[]>>>({});
+  const [warnings, setWarnings] = useState<Partial<Record<CaseTier, string[]>>>({});
+  const rows = useMemo(() => drafts[tier] ?? published.map(fromServer), [drafts, tier, published]);
+  const changed = drafts[tier] ? changes(drafts[tier]!, published) : 0;
+  const dirtyTiers = CASE_TIER_ORDER.filter((t) => drafts[t] && changes(drafts[t]!, publishedOf(t)) > 0);
+  useUnsavedGuard(dirtyTiers.length > 0);
+
+  const sum = useMemo(() => summarize(rows, current), [rows, current]);
+  const [busy, setBusy] = useState<"tier" | "publish" | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState<CaseRarity | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [filling, setFilling] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const fail = (e: unknown, fallback: string) => push(e instanceof ApiError ? e.message : fallback, "error");
+  const edit = (fn: (rows: Row[]) => Row[]) => setDrafts((d) => ({ ...d, [tier]: fn(d[tier] ?? published.map(fromServer)) }));
+  const discard = () => {
+    setDrafts((d) => ({ ...d, [tier]: undefined }));
+    setWarnings((w) => ({ ...w, [tier]: undefined }));
+  };
 
   async function patchTier(body: GiftTierPatch, okText: string) {
     setBusy("tier");
@@ -113,126 +118,128 @@ export function CasePanel() {
       push(okText, "ok");
     } catch (e) {
       fail(e, "Не удалось сохранить кейс");
-      refresh();
+      qc.invalidateQueries({ queryKey: CASE_TIERS_KEY });
     } finally {
       setBusy(null);
     }
   }
 
-  async function patch(it: CaseItemAdmin, body: CaseItemPatch, okText: string) {
-    setBusy(it.id);
-    try {
-      await giftApi.patchCaseItem(it.id, body);
-      push(okText, "ok");
-      refresh();
-    } catch (e) {
-      fail(e, "Не удалось сохранить приз");
-      refresh();
-    } finally {
-      setBusy(null);
+  async function publish() {
+    const draft = drafts[tier];
+    if (!draft) return;
+    if (draft.length > 0 && sum.live === 0) {
+      push("Ни один приз черновика не может выпасть — проверьте наличие и шансы", "error");
+      return;
     }
-  }
-
-  /** Swap with the neighbour; equal sort orders → renumber the tier's list by 10. */
-  async function move(i: number, dir: -1 | 1) {
-    const j = i + dir;
-    if (j < 0 || j >= items.length) return;
-    const a = items[i];
-    const b = items[j];
-    setBusy(a.id);
-    try {
-      if (a.sortOrder !== b.sortOrder) {
-        await giftApi.patchCaseItem(a.id, { sortOrder: b.sortOrder });
-        await giftApi.patchCaseItem(b.id, { sortOrder: a.sortOrder });
-      } else {
-        const next = [...items];
-        [next[i], next[j]] = [next[j], next[i]];
-        for (let k = 0; k < next.length; k++) {
-          const want = (k + 1) * 10;
-          if (next[k].sortOrder !== want) await giftApi.patchCaseItem(next[k].id, { sortOrder: want });
-        }
-      }
-      refresh();
-    } catch (e) {
-      fail(e, "Не удалось переставить");
-      refresh();
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function remove(it: CaseItemAdmin) {
     const ok = await confirm({
-      title: "Убрать приз из кейса?",
-      message: <>«{it.title}» больше не будет выпадать из кейса «{CASE_TIER_LABEL[it.tier]}». Уже выданные призы в заказах не изменятся.</>,
-      confirmLabel: "Убрать",
-      danger: true,
+      title: `Опубликовать ${CASE_TIER_LABEL[tier].toLowerCase()} кейс?`,
+      message: (
+        <>
+          Покупатели сразу начнут получать призы из черновика ({draft.length} шт., изменений: {changed}). Уже выданные призы в заказах не
+          изменятся.
+        </>
+      ),
+      confirmLabel: "Опубликовать",
     });
     if (!ok) return;
-    setBusy(it.id);
+    setBusy("publish");
     try {
-      await giftApi.deleteCaseItem(it.id);
-      push("Приз убран", "ok");
-      refresh();
+      const fresh = await giftApi.replaceItems(tier, toDraft(draft));
+      qc.setQueryData<CaseItemAdmin[]>(CASE_ITEMS_KEY, fresh);
+      setDrafts((d) => ({ ...d, [tier]: undefined }));
+      push(`${CASE_TIER_LABEL[tier]} кейс опубликован`, "ok");
+      qc.invalidateQueries({ queryKey: CASE_TIERS_KEY });
+      qc.invalidateQueries({ queryKey: ["gift", "stats"] });
     } catch (e) {
-      fail(e, "Не удалось удалить");
+      fail(e, "Не удалось опубликовать");
     } finally {
       setBusy(null);
     }
   }
 
-  async function addProduct(p: AdminProduct) {
-    if (items.some((it) => it.productId === p.id)) {
+  function addProduct(rarity: CaseRarity, p: AdminProduct) {
+    if (rows.some((r) => r.productId === p.id)) {
       push("Этот товар уже есть в этом кейсе", "error");
       return;
     }
-    const rarity = rarityByPrice(p.priceMinor);
-    setBusy("add");
-    try {
-      await giftApi.createCaseItem({ tier, kind: "PRODUCT", productId: p.id, rarity, weight: percentToWeight(DEFAULT_CHANCE[rarity]), active: true });
-      push(`Приз добавлен: ${CASE_RARITY_LABEL[rarity].toLowerCase()}, шанс ${fmtPercent(DEFAULT_CHANCE[rarity])} %`, "ok");
-      refresh();
-    } catch (e) {
-      fail(e, "Не удалось добавить приз");
-    } finally {
-      setBusy(null);
-    }
+    edit((rs) =>
+      addRow(rs, {
+        key: newKey(),
+        id: null,
+        kind: "PRODUCT",
+        productId: p.id,
+        discountPercent: 0,
+        discountUah: 0,
+        rarity,
+        weight: 0,
+        active: true,
+        title: p.title,
+        imageUrl: p.images?.[0]?.url ?? null,
+        priceMinor: p.priceMinor,
+        stock: productStock(p),
+        productActive: p.active !== false && !p.archived,
+        category: null,
+      })
+    );
   }
 
-  async function addDiscount() {
-    // A starting point by tier — the admin edits the value right in the row.
-    const pct = tier === "GOLD" ? 15 : tier === "SILVER" ? 10 : 5;
-    setBusy("add");
-    try {
-      await giftApi.createCaseItem({ tier, kind: "DISCOUNT", discountPercent: pct, rarity: "RARE", weight: percentToWeight(DEFAULT_CHANCE.RARE), active: true });
-      push(`Добавлена скидка ${pct} % — поменяйте размер и шанс в строке`, "ok");
-      refresh();
-    } catch (e) {
-      fail(e, "Не удалось добавить скидку");
-    } finally {
-      setBusy(null);
-    }
+  function addDiscount(rarity: CaseRarity) {
+    const uah = defaultDiscountUah(rarity, current?.thresholdUah ?? 1000);
+    const key = newKey();
+    edit((rs) =>
+      addRow(rs, {
+        key,
+        id: null,
+        kind: "DISCOUNT",
+        productId: null,
+        discountPercent: 0,
+        discountUah: uah,
+        rarity,
+        weight: 0,
+        active: true,
+        title: `Скидка ${uah} ₴`,
+        imageUrl: null,
+        priceMinor: 0,
+        stock: 0,
+        productActive: true,
+        category: null,
+      })
+    );
+    setEditing(key);
   }
 
-  const live = items.filter((it) => it.chancePercent > 0);
-  /** Sum of the set chances of the prizes that can drop now — the server scales them to 100 %. */
-  const setSum = live.reduce((s, it) => s + it.weight, 0) / WEIGHT_PER_PERCENT;
-  const avgMinor = current?.avgPrizeMinor ?? 0;
-  const share = current && current.thresholdUah > 0 ? (avgMinor / 100 / current.thresholdUah) * 100 : null;
+  function applyAutofill(res: AutofillResult) {
+    const locked = rows.filter((r) => r.locked);
+    const next = res.items.map((x) => {
+      // A locked prize comes back as it was (key, lock) with its new chance.
+      const keep = locked.find((r) => (x.productId ? r.productId === x.productId : r.kind === "DISCOUNT" && r.id != null && r.id === x.id));
+      if (keep) return { ...keep, weight: x.weight };
+      // A product already published keeps its row id.
+      const old = x.productId ? published.find((it) => it.productId === x.productId) : undefined;
+      return fromDraftItem(old ? { ...x, id: old.id } : x);
+    });
+    setDrafts((d) => ({ ...d, [tier]: next }));
+    setWarnings((w) => ({ ...w, [tier]: res.warnings }));
+    push(`Собрано: ${res.items.length} призов — проверьте и опубликуйте`, "ok");
+  }
+
+  const editingRow = rows.find((r) => r.key === editing) ?? null;
+  const lanes = lanesOf(tier, rows);
+  const sorted = sortRows(rows);
   const anyEnabled = tiers.some((t) => t.enabled && t.livePrizes > 0);
 
   return (
     <div className="min-w-0">
       <div className="mb-3 min-w-0">
-        <div className="font-display text-[15px] font-bold text-[var(--ink)]">Кейсы</div>
+        <div className="font-display text-[16px] font-bold text-[var(--ink)]">Кейсы</div>
         <p className="text-[12.5px] leading-snug text-[var(--text-muted)]">
-          Заказ получает самый дорогой кейс, до порога которого дотянул (сумма после скидок). Если в нём нечего разыграть — кейс
-          дешевле. Шансы покупатели не видят.
+          Заказ получает самый дорогой кейс, до порога которого дотянул (сумма после скидок). Правки призов копятся в черновике и доходят до
+          покупателей только после «Опубликовать». Шансы покупатели не видят.
         </p>
       </div>
 
       <QueryState isLoading={tiersQ.isLoading} isError={tiersQ.isError} error={tiersQ.error} refetch={tiersQ.refetch} loadingLabel="Загрузка кейсов">
-        <div role="tablist" aria-label="Кейс" className="grid min-w-0 grid-cols-3 gap-2">
+        <div role="tablist" aria-label="Кейс" className="grid min-w-0 grid-cols-3 gap-2 lg:max-w-[560px]">
           {CASE_TIER_ORDER.map((t) => {
             const d = tiers.find((x) => x.tier === t);
             const on = t === tier;
@@ -243,7 +250,10 @@ export function CasePanel() {
                 type="button"
                 role="tab"
                 aria-selected={on}
-                onClick={() => setTier(t)}
+                onClick={() => {
+                  setTier(t);
+                  setEditing(null);
+                }}
                 className={cn(
                   "focusable card-2 relative flex min-w-0 flex-col items-center gap-1 px-1.5 pb-2 pt-1.5 text-center transition-[border-color,background] duration-200",
                   on ? "!border-[var(--tier)] bg-[color-mix(in_srgb,var(--tier)_10%,var(--surface-2))]" : "hover:bg-[var(--surface-hover)]",
@@ -251,6 +261,9 @@ export function CasePanel() {
                 )}
                 style={{ ["--tier" as string]: m.ga }}
               >
+                {dirtyTiers.includes(t) && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--accent)]" title="Есть неопубликованный черновик" />
+                )}
                 <img src={tierArt(t)} alt="" className="h-10 w-[60px] object-contain sm:h-12 sm:w-[72px]" draggable={false} />
                 <span className="font-display text-[12.5px] font-bold leading-tight text-[var(--ink)] sm:text-[13.5px]" style={on ? { color: m.ga } : undefined}>
                   {CASE_TIER_LABEL[t]}
@@ -271,455 +284,418 @@ export function CasePanel() {
           </p>
         )}
 
-        {current && <TierSettings key={current.tier} t={current} busy={busy === "tier"} onPatch={patchTier} />}
-      </QueryState>
-
-      <div className="mt-4 flex min-w-0 items-center justify-between gap-2">
-        <div className="font-display text-[14px] font-bold text-[var(--ink)]">Призы · {CASE_TIER_LABEL[tier].toLowerCase()} кейс</div>
-        <Badge tone="neutral">{items.length}</Badge>
-      </div>
-      <p className="mt-0.5 text-[12.5px] leading-snug text-[var(--text-muted)]">
-        Товар кладётся в заказ бесплатно, скидка выдаётся личным промокодом на следующий заказ. «Шанс, %» — от 0,0001 до 100; шансы
-        приводятся к 100 % по призам, которые могут выпасть, — справа фактический шанс.
-      </p>
-
-      <QueryState isLoading={itemsQ.isLoading} isError={itemsQ.isError} error={itemsQ.error} refetch={itemsQ.refetch} loadingLabel="Загрузка призов">
-        {items.length === 0 ? (
-          <p className="card-2 mt-2 p-3 text-[13px] text-[var(--text-muted)]">
-            Призов пока нет — этот кейс не разыгрывается, заказ получит кейс дешевле (или товар-подарок).
-          </p>
-        ) : (
-          <ol className="mt-2 flex min-w-0 flex-col gap-2">
-            {items.map((it, i) => (
-              <CaseRow
-                key={it.id}
-                it={it}
-                first={i === 0}
-                last={i === items.length - 1}
-                busy={busy === it.id}
-                locked={busy !== null}
-                onPatch={(body, okText) => patch(it, body, okText)}
-                onMove={(dir) => move(i, dir)}
-                onRemove={() => remove(it)}
-              />
-            ))}
-          </ol>
+        {current && (
+          <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <Toggle
+              checked={current.enabled}
+              disabled={busy === "tier"}
+              onChange={(v) => void patchTier({ enabled: v }, v ? `${CASE_TIER_LABEL[tier]} кейс включён` : `${CASE_TIER_LABEL[tier]} кейс выключен`)}
+              label={`${CASE_TIER_LABEL[tier]} кейс разыгрывается`}
+            />
+            <Button size="sm" variant="ghost" icon={<Settings2 className="h-4 w-4" />} onClick={() => setSettingsOpen(true)}>
+              Порог, скидка, промокод
+            </Button>
+          </div>
         )}
       </QueryState>
 
-      {live.length > 0 && (
-        <div className="card-2 mt-3 px-3 py-2.5 text-[13px] leading-snug">
-          <div className="text-[var(--text)]">
-            Сумма шансов: <b className="tabular">{fmtPercent(Math.round(setSum * 10000) / 10000)} %</b>
-            <span className="text-[var(--text-muted)]">
-              {Math.abs(setSum - 100) > 0.00005 && " — сервер приводит её к 100 %, фактические шансы справа"}
-            </span>
+      <DraftBar
+        changed={changed}
+        hasDraft={!!drafts[tier]}
+        total={rows.length}
+        busy={busy === "publish"}
+        onDiscard={discard}
+        onPublish={() => void publish()}
+      />
+
+      <QueryState isLoading={itemsQ.isLoading} isError={itemsQ.isError} error={itemsQ.error} refetch={itemsQ.refetch} loadingLabel="Загрузка призов">
+        <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-1">
+            {rows.length === 0 && (
+              <div className="card-2 flex min-w-0 flex-wrap items-center justify-between gap-3 p-3">
+                <p className="min-w-0 flex-1 text-[13px] text-[var(--text-muted)]">
+                  Призов нет — этот кейс не разыгрывается. Соберите его автоматически или добавьте призы в нужную редкость.
+                </p>
+                <Button variant="accent" icon={<Sparkles className="h-4 w-4" />} onClick={() => setFilling(true)}>
+                  Автособрать
+                </Button>
+              </div>
+            )}
+            {lanes.map((r) => (
+              <Lane
+                key={r}
+                rarity={r}
+                rows={sorted.filter((x) => x.rarity === r)}
+                sum={sum}
+                onShare={(p) => edit((rs) => setLaneShare(rs, r, p))}
+                onOpen={setEditing}
+                onAddProduct={() => setAdding(r)}
+                onAddDiscount={() => addDiscount(r)}
+              />
+            ))}
           </div>
-          <div className="mt-0.5 text-[var(--text)]">
-            Средняя ценность приза ≈ <b className="tabular">{money(Math.round(avgMinor / 100) * 100)}</b>{" "}
-            <span className="text-[var(--text-faint)]">(товары по рознице, скидки в ₴; скидки в % не считаются)</span>
-          </div>
-          {share != null && current && (
-            <div className="mt-0.5 text-[var(--text-muted)]">
-              На заказ от порога {money(current.thresholdUah * 100)} это ≈{" "}
-              <b className="tabular text-[var(--text)]">{share.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} %</b> от порога.
+
+          <aside className="order-1 min-w-0 lg:order-2">
+            <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4">
+              <SummaryCard t={current} sum={sum} warnings={warnings[tier] ?? []} />
+              <div className="grid min-w-0 grid-cols-2 gap-2">
+                <Button variant="surface" icon={<Sparkles className="h-4 w-4" />} onClick={() => setFilling(true)}>
+                  Автособрать
+                </Button>
+                <Button variant="outline" icon={<Dices className="h-4 w-4" />} disabled={sum.live === 0} onClick={() => setTesting(true)}>
+                  Тест{drafts[tier] ? " черновика" : ""}
+                </Button>
+              </div>
             </div>
-          )}
+          </aside>
         </div>
-      )}
-      {items.length > 0 && live.length === 0 && (
-        <p className="mt-3 text-[12.5px] font-semibold leading-snug text-[var(--danger-ink)]">
-          Ни один приз этого кейса сейчас не может выпасть (нет в наличии, скрыт или выключен).
-        </p>
-      )}
+      </QueryState>
 
-      <div className="mt-3 flex min-w-0 flex-wrap gap-2">
-        <Button
-          className="flex-1 sm:flex-none"
-          variant="accent"
-          icon={<Package className="h-4 w-4" />}
-          loading={busy === "add" && picking}
-          disabled={busy !== null}
-          onClick={() => setPicking(true)}
-        >
-          Добавить товар
-        </Button>
-        <Button
-          className="flex-1 sm:flex-none"
-          variant="surface"
-          icon={<Percent className="h-4 w-4" />}
-          loading={busy === "add" && !picking}
-          disabled={busy !== null}
-          onClick={() => void addDiscount()}
-        >
-          Добавить скидку
-        </Button>
-        <Button
-          className="flex-1 sm:ml-auto sm:flex-none"
-          variant="outline"
-          icon={<Dices className="h-4 w-4" />}
-          disabled={items.length === 0}
-          onClick={() => setTesting(true)}
-        >
-          Тест кейса
-        </Button>
-      </div>
-      <p className="mt-2 text-[12px] leading-snug text-[var(--text-faint)]">
-        Редкость новому товару подставляется по цене, шанс — по редкости (обычный 20 %, редкий 8 %, эпический 3 %, легендарный 0,5 %,
-        золотой 0,001 %) — их можно поменять. Скидка добавляется как «редкая» 5/10/15 % — размер (в % или ₴) меняется в строке.
-      </p>
-
-      <ProductPickModal
-        open={picking}
-        title={`Приз · ${CASE_TIER_LABEL[tier].toLowerCase()} кейс`}
-        onClose={() => setPicking(false)}
-        onPick={(p) => {
-          setPicking(false);
-          void addProduct(p);
+      <CasePrizeModal
+        open={!!editingRow}
+        onClose={() => setEditing(null)}
+        tier={tier}
+        row={editingRow}
+        chance={editingRow ? sum.chance.get(editingRow.key) ?? 0 : 0}
+        perMonth={editingRow ? sum.perMonth.get(editingRow.key) ?? 0 : 0}
+        usedProducts={rows.map((r) => r.productId).filter((x): x is string => !!x)}
+        onChance={(p) => editingRow && edit((rs) => setChance(rs, editingRow.key, p))}
+        onPatch={(patch) =>
+          editingRow &&
+          edit((rs) => {
+            const next = rs.map((r) => (r.key === editingRow.key ? { ...r, ...patch } : r));
+            // Switching a prize on/off moves its chance to / from the others.
+            return "active" in patch ? normalize(next) : next;
+          })
+        }
+        onReplace={(x) => {
+          if (!editingRow) return;
+          const key = newKey();
+          const old = published.find((it) => it.productId === x.productId);
+          edit((rs) => normalize(rs.map((r) => (r.key === editingRow.key ? { ...fromDraftItem({ ...x, id: old?.id ?? null }), key } : r))));
+          setEditing(key);
+        }}
+        onRemove={() => {
+          if (!editingRow) return;
+          edit((rs) => removeRow(rs, editingRow.key));
+          setEditing(null);
         }}
       />
-      <CaseTestModal open={testing} onClose={() => setTesting(false)} tier={tier} items={items} />
+      <ProductPickModal
+        open={adding !== null}
+        title={adding ? `Приз · ${CASE_RARITY_LABEL[adding].toLowerCase()}` : "Приз"}
+        onClose={() => setAdding(null)}
+        onPick={(p) => {
+          if (adding) addProduct(adding, p);
+          setAdding(null);
+        }}
+      />
+      <CaseTestModal
+        open={testing}
+        onClose={() => setTesting(false)}
+        tier={tier}
+        items={rows.map((r, i) => toAdminItem(r, i, tier, sum))}
+        draft={drafts[tier] ? toDraft(drafts[tier]!) : null}
+      />
+      <CaseAutofillModal open={filling} onClose={() => setFilling(false)} tier={tier} t={current} rows={rows} onResult={applyAutofill} />
+      {current && (
+        <CaseTierSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          t={current}
+          busy={busy === "tier"}
+          onPatch={(b, ok) => void patchTier(b, ok)}
+          reminderDays={reminderDays}
+        />
+      )}
       {confirmUi}
     </div>
   );
 }
 
-/** A whole-number field committed on blur / Enter; Esc reverts. */
-function IntField({
-  label,
-  unit,
-  value,
-  min,
-  max,
-  disabled,
-  hint,
-  onCommit,
-}: {
-  label: string;
-  unit: string;
-  value: number;
-  min: number;
-  max: number;
-  disabled?: boolean;
-  hint?: string;
-  onCommit: (v: number) => void;
-}) {
-  const [raw, setRaw] = useState(String(value));
-  useEffect(() => setRaw(String(value)), [value]);
-  const n = raw.trim() === "" ? NaN : Number(raw);
-  const bad = !Number.isInteger(n) || n < min || n > max;
-  const commit = () => {
-    if (bad) {
-      setRaw(String(value));
-      return;
-    }
-    if (n !== value) onCommit(n);
+/** A board row as the test modal reads it; a new draft prize gets the test's id −(index + 1). */
+function toAdminItem(r: Row, i: number, tier: CaseTier, sum: Summary): CaseItemAdmin {
+  return {
+    id: r.id ?? -(i + 1),
+    tier,
+    kind: r.kind,
+    productId: r.productId,
+    title: r.title,
+    imageUrl: r.imageUrl,
+    priceMinor: r.priceMinor,
+    stock: r.stock,
+    productActive: r.productActive,
+    discountPercent: r.discountPercent,
+    discountUah: r.discountUah,
+    rarity: r.rarity,
+    weight: r.weight,
+    chancePercent: sum.chance.get(r.key) ?? 0,
+    sortOrder: (i + 1) * 10,
+    active: r.active,
   };
-  return (
-    <label className="flex min-w-0 flex-col gap-1">
-      <span className="field-label">{label}</span>
-      <span
-        className={cn(
-          "flex h-10 min-w-0 items-center rounded-[var(--r-md)] border bg-[var(--surface-2)] pr-2.5 pointer-coarse:h-11",
-          bad ? "border-[var(--danger)]" : "border-[var(--line)]"
+}
+
+function DraftBar({
+  changed,
+  hasDraft,
+  total,
+  busy,
+  onDiscard,
+  onPublish,
+}: {
+  changed: number;
+  hasDraft: boolean;
+  total: number;
+  busy: boolean;
+  onDiscard: () => void;
+  onPublish: () => void;
+}) {
+  if (!hasDraft || changed === 0) {
+    return (
+      <div className="mt-3 flex min-w-0 items-center gap-2 text-[12.5px] text-[var(--text-faint)]">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--ok,#3ecf8e)]" aria-hidden />
+        Опубликовано · призов: {total}
+        {hasDraft && (
+          <button type="button" className="focusable ml-1 underline-offset-2 hover:underline" onClick={onDiscard}>
+            сбросить черновик
+          </button>
         )}
-      >
-        <input
-          inputMode="numeric"
-          value={raw}
-          disabled={disabled}
-          aria-invalid={bad || undefined}
-          onChange={(e) => setRaw(e.target.value.replace(/\D/g, "").slice(0, 7))}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            if (e.key === "Escape") setRaw(String(value));
-          }}
-          className="tabular focusable h-full min-w-0 flex-1 bg-transparent px-2.5 text-[14px] text-[var(--text)] outline-none"
-        />
-        <span className="shrink-0 font-display text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{unit}</span>
-      </span>
-      {hint && <span className="text-[11.5px] leading-snug text-[var(--text-faint)]">{hint}</span>}
-    </label>
+      </div>
+    );
+  }
+  return (
+    <div className="card-2 mt-3 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 !border-[color-mix(in_srgb,var(--accent)_55%,var(--line))] px-3 py-2.5">
+      <div className="min-w-0 text-[13px] leading-snug">
+        <b className="text-[var(--ink)]">Черновик</b> · изменений: <span className="tabular">{changed}</span>
+        <span className="block text-[12px] text-[var(--text-muted)]">Покупатели пока видят опубликованный кейс</span>
+      </div>
+      <div className="flex flex-1 justify-end gap-2 sm:flex-none">
+        <Button size="sm" variant="ghost" icon={<Undo2 className="h-4 w-4" />} disabled={busy} onClick={onDiscard}>
+          Отменить
+        </Button>
+        <Button size="sm" variant="accent" icon={<Rocket className="h-4 w-4" />} loading={busy} onClick={onPublish}>
+          Опубликовать
+        </Button>
+      </div>
+    </div>
   );
 }
 
-function TierSettings({ t, busy, onPatch }: { t: GiftTierAdmin; busy: boolean; onPatch: (body: GiftTierPatch, ok: string) => void }) {
-  const exampleTotal = t.thresholdUah * 100;
-  const gd = t.guaranteedPercent > 0 ? Math.floor((exampleTotal * t.guaranteedPercent) / 100 / 100) * 100 : 0;
-  const guaranteed = t.guaranteedMaxUah > 0 ? Math.min(gd, t.guaranteedMaxUah * 100) : gd;
+function SummaryCard({ t, sum, warnings }: { t: GiftTierAdmin | null; sum: Summary; warnings: string[] }) {
+  const costTone = sum.costShare <= 70 ? "var(--ok,#3ecf8e)" : sum.costShare <= 100 ? "var(--warn)" : "var(--danger-ink)";
+  const shares = (Object.entries(sum.share) as [CaseRarity, number][]).filter(([, v]) => v > 0);
+  const notes = [
+    ...warnings,
+    ...sum.shortStock.map((r) => `${r.title}: ≈ ${fmtPct(sum.perMonth.get(r.key) ?? 0, 1)} в месяц, на складе ${r.stock}`),
+  ];
   return (
-    <div className="card-2 mt-3 min-w-0 p-3" style={{ borderColor: `color-mix(in srgb, ${CASE_TIER_METAL[t.tier].ga} 40%, var(--line))` }}>
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <Toggle
-          checked={t.enabled}
-          disabled={busy}
-          onChange={(v) => onPatch({ enabled: v }, v ? `${CASE_TIER_LABEL[t.tier]} кейс включён` : `${CASE_TIER_LABEL[t.tier]} кейс выключен`)}
-          label={`${CASE_TIER_LABEL[t.tier]} кейс разыгрывается`}
-        />
-        <span className="text-[12px] text-[var(--text-faint)]">
-          призов: {t.prizes}, могут выпасть: {t.livePrizes}
-        </span>
+    <div className="card-2 min-w-0 p-3">
+      <div className="field-label">Шансы по редкостям</div>
+      <div className="mt-2 flex h-3 min-w-0 overflow-hidden rounded-full bg-[var(--surface-3)]" role="img" aria-label="Шансы по редкостям">
+        {shares.map(([r, v]) => (
+          <span key={r} style={{ width: `${Math.max(v, 0.8)}%`, background: CASE_RARITY_COLOR[r] }} title={`${CASE_RARITY_LABEL[r]}: ${fmtPct(v)} %`} />
+        ))}
       </div>
-      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-        <IntField
-          label="Порог суммы заказа"
-          unit="₴"
-          value={t.thresholdUah}
-          min={1}
-          max={1_000_000}
-          disabled={busy}
-          onCommit={(v) => onPatch({ thresholdUah: v }, `Порог: ${money(v * 100)}`)}
-        />
-        <IntField
-          label="Замена похожего приза"
-          unit="%"
-          value={t.swapPercent}
-          min={0}
-          max={100}
-          disabled={busy}
-          hint="Промокод на этот % цены приза, если похожий товар уже куплен. 0 — без замены"
-          onCommit={(v) => onPatch({ swapPercent: v }, v ? `Замена: ${v} % цены приза` : "Замена выключена")}
-        />
-        <IntField
-          label="Гарантированная скидка вместо кейса"
-          unit="%"
-          value={t.guaranteedPercent}
-          min={0}
-          max={50}
-          disabled={busy}
-          hint="Покупатель при оформлении выбирает: эта скидка сразу или кейс. 0 — выбора нет, всегда кейс"
-          onCommit={(v) => onPatch({ guaranteedPercent: v }, v ? `Гарантированная скидка: ${v} %` : "Гарантированная скидка выключена")}
-        />
-        <IntField
-          label="Потолок гарантированной скидки"
-          unit="₴"
-          value={t.guaranteedMaxUah}
-          min={0}
-          max={100_000}
-          disabled={busy || t.guaranteedPercent === 0}
-          hint="0 — без потолка"
-          onCommit={(v) => onPatch({ guaranteedMaxUah: v }, v ? `Потолок: ${money(v * 100)}` : "Потолок снят")}
-        />
+      <div className="mt-1.5 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--text-muted)]">
+        {shares.map(([r, v]) => (
+          <span key={r} className="tabular inline-flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full" style={{ background: CASE_RARITY_COLOR[r] }} aria-hidden />
+            {fmtPct(v, 1)} %
+          </span>
+        ))}
+        {shares.length === 0 && <span>нечему выпадать</span>}
       </div>
-      {t.guaranteedPercent > 0 && (
-        <p className="mt-2 text-[12px] leading-snug text-[var(--text-muted)]">
-          Пример: заказ на {money(exampleTotal)} — скидка <b className="tabular text-[var(--text)]">−{money(guaranteed)}</b>
-          {t.guaranteedMaxUah > 0 ? ` (не больше ${money(t.guaranteedMaxUah * 100)})` : ""}.
+
+      <dl className="mt-3 grid min-w-0 grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-[13px]">
+        <dt className="text-[var(--text-muted)]">Средний приз</dt>
+        <dd className="tabular text-right font-semibold text-[var(--text)]">{money(Math.round(sum.avgPrizeMinor / 100) * 100)}</dd>
+        <dt className="text-[var(--text-muted)]">Кейс обходится в</dt>
+        <dd className="tabular text-right font-bold" style={{ color: costTone }}>
+          ≈ {money(Math.round(sum.avgCostMinor / 100) * 100)}
+        </dd>
+        <dt className="text-[var(--text-muted)]">Маржа с заказа на пороге</dt>
+        <dd className="tabular text-right text-[var(--text)]">{money(Math.round(sum.marginMinor / 100) * 100)}</dd>
+        <dt className="text-[var(--text-muted)]">Доля маржи на кейс</dt>
+        <dd className="tabular text-right font-semibold" style={{ color: costTone }}>
+          {fmtPct(sum.costShare, 0)} %
+        </dd>
+        {sum.guaranteedMinor > 0 && (
+          <>
+            <dt className="text-[var(--text-muted)]">Скидка вместо кейса</dt>
+            <dd className="tabular text-right text-[var(--text)]">{money(sum.guaranteedMinor)}</dd>
+          </>
+        )}
+        <dt className="text-[var(--text-muted)]">Кейсов в месяц</dt>
+        <dd className="tabular text-right text-[var(--text)]">≈ {fmtPct(sum.monthly, 1)}</dd>
+      </dl>
+      <p className="mt-2 text-[11px] leading-snug text-[var(--text-faint)]">
+        Себестоимость нет — считаю товар-приз по цене минус средняя маржа {t?.marginPercent ?? 15} %, скидку — полной суммой. Кейсов в месяц — по
+        заказам этого уровня за 90 дней.
+      </p>
+      {sum.guaranteedMinor > 0 && sum.avgCostMinor > 0 && (
+        <p className="mt-1.5 text-[12px] leading-snug text-[var(--text-muted)]">
+          {sum.guaranteedMinor > sum.avgCostMinor
+            ? "Гарантированная скидка дороже кейса — выбравшие скидку обходятся дороже."
+            : "Кейс дороже гарантированной скидки — кейс заметно привлекательнее."}
         </p>
+      )}
+      {notes.length > 0 && (
+        <ul className="mt-2.5 flex min-w-0 flex-col gap-1 border-t border-[var(--line)] pt-2.5">
+          {notes.map((w, i) => (
+            <li key={i} className="flex min-w-0 items-start gap-1.5 text-[12px] leading-snug text-[var(--warn)]">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 break-words">{w}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-function CaseRow({
-  it,
-  first,
-  last,
-  busy,
-  locked,
-  onPatch,
-  onMove,
-  onRemove,
+function Lane({
+  rarity,
+  rows,
+  sum,
+  onShare,
+  onOpen,
+  onAddProduct,
+  onAddDiscount,
 }: {
-  it: CaseItemAdmin;
-  first: boolean;
-  last: boolean;
-  busy: boolean;
-  locked: boolean;
-  onPatch: (body: CaseItemPatch, okText: string) => void;
-  onMove: (dir: -1 | 1) => void;
-  onRemove: () => void;
+  rarity: CaseRarity;
+  rows: Row[];
+  sum: Summary;
+  onShare: (percent: number) => void;
+  onOpen: (key: string) => void;
+  onAddProduct: () => void;
+  onAddDiscount: () => void;
 }) {
-  const setPercent = weightToPercent(it.weight);
-  const [chance, setChance] = useState(fmtPercent(setPercent));
-  useEffect(() => setChance(fmtPercent(weightToPercent(it.weight))), [it.weight]);
-  const parsed = parsePercent(chance);
-  const chanceError = parsed === null;
-  const color = CASE_RARITY_COLOR[it.rarity];
-  const isDiscount = it.kind === "DISCOUNT";
-  const cantDrop = !isDiscount && (it.stock <= 0 || !it.productActive);
-  // Real chance differs from the set one: the server re-normalised over the prizes that can drop.
-  const differs = it.chancePercent > 0 && Math.abs(it.chancePercent - setPercent) >= 0.00005;
-
-  function commitChance() {
-    if (parsed === null) {
-      setChance(fmtPercent(setPercent));
-      return;
-    }
-    const w = percentToWeight(parsed);
-    if (w !== it.weight) onPatch({ weight: w }, `Шанс: ${fmtPercent(parsed)} %`);
-    else setChance(fmtPercent(setPercent));
-  }
-
+  const color = CASE_RARITY_COLOR[rarity];
+  const share = sum.share[rarity];
+  const live = rows.some(canDrop);
   return (
-    <li
-      className={cn("card-2 min-w-0 border-l-[3px] p-2.5 transition-opacity", !it.active && "opacity-60", busy && "opacity-50")}
-      style={{ borderLeftColor: color }}
+    <section
+      className="card-2 min-w-0 border-l-[3px] p-2.5"
+      style={{ borderLeftColor: color, background: `linear-gradient(90deg, color-mix(in srgb, ${color} 7%, transparent), transparent 40%)` }}
+      aria-label={CASE_RARITY_LABEL[rarity]}
     >
-      <div className="flex min-w-0 items-start gap-3">
-        {isDiscount ? (
-          <span
-            aria-hidden
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-[var(--r-sm)] font-display text-[13px] font-extrabold text-white"
-            style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 85%, #fff), color-mix(in srgb, ${color} 70%, #000))` }}
-          >
-            {it.discountPercent > 0 ? `−${it.discountPercent}%` : "−₴"}
-          </span>
-        ) : (
-          <Image
-            src={it.imageUrl ?? undefined}
-            alt={it.title}
-            size={96}
-            className="h-12 w-12 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]"
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="break-words text-[13.5px] font-semibold leading-snug text-[var(--text)]">{it.title}</div>
-          <div className="tabular mt-0.5 text-[12px] text-[var(--text-faint)]">
-            {isDiscount ? (
-              "промокод на следующий заказ"
-            ) : (
-              <>
-                {money(it.priceMinor)} ·{" "}
-                <span className={cantDrop ? "font-semibold text-[var(--danger-ink)]" : undefined}>
-                  {!it.productActive ? "товар скрыт" : it.stock <= 0 ? "нет в наличии" : `${it.stock} шт`}
-                </span>
-                {cantDrop && it.active && <span className="text-[var(--danger-ink)]"> — не выпадет</span>}
-              </>
-            )}
-          </div>
+      <header className="flex min-w-0 items-center gap-2">
+        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+        <span className="min-w-0 truncate font-display text-[13.5px] font-bold" style={{ color }}>
+          {rarity === "GOLD" ? "Джекпот" : CASE_RARITY_LABEL[rarity]}
+        </span>
+        <span className="tabular text-[12px] text-[var(--text-faint)]">{rows.length}</span>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {live && <ShareInput value={share} onCommit={onShare} />}
+          <LaneBtn label="Добавить товар" onClick={onAddProduct}>
+            <Package className="h-4 w-4" />
+          </LaneBtn>
+          <LaneBtn label="Добавить скидку" onClick={onAddDiscount}>
+            <Percent className="h-4 w-4" />
+          </LaneBtn>
         </div>
-        <div className="shrink-0 text-right">
-          <div className={cn("tabular font-display text-[16px] font-bold leading-tight", it.chancePercent > 0 ? "text-[var(--ink)]" : "text-[var(--text-faint)]")}>
-            {fmtPercent(it.chancePercent)} %
-          </div>
-          <div className="text-[11px] text-[var(--text-faint)]">{differs ? "фактически" : "шанс"}</div>
-        </div>
-      </div>
+      </header>
+      {rows.length > 0 && (
+        <ul className="mt-2 grid min-w-0 grid-cols-1 gap-1.5 xl:grid-cols-2">
+          {rows.map((r) => (
+            <PrizeRow key={r.key} r={r} chance={sum.chance.get(r.key) ?? 0} perMonth={sum.perMonth.get(r.key) ?? 0} onOpen={() => onOpen(r.key)} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
-      <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-          <Select<CaseRarity>
-            className="w-[148px]"
-            value={it.rarity}
-            options={RARITY_OPTIONS}
-            onChange={(r) => r !== it.rarity && onPatch({ rarity: r }, `Редкость: ${CASE_RARITY_LABEL[r].toLowerCase()}`)}
+function PrizeRow({ r, chance, perMonth, onOpen }: { r: Row; chance: number; perMonth: number; onOpen: () => void }) {
+  const isProduct = r.kind === "PRODUCT";
+  const cantDrop = isProduct && (r.stock <= 0 || !r.productActive);
+  const short = isProduct && !cantDrop && perMonth > r.stock;
+  return (
+    <li className="min-w-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "focusable flex w-full min-w-0 items-center gap-2.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-1.5 pr-2.5 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]",
+          !r.active && "opacity-55"
+        )}
+      >
+        {isProduct ? (
+          <Image
+            src={r.imageUrl ?? undefined}
+            alt={r.title}
+            size={80}
+            className="h-10 w-10 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-3)]"
           />
-        </div>
-        <label className="flex items-center gap-1.5" title="Шанс выпадения, % (0,0001…100). Сервер приводит сумму шансов к 100 % по призам, которые могут выпасть">
-          <span className="text-[12px] font-semibold text-[var(--text-muted)]">Шанс, %</span>
-          <input
-            inputMode="decimal"
-            aria-label="Шанс, %"
-            aria-invalid={chanceError || undefined}
-            value={chance}
-            disabled={locked}
-            onChange={(e) => setChance(e.target.value.replace(/[^\d.,]/g, "").slice(0, 9))}
-            onBlur={commitChance}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              if (e.key === "Escape") setChance(fmtPercent(setPercent));
-            }}
-            className={cn(
-              "tabular focusable h-10 w-[84px] rounded-[var(--r-md)] border bg-[var(--surface-2)] px-2 text-center text-[14px] text-[var(--text)] pointer-coarse:h-11",
-              chanceError ? "border-[var(--danger)]" : "border-[var(--line)]"
+        ) : (
+          <DiscountBadge row={r} size={40} />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-1">
+            {r.locked && <Lock className="h-3 w-3 shrink-0 text-[var(--text-faint)]" aria-label="Закреплён" />}
+            <span className="line-clamp-1 break-all text-[13px] font-semibold leading-snug text-[var(--text)]">{r.title}</span>
+          </span>
+          <span className="tabular block truncate text-[11.5px] leading-snug text-[var(--text-faint)]">
+            {isProduct ? (
+              <>
+                {money(r.priceMinor)} ·{" "}
+                <span className={cantDrop || short ? "font-semibold text-[var(--danger-ink)]" : undefined}>
+                  {!r.productActive ? "скрыт" : r.stock <= 0 ? "нет в наличии" : `${r.stock} шт`}
+                </span>
+                {!r.active && " · выкл"}
+              </>
+            ) : (
+              <>промокод{!r.active && " · выкл"}</>
             )}
-          />
-        </label>
-        {isDiscount && <DiscountValue it={it} locked={locked} onPatch={onPatch} />}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          <Toggle checked={it.active} disabled={locked} onChange={(v) => onPatch({ active: v }, v ? "Приз включён" : "Приз выключен")} />
-          <IconBtn label="Выше" disabled={locked || first} onClick={() => onMove(-1)}>
-            <ArrowUp className="h-4 w-4" />
-          </IconBtn>
-          <IconBtn label="Ниже" disabled={locked || last} onClick={() => onMove(1)}>
-            <ArrowDown className="h-4 w-4" />
-          </IconBtn>
-          <IconBtn label="Удалить" danger disabled={locked} onClick={onRemove}>
-            <Trash2 className="h-4 w-4" />
-          </IconBtn>
-        </div>
-      </div>
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          <span className={cn("tabular block font-display text-[14px] font-bold leading-tight", chance > 0 ? "text-[var(--ink)]" : "text-[var(--text-faint)]")}>
+            {fmtPct(chance)} %
+          </span>
+          {perMonth >= 0.05 && <span className="tabular block text-[10.5px] leading-tight text-[var(--text-faint)]">≈{fmtPct(perMonth, 1)}/мес</span>}
+        </span>
+      </button>
     </li>
   );
 }
 
-/** Size of a discount prize: a number + «%» / «₴» (the server keeps one of the two). */
-function DiscountValue({ it, locked, onPatch }: { it: CaseItemAdmin; locked: boolean; onPatch: (body: CaseItemPatch, ok: string) => void }) {
-  const unit: "%" | "₴" = it.discountPercent > 0 ? "%" : "₴";
-  const value = unit === "%" ? it.discountPercent : it.discountUah;
-  const [raw, setRaw] = useState(String(value));
-  useEffect(() => setRaw(String(value)), [value]);
-  const n = Number(raw);
-  const max = unit === "%" ? 50 : 100_000;
-  const bad = !raw || !Number.isInteger(n) || n < 1 || n > max;
-  const send = (u: "%" | "₴", v: number) =>
-    onPatch(u === "%" ? { discountPercent: v } : { discountUah: v }, `Скидка: ${u === "%" ? `${v} %` : money(v * 100)}`);
+/** A rarity's total chance, editable: the prizes inside keep their proportions, the other rarities make room. */
+function ShareInput({ value, onCommit }: { value: number; onCommit: (p: number) => void }) {
+  const [raw, setRaw] = useState(fmtPct(value));
+  useEffect(() => setRaw(fmtPct(value)), [value]);
+  const parsed = parsePct(raw);
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-[12px] font-semibold text-[var(--text-muted)]">Скидка</span>
+    <label className="flex items-center gap-1" title="Доля редкости, %: призы внутри сохраняют пропорции, остальные редкости подвинутся">
       <input
-        inputMode="numeric"
-        aria-label="Размер скидки"
-        aria-invalid={bad || undefined}
+        inputMode="decimal"
+        aria-label="Доля редкости, %"
+        aria-invalid={parsed === null || undefined}
         value={raw}
-        disabled={locked}
-        onChange={(e) => setRaw(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        onBlur={() => (bad ? setRaw(String(value)) : n !== value && send(unit, n))}
+        onChange={(e) => setRaw(e.target.value.replace(/[^\d.,]/g, "").slice(0, 7))}
+        onBlur={() => (parsed === null ? setRaw(fmtPct(value)) : Math.abs(parsed - value) > 0.005 && onCommit(parsed))}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          if (e.key === "Escape") setRaw(String(value));
+          if (e.key === "Escape") setRaw(fmtPct(value));
         }}
         className={cn(
-          "tabular focusable h-10 w-[72px] rounded-[var(--r-md)] border bg-[var(--surface-2)] px-2 text-center text-[14px] text-[var(--text)] pointer-coarse:h-11",
-          bad ? "border-[var(--danger)]" : "border-[var(--line)]"
+          "tabular focusable h-8 w-[64px] rounded-[var(--r-sm)] border bg-[var(--surface-2)] px-1.5 text-center text-[13px] font-semibold text-[var(--text)] pointer-coarse:h-9",
+          parsed === null ? "border-[var(--danger)]" : "border-[var(--line)]"
         )}
       />
-      <Select<"%" | "₴">
-        className="w-[72px]"
-        value={unit}
-        options={[
-          { value: "%", label: "%" },
-          { value: "₴", label: "₴" },
-        ]}
-        onChange={(u) => {
-          if (u === unit) return;
-          // switching the unit keeps a sensible number: 10 % ↔ 100 ₴
-          send(u, u === "%" ? Math.min(50, Math.max(1, Math.round(value / 10))) : Math.max(1, value * 10));
-        }}
-      />
-    </span>
+      <span className="text-[12px] text-[var(--text-faint)]">%</span>
+    </label>
   );
 }
 
-function IconBtn({
-  label,
-  onClick,
-  disabled,
-  danger,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  danger?: boolean;
-  children: React.ReactNode;
-}) {
+function LaneBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
       onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "focusable hit grid h-8 w-8 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors disabled:opacity-30",
-        danger
-          ? "hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)]"
-          : "hover:bg-[var(--surface-hover)] hover:text-[var(--text)]"
-      )}
+      className="focusable hit grid h-8 w-8 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text)] pointer-coarse:h-9 pointer-coarse:w-9"
     >
       {children}
     </button>
