@@ -30,6 +30,8 @@ public final class StructuredEvents {
     /** «Вместе дешевле»: the block was shown (meta: place, productIds) / an accessory or the set was added. */
     public static final String BUNDLE_VIEW = "bundle_view";
     public static final String BUNDLE_ADD = "bundle_add";
+    /** 2.0: the visitor is in the control group — the block would have shown but was hidden (meta: place, ids). */
+    public static final String BUNDLE_HOLDOUT = "bundle_holdout";
 
     /**
      * What an anonymous website visitor may write. Clicks carry only a label of what was tapped and,
@@ -37,7 +39,7 @@ public final class StructuredEvents {
      */
     public static final Set<String> WEB_ALLOWED = Set.of(
             "view", "click", "error", PRODUCT_VIEW, ADD_TO_CART, CHECKOUT_START, ORDER_CREATED, COMPARE_ADD, COMPARE_OPEN,
-            GIFT_CASE_OPEN, BUNDLE_VIEW, BUNDLE_ADD);
+            GIFT_CASE_OPEN, BUNDLE_VIEW, BUNDLE_ADD, BUNDLE_HOLDOUT);
 
     private StructuredEvents() {
     }

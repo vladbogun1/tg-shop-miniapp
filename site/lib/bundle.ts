@@ -79,7 +79,7 @@ export function useBundleQuote(promoDiscountMinor = 0, active = true): BundleQuo
     let units = 0;
     for (const l of quote?.lines ?? []) {
       if (l.percent > 0) addonPercent.set(bundleLineKey(l.productId, l.variantId), l.percent);
-      units += l.units;
+      if (l.kind !== "SETUP") units += l.units;
     }
     const next = quote?.terms?.enabled ? bundlePercent(quote.terms, units + 1) : 0;
     return {

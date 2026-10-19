@@ -1,10 +1,12 @@
 package com.maxsolch.shop.bundle;
 
+import com.maxsolch.shop.bundle.BundleDtos.OfferItemDto;
 import com.maxsolch.shop.bundle.BundleDtos.ProductOfferDto;
 import com.maxsolch.shop.bundle.BundleDtos.QuoteDto;
 import com.maxsolch.shop.bundle.BundleDtos.QuoteLineDto;
 import com.maxsolch.shop.bundle.BundleDtos.QuoteLineRequest;
 import com.maxsolch.shop.bundle.BundleDtos.QuoteRequest;
+import com.maxsolch.shop.bundle.BundleDtos.SlotDto;
 import com.maxsolch.shop.bundle.BundleDtos.TermsDto;
 import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogSnapshot;
@@ -25,14 +27,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 /**
  * «Вместе дешевле» (accessories with a discount next to a product), docs/BUNDLES.md.
  *
  * <p>Suggestions and the cart quote run over the cached catalog ({@link CatalogService}); the
  * checkout prices the bundle from the locked product rows through the same {@link BundlePricing},
- * so the cart and the order never disagree. Pairs of categories live in {@code bundle_rules}, the
- * numbers in {@code shop_settings} (group {@code bundles}).
+ * so the cart and the order never disagree. Pairs of categories live in {@code bundle_rules} (add-ons)
+ * and {@code bundle_setup_rules} («Собери сетап»), the margins in {@code bundle_category_margins},
+ * the numbers in {@code shop_settings} (group {@code bundles}). What to offer — {@link BundleRanker}.
  */
 @Service
 public class BundleService {
@@ -40,7 +45,13 @@ public class BundleService {
     public static final String KIND_BUNDLE = "BUNDLE";
     public static final String KIND_PROMO = "PROMO";
 
+    /** «Собери сетап»: at most this many other big items. */
+    static final int MAX_SETUP_SLOTS = 3;
+
     private final BundleRuleRepository ruleRepository;
+    private final BundleSetupRuleRepository setupRuleRepository;
+    private final BundleCategoryMarginRepository marginRepository;
+    private final BundlePairStatsService pairStats;
     private final SettingsService settings;
     private final CatalogDirectory directory;
     private final CatalogService catalogService;
@@ -53,9 +64,13 @@ public class BundleService {
         this.giftService = giftService;
     }
 
-    public BundleService(BundleRuleRepository ruleRepository, SettingsService settings,
-                         CatalogDirectory directory, CatalogService catalogService) {
+    public BundleService(BundleRuleRepository ruleRepository, BundleSetupRuleRepository setupRuleRepository,
+                         BundleCategoryMarginRepository marginRepository, BundlePairStatsService pairStats,
+                         SettingsService settings, CatalogDirectory directory, CatalogService catalogService) {
         this.ruleRepository = ruleRepository;
+        this.setupRuleRepository = setupRuleRepository;
+        this.marginRepository = marginRepository;
+        this.pairStats = pairStats;
         this.settings = settings;
         this.directory = directory;
         this.catalogService = catalogService;
@@ -63,22 +78,40 @@ public class BundleService {
 
     // ---- configuration ----
 
+    /** Pricing terms with the margin caps and the setup pairs. */
+    @Transactional(readOnly = true)
     public BundlePricing.Config config() {
+        return config(margins());
+    }
+
+    BundlePricing.Config config(BundleMargins margins) {
+        boolean setup = settings.getBool(SettingsRegistry.BUNDLE_SETUP_ENABLED);
         return new BundlePricing.Config(
                 settings.getBool(SettingsRegistry.BUNDLE_ENABLED),
                 List.of(settings.getInt(SettingsRegistry.BUNDLE_TIER1_PERCENT),
                         settings.getInt(SettingsRegistry.BUNDLE_TIER2_PERCENT),
                         settings.getInt(SettingsRegistry.BUNDLE_TIER3_PERCENT)),
                 settings.getInt(SettingsRegistry.BUNDLE_MAX_ADDON_PRICE_PERCENT),
-                settings.getInt(SettingsRegistry.BUNDLE_MAX_DISCOUNT_UAH) * 100L);
+                settings.getInt(SettingsRegistry.BUNDLE_MAX_DISCOUNT_UAH) * 100L,
+                margins::cap,
+                setup ? setupRules() : List.of(),
+                setup ? settings.getInt(SettingsRegistry.BUNDLE_SETUP_PERCENT) : 0);
     }
 
     public TermsDto terms() {
-        BundlePricing.Config c = config();
-        return new TermsDto(c.enabled(), c.tiers(), c.maxAddonPricePercent(), c.maxDiscountMinor());
+        return new TermsDto(
+                settings.getBool(SettingsRegistry.BUNDLE_ENABLED),
+                List.of(settings.getInt(SettingsRegistry.BUNDLE_TIER1_PERCENT),
+                        settings.getInt(SettingsRegistry.BUNDLE_TIER2_PERCENT),
+                        settings.getInt(SettingsRegistry.BUNDLE_TIER3_PERCENT)),
+                settings.getInt(SettingsRegistry.BUNDLE_MAX_ADDON_PRICE_PERCENT),
+                settings.getInt(SettingsRegistry.BUNDLE_MAX_DISCOUNT_UAH) * 100L,
+                settings.getInt(SettingsRegistry.BUNDLE_HOLDOUT_PERCENT),
+                settings.getBool(SettingsRegistry.BUNDLE_SETUP_ENABLED),
+                settings.getInt(SettingsRegistry.BUNDLE_SETUP_PERCENT));
     }
 
-    /** Active rules in their order. */
+    /** Active add-on rules in their order. */
     @Transactional(readOnly = true)
     public List<BundlePricing.Rule> rules() {
         return ruleRepository.findAllByOrderBySortOrderAscIdAsc().stream()
@@ -88,8 +121,35 @@ public class BundleService {
                 .toList();
     }
 
+    /** Active «Собери сетап» pairs in their order. */
+    @Transactional(readOnly = true)
+    public List<BundlePricing.Rule> setupRules() {
+        return setupRuleRepository.findAllByOrderBySortOrderAscIdAsc().stream()
+                .filter(BundleSetupRule::isActive)
+                .map(r -> new BundlePricing.Rule(UuidUtil.toString(r.getSourceCategoryId()),
+                        UuidUtil.toString(r.getTargetCategoryId())))
+                .toList();
+    }
+
+    /** The margin table with inheritance and the current settings. */
+    @Transactional(readOnly = true)
+    public BundleMargins margins() {
+        Map<String, BundleMargins.Row> rows = new HashMap<>();
+        for (BundleCategoryMargin m : marginRepository.findAll()) {
+            rows.put(UuidUtil.toString(m.getCategoryId()),
+                    new BundleMargins.Row(m.getMarginPercent(), m.getDiscountPercent(), m.getAutoPercent()));
+        }
+        CatalogSnapshot snap = directory.snapshot();
+        return new BundleMargins(rows, id -> {
+            CatalogSnapshot.Cat c = snap.category(id);
+            return c == null ? null : c.parentId();
+        }, settings.getInt(SettingsRegistry.GIFT_MARGIN_PERCENT),
+                settings.getInt(SettingsRegistry.BUNDLE_SAFETY_MARGIN_PERCENT),
+                settings.getBool(SettingsRegistry.BUNDLE_AUTO_TUNE));
+    }
+
     /** The category and its ancestors, leaf first; empty for null / unknown ids. */
-    public java.util.function.Function<String, List<String>> pathFunction() {
+    public Function<String, List<String>> pathFunction() {
         CatalogSnapshot snap = directory.snapshot();
         Map<String, List<String>> memo = new HashMap<>();
         return id -> id == null ? List.of() : memo.computeIfAbsent(id, k -> {
@@ -122,21 +182,47 @@ public class BundleService {
 
     // ---- storefront ----
 
-    /** Accessories to offer on the page of {@code productId}. */
+    /** Accessory slots and «Собери сетап» for the page of {@code productId}. */
     @Transactional(readOnly = true)
     public ProductOfferDto offerFor(String productId, String lang) {
+        return offer(productId, lang, false, settings.getInt(SettingsRegistry.BUNDLE_EXPLORE_PERCENT), false);
+    }
+
+    /**
+     * @param force     build the block even while the feature is off (admin preview)
+     * @param withScore put the score factors into the items (admin preview)
+     */
+    @Transactional(readOnly = true)
+    public ProductOfferDto offer(String productId, String lang, boolean withScore, int explorePercent, boolean force) {
         TermsDto terms = terms();
         List<ProductDto> all = catalogService.listActiveProducts(lang);
         ProductDto anchor = all.stream().filter(p -> p.id().equals(productId)).findFirst().orElse(null);
-        if (anchor == null) {
-            return new ProductOfferDto(productId, terms, List.of());
+        if (anchor == null || (!terms.enabled() && !force)) {
+            return ProductOfferDto.empty(productId, terms);
         }
-        if (!terms.enabled()) {
-            return new ProductOfferDto(productId, terms, List.of());
+        var path = pathFunction();
+        BundleMargins margins = margins();
+        String top = BundleRanker.top(anchor.categoryId(), path);
+        Set<String> excludeTops = top == null ? Set.of() : Set.of(top);
+
+        List<String> targets = targetsFor(anchor, rules(), path);
+        List<SlotDto> slots = BundleRanker.slots(
+                new BundleRanker.Request(anchor, targets, Set.of(productId), excludeTops, true,
+                        terms.maxAddonPricePercent(), settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS)),
+                all, context(path, margins, margins::cap, withScore, explorePercent));
+
+        List<SlotDto> setup = List.of();
+        int anchorSetupPercent = 0;
+        if (terms.setupEnabled()) {
+            int setupPct = terms.setupPercent();
+            setup = BundleRanker.slots(
+                    new BundleRanker.Request(anchor, targetsFor(anchor, setupRules(), path), Set.of(productId),
+                            excludeTops, false, 100, MAX_SETUP_SLOTS),
+                    all, context(path, margins, c -> Math.min(setupPct, margins.cap(c)), withScore, 0));
+            anchorSetupPercent = setup.isEmpty() ? 0 : Math.min(setupPct, margins.cap(anchor.categoryId()));
         }
-        List<ProductDto> items = suggest(List.of(anchor), all, Set.of(productId), terms.maxAddonPricePercent(),
-                settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS));
-        return new ProductOfferDto(productId, terms, items);
+        List<ProductDto> items = slots.stream().map(s -> s.primary().product()).toList();
+        return new ProductOfferDto(productId, terms, items, slots, setup, anchorSetupPercent);
     }
 
     /** Cart quote: the bundle discount line by line, which discount wins, suggestions. */
@@ -169,21 +255,22 @@ public class BundleService {
                 lines.put(key, new BundlePricing.Line(key, p.categoryId(), p.priceMinor(),
                         (prev == null ? 0 : prev.quantity()) + qty));
                 requested.putIfAbsent(key, l);
-                if (prev == null) {
+                if (inCart.stream().noneMatch(x -> x.id().equals(p.id()))) {
                     inCart.add(p);
                 }
                 subtotal += p.priceMinor() * qty;
             }
         }
 
+        BundleMargins margins = margins();
         BundlePricing.Result r = terms.enabled()
-                ? BundlePricing.compute(new ArrayList<>(lines.values()), rules(), pathFunction(), config())
+                ? BundlePricing.compute(new ArrayList<>(lines.values()), rules(), pathFunction(), config(margins))
                 : BundlePricing.Result.EMPTY;
         List<QuoteLineDto> qLines = r.lines().values().stream()
                 .map(d -> {
                     QuoteLineRequest q = requested.get(d.key());
                     return new QuoteLineDto(q.productId(), blankToNull(q.variantId()), d.percent(), d.units(),
-                            d.discountMinor());
+                            d.discountMinor(), d.kind());
                 })
                 .toList();
 
@@ -200,88 +287,76 @@ public class BundleService {
         }
         long total = Math.max(0, subtotal - discount);
 
-        Set<String> exclude = new HashSet<>();
-        inCart.forEach(p -> exclude.add(p.id()));
-        List<ProductDto> suggestions = terms.enabled() && !inCart.isEmpty()
-                ? suggest(inCart, all, exclude, terms.maxAddonPricePercent(),
-                        settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS))
+        List<OfferItemDto> offers = terms.enabled() && !inCart.isEmpty()
+                ? cartOffers(inCart, all, margins, settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS))
                 : List.of();
+        List<ProductDto> suggestions = offers.stream().map(OfferItemDto::product).toList();
 
         return new QuoteDto(subtotal, r.discountMinor(), r.percent(), qLines, kind, discount, total,
-                suggestions, terms);
+                suggestions, terms, offers);
     }
 
     /**
-     * Up to {@code limit} accessories for {@code anchors}: for each anchor (dearest first) and each of
-     * its rules in order, the best-selling product of the target category that is in stock, cheap
-     * enough and not in the cart — one per rule per round, so a mouse gets glides AND a mat before a
-     * second pair of glides. Categories already in the cart are skipped.
+     * Accessories for a cart: the slot primaries of each cart product, dearest first, one per kind of
+     * accessory; categories already in the cart are skipped.
      */
-    List<ProductDto> suggest(List<ProductDto> anchors, List<ProductDto> all, Set<String> exclude,
-                             int maxAddonPricePercent, int limit) {
+    List<OfferItemDto> cartOffers(List<ProductDto> inCart, List<ProductDto> all, BundleMargins margins, int limit) {
+        var path = pathFunction();
         List<BundlePricing.Rule> rules = rules();
-        if (rules.isEmpty() || anchors.isEmpty() || limit <= 0) {
+        if (rules.isEmpty() || limit <= 0) {
             return List.of();
         }
-        var path = pathFunction();
-        int pct = Math.max(1, Math.min(100, maxAddonPricePercent));
-        // The gift product for the order sum comes free — offering it for money next to the gift bar is odd.
-        // Case prizes stay: they are ordinary goods and drop only by chance.
-        String giftId = giftService == null ? null
-                : giftService.giftConfig().map(GiftService.GiftConfig::productId).orElse(null);
-        Set<String> cartLeafCategories = new HashSet<>();
-        anchors.forEach(a -> {
-            if (a.categoryId() != null) {
-                cartLeafCategories.add(a.categoryId());
+        Set<String> exclude = new HashSet<>();
+        Set<String> tops = new HashSet<>();
+        for (ProductDto p : inCart) {
+            exclude.add(p.id());
+            String t = BundleRanker.top(p.categoryId(), path);
+            if (t != null) {
+                tops.add(t);
             }
-        });
-
-        // Candidate queues, one per (anchor, rule), best first.
-        List<List<ProductDto>> queues = new ArrayList<>();
-        List<ProductDto> sortedAnchors = new ArrayList<>(anchors);
-        sortedAnchors.sort(Comparator.comparingLong(ProductDto::priceMinor).reversed());
-        Set<String> seenTargets = new HashSet<>();
-        for (ProductDto anchor : sortedAnchors) {
-            List<String> anchorPath = path.apply(anchor.categoryId());
-            if (anchorPath.isEmpty()) {
-                continue;
+        }
+        List<ProductDto> anchors = new ArrayList<>(inCart);
+        anchors.sort(Comparator.comparingLong(ProductDto::priceMinor).reversed());
+        BundleRanker.Context ctx = context(path, margins, margins::cap, false, 0);
+        int maxPct = settings.getInt(SettingsRegistry.BUNDLE_MAX_ADDON_PRICE_PERCENT);
+        List<OfferItemDto> out = new ArrayList<>();
+        for (ProductDto anchor : anchors) {
+            if (out.size() >= limit) {
+                break;
             }
-            for (BundlePricing.Rule rule : rules) {
-                if (!anchorPath.contains(rule.sourceCategoryId()) || !seenTargets.add(rule.targetCategoryId())) {
-                    continue;
-                }
-                List<ProductDto> q = all.stream()
-                        .filter(p -> !exclude.contains(p.id()) && !p.id().equals(giftId))
-                        .filter(p -> p.effectiveStock() > 0 && p.priceMinor() > 0)
-                        .filter(p -> p.categoryId() != null && !cartLeafCategories.contains(p.categoryId()))
-                        .filter(p -> path.apply(p.categoryId()).contains(rule.targetCategoryId()))
-                        .filter(p -> p.priceMinor() < anchor.priceMinor()
-                                && p.priceMinor() * 100 <= anchor.priceMinor() * pct)
-                        .sorted(Comparator.comparingLong(ProductDto::soldCount).reversed()
-                                .thenComparing(Comparator.comparingInt(ProductDto::ratingCount).reversed())
-                                .thenComparing(ProductDto::priceMinor))
-                        .toList();
-                if (!q.isEmpty()) {
-                    queues.add(new ArrayList<>(q));
+            List<SlotDto> slots = BundleRanker.slots(new BundleRanker.Request(anchor, targetsFor(anchor, rules, path),
+                    exclude, tops, true, maxPct, limit - out.size()), all, ctx);
+            for (SlotDto s : slots) {
+                out.add(s.primary());
+                exclude.add(s.primary().product().id());
+                String t = BundleRanker.top(s.categoryId(), path);
+                if (t != null) {
+                    tops.add(t);
                 }
             }
         }
+        return out;
+    }
 
-        List<ProductDto> out = new ArrayList<>();
-        Set<String> picked = new HashSet<>();
-        boolean progress = true;
-        while (out.size() < limit && progress) {
-            progress = false;
-            for (List<ProductDto> q : queues) {
-                while (!q.isEmpty() && picked.contains(q.get(0).id())) {
-                    q.remove(0);
-                }
-                if (!q.isEmpty() && out.size() < limit) {
-                    ProductDto p = q.remove(0);
-                    picked.add(p.id());
-                    out.add(p);
-                    progress = true;
-                }
+    BundleRanker.Context context(Function<String, List<String>> path, BundleMargins margins,
+                                 Function<String, Integer> discountFor, boolean withScore, int explorePercent) {
+        String giftId = giftService == null ? null
+                : giftService.giftConfig().map(GiftService.GiftConfig::productId).orElse(null);
+        return new BundleRanker.Context(path, pairStats.current(), margins, discountFor, discountFor, giftId,
+                withScore, explorePercent, () -> ThreadLocalRandom.current().nextInt(100));
+    }
+
+    /** Targets of the rules whose source is the anchor's category or an ancestor, in rule order. */
+    static List<String> targetsFor(ProductDto anchor, List<BundlePricing.Rule> rules,
+                                   Function<String, List<String>> path) {
+        List<String> anchorPath = path.apply(anchor.categoryId());
+        if (anchorPath.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (BundlePricing.Rule r : rules) {
+            if (anchorPath.contains(r.sourceCategoryId()) && !out.contains(r.targetCategoryId())) {
+                out.add(r.targetCategoryId());
             }
         }
         return out;

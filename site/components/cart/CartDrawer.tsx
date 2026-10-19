@@ -98,9 +98,10 @@ export function CartDrawer() {
                   <CartGiftProgress totalMinor={totalMinor} compact className="mt-3" />
                   <BundleSuggestions
                     suggestions={quote?.suggestions}
+                    offers={quote?.offers}
+                    holdoutPercent={quote?.terms?.holdoutPercent}
                     nextPercent={bundle.nextPercent}
                     place="drawer"
-                    max={2}
                     onNavigate={close}
                   />
                 </>

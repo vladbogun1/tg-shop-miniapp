@@ -5,12 +5,14 @@
  *  - «Скидки» are settings of the `bundles` group (GET/PUT /api/admin/settings, one save bar).
  *    The generic «Настройки» page hides this group.
  *  - «Пары категорий», «Предпросмотр», «Статистика» — /api/admin/bundles/*.
+ *  - 2.0: маржа и потолки, замер B/H, прогноз, «что берут вместе», «Собери сетап», предупреждения
+ *    (InsightsPanels.tsx).
  * One discount per order: the bundle or the promo code, whichever is better for the customer.
  */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Percent, Save, Undo2 } from "lucide-react";
+import { BarChart3, FlaskConical, LayoutGrid, Percent, Save, Undo2 } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { BUNDLES_GROUP, bundlesApi } from "@/lib/bundles";
 import { cn } from "@/lib/cn";
@@ -26,6 +28,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Toggle } from "@/components/ui/Toggle";
 import { initialDraft, isDirty, parse, validate, type Draft } from "../settings/draft";
 import { PanelHeader } from "../settings/PanelHeader";
+import { FunnelPanel, ForecastPanel, MarginsPanel, PairsPanel, WarningsPanel } from "./InsightsPanels";
 import { PreviewPanel } from "./PreviewPanel";
 import { RulesPanel } from "./RulesPanel";
 
@@ -37,6 +40,14 @@ const K = {
   maxAddon: "bundle.maxAddonPricePercent",
   cap: "bundle.maxDiscountUah",
   suggestions: "bundle.maxSuggestions",
+  safety: "bundle.safetyMarginPercent",
+  holdout: "bundle.holdoutPercent",
+  explore: "bundle.explorePercent",
+  autoTune: "bundle.autoTune",
+  lift: "bundle.liftPercent",
+  response: "bundle.responsePercent",
+  setupEnabled: "bundle.setupEnabled",
+  setupPercent: "bundle.setupPercent",
 } as const;
 
 export default function BundlesPage() {
@@ -91,6 +102,7 @@ export default function BundlesPage() {
       />
 
       <StatsStrip />
+      <WarningsPanel />
 
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка настроек">
         {items.length === 0 ? (
@@ -135,11 +147,69 @@ export default function BundlesPage() {
                   </div>
                 </div>
               </section>
+
+              {/* ---- Замер и автонастройка ---- */}
+              <section className="panel min-w-0 p-4 sm:p-5">
+                <PanelHeader
+                  icon={FlaskConical}
+                  title="Замер и автонастройка"
+                  description="Запас от маржи, контрольная группа и чем считать оптимальную скидку."
+                />
+                <div className="flex min-w-0 flex-col gap-4">
+                  {field(K.autoTune) && (
+                    <BoolRow {...field(K.autoTune)!} label="Авто-потолки по марже" onChange={(v) => change(K.autoTune, v)} />
+                  )}
+                  <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                    {field(K.safety) && (
+                      <NumField {...field(K.safety)!} label="Запас от маржи, п. п." onChange={(v) => change(K.safety, v)} />
+                    )}
+                    {field(K.holdout) && (
+                      <NumField {...field(K.holdout)!} label="Контрольная группа, %" onChange={(v) => change(K.holdout, v)} />
+                    )}
+                    {field(K.explore) && (
+                      <NumField {...field(K.explore)!} label="Проба второго товара, %" onChange={(v) => change(K.explore, v)} />
+                    )}
+                    {field(K.lift) && (
+                      <NumField {...field(K.lift)!} label="Отклик без замера, %" onChange={(v) => change(K.lift, v)} />
+                    )}
+                    {field(K.response) && (
+                      <NumField {...field(K.response)!} label="Рост на 1 п. п. скидки, %" onChange={(v) => change(K.response, v)} />
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* ---- Собери сетап ---- */}
+              <section className="panel min-w-0 p-4 sm:p-5">
+                <PanelHeader
+                  icon={LayoutGrid}
+                  title="Собери сетап"
+                  description="Крупные товары в цвет рядом с товаром (мышь → клавиатура). Видят все, без контрольной группы."
+                />
+                <div className="flex min-w-0 flex-col gap-4">
+                  {field(K.setupEnabled) && (
+                    <BoolRow {...field(K.setupEnabled)!} label="Показывать" onChange={(v) => change(K.setupEnabled, v)} />
+                  )}
+                  {field(K.setupPercent) && (
+                    <NumField
+                      {...field(K.setupPercent)!}
+                      label="Скидка в сетапе, % (0 — без скидки)"
+                      onChange={(v) => change(K.setupPercent, v)}
+                    />
+                  )}
+                </div>
+              </section>
+
+              <MarginsPanel />
+              <ForecastPanel />
             </div>
 
             <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
               <RulesPanel />
               <PreviewPanel />
+              <FunnelPanel />
+              <PairsPanel />
+              <RulesPanel kind="setup" />
             </div>
           </div>
         )}

@@ -111,4 +111,68 @@ class BundlePricingTest {
                 line("kb", "keyboards", 2000, 1)), rules, PATH, cfg);
         assertThat(r.lines()).containsOnlyKeys("kb");
     }
+
+    // ---- 2.0: margin caps and «Собери сетап» ----
+
+    private static BundlePricing.Config capped(Map<String, Integer> caps, List<BundlePricing.Rule> setup, int setupPct) {
+        return new BundlePricing.Config(true, List.of(5, 10, 15), 50, 0, caps::get, setup, setupPct);
+    }
+
+    @Test
+    void marginCapLimitsTierPerCategory() {
+        // Tier 3 = 15 %, but cloth may give 10 % and sleeves 7 %; glides are uncapped (null → 100).
+        var cfg = capped(Map.of("cloth", 10, "sleeves", 7), List.of(), 0);
+        var r = BundlePricing.compute(List.of(
+                line("mouse", "mice", 3000, 1),
+                line("mat", "cloth", 1400, 1),
+                line("glides", "glides", 150, 1),
+                line("sleeve", "sleeves", 270, 1)), RULES, PATH, cfg);
+        assertThat(r.addonUnits()).isEqualTo(3);
+        assertThat(r.lines().get("mat").percent()).isEqualTo(10);
+        assertThat(r.lines().get("sleeve").percent()).isEqualTo(7);
+        assertThat(r.lines().get("glides").percent()).isEqualTo(15);
+        // 1400×10 % = 140, 270×7 % = 18 (18.9), 150×15 % = 22 (22.5)
+        assertThat(r.discountMinor()).isEqualTo((140 + 18 + 22) * 100);
+        assertThat(r.percent()).isEqualTo(15);
+    }
+
+    @Test
+    void zeroCapCategoryIsNoAddonAndDoesNotRaiseTheTier() {
+        var cfg = capped(Map.of("glides", 0), List.of(), 0);
+        var r = BundlePricing.compute(List.of(
+                line("mouse", "mice", 3000, 1),
+                line("mat", "cloth", 1400, 1),
+                line("glides", "glides", 150, 1)), RULES, PATH, cfg);
+        assertThat(r.addonUnits()).isEqualTo(1);
+        assertThat(r.lines()).containsOnlyKeys("mat");
+        assertThat(r.lines().get("mat").percent()).isEqualTo(5);
+    }
+
+    @Test
+    void setupLineGetsSetupPercentCappedAndIgnoresPriceLimit() {
+        var setup = List.of(new BundlePricing.Rule("keyboards", "mice"));
+        var cfg = capped(Map.of("mice", 3), setup, 5);
+        // The mouse costs 80 % of the keyboard: no add-on (50 %), but a setup item.
+        var r = BundlePricing.compute(List.of(
+                line("kb", "keyboards", 4000, 1),
+                line("mouse", "mice", 3200, 2),
+                line("glides", "glides", 400, 1)), RULES, PATH, cfg);
+        BundlePricing.LineDiscount m = r.lines().get("mouse");
+        assertThat(m.kind()).isEqualTo(BundlePricing.KIND_SETUP);
+        assertThat(m.percent()).isEqualTo(3);
+        assertThat(m.units()).isEqualTo(1);
+        assertThat(m.discountMinor()).isEqualTo(96 * 100);
+        // Glides are the mouse's add-on: tier 1, setup does not count.
+        assertThat(r.addonUnits()).isEqualTo(1);
+        assertThat(r.lines().get("glides").percent()).isEqualTo(5);
+    }
+
+    @Test
+    void setupWithZeroPercentGivesNothing() {
+        var setup = List.of(new BundlePricing.Rule("keyboards", "mice"));
+        var r = BundlePricing.compute(List.of(
+                line("kb", "keyboards", 4000, 1),
+                line("mouse", "mice", 3200, 1)), List.of(), PATH, capped(Map.of(), setup, 0));
+        assertThat(r).isEqualTo(BundlePricing.Result.EMPTY);
+    }
 }

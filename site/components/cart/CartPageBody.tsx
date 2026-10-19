@@ -43,7 +43,13 @@ export function CartPageBody() {
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex min-w-0 flex-col gap-6">
             <CartLines addonPercent={bundle.addonPercent} />
-            <BundleSuggestions suggestions={quote?.suggestions} nextPercent={bundle.nextPercent} place="cart" />
+            <BundleSuggestions
+              suggestions={quote?.suggestions}
+              offers={quote?.offers}
+              holdoutPercent={quote?.terms?.holdoutPercent}
+              nextPercent={bundle.nextPercent}
+              place="cart"
+            />
           </div>
           <aside className="nb hud-frame h-fit p-5 lg:sticky lg:top-[140px]">
             <CartGiftProgress totalMinor={totalMinor} className="mb-4" />

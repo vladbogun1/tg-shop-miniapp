@@ -1,16 +1,18 @@
 "use client";
 
 /**
- * Cart side of «Разом дешевше»: the «Докинь до замовлення» strip (accessories for what is in the
- * cart, with the percent the next one would get). It reads the server quote (lib/bundle.ts) — the cart never prices the bundle itself.
+ * Cart side of «Разом дешевше» (2.0): one compact line — the best accessory for what is in the cart
+ * with the percent it would get and a «+». It reads the server quote (lib/bundle.ts) — the cart never
+ * prices the bundle itself. The control group (`bundleGroup`) does not see it.
  */
 import { motion } from "framer-motion";
 import { ChevronRight, Plus } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { bundlePercent, BUNDLE_MAX_ADDON_UNITS, type BundleQuote } from "@shop/shared";
+import { useEffect, useMemo, useRef } from "react";
+import { bundleGroup, bundlePercent, BUNDLE_MAX_ADDON_UNITS, type BundleOfferItem, type BundleQuote } from "@shop/shared";
 import { PercentChip } from "@/components/catalog/BundleBlock";
 import { useT } from "@/i18n/context";
-import { trackAddToCart, trackBundleAdd, trackBundleView } from "@/lib/analytics";
+import { trackAddToCart, trackBundleAdd, trackBundleHoldout, trackBundleView } from "@/lib/analytics";
+import { bundleVisitorId } from "@/lib/bundle";
 import { useCart } from "@/lib/cart";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -30,32 +32,38 @@ export function BundleSuggestions({
 }) {
   const t = useT();
   const add = useCart((s) => s.add);
-  const items = (quote?.terms.enabled ? quote.suggestions : []).slice(0, 3);
-  const ids = items.map((p) => p.id).join(",");
+  const group = useMemo(() => bundleGroup(bundleVisitorId(), quote?.terms.holdoutPercent), [quote?.terms.holdoutPercent]);
+  const offers: BundleOfferItem[] = quote?.terms.enabled
+    ? quote.offers ?? quote.suggestions.map((product) => ({ product, capPercent: 100, reasons: [], kind: null }))
+    : [];
+  const best = offers.find((o) => o.capPercent > 0) ?? null;
+  const id = best?.product.id ?? "";
 
   const viewed = useRef(false);
   useEffect(() => {
-    if (!ids || viewed.current) return;
+    if (!id || viewed.current) return;
     viewed.current = true;
-    trackBundleView("cart", ids.split(","));
-  }, [ids]);
+    if (group === "H") trackBundleHoldout("cart", [id]);
+    else trackBundleView("cart", [id]);
+  }, [id, group]);
 
-  if (!quote || items.length === 0) return null;
+  if (!quote || !best || group === "H") return null;
+  const p = best.product;
 
   // Units that already got the discount; the next add-on moves the order to the next tier.
-  const units = quote.discountKind === "BUNDLE" ? quote.lines.reduce((s, l) => s + l.units, 0) : 0;
-  const next = units < BUNDLE_MAX_ADDON_UNITS ? bundlePercent(quote.terms, units + 1) : 0;
-  const max = bundlePercent(quote.terms, BUNDLE_MAX_ADDON_UNITS);
+  const units = quote.discountKind === "BUNDLE" ? quote.lines.filter((l) => l.kind !== "SETUP").reduce((s, l) => s + l.units, 0) : 0;
+  const next = units < BUNDLE_MAX_ADDON_UNITS ? Math.min(bundlePercent(quote.terms, units + 1), best.capPercent) : 0;
+  const variants = hasVariants(p);
 
-  const tap = (p: Product) => {
+  const tap = () => {
     haptic();
-    if (hasVariants(p)) {
+    if (variants) {
       onOpenProduct(p);
       return;
     }
     add(p, null, 1);
     trackAddToCart(p.id, null, 1);
-    trackBundleAdd("cart", [p.id]);
+    trackBundleAdd("cart", [p.id], { slot: 1, kind: "cart" });
   };
 
   return (
@@ -66,62 +74,34 @@ export function BundleSuggestions({
       className="mt-5"
       aria-label={t("bundle.suggestTitle")}
     >
-      <div className="mb-2">
-        <h2 className="font-display text-[15px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">
-          {t("bundle.suggestTitle")}
-        </h2>
-        {max > 0 && (
-          <p className="text-[12px] font-medium text-[var(--muted)]">{t("bundle.suggestHint", { max })}</p>
-        )}
-      </div>
-      <div className={`grid gap-2 ${items.length === 1 ? "grid-cols-1" : items.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-        {items.map((p) => {
-          const variants = hasVariants(p);
-          const single = items.length === 1;
-          const action = (
-            <span
-              aria-hidden
-              className={`grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r)] ${
-                variants
-                  ? "border border-[var(--line-strong)] bg-[rgba(14,14,16,.8)] text-[var(--ink)]"
-                  : "bg-[var(--accent)] text-[var(--accent-ink)]"
-              } ${single ? "" : "absolute bottom-1 right-1"}`}
-            >
-              {variants ? <ChevronRight className="h-4 w-4" strokeWidth={2.5} /> : <Plus className="h-4 w-4" strokeWidth={2.75} />}
+      <button
+        type="button"
+        onClick={tap}
+        aria-label={variants ? `${t("bundle.choose")}: ${p.title}` : t("bundle.addOne", { title: p.title })}
+        className="nb nb-press flex w-full min-w-0 items-center gap-3 p-2 text-left"
+      >
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
+          <Image src={p.images?.[0]?.url} alt="" size={120} className="h-full w-full" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--muted)]">{t("bundle.suggestTitle")}</p>
+          <p className="line-clamp-1 text-[12.5px] font-semibold leading-snug text-[var(--ink)]">{p.title}</p>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <span className="font-display whitespace-nowrap text-[12px] font-bold tabular-nums text-[var(--accent)]">
+              {money(p.priceMinor, p.currency)}
             </span>
-          );
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => tap(p)}
-              aria-label={variants ? `${t("bundle.choose")}: ${p.title}` : t("bundle.addOne", { title: p.title })}
-              className={`nb nb-press relative flex min-w-0 p-2 text-left ${single ? "items-center gap-3" : "flex-col"}`}
-            >
-              <div
-                className={`relative shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)] ${
-                  single ? "h-14 w-14" : "aspect-square w-full"
-                }`}
-              >
-                <Image src={p.images?.[0]?.url} alt={p.title} size={200} className="h-full w-full" />
-                {next > 0 && (
-                  <span className="absolute left-1 top-1">
-                    <PercentChip percent={next} />
-                  </span>
-                )}
-                {!single && action}
-              </div>
-              <div className={`min-w-0 ${single ? "flex-1" : "mt-1.5 w-full"}`}>
-                <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-[var(--ink)]">{p.title}</p>
-                <p className="font-display mt-1 whitespace-nowrap text-[12px] font-bold tabular-nums text-[var(--accent)]">
-                  {money(p.priceMinor, p.currency)}
-                </p>
-              </div>
-              {single && action}
-            </button>
-          );
-        })}
-      </div>
+            {next > 0 && <PercentChip percent={next} />}
+          </div>
+        </div>
+        <span
+          aria-hidden
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r)] ${
+            variants ? "border border-[var(--line-strong)] text-[var(--ink)]" : "bg-[var(--accent)] text-[var(--accent-ink)]"
+          }`}
+        >
+          {variants ? <ChevronRight className="h-4 w-4" strokeWidth={2.5} /> : <Plus className="h-4 w-4" strokeWidth={2.75} />}
+        </span>
+      </button>
     </motion.section>
   );
 }

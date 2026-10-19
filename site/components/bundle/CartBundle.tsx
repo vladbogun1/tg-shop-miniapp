@@ -7,11 +7,11 @@
  */
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
-import { type BundleQuote, type Product, type StorefrontProduct } from "@shop/shared";
+import { useEffect, useMemo, useRef } from "react";
+import { bundleGroup, type BundleOfferItem, type BundleQuote, type Product, type StorefrontProduct } from "@shop/shared";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
-import { trackAddToCart, trackBundle } from "@/lib/analytics";
+import { trackAddToCart, trackBundle, visitorId } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
@@ -82,15 +82,23 @@ export function CartTotals({
   );
 }
 
-/** «Докинь до замовлення»: 1–3 accessories for what is in the cart, one click to add. */
+/**
+ * «Докинь до замовлення» (2.0): one line — the best accessory for what is in the cart, one click to
+ * add. With `offers` (2.0 server) the percent is capped by the item's margin cap and the control
+ * group (`holdoutPercent`) does not see the line.
+ */
 export function BundleSuggestions({
   suggestions,
+  offers,
+  holdoutPercent,
   nextPercent,
   place,
-  max = 3,
+  max = 1,
   onNavigate,
 }: {
   suggestions: Product[] | undefined;
+  offers?: BundleOfferItem[];
+  holdoutPercent?: number;
   nextPercent: number;
   place: Place;
   max?: number;
@@ -99,7 +107,10 @@ export function BundleSuggestions({
   const { t, href } = useI18n();
   const fmt = useFmt();
   const add = useCart((s) => s.add);
-  const items = (suggestions ?? []).filter((p) => stockOf(p, null) > 0).slice(0, max);
+  const group = useMemo(() => bundleGroup(visitorId(), holdoutPercent), [holdoutPercent]);
+  const capOf = new Map((offers ?? []).map((o) => [o.product.id, o.capPercent]));
+  const pool = offers ? offers.filter((o) => o.capPercent > 0).map((o) => o.product) : suggestions ?? [];
+  const items = pool.filter((p) => stockOf(p, null) > 0 || (p.variants ?? []).some((v) => v.stock > 0)).slice(0, max);
   const compact = place === "drawer";
 
   const viewed = useRef(false);
@@ -107,10 +118,10 @@ export function BundleSuggestions({
   useEffect(() => {
     if (viewed.current || !ids) return;
     viewed.current = true;
-    trackBundle("bundle_view", place, ids.split(","));
-  }, [ids, place]);
+    trackBundle(group === "H" ? "bundle_holdout" : "bundle_view", place, ids.split(","));
+  }, [ids, place, group]);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 || group === "H") return null;
 
   return (
     <section aria-labelledby={`bundle-sg-${place}`} className={compact ? "mt-4" : "nb p-4 sm:p-5"}>
@@ -125,6 +136,7 @@ export function BundleSuggestions({
         {items.map((p) => {
           const pHref = href(`/product/${slugOf(p)}`);
           const variants = (p.variants?.length ?? 0) > 0;
+          const pct = Math.min(nextPercent, capOf.get(p.id) ?? 100);
           return (
             <li key={p.id} className="flex items-center gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-2">
               <Link
@@ -144,9 +156,9 @@ export function BundleSuggestions({
                 </Link>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(p.priceMinor, p.currency)}</span>
-                  {nextPercent > 0 && (
+                  {pct > 0 && (
                     <span className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 font-display text-[11px] font-bold text-[var(--accent-hi)]">
-                      {t("bundle.suggest.percent", { n: nextPercent })}
+                      {t("bundle.suggest.percent", { n: pct })}
                     </span>
                   )}
                 </p>
@@ -169,7 +181,7 @@ export function BundleSuggestions({
                   onClick={() => {
                     add(p, null, 1);
                     trackAddToCart(p.id, null, 1);
-                    trackBundle("bundle_add", place, [p.id]);
+                    trackBundle("bundle_add", place, [p.id], { slot: 1, kind: "cart" });
                     toast(t("product.added"));
                   }}
                   className="tap grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)] transition-colors hover:bg-[var(--accent)] hover:text-[#0e0e10]"

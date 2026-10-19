@@ -70,6 +70,27 @@ export function useBundleQuote(lines: CartLine[], promoDiscountMinor: number) {
   return { quote, last: query.data ?? null };
 }
 
+/**
+ * Stable id for the control group (`bundleGroup`): the Telegram user id, else an id kept in this
+ * browser — the same visitor stays in the same group on every product.
+ */
+export function bundleVisitorId(): string {
+  try {
+    const w = window as unknown as { Telegram?: { WebApp?: { initDataUnsafe?: { user?: { id?: number } } } } };
+    const id = w.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (id) return String(id);
+    const k = "mx-bundle-id";
+    let v = localStorage.getItem(k);
+    if (!v) {
+      v = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(k, v);
+    }
+    return v;
+  } catch {
+    return "";
+  }
+}
+
 /** Bundle percent of a cart line in the quote (0 when the line is not an add-on or promo won). */
 export function addonPercent(quote: BundleQuote | null, productId: string, variantId: string | null): number {
   if (!quote || quote.discountKind !== "BUNDLE") return 0;

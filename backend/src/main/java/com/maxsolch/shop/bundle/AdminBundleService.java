@@ -1,19 +1,20 @@
 package com.maxsolch.shop.bundle;
 
 import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.bundle.BundleDtos.MarginDto;
+import com.maxsolch.shop.bundle.BundleDtos.MarginRequest;
 import com.maxsolch.shop.bundle.BundleDtos.ProductOfferDto;
 import com.maxsolch.shop.bundle.BundleDtos.RuleDto;
 import com.maxsolch.shop.bundle.BundleDtos.RuleRequest;
+import com.maxsolch.shop.bundle.BundleDtos.SetupRuleDto;
 import com.maxsolch.shop.bundle.BundleDtos.StatsDto;
 import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.service.CatalogService;
-import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
-import com.maxsolch.shop.web.dto.ProductDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,8 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 @Service
 public class AdminBundleService {
@@ -31,6 +34,8 @@ public class AdminBundleService {
     private static final String ADMIN_LANG = "ru";
 
     private final BundleRuleRepository repository;
+    private final BundleSetupRuleRepository setupRepository;
+    private final BundleCategoryMarginRepository marginRepository;
     private final BundleService bundles;
     private final CatalogDirectory directory;
     private final CatalogService catalogService;
@@ -38,10 +43,13 @@ public class AdminBundleService {
     private final AdminAuditService audit;
     private final JdbcTemplate jdbc;
 
-    public AdminBundleService(BundleRuleRepository repository, BundleService bundles, CatalogDirectory directory,
-                              CatalogService catalogService, SettingsService settings, AdminAuditService audit,
-                              JdbcTemplate jdbc) {
+    public AdminBundleService(BundleRuleRepository repository, BundleSetupRuleRepository setupRepository,
+                              BundleCategoryMarginRepository marginRepository, BundleService bundles,
+                              CatalogDirectory directory, CatalogService catalogService, SettingsService settings,
+                              AdminAuditService audit, JdbcTemplate jdbc) {
         this.repository = repository;
+        this.setupRepository = setupRepository;
+        this.marginRepository = marginRepository;
         this.bundles = bundles;
         this.directory = directory;
         this.catalogService = catalogService;
@@ -109,16 +117,131 @@ public class AdminBundleService {
                 dto.sourceCategoryName() + " → " + dto.targetCategoryName());
     }
 
-    /** The storefront block for a product, even while the feature is switched off. */
+    /** The storefront block for a product with the score factors, even while the feature is switched off. */
     @Transactional(readOnly = true)
     public ProductOfferDto preview(String productId) {
-        List<ProductDto> all = catalogService.listActiveProducts(ADMIN_LANG);
-        ProductDto anchor = all.stream().filter(p -> p.id().equals(productId)).findFirst()
-                .orElseThrow(() -> new NotFoundException("товар не найден или скрыт"));
-        List<ProductDto> items = bundles.suggest(List.of(anchor), all, Set.of(productId),
-                settings.getInt(SettingsRegistry.BUNDLE_MAX_ADDON_PRICE_PERCENT),
-                settings.getInt(SettingsRegistry.BUNDLE_MAX_SUGGESTIONS));
-        return new ProductOfferDto(productId, bundles.terms(), items);
+        boolean known = catalogService.listActiveProducts(ADMIN_LANG).stream().anyMatch(p -> p.id().equals(productId));
+        if (!known) {
+            throw new NotFoundException("товар не найден или скрыт");
+        }
+        return bundles.offer(productId, ADMIN_LANG, true, 0, true);
+    }
+
+    // ---- «Собери сетап» pairs ----
+
+    @Transactional(readOnly = true)
+    public List<SetupRuleDto> setupRules() {
+        CatalogSnapshot snap = directory.snapshot();
+        return setupRepository.findAllByOrderBySortOrderAscIdAsc().stream().map(r -> setupDto(r, snap)).toList();
+    }
+
+    @Transactional
+    public SetupRuleDto createSetup(RuleRequest body) {
+        if (body == null) {
+            throw new BadRequestException("пустой запрос");
+        }
+        CatalogSnapshot snap = directory.snapshot();
+        CatalogSnapshot.Cat source = category(snap, body.sourceCategoryId(), "основного товара");
+        CatalogSnapshot.Cat target = category(snap, body.targetCategoryId(), "товара для сетапа");
+        if (source.id().equals(target.id())) {
+            throw new BadRequestException("Категории должны отличаться");
+        }
+        byte[] s = UuidUtil.toBytes(source.id());
+        byte[] t = UuidUtil.toBytes(target.id());
+        if (setupRepository.existsBySourceCategoryIdAndTargetCategoryId(s, t)) {
+            throw new BadRequestException("Такая пара уже есть: " + source.name() + " → " + target.name());
+        }
+        BundleSetupRule r = new BundleSetupRule();
+        r.setSourceCategoryId(s);
+        r.setTargetCategoryId(t);
+        r.setSortOrder(body.sortOrder() != null ? body.sortOrder()
+                : setupRepository.findAll().stream().mapToInt(BundleSetupRule::getSortOrder).max().orElse(0) + 10);
+        r.setActive(body.active() == null || body.active());
+        BundleSetupRule saved = setupRepository.save(r);
+        audit.record("BUNDLE_SETUP_CREATE", "BUNDLE_SETUP_RULE", String.valueOf(saved.getId()),
+                source.name() + " → " + target.name());
+        return setupDto(saved, snap);
+    }
+
+    @Transactional
+    public SetupRuleDto updateSetup(long id, RuleRequest body) {
+        BundleSetupRule r = setupRepository.findById(id).orElseThrow(() -> new NotFoundException("пара не найдена"));
+        if (body != null && body.sortOrder() != null) {
+            r.setSortOrder(body.sortOrder());
+        }
+        if (body != null && body.active() != null) {
+            r.setActive(body.active());
+        }
+        SetupRuleDto dto = setupDto(setupRepository.save(r), directory.snapshot());
+        audit.record("BUNDLE_SETUP_UPDATE", "BUNDLE_SETUP_RULE", String.valueOf(id),
+                dto.sourceCategoryName() + " → " + dto.targetCategoryName()
+                        + (r.isActive() ? "" : " (выключена)") + ", порядок " + r.getSortOrder());
+        return dto;
+    }
+
+    @Transactional
+    public void deleteSetup(long id) {
+        BundleSetupRule r = setupRepository.findById(id).orElseThrow(() -> new NotFoundException("пара не найдена"));
+        SetupRuleDto dto = setupDto(r, directory.snapshot());
+        setupRepository.delete(r);
+        audit.record("BUNDLE_SETUP_DELETE", "BUNDLE_SETUP_RULE", String.valueOf(id),
+                dto.sourceCategoryName() + " → " + dto.targetCategoryName());
+    }
+
+    // ---- margins ----
+
+    /** Every category in tree order with its own and effective margin, and the discount cap. */
+    @Transactional(readOnly = true)
+    public List<MarginDto> margins() {
+        CatalogSnapshot snap = directory.snapshot();
+        BundleMargins m = bundles.margins();
+        Map<String, BundleCategoryMargin> rows = new HashMap<>();
+        marginRepository.findAll().forEach(r -> rows.put(UuidUtil.toString(r.getCategoryId()), r));
+        List<MarginDto> out = new ArrayList<>();
+        for (CatalogSnapshot.Cat c : snap.treeOrder()) {
+            BundleCategoryMargin r = rows.get(c.id());
+            out.add(new MarginDto(c.id(), name(snap, c.id()), c.parentId(),
+                    r == null ? null : r.getMarginPercent(), r == null ? null : r.getDiscountPercent(),
+                    r == null ? null : r.getAutoPercent(), r == null ? null : r.getAutoUpdatedAt(),
+                    m.margin(c.id()), m.maxPercent(c.id()), m.cap(c.id()), m.capSource(c.id())));
+        }
+        return out;
+    }
+
+    /** Sets the margin and the manual discount of one category (null clears them). */
+    @Transactional
+    public List<MarginDto> saveMargin(MarginRequest body) {
+        if (body == null) {
+            throw new BadRequestException("пустой запрос");
+        }
+        CatalogSnapshot snap = directory.snapshot();
+        CatalogSnapshot.Cat c = category(snap, body.categoryId(), "");
+        if (body.marginPercent() != null && (body.marginPercent() < 0 || body.marginPercent() > 95)) {
+            throw new BadRequestException("Маржа — от 0 до 95 %");
+        }
+        if (body.discountPercent() != null && (body.discountPercent() < 0 || body.discountPercent() > 50)) {
+            throw new BadRequestException("Скидка — от 0 до 50 %");
+        }
+        byte[] id = UuidUtil.toBytes(c.id());
+        BundleCategoryMargin r = marginRepository.findById(id).orElse(null);
+        if (r == null) {
+            r = new BundleCategoryMargin();
+            r.setCategoryId(id);
+        }
+        r.setMarginPercent(body.marginPercent());
+        r.setDiscountPercent(body.discountPercent());
+        if (r.getMarginPercent() == null && r.getDiscountPercent() == null && r.getAutoPercent() == null) {
+            if (r.getUpdatedAt() != null) {
+                marginRepository.delete(r);
+            }
+        } else {
+            marginRepository.save(r);
+        }
+        marginRepository.flush();
+        audit.record("BUNDLE_MARGIN_UPDATE", "CATEGORY", c.id(), name(snap, c.id()) + ": маржа "
+                + (body.marginPercent() == null ? "средняя" : body.marginPercent() + " %") + ", скидка "
+                + (body.discountPercent() == null ? "авто" : body.discountPercent() + " %"));
+        return margins();
     }
 
     @Transactional(readOnly = true)
@@ -143,6 +266,12 @@ public class AdminBundleService {
             throw new BadRequestException("Выберите категорию " + what);
         }
         return c;
+    }
+
+    private static SetupRuleDto setupDto(BundleSetupRule r, CatalogSnapshot snap) {
+        String s = UuidUtil.toString(r.getSourceCategoryId());
+        String t = UuidUtil.toString(r.getTargetCategoryId());
+        return new SetupRuleDto(r.getId(), s, name(snap, s), t, name(snap, t), r.getSortOrder(), r.isActive());
     }
 
     private static RuleDto dto(BundleRule r, CatalogSnapshot snap) {

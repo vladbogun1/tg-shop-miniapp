@@ -128,8 +128,20 @@ export function trackGiftCaseOpen(orderId: string, rarity: string) {
  * «Разом дешевше»: bundle_view (the block/suggestions were shown) / bundle_add (accessories added
  * from it). `place` — product page, cart page or drawer; `ids` — the products shown/added.
  */
-export function trackBundle(event: "bundle_view" | "bundle_add", place: "product" | "cart" | "drawer", ids: string[]) {
-  track(event, { place, ids });
+export function trackBundle(
+  event: "bundle_view" | "bundle_add" | "bundle_holdout",
+  place: "product" | "cart" | "drawer",
+  ids: string[],
+  extra: { slot?: number; kind?: string; ex?: boolean | number } = {},
+) {
+  // 2.0: the funnel reads the group (`g`) and, for adds, `productIds` (docs/BUNDLES.md «Замер»).
+  const g = event === "bundle_holdout" ? "H" : "B";
+  track(event, event === "bundle_add" ? { place, g, productIds: ids, ...extra } : { place, g, ids, ...extra });
+}
+
+/** Stable id of this browser (`mx-aid`) — the group of «Разом дешевше» (bundleGroup) hangs on it. */
+export function visitorId(): string {
+  return anonId();
 }
 
 export function trackCheckoutStart() {

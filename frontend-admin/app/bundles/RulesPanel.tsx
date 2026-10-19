@@ -3,6 +3,7 @@
 /**
  * «Пары категорий»: which accessories to offer next to which products. The order of the list is the
  * order of the offer (first pair = first suggestions). Each change goes to the server at once.
+ * `kind="setup"` — the same list for «Собери сетап» (big items next to big items, /setup-rules).
  */
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,14 +20,43 @@ import { Toggle } from "@/components/ui/Toggle";
 import { PanelHeader } from "../settings/PanelHeader";
 
 export const RULES_KEY = ["bundles", "rules"] as const;
+export const SETUP_RULES_KEY = ["bundles", "setup-rules"] as const;
+
+const KINDS = {
+  addon: {
+    key: RULES_KEY,
+    list: bundlesApi.rules,
+    create: bundlesApi.createRule,
+    patch: bundlesApi.patchRule,
+    remove: bundlesApi.deleteRule,
+    title: "Пары категорий",
+    description: "К товару из левой категории (и её подкатегорий) предлагаем товары из правой. Порядок списка — порядок предложений.",
+    empty: "Пар пока нет — без них покупателю нечего предложить.",
+    targetLabel: "Предлагать из",
+    targetPlaceholder: "Категория аксессуаров",
+  },
+  setup: {
+    key: SETUP_RULES_KEY,
+    list: bundlesApi.setupRules,
+    create: bundlesApi.createSetupRule,
+    patch: bundlesApi.patchSetupRule,
+    remove: bundlesApi.deleteSetupRule,
+    title: "«Собери сетап»: пары",
+    description: "Крупные товары рядом с крупными (мышь → клавиатура). Подбираются в цвет; скидка — «Скидка в сетапе».",
+    empty: "Пар нет — блок «Собери сетап» не показывается.",
+    targetLabel: "Предлагать из",
+    targetPlaceholder: "Категория товаров",
+  },
+} as const;
 
 const byOrder = (a: BundleRule, b: BundleRule) => a.sortOrder - b.sortOrder || a.id - b.id;
 
-export function RulesPanel() {
+export function RulesPanel({ kind = "addon" }: { kind?: keyof typeof KINDS }) {
+  const cfg = KINDS[kind];
   const qc = useQueryClient();
   const { push } = useToast();
   const [confirm, confirmUi] = useConfirm();
-  const rulesQ = useQuery({ queryKey: RULES_KEY, queryFn: bundlesApi.rules });
+  const rulesQ = useQuery({ queryKey: cfg.key, queryFn: cfg.list });
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, staleTime: 60_000 });
   const rules = useMemo(() => [...(rulesQ.data ?? [])].sort(byOrder), [rulesQ.data]);
 
@@ -35,7 +65,8 @@ export function RulesPanel() {
   const [target, setTarget] = useState("");
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: RULES_KEY });
+    qc.invalidateQueries({ queryKey: cfg.key });
+    qc.invalidateQueries({ queryKey: ["bundles", "pairs"] });
     qc.invalidateQueries({ queryKey: ["bundles", "preview"] });
   };
   const fail = (e: unknown, fallback: string) => push(e instanceof ApiError ? e.message : fallback, "error");
@@ -43,7 +74,7 @@ export function RulesPanel() {
   async function toggle(r: BundleRule, active: boolean) {
     setBusy(r.id);
     try {
-      await bundlesApi.patchRule(r.id, { active });
+      await cfg.patch(r.id, { active });
       refresh();
     } catch (e) {
       fail(e, "Не удалось изменить пару");
@@ -61,14 +92,14 @@ export function RulesPanel() {
     setBusy(a.id);
     try {
       if (a.sortOrder !== b.sortOrder) {
-        await bundlesApi.patchRule(a.id, { sortOrder: b.sortOrder });
-        await bundlesApi.patchRule(b.id, { sortOrder: a.sortOrder });
+        await cfg.patch(a.id, { sortOrder: b.sortOrder });
+        await cfg.patch(b.id, { sortOrder: a.sortOrder });
       } else {
         const next = [...rules];
         [next[i], next[j]] = [next[j], next[i]];
         for (let k = 0; k < next.length; k++) {
           const want = (k + 1) * 10;
-          if (next[k].sortOrder !== want) await bundlesApi.patchRule(next[k].id, { sortOrder: want });
+          if (next[k].sortOrder !== want) await cfg.patch(next[k].id, { sortOrder: want });
         }
       }
       refresh();
@@ -95,7 +126,7 @@ export function RulesPanel() {
     if (!ok) return;
     setBusy(r.id);
     try {
-      await bundlesApi.deleteRule(r.id);
+      await cfg.remove(r.id);
       push("Пара удалена", "ok");
       refresh();
     } catch (e) {
@@ -114,7 +145,7 @@ export function RulesPanel() {
     setBusy("add");
     try {
       const sortOrder = (rules.reduce((m, r) => Math.max(m, r.sortOrder), 0) || 0) + 10;
-      await bundlesApi.createRule({ sourceCategoryId: source, targetCategoryId: target, sortOrder, active: true });
+      await cfg.create({ sourceCategoryId: source, targetCategoryId: target, sortOrder, active: true });
       push("Пара добавлена", "ok");
       setSource("");
       setTarget("");
@@ -130,13 +161,13 @@ export function RulesPanel() {
     <section className="panel min-w-0 p-4 sm:p-5">
       <PanelHeader
         icon={Link2}
-        title="Пары категорий"
-        description="К товару из левой категории (и её подкатегорий) предлагаем товары из правой. Порядок списка — порядок предложений."
+        title={cfg.title}
+        description={cfg.description}
       />
 
       <QueryState isLoading={rulesQ.isLoading} isError={rulesQ.isError} error={rulesQ.error} refetch={rulesQ.refetch} loadingLabel="Загрузка пар">
         {rules.length === 0 ? (
-          <p className="card-2 p-3 text-[13px] text-[var(--text-muted)]">Пар пока нет — без них покупателю нечего предложить.</p>
+          <p className="card-2 p-3 text-[13px] text-[var(--text-muted)]">{cfg.empty}</p>
         ) : (
           <ol className="flex min-w-0 flex-col gap-2">
             {rules.map((r, i) => (
@@ -185,12 +216,12 @@ export function RulesPanel() {
           />
           <ArrowRight className="hidden h-4 w-4 self-center text-[var(--text-faint)] sm:mb-3 sm:block sm:self-end" />
           <CategoryTreeSelect
-            label="Предлагать из"
+            label={cfg.targetLabel}
             mode="any"
             categories={categories}
             value={target}
             onChange={setTarget}
-            placeholder="Категория аксессуаров"
+            placeholder={cfg.targetPlaceholder}
             error={addError}
           />
         </div>
