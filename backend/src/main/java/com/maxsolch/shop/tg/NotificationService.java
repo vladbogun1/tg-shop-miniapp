@@ -1,6 +1,7 @@
 package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.CustomerRejectReason;
@@ -29,6 +30,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -266,6 +269,42 @@ public class NotificationService {
             log.warn("notifyCustomerGiftCase failed for order {}: {}", idStr(order), e.getMessage());
         }
     }
+
+    /**
+     * DM the customer the promo code a discount prize of their gift case just gave: the code, the
+     * discount, how long it lasts, and a button to the cart (where the code is offered as «Приз із
+     * кейса»). Only customers who have a Telegram chat with the bot; the caller sends it once.
+     */
+    public void notifyCustomerCasePromo(Order order, String code, int percent, long amountMinor,
+                                        Instant expiresAt) {
+        if (!enabled() || code == null || code.isBlank()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
+            String text = messages.get(locale, "bot.giftCase.promoTitle") + "\n"
+                    + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                    + messages.get(locale, "bot.giftCase.promoBody", discount, escHtml(code)) + "\n"
+                    + (expiresAt == null ? "" : messages.get(locale, "bot.giftCase.promoUntil",
+                            expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n")
+                    + messages.get(locale, "bot.giftCase.promoHint");
+            dm("ORDER_CASE_PROMO", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(cartButton(locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerCasePromo failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     /** DM the customer that an admin applied a discount to their order. */
     public void notifyCustomerDiscount(Order order) {
@@ -781,6 +820,19 @@ public class NotificationService {
         InlineKeyboardButton btn = InlineKeyboardButton.builder()
                 .text(messages.get(locale, "bot.openOrder"))
                 .webApp(WebAppInfo.builder().url(webapp + "?startapp=view_" + idStr(order)).build())
+                .build();
+        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
+    }
+
+    /** Opens the cart in the Mini App (deep link {@code cart}). */
+    private InlineKeyboardMarkup cartButton(Locale locale) {
+        String webapp = props.getWebappBaseUrl();
+        if (!isHttps(webapp)) {
+            return null;
+        }
+        InlineKeyboardButton btn = InlineKeyboardButton.builder()
+                .text(messages.get(locale, "bot.giftCase.toCart"))
+                .webApp(WebAppInfo.builder().url(webapp + "?startapp=cart").build())
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }

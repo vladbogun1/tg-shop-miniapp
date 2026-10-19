@@ -32,6 +32,14 @@ public final class OrderEvents {
     public record Exchanged(byte[] orderId, boolean notifyCustomer, String givenSummary) {
     }
 
+    /**
+     * The customer opened a gift case and a discount dropped: its personal promo code was issued just
+     * now (once — the case opens once). The bot sends the code itself, not only the shop page.
+     */
+    public record GiftCasePromo(byte[] orderId, String code, int percent, long amountMinor,
+                                java.time.Instant expiresAt) {
+    }
+
     /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
     public record PaymentReceived(byte[] orderId, long amountMinor) {
     }

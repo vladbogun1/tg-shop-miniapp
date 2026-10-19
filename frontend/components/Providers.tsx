@@ -5,7 +5,7 @@
  *  - TanStack Query (data cache, background refetch).
  *  - Telegram init (ready/expand/safe areas) via useTelegram().
  *  - Auth boot: exchange initData → JWT (held in memory by lib/api).
- *  - Deep link: ?startapp=order_<id> opens that order's chat.
+ *  - Deep link: ?startapp=order_<id> opens that order's chat, ?startapp=cart the cart.
  *  - Interaction journal (lib/analytics): buffered locally, flushed to the backend in batches.
  *  - Server cart sync (lib/cart-sync): the cart follows the customer to the website and back.
  *  - Language (i18n/context): resolved from the device, then Telegram, then Ukrainian.
@@ -89,6 +89,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (!tg.ready || deepLinked.current) return;
     deepLinked.current = true;
     const param = getStartParam();
+    // cart: the bot's "case discount" message → the cart, where the code is offered.
+    if (param === "cart") {
+      router.push("/cart");
+      return;
+    }
     const viewId = parseOrderViewDeepLink(param);
     if (viewId) {
       router.push(`/account/orders/${viewId}`);

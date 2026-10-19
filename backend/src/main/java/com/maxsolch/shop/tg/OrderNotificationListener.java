@@ -85,6 +85,13 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onGiftCasePromo(OrderEvents.GiftCasePromo event) {
+        withOrder(event.orderId(), order -> notificationService.notifyCustomerCasePromo(
+                order, event.code(), event.percent(), event.amountMinor(), event.expiresAt()));
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
             notificationService.onPaymentReceived(order, event.amountMinor());

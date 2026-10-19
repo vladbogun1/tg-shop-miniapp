@@ -12,6 +12,8 @@ import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.service.OrderEvents;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +35,15 @@ public class GiftCaseService {
     private final GiftService giftService;
     private final CatalogService catalogService;
     private final JdbcTemplate jdbc;
+    private final ApplicationEventPublisher events;
 
     public GiftCaseService(OrderService orderService, GiftService giftService, CatalogService catalogService,
-                           JdbcTemplate jdbc) {
+                           JdbcTemplate jdbc, ApplicationEventPublisher events) {
         this.orderService = orderService;
         this.giftService = giftService;
         this.catalogService = catalogService;
         this.jdbc = jdbc;
+        this.events = events;
     }
 
     /** POST …/gift-case/open: SEALED → OPENED once, only paid; a discount prize gets its code. */
@@ -52,6 +56,9 @@ public class GiftCaseService {
                     rec.getDiscountAmountMinor());
             rec.setPromoCode(promo.getCode());
             rec = giftService.saveOrderCase(rec);
+            // Issued just now, so it is told once: the bot DMs the code after the commit.
+            events.publishEvent(new OrderEvents.GiftCasePromo(orderId, promo.getCode(),
+                    promo.getDiscountPercent(), promo.getDiscountAmountMinor(), promo.getExpiresAt()));
         }
         return openDto(order, rec, lang);
     }
