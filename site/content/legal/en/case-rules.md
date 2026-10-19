@@ -32,7 +32,7 @@ The promotion may be paused — the «Case tiers and gifts» block below then sa
 ## 5. How the gift is determined
 
 - Every case contains a gift — there are no empty cases.
-- The gift is determined at random when the order is placed, among the gifts of that tier that are in stock. Rare, epic, legendary and gold gifts come up rarely.
+- The gift is determined at random when the order is placed, among the gifts of that tier that are in stock. Rare, epic, legendary and gold gifts come up rarely. The set of gifts of a tier is the same for every order, but the chances of particular gifts may depend on what the order contains: for some products a discount on the next order comes up more often.
 - The gift is determined by the store's server. The opening animation only shows the gift already determined and does not affect the result.
 
 ## 6. Choice: a guaranteed discount or a case
@@ -43,7 +43,7 @@ On tiers where this is offered, before placing the order the buyer chooses one o
 
 - The case opens in the order once it is paid online — in full or the prepayment. Until then the case stays closed. A case can be opened once.
 - A device is added to the same order free of charge and ships in the same parcel.
-- A discount is given as a personal promo code for the next order. The code can be used once and is valid for a limited time (shown for each tier above). A code not used in time expires.
+- A discount is given as a personal promo code for the next order. The code can be used once and is valid for a limited time (shown for each tier above). A code not used in time expires. A promo code from the case may not apply to some products — then the discount is counted on the rest of the cart.
 
 ## 8. Swapping the gift for a discount
 

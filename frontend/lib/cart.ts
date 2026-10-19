@@ -155,6 +155,14 @@ export function useCartCount(): number {
   return useCart((s) => s.lines.reduce((sum, l) => sum + l.quantity, 0));
 }
 
+/**
+ * The cart lines for the promo check, `id*qty,…` (a code from the gift case is counted without the
+ * low-margin products, like the checkout does). A string, so the selector stays stable.
+ */
+export function useCartPromoItems(): string {
+  return useCart((s) => s.lines.filter((l) => l.quantity > 0).map((l) => `${l.productId}*${l.quantity}`).join(","));
+}
+
 /** Hook: subtotal in minor units (re-renders on change). */
 export function useCartSubtotal(): number {
   return useCart((s) =>

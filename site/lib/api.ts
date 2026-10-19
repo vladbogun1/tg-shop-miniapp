@@ -183,6 +183,11 @@ export function catalogSearchParams(q: CatalogQuery): URLSearchParams {
 
 // ---- endpoints -------------------------------------------------------------------
 
+/** `&items=id*qty,…` for the promo check, nothing when the cart is unknown. */
+function itemsParam(items: string): string {
+  return items ? `&items=${encodeURIComponent(items)}` : "";
+}
+
 export const api = {
   // public catalog
   categories: () => http.get<PublicCategory[]>("/api/public/categories"),
@@ -198,9 +203,10 @@ export const api = {
   gift: () => http.get<GiftResponse>("/api/public/gift"),
   /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
   orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
-  previewPromo: (code: string, subtotalMinor: number) =>
+  /** `items` — the cart lines (`promoItems`): a code from the gift case skips low-margin products. */
+  previewPromo: (code: string, subtotalMinor: number, items = "") =>
     http.get<PromoPreview>(
-      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
     ),
   npCities: (q: string) => http.get<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
   npWarehousesBbox: (p: NpBboxParams) => {
@@ -239,10 +245,10 @@ export const api = {
   revokeAllSessions: () => authed(() => http.del<void>("/api/me/sessions")),
   setLocale: (locale: string) =>
     authed(() => http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`)),
-  reservePromo: (code: string, subtotalMinor: number) =>
+  reservePromo: (code: string, subtotalMinor: number, items = "") =>
     authed(() =>
       http.post<PromoPreview>(
-        `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+        `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
       )
     ),
   releasePromo: (code: string) =>

@@ -128,10 +128,13 @@ export function CaseTestModal({
   tier,
   items,
   draft,
+  lowMarginPercent,
 }: {
   open: boolean;
   onClose: () => void;
   tier: CaseTier;
+  /** The tier's share of product prizes for an order with a low-margin product, % (the «Lamzu» switch). */
+  lowMarginPercent?: number;
   /** Prizes of the tier (titles, pictures, rarities of the stats rows); of the draft — new ones with id −(index + 1). */
   items: CaseItemAdmin[];
   /** The case builder's unpublished draft: tested instead of the saved prizes. */
@@ -140,7 +143,10 @@ export function CaseTestModal({
   const { push } = useToast();
   const [fast, setFast] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
-  const [byTier, setByTier] = useState<Partial<Record<CaseTier, TestStats>>>({});
+  // As for an order with a low-margin product: product prizes get the tier's share, discounts the rest.
+  const [lowMargin, setLowMargin] = useState(false);
+  // Numbers per tier and mode («SILVER» / «SILVER:lm»): the modes have different chances.
+  const [byTier, setByTier] = useState<Record<string, TestStats>>({});
   const [last, setLast] = useState<{ tier: CaseTier; run: number; drops: CaseItem[]; count: number } | null>(null);
   // The case screen over the modal; a new `reel` key remounts it for «Открыть ещё».
   const [reel, setReel] = useState(0);
@@ -148,7 +154,8 @@ export function CaseTestModal({
   const closable = useRef(true);
   // The numbers as of the last run (a run's result is added to them synchronously, before React re-renders).
   const byTierRef = useRef(byTier);
-  const stats = byTier[tier] ?? EMPTY;
+  const statsKey = lowMargin ? `${tier}:lm` : tier;
+  const stats = byTier[statsKey] ?? EMPTY;
   const m = CASE_TIER_METAL[tier];
 
   // While the case screen is up, Esc is its own (it closes only when closing is allowed) — not the modal's.
@@ -158,9 +165,9 @@ export function CaseTestModal({
   const byId = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
 
   const record = useCallback(
-    (res: CaseTestDraw) => {
-      const r = addRun(byTierRef.current[res.tier] ?? EMPTY, res);
-      byTierRef.current = { ...byTierRef.current, [res.tier]: r.next };
+    (res: CaseTestDraw, key: string) => {
+      const r = addRun(byTierRef.current[key] ?? EMPTY, res);
+      byTierRef.current = { ...byTierRef.current, [key]: r.next };
       setByTier(byTierRef.current);
       if (r.restarted) push("Шансы изменились — статистика теста начата заново", "ok");
     },
@@ -172,8 +179,8 @@ export function CaseTestModal({
   async function run(count: number) {
     setBusy(count);
     try {
-      const res = await giftApi.testDraw(tier, count, draft ?? undefined);
-      record(res);
+      const res = await giftApi.testDraw(tier, count, draft ?? undefined, lowMargin);
+      record(res, statsKey);
       setLast((l) => ({ tier: res.tier, run: (l?.run ?? 0) + 1, drops: res.drops, count: res.count }));
     } catch (e) {
       fail(e);
@@ -186,8 +193,8 @@ export function CaseTestModal({
   // the admin closes the screen before it stops — they can't, but the count must not depend on it).
   const openCase = useCallback(async (): Promise<GiftCaseOpen> => {
     try {
-      const res = await giftApi.testDraw(tier, 1, draft ?? undefined);
-      record(res);
+      const res = await giftApi.testDraw(tier, 1, draft ?? undefined, lowMargin);
+      record(res, statsKey);
       setLast((l) => ({ tier: res.tier, run: (l?.run ?? 0) + 1, drops: res.drops, count: 1 }));
       const reelItems = res.reel.some((c) => c.key === res.won.key) ? res.reel : [...res.reel, res.won];
       return { status: "OPENED", tier: res.tier, won: res.won, reel: reelItems, promo: null, swap: null };
@@ -195,7 +202,7 @@ export function CaseTestModal({
       fail(e);
       throw e;
     }
-  }, [tier, draft, record, fail]);
+  }, [tier, draft, lowMargin, statsKey, record, fail]);
 
   const openOnce = () => {
     if (fast) void run(1);
@@ -269,7 +276,15 @@ export function CaseTestModal({
                 {stats.n > 0 ? "Открыть ещё" : "Открыть кейс"}
               </Button>
               <Toggle checked={fast} onChange={setFast} label="Быстрое открытие" />
+              <Toggle checked={lowMargin} onChange={setLowMargin} label="Заказ с товаром «упор на скидки»" />
             </div>
+            {lowMargin && (
+              <p className="mt-1.5 text-[12px] leading-snug text-[var(--text-muted)]">
+                Как для заказа с товаром из списка «Упор на скидки»: все товарные призы вместе —{" "}
+                <b className="tabular text-[var(--text)]">{lowMarginPercent ?? 10} %</b>, остальное — призы-скидки
+                (если они есть в кейсе). Настраивается в «Настройках» уровня.
+              </p>
+            )}
             <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
               <span className="text-[12px] text-[var(--text-faint)]">Сразу много:</span>
               {BULK.map((n) => (
@@ -319,7 +334,7 @@ export function CaseTestModal({
             icon={<RotateCcw className="h-3.5 w-3.5" />}
             disabled={stats.n === 0 || busy !== null}
             onClick={() => {
-              byTierRef.current = { ...byTierRef.current, [tier]: EMPTY };
+              byTierRef.current = { ...byTierRef.current, [statsKey]: EMPTY };
               setByTier(byTierRef.current);
             }}
           >

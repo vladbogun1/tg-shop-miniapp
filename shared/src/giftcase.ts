@@ -187,6 +187,8 @@ export interface OrderGift {
   swap: CaseSwap | null;
   /** The prize's size (a product with sizes); null otherwise. */
   size?: CaseSize | null;
+  /** Admin only: drawn with the «упор на скидки» shares (the order had a low-margin product). */
+  lowMargin?: boolean | null;
 }
 
 /** Error codes of POST …/gift-case/open the apps handle gracefully (close the screen, refetch). */

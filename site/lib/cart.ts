@@ -146,6 +146,16 @@ export function useCartCount(): number {
   return useCart((s) => s.lines.reduce((sum, l) => sum + l.quantity, 0));
 }
 
+/**
+ * The orderable cart lines for the promo check, `id*qty,…` (a code from the gift case is counted
+ * without the low-margin products, like the checkout does). A string, so the selector stays stable.
+ */
+export function useCartPromoItems(): string {
+  return useCart((s) =>
+    s.lines.filter((l) => l.stock > 0 && l.quantity > 0).map((l) => `${l.productId}*${l.quantity}`).join(",")
+  );
+}
+
 /** Only lines that can actually be ordered (in stock, qty > 0). */
 export function useCartSubtotal(): number {
   return useCart((s) =>

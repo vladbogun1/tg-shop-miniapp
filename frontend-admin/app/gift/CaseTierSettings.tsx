@@ -95,6 +95,28 @@ export function CaseTierSettingsModal({
         </p>
       )}
 
+      {t.lowMarginProductPercent != null && (
+        <div className="mt-4 min-w-0 border-t border-[var(--line)] pt-3">
+          <div className="max-w-[260px]">
+            <IntField
+              label="Доля товарных призов при упоре на скидки"
+              unit="%"
+              value={t.lowMarginProductPercent}
+              min={0}
+              max={100}
+              disabled={busy}
+              onCommit={(v) =>
+                onPatch({ lowMarginProductPercent: v }, v === 100 ? "Упор на скидки выключен для уровня" : `Товарные призы: ${v} % при упоре на скидки`)
+              }
+            />
+          </div>
+          <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">
+            Если в заказе товар из «Упор на скидки»: товарные призы вместе выпадают с этой вероятностью, остальное — призы-скидки.
+            Соотношения внутри групп не меняются. 100 — как обычно, 0 — только скидки.
+          </p>
+        </div>
+      )}
+
       {t.promoValidDays != null && (
         <div className="mt-4 min-w-0 border-t border-[var(--line)] pt-3">
           <div className="field-label">Срок промокода из кейса</div>

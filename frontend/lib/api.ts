@@ -217,6 +217,11 @@ export interface NpBboxParams {
 
 // ---- typed endpoints --------------------------------------------------------
 
+/** `&items=id*qty,…` for the promo check, nothing when the cart is unknown. */
+function itemsParam(items: string): string {
+  return items ? `&items=${encodeURIComponent(items)}` : "";
+}
+
 export const customerApi = {
   // Public
   getProducts: () => http.get<Product[]>("/api/products"),
@@ -230,9 +235,10 @@ export const customerApi = {
   /** Gift for the order sum / gift case (lib/gift.ts); `gift: null` = off. */
   getGift: () => http.get<GiftResponse>("/api/public/gift"),
   /** What a promo code is worth for this cart — read-only, does not consume a use. */
-  previewPromo: (code: string, subtotalMinor: number) =>
+  /** `items` — the cart lines (`promoItems`): a code from the gift case skips low-margin products. */
+  previewPromo: (code: string, subtotalMinor: number, items = "") =>
     http.get<PromoPreview>(
-      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
     ),
   getNpCities: (q: string) => http.get<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
   getNpWarehouses: (cityRef: string, q: string) =>
@@ -258,9 +264,9 @@ export const customerApi = {
    * the cart shows is still there at the last step. Falls back to the public preview when the
    * Telegram sign-in has not finished yet.
    */
-  reservePromo: (code: string, subtotalMinor: number) =>
+  reservePromo: (code: string, subtotalMinor: number, items = "") =>
     http.post<PromoPreview>(
-      `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}`
+      `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
     ),
   /** Gives a held code back when the customer clears or replaces it. */
   releasePromo: (code: string) =>

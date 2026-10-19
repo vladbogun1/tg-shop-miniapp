@@ -59,10 +59,23 @@ export interface GiftTierAdmin {
   marginPercent?: number;
   /** Orders a month (last 90 days) between this tier's threshold and the next one — expected cases. */
   monthlyOrders?: number;
+  /**
+   * An order with a low-margin product (Lamzu…): all product prizes together get this % of the chance,
+   * discounts the rest (V61). 100 = as usual.
+   */
+  lowMarginProductPercent?: number;
+}
+
+/** Brands and products whose orders get the case leaning to discounts (GET/PUT /api/admin/gift/low-margin). */
+export interface LowMargin {
+  brands: { slug: string; name: string; productCount: number }[];
+  products: { id: string; title: string; imageUrl: string | null; priceMinor: number }[];
+  /** Every active product the marks cover. */
+  productCount: number;
 }
 
 export type GiftTierPatch = Partial<
-  Pick<GiftTierAdmin, "enabled" | "thresholdUah" | "guaranteedPercent" | "guaranteedMaxUah" | "swapPercent" | "promoValidDays">
+  Pick<GiftTierAdmin, "enabled" | "thresholdUah" | "guaranteedPercent" | "guaranteedMaxUah" | "swapPercent" | "promoValidDays" | "lowMarginProductPercent">
 >;
 
 /** A prize of a case tier: a product, or a discount on the next order (a personal promo code). */
@@ -210,8 +223,15 @@ export const giftApi = {
   deleteCaseItem: (id: number) => apiDelete<void>(`/api/admin/gift/case-items/${id}`),
   stats: () => apiGet<GiftStats>("/api/admin/gift/stats"),
   /** With `draft` — the unpublished draft is tested instead of the saved prizes. */
-  testDraw: (tier: CaseTier, count: number, draft?: CaseDraftItem[]) =>
-    apiPost<CaseTestDraw>(`/api/admin/gift/tiers/${tier}/test-draw?count=${count}`, draft ? { items: draft } : undefined),
+  /** `lowMargin` — as for an order with a low-margin product (product prizes rarer). */
+  testDraw: (tier: CaseTier, count: number, draft?: CaseDraftItem[], lowMargin = false) =>
+    apiPost<CaseTestDraw>(
+      `/api/admin/gift/tiers/${tier}/test-draw?count=${count}${lowMargin ? "&lowMargin=true" : ""}`,
+      draft ? { items: draft } : undefined
+    ),
+  lowMargin: () => apiGet<LowMargin>("/api/admin/gift/low-margin"),
+  /** Replaces the lists: brand slugs and product ids. */
+  setLowMargin: (body: { brands?: string[]; products?: string[] }) => apiPut<LowMargin>("/api/admin/gift/low-margin", body),
   /** «Опубликовать»: the tier's prizes become exactly these. */
   replaceItems: (tier: CaseTier, items: CaseDraftItem[]) => apiPut<CaseItemAdmin[]>(`/api/admin/gift/tiers/${tier}/items`, { items }),
   autofill: (tier: CaseTier, body: AutofillRequest) => apiPost<AutofillResult>(`/api/admin/gift/tiers/${tier}/autofill`, body),

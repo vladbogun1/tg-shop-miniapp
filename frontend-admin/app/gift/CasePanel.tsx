@@ -396,6 +396,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
         tier={tier}
         items={rows.map((r, i) => toAdminItem(r, i, tier, sum))}
         draft={drafts[tier] ? toDraft(drafts[tier]!) : null}
+        lowMarginPercent={current?.lowMarginProductPercent}
       />
       <CaseAutofillModal open={filling} onClose={() => setFilling(false)} tier={tier} t={current} rows={rows} onResult={applyAutofill} />
       {current && (

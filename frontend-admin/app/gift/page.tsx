@@ -33,6 +33,7 @@ import { initialDraft, isDirty, parse, validate, type Draft } from "../settings/
 import { PanelHeader } from "../settings/PanelHeader";
 import { ProductPickModal } from "@/components/ProductPickModal";
 import { CasePanel } from "./CasePanel";
+import { LowMarginPanel } from "./LowMarginPanel";
 
 const K = {
   giftEnabled: "gift.enabled",
@@ -124,6 +125,7 @@ export default function GiftPage() {
             <CasePanel reminderDays={reminderDays} />
           </section>
         )}
+        {isCase && <LowMarginPanel />}
       </QueryState>
 
       <AnimatePresence>

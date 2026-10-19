@@ -21,6 +21,7 @@ import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { ApiError, customerApi, type PromoPreview } from "@/lib/api";
 import { formatTime } from "@/lib/format";
+import { useCartPromoItems } from "@/lib/cart";
 import { money } from "@/lib/money";
 import { haptic } from "@/lib/telegram";
 
@@ -169,6 +170,7 @@ function hhmm(iso: string): string {
  * plain browser), where the answer is still correct, just not reserved.
  */
 export function usePromoPreview(code: string, subtotal: number) {
+  const items = useCartPromoItems();
   const trimmed = code.trim();
   const [debounced, setDebounced] = useState(trimmed);
   const lastReserved = useRef<string | null>(null);
@@ -188,16 +190,16 @@ export function usePromoPreview(code: string, subtotal: number) {
   }, [debounced]);
 
   const query = useQuery({
-    queryKey: ["promo", debounced, subtotal],
+    queryKey: ["promo", debounced, subtotal, items],
     enabled: debounced.length > 0 && subtotal > 0,
     // A hold is refreshed on every check, so a stale cached answer would quietly let it run out.
     staleTime: 30_000,
     queryFn: async () => {
       try {
-        return await customerApi.reservePromo(debounced, subtotal);
+        return await customerApi.reservePromo(debounced, subtotal, items);
       } catch (e) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
-          return customerApi.previewPromo(debounced, subtotal);
+          return customerApi.previewPromo(debounced, subtotal, items);
         }
         throw e;
       }

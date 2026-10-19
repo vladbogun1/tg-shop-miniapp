@@ -308,6 +308,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               </div>
             </div>
           )}
+          {gift?.tier && gift.caseStatus && gift.lowMargin && (
+            <div className="text-[12px] text-[var(--text-faint)]">
+              🎯 Кейс разыгран с упором на скидки: в заказе товар с низкой маржой («Подарок → Упор на скидки»).
+            </div>
+          )}
           {gift?.tier && giftDiscount > 0 && !gift.caseStatus && (
             <div className="text-[12px] text-[var(--text-faint)]">
               🎁 Покупатель выбрал гарантированную скидку вместо {CASE_TIER_LABEL[gift.tier].toLowerCase().replace(/ый$/, "ого")} кейса.
