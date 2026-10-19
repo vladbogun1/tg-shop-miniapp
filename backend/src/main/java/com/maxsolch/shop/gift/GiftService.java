@@ -422,8 +422,9 @@ public class GiftService {
         for (TierConfig t : cfg.get().tiers()) {
             List<CaseItemDto> prizes = casePrizes(t, byId);
             if (!prizes.isEmpty()) {
+                int promoDays = Math.max(1, tierSettings(t.tier().name()).map(GiftCaseTier::getPromoValidDays).orElse(30));
                 tiers.add(new TierInfoDto(t.tier().name(), t.thresholdMinor(), t.guaranteedPercent(),
-                        t.guaranteedMaxUah() * 100L, t.swapPercent() > 0, prizes));
+                        t.guaranteedMaxUah() * 100L, t.swapPercent() > 0, t.swapPercent(), promoDays, prizes));
             }
         }
         if (!tiers.isEmpty()) {

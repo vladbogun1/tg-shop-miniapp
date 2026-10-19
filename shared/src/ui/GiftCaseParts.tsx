@@ -3,7 +3,7 @@
 /**
  * Small gift case pieces used around the opening screen: the «case is waiting» card of the order
  * page, the checkout choice «guaranteed discount or the case», the prize rows of the cart
- * («Що може випасти» — no chances, those are never shown to customers) and the rarity chip of the
+ * («Що може бути в кейсі» — no chances, those are never shown to customers) and the rarity chip of the
  * prize line.
  */
 import { useState, type ReactNode } from "react";
@@ -19,7 +19,7 @@ import {
   type OrderGift,
 } from "../giftcase";
 import { CaseStyles } from "./GiftCaseOpening";
-import { CaseDiscountTile, CasePromoBox, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts } from "./case-tier";
+import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";
 
 const LockIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -106,7 +106,7 @@ export function GiftCaseArt({
   );
 }
 
-/** «Що може випасти»: rarity bar, thumbnail (or the discount coupon), title, rarity. Rarest first, no chances. */
+/** «Що може бути в кейсі»: rarity bar, thumbnail (or the discount coupon), title, rarity. Rarest first, no chances. */
 export function GiftCasePrizeRows({
   items,
   rarity,
@@ -148,28 +148,41 @@ export function GiftCasePrizeRows({
   );
 }
 
-/** An expandable «Що може випасти» (a disclosure button + the rows). */
+/** An expandable «Що може бути в кейсі» (a disclosure button + the rows). */
 export function GiftCasePrizeDisclosure({
   label,
   children,
   className,
   tier = null,
+  aside,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   tier?: CaseTier | null;
+  /** Next to the button, pushed right and wrapping under it when narrow (the «Правила акції» link). */
+  aside?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const button = (
+    <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="gc-disclose gc-disp">
+      {label}
+      <span aria-hidden style={{ display: "inline-block", transition: "transform .2s", transform: open ? "rotate(180deg)" : "none" }}>
+        ▾
+      </span>
+    </button>
+  );
   return (
     <div className={className} style={caseTierVars(tier)}>
       <CaseStyles />
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="gc-disclose gc-disp">
-        {label}
-        <span aria-hidden style={{ display: "inline-block", transition: "transform .2s", transform: open ? "rotate(180deg)" : "none" }}>
-          ▾
-        </span>
-      </button>
+      {aside ? (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12 }}>
+          {button}
+          {aside}
+        </div>
+      ) : (
+        button
+      )}
       {open && children}
     </div>
   );
@@ -192,8 +205,10 @@ export interface GiftChoiceTexts {
   tierName: string;
   /** «Відкрити кейс» */
   caseTitle: string;
-  /** «Товар у посилку або знижка — як пощастить. Відкриється після оплати» */
+  /** «Усередині — девайс у посилку або знижка на наступне замовлення. Відкриєте після оплати» */
   caseText: string;
+  /** «Два варіанти подарунка: …» under the title (optional). */
+  hint?: string;
   /** «Гарантована знижка {amount}» */
   discountTitle: string;
   /** «{percent} одразу на це замовлення» */
@@ -213,6 +228,7 @@ export function GiftChoicePicker({
   texts,
   money,
   assetBase = "/case",
+  rules,
 }: {
   tier: GiftTierInfo;
   /** The order total the discount is counted from (after a promo code). */
@@ -222,6 +238,8 @@ export function GiftChoicePicker({
   texts: GiftChoiceTexts;
   money: (minor: number) => string;
   assetBase?: string;
+  /** «Правила акції» under the options. */
+  rules?: CaseRulesLinkProps;
 }) {
   const amount = guaranteedDiscountMinor(tier, totalMinor);
   const opt = (v: GiftChoice, body: ReactNode, art: ReactNode) => (
@@ -246,6 +264,7 @@ export function GiftChoicePicker({
         <span className="gc-disp">{texts.title}</span>
         <span className="gc-tier gc-disp">{texts.tierName}</span>
       </header>
+      {texts.hint && <p className="gc-choice-hint">{texts.hint}</p>}
       <div role="radiogroup" aria-label={texts.title} className="gc-choice-opts">
         {opt(
           "CASE",
@@ -264,6 +283,7 @@ export function GiftChoicePicker({
           <span className="gc-opt-pct gc-disp">−{tier.guaranteedPercent}%</span>
         )}
       </div>
+      {rules && <CaseRulesLink {...rules} className="is-choice" />}
     </section>
   );
 }
@@ -271,12 +291,12 @@ export function GiftChoicePicker({
 export interface GiftOrderPanelTexts {
   tierName: Record<CaseTier, string>;
   rarity: Record<CaseRarity, string>;
-  /** «Приз із кейса» */
+  /** «Подарунок із кейса» */
   prizeTitle: string;
   /** «Знижка {d} на наступне замовлення» */
   discountPrize: string;
   promo: CasePromoTexts;
-  /** «Замінити приз на знижку» */
+  /** «Замінити подарунок на знижку» */
   swapTitle: string;
   swapHint: string;
   /** «Замінити на {d}» */

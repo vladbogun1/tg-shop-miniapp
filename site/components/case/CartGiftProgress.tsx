@@ -11,7 +11,7 @@
 import { Gift } from "lucide-react";
 import { rarestCasePrize, type Product } from "@shop/shared";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/shared/case-ui";
-import { useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
+import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useGiftProgress } from "@/lib/gift";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -111,7 +111,7 @@ export function CartGiftProgress({
       </div>
       {ladder && <GiftCaseTierLadder tiers={gift.tiers} totalMinor={totalMinor} names={short} money={money} />}
       {isCase && shownTier && (
-        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier}>
+        <GiftCasePrizeDisclosure label={t("case.canDrop")} className="mt-1" tier={shownTier.tier} aside={<CaseRulesInline />}>
           <GiftCasePrizeRows items={shownTier.prizes} rarity={rarity} resolveImage={caseImage} money={money} discountLabel={t("case.discountRow")} />
         </GiftCasePrizeDisclosure>
       )}

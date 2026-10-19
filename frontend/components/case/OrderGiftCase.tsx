@@ -10,14 +10,14 @@
  * with its rarity chip. Before payment the card is locked and points to the payment block.
  *
  * Three tiers (bronze/silver/gold): the order's tier (`order.gift.tier`) skins the card and the screen;
- * the prize list for «Що може випасти» is that tier's from the public gift (GET /api/public/gift, no
+ * the prize list for «Що може бути в кейсі» is that tier's from the public gift (GET /api/public/gift, no
  * chances); after opening, the server's own list (`reel`) drives the reel. After the case the order
  * page shows `panel`: the guaranteed discount the customer chose, the code of a discount prize, or the
  * swap of a product prize similar to what they bought (POST …/gift-case/swap).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CASE_TIER_ORDER, paymentState, type CaseRarity, type CaseTier, type GiftCaseOpen, type OrderDetail } from "@shop/shared";
+import { CASE_TIER_ORDER, caseRulesUrl, paymentState, type CaseRarity, type CaseTier, type GiftCaseOpen, type OrderDetail } from "@shop/shared";
 import {
   GiftCaseOpening,
   GiftCaseOrderPanel,
@@ -28,18 +28,19 @@ import {
   unlockCaseAudio,
   type GiftCaseHaptics,
   type CasePromoTexts,
+  type CaseRulesLinkProps,
   type GiftCaseTexts,
   type GiftOrderPanelTexts,
 } from "@shop/shared/case-ui";
 import { Toast } from "@/components/ui/Toast";
-import { useT } from "@/i18n/context";
+import { useI18n, useT } from "@/i18n/context";
 import { trackGiftCaseOpen } from "@/lib/analytics";
 import { customerApi } from "@/lib/api";
 import { useGift } from "@/lib/gift";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { resolveImageSrc } from "@/lib/image";
-import { haptic, hapticImpact, hapticSelection, hapticSuccess, useBackButton } from "@/lib/telegram";
+import { haptic, hapticImpact, hapticSelection, hapticSuccess, openExternalLink, useBackButton } from "@/lib/telegram";
 
 const RARITIES: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"];
 
@@ -68,6 +69,33 @@ export function useCasePromoTexts(): CasePromoTexts {
       used: t("case.promo.used"),
     }),
     [t]
+  );
+}
+
+/** «Правила акції» — the rules page on the website, opened over the Mini App (docs/GIFT-CASE.md «Юридическое»). */
+export function useCaseRules(): CaseRulesLinkProps {
+  const { t, locale } = useI18n();
+  return useMemo(() => ({ label: t("case.rules"), href: caseRulesUrl(locale), onOpen: openExternalLink }), [t, locale]);
+}
+
+/** The same link, quiet, in the app's own colours — next to «Що може бути в кейсі» on the product and in the cart. */
+export function CaseRulesInline() {
+  const { label, href, onOpen } = useCaseRules();
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      onClick={(e) => {
+        if (onOpen) {
+          e.preventDefault();
+          onOpen(href);
+        }
+      }}
+      className="inline-flex min-h-8 items-center text-[11px] font-medium text-[var(--muted)] underline decoration-[var(--line)] underline-offset-2 hover:text-[var(--ink)]"
+    >
+      {label}
+    </a>
   );
 }
 
@@ -137,6 +165,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
     closable.current = c;
   }, []);
 
+  const rules = useCaseRules();
   const texts: GiftCaseTexts = useMemo(
     () => ({
       title: t("case.title", { id: shortOrderId(order.id) }),
@@ -257,6 +286,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
         haptics={HAPTICS}
         onRevealed={onRevealed}
         onClosableChange={onClosableChange}
+        rules={rules}
       />
       <Toast message={toast} />
     </>

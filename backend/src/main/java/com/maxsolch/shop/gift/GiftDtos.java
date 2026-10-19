@@ -30,10 +30,12 @@ public final class GiftDtos {
      * @param guaranteedPercent  the «guaranteed discount instead of the case» choice, %; 0 = no choice
      * @param guaranteedMaxMinor its cap; 0 = no cap
      * @param swap               a similar prize may be swapped for a discount
+     * @param swapPercent        the swap gives this % of the prize's price as a code (0 = no swap)
+     * @param promoValidDays     how long a code from this tier's case (a discount prize, a swap) is valid
      * @param prizes             what can drop, most common first — without chances (never shown)
      */
     public record TierInfoDto(String tier, long thresholdMinor, int guaranteedPercent, long guaranteedMaxMinor,
-                              boolean swap, List<CaseItemDto> prizes) {
+                              boolean swap, int swapPercent, int promoValidDays, List<CaseItemDto> prizes) {
     }
 
     /** GET /api/public/gift; {@code gift} null = the gift is off or has nothing to give. */

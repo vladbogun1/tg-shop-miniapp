@@ -8,7 +8,7 @@ import { getCategories, getSitemap, safe } from "@/lib/server-api";
 /** Built per request from /api/public/sitemap (the build has no backend); data cached for 60 s. */
 export const dynamic = "force-dynamic";
 
-const STATIC = ["/", "/catalog", "/delivery", "/returns", "/warranty", "/privacy", "/terms", "/contacts", "/about"];
+const STATIC = ["/", "/catalog", "/delivery", "/returns", "/warranty", "/privacy", "/terms", "/case-rules", "/contacts", "/about"];
 
 const abs = (path: string, locale: (typeof LOCALES)[number]) => `${SITE_URL}${localePath(locale, path)}`;
 

@@ -20,6 +20,7 @@ export const LEGAL_FILES = {
   warranty: "warranty.md",
   privacy: "privacy.md",
   terms: "terms.md",
+  caseRules: "case-rules.md",
 } as const;
 
 export type LegalPage = keyof typeof LEGAL_FILES;
@@ -31,6 +32,7 @@ export const LEGAL_PATHS: Record<LegalPage, string> = {
   warranty: "/warranty",
   privacy: "/privacy",
   terms: "/terms",
+  caseRules: "/case-rules",
 };
 
 export interface LegalDoc {

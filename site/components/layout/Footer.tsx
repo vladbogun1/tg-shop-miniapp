@@ -57,6 +57,7 @@ export function Footer({ tree, locale }: { tree: MenuNode[]; locale: Locale }) {
                 ["/warranty", "info.warranty"],
                 ["/privacy", "info.privacy"],
                 ["/terms", "info.terms"],
+                ["/case-rules", "info.caseRules"],
                 ["/about", "info.about"],
                 ["/contacts", "info.contacts"],
                 ["/account", "header.account"],

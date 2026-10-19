@@ -96,7 +96,7 @@ import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice, type GiftTierInfo } from "@shop/shared";
 import { caseTierAsset, GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
-import { caseMoney } from "@/components/case/OrderGiftCase";
+import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 import { useGift } from "@/lib/gift";
 
 const STEP_KEYS = [
@@ -1056,6 +1056,7 @@ function ConfirmStep({
   items: { title: string; qty: number; amount: number; currency: string }[];
 }) {
   const t = useT();
+  const caseRules = useCaseRules();
   const deliveryText =
     delivery === "PICKUP"
       ? t("order.pickup")
@@ -1078,9 +1079,11 @@ function ConfirmStep({
             tierName: t(`case.tier.${giftTier.tier}`),
             caseTitle: t("case.choice.caseTitle"),
             caseText: t("case.choice.caseText"),
+            hint: t("case.choice.hint"),
             discountTitle: t("case.choice.discountTitle"),
             discountText: t("case.choice.discountText"),
           }}
+          rules={caseRules}
         />
       )}
       <section className="hud-frame rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]">

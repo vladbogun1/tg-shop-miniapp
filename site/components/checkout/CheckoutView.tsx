@@ -61,7 +61,7 @@ import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
 import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
-import { useCaseMoney } from "@/components/case/OrderGiftCase";
+import { useCaseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -288,6 +288,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
   const total = baseTotal - giftDiscount;
   const caseMoney = useCaseMoney();
+  const caseRules = useCaseRules();
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If it
   // was picked and the total then dropped (promo, quantity), the choice moves to the first
@@ -624,9 +625,11 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   tierName: t(`case.tier.${giftTier.tier}` as "case.tier.GOLD"),
                   caseTitle: t("case.choice.caseTitle"),
                   caseText: t("case.choice.caseText"),
+                  hint: t("case.choice.hint"),
                   discountTitle: t("case.choice.discountTitle"),
                   discountText: t("case.choice.discountText"),
                 }}
+                rules={caseRules}
               />
             )}
             <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">

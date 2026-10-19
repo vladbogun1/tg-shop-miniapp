@@ -52,6 +52,10 @@ export interface GiftTierInfo {
   guaranteedMaxMinor: number;
   /** A similar prize may be swapped for a discount. */
   swap: boolean;
+  /** The swap gives this % of the prize's price as a code (absent from an older backend). */
+  swapPercent?: number;
+  /** Days a code from this tier's case is valid (absent from an older backend). */
+  promoValidDays?: number;
   /** What can drop, most common first (no chances — they are never shown). */
   prizes: CaseItem[];
 }
@@ -184,6 +188,17 @@ export function caseDiscountText(
   const pc = d.discountPercent ?? d.percent ?? 0;
   if (pc > 0) return `−${pc}%`;
   return `−${money(d.discountAmountMinor ?? d.amountMinor ?? 0)}`;
+}
+
+/** Path of the published promotion rules on the website (without the locale prefix). */
+export const CASE_RULES_PATH = "/case-rules";
+
+/** Where the website lives, for the Mini App's link to the rules. */
+export const CASE_RULES_ORIGIN = "https://chisetup.com.ua";
+
+/** Absolute URL of the promotion rules in `locale` (Ukrainian has no prefix, like every site page). */
+export function caseRulesUrl(locale: string, origin: string = CASE_RULES_ORIGIN): string {
+  return `${origin.replace(/\/$/, "")}${locale === "uk" ? "" : `/${locale}`}${CASE_RULES_PATH}`;
 }
 
 /** CS colours: Mil-Spec blue-grey → Restricted blue → Classified purple → Covert red → gold. */

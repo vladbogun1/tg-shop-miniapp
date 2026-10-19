@@ -138,3 +138,35 @@ export function CasePromoBox({
     </div>
   );
 }
+
+/**
+ * «Правила акції» — a quiet link to the published promotion rules (site /{locale}/case-rules,
+ * docs/GIFT-CASE.md «Юридическое»). `onOpen` replaces the plain link (the Mini App opens the site
+ * over itself with WebApp.openLink); without it the link opens in a new tab.
+ */
+export interface CaseRulesLinkProps {
+  label: string;
+  href: string;
+  onOpen?: (href: string) => void;
+  className?: string;
+}
+
+export function CaseRulesLink({ label, href, onOpen, className }: CaseRulesLinkProps) {
+  return (
+    <a
+      className={`gc-rules${className ? ` ${className}` : ""}`}
+      href={href}
+      target="_blank"
+      rel="noopener"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (onOpen) {
+          e.preventDefault();
+          onOpen(href);
+        }
+      }}
+    >
+      {label}
+    </a>
+  );
+}

@@ -1,6 +1,6 @@
 ---
 title: Terms of Use
-updated: 2026-10-05
+updated: 2026-10-20
 status: approved
 ---
 
@@ -48,6 +48,8 @@ Return terms are on the [Returns and Exchanges](/returns) page, and warranty ter
 ## Promo codes and promotions
 
 A promo code is valid under the terms of the relevant promotion and cannot be exchanged for cash. One promo code per order. The store may limit the number of uses and the validity period of a promo code.
+
+The terms of the «Gift cases» promotion (a gift for orders above a certain amount) are on the [Promotion rules](/case-rules) page.
 
 ## Chat with the store
 

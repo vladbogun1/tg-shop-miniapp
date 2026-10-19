@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
@@ -5,14 +6,19 @@ import { FALLBACK_LOCALE, type Locale } from "@shop/shared";
 import { makeFmt } from "@/lib/format";
 import type { LegalDoc } from "@/lib/legal";
 
+/** Where a page's live block goes in its markdown (`<!-- live -->` on a line of its own). */
+const LIVE_MARKER = /<!--\s*live\s*-->/;
+
 /**
- * A rendered legal page with breadcrumbs and the update date. A translated (ru/en) text ends with a
+ * A rendered legal page with breadcrumbs and the update date. `live` (server-rendered data, e.g. the
+ * promotion's thresholds and gifts) replaces the `<!-- live -->` marker of the text, or follows it. A translated (ru/en) text ends with a
  * note that the Ukrainian original prevails; a language without its own text shows the Ukrainian
  * one with a "Ukrainian only" note on top.
  */
-export function LegalView({ locale, title, doc }: { locale: Locale; title: string; doc: LegalDoc }) {
+export function LegalView({ locale, title, doc, live }: { locale: Locale; title: string; doc: LegalDoc; live?: ReactNode }) {
   const t = makeT(locale);
   const fmt = makeFmt(locale);
+  const [before, after] = live ? doc.html.split(LIVE_MARKER, 2) : [doc.html];
   return (
     <div className="container-site pt-6">
       <Breadcrumbs locale={locale} items={[{ label: title }]} />
@@ -23,7 +29,13 @@ export function LegalView({ locale, title, doc }: { locale: Locale; title: strin
             {t("info.ukOnly")}
           </p>
         )}
-        <div className="prose-nb" dangerouslySetInnerHTML={{ __html: doc.html }} />
+        <div className="prose-nb" dangerouslySetInnerHTML={{ __html: before }} />
+        {live && (
+          <div className="my-5" lang={locale}>
+            {live}
+          </div>
+        )}
+        {after && <div className="prose-nb" dangerouslySetInnerHTML={{ __html: after }} />}
         {(doc.updated || doc.contentLocale !== FALLBACK_LOCALE) && (
           <div className="mt-8 flex flex-col gap-1 border-t border-[var(--line)] pt-3 text-[12px] font-medium text-[var(--muted)]" lang={locale}>
             {doc.updated && <p>{t("info.updated", { date: fmt.date(doc.updated) })}</p>}

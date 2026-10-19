@@ -43,7 +43,7 @@ import {
 import { caseOpenSound, caseRevealSound, caseStopSound, caseTick, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
 import { CaseBurst } from "./case-particles";
 import { CASE_CSS } from "./case-styles";
-import { CaseDiscountTile, CasePromoBox, caseTierAsset, caseTierVars, type CasePromoTexts } from "./case-tier";
+import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";
 
 export interface GiftCaseTexts {
   /** «Кейс за замовлення #A1B2» */
@@ -68,11 +68,11 @@ export interface GiftCaseTexts {
   /** «на наступне замовлення — промокод нижче» */
   discountNext: string;
   promo: CasePromoTexts;
-  /** «Вже маєте схожий товар? Замініть приз на знижку» */
+  /** «Вже маєте схожий товар? Замініть подарунок на знижку» */
   swapHint: string;
   /** «Замінити на {d}» */
   swapAction: string;
-  /** «Приз замінено на промокод» */
+  /** «Подарунок замінено на промокод» */
   swapped: string;
   swapError: string;
 }
@@ -96,7 +96,7 @@ export interface GiftCaseOpeningProps {
    * toast and refetches the order. Without it the error is shown like any other.
    */
   onOpenRefused?: (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => void;
-  /** Prizes of the tier for «Що може випасти» before the case is opened (empty = the list is hidden). */
+  /** Prizes of the tier for «Що може бути в кейсі» before the case is opened (empty = the list is hidden). */
   prizes: CaseItem[];
   /** The tier of the case (the order's); the open response's tier wins. */
   tier?: CaseTier | null;
@@ -126,6 +126,8 @@ export interface GiftCaseOpeningProps {
   onAgain?: () => void;
   /** Label of that button («Открыть ещё»). */
   againLabel?: string;
+  /** «Правила акції» under the closed case (the published promotion rules). */
+  rules?: CaseRulesLinkProps;
 }
 
 type Stage = "sealed" | "opening" | "spin" | "reveal";
@@ -247,6 +249,7 @@ function CaseOverlay({
   onClosableChange,
   onAgain,
   againLabel,
+  rules,
 }: GiftCaseOpeningProps) {
   const [stage, setStage] = useState<Stage>("sealed");
   const [result, setResult] = useState<GiftCaseOpen | null>(null);
@@ -617,6 +620,11 @@ function CaseOverlay({
                       ))}
                     </ul>
                   </motion.section>
+                )}
+                {rules && (
+                  <motion.div animate={{ opacity: stage === "opening" ? 0 : 1 }} transition={{ duration: 0.25 }}>
+                    <CaseRulesLink {...rules} />
+                  </motion.div>
                 )}
               </motion.div>
             )}
