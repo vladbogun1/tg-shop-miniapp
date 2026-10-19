@@ -60,7 +60,12 @@ public record OrderDetailDto(
         /** Exchanges made on this order (V51), oldest first; empty when none. */
         List<ExchangeDto> exchanges,
         /** Part of discountMinor given by «Вместе дешевле» (V57); 0 = promo code / manual discount. */
-        long bundleDiscountMinor) {
+        long bundleDiscountMinor,
+        /** Gift case (V58): null = none, SEALED (the customer has not opened it; the prize line is hidden from them), OPENED. */
+        String giftCaseStatus,
+        Instant giftCaseOpenedAt,
+        /** SEALED and the order is paid — the customer may open it now (once). */
+        boolean giftCaseOpenable) {
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

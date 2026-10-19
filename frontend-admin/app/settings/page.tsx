@@ -17,6 +17,7 @@ import {
   Bot,
   Boxes,
   ChevronRight,
+  Gift,
   Layers,
   LifeBuoy,
   Save,
@@ -145,21 +146,22 @@ export default function SettingsPage() {
             {(q.data?.groups ?? []).map((g, i) => {
               const groupItems = items.filter((it) => it.group === g.id);
               if (groupItems.length === 0) return null;
-              // Edited on its own page together with the category pairs.
-              if (g.id === "bundles") {
+              // Edited on their own pages (bundles: with the category pairs; gift: with the case prizes).
+              if (g.id === "bundles" || g.id === "gift") {
+                const page = g.id === "gift" ? { href: "/gift", Icon: Gift, name: "Кейс" } : { href: "/bundles", Icon: Layers, name: "Вместе дешевле" };
                 return (
                   <Link
                     key={g.id}
-                    href="/bundles"
+                    href={page.href}
                     className="panel focusable flex min-w-0 items-center gap-3 p-4 transition-colors hover:border-[var(--line-strong)]"
                   >
                     <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
-                      <Layers className="h-5 w-5" />
+                      <page.Icon className="h-5 w-5" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="section-title block !text-[15px] text-[var(--ink)]">{g.title}</span>
                       <span className="mt-0.5 block text-[12px] leading-snug text-[var(--text-muted)]">
-                        Настраивается в разделе «Вместе дешевле»
+                        Настраивается в разделе «{page.name}»
                       </span>
                     </span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />

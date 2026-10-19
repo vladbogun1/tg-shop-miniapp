@@ -13,5 +13,9 @@ public record OrderItemDto(
         /** Units of this line the customer sent back. */
         int returnedQty,
         /** Got the «Вместе дешевле» discount (V57). */
-        boolean bundleAddon) {
+        boolean bundleAddon,
+        /** Gift the shop added for the order sum (V58). */
+        boolean autoGift,
+        /** Rarity of the gift-case prize (V58); null = not from a case. */
+        String caseRarity) {
 }

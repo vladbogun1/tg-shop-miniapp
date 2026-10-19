@@ -2,6 +2,7 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.bundle.BundlePricing;
 import com.maxsolch.shop.bundle.BundleService;
+import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
@@ -93,6 +94,14 @@ public class OrderService {
         this.bundleService = bundleService;
     }
 
+    /** The gift for the order sum / the gift case (optional: unit tests build the service without it). */
+    private GiftService giftService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGiftService(GiftService giftService) {
+        this.giftService = giftService;
+    }
+
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
@@ -177,9 +186,14 @@ public class OrderService {
         // pair of products would otherwise be able to deadlock against each other.
         List<AccLine> lines = new ArrayList<>(acc.values());
         lines.sort(Comparator.comparing(l -> l.productId));
+        // The gift for the order sum is locked in the same id order, up front: taking its row after
+        // the cart's could deadlock with an order that has the gift product in its cart.
+        Optional<GiftService.GiftConfig> giftCfg = giftService == null
+                ? Optional.empty() : giftService.giftConfig();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
         lines.forEach(l -> lockIds.add(l.productId));
+        giftCfg.ifPresent(g -> lockIds.addAll(g.productIds()));
         for (String id : lockIds) {
             // FOR UPDATE: the stock check and the decrement below must not interleave with another
             // checkout, or both orders pass "one left in stock" and the shop oversells.
@@ -262,6 +276,27 @@ public class OrderService {
         order.setSubtotalMinor(subtotal);
         order.setDiscountMinor(discount);
         order.setTotalMinor(Math.max(0, subtotal - discount));
+
+        giftCfg.ifPresent(g -> {
+            if (order.getTotalMinor() < g.thresholdMinor()) {
+                return;
+            }
+            // Gift case: the prize is drawn now, among the prizes in stock, and goes into the order
+            // like any gift (the warehouse sees it at once); the customer sees it after opening.
+            Optional<GiftService.CaseEntry> prize = GiftService.draw(g.caseItems(),
+                    id -> locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent(),
+                    CASE_RANDOM);
+            if (prize.isPresent()
+                    && addThresholdGift(order, locked.get(prize.get().productId()).orElseThrow(), toSave,
+                            prize.get().rarity())) {
+                order.setGiftCaseStatus(GIFT_CASE_SEALED);
+                return;
+            }
+            if (g.productId() != null) {
+                locked.getOrDefault(g.productId(), Optional.empty())
+                        .ifPresent(p -> addThresholdGift(order, p, toSave, null));
+            }
+        });
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
@@ -788,6 +823,11 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order item not found"));
         restoreItemStock(item);
         order.getItems().remove(item);
+        if (item.isAutoGift() && item.getCaseRarity() != null) {
+            // The case prize is gone: no case left to open.
+            order.setGiftCaseStatus(null);
+            order.setGiftCaseOpenedAt(null);
+        }
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -1122,6 +1162,131 @@ public class OrderService {
         order.setBundleDiscountMinor(Math.min(order.getBundleDiscountMinor(), discount));
         order.setTotalMinor(Math.max(0, subtotal - discount));
     }
+
+    /**
+     * The gift for the order sum (settings «Вместе дешевле и подарок»): one unit at price 0, the
+     * variant with the most stock. Out of stock or hidden — the order simply goes without it.
+     */
+    private boolean addThresholdGift(Order order, Product product, List<Product> toSave, String caseRarity) {
+        if (!giftable(product)) {
+            return false;
+        }
+        ProductVariant variant = null;
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            variant = product.getVariants().stream()
+                    .filter(v -> v.getStock() > 0)
+                    .max(Comparator.comparingInt(ProductVariant::getStock))
+                    .orElseThrow();
+        }
+        reserveStock(product, variant, 1);
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProductId(product.getId());
+        item.setTitleSnapshot(product.getTitle());
+        item.setPriceMinorSnapshot(0);
+        item.setQuantity(1);
+        item.setGift(true);
+        item.setAutoGift(true);
+        item.setCaseRarity(caseRarity);
+        if (variant != null) {
+            item.setVariantId(variant.getId());
+            item.setVariantNameSnapshot(variant.getName());
+        }
+        order.getItems().add(item);
+        toSave.add(product);
+        return true;
+    }
+
+    /** Can be given away now: visible, and a unit (of some variant) in stock. */
+    private static boolean giftable(Product product) {
+        if (!product.isActive() || product.isArchived()) {
+            return false;
+        }
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            return product.getVariants().stream().anyMatch(v -> v.getStock() > 0);
+        }
+        return product.getStock() > 0;
+    }
+
+    private static final java.security.SecureRandom CASE_RANDOM = new java.security.SecureRandom();
+
+    /**
+     * Customer opens the gift case of their order: SEALED → OPENED, exactly once. Only a paid order
+     * (the online part arrived) — otherwise a customer could order, peek and cancel. The prize was
+     * drawn by the server before (checkout / admin), opening only reveals it.
+     */
+    @Transactional
+    public OrderItem openGiftCase(byte[] orderId) {
+        Order order = lock(orderId);
+        OrderItem prize = caseprize(order)
+                .orElseThrow(() -> new BadRequestException(messages.current("api.giftCase.none"), GIFT_CASE_NONE));
+        if (GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
+            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GIFT_CASE_ALREADY_OPENED);
+        }
+        if (!giftCaseOpenable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GIFT_CASE_UNPAID);
+        }
+        order.setGiftCaseStatus(GIFT_CASE_OPENED);
+        order.setGiftCaseOpenedAt(Instant.now());
+        orderRepository.save(order);
+        return prize;
+    }
+
+    /** A sealed case can be opened: the order is paid (online part arrived) and not rejected. */
+    public static boolean giftCaseOpenable(Order order) {
+        if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
+            return false;
+        }
+        return order.isPaid() || (order.getReceivedMinor() > 0 && amountDueMinor(order) == 0);
+    }
+
+    private static Optional<OrderItem> caseprize(Order order) {
+        if (order.getGiftCaseStatus() == null) {
+            return Optional.empty();
+        }
+        return order.getItems().stream().filter(i -> i.isAutoGift() && i.getCaseRarity() != null).findFirst();
+    }
+
+    /**
+     * Admin gives a gift case to an order (any sum): the prize is drawn now among the case prizes in
+     * stock and added at price 0; the customer opens it once the order is paid.
+     */
+    @Transactional
+    public Order grantGiftCase(byte[] orderId, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (order.getGiftCaseStatus() != null) {
+            throw new BadRequestException("У заказа уже есть кейс");
+        }
+        List<GiftService.CaseEntry> pool = giftService == null ? List.of() : giftService.casePool();
+        if (pool.isEmpty()) {
+            throw new BadRequestException("В кейсе нет призов — добавьте их в разделе «Кейс»");
+        }
+        // Prize rows locked in id order, like the checkout.
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        for (String id : new java.util.TreeSet<>(pool.stream().map(GiftService.CaseEntry::productId).toList())) {
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        GiftService.CaseEntry prize = GiftService.draw(pool,
+                        id -> locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent(),
+                        CASE_RANDOM)
+                .orElseThrow(() -> new BadRequestException("Ни одного приза кейса нет в наличии"));
+        List<Product> toSave = new ArrayList<>();
+        addThresholdGift(order, locked.get(prize.productId()).orElseThrow(), toSave, prize.rarity());
+        productRepository.saveAll(toSave);
+        order.setGiftCaseStatus(GIFT_CASE_SEALED);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
+                null, null, 1));
+        return saved;
+    }
+
+    public static final String GIFT_CASE_SEALED = "SEALED";
+    public static final String GIFT_CASE_OPENED = "OPENED";
+    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
+    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
+    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
 
     /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
     private void releasePromoUsage(String code) {

@@ -40,6 +40,7 @@ import {
   ClipboardCheck,
   ChevronDown,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
@@ -125,6 +126,7 @@ const SECTIONS: NavSection[] = [
       { href: "/broadcasts", label: "Рассылки", icon: Send },
       { href: "/promocodes", label: "Промокоды", icon: Ticket },
       { href: "/bundles", label: "Вместе дешевле", icon: Layers },
+      { href: "/gift", label: "Кейс", icon: Gift },
     ],
   },
   {
@@ -171,6 +173,7 @@ const TITLE: Record<string, string> = {
   "/brands": "Бренды",
   "/promocodes": "Промокоды",
   "/bundles": "Вместе дешевле",
+  "/gift": "Кейс",
   "/payment": "Оплата",
   "/translations": "Переводы",
   "/cards": "Карточки",

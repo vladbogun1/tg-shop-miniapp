@@ -112,6 +112,11 @@ export function trackBundleAdd(place: "product" | "cart", productIds: string[]) 
   track("bundle_add", undefined, JSON.stringify({ place, productIds }));
 }
 
+/** The gift case of an order was opened (the prize shown); `rarity` of the prize. */
+export function trackGiftCaseOpen(orderId: string, rarity: string) {
+  track("gift_case_open", undefined, JSON.stringify({ orderId, rarity }));
+}
+
 /** The checkout screen was opened with something in the cart. */
 export function trackCheckoutStart() {
   track("checkout_start");

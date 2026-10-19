@@ -4,6 +4,7 @@ import Link from "next/link";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { BundleSuggestions, CartTotals } from "@/components/bundle/CartBundle";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useBundleQuote, useCartPromoDiscount } from "@/lib/bundle";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
@@ -21,6 +22,7 @@ export function CartPageBody() {
   const promoDiscount = useCartPromoDiscount(subtotal);
   const bundle = useBundleQuote(promoDiscount);
   const quote = bundle.quote;
+  const totalMinor = quote ? quote.totalMinor : Math.max(0, subtotal - promoDiscount);
   const hasProblems = lines.some((l) => l.stock <= 0);
 
   return (
@@ -44,6 +46,7 @@ export function CartPageBody() {
             <BundleSuggestions suggestions={quote?.suggestions} nextPercent={bundle.nextPercent} place="cart" />
           </div>
           <aside className="nb hud-frame h-fit p-5 lg:sticky lg:top-[140px]">
+            <CartGiftProgress totalMinor={totalMinor} className="mb-4" />
             <CartTotals subtotal={subtotal} promoDiscount={promoDiscount} quote={quote} />
             <p className="mt-2 text-[12px] font-medium text-[var(--muted)]">{t("cart.deliveryNote")}</p>
             {hasProblems && <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{t("cart.hasProblems")}</p>}

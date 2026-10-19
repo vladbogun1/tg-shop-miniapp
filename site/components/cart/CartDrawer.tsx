@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { BundleSuggestions, CartTotals } from "@/components/bundle/CartBundle";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useBundleQuote, useCartPromoDiscount } from "@/lib/bundle";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
@@ -33,6 +34,7 @@ export function CartDrawer() {
   const promoDiscount = useCartPromoDiscount(open ? subtotal : 0);
   const bundle = useBundleQuote(promoDiscount, open);
   const quote = bundle.quote;
+  const totalMinor = quote ? quote.totalMinor : Math.max(0, subtotal - promoDiscount);
 
   useScrollLock(open);
   useEscape(open, close);
@@ -93,6 +95,7 @@ export function CartDrawer() {
               ) : (
                 <>
                   <CartLines onNavigate={close} compact addonPercent={bundle.addonPercent} />
+                  <CartGiftProgress totalMinor={totalMinor} compact className="mt-3" />
                   <BundleSuggestions
                     suggestions={quote?.suggestions}
                     nextPercent={bundle.nextPercent}

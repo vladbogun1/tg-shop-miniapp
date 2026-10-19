@@ -51,6 +51,8 @@ import { TrackingModal } from "./TrackingModal";
 import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
+import { GiftCaseModal } from "./GiftCaseModal";
+import { CASE_RARITY_LABEL } from "@/lib/gift";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
@@ -93,6 +95,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [giftOpen, setGiftOpen] = useState(false);
+  const [caseOpen, setCaseOpen] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
@@ -281,6 +284,29 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       setExchangeOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["order-audit", id] });
+    }
+  }
+
+  /** «🎁 Выдать кейс»: the server draws the prize now; the toast names it. */
+  async function grantCase(notifyCustomer: boolean) {
+    const id = orderId;
+    if (!id) return;
+    let prize = "";
+    const ok = await run(
+      "gift-case",
+      async () => {
+        const updated = await ordersApi.grantGiftCase(id, notifyCustomer);
+        const it = updated.items.find((x) => x.gift && x.caseRarity);
+        if (it?.caseRarity) prize = `${it.title} · ${CASE_RARITY_LABEL[it.caseRarity]}`;
+        return updated;
+      },
+      undefined,
+      "Не удалось выдать кейс"
+    );
+    if (ok) {
+      push(prize ? `Выпало: ${prize}` : "Кейс выдан", "ok");
+      setCaseOpen(false);
+      qc.invalidateQueries({ queryKey: ["products"] });
     }
   }
 
@@ -513,6 +539,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onChangeQty: changeQty,
                       onRemoveItem: removeItem,
                       onAddItem: () => setGiftOpen(true),
+                      onGiftCase: () => setCaseOpen(true),
                       onDiscount: () => setDiscountOpen(true),
                       onEditDelivery: () => setDeliveryOpen(true),
                       onEditTracking: () => setTrackingOpen(true),
@@ -655,6 +682,13 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         orderId={orderId}
         onClose={() => setGiftOpen(false)}
         onDone={refreshLists}
+      />
+
+      <GiftCaseModal
+        open={caseOpen}
+        loading={busyKey === "gift-case"}
+        onClose={() => setCaseOpen(false)}
+        onConfirm={(notify) => void grantCase(notify)}
       />
 
       <DiscountModal

@@ -9,6 +9,7 @@ import com.maxsolch.shop.bundle.BundleDtos.TermsDto;
 import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
@@ -43,6 +44,14 @@ public class BundleService {
     private final SettingsService settings;
     private final CatalogDirectory directory;
     private final CatalogService catalogService;
+
+    /** The gift for the order sum: its products are not offered for money (optional in unit tests). */
+    private GiftService giftService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGiftService(GiftService giftService) {
+        this.giftService = giftService;
+    }
 
     public BundleService(BundleRuleRepository ruleRepository, SettingsService settings,
                          CatalogDirectory directory, CatalogService catalogService) {
@@ -216,6 +225,9 @@ public class BundleService {
         }
         var path = pathFunction();
         int pct = Math.max(1, Math.min(100, maxAddonPricePercent));
+        // The gift for the order sum comes free — offering it for money next to the gift bar is odd.
+        Set<String> giftIds = giftService == null ? Set.of()
+                : giftService.giftConfig().map(g -> (Set<String>) new HashSet<>(g.productIds())).orElse(Set.of());
         Set<String> cartLeafCategories = new HashSet<>();
         anchors.forEach(a -> {
             if (a.categoryId() != null) {
@@ -238,7 +250,7 @@ public class BundleService {
                     continue;
                 }
                 List<ProductDto> q = all.stream()
-                        .filter(p -> !exclude.contains(p.id()))
+                        .filter(p -> !exclude.contains(p.id()) && !giftIds.contains(p.id()))
                         .filter(p -> p.effectiveStock() > 0 && p.priceMinor() > 0)
                         .filter(p -> p.categoryId() != null && !cartLeafCategories.contains(p.categoryId()))
                         .filter(p -> path.apply(p.categoryId()).contains(rule.targetCategoryId()))

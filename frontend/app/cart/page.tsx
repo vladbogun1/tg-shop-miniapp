@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BundleSuggestions } from "@/components/cart/BundleCart";
+import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { PercentChip } from "@/components/catalog/BundleBlock";
 import { ProductView } from "@/components/catalog/ProductView";
 import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
@@ -198,6 +199,8 @@ export default function CartPage() {
         currency={currency}
         preview={promo}
       />
+
+      <CartGiftProgress totalMinor={total} currency={currency} />
 
       {/* totals card */}
       <div className="nb hud-frame mt-5 p-4">

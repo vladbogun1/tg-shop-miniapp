@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type DeliveryMethod,
   formatPhone,
+  giftProgress,
   isOrderLimitCode,
   isValidPhone,
   type NpCity,
@@ -37,6 +38,7 @@ import {
   resolveNpWarehouse,
   visiblePaymentOptions,
 } from "@shop/shared";
+import { CheckoutGiftLine } from "@/components/case/CheckoutGiftLine";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -46,6 +48,7 @@ import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
 import { useBundleQuote } from "@/lib/bundle";
+import { useGift } from "@/lib/gift";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
@@ -56,6 +59,7 @@ import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
+import { markGiftCaseAutoOpen } from "@shop/shared/case-ui";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -278,6 +282,9 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const discount = quote ? quote.discountMinor : promo.discount;
   const total = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
   const bundleBeatsPromo = promoValid && promo.discount > 0 && discountKind === "BUNDLE";
+  const giftInfo = useGift();
+  const giftNow = giftProgress(giftInfo, total);
+  const gift = giftNow?.reached ? giftNow : null;
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If it
   // was picked and the total then dropped (promo, quantity), the choice moves to the first
@@ -341,6 +348,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       await flushCart();
       const created = await api.createOrder(body, idempotencyKey.current);
       trackOrderCreated(created.orderId);
+      markGiftCaseAutoOpen(created.orderId);
       cartAfterOrder(orderable.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
@@ -363,7 +371,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     }
   }
 
-  const submitLabel = t("checkout.submit");
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
+  const submitLabel = gift?.kind === "CASE" ? t("case.submit") : t("checkout.submit");
   // The last order's branch shows as a compact card until "Обрати інше"; a branch picked here keeps
   // the fields and the map open, so it can be changed in place.
   const collapsed = !!warehouse && warehouseFromLast && !editingWarehouse;
@@ -602,6 +611,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                   <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(l.priceMinor * l.quantity, l.currency)}</span>
                 </li>
               ))}
+              {gift && <CheckoutGiftLine gift={gift} currency={currency} />}
             </ul>
             <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
               <Row label={t("checkout.sum")} value={fmt.money(quote ? quote.subtotalMinor : subtotal, currency)} />

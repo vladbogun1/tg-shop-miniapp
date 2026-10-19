@@ -18,6 +18,8 @@ import {
   type CartLineInput,
   createHttpClient,
   type CreateOrderResult,
+  type GiftCaseOpen,
+  type GiftResponse,
   getActiveLocale,
   getActiveTag,
   type Message,
@@ -197,6 +199,8 @@ export const api = {
     http.get<BundleProductOffer>(`/api/public/bundles/product/${encodeURIComponent(productId)}`),
   /** Prices the cart: bundle vs promo (one wins), add-on lines, suggestions. */
   bundleQuote: (body: BundleQuoteRequest) => http.post<BundleQuote>("/api/public/bundles/quote", body),
+  /** The gift for the order sum / the gift case (null gift = off). The clients count the progress themselves. */
+  gift: () => http.get<GiftResponse>("/api/public/gift"),
   /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
   orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   previewPromo: (code: string, subtotalMinor: number) =>
@@ -284,6 +288,8 @@ export const api = {
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and same-origin. */
   receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
+  /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
+  openGiftCase: (id: string) => authed(() => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`)),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

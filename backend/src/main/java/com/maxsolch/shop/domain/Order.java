@@ -42,6 +42,13 @@ public class Order {
     @Column(name = "bundle_discount_minor", nullable = false)
     private long bundleDiscountMinor = 0;
 
+    /** Gift case (V58): null = none, SEALED = the prize is in the order but not revealed, OPENED. */
+    @Column(name = "gift_case_status", length = 16)
+    private String giftCaseStatus;
+
+    @Column(name = "gift_case_opened_at")
+    private java.time.Instant giftCaseOpenedAt;
+
     @Column(name = "total_minor", nullable = false)
     private long totalMinor;
 

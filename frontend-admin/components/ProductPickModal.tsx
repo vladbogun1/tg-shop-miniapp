@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Pick one product (to preview the offer for): search by title over
+ * Pick one product (gift for the order sum, product to preview the offer for): search by title over
  * the admin product list, photo + title in two lines + price + stock. Archived products are hidden.
  */
 import { useMemo, useState } from "react";

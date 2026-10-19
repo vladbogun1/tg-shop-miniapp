@@ -95,6 +95,9 @@ import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { giftProgress } from "@shop/shared";
+import { markGiftCaseAutoOpen } from "@shop/shared/case-ui";
+import { useGift } from "@/lib/gift";
 
 const STEP_KEYS = [
   "checkout.step.contacts",
@@ -268,6 +271,8 @@ export default function CheckoutPage() {
   const discount = quote ? quote.discountMinor : promo.discount;
   const discountKind = quote ? quote.discountKind : promo.discount > 0 ? "PROMO" : null;
   const total = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
+  const giftNow = giftProgress(useGift(), total);
+  const gift = giftNow?.reached ? giftNow : null;
 
   // A prepayment option is hidden when the whole order costs no more than the prepayment. If the
   // customer had picked one and the total then dropped (promo, quantity), the choice moves to the
@@ -344,6 +349,7 @@ export default function CheckoutPage() {
       const created = await customerApi.createOrder(body, idempotencyKey.current);
       const orderId = created.orderId;
       trackOrderCreated(orderId);
+      markGiftCaseAutoOpen(orderId);
       haptic();
       cartAfterOrder(lines.map((l) => l.key));
       idempotencyKey.current = newIdempotencyKey();
@@ -421,7 +427,9 @@ export default function CheckoutPage() {
     );
   }
 
-  const primaryLabel = step < 3 ? t("common.next") : t("checkout.submit");
+  // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
+  const primaryLabel =
+    step < 3 ? t("common.next") : gift?.kind === "CASE" ? t("case.submit") : t("checkout.submit");
 
   return (
     <div className="pt-1">
@@ -507,6 +515,7 @@ export default function CheckoutPage() {
               discount={discount}
               discountKind={discountKind}
               promoDiscount={promo.discount}
+              gift={gift ? (gift.kind === "CASE" || !gift.product ? { title: t("case.line"), isCase: true } : { title: gift.product.title }) : null}
               total={total}
               dueNow={dueNow}
               currency={currency}
@@ -997,6 +1006,7 @@ function ConfirmStep({
   discount,
   discountKind,
   promoDiscount,
+  gift,
   total,
   dueNow,
   currency,
@@ -1017,6 +1027,8 @@ function ConfirmStep({
   discountKind: "BUNDLE" | "PROMO" | null;
   /** What the promo code alone would give (0 = no code / not valid). */
   promoDiscount: number;
+  /** The gift for the order sum, when this order earns it. */
+  gift: { title: string; isCase?: boolean } | null;
   total: number;
   /** Amount payable immediately (prepayment for prepay options, otherwise the full total). */
   dueNow: number;
@@ -1046,6 +1058,22 @@ function ConfirmStep({
             </span>
           </div>
         ))}
+        {gift && (
+          <div className="flex items-center justify-between gap-2 py-1.5">
+            {gift.isCase ? (
+              <span className="flex min-w-0 flex-1 items-center gap-2 text-[14px] font-semibold text-[var(--ink)]">
+                <img src="/case/case-closed-sm.webp" alt="" className="h-8 w-12 shrink-0 object-contain" />
+                <span className="line-clamp-2">{gift.title}</span>
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 text-[14px] font-semibold text-[var(--ink)]">
+                <span className="line-clamp-2">{gift.title}</span>
+                <span className="block text-[12px] font-medium text-[var(--muted)]">{t("case.giftLine")}</span>
+              </span>
+            )}
+            <span className="font-display text-[14px] font-semibold tabular-nums text-[var(--ok)]">{money(0, currency)}</span>
+          </div>
+        )}
         <div className="my-3 h-px bg-[var(--line)]" />
 
         {discount > 0 && (

@@ -140,7 +140,7 @@ Mini App требует HTTPS: для теста в Telegram — туннель 
 - Контракт API — [`docs/SPEC.md`](docs/SPEC.md), сайт — [`docs/SITE-SPEC.md`](docs/SITE-SPEC.md),
   дизайн — [`docs/DESIGN-V3.md`](docs/DESIGN-V3.md), переводы контента — [`docs/CONTENT-I18N.md`](docs/CONTENT-I18N.md),
   заказы/поддержка/отзывы — [`docs/ORDERS-SUPPORT-REVIEWS.md`](docs/ORDERS-SUPPORT-REVIEWS.md).
-- Акции в корзине: «Вместе дешевле» — [`docs/BUNDLES.md`](docs/BUNDLES.md).
+- Акции в корзине: «Вместе дешевле» — [`docs/BUNDLES.md`](docs/BUNDLES.md), подарок за сумму и кейс — [`docs/GIFT-CASE.md`](docs/GIFT-CASE.md).
 - Отложенные дела — [`docs/TODO.md`](docs/TODO.md).
 
 Удалено при чистке 2026-10 ([`docs/CLEANUP-AUDIT-2026-10.md`](docs/CLEANUP-AUDIT-2026-10.md)):
