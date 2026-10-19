@@ -68,6 +68,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         // Website event journal (package C): anonymous visitors too, per-IP limited
                         .requestMatchers(HttpMethod.POST, "/api/public/analytics").permitAll()
+                        // «Вместе дешевле»: the cart quote (read-only; per-IP limited as a public read)
+                        .requestMatchers(HttpMethod.POST, "/api/public/bundles/quote").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payment-options").permitAll()
                         // monobank webhook: authenticated by its X-Sign ECDSA signature, not a token
                         .requestMatchers(HttpMethod.POST, "/api/payments/mono/webhook").permitAll()

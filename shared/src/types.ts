@@ -223,6 +223,8 @@ export interface OrderItem {
   autoGift?: boolean;
   /** Rarity of the gift-case prize (V57); null = not from a case. */
   caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
+  /** Got the «Вместе дешевле» discount at checkout (V58). */
+  bundleAddon?: boolean;
   /** A case prize whose size the customer has not chosen yet (V59). */
   variantPending?: boolean;
 }
@@ -353,6 +355,8 @@ export interface OrderDetail {
   giftDiscountMinor?: number;
   /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
   gift?: OrderGift | null;
+  /** Part of discountMinor given by «Вместе дешевле» (V58); 0 = a promo code or a manual discount. */
+  bundleDiscountMinor?: number;
   totalMinor: number;
   currency: string;
   customerName: string;

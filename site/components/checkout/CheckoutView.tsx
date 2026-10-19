@@ -50,6 +50,7 @@ import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
 import { useGift } from "@/lib/gift";
+import { useBundleQuote } from "@/lib/bundle";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
@@ -276,13 +277,19 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
 
   const promo = usePromoPreview(promoCode, subtotal);
   const promoValid = promo.data?.valid === true;
-  const discount = promo.discount;
-  const baseTotal = Math.max(0, subtotal - discount);
+  // «Разом дешевше» vs the promo code: one discount per order, the server picks the better one (and
+  // does it again when the order is placed). Until the quote is in, the promo-only numbers are shown.
+  const bundle = useBundleQuote(promo.discount);
+  const quote = bundle.quote;
+  const discountKind = quote ? quote.discountKind : promo.discount > 0 ? "PROMO" : null;
+  const discount = quote ? quote.discountMinor : promo.discount;
+  const baseTotal = quote ? quote.totalMinor : Math.max(0, subtotal - discount);
+  const bundleBeatsPromo = promoValid && promo.discount > 0 && discountKind === "BUNDLE";
   const giftInfo = useGift();
   const giftNow = giftProgress(giftInfo, baseTotal);
   const gift = giftNow?.reached ? giftNow : null;
   // Gift tier reached: the case (default) or the tier's guaranteed discount on this order — counted
-  // from the total after the promo code, like the server does.
+  // from the total after the promo code / bundle, like the server does.
   const [giftChoice, setGiftChoice] = useState<GiftChoice>("CASE");
   const giftTier = gift?.kind === "CASE" ? gift.tier : null;
   const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
@@ -570,6 +577,11 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
               currency={currency}
               preview={{ data: promo.data, loading: promo.loading }}
             />
+            {bundleBeatsPromo && (
+              <p className="mt-2 text-[12px] font-semibold text-[var(--warn)]">
+                {t("bundle.beatsPromo", { amount: fmt.money(discount, currency) })}
+              </p>
+            )}
             <label className="mt-5 block">
               <span className="eyebrow mb-1.5 block text-[11px]">{t("checkout.comment")}</span>
               <textarea
@@ -630,10 +642,16 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
               />
             )}
             <div className="flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
-              <Row label={t("checkout.sum")} value={fmt.money(subtotal, currency)} />
+              <Row label={t("checkout.sum")} value={fmt.money(quote ? quote.subtotalMinor : subtotal, currency)} />
               {discount > 0 && (
                 <Row
-                  label={promoCode ? t("checkout.discountWithCode", { code: promoCode }) : t("checkout.discount")}
+                  label={
+                    discountKind === "BUNDLE"
+                      ? t("bundle.title")
+                      : promoCode
+                        ? t("checkout.discountWithCode", { code: promoCode })
+                        : t("checkout.discount")
+                  }
                   value={`−${fmt.money(discount, currency)}`}
                   tone="ok"
                 />

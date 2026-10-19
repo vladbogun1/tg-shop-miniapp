@@ -8,6 +8,9 @@
 import {
   ApiError,
   type AuthResponse,
+  type BundleProductOffer,
+  type BundleQuote,
+  type BundleQuoteRequest,
   type CartLineInput,
   type CatalogSchema,
   type Conversation,
@@ -229,6 +232,11 @@ export const customerApi = {
   getOrderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   /** Gift for the order sum / gift case (lib/gift.ts); `gift: null` = off. */
   getGift: () => http.get<GiftResponse>("/api/public/gift"),
+  /** «Разом дешевше»: accessories with a discount next to this product (lib/bundle.ts). */
+  getBundleOffer: (productId: string) =>
+    http.get<BundleProductOffer>(`/api/public/bundles/product/${encodeURIComponent(productId)}`),
+  /** The cart priced by the server: bundle vs promo, add-on lines, suggestions. */
+  quoteBundle: (body: BundleQuoteRequest) => http.post<BundleQuote>("/api/public/bundles/quote", body),
   /** What a promo code is worth for this cart — read-only, does not consume a use. */
   previewPromo: (code: string, subtotalMinor: number) =>
     http.get<PromoPreview>(

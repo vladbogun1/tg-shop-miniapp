@@ -232,6 +232,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                       {it.autoGift ? "🎁 За сумму" : "🎁 Подарок"}
                     </span>
                   )}
+                  {it.bundleAddon && !it.gift && (
+                    <span className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]" style={{ "--chip": "var(--ok)" } as React.CSSProperties}>
+                      Вместе дешевле
+                    </span>
+                  )}
                   {it.title}
                 </div>
                 {it.variantPending ? (
@@ -321,7 +326,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
           </div>
           {order.discountMinor - giftDiscount > 0 && (
             <div className="flex justify-between font-semibold text-[var(--ok)]">
-              <span>Скидка{order.promoCode ? ` (${order.promoCode})` : ""}</span>
+              <span>
+                {(order.bundleDiscountMinor ?? 0) > 0
+                  ? "Вместе дешевле"
+                  : `Скидка${order.promoCode ? ` (${order.promoCode})` : ""}`}
+              </span>
               <span>−{money(order.discountMinor - giftDiscount, order.currency)}</span>
             </div>
           )}

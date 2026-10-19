@@ -448,6 +448,7 @@ export default function CatalogPage() {
         product={selected}
         onClose={() => setSelected(null)}
         onAdded={() => fireToast(t("catalog.addedToast"))}
+        onOpenProduct={setSelected}
         onCategory={(slug) => {
           setSearch("");
           setFilter((f) => filterForCategory(f, slug));

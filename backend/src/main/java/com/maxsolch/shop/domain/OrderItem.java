@@ -56,6 +56,9 @@ public class OrderItem {
     /** Rarity of the gift-case prize (V57, GiftCaseItem.Rarity name); null = not from a case. */
     @Column(name = "case_rarity", length = 16)
     private String caseRarity;
+    /** The line got the «Вместе дешевле» discount at checkout (V58; the money is in orders.bundle_discount_minor). */
+    @Column(name = "bundle_addon", nullable = false)
+    private boolean bundleAddon = false;
 
     /** A case prize with sizes whose size the customer has not chosen yet (V59): the reserved one is a guess. */
     @Column(name = "variant_pending", nullable = false)

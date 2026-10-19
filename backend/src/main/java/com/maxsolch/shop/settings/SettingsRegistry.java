@@ -74,6 +74,24 @@ public final class SettingsRegistry {
     public static final String GIFT_MARGIN_PERCENT = "gift.marginPercent";
     public static final String GIFT_CASE_CATEGORIES = "gift.caseCategories";
     public static final String GIFT_CASE_SUPER_CATEGORIES = "gift.caseSuperCategories";
+    // «Вместе дешевле» (V58, BundleService).
+    public static final String BUNDLES_GROUP = "bundles";
+    public static final String BUNDLE_ENABLED = "bundle.enabled";
+    public static final String BUNDLE_TIER1_PERCENT = "bundle.tier1Percent";
+    public static final String BUNDLE_TIER2_PERCENT = "bundle.tier2Percent";
+    public static final String BUNDLE_TIER3_PERCENT = "bundle.tier3Percent";
+    public static final String BUNDLE_MAX_ADDON_PRICE_PERCENT = "bundle.maxAddonPricePercent";
+    public static final String BUNDLE_MAX_DISCOUNT_UAH = "bundle.maxDiscountUah";
+    public static final String BUNDLE_MAX_SUGGESTIONS = "bundle.maxSuggestions";
+    // «Разом дешевше» 2.0 (V60): скидка от маржи, контрольная группа, автонастройка, «Собери сетап».
+    public static final String BUNDLE_SAFETY_MARGIN_PERCENT = "bundle.safetyMarginPercent";
+    public static final String BUNDLE_HOLDOUT_PERCENT = "bundle.holdoutPercent";
+    public static final String BUNDLE_EXPLORE_PERCENT = "bundle.explorePercent";
+    public static final String BUNDLE_AUTO_TUNE = "bundle.autoTune";
+    public static final String BUNDLE_LIFT_PERCENT = "bundle.liftPercent";
+    public static final String BUNDLE_RESPONSE_PERCENT = "bundle.responsePercent";
+    public static final String BUNDLE_SETUP_ENABLED = "bundle.setupEnabled";
+    public static final String BUNDLE_SETUP_PERCENT = "bundle.setupPercent";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -94,7 +112,9 @@ public final class SettingsRegistry {
             new Group("antibot", "Защита от ботов и спама",
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
             new Group(GIFT_GROUP, "Подарок за сумму (кейсы)",
-                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."));
+                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."),
+            new Group(BUNDLES_GROUP, "Вместе дешевле",
+                    "Скидка на аксессуары к товару. Пары категорий — в разделе «Вместе дешевле»."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -178,6 +198,75 @@ public final class SettingsRegistry {
                     "Категории суперприза",
                     "Корневые категории (slug через запятую) для джекпота золотого кейса.",
                     "klaviatury,myshki", 500),
+            boolSetting(BUNDLE_ENABLED, BUNDLES_GROUP,
+                    "«Вместе дешевле» включено",
+                    "К товару предлагаются аксессуары (пары категорий — в разделе «Вместе дешевле»), "
+                            + "а на аксессуары в корзине — скидка. С промокодом не суммируется: "
+                            + "заказ получает то, что выгоднее покупателю.",
+                    true),
+            intSetting(BUNDLE_TIER1_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 1 аксессуар",
+                    "Процент на аксессуар, когда к основному товару взят один.",
+                    5, 0, 50, "%"),
+            intSetting(BUNDLE_TIER2_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 2 аксессуара",
+                    "Процент на каждый из двух аксессуаров.",
+                    10, 0, 50, "%"),
+            intSetting(BUNDLE_TIER3_PERCENT, BUNDLES_GROUP,
+                    "Скидка за 3 аксессуара",
+                    "Процент на каждый из трёх (больше трёх со скидкой не идёт — самые дорогие три).",
+                    15, 0, 50, "%"),
+            intSetting(BUNDLE_MAX_ADDON_PRICE_PERCENT, BUNDLES_GROUP,
+                    "Аксессуар не дороже",
+                    "Аксессуар идёт со скидкой и предлагается, только если стоит не больше этой доли "
+                            + "цены основного товара. 50 — к мыши за 3 000 ₴ коврик до 1 500 ₴.",
+                    50, 10, 100, "%"),
+            intSetting(BUNDLE_MAX_DISCOUNT_UAH, BUNDLES_GROUP,
+                    "Потолок скидки на заказ",
+                    "Больше этой суммы скидка «Вместе дешевле» не даёт. 0 — без потолка.",
+                    0, 0, 100000, "₴"),
+            intSetting(BUNDLE_MAX_SUGGESTIONS, BUNDLES_GROUP,
+                    "Сколько предлагать",
+                    "Сколько слотов (типов аксессуаров) показывать на странице товара.",
+                    3, 1, 6, "шт"),
+            intSetting(BUNDLE_SAFETY_MARGIN_PERCENT, BUNDLES_GROUP,
+                    "Страховка маржи",
+                    "Скидка на аксессуар не больше «маржа категории − страховка». "
+                            + "5 — при марже 15 % скидка не больше 10 %.",
+                    5, 0, 50, "п. п."),
+            intSetting(BUNDLE_HOLDOUT_PERCENT, BUNDLES_GROUP,
+                    "Контрольная группа",
+                    "Столько процентов посетителей не видят блок. С ними сравнивается, сколько аксессуаров "
+                            + "покупают благодаря блоку. 0 — показывать всем.",
+                    10, 0, 50, "%"),
+            intSetting(BUNDLE_EXPLORE_PERCENT, BUNDLES_GROUP,
+                    "Доля показов второго варианта",
+                    "В стольких процентах показов первым в слоте стоит второй по оценке товар — "
+                            + "так новинки набирают статистику.",
+                    10, 0, 50, "%"),
+            boolSetting(BUNDLE_AUTO_TUNE, BUNDLES_GROUP,
+                    "Автонастройка скидок",
+                    "Раз в неделю скидка по категориям пересчитывается от маржи и отклика покупателей. "
+                            + "Ручной предел, заданный в таблице маржи, не трогается.",
+                    true),
+            intSetting(BUNDLE_LIFT_PERCENT, BUNDLES_GROUP,
+                    "Эффект подбора без скидки",
+                    "На сколько процентов растут продажи аксессуаров от самого блока, без скидки. "
+                            + "Пока у контрольной группы мало данных, берётся это число.",
+                    10, 0, 100, "%"),
+            intSetting(BUNDLE_RESPONSE_PERCENT, BUNDLES_GROUP,
+                    "Отклик на скидку",
+                    "На сколько процентов растут продажи аксессуаров за каждый 1 п. п. скидки.",
+                    4, 1, 20, "%"),
+            boolSetting(BUNDLE_SETUP_ENABLED, BUNDLES_GROUP,
+                    "«Собери сетап» включено",
+                    "К мыши, клавиатуре, наушникам предлагаются другие большие товары в цвет. "
+                            + "Пары — в разделе «Вместе дешевле».",
+                    true),
+            intSetting(BUNDLE_SETUP_PERCENT, BUNDLES_GROUP,
+                    "Скидка «Собери сетап»",
+                    "Процент на более дешёвый большой товар сетапа. Тоже ограничен маржой. 0 — без скидки.",
+                    0, 0, 20, "%"),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

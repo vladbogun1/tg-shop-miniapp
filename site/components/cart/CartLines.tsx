@@ -12,18 +12,37 @@ import { useOrderLimits } from "@/lib/order-limits";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
-export function CartLines({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
+export function CartLines({
+  onNavigate,
+  compact = false,
+  addonPercent,
+}: {
+  onNavigate?: () => void;
+  compact?: boolean;
+  /** «Разом дешевше» percent per add-on line key (from the cart quote). */
+  addonPercent?: Map<string, number>;
+}) {
   const lines = useCart((s) => s.lines);
   return (
     <ul className="flex flex-col gap-3">
       {lines.map((l) => (
-        <CartRow key={l.key} line={l} onNavigate={onNavigate} compact={compact} />
+        <CartRow key={l.key} line={l} onNavigate={onNavigate} compact={compact} addonPercent={addonPercent?.get(l.key) ?? 0} />
       ))}
     </ul>
   );
 }
 
-function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: () => void; compact: boolean }) {
+function CartRow({
+  line,
+  onNavigate,
+  compact,
+  addonPercent,
+}: {
+  line: CartLine;
+  onNavigate?: () => void;
+  compact: boolean;
+  addonPercent: number;
+}) {
   const { t, href } = useI18n();
   const fmt = useFmt();
   const setQty = useCart((s) => s.setQty);
@@ -60,7 +79,19 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
             <Trash2 className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
-        {line.variantName && <p className="text-[12px] font-medium text-[var(--muted)]">{line.variantName}</p>}
+        {(line.variantName || addonPercent > 0) && (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-medium text-[var(--muted)]">
+            {line.variantName && <span>{line.variantName}</span>}
+            {addonPercent > 0 && !unavailable && (
+              <span
+                title={t("bundle.addonChip")}
+                className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 font-display text-[11px] font-bold text-[var(--accent-hi)]"
+              >
+                {t("product.discount", { n: addonPercent })} · {t("bundle.title")}
+              </span>
+            )}
+          </p>
+        )}
         {unavailable ? (
           <p className="flex items-center gap-1 text-[12px] font-semibold text-[var(--danger)]">
             <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.5} /> {t("cart.unavailable")}
