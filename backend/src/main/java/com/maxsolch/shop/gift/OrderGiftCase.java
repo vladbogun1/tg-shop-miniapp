@@ -61,7 +61,7 @@ public class OrderGiftCase {
     @Column(name = "swap_amount_minor", nullable = false)
     private long swapAmountMinor;
 
-    /** Drawn with the low-margin odds: the order had a low-margin product (V63). */
+    /** Drawn with the low-margin odds: the order had a low-margin product (V60). */
     @Column(name = "low_margin", nullable = false)
     private boolean lowMargin;
 
