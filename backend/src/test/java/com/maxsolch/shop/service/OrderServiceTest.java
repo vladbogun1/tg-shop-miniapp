@@ -452,6 +452,23 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_promoCeiling_appliesAfterLowMarginProducts() {
+        String mouse = lowMarginCart(); // mouse 4 000 ₴ low-margin, pad 800 ₴
+        PromoCode promo = new PromoCode();
+        promo.setCode("SAVE30");
+        promo.setDiscountPercent(30);
+        promo.setMaxDiscountMinor(10_000); // at most 100 ₴
+        promo.setActive(true);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE30")).thenReturn(Optional.of(promo));
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
+                new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE30"));
+
+        // 30 % of the pad (240 ₴) → ceiling 100 ₴; the mouse is not touched.
+        assertThat(order.getDiscountMinor()).isEqualTo(10_000);
+    }
+
+    @Test
     void createOrder_ordinaryPromo_onlyLowMarginProducts_isRefused() {
         String mouse = lowMarginCart();
         PromoCode promo = new PromoCode();
