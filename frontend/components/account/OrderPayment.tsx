@@ -36,6 +36,7 @@ import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
+import { track } from "@/lib/analytics";
 import { spring } from "@/lib/motion";
 import { haptic, hapticSuccess, isAndroidTelegram, onAppResume, openExternalLink } from "@/lib/telegram";
 
@@ -208,7 +209,27 @@ export function OrderPayment({
    */
   function openPage(url: string, system: boolean) {
     setNotOpened(false);
-    openExternalLink(url, { systemBrowser: system });
+    // TEMP (demo): what goes to the Telegram bridge and whether the Mini App went to the background.
+    const w = window as unknown as { TelegramWebviewProxy?: { postEvent: (t: string, d: string) => void; __w?: boolean } };
+    const p = w.TelegramWebviewProxy;
+    if (p && !p.__w) {
+      const orig = p.postEvent.bind(p);
+      p.postEvent = (t: string, d: string) => {
+        if (t.includes("open")) track("pay_bridge", t, { d: String(d).slice(0, 200) });
+        return orig(t, d);
+      };
+      p.__w = true;
+    }
+    track("pay_open", system ? "system" : "telegram", { url, proxy: !!p, vis: document.visibilityState });
+    let gone = false;
+    const onVis = () => { if (document.visibilityState === "hidden") gone = true; };
+    document.addEventListener("visibilitychange", onVis);
+    window.setTimeout(() => { document.removeEventListener("visibilitychange", onVis); track("pay_open_result", gone ? "hidden" : "stayed", { vis: document.visibilityState }); }, 3000);
+    try {
+      openExternalLink(url, { systemBrowser: system });
+    } catch (e) {
+      track("pay_open_throw", String(e).slice(0, 200));
+    }
     if (!system || !isAndroidTelegram()) return;
     // Chrome coming up hides the Mini App within a moment; still visible after 2 s = nothing opened.
     let hidden = false;
