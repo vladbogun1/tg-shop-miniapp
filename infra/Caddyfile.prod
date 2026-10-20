@@ -4,8 +4,8 @@
 #   https://chisetup.com.ua        -> gateway-site (website)
 #   https://app.chisetup.com.ua    -> gateway      (customer Mini App)
 #   https://admin.chisetup.com.ua  -> gateway-admin
-# These two ports only REDIRECT there permanently, so old bot buttons, bookmarks and installed
-# admin shortcuts keep working. The Telegram launch data travels in the URL fragment (#tgWebAppData),
+# :667 only REDIRECTS there permanently, so installed admin shortcuts keep working; :666 serves the
+# Mini App itself (see below). The Telegram launch data travels in the URL fragment (#tgWebAppData),
 # which browsers carry over a redirect, so an old web_app button still opens a signed-in Mini App.
 #
 # Certs are the certbot-managed maxsolkh.shop files (mounted at /certs), renewed by the host cron;
@@ -18,9 +18,20 @@
 
 # PROD_CERT_DIR mounts the whole letsencrypt root at /certs, so the relative
 # live/ -> ../../archive symlinks resolve inside the container.
+# The OLD Mini App address is SERVED here, not redirected. Telegram binds the Mini App bridge to the
+# origin of the URL it launched: an old web_app button (bot messages sent before v3.1.0 still carry
+# https://maxsolkh.shop:666/...) that ended on app.chisetup.com.ua after a 301 got a DEAD bridge on
+# every client — no safe area/theme events, openLink/fullscreen/haptics silently dropped (~30 % of
+# launches in Oct 2026, see docs/TG-DEAD-BRIDGE.md). Same gateway as app.chisetup.com.ua; Host and
+# Origin are rewritten so the backend (CORS, WebSocket handshake, absolute links) sees the new address.
 maxsolkh.shop:666 {
 	tls /certs/live/maxsolkh.shop/fullchain.pem /certs/live/maxsolkh.shop/privkey.pem
-	redir https://app.chisetup.com.ua{uri} permanent
+	encode zstd gzip
+	reverse_proxy gateway:80 {
+		header_up Host app.chisetup.com.ua
+		header_up Origin https://app.chisetup.com.ua
+		header_up X-Real-IP {remote_host}
+	}
 }
 
 maxsolkh.shop:667 {

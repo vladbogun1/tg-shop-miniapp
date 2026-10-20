@@ -72,6 +72,40 @@ function envInsetTop(): number {
   }
 }
 
+/** Filled by the TG_BRIDGE_PROBE inline script in app/layout.tsx right after telegram-web-app.js. */
+interface BridgeProbe {
+  /** Events the client delivered so far. */
+  rx: number;
+  /** First delivered event and ms after the probe started, e.g. "viewport_changed@12". */
+  first: string | null;
+  t0: number;
+  /** window.TelegramWebviewProxy existed when the SDK loaded (iOS does not define it on a foreign origin). */
+  proxy: boolean;
+  iframe: boolean;
+}
+
+function bridgeProbe(): BridgeProbe | null {
+  if (typeof window === "undefined") return null;
+  return (window as unknown as { __tgBridge?: BridgeProbe }).__tgBridge ?? null;
+}
+
+/**
+ * true when we are inside Telegram (initData present) but the client does not talk to the page.
+ *
+ * Telegram binds the bridge to the origin of the URL it launched: an old web_app button with
+ * https://maxsolkh.shop:666 lands here after a 301 and gets a dead bridge on every client —
+ * nothing arrives (the SDK asks for theme/viewport/safe area on load and normally hears back within
+ * milliseconds) and everything we post (openLink, fullscreen, haptics) is dropped silently. Only
+ * judged after a grace period; web clients (iframe) are left out, they do not answer all requests.
+ */
+export function isBridgeDead(graceMs = 1500): boolean {
+  const p = bridgeProbe();
+  const wa = webApp();
+  if (!p || !wa?.initData || p.iframe) return false;
+  if (p.rx > 0) return false;
+  return Date.now() - p.t0 >= graceMs;
+}
+
 let safeAreaReported = false;
 let lastSafeArea: {
   wa: { isFullscreen?: boolean; platform?: string; version?: string };
@@ -104,6 +138,11 @@ function reportSafeArea(
       env: envInsetTop(),
       safeTop: getComputedStyle(document.querySelector(".sticky") ?? document.body).top,
       vh: window.innerHeight,
+      // Bridge health (see isBridgeDead): proxy present, events received, first event, page host.
+      px: bridgeProbe()?.proxy ?? null,
+      rx: bridgeProbe()?.rx ?? null,
+      fe: bridgeProbe()?.first ?? null,
+      host: location.host,
     });
     void import("@/lib/analytics").then((m) => m.track("tg_safe_area", undefined, meta.slice(0, 500))).catch(() => {});
   }, 2500);
@@ -398,7 +437,8 @@ export function hapticSuccess(): void {
  */
 export function openExternalLink(url: string): void {
   const wa = webApp();
-  if (wa?.initData && typeof wa.openLink === "function") {
+  // A dead bridge (old button → other origin) swallows openLink without an error: go the browser way.
+  if (wa?.initData && typeof wa.openLink === "function" && !isBridgeDead()) {
     try {
       wa.openLink(url, { try_instant_view: false });
       return;
@@ -426,7 +466,7 @@ export function downloadFile(url: string, fileName: string): void {
   const wa = webApp();
   const supported =
     !!wa?.initData &&
-    typeof wa.downloadFile === "function" &&
+    typeof wa.downloadFile === "function" && !isBridgeDead() &&
     (typeof wa.isVersionAtLeast !== "function" || wa.isVersionAtLeast("8.0"));
   if (supported && url.startsWith("https://")) {
     try {

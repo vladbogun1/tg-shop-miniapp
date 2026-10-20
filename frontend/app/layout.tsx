@@ -56,6 +56,18 @@ const DEV_TELEGRAM_STUB = [
   "}catch(e){}})();",
 ].join("");
 
+// See the comment at the injection site (right after telegram-web-app.js) below.
+const TG_BRIDGE_PROBE = [
+  "(function(){try{",
+  "var V=window.Telegram&&window.Telegram.WebView;if(!V||!V.receiveEvent)return;",
+  "var s=window.__tgBridge={rx:0,first:null,t0:Date.now(),proxy:window.TelegramWebviewProxy!==undefined,iframe:!!V.isIframe};",
+  "var o=V.receiveEvent;",
+  "var h=function(n){s.rx++;if(!s.first)s.first=n+'@'+(Date.now()-s.t0);return o.apply(this,arguments);};",
+  "V.receiveEvent=h;window.TelegramGameProxy_receiveEvent=h;",
+  "if(window.TelegramGameProxy)window.TelegramGameProxy.receiveEvent=h;",
+  "}catch(e){}})();",
+].join("");
+
 export default function RootLayout({
   children,
 }: {
@@ -93,6 +105,13 @@ export default function RootLayout({
             before any app chunk — the same guarantee beforeInteractive gave. */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="https://telegram.org/js/telegram-web-app.js" crossOrigin="anonymous" />
+        {/* Bridge health. Every Telegram client binds the Mini App bridge to the ORIGIN of the
+            launch URL: if the page ends up on another origin (an old web_app button pointing at
+            https://maxsolkh.shop:666, which 301-redirects here), the client silently drops all
+            events both ways — no safe area, no theme, openLink does nothing. Count what the client
+            delivers (it calls Telegram.WebView.receiveEvent or TelegramGameProxy.receiveEvent),
+            so lib/telegram.ts can tell a dead bridge and take the fallback path. */}
+        <script dangerouslySetInnerHTML={{ __html: TG_BRIDGE_PROBE }} />
         {/* Reveal the webview ASAP: call WebApp.ready()/expand() as soon as the SDK
             exists, INDEPENDENT of React/initData. On iOS the Telegram loading
             placeholder stays until ready() fires; if it were only called from a
