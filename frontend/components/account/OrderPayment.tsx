@@ -13,8 +13,8 @@
  * A PAYMENT_TIMEOUT cancellation is shown by the page in the status section (it replaces the
  * reject reason), so this block renders nothing then.
  *
- * Paying: "Оплатити" opens the regular monobank page in the phone's REAL browser (Chrome on Android
- * via WebApp.openLink try_browser, the default browser on iOS). Google Pay / Apple Pay only work there: inside
+ * Paying: "Оплатити" opens the regular monobank page in the phone's REAL browser (Chrome on Android,
+ * Safari on iOS — WebApp.openLink with try_browser). Google Pay / Apple Pay only work there: inside
  * Telegram (an iframe in the Mini App, or Telegram's own in-app browser) pay.google.com answers
  * "Something went wrong". After paying, monobank sends that browser to /pay-return, which opens the
  * Mini App again on this order (startapp=view_<id>). If the customer comes back by hand instead,
@@ -22,8 +22,7 @@
  * is still created / processing / hold. The webhook usually gets there first; this is what makes
  * the screen catch up without a pull-to-refresh — and the fallback when a webhook is lost.
  * «Оплата не відкрилася?» opens the same page without try_browser (Telegram's browser: card or
- * monobank still work) — for phones without Chrome, where Telegram silently opens nothing; when
- * the Mini App is not hidden 2 s after the tap it is shown as a full button (`notOpened`).
+ * monobank still work) — for phones without Chrome, where Telegram silently opens nothing.
  * Nothing opens by itself: straight from checkout (`?created=1`) the block reads
  * «Замовлення #… створено» with «Оплатити» and «Скасувати замовлення» (`created` / `onCancel`).
  */
@@ -37,7 +36,7 @@ import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { haptic, hapticSuccess, isAndroidTelegram, onAppResume, openExternalLink } from "@/lib/telegram";
+import { haptic, hapticSuccess, onAppResume, openExternalLink } from "@/lib/telegram";
 
 /** An invoice that may still turn into money. */
 const PENDING: OnlinePaymentStatus[] = ["created", "processing", "hold"];
@@ -86,9 +85,6 @@ export function OrderPayment({
   /** The payment page is being created (which of the two buttons asked for it). */
   const [paying, setPaying] = useState<"browser" | "telegram" | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
-  /** Android: Chrome was asked for but the Mini App never went to the background — no Chrome on
-   *  this phone (Telegram then opens nothing). The Telegram-browser link is pushed forward. */
-  const [notOpened, setNotOpened] = useState(false);
   /** The refresh loop is running. */
   const [watching, setWatching] = useState(false);
   /** Just came back from the payment page, the first answer is not in yet. */
@@ -206,22 +202,6 @@ export function OrderPayment({
    * "Оплатити": the monobank page in the real browser (`system`), or — «Оплата не відкрилася?» — in
    * Telegram's own one. The Mini App keeps running underneath.
    */
-  function openPage(url: string, system: boolean) {
-    setNotOpened(false);
-    openExternalLink(url, { systemBrowser: system });
-    if (!system || !isAndroidTelegram()) return;
-    // Chrome coming up hides the Mini App within a moment; still visible after 2 s = nothing opened.
-    let hidden = false;
-    const onHide = () => {
-      if (document.visibilityState === "hidden") hidden = true;
-    };
-    document.addEventListener("visibilitychange", onHide);
-    window.setTimeout(() => {
-      document.removeEventListener("visibilitychange", onHide);
-      if (!hidden && alive.current && document.visibilityState === "visible") setNotOpened(true);
-    }, 2000);
-  }
-
   async function pay(system: boolean) {
     if (paying) return;
     haptic();
@@ -231,7 +211,7 @@ export function OrderPayment({
     const known = browserPage.current;
     if (known && known.expiresAt - Date.now() > 60_000 && status === "created") {
       opened.current = true;
-      openPage(known.url, system);
+      openExternalLink(known.url, { systemBrowser: system });
       return;
     }
     setPaying(system ? "browser" : "telegram");
@@ -241,7 +221,7 @@ export function OrderPayment({
       browserPage.current = { url: started.pageUrl, expiresAt: new Date(started.expiresAt).getTime() };
       celebrated.current = false;
       opened.current = true;
-      openPage(started.pageUrl, system);
+      openExternalLink(started.pageUrl, { systemBrowser: system });
     } catch (e) {
       startFailed(e);
     } finally {
@@ -414,11 +394,7 @@ export function OrderPayment({
             type="button"
             disabled={paying !== null}
             onClick={() => void pay(false)}
-            className={
-              notOpened
-                ? "tap nb-press mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--accent)] text-[13px] font-semibold text-[var(--accent)] disabled:opacity-60"
-                : "tap mt-1 flex min-h-[36px] items-center gap-1.5 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60"
-            }
+            className="tap mt-1 flex min-h-[36px] items-center gap-1.5 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-60"
           >
             {paying === "telegram" ? (
               <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" strokeWidth={2.5} />
