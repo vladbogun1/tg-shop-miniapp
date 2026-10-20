@@ -308,6 +308,24 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
               </div>
             </div>
           )}
+          {gift?.tier && gift.prize?.kind === "DISCOUNT" && !casePromo && (
+            <div className="flex items-start gap-3">
+              <img src={`/case/${gift.tier.toLowerCase()}/case-closed-sm.webp`} alt="" className="h-12 w-12 shrink-0 object-contain" />
+              <div className="min-w-0 flex-1 text-[13px] leading-snug">
+                <div className="font-semibold" style={{ color: CASE_TIER_METAL[gift.tier].ga }}>
+                  {CASE_TIER_LABEL[gift.tier]} кейс · выпала скидка {caseDiscountText(gift.prize, (m) => money(m, order.currency))} ·{" "}
+                  {CASE_RARITY_LABEL[gift.prize.rarity]}
+                </div>
+                <div className="text-[12px] text-[var(--text-faint)]">
+                  {order.status === "REJECTED"
+                    ? "заказ отклонён — промокод не будет выдан"
+                    : gift.caseStatus === "SEALED"
+                      ? `промокод на следующий заказ выдадим, когда покупатель откроет кейс${gift.openable ? " (уже можно)" : " — после оплаты"}`
+                      : "промокод на следующий заказ ещё не выдан"}
+                </div>
+              </div>
+            </div>
+          )}
           {gift?.tier && gift.caseStatus && gift.lowMargin && (
             <div className="text-[12px] text-[var(--text-faint)]">
               🎯 Кейс разыгран с упором на скидки: в заказе товар с низкой маржой («Подарок → Упор на скидки»).
