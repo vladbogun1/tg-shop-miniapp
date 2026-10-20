@@ -287,7 +287,7 @@ export const uk: RuDictionary = {
   "pay.topUpTitle": "Доплата",
   "pay.topUpButton": "Доплатити {amount}",
   "pay.topUpText": "До замовлення додано товар. Вже оплачено {paid} — сплатіть лише різницю.",
-  "pay.hint": "Оплата відкриється в браузері: Google Pay, Apple Pay, картка або monobank. Після оплати повернетеся сюди.",
+  "pay.hint": "Форма monobank відкриється тут же, в застосунку: картка або monobank. Для Apple Pay / Google Pay — «Відкрити в браузері».",
   "pay.prepayment": "Передоплата онлайн, решта {amount} — при отриманні.",
   "pay.until": "Оплатіть до {when}",
   "pay.left": "залишилось {time}",
@@ -322,7 +322,11 @@ export const uk: RuDictionary = {
   "pay.timeout": "Скасовано — не оплачено протягом доби",
   "pay.unavailable": "Онлайн-оплата тимчасово недоступна",
   "pay.unavailableText": "Напишіть нам у чат — допоможемо завершити замовлення.",
-  "pay.openFallback": "Оплата не відкрилася? Відкрити в Telegram",
+  "pay.sheetTitle": "Оплата · {amount}",
+  "pay.sheetLoading": "Завантажуємо форму monobank…",
+  "pay.openBrowser": "Відкрити в браузері (Apple Pay / Google Pay)",
+  "pay.walletTitle": "Google Pay / Apple Pay — відкрити в браузері",
+  "pay.walletHint": "У Telegram гаманці не працюють. Картка або monobank — у формі нижче.",
 
   // ── карта відділень Нової Пошти ───────────────────────────────────────────
   "np.cat.all": "Усі",
@@ -445,10 +449,10 @@ export const uk: RuDictionary = {
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
   "payReturn.title": "Дякуємо! Оплату прийнято в обробку",
-  "payReturn.text": "Зараз повернемо вас у магазин у Telegram — статус оплати оновиться сам, а бот надішле повідомлення.",
+  "payReturn.text": "Закрийте це вікно — ви повернетеся в магазин у Telegram. Статус оплати оновиться автоматично, а бот надішле повідомлення.",
   "payReturn.order": "Замовлення {id}",
-  "payReturn.back": "Повернутися в магазин",
-  "payReturn.closeHint": "Не перекинуло? Натисніть «Повернутися в магазин» або просто закрийте браузер.",
+  "payReturn.back": "Повернутися в Telegram",
+  "payReturn.closeHint": "Вікно не закрилося саме — закрийте його хрестиком або кнопкою «Готово» вгорі.",
   "payReturn.embedded": "Оплату прийнято в обробку…",
   "payReturn.embeddedText": "Повертаємося до замовлення",
   // ---- comparison ----

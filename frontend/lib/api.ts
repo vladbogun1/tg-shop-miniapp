@@ -307,7 +307,7 @@ export const customerApi = {
    * page, so calling it again just returns the same link. 409 with `code` PAYMENT_UNAVAILABLE |
    * NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED when it cannot be paid.
    * After paying, monobank sends the browser to the Mini App's /pay-return page.
-   * `display: "IFRAME"` — a page laid out for an iframe (no longer used by the Mini App, which pays in the browser);
+   * `display: "IFRAME"` — a page laid out for our in-app sheet (components/account/PaymentSheet);
    * its return is /pay-return?…&embedded=1 inside that frame. The two kinds are separate invoices:
    * asking for the other one closes the live page of the first.
    */

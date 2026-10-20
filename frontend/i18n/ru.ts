@@ -299,7 +299,7 @@ export const ru = {
   "pay.topUpTitle": "Доплата",
   "pay.topUpButton": "Доплатить {amount}",
   "pay.topUpText": "В заказ добавлен товар. Уже оплачено {paid} — оплатите только разницу.",
-  "pay.hint": "Оплата откроется в браузере: Google Pay, Apple Pay, карта или monobank. После оплаты вернётесь сюда.",
+  "pay.hint": "Форма monobank откроется прямо здесь, в приложении: карта или monobank. Для Apple Pay / Google Pay — «Открыть в браузере».",
   "pay.prepayment": "Предоплата онлайн, остальное {amount} — при получении.",
   "pay.until": "Оплатите до {when}",
   "pay.left": "осталось {time}",
@@ -334,7 +334,11 @@ export const ru = {
   "pay.timeout": "Отменён — не оплачен в течение суток",
   "pay.unavailable": "Онлайн-оплата временно недоступна",
   "pay.unavailableText": "Напишите нам в чат — поможем завершить заказ.",
-  "pay.openFallback": "Оплата не открылась? Открыть в Telegram",
+  "pay.sheetTitle": "Оплата · {amount}",
+  "pay.sheetLoading": "Загружаем форму monobank…",
+  "pay.openBrowser": "Открыть в браузере (Apple Pay / Google Pay)",
+  "pay.walletTitle": "Google Pay / Apple Pay — открыть в браузере",
+  "pay.walletHint": "В Telegram кошельки не работают. Карта или monobank — в форме ниже.",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
   "np.cat.all": "Все",
@@ -457,10 +461,10 @@ export const ru = {
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
   "payReturn.title": "Спасибо! Оплата принята в обработку",
-  "payReturn.text": "Сейчас вернём вас в магазин в Telegram — статус оплаты обновится сам, а бот пришлёт сообщение.",
+  "payReturn.text": "Закройте это окно — вы вернётесь в магазин в Telegram. Статус оплаты обновится автоматически, а бот пришлёт сообщение.",
   "payReturn.order": "Заказ {id}",
-  "payReturn.back": "Вернуться в магазин",
-  "payReturn.closeHint": "Не перебросило? Нажмите «Вернуться в магазин» или просто закройте браузер.",
+  "payReturn.back": "Вернуться в Telegram",
+  "payReturn.closeHint": "Окно не закрылось само — закройте его крестиком или кнопкой «Готово» вверху.",
   "payReturn.embedded": "Оплата принята в обработку…",
   "payReturn.embeddedText": "Возвращаемся к заказу",
   // ---- comparison ----

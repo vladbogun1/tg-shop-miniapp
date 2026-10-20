@@ -4,13 +4,11 @@
  * /pay-return?order={id}&lang={uk|ru|en} — where monobank sends the browser after a payment made
  * from the Mini App.
  *
- * It opens in a REGULAR browser (Chrome / Safari — the Mini App sends the payment there, see
- * components/account/OrderPayment), not inside the Mini App: no initData, no sign-in. Its job is to
- * put the customer back into Telegram, onto this order: the bot has a main Mini App, so
- * `tg://resolve?domain=<bot>&startapp=view_<id>` launches it straight on the order page (Providers
- * routes view_<id>), which re-reads the payment on arrival. That is tried at once; browsers that
- * block an app switch without a tap get the big «Повернутися в магазин» button — an https t.me link,
- * which Android (App Links) and iOS (universal links) hand to Telegram on a tap.
+ * It opens in a REGULAR browser (Telegram's in-app one, Safari, Chrome), not inside the Mini App:
+ * no initData, no sign-in, nothing to load. The Mini App itself is still running underneath that
+ * browser and refreshes the order as soon as it is visible again (components/account/OrderPayment),
+ * so all this page has to do is tell the customer to close the window — and offer a way back to the
+ * bot when the browser is a separate app.
  *
  * With `embedded=1` (an invoice shown in the Mini App's own payment sheet) the page is loaded INSIDE
  * that sheet's iframe instead: it only posts "done" to the parent window, see EmbeddedReturn.
@@ -131,9 +129,7 @@ function StandaloneReturn({
 
   // The bot's username is server configuration (prod and the demo stand use different bots), so
   // it is read from the public /api/app-info instead of being baked into the build.
-  const [bot, setBot] = useState<string | null>(null);
-  const startApp = orderId && /^[0-9a-f-]{32,36}$/i.test(orderId) ? `view_${orderId}` : null;
-  const botUrl = bot ? `https://t.me/${bot}${startApp ? `?startapp=${startApp}` : ""}` : null;
+  const [botUrl, setBotUrl] = useState<string | null>(null);
   const [closeFailed, setCloseFailed] = useState(false);
 
   useEffect(() => {
@@ -146,7 +142,7 @@ function StandaloneReturn({
       .getAppInfo()
       .then((info) => {
         const name = info.botUsername?.replace(/^@/, "").trim();
-        if (!cancelled && name && /^\w{4,64}$/.test(name)) setBot(name);
+        if (!cancelled && name) setBotUrl(`https://t.me/${name}`);
       })
       .catch(() => {
         /* no way back by link — closing the window still works */
@@ -155,16 +151,6 @@ function StandaloneReturn({
       cancelled = true;
     };
   }, []);
-
-  // Straight back into the Mini App. A browser that refuses (no tap behind it) just stays here.
-  useEffect(() => {
-    if (!bot) return;
-    const tg = `tg://resolve?domain=${bot}${startApp ? `&startapp=${startApp}` : ""}`;
-    const id = window.setTimeout(() => {
-      window.location.href = tg;
-    }, 300);
-    return () => window.clearTimeout(id);
-  }, [bot, startApp]);
 
   function close() {
     // Works in some in-app browsers; a tab the script did not open usually ignores it.
