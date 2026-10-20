@@ -256,16 +256,18 @@ public class PromoService {
         return valid(promo, subtotal, reservedUntil, excluded);
     }
 
-    /** The low-margin part of the cart for a code the gift case gave; 0 for any other code. */
+    /** The low-margin part of the cart («Упор на скидки»): no promo code applies to it. */
     private long excludedFor(PromoCode promo, Map<String, Integer> items) {
-        if (caseLowMargin == null || items == null || items.isEmpty() || !OrderService.isCasePromo(promo)) {
+        if (caseLowMargin == null || promo == null || items == null || items.isEmpty()) {
             return 0;
         }
         return caseLowMargin.excludedMinor(items);
     }
 
-    private static PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil, long excludedMinor) {
+    /** A valid code; the message says the discount skips some items («Упор на скидки»), if it does. */
+    private PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil, long excludedMinor) {
         long discount = OrderService.discountFor(promo, subtotal, excludedMinor);
-        return new PromoPreviewDto(true, discount, subtotal - discount, null, reservedUntil);
+        String note = excludedMinor > 0 ? messages.current("api.promo.partlyExcluded") : null;
+        return new PromoPreviewDto(true, discount, subtotal - discount, note, reservedUntil);
     }
 }

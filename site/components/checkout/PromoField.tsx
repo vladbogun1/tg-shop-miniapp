@@ -156,6 +156,7 @@ function PromoHint({
         subtotal: fmt.money(subtotal, currency),
       })}
       {preview?.reservedUntil ? t("promo.heldUntil", { time: fmt.time(preview.reservedUntil) }) : ""}
+      {preview?.message && <span className="block font-medium text-[var(--muted)]">{preview.message}</span>}
     </p>
   );
 }

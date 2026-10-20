@@ -47,7 +47,7 @@ Return terms are on the [Returns and Exchanges](/returns) page, and warranty ter
 
 ## Promo codes and promotions
 
-A promo code is valid under the terms of the relevant promotion and cannot be exchanged for cash. One promo code per order. The store may limit the number of uses and the validity period of a promo code.
+A promo code is valid under the terms of the relevant promotion and cannot be exchanged for cash. One promo code per order. The store may limit the number of uses and the validity period of a promo code. Promo codes do not apply to some products — then the discount is counted on the rest of the cart, and a cart of only such products takes no promo code.
 
 The terms of the «Gift cases» promotion (a gift for orders above a certain amount) are on the [Promotion rules](/case-rules) page.
 

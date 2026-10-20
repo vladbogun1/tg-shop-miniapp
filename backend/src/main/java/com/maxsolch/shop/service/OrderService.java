@@ -238,7 +238,7 @@ public class OrderService {
         PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
         long lowMarginMinor = lowMarginMinor(order);
         if (promo != null) {
-            discount = discountFor(promo, subtotal, casePromoExcluded(promo, lowMarginMinor, subtotal));
+            discount = discountFor(promo, subtotal, promoExcluded(promo, lowMarginMinor, subtotal));
             order.setPromoCode(promo.getCode());
             promo.setUsesCount(promo.getUsesCount() + 1);
             promoCodeRepository.save(promo);
@@ -858,7 +858,7 @@ public class OrderService {
             // holds do not stand in their way — only the code's own usage limit does.
             // The order's customer is passed for the owner check of personal codes (V44).
             PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
-            discount = discountFor(p, subtotal, casePromoExcluded(p, lowMarginMinor(order), subtotal));
+            discount = discountFor(p, subtotal, promoExcluded(p, lowMarginMinor(order), subtotal));
             p.setUsesCount(p.getUsesCount() + 1);
             promoCodeRepository.save(p);
             order.setPromoCode(p.getCode());
@@ -1523,8 +1523,8 @@ public class OrderService {
     }
 
     /**
-     * The same against the subtotal without {@code excludedMinor} (the low-margin products a case promo
-     * code does not apply to, {@link #casePromoExcluded}); capped at what is left.
+     * The same against the subtotal without {@code excludedMinor} (the low-margin products no promo code
+     * applies to, {@link #promoExcluded}); capped at what is left.
      */
     public static long discountFor(PromoCode promo, long subtotal, long excludedMinor) {
         long base = Math.max(0, subtotal - Math.max(0, excludedMinor));
@@ -1533,12 +1533,12 @@ public class OrderService {
     }
 
     /**
-     * What of the subtotal a code does not touch: the low-margin products for a code the gift case gave
-     * (a discount prize, a swap), nothing for any other code. A case code on a cart of only such products
-     * is refused, so the use is not wasted.
+     * What of the subtotal a code does not touch: the low-margin products («Упор на скидки») — no promo
+     * code applies to them, a case code or any other. A code on a cart of only such products is refused,
+     * so the use is not wasted.
      */
-    private long casePromoExcluded(PromoCode promo, long lowMarginMinor, long subtotal) {
-        if (promo == null || lowMarginMinor <= 0 || !isCasePromo(promo)) {
+    private long promoExcluded(PromoCode promo, long lowMarginMinor, long subtotal) {
+        if (promo == null || lowMarginMinor <= 0) {
             return 0;
         }
         if (subtotal - lowMarginMinor <= 0) {

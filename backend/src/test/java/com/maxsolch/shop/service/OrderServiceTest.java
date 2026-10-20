@@ -419,7 +419,7 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_ordinaryPromo_stillCoversLowMarginProducts() {
+    void createOrder_ordinaryPromo_alsoSkipsLowMarginProducts() {
         String mouse = lowMarginCart();
         PromoCode promo = new PromoCode();
         promo.setCode("SAVE10");
@@ -430,7 +430,22 @@ class OrderServiceTest {
         Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
                 new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE10"));
 
-        assertThat(order.getDiscountMinor()).isEqualTo(48_000);
+        assertThat(order.getDiscountMinor()).isEqualTo(8_000); // 10 % of the pad only
+    }
+
+    @Test
+    void createOrder_ordinaryPromo_onlyLowMarginProducts_isRefused() {
+        String mouse = lowMarginCart();
+        PromoCode promo = new PromoCode();
+        promo.setCode("SAVE10");
+        promo.setDiscountPercent(10);
+        promo.setActive(true);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
+
+        assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "SAVE10")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("api.promo.caseExcluded");
+        assertThat(promo.getUsesCount()).isZero();
     }
 
     @Test
