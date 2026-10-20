@@ -287,7 +287,7 @@ export const en: RuDictionary = {
   "pay.topUpTitle": "Top-up",
   "pay.topUpButton": "Pay the difference {amount}",
   "pay.topUpText": "An item was added to your order. {paid} is already paid — pay only the difference.",
-  "pay.hint": "The monobank form opens right here in the app: card or monobank. For Apple Pay / Google Pay, use “Open in browser”.",
+  "pay.hint": "Payment opens in your browser: Google Pay, Apple Pay, card or monobank. You’ll come back here afterwards.",
   "pay.prepayment": "Prepayment online, the remaining {amount} on delivery.",
   "pay.until": "Pay by {when}",
   "pay.left": "{time} left",
@@ -322,11 +322,7 @@ export const en: RuDictionary = {
   "pay.timeout": "Cancelled — not paid within 24 hours",
   "pay.unavailable": "Online payment is temporarily unavailable",
   "pay.unavailableText": "Write to us in the chat — we will help you complete the order.",
-  "pay.sheetTitle": "Payment · {amount}",
-  "pay.sheetLoading": "Loading the monobank form…",
-  "pay.openBrowser": "Open in browser (Apple Pay / Google Pay)",
-  "pay.walletTitle": "Google Pay / Apple Pay — open in browser",
-  "pay.walletHint": "Wallets don’t work inside Telegram. Card or monobank — in the form below.",
+  "pay.openFallback": "Payment didn’t open? Open it in Telegram",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
   "np.cat.all": "All",
@@ -449,10 +445,10 @@ export const en: RuDictionary = {
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
   "payReturn.title": "Thank you! Your payment is being processed",
-  "payReturn.text": "Close this window to get back to the shop in Telegram. The payment status will update automatically, and the bot will send you a message.",
+  "payReturn.text": "Taking you back to the shop in Telegram — the payment status updates by itself, and the bot will send you a message.",
   "payReturn.order": "Order {id}",
-  "payReturn.back": "Back to Telegram",
-  "payReturn.closeHint": "The window did not close by itself — close it with the ✕ or the “Done” button at the top.",
+  "payReturn.back": "Back to the shop",
+  "payReturn.closeHint": "Didn’t switch? Tap “Back to the shop” or just close the browser.",
   "payReturn.embedded": "Your payment is being processed…",
   "payReturn.embeddedText": "Taking you back to the order",
   // ---- comparison ----
