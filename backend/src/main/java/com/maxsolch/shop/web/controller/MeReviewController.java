@@ -59,7 +59,8 @@ public class MeReviewController {
             journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("REVIEW_SUBMITTED")
                     .order(r.orderId())
                     .text("Отзыв " + "★".repeat(Math.max(0, Math.min(5, r.rating()))) + " на «" + r.title() + "»"
-                            + (result.bonus() != null ? " · выдан бонус −" + result.bonus().percent() + "%" : ""))
+                            + (result.bonus() != null ? " · выдан бонус −" + com.maxsolch.shop.review.ReviewRules.discountRu(
+                                    result.bonus().percent(), result.bonus().maxDiscountMinor()) : ""))
                     .detail("reviewId", r.id())
                     .detail("rating", r.rating())
                     .detail("status", r.status()));

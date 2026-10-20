@@ -11,11 +11,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, Gift, PartyPopper } from "lucide-react";
 import { useState } from "react";
+import { reviewBonusText } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { useT } from "@/i18n/context";
 import { ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { Image } from "@/lib/image";
+import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import {
   REVIEW_MAX_LENGTH,
@@ -208,7 +210,7 @@ export function BonusCodeCard({ bonus, highlight }: { bonus: BonusCode; highligh
         </p>
         <p className="text-[11px] text-[var(--muted)]">
           {[
-            t("reviews.bonus.percent", { n: bonus.percent }),
+            reviewBonusText(bonus, t, (m) => money(m)),
             bonus.expiresAt ? t("reviews.bonus.until", { date: formatDate(bonus.expiresAt) }) : null,
             t(`reviews.bonus.state.${bonus.state}`),
           ]

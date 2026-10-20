@@ -146,6 +146,7 @@ public class AdminPromoController {
                 p.getCode(),
                 p.getDiscountPercent(),
                 p.getDiscountAmountMinor(),
+                p.getMaxDiscountMinor(),
                 p.getMaxUses(),
                 p.getUsesCount(),
                 p.isActive(),

@@ -30,6 +30,10 @@ public class PromoCode {
     @Column(name = "discount_amount_minor", nullable = false)
     private long discountAmountMinor = 0;
 
+    /** Ceiling of the discount in kopecks (V63): "5 %, but at most 100 ₴"; 0 = no ceiling. */
+    @Column(name = "max_discount_minor", nullable = false)
+    private long maxDiscountMinor = 0;
+
     @Column(name = "max_uses")
     private Integer maxUses;
 

@@ -17,6 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -51,6 +52,7 @@ class ReviewReminderJobTest {
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_REMINDER_DAYS), any(Integer.class)))
                 .thenAnswer(i -> reminderDays);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_PERCENT), any(Integer.class))).thenReturn(5);
+        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_MAX_UAH), any(Integer.class))).thenReturn(100);
         lenient().when(notifier.enabled()).thenReturn(true);
     }
 
@@ -66,10 +68,10 @@ class ReviewReminderJobTest {
                 NOW.minus(Duration.ofDays(2)), ReviewReminderJob.BATCH))
                 .thenReturn(List.of(due, claimedElsewhere));
         when(store.claimReminder(due.orderId(), NOW)).thenReturn(true, false);
-        when(notifier.reminder(1L, due.orderId(), 5)).thenReturn(true);
+        when(notifier.reminder(1L, due.orderId(), 5, 10_000L)).thenReturn(true);
 
         assertThat(job.sendDue()).isEqualTo(1);
-        verify(notifier, never()).reminder(eq(2L), any(), anyInt());
+        verify(notifier, never()).reminder(eq(2L), any(), anyInt(), anyLong());
     }
 
     @Test

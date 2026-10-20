@@ -64,6 +64,7 @@ public class ReviewReminderJob {
         Instant deliveredTo = now.minus(Duration.ofDays(days));
         Instant deliveredFrom = deliveredTo.minus(Duration.ofDays(ReviewRules.REMINDER_WINDOW_DAYS));
         int bonusPercent = settings.get(SettingsRegistry.REVIEWS_BONUS_PERCENT, 5);
+        long bonusMax = ReviewRules.bonusMaxMinor(settings.get(SettingsRegistry.REVIEWS_BONUS_MAX_UAH, 100));
         List<ReviewStore.ReminderCandidate> candidates = store.reminderCandidates(deliveredFrom, deliveredTo, BATCH);
         int sent = 0;
         for (ReviewStore.ReminderCandidate c : candidates) {
@@ -75,7 +76,7 @@ public class ReviewReminderJob {
             if (!store.claimReminder(c.orderId(), now)) {
                 continue;
             }
-            if (notifier.reminder(c.tgUserId(), c.orderId(), bonusPercent)) {
+            if (notifier.reminder(c.tgUserId(), c.orderId(), bonusPercent, bonusMax)) {
                 sent++;
             }
         }

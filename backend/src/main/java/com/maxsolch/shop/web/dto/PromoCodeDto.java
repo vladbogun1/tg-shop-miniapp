@@ -7,6 +7,8 @@ public record PromoCodeDto(
         String code,
         int discountPercent,
         long discountAmountMinor,
+        /** Ceiling of the discount in kopecks (V63); 0 = none. */
+        long maxDiscountMinor,
         Integer maxUses,
         int usesCount,
         boolean active,

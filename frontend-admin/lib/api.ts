@@ -863,6 +863,8 @@ export interface PromoCode {
   code: string;
   discountPercent?: number | null;
   discountAmountMinor?: number | null;
+  /** Ceiling of the discount in kopecks (V63): «5 %, но не больше 100 ₴»; 0 = без потолка. */
+  maxDiscountMinor?: number | null;
   maxUses?: number | null;
   /** How many orders used the code (backend `usesCount`). */
   usesCount?: number | null;

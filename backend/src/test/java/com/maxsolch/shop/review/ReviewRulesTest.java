@@ -150,4 +150,15 @@ class ReviewRulesTest {
         Instant old = NOW.minus(Duration.ofDays(2 + ReviewRules.REMINDER_WINDOW_DAYS + 1));
         assertThat(ReviewRules.reminderDue(OrderStatus.DELIVERED, old, null, USER, true, NOW, 2)).isFalse();
     }
+
+    @Test
+    void bonusCeiling() {
+        assertThat(ReviewRules.bonusMaxMinor(100)).isEqualTo(10_000);
+        assertThat(ReviewRules.bonusMaxMinor(0)).isZero();
+        assertThat(ReviewRules.bonusMaxMinor(-5)).isZero();
+        assertThat(ReviewRules.uah(10_000)).isEqualTo("100");
+        assertThat(ReviewRules.uah(150_050)).isEqualTo("1 500.50");
+        assertThat(ReviewRules.discountRu(5, 10_000)).isEqualTo("5% (до 100 ₴)");
+        assertThat(ReviewRules.discountRu(5, 0)).isEqualTo("5%");
+    }
 }

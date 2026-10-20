@@ -40,6 +40,8 @@ public final class SettingsRegistry {
     public static final String REVIEWS_ENABLED = "reviews.enabled";
     public static final String REVIEWS_PREMODERATION = "reviews.premoderation";
     public static final String REVIEWS_BONUS_PERCENT = "reviews.bonusPercent";
+    /** Ceiling of the review bonus in ₴ (V63, promo_codes.max_discount_minor); 0 = no ceiling. */
+    public static final String REVIEWS_BONUS_MAX_UAH = "reviews.bonusMaxDiscountUah";
     public static final String REVIEWS_BONUS_VALID_DAYS = "reviews.bonusValidDays";
     public static final String REVIEWS_MIN_LENGTH = "reviews.minLength";
     public static final String REVIEWS_REMINDER_DAYS = "reviews.reminderDays";
@@ -214,6 +216,12 @@ public final class SettingsRegistry {
                     "Скидка личного одноразового промокода за первый опубликованный отзыв по заказу. "
                             + "0 — без бонуса.",
                     5, 0, 50, "%"),
+            intSetting(REVIEWS_BONUS_MAX_UAH, "reviews",
+                    "Бонус за отзыв — не больше",
+                    "Потолок скидки по бонусному промокоду в гривнах: 5 % от заказа на 10 000 ₴ при потолке "
+                            + "100 ₴ дадут −100 ₴, а не −500 ₴. Действует на новые коды; покупатель видит "
+                            + "«−5 % (до 100 ₴)». 0 — без потолка.",
+                    100, 0, 100000, "₴"),
             intSetting(REVIEWS_BONUS_VALID_DAYS, "reviews",
                     "Срок действия бонуса",
                     "Сколько дней действует бонусный промокод с момента выдачи.",

@@ -76,7 +76,10 @@ export function DiscountModal({
       if (!p) return 0;
       return (p.discountAmountMinor ?? 0) > 0
         ? Math.min(p.discountAmountMinor!, subtotal)
-        : Math.floor((subtotal * (p.discountPercent ?? 0)) / 100);
+        : Math.min(
+            Math.floor((subtotal * (p.discountPercent ?? 0)) / 100),
+            (p.maxDiscountMinor ?? 0) > 0 ? p.maxDiscountMinor! : Number.POSITIVE_INFINITY
+          );
     }
     if (kind === "amount") return Math.min(Math.round(num * 100), subtotal);
     return Math.floor((subtotal * pct) / 100);
@@ -175,7 +178,7 @@ export function DiscountModal({
                   <span className="tabular text-[13px] font-semibold">
                     {(p.discountAmountMinor ?? 0) > 0
                       ? `−${money(p.discountAmountMinor!, cur)}`
-                      : `−${p.discountPercent ?? 0}%`}
+                      : `−${p.discountPercent ?? 0}%${(p.maxDiscountMinor ?? 0) > 0 ? ` до ${money(p.maxDiscountMinor!, cur)}` : ""}`}
                   </span>
                 </button>
               </Fragment>

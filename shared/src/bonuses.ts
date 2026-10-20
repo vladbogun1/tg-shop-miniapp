@@ -5,6 +5,7 @@
  * the customer gets a one-tap offer instead. Codes do not stack, so only one is offered: the
  * largest discount, and of equal ones the one that runs out first.
  */
+import type { Params } from "./i18n";
 import type { BonusCode } from "./types";
 
 /** From this many days left the offer says the code is about to run out. */
@@ -38,6 +39,23 @@ export function pickBonusOffer(bonuses: readonly BonusCode[] | null | undefined,
   const end = endOf(best);
   const daysLeft = Number.isFinite(end) ? Math.max(1, Math.ceil((end - now) / 86_400_000)) : null;
   return { bonus: best, daysLeft, more: usable.length - 1 };
+}
+
+/** The ceiling of a bonus in kopecks ("−5% (до 100 ₴)", V63), or null when there is none. */
+export function bonusCap(b: Pick<BonusCode, "maxDiscountMinor">): number | null {
+  return b.maxDiscountMinor && b.maxDiscountMinor > 0 ? b.maxDiscountMinor : null;
+}
+
+/** "−5%" or "−5% (до 100 ₴)" with the app's own `reviews.bonus.percent` / `reviews.bonus.percentCapped`. */
+export function reviewBonusText(
+  b: Pick<BonusCode, "percent" | "maxDiscountMinor">,
+  t: (key: "reviews.bonus.percent" | "reviews.bonus.percentCapped", params: Params) => string,
+  money: (minor: number) => string
+): string {
+  const max = bonusCap(b);
+  return max != null
+    ? t("reviews.bonus.percentCapped", { n: b.percent, max: money(max) })
+    : t("reviews.bonus.percent", { n: b.percent });
 }
 
 /** The promo source of a gift-case prize code (GiftService.PROMO_SOURCE). */

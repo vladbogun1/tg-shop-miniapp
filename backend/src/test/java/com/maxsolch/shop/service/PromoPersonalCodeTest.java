@@ -74,6 +74,25 @@ class PromoPersonalCodeTest {
     }
 
     @Test
+    void reviewBonusCeilingInPreviewAndHold() {
+        PromoCode p = personal(Instant.now().plus(Duration.ofDays(10)));
+        p.setMaxDiscountMinor(10_000); // −5 % (до 100 ₴)
+        when(promoCodeRepository.findByCodeAndActiveTrue("THANKS-ABCDEF")).thenReturn(Optional.of(p));
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("THANKS-ABCDEF")).thenReturn(Optional.of(p));
+
+        PromoPreviewDto preview = service.preview("THANKS-ABCDEF", 1_000_000L, OWNER);
+        assertThat(preview.valid()).isTrue();
+        assertThat(preview.discountMinor()).isEqualTo(10_000L);
+        assertThat(preview.totalMinor()).isEqualTo(990_000L);
+
+        PromoPreviewDto held = service.reserve("THANKS-ABCDEF", 1_000_000L, OWNER);
+        assertThat(held.discountMinor()).isEqualTo(10_000L);
+
+        // A small cart stays at 5 %.
+        assertThat(service.preview("THANKS-ABCDEF", SUBTOTAL, OWNER).discountMinor()).isEqualTo(5_000L);
+    }
+
+    @Test
     void someoneElseCannotUseIt() {
         PromoCode p = personal(Instant.now().plus(Duration.ofDays(10)));
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("THANKS-ABCDEF")).thenReturn(Optional.of(p));

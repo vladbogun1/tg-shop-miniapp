@@ -379,6 +379,24 @@ class OrderServiceTest {
         verify(promoCodeRepository).save(promo);
     }
 
+    @Test
+    void createOrder_promoCeiling_capsThePercent() {
+        Product p = simpleProduct(10, 1_000_000); // 10 000 ₴
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+
+        PromoCode promo = new PromoCode();
+        promo.setCode("SAVE5");
+        promo.setDiscountPercent(5);
+        promo.setMaxDiscountMinor(10_000); // at most 100 ₴
+        promo.setActive(true);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE5")).thenReturn(Optional.of(promo));
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE5"));
+
+        assertThat(order.getDiscountMinor()).isEqualTo(10_000); // −100 ₴, not −500 ₴
+        assertThat(order.getTotalMinor()).isEqualTo(990_000);
+    }
+
     // ---------- a case promo code and low-margin products (docs/GIFT-CASE.md) ----------
 
     /** A mouse at 4 000 ₴ marked low-margin + this test's product (a pad) at 800 ₴; returns the mouse id. */
@@ -1194,6 +1212,43 @@ class OrderServiceTest {
 
         assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000);
         assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
+    }
+
+    @Test
+    void discountFor_ceilingCapsThePercent() {
+        PromoCode bonus = new PromoCode();
+        bonus.setDiscountPercent(5);
+        bonus.setMaxDiscountMinor(10_000); // 5 %, but at most 100 ₴
+
+        assertThat(OrderService.discountFor(bonus, 1_000_000)).isEqualTo(10_000); // 10 000 ₴ → −100 ₴
+        assertThat(OrderService.discountFor(bonus, 200_000)).isEqualTo(10_000);   // exactly 5 %
+        assertThat(OrderService.discountFor(bonus, 100_000)).isEqualTo(5_000);    // below the ceiling
+        assertThat(OrderService.discountFor(bonus, 4_000)).isEqualTo(200);
+
+        bonus.setMaxDiscountMinor(0); // no ceiling
+        assertThat(OrderService.discountFor(bonus, 1_000_000)).isEqualTo(50_000);
+    }
+
+    @Test
+    void discountFor_ceilingAppliesAfterTheExcludedPartAndThePercent() {
+        PromoCode promo = new PromoCode();
+        promo.setDiscountPercent(10);
+        promo.setMaxDiscountMinor(15_000);
+
+        // 10 000 ₴, of them 8 000 ₴ excluded: 10 % of 2 000 ₴ = 200 ₴ → ceiling 150 ₴.
+        assertThat(OrderService.discountFor(promo, 1_000_000, 800_000)).isEqualTo(15_000);
+        // 9 000 ₴ excluded: 10 % of 1 000 ₴ = 100 ₴, under the ceiling.
+        assertThat(OrderService.discountFor(promo, 1_000_000, 900_000)).isEqualTo(10_000);
+    }
+
+    @Test
+    void discountFor_ceilingAlsoCapsAFixedAmount() {
+        PromoCode promo = new PromoCode();
+        promo.setDiscountAmountMinor(30_000);
+        promo.setMaxDiscountMinor(20_000);
+
+        assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(20_000);
+        assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000); // still not above the subtotal
     }
 
     // ---------- the size of a case prize (V59) ----------

@@ -90,6 +90,7 @@ class ReviewServiceTest {
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_PERCENT), any(Integer.class)))
                 .thenAnswer(inv -> bonusPercent);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_VALID_DAYS), any(Integer.class))).thenReturn(60);
+        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_MAX_UAH), any(Integer.class))).thenReturn(100);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_MIN_LENGTH), any(Integer.class))).thenReturn(10);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_MAX_PER_DAY), any(Integer.class))).thenReturn(10);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -155,7 +156,9 @@ class ReviewServiceTest {
         assertThat(code.getSourceOrderId()).isEqualTo(item.getOrder().getId());
         assertThat(result.bonus()).isNotNull();
         assertThat(result.bonus().code()).isEqualTo(code.getCode());
-        verify(notifier).bonusIssued(eq(USER), eq(code.getCode()), eq(5), eq(code.getExpiresAt()));
+        assertThat(code.getMaxDiscountMinor()).isEqualTo(10_000); // reviews.bonusMaxDiscountUah = 100 ₴
+        assertThat(result.bonus().maxDiscountMinor()).isEqualTo(10_000);
+        verify(notifier).bonusIssued(eq(USER), eq(code.getCode()), eq(5), eq(10_000L), eq(code.getExpiresAt()));
     }
 
     @Test
@@ -170,7 +173,7 @@ class ReviewServiceTest {
         assertThat(result.review().status()).isEqualTo("PUBLISHED");
         assertThat(result.bonus()).isNull();
         verify(promoCodes, never()).save(any());
-        verify(notifier, never()).bonusIssued(any(), any(), any(Integer.class), any());
+        verify(notifier, never()).bonusIssued(any(), any(), any(Integer.class), anyLong(), any());
     }
 
     @Test

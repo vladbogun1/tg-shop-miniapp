@@ -9,7 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Gift, MessageSquareText, PartyPopper, Pencil, Ticket } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { isCaseBonus, type BonusCode, type MyReview, type PendingReviewLine, type ReviewStatus, type SubmitReviewResult } from "@shop/shared";
+import { isCaseBonus, reviewBonusText, type BonusCode, type MyReview, type PendingReviewLine, type ReviewStatus, type SubmitReviewResult } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { CopyButton } from "@/components/ui/CopyButton";
 import type { MessageKey } from "@/i18n";
@@ -281,7 +281,7 @@ function BonusItem({ bonus }: { bonus: BonusCode }) {
   return (
     <li className={`nb flex flex-col gap-2 p-4 ${active ? "" : "opacity-70"}`}>
       <div className="flex items-center justify-between gap-2">
-        <span className="font-display text-[22px] font-extrabold tabular-nums text-[var(--accent)]">{t("product.discount", { n: bonus.percent })}</span>
+        <span className="font-display text-[22px] font-extrabold tabular-nums text-[var(--accent)]">{reviewBonusText(bonus, t, (m) => fmt.money(m))}</span>
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-display text-[11px] font-bold uppercase tracking-[.08em]"
           style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
@@ -315,7 +315,7 @@ function Thanks({ result, onClose }: { result: SubmitReviewResult; onClose: () =
       {bonus && (
         <div className="rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)] p-4">
           <p className="flex items-center gap-2 text-[14px] font-bold text-[var(--accent-hi)]">
-            <Gift className="h-4 w-4" strokeWidth={2.25} /> {t("reviews.bonus.title", { n: bonus.percent })}
+            <Gift className="h-4 w-4" strokeWidth={2.25} /> {t("reviews.bonus.title", { d: reviewBonusText(bonus, t, (m) => fmt.money(m)) })}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate rounded-[var(--r)] border border-dashed border-[var(--accent)] bg-[var(--surface)] px-3 py-2 font-display text-[16px] font-bold tracking-[.06em] text-[var(--ink)]">

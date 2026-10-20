@@ -157,6 +157,8 @@ export interface BonusCode {
   source?: string | null;
   /** A fixed discount (kopecks) when `percent` is 0 — case prizes only. */
   amountMinor?: number;
+  /** Ceiling of the discount (kopecks, V63): "−5% (до 100 ₴)"; 0 / absent = none. */
+  maxDiscountMinor?: number;
 }
 
 /** `POST /api/me/reviews` body. */

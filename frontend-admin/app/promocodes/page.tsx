@@ -3,7 +3,8 @@
 /**
  * Promocodes (route "/promocodes") — list + create/edit + delete.
  *
- *  - A code is EITHER a percent OR a fixed amount (the «% / ₴» switch); percent is 1–100.
+ *  - A code is EITHER a percent OR a fixed amount (the «% / ₴» switch); percent is 1–100. A percent
+ *    code may have a ceiling in ₴ («не больше», V63) — review bonuses get one from the settings.
  *  - The list shows uses, live reservations («резерв N» — customers holding the code in the cart
  *    for 30 min, which also take limited slots) and, on demand, the orders placed with the code
  *    (each opens over the page).
@@ -144,6 +145,7 @@ export default function PromocodesPage() {
   const [mode, setMode] = useState<Mode>("percent");
   const [percent, setPercent] = useState("");
   const [amountMajor, setAmountMajor] = useState("");
+  const [capMajor, setCapMajor] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,6 +157,7 @@ export default function PromocodesPage() {
     setMode(isAmount ? "amount" : "percent");
     setPercent(editing?.discountPercent ? String(editing.discountPercent) : "");
     setAmountMajor(editing?.discountAmountMinor ? String(toMajor(editing.discountAmountMinor)) : "");
+    setCapMajor(editing?.maxDiscountMinor ? String(toMajor(editing.maxDiscountMinor)) : "");
     setMaxUses(editing?.maxUses ? String(editing.maxUses) : "");
     setActive(editing?.active ?? true);
   }, [open, editing]);
@@ -181,6 +184,7 @@ export default function PromocodesPage() {
           : null;
   const amountErr =
     mode !== "amount" ? null : !amountMajor.trim() || toMinor(amountMajor) <= 0 ? "Укажите сумму больше 0" : null;
+  const capErr = mode === "percent" && capMajor.trim() && toMinor(capMajor) <= 0 ? "Сумма больше 0 или пусто" : null;
   const maxUsesNum = Number(maxUses);
   const maxUsesErr =
     maxUses.trim() && (!Number.isInteger(maxUsesNum) || maxUsesNum < 1) ? "Целое число от 1 или пусто" : null;
@@ -189,12 +193,13 @@ export default function PromocodesPage() {
 
   async function save() {
     if (!code.trim()) return push("Укажите код", "error");
-    const err = percentErr ?? amountErr ?? maxUsesErr;
+    const err = percentErr ?? amountErr ?? capErr ?? maxUsesErr;
     if (err) return push(err, "error");
     const body: Partial<PromoCode> = {
       code: code.trim().toUpperCase(),
       discountPercent: mode === "percent" ? percentNum : null,
       discountAmountMinor: mode === "amount" ? toMinor(amountMajor) : null,
+      maxDiscountMinor: mode === "percent" && capMajor.trim() ? toMinor(capMajor) : 0,
       maxUses: maxUses.trim() ? maxUsesNum : null,
       active,
     };
@@ -428,6 +433,17 @@ export default function PromocodesPage() {
               icon={<Wallet className="h-4 w-4" />}
             />
           )}
+          {mode === "percent" && (
+            <Input
+              label="Не больше, ₴"
+              hint="Потолок скидки: 5 % от 10 000 ₴ при потолке 100 ₴ — это −100 ₴. Пусто = без потолка."
+              inputMode="decimal"
+              value={capMajor}
+              error={capErr ?? undefined}
+              onChange={(e) => setCapMajor(e.target.value)}
+              icon={<Wallet className="h-4 w-4" />}
+            />
+          )}
           <Input
             label="Макс. использований"
             hint="Пусто = без лимита. Покупатель с кодом в корзине держит слот 30 минут."
@@ -543,6 +559,7 @@ function PromoRow({
               <span className="inline-flex items-center gap-1">
                 <Percent className="h-3.5 w-3.5 text-[var(--text-faint)]" />
                 {p.discountPercent}% скидка
+                {p.maxDiscountMinor ? `, не больше ${money(p.maxDiscountMinor)}` : ""}
               </span>
             ) : null}
             <span className="text-[var(--text-faint)]">

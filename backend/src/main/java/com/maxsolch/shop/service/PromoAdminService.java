@@ -88,6 +88,9 @@ public class PromoAdminService {
         p.setDiscountPercent(req.discountPercent());
         p.setDiscountAmountMinor(req.discountAmountMinor());
         p.setMaxUses(req.maxUses());
+        if (req.maxDiscountMinor() != null) {
+            p.setMaxDiscountMinor(req.maxDiscountMinor());
+        }
         if (req.active() != null) {
             p.setActive(req.active());
         }

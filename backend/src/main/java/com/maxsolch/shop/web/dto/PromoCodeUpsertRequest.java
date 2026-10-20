@@ -21,5 +21,12 @@ public record PromoCodeUpsertRequest(
         @Min(value = 0, message = "не может быть отрицательной") long discountAmountMinor,
         /** null = unlimited. */
         @Positive(message = "лимит должен быть больше 0 (пусто — без лимита)") Integer maxUses,
-        Boolean active) {
+        Boolean active,
+        /** Ceiling of the discount in kopecks (V63): 0 = none, null = leave as is. */
+        @Min(value = 0, message = "не может быть отрицательным") Long maxDiscountMinor) {
+
+    public PromoCodeUpsertRequest(String code, int discountPercent, long discountAmountMinor, Integer maxUses,
+                                  Boolean active) {
+        this(code, discountPercent, discountAmountMinor, maxUses, active, null);
+    }
 }

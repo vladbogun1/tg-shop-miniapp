@@ -1524,7 +1524,8 @@ public class OrderService {
 
     /**
      * The same against the subtotal without {@code excludedMinor} (the low-margin products no promo code
-     * applies to, {@link #promoExcluded}); capped at what is left.
+     * applies to, {@link #promoExcluded}); capped at what is left. Order: the excluded products come off
+     * first, then the percent (or amount), then the code's own ceiling ({@code max_discount_minor}, V63).
      */
     public static long discountFor(PromoCode promo, long subtotal, long excludedMinor) {
         long base = Math.max(0, subtotal - Math.max(0, excludedMinor));
@@ -1580,6 +1581,9 @@ public class OrderService {
             discount = subtotal * percent / 100;
         } else {
             discount = 0;
+        }
+        if (promo.getMaxDiscountMinor() > 0) {
+            discount = Math.min(discount, promo.getMaxDiscountMinor());
         }
         return Math.min(Math.max(0, discount), subtotal);
     }

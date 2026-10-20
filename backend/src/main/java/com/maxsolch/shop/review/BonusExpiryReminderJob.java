@@ -69,7 +69,7 @@ public class BonusExpiryReminderJob {
             if (!store.claimBonusExpiryReminder(c.promoId(), now)) {
                 continue;
             }
-            if (notifier.bonusExpiring(c.tgUserId(), c.code(), c.percent(), c.expiresAt())) {
+            if (notifier.bonusExpiring(c.tgUserId(), c.code(), c.percent(), c.maxDiscountMinor(), c.expiresAt())) {
                 sent++;
             }
         }

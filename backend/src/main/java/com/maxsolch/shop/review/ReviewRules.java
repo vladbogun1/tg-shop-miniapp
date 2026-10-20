@@ -149,6 +149,24 @@ public final class ReviewRules {
         return bonusPercent > 0;
     }
 
+    /** The ceiling setting ({@code reviews.bonusMaxDiscountUah}, ₴) in kopecks; 0 or less = no ceiling. */
+    public static long bonusMaxMinor(int maxUah) {
+        return maxUah > 0 ? maxUah * 100L : 0;
+    }
+
+    /** Kopecks as hryvnias for a text: 10000 → "100", 1234567 → "12 345.67" (groups split by a no-break space). */
+    public static String uah(long minor) {
+        long whole = minor / 100;
+        long cents = Math.abs(minor % 100);
+        String w = String.format(Locale.ROOT, "%,d", whole).replace(',', ' ');
+        return cents == 0 ? w : w + "." + String.format(Locale.ROOT, "%02d", cents);
+    }
+
+    /** "5%" or "5% (до 100 ₴)" — for the Russian admin journal. */
+    public static String discountRu(int percent, long maxMinor) {
+        return maxMinor > 0 ? percent + "% (до " + uah(maxMinor) + " ₴)" : percent + "%";
+    }
+
     /** When a bonus issued at {@code now} stops being valid. */
     public static Instant bonusExpiry(Instant now, int validDays) {
         return now.plus(Duration.ofDays(Math.max(1, validDays)));

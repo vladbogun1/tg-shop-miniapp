@@ -154,7 +154,8 @@ public class ReviewStore {
     }
 
     /** A review bonus that runs out soon and has not been used. */
-    public record BonusExpiryCandidate(byte[] promoId, Long tgUserId, String code, int percent, Instant expiresAt) {
+    public record BonusExpiryCandidate(byte[] promoId, Long tgUserId, String code, int percent,
+                                       long maxDiscountMinor, Instant expiresAt) {
     }
 
     /**
@@ -164,7 +165,8 @@ public class ReviewStore {
      */
     public List<BonusExpiryCandidate> bonusExpiryCandidates(Instant now, Instant expiresBy, Instant issuedBefore,
                                                             int limit) {
-        return jdbc.query("select p.id, p.owner_user_id, p.code, p.discount_percent, p.expires_at from promo_codes p "
+        return jdbc.query("select p.id, p.owner_user_id, p.code, p.discount_percent, p.max_discount_minor, p.expires_at "
+                        + "from promo_codes p "
                         + "left join users u on u.telegram_user_id = p.owner_user_id "
                         + "where p.source = 'REVIEW_BONUS' and p.active = true and p.expiry_reminded_at is null "
                         + "and p.owner_user_id is not null and p.owner_user_id > 0 "
@@ -173,7 +175,7 @@ public class ReviewStore {
                         + "and coalesce(u.bot_blocked, false) = false "
                         + "order by p.expires_at limit ?",
                 (rs, i) -> new BonusExpiryCandidate(rs.getBytes("id"), rs.getLong("owner_user_id"),
-                        rs.getString("code"), rs.getInt("discount_percent"),
+                        rs.getString("code"), rs.getInt("discount_percent"), rs.getLong("max_discount_minor"),
                         rs.getTimestamp("expires_at").toInstant()),
                 Timestamp.from(now), Timestamp.from(expiresBy), Timestamp.from(issuedBefore), limit);
     }

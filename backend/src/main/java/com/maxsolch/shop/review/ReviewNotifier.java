@@ -57,8 +57,15 @@ public class ReviewNotifier {
         return token != null && !token.isBlank();
     }
 
+    /** "5%" or, with a ceiling, "5% (до 100 ₴)" in the customer's language. */
+    private String discount(Locale locale, int percent, long maxMinor) {
+        return maxMinor > 0
+                ? messages.get(locale, "bot.review.bonus.discountCapped", String.valueOf(percent), ReviewRules.uah(maxMinor))
+                : messages.get(locale, "bot.review.bonus.discount", String.valueOf(percent));
+    }
+
     /** "Thanks for the review — here is your personal code". */
-    public void bonusIssued(Long tgUserId, String code, int percent, Instant expiresAt) {
+    public void bonusIssued(Long tgUserId, String code, int percent, long maxMinor, Instant expiresAt) {
         if (!enabled() || tgUserId == null || tgUserId <= 0) {
             return;
         }
@@ -66,7 +73,7 @@ public class ReviewNotifier {
             Locale locale = messages.localeOf(tgUserId);
             String text = messages.get(locale, "bot.review.bonus.title") + "\n"
                     + messages.get(locale, "bot.review.bonus.body", "<code>" + escHtml(code) + "</code>",
-                            String.valueOf(percent), DATE.format(expiresAt.atZone(KYIV)));
+                            discount(locale, percent, maxMinor), DATE.format(expiresAt.atZone(KYIV)));
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(text)
@@ -75,9 +82,9 @@ public class ReviewNotifier {
                     .build();
             // The code itself is the customer's personal discount — the journal keeps only its size.
             activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS").toCustomer(tgUserId)
-                    .text("Бонус за отзыв: персональный промокод −" + percent + "% до "
-                            + DATE.format(expiresAt.atZone(KYIV)))
-                    .detail("percent", percent), () -> bot.execute(msg));
+                    .text("Бонус за отзыв: персональный промокод −" + ReviewRules.discountRu(percent, maxMinor)
+                            + " до " + DATE.format(expiresAt.atZone(KYIV)))
+                    .detail("percent", percent).detail("maxDiscountMinor", maxMinor), () -> bot.execute(msg));
         } catch (Exception e) {
             log.warn("Review bonus DM failed for {}: {}", tgUserId, e.getMessage());
         }
@@ -88,9 +95,10 @@ public class ReviewNotifier {
      * Mini App ({@code startapp=view_<id>}), where the review form is.
      *
      * @param bonusPercent 0 = no bonus, the text then does not promise one
+     * @param bonusMaxMinor the bonus ceiling (kopecks), 0 = none
      * @return whether the message went out
      */
-    public boolean reminder(Long tgUserId, byte[] orderId, int bonusPercent) {
+    public boolean reminder(Long tgUserId, byte[] orderId, int bonusPercent, long bonusMaxMinor) {
         if (!enabled() || tgUserId == null || tgUserId <= 0) {
             return false;
         }
@@ -99,7 +107,7 @@ public class ReviewNotifier {
             String id = UuidUtil.toString(orderId);
             String text = messages.get(locale, "bot.review.reminder.title", id.substring(0, 8)) + "\n"
                     + (bonusPercent > 0
-                    ? messages.get(locale, "bot.review.reminder.bodyBonus", String.valueOf(bonusPercent))
+                    ? messages.get(locale, "bot.review.reminder.bodyBonus", discount(locale, bonusPercent, bonusMaxMinor))
                     : messages.get(locale, "bot.review.reminder.body"));
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
@@ -122,14 +130,14 @@ public class ReviewNotifier {
      *
      * @return whether the message went out
      */
-    public boolean bonusExpiring(Long tgUserId, String code, int percent, Instant expiresAt) {
+    public boolean bonusExpiring(Long tgUserId, String code, int percent, long maxMinor, Instant expiresAt) {
         if (!enabled() || tgUserId == null || tgUserId <= 0) {
             return false;
         }
         try {
             Locale locale = messages.localeOf(tgUserId);
             String date = DATE.format(expiresAt.atZone(KYIV));
-            String text = messages.get(locale, "bot.review.bonusExpiring.title", String.valueOf(percent)) + "\n"
+            String text = messages.get(locale, "bot.review.bonusExpiring.title", discount(locale, percent, maxMinor)) + "\n"
                     + messages.get(locale, "bot.review.bonusExpiring.body", "<code>" + escHtml(code) + "</code>", date);
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
@@ -139,7 +147,7 @@ public class ReviewNotifier {
                     .build();
             // As with the bonus itself, the journal keeps the size and the date, not the code.
             activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS_EXPIRING").toCustomer(tgUserId)
-                    .text("Бонус −" + percent + "% сгорает " + date)
+                    .text("Бонус −" + ReviewRules.discountRu(percent, maxMinor) + " сгорает " + date)
                     .detail("percent", percent), () -> bot.execute(msg));
             return true;
         } catch (Exception e) {

@@ -17,6 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -56,7 +57,7 @@ class BonusExpiryReminderJobTest {
     }
 
     private static ReviewStore.BonusExpiryCandidate code(long tgUser, String code) {
-        return new ReviewStore.BonusExpiryCandidate(new byte[16], tgUser, code, 5, NOW.plus(Duration.ofDays(2)));
+        return new ReviewStore.BonusExpiryCandidate(new byte[16], tgUser, code, 5, 10_000, NOW.plus(Duration.ofDays(2)));
     }
 
     @Test
@@ -66,10 +67,10 @@ class BonusExpiryReminderJobTest {
         when(store.bonusExpiryCandidates(NOW, NOW.plus(Duration.ofDays(3)), NOW.minus(Duration.ofDays(3)),
                 BonusExpiryReminderJob.BATCH)).thenReturn(List.of(due, claimedElsewhere));
         when(store.claimBonusExpiryReminder(due.promoId(), NOW)).thenReturn(true, false);
-        when(notifier.bonusExpiring(1L, "THANKS-AAAAAA", 5, due.expiresAt())).thenReturn(true);
+        when(notifier.bonusExpiring(1L, "THANKS-AAAAAA", 5, 10_000L, due.expiresAt())).thenReturn(true);
 
         assertThat(job.sendDue()).isEqualTo(1);
-        verify(notifier, never()).bonusExpiring(eq(2L), anyString(), anyInt(), any());
+        verify(notifier, never()).bonusExpiring(eq(2L), anyString(), anyInt(), anyLong(), any());
     }
 
     @Test
@@ -77,7 +78,7 @@ class BonusExpiryReminderJobTest {
         ReviewStore.BonusExpiryCandidate due = code(1L, "THANKS-AAAAAA");
         when(store.bonusExpiryCandidates(any(), any(), any(), anyInt())).thenReturn(List.of(due));
         when(store.claimBonusExpiryReminder(any(), any())).thenReturn(true);
-        when(notifier.bonusExpiring(any(), any(), anyInt(), any())).thenReturn(false);
+        when(notifier.bonusExpiring(any(), any(), anyInt(), anyLong(), any())).thenReturn(false);
 
         assertThat(job.sendDue()).isZero();
     }
