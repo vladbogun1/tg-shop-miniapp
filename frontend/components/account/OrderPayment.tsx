@@ -215,16 +215,16 @@ export function OrderPayment({
     if (p && !p.__w) {
       const orig = p.postEvent.bind(p);
       p.postEvent = (t: string, d: string) => {
-        if (t.includes("open")) track("pay_bridge", t, { d: String(d).slice(0, 200) });
+        if (t.includes("open")) track("pay_bridge", t, String(d).slice(0, 200));
         return orig(t, d);
       };
       p.__w = true;
     }
-    track("pay_open", system ? "system" : "telegram", { url, proxy: !!p, vis: document.visibilityState });
+    track("pay_open", system ? "system" : "telegram", JSON.stringify({ url, proxy: !!p, vis: document.visibilityState }));
     let gone = false;
     const onVis = () => { if (document.visibilityState === "hidden") gone = true; };
     document.addEventListener("visibilitychange", onVis);
-    window.setTimeout(() => { document.removeEventListener("visibilitychange", onVis); track("pay_open_result", gone ? "hidden" : "stayed", { vis: document.visibilityState }); }, 3000);
+    window.setTimeout(() => { document.removeEventListener("visibilitychange", onVis); track("pay_open_result", gone ? "hidden" : "stayed", document.visibilityState); }, 3000);
     try {
       openExternalLink(url, { systemBrowser: system });
     } catch (e) {
