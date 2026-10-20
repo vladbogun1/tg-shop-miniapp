@@ -94,6 +94,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       router.push("/cart");
       return;
     }
+    if (param === "paydebug") {
+      router.push("/pay-debug");
+      return;
+    }
     const viewId = parseOrderViewDeepLink(param);
     if (viewId) {
       router.push(`/account/orders/${viewId}`);
