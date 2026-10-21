@@ -278,8 +278,14 @@ interface WebApp {
     notificationOccurred?: (s: "error" | "success" | "warning") => void;
     selectionChanged?: () => void;
   };
-  /** Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath. */
-  openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+  /** "android", "ios", "tdesktop", "macos", "weba", … */
+  platform?: string;
+  /**
+   * Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath.
+   * `try_browser` (7.6+, undocumented but in telegram-web-app.js and the Android client): skip
+   * Telegram's own in-app browser and hand the link to that system browser ("chrome", "safari", …).
+   */
+  openLink?: (url: string, options?: { try_instant_view?: boolean; try_browser?: string }) => void;
   /**
    * Bot API 8.0+: the client's own "download file" dialog (https URL only). Older clients throw
    * WebAppMethodUnsupported; `callback(accepted)` says whether the customer confirmed it.
@@ -396,11 +402,12 @@ export function hapticSuccess(): void {
  * again. Outside Telegram (plain browser, the `?tgstub=` dev stub, which has no openLink) it falls
  * back to a new tab, and to navigating this tab when a popup blocker eats that.
  */
-export function openExternalLink(url: string): void {
+export function openExternalLink(url: string, opts: { systemBrowser?: boolean } = {}): void {
   const wa = webApp();
   if (wa?.initData && typeof wa.openLink === "function") {
     try {
-      wa.openLink(url, { try_instant_view: false });
+      const browser = opts.systemBrowser ? systemBrowser(wa.platform) : undefined;
+      wa.openLink(url, browser ? { try_instant_view: false, try_browser: browser } : { try_instant_view: false });
       return;
     } catch {
       /* fall through to the browser way */
@@ -412,6 +419,18 @@ export function openExternalLink(url: string): void {
   const tab = window.open(url, "_blank");
   if (tab) tab.opener = null;
   else window.location.href = url;
+}
+
+/**
+ * The real browser for `openLink(…, { try_browser })`. Telegram's in-app browser is a webview, where
+ * Google Pay / Apple Pay fail (pay.google.com: "Something went wrong"); Chrome / Safari run them.
+ * Android maps "chrome" to com.android.chrome and falls back to the default browser when it is
+ * missing. Desktop clients open the system browser anyway — nothing to ask for there.
+ */
+function systemBrowser(platform: string | undefined): string | undefined {
+  if (platform === "android" || platform === "android_x") return "chrome";
+  if (platform === "ios") return "safari";
+  return undefined;
 }
 
 /**
