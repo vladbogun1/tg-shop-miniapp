@@ -11,7 +11,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, BarChart3, Gift, Save, Undo2 } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, BarChart3, FileSpreadsheet, Gift, Save, Undo2 } from "lucide-react";
 import { adminApi, ApiError } from "@/lib/api";
 import { CASE_TIER_LABEL, GIFT_GROUP, giftApi } from "@/lib/gift";
 import { CASE_TIER_METAL } from "@shop/shared";
@@ -42,6 +43,7 @@ const K = {
   giftCase: "gift.caseEnabled",
   promoReminder: "gift.promoReminderDays",
   margin: "gift.marginPercent",
+  monthlyLimit: "gift.monthlyLimitUah",
 } as const;
 
 export default function GiftPage() {
@@ -97,6 +99,15 @@ export default function GiftPage() {
       <PageHeader
         title="Кейс"
         subtitle="Подарок за сумму заказа: один товар или бронзовый, серебряный и золотой кейсы со случайным призом."
+        actions={
+          <Link
+            href="/gift/registry"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-[10px] border border-[var(--line)] px-3 text-[13px] font-semibold text-[var(--text)] hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Реестр подарков
+          </Link>
+        }
       />
 
       <StatsStrip />
@@ -116,6 +127,7 @@ export default function GiftPage() {
               productDirty={!!byKey.get(K.giftProduct) && isDirty(byKey.get(K.giftProduct)!, draft[K.giftProduct])}
               reminder={field(K.promoReminder)}
               margin={field(K.margin)}
+              monthlyLimit={field(K.monthlyLimit)}
               onChange={change}
             />
           </div>
@@ -208,6 +220,7 @@ function GiftSection({
   productDirty,
   reminder,
   margin,
+  monthlyLimit,
   onChange,
 }: {
   enabled: FieldProps | null;
@@ -219,6 +232,8 @@ function GiftSection({
   /** gift.promoReminderDays / gift.marginPercent: null = an old backend. */
   reminder: FieldProps | null;
   margin: FieldProps | null;
+  /** gift.monthlyLimitUah: null = an old backend. */
+  monthlyLimit: FieldProps | null;
   onChange: (key: string, raw: string | boolean) => void;
 }) {
   const [picking, setPicking] = useState(false);
@@ -335,6 +350,16 @@ function GiftSection({
               <NumField {...reminder} label="Напомнить о промокоде из кейса" onChange={(v) => onChange(K.promoReminder, v)} />
             )}
             {margin && <NumField {...margin} label="Средняя маржа товаров" onChange={(v) => onChange(K.margin, v)} />}
+          </div>
+        )}
+
+        {on && monthlyLimit && (
+          <div className="border-t border-[var(--line)] pt-4">
+            <NumField
+              {...monthlyLimit}
+              label="Лимит подарков на человека в месяц"
+              onChange={(v) => onChange(K.monthlyLimit, v)}
+            />
           </div>
         )}
       </div>

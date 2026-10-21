@@ -227,4 +227,29 @@ public final class GiftDtos {
     /** A prize of the test pool: {@code id} of gift_case_items, its drops and real chance, %. */
     public record TestHitDto(long id, String key, int hits, double chancePercent) {
     }
+
+    /**
+     * The gift registry (GET /api/admin/gift/registry): gifts handed over in {@code from}..{@code to}.
+     *
+     * @param limitMinor  the monthly limit per person (gift.monthlyLimitUah), 0 = none
+     * @param people      different people among the rows
+     * @param overLimit   people whose month total of some row is over the limit
+     */
+    public record GiftRegistryDto(String from, String to, long limitMinor, int count, long totalMinor, int people,
+                                  int overLimit, List<GiftRegistryRowDto> rows) {
+    }
+
+    /**
+     * One gift line. {@code person} groups rows of one person within the response (P + a number);
+     * {@code month} (YYYY-MM) is the month of handing over, {@code monthTotalMinor} — all the person's
+     * gifts of that month, including those outside the shown dates.
+     *
+     * @param source CASE (a case prize), THRESHOLD (the gift for the order sum), ADMIN (added by an admin)
+     */
+    public record GiftRegistryRowDto(String orderId, Instant createdAt, Instant deliveredAt, String status,
+                                     String customerName, String phone, String tgUsername, String person,
+                                     String title, String variant, int quantity, long unitMinor, long valueMinor,
+                                     String source, String tier, String month, long monthTotalMinor,
+                                     boolean overLimit) {
+    }
 }

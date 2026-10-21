@@ -1346,4 +1346,53 @@ class OrderServiceTest {
                 .isInstanceOf(BadRequestException.class);
         assertThat(shipped.l().getStock()).isEqualTo(1);
     }
+
+    // ---------- monthly gift limit per person (GiftRegistryService) ----------
+
+    /** A checkout of 2 500 ₴ that reaches a silver case: a 3 000 ₴ product prize (almost sure) or a discount. */
+    private Order checkoutWithCase(long limitLeftMinor) {
+        Product bought = simpleProduct(10, 2_500_00);
+        String prizeUuid = UUID.randomUUID().toString();
+        Product prize = new Product();
+        prize.setId(UuidUtil.toBytes(prizeUuid));
+        prize.setTitle("Prize");
+        prize.setPriceMinor(3_000_00);
+        prize.setStock(5);
+        prize.setActive(true);
+        prize.setVariants(new ArrayList<>());
+        when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
+                java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? bought : prize));
+
+        var gift = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftService.class);
+        var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
+        when(gift.giftConfig()).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.GiftConfig(null, 0,
+                List.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00, 0, 0, 0, List.of(
+                        new com.maxsolch.shop.gift.GiftService.CaseEntry(1, tier,
+                                com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000),
+                        new com.maxsolch.shop.gift.GiftService.CaseEntry(2, tier,
+                                com.maxsolch.shop.gift.GiftCaseItem.Kind.DISCOUNT, null, 5, 0, "RARE", 1)))))));
+        var registry = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftRegistryService.class);
+        when(registry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
+        service.setGiftService(gift);
+        service.setGiftRegistry(registry);
+
+        return service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null));
+    }
+
+    @Test
+    void createOrder_caseProductOverMonthlyLimit_dropsDiscountInstead() {
+        Order order = checkoutWithCase(2_161_00);
+
+        assertThat(order.getItems()).noneMatch(OrderItem::isGift);
+        assertThat(order.getGiftCaseStatus()).isEqualTo(OrderService.GIFT_CASE_SEALED);
+    }
+
+    @Test
+    void createOrder_caseProductWithinLimit_isGivenAtItsUsualPrice() {
+        Order order = checkoutWithCase(5_000_00);
+
+        OrderItem giftLine = order.getItems().stream().filter(OrderItem::isGift).findFirst().orElseThrow();
+        assertThat(giftLine.getPriceMinorSnapshot()).isZero();
+        assertThat(giftLine.getGiftValueMinor()).isEqualTo(3_000_00);
+    }
 }

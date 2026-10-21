@@ -171,6 +171,7 @@ const TITLE: Record<string, string> = {
   "/brands": "Бренды",
   "/promocodes": "Промокоды",
   "/gift": "Кейс",
+  "/gift/registry": "Реестр подарков",
   "/payment": "Оплата",
   "/translations": "Переводы",
   "/cards": "Карточки",

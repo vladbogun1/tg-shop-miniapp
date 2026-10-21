@@ -79,6 +79,8 @@ public final class SettingsRegistry {
     /** Товары с упором на скидки в кейсе (gift.CaseLowMargin): бренды (slug) и отдельные товары (id). */
     public static final String GIFT_LOW_MARGIN_BRANDS = "gift.lowMarginBrands";
     public static final String GIFT_LOW_MARGIN_PRODUCTS = "gift.lowMarginProducts";
+    /** Месячный лимит подарков на человека (gift.GiftRegistryService): 25 % минимальной зарплаты. */
+    public static final String GIFT_MONTHLY_LIMIT_UAH = "gift.monthlyLimitUah";
 
     /** Keys the backend writes about itself; never listed or editable in the admin. */
     public static final String SYSTEM_PREFIX = "system.";
@@ -193,6 +195,13 @@ public final class SettingsRegistry {
                     "Товары с упором на скидки",
                     "Отдельные товары (id через запятую) — то же, что бренды выше. Настраивается в разделе «Кейс».",
                     "", 4000),
+            intSetting(GIFT_MONTHLY_LIMIT_UAH, GIFT_GROUP,
+                    "Лимит подарков на человека в месяц",
+                    "Подарки-товары одному человеку (один аккаунт, Telegram или телефон) за календарный месяц "
+                            + "не дороже этой суммы по обычной цене: не облагается налогом до 25 % минимальной "
+                            + "зарплаты на 1 января (2026 — 2 161,75 ₴). Товар, который вывел бы за лимит, в кейсе "
+                            + "не выпадает — выпадает скидка. Менять каждый январь. 0 — без лимита.",
+                    2161, 0, 1000000, "₴"),
 
             intSetting(PROMO_HOLD_MINUTES, "orders",
                     "Резерв промокода",

@@ -57,6 +57,13 @@ public class OrderItem {
     @Column(name = "case_rarity", length = 16)
     private String caseRarity;
 
+    /**
+     * Usual price of one unit of a gift when it went into the order (V64): the line itself costs 0,
+     * the gift registry and the monthly per-person limit count it at this price. 0 for a sold line.
+     */
+    @Column(name = "gift_value_minor", nullable = false)
+    private long giftValueMinor = 0;
+
     /** A case prize with sizes whose size the customer has not chosen yet (V59): the reserved one is a guess. */
     @Column(name = "variant_pending", nullable = false)
     private boolean variantPending = false;

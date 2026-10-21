@@ -37,6 +37,54 @@ export interface GiftStats {
   tiers?: GiftTierStats[];
 }
 
+/** Where a gift line came from. */
+export type GiftSource = "CASE" | "THRESHOLD" | "ADMIN";
+
+export const GIFT_SOURCE_LABEL: Record<GiftSource, string> = {
+  CASE: "Кейс",
+  THRESHOLD: "Подарок за сумму",
+  ADMIN: "От админа",
+};
+
+/** One gift handed (or about to be handed) to a customer. */
+export interface GiftRegistryRow {
+  orderId: string;
+  createdAt: string;
+  /** Null = not delivered yet: the date of the order counts for now. */
+  deliveredAt: string | null;
+  status: string;
+  customerName: string;
+  phone: string;
+  tgUsername: string | null;
+  /** Groups rows of one person within the response («P12»): an account, a Telegram id or a phone. */
+  person: string;
+  title: string;
+  variant: string | null;
+  quantity: number;
+  /** Usual price of one unit, kopecks. */
+  unitMinor: number;
+  valueMinor: number;
+  source: GiftSource;
+  tier: CaseTier | null;
+  /** YYYY-MM of handing over. */
+  month: string;
+  /** All the person's gifts of that month, kopecks. */
+  monthTotalMinor: number;
+  overLimit: boolean;
+}
+
+export interface GiftRegistry {
+  from: string;
+  to: string;
+  /** gift.monthlyLimitUah in kopecks; 0 = no limit. */
+  limitMinor: number;
+  count: number;
+  totalMinor: number;
+  people: number;
+  overLimit: number;
+  rows: GiftRegistryRow[];
+}
+
 /** A case tier: from which order sum, the guaranteed discount offered instead, the swap of a similar prize. */
 export interface GiftTierAdmin {
   tier: CaseTier;
@@ -222,6 +270,9 @@ export const giftApi = {
   patchCaseItem: (id: number, body: CaseItemPatch) => apiPatch<CaseItemAdmin>(`/api/admin/gift/case-items/${id}`, body),
   deleteCaseItem: (id: number) => apiDelete<void>(`/api/admin/gift/case-items/${id}`),
   stats: () => apiGet<GiftStats>("/api/admin/gift/stats"),
+  /** Gifts handed over between the dates (YYYY-MM-DD, inclusive, Kyiv). */
+  registry: (from: string, to: string) =>
+    apiGet<GiftRegistry>(`/api/admin/gift/registry?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   /** With `draft` — the unpublished draft is tested instead of the saved prizes. */
   /** `lowMargin` — as for an order with a low-margin product (product prizes rarer). */
   testDraw: (tier: CaseTier, count: number, draft?: CaseDraftItem[], lowMargin = false) =>

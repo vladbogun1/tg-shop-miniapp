@@ -33,6 +33,7 @@ The promotion may be paused — the «Case tiers and gifts» block below then sa
 
 - Every case contains a gift — there are no empty cases.
 - The gift is determined at random when the order is placed, among the gifts of that tier that are in stock. Rare, epic, legendary and gold gifts come up rarely. The set of gifts of a tier is the same for every order, but the chances of particular gifts may depend on what the order contains: for some products a discount on the next order comes up more often.
+- The total value of device gifts to one person in a calendar month (at the store's usual price) stays within the tax-free limit — 25 % of the minimum wage (UAH 2,161.75 in 2026). One person means orders with the same account, Telegram account or phone number. A device that would take the total over this limit does not come up in the case — a discount comes up instead.
 - The gift is determined by the store's server. The opening animation only shows the gift already determined and does not affect the result.
 
 ## 6. Choice: a guaranteed discount or a case

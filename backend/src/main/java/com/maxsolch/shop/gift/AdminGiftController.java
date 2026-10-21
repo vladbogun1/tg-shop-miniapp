@@ -41,11 +41,14 @@ public class AdminGiftController {
     private final AdminGiftService service;
     private final GiftService giftService;
     private final CaseAutofill autofill;
+    private final GiftRegistryService registry;
 
-    public AdminGiftController(AdminGiftService service, GiftService giftService, CaseAutofill autofill) {
+    public AdminGiftController(AdminGiftService service, GiftService giftService, CaseAutofill autofill,
+                               GiftRegistryService registry) {
         this.service = service;
         this.giftService = giftService;
         this.autofill = autofill;
+        this.registry = registry;
     }
 
     @GetMapping("/tiers")
@@ -128,5 +131,15 @@ public class AdminGiftController {
     @Operation(summary = "Last 30 days: orders with an automatic gift, with a case, cases opened")
     public GiftStatsDto stats() {
         return service.stats();
+    }
+
+    @GetMapping("/registry")
+    @Operation(summary = "Gifts handed over in a period (dates inclusive, Kyiv) with per-person month totals")
+    public GiftDtos.GiftRegistryDto registry(@RequestParam String from, @RequestParam String to) {
+        try {
+            return registry.registry(java.time.LocalDate.parse(from), java.time.LocalDate.parse(to));
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new com.maxsolch.shop.web.BadRequestException("Дата — в формате ГГГГ-ММ-ДД");
+        }
     }
 }

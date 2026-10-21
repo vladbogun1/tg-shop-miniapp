@@ -2,6 +2,7 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;
+import com.maxsolch.shop.gift.GiftRegistryService;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.gift.OrderGiftCase;
 import com.maxsolch.shop.common.MoneyFormat;
@@ -93,6 +94,14 @@ public class OrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setGiftService(GiftService giftService) {
         this.giftService = giftService;
+    }
+
+    /** Gifts already given to a person this month (optional like the gift itself; null = no limit). */
+    private GiftRegistryService giftRegistry;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setGiftRegistry(GiftRegistryService giftRegistry) {
+        this.giftRegistry = giftRegistry;
     }
 
     /** Low-margin products of the gift case (optional like the gift itself). */
@@ -758,6 +767,7 @@ public class OrderService {
             item.setPriceMinorSnapshot(gift ? 0 : product.getPriceMinor());
             item.setQuantity(qty);
             item.setGift(gift);
+            item.setGiftValueMinor(gift ? product.getPriceMinor() : 0);
             if (variant != null) {
                 item.setVariantId(variant.getId());
                 item.setVariantNameSnapshot(variant.getName());
@@ -1156,6 +1166,7 @@ public class OrderService {
         item.setPriceMinorSnapshot(0);
         item.setQuantity(1);
         item.setGift(true);
+        item.setGiftValueMinor(product.getPriceMinor());
         item.setAutoGift(true);
         item.setCaseRarity(caseRarity);
         if (variant != null) {
@@ -1208,9 +1219,11 @@ public class OrderService {
                 return null;
             }
         }
+        long left = giftLimitLeft(order);
+        java.util.function.Predicate<String> giftable = giftableWithin(locked, left);
         for (GiftService.TierConfig tier : reached) {
             // An order with a low-margin product: product prizes drop rarer, discounts on the next order more often.
-            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftableIn(locked), CASE_RANDOM,
+            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftable, CASE_RANDOM,
                     tier.productPercent(lowMargin));
             if (prize.isPresent()) {
                 OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
@@ -1222,6 +1235,7 @@ public class OrderService {
         }
         if (g.productId() != null && total >= g.thresholdMinor()) {
             locked.getOrDefault(g.productId(), Optional.empty())
+                    .filter(p -> p.getPriceMinor() <= left)
                     .ifPresent(p -> addThresholdGift(order, p, toSave, null));
         }
         return null;
@@ -1229,6 +1243,23 @@ public class OrderService {
 
     private static java.util.function.Predicate<String> giftableIn(Map<String, Optional<Product>> locked) {
         return id -> id != null && locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent();
+    }
+
+    /**
+     * What is left of the monthly gift limit of the order's person (docs/GIFT-CASE.md, «Реестр подарков
+     * и месячный лимит»), kopecks; {@link Long#MAX_VALUE} without a limit.
+     */
+    private long giftLimitLeft(Order order) {
+        return giftRegistry == null ? Long.MAX_VALUE
+                : giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
+    }
+
+    /**
+     * A product can be given: giftable and no dearer than {@code left} — a product prize over the limit
+     * does not drop, the draw picks among the rest (discounts always can).
+     */
+    private static java.util.function.Predicate<String> giftableWithin(Map<String, Optional<Product>> locked, long left) {
+        return giftableIn(locked).and(id -> locked.get(id).map(p -> p.getPriceMinor() <= left).orElse(false));
     }
 
     /** Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening. */
@@ -1400,9 +1431,10 @@ public class OrderService {
             locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
         }
         boolean lowMargin = hasLowMargin(order);
-        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableIn(locked), CASE_RANDOM,
-                        cfg.productPercent(lowMargin))
-                .orElseThrow(() -> new BadRequestException("Ни одного приза этого кейса нет в наличии"));
+        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableWithin(locked, giftLimitLeft(order)),
+                        CASE_RANDOM, cfg.productPercent(lowMargin))
+                .orElseThrow(() -> new BadRequestException(
+                        "Ни одного приза этого кейса нет в наличии или в пределах месячного лимита подарков покупателя"));
         List<Product> toSave = new ArrayList<>();
         OrderGiftCase rec = placeCasePrize(order, tier, prize, locked, toSave);
         if (rec == null) {
