@@ -133,6 +133,19 @@ public class AdminGiftController {
         return service.stats();
     }
 
+    @GetMapping("/limit")
+    @Operation(summary = "Gifts of the order's customer this month against the monthly limit (before an admin adds a gift)")
+    public GiftDtos.GiftLimitDto limit(@RequestParam String orderId) {
+        byte[] id;
+        try {
+            id = com.maxsolch.shop.common.UuidUtil.toBytes(orderId.trim());
+        } catch (IllegalArgumentException e) {
+            throw new com.maxsolch.shop.web.BadRequestException("Неверный id заказа");
+        }
+        return registry.limitForOrder(id, java.time.Instant.now())
+                .orElseThrow(() -> new com.maxsolch.shop.web.NotFoundException("Заказ не найден"));
+    }
+
     @GetMapping("/registry")
     @Operation(summary = "Gifts handed over in a period (dates inclusive, Kyiv) with per-person month totals")
     public GiftDtos.GiftRegistryDto registry(@RequestParam String from, @RequestParam String to) {

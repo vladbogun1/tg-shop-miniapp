@@ -240,6 +240,16 @@ public final class GiftDtos {
     }
 
     /**
+     * GET /api/admin/gift/limit?orderId=…: the gifts of the order's person this month (delivered this month
+     * or not delivered yet, this order's included) against the monthly limit.
+     *
+     * @param limitMinor     gift.monthlyLimitUah, 0 = no limit
+     * @param remainingMinor what is left; -1 without a limit
+     */
+    public record GiftLimitDto(String month, long limitMinor, long usedMinor, long remainingMinor) {
+    }
+
+    /**
      * One gift line. {@code person} groups rows of one person within the response (P + a number);
      * {@code month} (YYYY-MM) is the month of handing over, {@code monthTotalMinor} — all the person's
      * gifts of that month, including those outside the shown dates.

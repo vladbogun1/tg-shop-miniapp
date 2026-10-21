@@ -73,6 +73,17 @@ export interface GiftRegistryRow {
   overLimit: boolean;
 }
 
+/** Gifts of an order's customer this month (this order included) against the monthly limit. */
+export interface GiftLimit {
+  /** YYYY-MM, Kyiv. */
+  month: string;
+  /** 0 = no limit. */
+  limitMinor: number;
+  usedMinor: number;
+  /** -1 without a limit. */
+  remainingMinor: number;
+}
+
 export interface GiftRegistry {
   from: string;
   to: string;
@@ -273,6 +284,8 @@ export const giftApi = {
   /** Gifts handed over between the dates (YYYY-MM-DD, inclusive, Kyiv). */
   registry: (from: string, to: string) =>
     apiGet<GiftRegistry>(`/api/admin/gift/registry?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  /** Before an admin adds a gift to the order: how much its customer already got this month. */
+  limit: (orderId: string) => apiGet<GiftLimit>(`/api/admin/gift/limit?orderId=${encodeURIComponent(orderId)}`),
   /** With `draft` — the unpublished draft is tested instead of the saved prizes. */
   /** `lowMargin` — as for an order with a low-margin product (product prizes rarer). */
   testDraw: (tier: CaseTier, count: number, draft?: CaseDraftItem[], lowMargin = false) =>

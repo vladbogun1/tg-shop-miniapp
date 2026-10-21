@@ -113,6 +113,26 @@ public class GiftRegistryService {
         return Math.max(0, limit - used);
     }
 
+    /**
+     * The limit as an admin giving a gift to an order sees it: the order's person, this month. Their
+     * gifts already in this order count too. Empty when the order does not exist.
+     */
+    @Transactional(readOnly = true)
+    public java.util.Optional<GiftDtos.GiftLimitDto> limitForOrder(byte[] orderId, Instant now) {
+        List<Person> found = jdbc.query("select user_id, tg_user_id, phone from orders where id = ?",
+                (rs, n) -> new Person(nullableLong(rs, "user_id"), nullableLong(rs, "tg_user_id"),
+                        phoneKey(rs.getString("phone"))), (Object) orderId);
+        if (found.isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        YearMonth month = YearMonth.from(now.atZone(ZONE));
+        Instant since = month.atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
+        long used = usedMinor(found.get(0), lines(since), month);
+        long limit = limitMinor();
+        return java.util.Optional.of(new GiftDtos.GiftLimitDto(month.toString(), limit, used,
+                limit > 0 ? Math.max(0, limit - used) : -1));
+    }
+
     /** The person's gifts (with everyone joined to them) delivered in {@code month} or not delivered yet. */
     static long usedMinor(Person person, List<Line> lines, YearMonth month) {
         List<Line> all = new ArrayList<>(lines);
