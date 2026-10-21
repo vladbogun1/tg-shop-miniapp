@@ -423,14 +423,21 @@ export function openExternalLink(url: string, opts: { systemBrowser?: boolean } 
 
 /**
  * The real browser for `openLink(…, { try_browser })`. Telegram's in-app browser is a webview, where
- * Google Pay / Apple Pay fail (pay.google.com: "Something went wrong"); Chrome / Safari run them.
- * Android maps "chrome" to com.android.chrome and falls back to the default browser when it is
- * missing. Desktop clients open the system browser anyway — nothing to ask for there.
+ * Google Pay fails (pay.google.com: "Something went wrong").
+ *   - iOS: openLink always goes to the system DEFAULT browser (forceExternal) — nothing to ask for.
+ *   - Desktop: the system browser anyway.
+ *   - Android: Telegram's own browser, unless a browser is named; there is no "default browser"
+ *     value. "chrome" → com.android.chrome (present wherever Google Pay works at all). If it is
+ *     missing, Telegram opens NOTHING — see {@link isAndroidTelegram} and the caller's fallback.
  */
 function systemBrowser(platform: string | undefined): string | undefined {
-  if (platform === "android" || platform === "android_x") return "chrome";
-  if (platform === "ios") return "safari";
-  return undefined;
+  return platform === "android" || platform === "android_x" ? "chrome" : undefined;
+}
+
+/** Inside Telegram for Android — where a named browser may silently fail to open. */
+export function isAndroidTelegram(): boolean {
+  const wa = webApp();
+  return !!wa?.initData && (wa.platform === "android" || wa.platform === "android_x");
 }
 
 /**
