@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
+import { SceneFx } from "@/components/scene/SceneFx";
 import { makeT } from "@/i18n";
 import { isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
@@ -77,7 +78,7 @@ export default async function LocaleLayout({
       <body className="flex min-h-dvh flex-col">
         {/* First-load overlay (logo + loading bar) — plain HTML, painted before fonts/React. */}
         <Preloader />
-        <div className="scene" aria-hidden />
+        <SceneFx />
         <Providers locale={locale}>
           <PreloaderReady />
           <Header tree={tree} />
