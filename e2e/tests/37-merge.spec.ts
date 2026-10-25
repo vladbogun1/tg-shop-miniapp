@@ -46,3 +46,11 @@ test("объединение: бесплатная кепка уезжает в 
   expect(away.admin?.mergedIntoId).toBe(ORDER.mergeKeep);
   expect(away.items.map((i) => i.title)).toEqual(["E2E Кепка"]); // its own lines stay for the history
 });
+
+test("кнопки «Объединить» нет, если других заказов у покупателя нет", async ({ page }) => {
+  const checked = page.waitForResponse((r) => r.url().includes(`/orders/${ORDER.prepay}/merge-candidates`));
+  const drawer = await openOrderFromBoard(page, ORDER.prepay, CUSTOMER.prepay);
+  await checked;
+  await expect(drawer.getByRole("button", { name: "Добавить товар" })).toBeVisible();
+  await expect(drawer.getByRole("button", { name: "Объединить", exact: true })).toHaveCount(0);
+});

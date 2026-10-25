@@ -476,8 +476,15 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   // Exchange: the goods reached (or are on the way to) the customer — swap them in this same order.
   // Only once the customer has the parcel: a refused one comes back through «Отклонить».
   const canExchange = !!order && order.status === "DELIVERED";
-  // Merge: two orders of the same customer that have not shipped yet go out as one parcel.
-  const canMerge = !!order && (order.status === "NEW" || order.status === "APPROVED") && !archived;
+  // Merge: two orders of the same customer that have not shipped yet go out as one parcel. The
+  // button shows only when the customer has another order it can be merged with right now.
+  const mergeable = !!order && (order.status === "NEW" || order.status === "APPROVED") && !archived;
+  const mergeQ = useQuery({
+    queryKey: ["merge-candidates", order?.id ?? null],
+    queryFn: () => ordersApi.mergeCandidates(order!.id),
+    enabled: mergeable,
+  });
+  const canMerge = mergeable && (mergeQ.data ?? []).some((c) => !c.blocker);
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
