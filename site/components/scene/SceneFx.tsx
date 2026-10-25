@@ -10,6 +10,7 @@
  * prefers-reduced-motion. Each spark is a pre-rendered glow sprite — no shadowBlur per particle.
  */
 import { useEffect, useRef } from "react";
+import { isHalloween } from "@shop/shared";
 import "./scene-fx.css";
 
 /** Overall tempo of the sparks (1 = the variant as first shown; the owner asked for 20 % slower). */
@@ -44,7 +45,7 @@ function Embers() {
       cv.width = Math.round(env.w * dpr);
       cv.height = Math.round(env.h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      frame = embers(ctx, env);
+      frame = embers(ctx, env, isHalloween());
     };
     size();
     let rt = 0;
@@ -133,10 +134,13 @@ function glowSprite(rgb: string, size = 64) {
 
 /** Sparks rising from the bottom; nearer ones are bigger, faster and parallax with the scroll,
  *  the mouse pushes them aside. Returns the per-frame painter for the current canvas size. */
-function embers(ctx: CanvasRenderingContext2D, env: Env): Step {
+function embers(ctx: CanvasRenderingContext2D, env: Env, halloween = false): Step {
   const sprite = glowSprite("255,102,0");
+  // Halloween 2026: some sparks turn slime-green and violet, and bats cross the sky now and then.
+  const sprites = halloween ? [sprite, glowSprite("124,255,79"), glowSprite("138,63,252")] : [sprite];
+  const flock = halloween ? batFlock(env) : null;
   const n = Math.min(170, Math.round((env.w * env.h) / 9000));
-  type P = { x: number; y: number; vy: number; r: number; age: number; life: number; seed: number; depth: number };
+  type P = { x: number; y: number; vy: number; r: number; age: number; life: number; seed: number; depth: number; hue: number };
   const spawn = (fresh: boolean): P => {
     const depth = Math.random();
     return {
@@ -148,6 +152,7 @@ function embers(ctx: CanvasRenderingContext2D, env: Env): Step {
       life: 7 + Math.random() * 9,
       seed: Math.random() * 100,
       depth,
+      hue: sprites.length === 1 ? 0 : Math.random() < 0.7 ? 0 : Math.random() < 0.6 ? 1 : 2,
     };
   };
   const ps = Array.from({ length: n }, () => spawn(true));
@@ -179,9 +184,59 @@ function embers(ctx: CanvasRenderingContext2D, env: Env): Step {
       const flick = 0.65 + 0.35 * Math.sin(t * (6 + (p.seed % 5)) + p.seed);
       const s = p.r * 7;
       ctx.globalAlpha = Math.max(0, fade * flick * (0.35 + p.depth * 0.55));
-      ctx.drawImage(sprite, p.x - s / 2, p.y - s / 2, s, s);
+      ctx.drawImage(sprites[p.hue], p.x - s / 2, p.y - s / 2, s, s);
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+    if (flock) flock(ctx, t, dt);
+  };
+}
+
+/** Halloween: a few bat silhouettes crossing the screen in loose groups, one group every ~20 s. */
+function batFlock(env: Env) {
+  type B = { x: number; y: number; vx: number; s: number; ph: number; dy: number };
+  let flock: B[] = [];
+  let next = 4 + Math.random() * 6;
+  const launch = () => {
+    const ltr = Math.random() < 0.5;
+    const n = 2 + Math.floor(Math.random() * 4);
+    const y0 = env.h * (0.08 + Math.random() * 0.35);
+    flock = Array.from({ length: n }, (_, i) => ({
+      x: ltr ? -40 - i * (30 + Math.random() * 40) : env.w + 40 + i * (30 + Math.random() * 40),
+      y: y0 + (Math.random() - 0.5) * 80,
+      vx: (ltr ? 1 : -1) * (90 + Math.random() * 60),
+      s: 7 + Math.random() * 7,
+      ph: Math.random() * 6,
+      dy: Math.random() * 6,
+    }));
+  };
+  return (c: CanvasRenderingContext2D, t: number, dt: number) => {
+    next -= dt;
+    if (!flock.length && next <= 0) {
+      launch();
+      next = 14 + Math.random() * 14;
+    }
+    if (!flock.length) return;
+    c.fillStyle = "rgba(8,6,12,.85)";
+    for (const b of flock) {
+      b.x += b.vx * dt;
+      const y = b.y + Math.sin(t * 2 + b.dy) * 14;
+      const flap = Math.sin(t * 14 + b.ph); // -1..1
+      const w = b.s * 2.2;
+      const lift = flap * b.s * 0.9;
+      c.beginPath();
+      c.moveTo(b.x, y);
+      c.quadraticCurveTo(b.x - w * 0.5, y - lift - b.s * 0.3, b.x - w, y - lift * 0.4);
+      c.quadraticCurveTo(b.x - w * 0.6, y + b.s * 0.15, b.x - w * 0.3, y + b.s * 0.25);
+      c.quadraticCurveTo(b.x - w * 0.12, y + b.s * 0.05, b.x, y + b.s * 0.4);
+      c.quadraticCurveTo(b.x + w * 0.12, y + b.s * 0.05, b.x + w * 0.3, y + b.s * 0.25);
+      c.quadraticCurveTo(b.x + w * 0.6, y + b.s * 0.15, b.x + w, y - lift * 0.4);
+      c.quadraticCurveTo(b.x + w * 0.5, y - lift - b.s * 0.3, b.x, y);
+      c.fill();
+      c.beginPath();
+      c.arc(b.x, y + b.s * 0.1, b.s * 0.32, 0, Math.PI * 2);
+      c.fill();
+    }
+    if (flock.every((b) => b.x < -120 || b.x > env.w + 120)) flock = [];
   };
 }

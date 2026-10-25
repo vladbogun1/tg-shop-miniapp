@@ -1,0 +1,15 @@
+{
+  "name": "@shop/halloween",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Halloween 2026 event: pumpkins, codes, tickets and the stream draw. Separate from the shop backend.",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}

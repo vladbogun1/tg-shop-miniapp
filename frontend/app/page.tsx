@@ -30,6 +30,7 @@ import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
 import { FilterSheet, activeFilterChips } from "@/components/catalog/FilterSheet";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { HalloweenCounter } from "@/components/Halloween";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
 import { CompareSheet } from "@/components/compare/CompareSheet";
@@ -189,6 +190,7 @@ export default function CatalogPage() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <HalloweenCounter />
             <NotificationsBell />
             <LanguageToggle />
           </div>

@@ -40,7 +40,9 @@ import {
   ChevronDown,
   ChevronRight,
   Gift,
+  Ghost,
 } from "lucide-react";
+import { isHalloween } from "@shop/shared";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, PushOfferBanner, UpdateBanner } from "@/components/pwa/Banners";
@@ -74,6 +76,8 @@ interface NavItem {
   exact?: boolean;
   badge?: BadgeKey;
   superOnly?: boolean;
+  /** Not a page of this app (e.g. /hw/draw/ of the Halloween service): opens in a new tab. */
+  external?: boolean;
 }
 interface NavSection {
   id: string;
@@ -125,6 +129,8 @@ const SECTIONS: NavSection[] = [
       { href: "/broadcasts", label: "Рассылки", icon: Send },
       { href: "/promocodes", label: "Промокоды", icon: Ticket },
       { href: "/gift", label: "Кейс", icon: Gift },
+      // Halloween 2026 stream draw (events/halloween) — disappears with the event date, remove after.
+      ...(isHalloween() ? [{ href: "/hw/draw/", label: "Розыгрыш 🎃", icon: Ghost, external: true }] : []),
     ],
   },
   {
@@ -279,6 +285,7 @@ function NavRow({
   return (
     <Link
       href={item.href}
+      {...(item.external ? { target: "_blank", rel: "noopener" } : {})}
       onClick={onNavigate}
       tabIndex={tabIndex}
       title={collapsed ? item.label : badge?.title}

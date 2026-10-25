@@ -1,0 +1,36 @@
+# ==========================================================
+#  Halloween 2026 event (pumpkins + stream draw) — OPT-IN overlay, removable.
+#  Up:     docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.halloween.yml up -d --build halloween
+#  Down:   docker compose ... rm -sf halloween && docker volume rm <project>_halloween_data
+#  The gateways proxy /hw/ to it; without the container /hw/ just answers 502 and the widget stays hidden.
+#  Needs in .env: JWT_SECRET (already there), HW_DB_USER / HW_DB_PASSWORD (read-only MySQL user,
+#  see events/halloween/README.md), optional HW_* knobs from events/halloween/server/src/config.js.
+# ==========================================================
+services:
+  halloween:
+    build:
+      context: ./events/halloween
+    image: tgshop-v2-halloween:local
+    container_name: tgshop_v2_halloween
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      HW_DB_HOST: mysql
+      HW_DB_NAME: ${DB_NAME}
+      HW_DB_USER: ${HW_DB_USER:-}
+      HW_DB_PASSWORD: ${HW_DB_PASSWORD:-}
+      HW_BACKEND_URL: http://backend:8080
+      HW_STARTS_AT: ${HW_STARTS_AT:-}
+      HW_ENDS_AT: ${HW_ENDS_AT:-}
+      HW_STREAM_AT: ${HW_STREAM_AT:-}
+      HW_STREAM_URL: ${HW_STREAM_URL:-}
+      HW_GOAL: ${HW_GOAL:-}
+      HW_DAILY_CAP: ${HW_DAILY_CAP:-}
+      HW_EXCLUDE_IDS: ${HW_EXCLUDE_IDS:-9000000000000001}
+    volumes:
+      - halloween_data:/data
+    networks:
+      - tgshop
+
+volumes:
+  halloween_data:

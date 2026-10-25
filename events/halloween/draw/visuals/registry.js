@@ -3,4 +3,6 @@ export const VISUALS = {
   roulette: "./visuals/roulette/index.js",
   cauldron: "./visuals/cauldron/index.js",
   graveyard: "./visuals/graveyard/index.js",
+  "wild-1-royale": "./visuals/wild-1-royale/index.js",
+  "wild-2-swarm": "./visuals/wild-2-swarm/index.js",
 };

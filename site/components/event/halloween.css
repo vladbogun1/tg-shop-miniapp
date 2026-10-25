@@ -1,0 +1,96 @@
+/* Halloween 2026 theme — only under html[data-event="halloween"] (set by the layout until 01.11,
+   see shared/src/event.ts). Same layout, same orange; colder violet surfaces, slime-green second
+   accent, fog, a moon, cobwebs on cards and dripping header edge. Delete with the event. */
+
+html[data-event="halloween"] {
+  --bg: #0C0A10;
+  --surface: #17141C;
+  --surface-2: #1F1A26;
+  --surface-3: #282230;
+  --line: rgba(190, 150, 255, .09);
+  --line-strong: rgba(190, 150, 255, .18);
+  --hw-slime: #7CFF4F;
+  --hw-violet: #8A3FFC;
+  --hw-web: rgba(220, 210, 255, .16);
+}
+
+/* Sky: violet haze at the top, a moon in the corner, green fog along the bottom (static). */
+html[data-event="halloween"] .scene {
+  background-image:
+    radial-gradient(circle at 88% 9%, rgba(255, 236, 200, .20) 0 34px, rgba(255, 200, 120, .10) 35px 60px, transparent 140px),
+    radial-gradient(ellipse 70% 40% at 50% -8%, rgba(138, 63, 252, .16), transparent 70%),
+    radial-gradient(ellipse 50% 30% at 10% 0%, rgba(255, 102, 0, .09), transparent 70%),
+    radial-gradient(ellipse 120% 26% at 50% 104%, rgba(124, 255, 79, .10), transparent 72%);
+}
+@media (max-width: 640px) {
+  html[data-event="halloween"] .scene {
+    background-image:
+      radial-gradient(circle at 86% 7%, rgba(255, 236, 200, .18) 0 22px, rgba(255, 200, 120, .08) 23px 40px, transparent 90px),
+      radial-gradient(ellipse 90% 34% at 50% -8%, rgba(138, 63, 252, .16), transparent 70%),
+      radial-gradient(ellipse 140% 22% at 50% 104%, rgba(124, 255, 79, .10), transparent 72%);
+  }
+}
+/* No animated fog: animated fixed layers cost iOS dearly (see globals.css .scene) — the fog is the
+   static green gradient above. */
+
+/* Header: slime drips hanging from the bottom hairline. */
+html[data-event="halloween"] .site-header { position: sticky; }
+html[data-event="halloween"] .site-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 12px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 102, 0, .85), rgba(124, 255, 79, .75) 50%, rgba(138, 63, 252, .8));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 12' preserveAspectRatio='none'%3E%3Cpath d='M0 0h240v1.5c-6 0-7 3-9 3s-3-3-8-3-5 7-8 7-3-7-9-7-4 3-7 3-4-3-11-3-6 9-9 9-3-9-10-9-5 2-8 2-4-2-10-2-5 5-8 5-3-5-9-5-4 3-7 3-5-3-10-3-6 8-9 8-3-8-11-8-4 2-7 2-3-2-9-2-5 6-8 6-3-6-10-6-4 3-7 3-4-3-8-3-6 10-9 10-3-10-11-10-3 2-6 2-4-2-9-2-5 4-8 4-4-4-9-4z'/%3E%3C/svg%3E") 0 0 / 240px 12px repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 12' preserveAspectRatio='none'%3E%3Cpath d='M0 0h240v1.5c-6 0-7 3-9 3s-3-3-8-3-5 7-8 7-3-7-9-7-4 3-7 3-4-3-11-3-6 9-9 9-3-9-10-9-5 2-8 2-4-2-10-2-5 5-8 5-3-5-9-5-4 3-7 3-5-3-10-3-6 8-9 8-3-8-11-8-4 2-7 2-3-2-9-2-5 6-8 6-3-6-10-6-4 3-7 3-4-3-8-3-6 10-9 10-3-10-11-10-3 2-6 2-4-2-9-2-5 4-8 4-4-4-9-4z'/%3E%3C/svg%3E") 0 0 / 240px 12px repeat-x;
+  opacity: .55;
+}
+
+/* Cobweb in the top-right corner of cards. A background layer, not a pseudo-element: cards are
+   sometimes absolutely positioned, and the rule sits in the components layer so utilities win. */
+@layer components {
+  html[data-event="halloween"] :is(.nb, .nb-lg) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46' fill='none' stroke='%23e6dcff' stroke-opacity='.22' stroke-width='.8' stroke-linecap='round'%3E%3Cpath d='M46 0L6 0M46 0L14 20M46 0L28 32M46 0L46 40'/%3E%3Cpath d='M38 0q2 6 8 7M28 0q3 12 18 14M18 0q4 18 28 22M10 0q4 26 36 32'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: top right;
+    background-size: 46px 46px;
+  }
+}
+
+/* Primary CTA: a pumpkin glow instead of the plain orange one. */
+html[data-event="halloween"] .nb-accent {
+  box-shadow: 0 0 0 1px rgba(255, 140, 40, .35) inset, 0 6px 22px -6px rgba(255, 102, 0, .55), 0 0 18px -4px rgba(124, 255, 79, .25);
+}
+html[data-event="halloween"] .cta-glow:hover { filter: drop-shadow(0 0 14px rgba(255, 102, 0, .5)) drop-shadow(0 0 10px rgba(124, 255, 79, .25)); }
+
+/* Eyebrows and chips pick up the slime green. */
+html[data-event="halloween"] .eyebrow { color: color-mix(in srgb, var(--hw-slime) 70%, var(--ink)); }
+html[data-event="halloween"] .nb-chip-active { box-shadow: 0 0 0 1px rgba(124, 255, 79, .35), 0 0 14px -4px rgba(124, 255, 79, .45); }
+
+/* HUD frame brackets glow violet. */
+html[data-event="halloween"] .hud-frame::before,
+html[data-event="halloween"] .hud-frame::after { border-color: rgba(160, 110, 255, .55); }
+
+/* Footer: a row of pumpkins on the top edge. */
+html[data-event="halloween"] footer.chrome { position: relative; }
+html[data-event="halloween"] footer.chrome::before {
+  content: "🎃  🕸️  🦇  🎃  🕯️  🎃  🦇  🕸️  🎃";
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: .5em;
+  opacity: .7;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Counter slot in the header (the element itself is drawn by /hw/spawner.js). */
+.hw-counter { flex: none; }
+.hw-counter[hidden] { display: none; }

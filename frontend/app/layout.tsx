@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
+import { HalloweenWidget } from "@/components/Halloween";
 import { Providers } from "@/components/Providers";
 import { TabBar } from "@/components/TabBar";
 // Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
@@ -114,6 +115,7 @@ export default function RootLayout({
         <div className="scene" aria-hidden />
         <Providers>
           <PreloaderReady />
+          <HalloweenWidget />
           {/* Tsentrirovannyy container, max-width ~480px (design doc §8bis.1).
               Bottom padding ostavlyaet mesto pod tab-bar. */}
           <main

@@ -48,3 +48,19 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 #panel button:disabled { opacity: .45; cursor: default; }
 .muted { color: var(--muted); font-size: 12px; }
 .brand { color: var(--orange); }
+
+#seed.locked { color: var(--slime); font-size: 13px; font-family: ui-monospace, monospace; }
+#dlg {
+  width: min(760px, calc(100vw - 32px)); max-height: 80vh; overflow: auto; padding: 16px 18px; border-radius: 14px;
+  color: var(--text); background: #16161a; border: 1px solid #ffffff2a; font: 14px "Exo 2", system-ui, sans-serif;
+}
+#dlg::backdrop { background: #000a; }
+#dlg .dlg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#dlg button, #dlg input { font: inherit; color: var(--text); background: #222; border: 1px solid #ffffff2a; border-radius: 8px; padding: 5px 10px; }
+#dlg button { cursor: pointer; }
+#dlg table { width: 100%; border-collapse: collapse; }
+#dlg td, #dlg th { padding: 6px 8px; border-bottom: 1px solid #ffffff14; text-align: left; vertical-align: top; }
+#dlg th { color: var(--muted); font-weight: 600; font-size: 12px; }
+#dlg tr.voided td { opacity: .45; text-decoration: line-through; }
+#dlg form.add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+#dlg a { color: var(--orange); }

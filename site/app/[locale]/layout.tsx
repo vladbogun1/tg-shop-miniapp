@@ -6,6 +6,8 @@ import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { SceneFx } from "@/components/scene/SceneFx";
+import { HalloweenWidget } from "@/components/event/Halloween";
+import { EVENT_ATTR, isHalloween } from "@shop/shared";
 import { makeT } from "@/i18n";
 import { isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
@@ -74,13 +76,14 @@ export default async function LocaleLayout({
   const tree = menuTree(await safe(getCategories(locale), []));
 
   return (
-    <html lang={LOCALE_TAG[locale]} suppressHydrationWarning>
+    <html lang={LOCALE_TAG[locale]} data-event={isHalloween() ? EVENT_ATTR : undefined} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
         {/* First-load overlay (logo + loading bar) — plain HTML, painted before fonts/React. */}
         <Preloader />
         <SceneFx />
         <Providers locale={locale}>
           <PreloaderReady />
+          <HalloweenWidget />
           <Header tree={tree} />
           {/* No z-index here: it would trap the sheets and lightboxes rendered inside under the sticky header. */}
           <main id="main" className="relative flex-1">
