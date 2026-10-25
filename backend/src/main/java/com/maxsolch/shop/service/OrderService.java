@@ -1199,6 +1199,48 @@ public class OrderService {
         });
     }
 
+    /**
+     * Inverse of {@link #restockItem}: a cancelled return takes the units it put on the shelf back
+     * into the order. Refused when they were sold meanwhile (not enough stock).
+     */
+    void takeBackUnits(OrderItem item, int units) {
+        if (units <= 0) {
+            return;
+        }
+        Product product = productRepository.findByIdForUpdate(item.getProductId())
+                .orElseThrow(() -> new BadRequestException("товар «" + item.getTitleSnapshot() + "» удалён из каталога"));
+        ProductVariant variant = item.getVariantId() == null ? null
+                : findVariant(product, UuidUtil.toString(item.getVariantId()));
+        int onShelf = variant != null ? variant.getStock() : product.getStock();
+        if (onShelf < units) {
+            throw new BadRequestException("«" + item.getTitleSnapshot() + "» уже продали: на складе " + Math.max(0, onShelf)
+                    + " шт., а вернуть в заказ нужно " + units + ". Верните товар на склад (или поправьте остаток) и повторите.");
+        }
+        if (item.getVariantId() != null && variant == null) {
+            product.setStock(product.getStock() - units);
+        } else {
+            reserveStock(product, variant, units);
+        }
+        productRepository.save(product);
+        item.setRestockedQty(Math.max(0, item.getRestockedQty() - units));
+    }
+
+    /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
+    void restockProduct(byte[] productId, byte[] variantId, int units) {
+        if (units <= 0) {
+            return;
+        }
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new BadRequestException("товар удалён из каталога — вернуть на склад некуда"));
+        ProductVariant variant = variantId == null ? null : findVariant(product, UuidUtil.toString(variantId));
+        if (variantId != null && variant == null) {
+            product.setStock(product.getStock() + units);
+        } else {
+            releaseStock(product, variant, units);
+        }
+        productRepository.save(product);
+    }
+
     /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
     void recomputeOrderTotals(Order order) {
         recomputeTotals(order);

@@ -88,7 +88,43 @@ public record OrderDetailDto(
                               /** This order replaces goods of that one (V69 exchange); null = not. */
                               String exchangeOfId,
                               /** Replacement orders of exchanges made on this one, oldest first. */
-                              List<String> exchangeOrderIds) {
+                              List<String> exchangeOrderIds,
+                              /** Returns and exchanges of this order (V70), oldest first. */
+                              List<ReturnRecordDto> returns) {
+    }
+
+    /** One return / exchange; only the newest active one can be cancelled ({@code cancellable}). */
+    public record ReturnRecordDto(long id,
+                                  /** RETURN | EXCHANGE */
+                                  String kind,
+                                  Instant createdAt,
+                                  String adminName,
+                                  String note,
+                                  List<ReturnRecordLineDto> lines,
+                                  long refundMinor,
+                                  String refundChannel,
+                                  long monoRefundMinor,
+                                  /** Replacement order of an exchange. */
+                                  String newOrderId,
+                                  Instant cancelledAt,
+                                  String cancelledBy,
+                                  String cancelNote,
+                                  long debtMinor,
+                                  Instant debtPaidAt,
+                                  boolean cancellable,
+                                  /** Why the newest record cannot be cancelled now (shown on the button). */
+                                  String cancelBlocker) {
+    }
+
+    public record ReturnRecordLineDto(long itemId,
+                                      String title,
+                                      String imageUrl,
+                                      int quantity,
+                                      /** RESTOCK | DEFECT | KEPT | IN_TRANSIT */
+                                      String outcome,
+                                      int restockedQty,
+                                      int defectQty,
+                                      int pendingQty) {
     }
 
     public record MovementDto(long id,
@@ -102,8 +138,12 @@ public record OrderDetailDto(
                               String source) {
     }
 
-    public record WriteoffDto(String title,
+    public record WriteoffDto(long id,
+                              String title,
                               int quantity,
+                              /** Of them: cancelled with the return or back on the shelf (V70). */
+                              int undoneQty,
+                              String undoneNote,
                               String reason,
                               long unitValueMinor,
                               String note,

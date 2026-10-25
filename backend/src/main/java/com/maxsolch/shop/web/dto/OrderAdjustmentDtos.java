@@ -69,6 +69,17 @@ public final class OrderAdjustmentDtos {
             @Size(max = 500) String note) {
     }
 
+    /**
+     * POST /api/admin/orders/{id}/returns/{returnId}/cancel — the customer changed their mind.
+     * money: RETURNED (sent back already) | DEBT (owes it) | KEEP (left with them); reason required.
+     */
+    public record CancelReturnRequest(String money, @Size(max = 500) String note) {
+    }
+
+    /** POST /api/admin/stock-writeoffs/{id}/restore — a written-off unit goes back on the shelf. */
+    public record RestoreWriteoffRequest(int quantity, @Size(max = 500) String note) {
+    }
+
     /** POST /api/admin/orders/{id}/archive — main admin only. */
     public record ArchiveRequest(@Size(max = 500) String reason) {
     }

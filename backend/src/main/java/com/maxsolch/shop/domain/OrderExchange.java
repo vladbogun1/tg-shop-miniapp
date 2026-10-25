@@ -61,6 +61,13 @@ public class OrderExchange {
     @Column(name = "new_order_id", columnDefinition = "BINARY(16)")
     private byte[] newOrderId;
 
+    /** The customer changed their mind before the replacement shipped (V70). */
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "cancelled_by", length = 255)
+    private String cancelledBy;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

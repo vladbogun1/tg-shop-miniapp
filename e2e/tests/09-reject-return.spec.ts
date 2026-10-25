@@ -1,6 +1,6 @@
 /**
  * Rejecting with a reason from the fixed list (and restocking), and a partial return of one line
- * with a refund.
+ * with a refund — then the return is cancelled (V70).
  */
 import { CUSTOMER, ORDER, PRODUCT } from "../lib/seed";
 import { containerOf, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
@@ -81,4 +81,21 @@ test("возврат по позиции с суммой", async ({ page, api })
   expect(cap.returnedQty).toBe(1);
   expect(tee.returnedQty ?? 0).toBe(0);
   expect((await api.product(PRODUCT.cap)).stock).toBe(capBefore + 1);
+
+  // The customer changed their mind: the cap goes back into the order, the money came back.
+  await drawer.getByRole("button", { name: "Отменить возврат" }).click();
+  const cancel = dialog(page, "Что вернётся в заказ");
+  await expect(cancel.getByText("1 шт заберём со склада")).toBeVisible();
+  const submit = cancel.getByRole("button", { name: "Отменить возврат" });
+  await cancel.getByLabel("Почему отменяем (обязательно)").fill("e2e: передумал");
+  await expect(submit).toBeDisabled(); // the money question is not answered yet
+  await cancel.getByRole("button", { name: /Покупатель уже вернул деньги/ }).click();
+  await submit.click();
+
+  await expect(toast(page, "Возврат отменён, товар снова в заказе")).toBeVisible();
+  await expect(drawer).toContainText("отменён");
+  const after = await api.order(ORDER.delivered);
+  expect(after.refundedMinor).toBe(0);
+  expect(after.items.find((i) => i.title === "E2E Кепка")!.returnedQty ?? 0).toBe(0);
+  expect((await api.product(PRODUCT.cap)).stock).toBe(capBefore);
 });

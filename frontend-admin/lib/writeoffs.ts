@@ -3,7 +3,7 @@
  * the reasons, the labels, and GET /api/admin/stock-writeoffs?range=. Lowering a product's stock in
  * the form asks for one of these reasons (ProductModal → StockReasonDialog).
  */
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 export type WriteoffReason = "DEFECT" | "INVENTORY" | "MISSORT" | "SOLD_OFFLINE" | "OTHER";
 
@@ -42,6 +42,14 @@ export interface WriteoffLine {
   unitValueMinor: number;
   valueMinor: number;
   adminName: string | null;
+  /** Of `quantity`: back on the shelf or back in the order (V70); `valueMinor` counts the rest. */
+  undoneQty: number;
+  undoneNote: string | null;
+}
+
+/** POST /api/admin/stock-writeoffs/{id}/restore — written off by mistake, back on the shelf. */
+export function restoreWriteoff(id: number, quantity: number, note: string) {
+  return apiPost<{ summary: string }>(`/api/admin/stock-writeoffs/${id}/restore`, { quantity, note });
 }
 
 export interface WriteoffReasonTotal {

@@ -4,10 +4,11 @@
  * «Списания» (route "/writeoffs"): stock that left the shelf without a sale — defects (from returns and
  * exchanges), inventory counts, mis-sorts, sales outside the site — for a period, valued at the price
  * the loss was counted at. Rows come from lowering stock in the product form (a reason is mandatory)
- * and from returns. GET /api/admin/stock-writeoffs?range=.
+ * and from returns. GET /api/admin/stock-writeoffs?range=. «Вернуть на склад» puts units written off by
+ * mistake back on the shelf (V70); the row stays, marked «вернули N», and drops out of the totals.
  */
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackageMinus } from "lucide-react";
 import { writeoffsApi, WRITEOFF_LABEL, WRITEOFF_RANGES, type WriteoffLine, type WriteoffRange, type WriteoffReport } from "@/lib/writeoffs";
 import { money } from "@/lib/money";
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { RestoreWriteoffModal } from "@/components/orders/RestoreWriteoffModal";
 
 export default function WriteoffsPage() {
   const [range, setRange] = useState<WriteoffRange>("month");
@@ -37,6 +39,9 @@ export default function WriteoffsPage() {
 }
 
 function Report({ data }: { data: WriteoffReport }) {
+  const qc = useQueryClient();
+  const [restoring, setRestoring] = useState<{ id: number; title: string; left: number } | null>(null);
+  const restore = (l: WriteoffLine) => setRestoring({ id: l.id, title: l.title, left: l.quantity - (l.undoneQty ?? 0) });
   const tiles = [
     { label: "Всего списано", value: `${data.totalUnits} шт`, accent: true },
     { label: "На сумму", value: money(data.totalValueMinor), accent: true },
@@ -70,6 +75,7 @@ function Report({ data }: { data: WriteoffReport }) {
                   <th className="px-3 py-2 font-semibold">Заказ</th>
                   <th className="px-3 py-2 text-right font-semibold">Сумма</th>
                   <th className="px-3 py-2 font-semibold">Админ</th>
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody>
@@ -80,7 +86,10 @@ function Report({ data }: { data: WriteoffReport }) {
                       <div className="min-w-0 break-words font-medium text-[var(--text)]">{l.title}</div>
                       {l.note && <div className="mt-0.5 break-words text-[12px] text-[var(--text-muted)]">{l.note}</div>}
                     </td>
-                    <td className="tabular px-3 py-2 text-right">{l.quantity}</td>
+                    <td className="tabular px-3 py-2 text-right">
+                      {l.quantity}
+                      <Undone l={l} />
+                    </td>
                     <td className="px-3 py-2"><Reason l={l} /></td>
                     <td className="whitespace-nowrap px-3 py-2">{l.orderShortId ? `#${l.orderShortId}` : "—"}</td>
                     <td className="tabular whitespace-nowrap px-3 py-2 text-right">
@@ -88,6 +97,9 @@ function Report({ data }: { data: WriteoffReport }) {
                       {l.quantity > 1 && <div className="text-[11.5px] text-[var(--text-faint)]">{l.quantity} × {money(l.unitValueMinor)}</div>}
                     </td>
                     <td className="px-3 py-2">{l.adminName ?? "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right">
+                      <RestoreButton l={l} onClick={() => restore(l)} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -103,20 +115,47 @@ function Report({ data }: { data: WriteoffReport }) {
                 </div>
                 <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
                   <Reason l={l} />
-                  <span className="tabular">{l.quantity} шт</span>
+                  <span className="tabular">{l.quantity} шт<Undone l={l} /></span>
                   {l.orderShortId && <span>заказ #{l.orderShortId}</span>}
                 </div>
                 {l.note && <div className="mt-1 break-words text-[12.5px] text-[var(--text-muted)]">{l.note}</div>}
-                <div className="mt-1 text-[12px] text-[var(--text-faint)]">
-                  {formatDateTime(l.createdAt)}
-                  {l.adminName ? ` · ${l.adminName}` : ""}
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--text-faint)]">
+                  <span>
+                    {formatDateTime(l.createdAt)}
+                    {l.adminName ? ` · ${l.adminName}` : ""}
+                  </span>
+                  <RestoreButton l={l} onClick={() => restore(l)} />
                 </div>
               </div>
             ))}
           </div>
         </>
       )}
+      <RestoreWriteoffModal
+        writeoff={restoring}
+        onClose={() => setRestoring(null)}
+        onDone={() => void qc.invalidateQueries({ queryKey: ["writeoffs"] })}
+      />
     </>
+  );
+}
+
+/** «вернули N» under the quantity of a row partly or fully put back on the shelf. */
+function Undone({ l }: { l: WriteoffLine }) {
+  if (!l.undoneQty) return null;
+  return (
+    <span className="block text-[11.5px] font-normal text-[var(--ok)]" title={l.undoneNote ?? undefined}>
+      вернули {l.undoneQty}
+    </span>
+  );
+}
+
+function RestoreButton({ l, onClick }: { l: WriteoffLine; onClick: () => void }) {
+  if (l.quantity - (l.undoneQty ?? 0) <= 0) return null;
+  return (
+    <button type="button" onClick={onClick} className="text-[12.5px] font-semibold text-[var(--accent-hi)] hover:underline">
+      Вернуть на склад
+    </button>
   );
 }
 

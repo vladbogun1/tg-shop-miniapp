@@ -43,6 +43,7 @@ import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
 import { MoneyLedgerBlock } from "./MoneyLedgerBlock";
+import { ReturnHistoryBlock } from "./ReturnHistoryBlock";
 
 export interface DetailHandlers {
   busyKey: string | null;
@@ -293,7 +294,9 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
 
       <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
 
-      <MoneyLedgerBlock order={order} />
+      <ReturnHistoryBlock order={order} onChanged={h.onPaymentChanged} />
+
+      <MoneyLedgerBlock order={order} onChanged={h.onPaymentChanged} />
 
       {/* Items */}
       <Section title="Состав">

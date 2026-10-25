@@ -16,10 +16,13 @@ import java.util.Map;
 @Service
 public class StockWriteoffReportService {
 
-    /** One write-off line; {@code valueMinor} = quantity × unit value. */
+    /**
+     * One write-off line; {@code valueMinor} = units still written off × unit value ({@code undoneQty}
+     * went back on the shelf or into the order, V70).
+     */
     public record Line(long id, Instant createdAt, String productId, String variantId, String title, int quantity,
                        String reason, String note, String orderId, String orderShortId, long unitValueMinor,
-                       long valueMinor, String adminName) {
+                       long valueMinor, String adminName, int undoneQty, String undoneNote) {
     }
 
     /** Totals of one reason. */
@@ -54,20 +57,24 @@ public class StockWriteoffReportService {
         int units = 0;
         long value = 0;
         for (StockWriteoff w : rows) {
-            long v = w.getUnitValueMinor() * w.getQuantity();
+            int active = w.activeQty();
+            long v = w.getUnitValueMinor() * active;
             String orderId = w.getOrderId() == null ? null : UuidUtil.toString(w.getOrderId());
             lines.add(new Line(w.getId() == null ? 0 : w.getId(), w.getCreatedAt(),
                     UuidUtil.toString(w.getProductId()),
                     w.getVariantId() == null ? null : UuidUtil.toString(w.getVariantId()),
                     w.getTitle(), w.getQuantity(), w.getReason(), w.getNote(), orderId,
                     orderId == null ? null : orderId.substring(0, Math.min(8, orderId.length())),
-                    w.getUnitValueMinor(), v, w.getAdminName()));
+                    w.getUnitValueMinor(), v, w.getAdminName(), w.getUndoneQty(), w.getUndoneNote()));
+            if (active <= 0) {
+                continue;
+            }
             StockWriteoff.Reason reason = reasonOf(w.getReason());
             long[] t = totals.get(reason);
-            t[0] += w.getQuantity();
+            t[0] += active;
             t[1] += v;
             t[2]++;
-            units += w.getQuantity();
+            units += active;
             value += v;
         }
         List<ReasonTotal> byReason = new ArrayList<>();

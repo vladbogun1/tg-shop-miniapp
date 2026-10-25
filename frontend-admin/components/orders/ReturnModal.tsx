@@ -761,7 +761,7 @@ function SummaryRow({
   );
 }
 
-function ChoiceCard({
+export function ChoiceCard({
   active,
   onClick,
   icon,
@@ -801,7 +801,7 @@ function ChoiceCard({
   );
 }
 
-function Counter({
+export function Counter({
   label,
   value,
   min,

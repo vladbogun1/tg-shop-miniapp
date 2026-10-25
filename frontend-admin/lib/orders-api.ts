@@ -60,8 +60,12 @@ export interface OrderMovement {
 }
 
 export interface OrderWriteoff {
+  id: number;
   title: string;
   quantity: number;
+  /** Of them: back on the shelf or back in the order (V70). */
+  undoneQty?: number;
+  undoneNote?: string | null;
   reason: string;
   unitValueMinor: number;
   note?: string | null;
@@ -86,7 +90,50 @@ export interface OrderAdminExtras {
   exchangeOfId?: string | null;
   /** Replacement orders of exchanges made on this one, oldest first. */
   exchangeOrderIds?: string[];
+  /** Returns and exchanges of this order (V70), oldest first. */
+  returns?: ReturnRecord[];
 }
+
+export type ReturnLineOutcome = "RESTOCK" | "DEFECT" | "KEPT" | "IN_TRANSIT";
+
+export interface ReturnRecordLine {
+  itemId: number;
+  title: string;
+  imageUrl?: string | null;
+  quantity: number;
+  outcome: ReturnLineOutcome;
+  restockedQty: number;
+  defectQty: number;
+  /** Still on the way back. */
+  pendingQty: number;
+}
+
+/** One return / exchange; only the newest active one is `cancellable`. */
+export interface ReturnRecord {
+  id: number;
+  kind: "RETURN" | "EXCHANGE";
+  createdAt: string;
+  adminName?: string | null;
+  note?: string | null;
+  lines: ReturnRecordLine[];
+  refundMinor: number;
+  refundChannel?: string | null;
+  monoRefundMinor: number;
+  /** Replacement order of an exchange. */
+  newOrderId?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancelNote?: string | null;
+  /** Money the customer still owes after a cancel. */
+  debtMinor: number;
+  debtPaidAt?: string | null;
+  cancellable: boolean;
+  /** Why the newest one can't be cancelled now. */
+  cancelBlocker?: string | null;
+}
+
+/** What happens to the refunded money when a return is cancelled. */
+export type CancelMoney = "RETURNED" | "DEBT" | "KEEP";
 
 /** Board / table card with the V68 fields. */
 export type AdminOrderCard = OrderCardDto & {
@@ -325,6 +372,14 @@ export const ordersApi = {
   /** POST /api/admin/orders/{id}/return-received — the parcel that went back has arrived. */
   receiveReturn: (id: string, body: ReturnReceivedBody) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return-received`, body),
+
+  /** POST …/returns/{rid}/cancel — the customer changed their mind: units back into the order. */
+  cancelReturn: (id: string, returnId: number, body: { money?: CancelMoney; note: string }) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/returns/${returnId}/cancel`, body),
+
+  /** POST …/returns/{rid}/debt-paid — the money of a cancelled return came back. */
+  returnDebtPaid: (id: string, returnId: number) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/returns/${returnId}/debt-paid`, {}),
 
   /** PATCH /api/admin/orders/{id}/paid — received amount + how it came (money journal). */
   setPaid: (id: string, body: SetPaidBody) =>

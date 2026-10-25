@@ -653,4 +653,167 @@ class OrderAdjustmentServiceTest {
         assertThat(stays.getRestockedQty()).isZero();
         verify(writeoffs).save(any());
     }
+
+    // ---------- cancelling a return (V70) ----------
+
+    /** In-memory return records: ids assigned on save, lookups the service uses. */
+    private List<com.maxsolch.shop.domain.OrderReturnLine> wireReturnRecords(List<com.maxsolch.shop.domain.OrderReturn> recs) {
+        List<com.maxsolch.shop.domain.OrderReturnLine> lines = new ArrayList<>();
+        com.maxsolch.shop.repository.OrderReturnRepository recRepo =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.OrderReturnRepository.class);
+        com.maxsolch.shop.repository.OrderReturnLineRepository lineRepo =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.OrderReturnLineRepository.class);
+        lenient().when(recRepo.save(any())).thenAnswer(inv -> {
+            com.maxsolch.shop.domain.OrderReturn r = inv.getArgument(0);
+            if (r.getId() == null) {
+                r.setId((long) recs.size() + 1);
+                recs.add(r);
+            }
+            return r;
+        });
+        lenient().when(recRepo.findByOrderIdOrderByIdAsc(any())).thenAnswer(inv -> new ArrayList<>(recs));
+        lenient().when(lineRepo.saveAll(any())).thenAnswer(inv -> {
+            Iterable<com.maxsolch.shop.domain.OrderReturnLine> it = inv.getArgument(0);
+            it.forEach(l -> {
+                if (l.getId() == null) {
+                    l.setId((long) lines.size() + 1);
+                    lines.add(l);
+                }
+            });
+            return inv.getArgument(0);
+        });
+        lenient().when(lineRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(lineRepo.findByReturnIdInOrderByIdAsc(any())).thenAnswer(inv -> {
+            java.util.Collection<Long> ids = inv.getArgument(0);
+            return lines.stream().filter(l -> ids.contains(l.getReturnId())).toList();
+        });
+        lenient().when(lineRepo.findByWriteoffId(any())).thenAnswer(inv ->
+                lines.stream().filter(l -> inv.getArgument(0).equals(l.getWriteoffId())).toList());
+        service.setReturnRecords(recRepo, lineRepo);
+        return lines;
+    }
+
+    @Test
+    void cancelReturn_restockedUnitsLeaveTheShelf_andTheMoneyComesBack() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        Product p = product(3);
+        OrderItem it = item(o, p, 1L, 2);
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        MoneyLedger ledger = wireLedger();
+        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
+        wireReturnRecords(recs);
+
+        service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 2, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 20_000, null)),
+                0, 0), "owner");
+        assertThat(p.getStock()).isEqualTo(5);
+        assertThat(o.getRefundedMinor()).isEqualTo(20_000);
+        assertThat(recs).hasSize(1);
+
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(),
+                OrderAdjustmentService.CancelMoney.RETURNED, "", "owner"))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(), null, "передумал", "owner"))
+                .isInstanceOf(BadRequestException.class); // money was given — the choice is required
+
+        service.cancelReturn(o.getId(), recs.get(0).getId(), OrderAdjustmentService.CancelMoney.RETURNED,
+                "передумал", "owner");
+
+        assertThat(p.getStock()).isEqualTo(3);
+        assertThat(it.getReturnedQty()).isZero();
+        assertThat(it.getRestockedQty()).isZero();
+        assertThat(o.getRefundedMinor()).isZero();
+        assertThat(recs.get(0).getCancelledAt()).isNotNull();
+        assertThat(recs.get(0).getCancelNote()).isEqualTo("передумал");
+        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.REFUND),
+                eq(com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER), eq(-20_000L), any(),
+                any(), any(), any());
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(),
+                OrderAdjustmentService.CancelMoney.RETURNED, "ещё раз", "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void cancelReturn_unitAlreadySoldAgain_isRefused_andDebtIsRecordedOtherwise() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        Product p = product(0);
+        item(o, p, 1L, 1);
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        wireLedger();
+        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
+        wireReturnRecords(recs);
+        service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_000, null)),
+                0, 0), "owner");
+        p.setStock(0); // sold to someone else meanwhile
+
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(),
+                OrderAdjustmentService.CancelMoney.DEBT, "передумал", "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("уже продали");
+
+        p.setStock(1);
+        service.cancelReturn(o.getId(), recs.get(0).getId(), OrderAdjustmentService.CancelMoney.DEBT,
+                "передумал", "owner");
+        assertThat(recs.get(0).getDebtMinor()).isEqualTo(10_000);
+        assertThat(o.getRefundedMinor()).isEqualTo(10_000); // nothing came back yet
+
+        service.settleReturnDebt(o.getId(), recs.get(0).getId(), "owner");
+        assertThat(recs.get(0).getDebtPaidAt()).isNotNull();
+        assertThat(o.getRefundedMinor()).isZero();
+    }
+
+    @Test
+    void restoreWriteoff_defectGoesBackOnTheShelf_andCancelThenTakesItFromThere() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        Product p = product(0);
+        OrderItem it = item(o, p, 1L, 1);
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        wireLedger();
+        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
+        List<com.maxsolch.shop.domain.OrderReturnLine> lines = wireReturnRecords(recs);
+        com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
+        List<com.maxsolch.shop.domain.StockWriteoff> saved = new ArrayList<>();
+        when(writeoffs.save(any())).thenAnswer(inv -> {
+            com.maxsolch.shop.domain.StockWriteoff w = inv.getArgument(0);
+            if (w.getId() == null) {
+                w.setId(77L);
+                saved.add(w);
+            }
+            return w;
+        });
+        when(writeoffs.findById(77L)).thenAnswer(inv -> Optional.of(saved.get(0)));
+        service.setWriteoffs(writeoffs);
+
+        service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
+                List.of(), 0, 0), "owner");
+        assertThat(lines.get(0).getWriteoffId()).isEqualTo(77L);
+        assertThat(p.getStock()).isZero();
+
+        service.restoreWriteoff(77L, 1, "оказалось целым", "owner");
+        assertThat(p.getStock()).isEqualTo(1);
+        assertThat(saved.get(0).activeQty()).isZero();
+        assertThat(lines.get(0).getDefectQty()).isZero();
+        assertThat(lines.get(0).getRestockedQty()).isEqualTo(1);
+        assertThat(it.getRestockedQty()).isEqualTo(1);
+        assertThatThrownBy(() -> service.restoreWriteoff(77L, 1, null, "owner"))
+                .isInstanceOf(BadRequestException.class);
+
+        service.cancelReturn(o.getId(), recs.get(0).getId(), null, "передумал", "owner");
+        assertThat(p.getStock()).isZero();
+        assertThat(it.getReturnedQty()).isZero();
+        assertThat(it.getRestockedQty()).isZero();
+    }
 }

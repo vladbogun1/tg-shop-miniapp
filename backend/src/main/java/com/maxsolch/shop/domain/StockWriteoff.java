@@ -62,6 +62,24 @@ public class StockWriteoff {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** Of {@link #quantity}: cancelled with the return, or back on the shelf after all (V70). */
+    @Column(name = "undone_qty", nullable = false)
+    private int undoneQty;
+
+    @Column(name = "undone_at")
+    private Instant undoneAt;
+
+    @Column(name = "undone_by", length = 255)
+    private String undoneBy;
+
+    @Column(name = "undone_note", length = 500)
+    private String undoneNote;
+
+    /** Units that still count as written off. */
+    public int activeQty() {
+        return Math.max(0, quantity - undoneQty);
+    }
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

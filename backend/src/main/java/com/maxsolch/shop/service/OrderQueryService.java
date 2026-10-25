@@ -62,6 +62,14 @@ public class OrderQueryService {
         this.giftCaseService = giftCaseService;
     }
 
+    /** Return records for the drawer (V70); lazy — the adjustment service reads orders too. */
+    private OrderAdjustmentService adjustments;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAdjustments(@org.springframework.context.annotation.Lazy OrderAdjustmentService adjustments) {
+        this.adjustments = adjustments;
+    }
+
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
@@ -368,13 +376,64 @@ public class OrderQueryService {
                 .sum();
         List<OrderDetailDto.WriteoffDto> writeoffs = writeoffRepository == null ? List.of()
                 : writeoffRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
-                        .map(w -> new OrderDetailDto.WriteoffDto(w.getTitle(), w.getQuantity(), w.getReason(),
+                        .map(w -> new OrderDetailDto.WriteoffDto(w.getId() == null ? 0 : w.getId(), w.getTitle(),
+                                w.getQuantity(), w.getUndoneQty(), w.getUndoneNote(), w.getReason(),
                                 w.getUnitValueMinor(), w.getNote(), w.getAdminName(), w.getCreatedAt()))
                         .toList();
         return new OrderDetailDto.AdminExtras(o.getArchivedAt(), o.getArchivedBy(), o.getArchiveReason(),
                 o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs,
                 o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
-                exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()));
+                exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()),
+                returnRecords(o));
+    }
+
+    /** The order's return records for the drawer, with what each did and whether it can be undone. */
+    private List<OrderDetailDto.ReturnRecordDto> returnRecords(Order o) {
+        if (adjustments == null) {
+            return List.of();
+        }
+        List<com.maxsolch.shop.domain.OrderReturn> recs = adjustments.returnRecordsOf(o.getId());
+        if (recs.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, List<com.maxsolch.shop.domain.OrderReturnLine>> byRecord = new java.util.HashMap<>();
+        adjustments.returnLinesOf(recs.stream().map(com.maxsolch.shop.domain.OrderReturn::getId).toList())
+                .forEach(l -> byRecord.computeIfAbsent(l.getReturnId(), k -> new ArrayList<>()).add(l));
+        Map<Long, OrderItem> items = new java.util.HashMap<>();
+        o.getItems().forEach(i -> { if (i.getId() != null) items.put(i.getId(), i); });
+        Map<String, String> images = thumbnailsFor(o.getItems());
+        com.maxsolch.shop.domain.OrderReturn newest = recs.stream().filter(r -> r.getCancelledAt() == null)
+                .reduce((a, b) -> b).orElse(null);
+        List<OrderDetailDto.ReturnRecordDto> out = new ArrayList<>();
+        for (com.maxsolch.shop.domain.OrderReturn r : recs) {
+            String newOrderId = null;
+            Order replacement = null;
+            if (r.getExchangeId() != null) {
+                var ex = exchangeRepository.findById(r.getExchangeId()).orElse(null);
+                if (ex != null && ex.getNewOrderId() != null) {
+                    newOrderId = UuidUtil.toString(ex.getNewOrderId());
+                    replacement = orderRepository.findById(ex.getNewOrderId()).orElse(null);
+                }
+            }
+            List<OrderDetailDto.ReturnRecordLineDto> lines = byRecord.getOrDefault(r.getId(), List.of()).stream()
+                    .map(l -> {
+                        OrderItem it = items.get(l.getItemId());
+                        String title = it == null ? "—" : it.getTitleSnapshot()
+                                + (it.getVariantNameSnapshot() == null ? "" : " (" + it.getVariantNameSnapshot() + ")");
+                        String img = it == null || it.getProductId() == null ? null
+                                : images.get(UuidUtil.toString(it.getProductId()));
+                        return new OrderDetailDto.ReturnRecordLineDto(l.getItemId(), title, img, l.getQuantity(),
+                                l.getOutcome(), l.getRestockedQty(), l.getDefectQty(), l.pendingQty());
+                    })
+                    .toList();
+            boolean isNewest = r == newest;
+            String blocker = isNewest ? adjustments.cancelBlocker(r, replacement) : null;
+            out.add(new OrderDetailDto.ReturnRecordDto(r.getId(), r.getKind(), r.getCreatedAt(), r.getAdminName(),
+                    r.getNote(), lines, r.getRefundMinor(), r.getRefundChannel(), r.getMonoRefundMinor(), newOrderId,
+                    r.getCancelledAt(), r.getCancelledBy(), r.getCancelNote(), r.getDebtMinor(), r.getDebtPaidAt(),
+                    isNewest && blocker == null, blocker));
+        }
+        return out;
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

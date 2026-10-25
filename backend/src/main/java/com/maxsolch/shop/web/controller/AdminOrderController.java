@@ -574,6 +574,32 @@ public class AdminOrderController {
         return orderQueryService.toDetail(r.order());
     }
 
+    @PostMapping("/{id}/returns/{returnId}/cancel")
+    @Operation(summary = "Cancel the newest return / exchange: units back into the order, money back or as a debt")
+    public OrderDetailDto cancelReturn(@PathVariable String id, @PathVariable long returnId,
+                                       @Valid @RequestBody OrderAdjustmentDtos.CancelReturnRequest req) {
+        OrderAdjustmentService.CancelMoney money = null;
+        if (req.money() != null && !req.money().isBlank()) {
+            try {
+                money = OrderAdjustmentService.CancelMoney.valueOf(req.money().trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("неизвестный вариант денег: " + req.money());
+            }
+        }
+        OrderAdjustmentService.Result r = adjustments.cancelReturn(load(id).getId(), returnId, money, req.note(),
+                audit.currentAdminName());
+        audit.record("ORDER_RETURN_CANCEL", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(orderService.get(r.order().getId()));
+    }
+
+    @PostMapping("/{id}/returns/{returnId}/debt-paid")
+    @Operation(summary = "The customer sent back the money of a cancelled return")
+    public OrderDetailDto returnDebtPaid(@PathVariable String id, @PathVariable long returnId) {
+        OrderAdjustmentService.Result r = adjustments.settleReturnDebt(load(id).getId(), returnId, audit.currentAdminName());
+        audit.record("ORDER_RETURN_DEBT_PAID", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
+    }
+
     private static OrderAdjustmentService.LineOutcome parseOutcome(String s) {
         if (s == null || s.isBlank()) {
             return OrderAdjustmentService.LineOutcome.RESTOCK;

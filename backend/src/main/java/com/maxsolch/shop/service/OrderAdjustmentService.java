@@ -6,11 +6,15 @@ import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderExchange;
 import com.maxsolch.shop.domain.OrderExchangeLine;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
+import com.maxsolch.shop.domain.OrderReturn;
+import com.maxsolch.shop.domain.OrderReturnLine;
 import com.maxsolch.shop.domain.StockWriteoff;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.repository.OrderExchangeLineRepository;
 import com.maxsolch.shop.repository.OrderExchangeRepository;
+import com.maxsolch.shop.repository.OrderReturnLineRepository;
+import com.maxsolch.shop.repository.OrderReturnRepository;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
@@ -68,6 +72,16 @@ public class OrderAdjustmentService {
     @Autowired(required = false)
     void setExchangeLines(OrderExchangeLineRepository exchangeLines) {
         this.exchangeLines = exchangeLines;
+    }
+
+    /** Return records (V70), so a return or an exchange can be cancelled. */
+    private OrderReturnRepository returnRecords;
+    private OrderReturnLineRepository returnLines;
+
+    @Autowired(required = false)
+    void setReturnRecords(OrderReturnRepository returnRecords, OrderReturnLineRepository returnLines) {
+        this.returnRecords = returnRecords;
+        this.returnLines = returnLines;
     }
 
     /** Result of an adjustment: the saved order and the audit line. */
@@ -360,6 +374,7 @@ public class OrderAdjustmentService {
 
         List<String> parts = new ArrayList<>();
         List<String> customerParts = new ArrayList<>();
+        List<OrderReturnLine> recordLines = new ArrayList<>();
         int units = 0;
         for (WizardLine line : lines) {
             OrderItem item = order.getItems().stream()
@@ -374,17 +389,27 @@ public class OrderAdjustmentService {
             }
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            OrderReturnLine rl = new OrderReturnLine();
+            rl.setItemId(item.getId());
+            rl.setQuantity(line.quantity());
+            rl.setOutcome(outcome.name());
+            recordLines.add(rl);
             switch (outcome) {
                 case RESTOCK -> {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
                     int canRestock = item.getQuantity() - item.getRestockedQty();
-                    orderService.restockItem(item, Math.min(line.quantity(), canRestock));
+                    int restocked = Math.min(line.quantity(), canRestock);
+                    orderService.restockItem(item, restocked);
+                    rl.setRestockedQty(restocked);
                     parts.add(title + " ×" + line.quantity() + " (на склад)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
                 case DEFECT -> {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
-                    writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                    StockWriteoff w = writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(),
+                            cleanNote, adminName);
+                    rl.setDefectQty(line.quantity());
+                    rl.setWriteoffId(w == null ? null : w.getId());
                     parts.add(title + " ×" + line.quantity() + " (брак, списан)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
@@ -427,6 +452,20 @@ public class OrderAdjustmentService {
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
+        if (returnRecords != null) {
+            OrderReturn rec = new OrderReturn();
+            rec.setOrderId(order.getId());
+            rec.setRefundMinor(manual);
+            rec.setRefundChannel(refunds.isEmpty() ? null : refunds.get(0).channel().name());
+            rec.setMonoRefundMinor(plan.monoRefundMinor());
+            rec.setNote(cleanNote == null ? null : cut(cleanNote, 500));
+            rec.setAdminName(adminName);
+            OrderReturn savedRec = returnRecords.save(rec);
+            if (returnLines != null && savedRec != null && savedRec.getId() != null && !recordLines.isEmpty()) {
+                recordLines.forEach(l -> l.setReturnId(savedRec.getId()));
+                returnLines.saveAll(recordLines);
+            }
+        }
         long refundedNow = manual + plan.monoRefundMinor();
         events.publishEvent(new OrderEvents.Returned(saved.getId(), plan.notifyCustomer(),
                 String.join(", ", customerParts), refundedNow));
@@ -526,18 +565,22 @@ public class OrderAdjustmentService {
             int sellable = out - defect;
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            int restocked = 0;
             if (sellable > 0) {
-                orderService.restockItem(item, Math.min(sellable, item.getQuantity() - item.getRestockedQty()));
+                restocked = Math.min(sellable, item.getQuantity() - item.getRestockedQty());
+                orderService.restockItem(item, restocked);
                 parts.add(title + " ×" + sellable + " (на склад)");
             }
+            StockWriteoff w = null;
             if (defect > 0) {
                 if (refused) {
                     // A delivered order's returned units were counted when the return was registered.
                     item.setReturnedQty(item.getReturnedQty() + defect);
                 }
-                writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                w = writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
                 parts.add(title + " ×" + defect + " (брак, списан)");
             }
+            settleInTransit(order, item, restocked, defect, w);
         }
         order.setReturnStatus(OrderService.RETURN_RECEIVED);
         order.setReturnReceivedAt(Instant.now());
@@ -564,10 +607,10 @@ public class OrderAdjustmentService {
         return Math.round(item.getPriceMinorSnapshot() * (1.0 - share));
     }
 
-    private void writeOff(OrderItem item, int quantity, long unitValueMinor, byte[] orderId, String note,
-                          String adminName) {
+    private StockWriteoff writeOff(OrderItem item, int quantity, long unitValueMinor, byte[] orderId, String note,
+                                   String adminName) {
         if (writeoffs == null || quantity <= 0) {
-            return;
+            return null;
         }
         StockWriteoff w = new StockWriteoff();
         w.setProductId(item.getProductId());
@@ -580,7 +623,40 @@ public class OrderAdjustmentService {
         w.setOrderId(orderId);
         w.setUnitValueMinor(unitValueMinor);
         w.setAdminName(adminName);
-        writeoffs.save(w);
+        return writeoffs.save(w);
+    }
+
+    /**
+     * «Посылка вернулась» for one line: spreads what was put on the shelf / written off over the
+     * return records still waiting for these units, oldest first (V70), so a cancel knows the split.
+     */
+    private void settleInTransit(Order order, OrderItem item, int restocked, int defect, StockWriteoff w) {
+        if (returnRecords == null || returnLines == null || item.getId() == null || restocked + defect <= 0) {
+            return;
+        }
+        List<Long> ids = returnRecords.findByOrderIdOrderByIdAsc(order.getId()).stream()
+                .filter(rec -> rec.getCancelledAt() == null).map(OrderReturn::getId).toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        for (OrderReturnLine l : returnLines.findByReturnIdInOrderByIdAsc(ids)) {
+            if (l.getItemId() != item.getId() || l.pendingQty() <= 0) {
+                continue;
+            }
+            int take = Math.min(restocked, l.pendingQty());
+            l.setRestockedQty(l.getRestockedQty() + take);
+            restocked -= take;
+            int broken = Math.min(defect, l.pendingQty());
+            if (broken > 0) {
+                l.setDefectQty(l.getDefectQty() + broken);
+                l.setWriteoffId(w == null ? null : w.getId());
+                defect -= broken;
+            }
+            returnLines.save(l);
+            if (restocked + defect <= 0) {
+                break;
+            }
+        }
     }
 
     public static String channelLabel(OrderMoneyMovement.Channel c) {
@@ -744,6 +820,16 @@ public class OrderAdjustmentService {
             backLines.forEach(l -> l.setExchangeId(savedEx.getId()));
             exchangeLines.saveAll(backLines);
         }
+        if (returnRecords != null && savedEx != null) {
+            // The return registered above belongs to this exchange: cancelling it cancels the exchange.
+            List<OrderReturn> recs = returnRecords.findByOrderIdOrderByIdAsc(order.getId());
+            if (!recs.isEmpty()) {
+                OrderReturn rec = recs.get(recs.size() - 1);
+                rec.setKind(OrderReturn.Kind.EXCHANGE.name());
+                rec.setExchangeId(savedEx.getId());
+                returnRecords.save(rec);
+            }
+        }
 
         events.publishEvent(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
 
@@ -757,6 +843,291 @@ public class OrderAdjustmentService {
                 + (over > 0 ? "; к возврату " + MoneyFormat.uah(over) + " (кнопка «Возврат» в заказе #" + shortId + ")" : "")
                 + (cleanNote == null ? "" : "; " + cleanNote);
         return new Result(child, details);
+    }
+
+    // ----- cancelling a return or an exchange (V70) -----
+
+    /** What happens to the money the cancelled return gave back. */
+    public enum CancelMoney {
+        /** The customer has already sent it back: booked now. */
+        RETURNED,
+        /** Not back yet: the order shows the customer's debt until «Деньги пришли». */
+        DEBT,
+        /** The shop lets the customer keep it. */
+        KEEP
+    }
+
+    /** All return records of an order, oldest first (empty before V70 or in unit tests). */
+    public List<OrderReturn> returnRecordsOf(byte[] orderId) {
+        return returnRecords == null ? List.of() : returnRecords.findByOrderIdOrderByIdAsc(orderId);
+    }
+
+    public List<OrderReturnLine> returnLinesOf(List<Long> recordIds) {
+        return returnLines == null || recordIds.isEmpty() ? List.of() : returnLines.findByReturnIdInOrderByIdAsc(recordIds);
+    }
+
+    /**
+     * Why the newest return record cannot be cancelled right now, or null. An exchange can only be
+     * undone while its replacement has not shipped and holds no money beyond the moved credit.
+     */
+    public String cancelBlocker(OrderReturn rec, Order replacement) {
+        if (rec == null || rec.getCancelledAt() != null) {
+            return "уже отменён";
+        }
+        if (!OrderReturn.Kind.EXCHANGE.name().equals(rec.getKind()) || replacement == null) {
+            return null;
+        }
+        String no = shortId(replacement.getId());
+        OrderStatus st = replacement.getStatus();
+        if (st == OrderStatus.SHIPPED || st == OrderStatus.DELIVERED) {
+            return "замену #" + no + " уже отправили — оформите «Возврат» в заказе #" + no;
+        }
+        long kept = Math.max(0, replacement.getReceivedMinor()) - Math.max(0, replacement.getRefundedMinor());
+        if (kept > rec.getRefundMinor()) {
+            return "по замене #" + no + " уже доплатили " + MoneyFormat.uah(kept - rec.getRefundMinor())
+                    + " — отклоните заказ #" + no + " и верните эти деньги «Возвратом», потом отмените обмен";
+        }
+        return null;
+    }
+
+    /**
+     * The customer changed their mind: the newest return (or exchange) of the order is undone. The
+     * units go back into the order (those put on the shelf are taken off it again, write-offs are
+     * reversed), the money is booked back / left as the customer's debt / left with them, and an
+     * exchange also cancels its replacement order (rejected, its stock released, the moved credit
+     * comes back). Nothing is deleted: the record is stamped as cancelled.
+     */
+    @Transactional
+    public Result cancelReturn(byte[] orderId, long returnId, CancelMoney money, String note, String adminName) {
+        Order order = load(orderId);
+        if (returnRecords == null || returnLines == null) {
+            throw new BadRequestException("отмена возврата недоступна");
+        }
+        String cleanNote = note == null ? "" : note.trim();
+        if (cleanNote.length() < 3) {
+            throw new BadRequestException("напишите, почему отменяете (хотя бы 3 символа)");
+        }
+        cleanNote = cut(cleanNote, 500);
+        List<OrderReturn> recs = returnRecords.findByOrderIdOrderByIdAsc(order.getId());
+        OrderReturn rec = recs.stream().filter(x -> x.getId() != null && x.getId() == returnId).findFirst()
+                .orElseThrow(() -> new NotFoundException("возврат не найден"));
+        if (rec.getCancelledAt() != null) {
+            throw new BadRequestException("этот возврат уже отменён");
+        }
+        OrderReturn last = recs.stream().filter(x -> x.getCancelledAt() == null).reduce((a, b) -> b).orElse(null);
+        if (last != rec) {
+            throw new BadRequestException("отменить можно только последний возврат по заказу — сначала отмените более поздний");
+        }
+        boolean exchange = OrderReturn.Kind.EXCHANGE.name().equals(rec.getKind());
+        List<String> parts = new ArrayList<>();
+        // A monobank refund the bank has not confirmed yet is not in «возвращено» — never reverse more.
+        long given = exchange ? 0
+                : Math.min(rec.getRefundMinor() + rec.getMonoRefundMinor(), Math.max(0, order.getRefundedMinor()));
+        if (given > 0 && money == null) {
+            throw new BadRequestException("скажите, что с деньгами: вернул покупатель, должен или оставляем ему");
+        }
+
+        // 1. An exchange: the replacement goes away first, its moved credit comes back here.
+        long creditBack = 0;
+        if (exchange) {
+            OrderExchange ex = rec.getExchangeId() == null ? null : exchangeRepository.findById(rec.getExchangeId()).orElse(null);
+            Order child = ex == null || ex.getNewOrderId() == null ? null : orderService.lock(ex.getNewOrderId());
+            String blocker = cancelBlocker(rec, child);
+            if (blocker != null) {
+                throw new BadRequestException(blocker);
+            }
+            if (child != null) {
+                String no = shortId(child.getId());
+                long kept = Math.max(0, child.getReceivedMinor()) - Math.max(0, child.getRefundedMinor());
+                creditBack = Math.max(0, Math.min(rec.getRefundMinor(), kept));
+                if (creditBack > 0) {
+                    child.setRefundedMinor(Math.max(0, child.getRefundedMinor()) + creditBack);
+                    if (moneyLedger != null) {
+                        moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
+                                creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
+                                "обмен отменён, зачёт обратно в заказ #" + shortId(order.getId()), null);
+                    }
+                }
+                orderRepository.save(child);
+                if (child.getStatus() != OrderStatus.REJECTED) {
+                    orderService.reject(child.getId(), "Обмен отменён", com.maxsolch.shop.domain.RejectReasonCode.OTHER, true);
+                }
+                parts.add("замена #" + no + " отменена");
+            }
+            if (ex != null) {
+                ex.setCancelledAt(Instant.now());
+                ex.setCancelledBy(adminName);
+                exchangeRepository.save(ex);
+            }
+        }
+
+        // 2. The goods: back into the order.
+        boolean otherPosted = false;
+        List<Long> otherIds = recs.stream().filter(x -> x != rec && x.getCancelledAt() == null).map(OrderReturn::getId).toList();
+        if (!otherIds.isEmpty()) {
+            otherPosted = returnLines.findByReturnIdInOrderByIdAsc(otherIds).stream()
+                    .anyMatch(l -> LineOutcome.IN_TRANSIT.name().equals(l.getOutcome()));
+        }
+        for (OrderReturnLine l : returnLines.findByReturnIdInOrderByIdAsc(List.of(rec.getId()))) {
+            OrderItem item = order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == l.getItemId())
+                    .findFirst().orElse(null);
+            if (item == null) {
+                continue;
+            }
+            String title = item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            if (LineOutcome.KEPT.name().equals(l.getOutcome())) {
+                continue;
+            }
+            int pending = l.pendingQty();
+            if (pending > 0) {
+                item.setReturnPendingQty(Math.max(0, item.getReturnPendingQty() - pending));
+            }
+            if (l.getRestockedQty() > 0) {
+                orderService.takeBackUnits(item, l.getRestockedQty());
+            }
+            if (l.getDefectQty() > 0 && writeoffs != null && l.getWriteoffId() != null) {
+                writeoffs.findById(l.getWriteoffId()).ifPresent(w -> {
+                    w.setUndoneQty(Math.min(w.getQuantity(), w.getUndoneQty() + l.getDefectQty()));
+                    w.setUndoneAt(Instant.now());
+                    w.setUndoneBy(adminName);
+                    w.setUndoneNote("возврат отменён");
+                    writeoffs.save(w);
+                });
+            }
+            item.setReturnedQty(Math.max(0, item.getReturnedQty() - l.getQuantity()));
+            parts.add(title + " ×" + l.getQuantity() + " снова в заказе");
+        }
+        boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
+        if (!anyPending && order.getStatus() != OrderStatus.REJECTED) {
+            order.setReturnStatus(otherPosted ? OrderService.RETURN_RECEIVED : null);
+            if (!otherPosted) {
+                order.setReturnSentAt(null);
+                order.setReturnReceivedAt(null);
+            }
+        }
+        if (order.getStatus() != OrderStatus.REJECTED && order.getItems().stream().allMatch(i -> i.getReturnedQty() <= 0)) {
+            // Nothing is returned any more — the timeline stops saying «Возврат оформлен».
+            order.setReturnedAt(null);
+        }
+
+        // 3. The money.
+        if (exchange) {
+            if (creditBack > 0) {
+                bookMoneyBack(order, creditBack, OrderMoneyMovement.Channel.EXCHANGE, adminName, "обмен отменён");
+            }
+        } else if (given > 0) {
+            switch (money) {
+                case RETURNED -> {
+                    bookMoneyBack(order, given, backChannel(rec), adminName, "возврат отменён: деньги вернулись");
+                    parts.add("деньги " + MoneyFormat.uah(given) + " вернулись");
+                }
+                case DEBT -> {
+                    rec.setDebtMinor(given);
+                    parts.add("покупатель должен вернуть " + MoneyFormat.uah(given));
+                }
+                case KEEP -> parts.add("деньги " + MoneyFormat.uah(given) + " оставили покупателю");
+            }
+        }
+
+        rec.setCancelledAt(Instant.now());
+        rec.setCancelledBy(adminName);
+        rec.setCancelNote(cleanNote);
+        returnRecords.save(rec);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return new Result(saved, (exchange ? "обмен отменён: " : "возврат отменён: ")
+                + (parts.isEmpty() ? "без товара" : String.join(", ", parts)) + "; " + cleanNote);
+    }
+
+    /** The customer sent back the money of a cancelled return they owed. */
+    @Transactional
+    public Result settleReturnDebt(byte[] orderId, long returnId, String adminName) {
+        Order order = load(orderId);
+        OrderReturn rec = returnRecordsOf(order.getId()).stream()
+                .filter(x -> x.getId() != null && x.getId() == returnId).findFirst()
+                .orElseThrow(() -> new NotFoundException("возврат не найден"));
+        if (rec.getDebtMinor() <= 0 || rec.getDebtPaidAt() != null) {
+            throw new BadRequestException("по этому возврату покупатель ничего не должен");
+        }
+        long amount = Math.min(rec.getDebtMinor(), Math.max(0, order.getRefundedMinor()));
+        if (amount > 0) {
+            bookMoneyBack(order, amount, backChannel(rec), adminName, "долг по отменённому возврату вернули");
+        }
+        rec.setDebtPaidAt(Instant.now());
+        returnRecords.save(rec);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return new Result(saved, "деньги по отменённому возврату пришли: " + MoneyFormat.uah(amount));
+    }
+
+    /**
+     * A written-off unit turned out fine (repaired, mis-sorted): back on the shelf. A return's
+     * defect becomes a restocked unit of that return, so cancelling it later takes it off the shelf.
+     */
+    @Transactional
+    public String restoreWriteoff(long writeoffId, int quantity, String note, String adminName) {
+        if (writeoffs == null) {
+            throw new BadRequestException("списания недоступны");
+        }
+        StockWriteoff w = writeoffs.findById(writeoffId).orElseThrow(() -> new NotFoundException("списание не найдено"));
+        int left = w.activeQty();
+        if (left <= 0) {
+            throw new BadRequestException("по этому списанию всё уже вернули");
+        }
+        if (quantity < 1 || quantity > left) {
+            throw new BadRequestException("вернуть можно от 1 до " + left + " шт.");
+        }
+        String cleanNote = note == null || note.isBlank() ? null : cut(note.trim(), 500);
+        if (w.getOrderId() != null && returnLines != null) {
+            Order order = load(w.getOrderId());
+            int move = quantity;
+            for (OrderReturnLine l : returnLines.findByWriteoffId(w.getId())) {
+                int take = Math.min(move, l.getDefectQty());
+                if (take <= 0) {
+                    continue;
+                }
+                l.setDefectQty(l.getDefectQty() - take);
+                l.setRestockedQty(l.getRestockedQty() + take);
+                returnLines.save(l);
+                order.getItems().stream().filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst()
+                        .ifPresent(i -> i.setRestockedQty(Math.min(i.getQuantity(), i.getRestockedQty() + take)));
+                move -= take;
+                if (move == 0) {
+                    break;
+                }
+            }
+            orderRepository.save(order);
+        }
+        orderService.restockProduct(w.getProductId(), w.getVariantId(), quantity);
+        w.setUndoneQty(w.getUndoneQty() + quantity);
+        w.setUndoneAt(Instant.now());
+        w.setUndoneBy(adminName);
+        w.setUndoneNote(cleanNote == null ? "вернули на склад" : cleanNote);
+        writeoffs.save(w);
+        return "из брака на склад: " + w.getTitle() + " ×" + quantity + (cleanNote == null ? "" : "; " + cleanNote);
+    }
+
+    /** Money of a cancelled return came back: «возвращено» goes down, the journal gets a minus refund. */
+    private void bookMoneyBack(Order order, long amount, OrderMoneyMovement.Channel channel, String adminName, String note) {
+        order.setRefundedMinor(Math.max(0, order.getRefundedMinor() - amount));
+        if (moneyLedger != null) {
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
+                    OrderMoneyMovement.Source.ADMIN, adminName, note, null);
+        }
+    }
+
+    /** How the customer sends a refund back: the way it went out; monobank refunds come back by transfer. */
+    private static OrderMoneyMovement.Channel backChannel(OrderReturn rec) {
+        if (rec.getRefundMinor() > 0 && rec.getRefundChannel() != null) {
+            try {
+                return OrderMoneyMovement.Channel.valueOf(rec.getRefundChannel());
+            } catch (IllegalArgumentException ignored) {
+                // fall through
+            }
+        }
+        return OrderMoneyMovement.Channel.CARD_TRANSFER;
     }
 
     private static String shortId(byte[] id) {
