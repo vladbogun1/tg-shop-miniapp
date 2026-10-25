@@ -7,7 +7,7 @@ const W = 1920, H = 1080;
 // Хронологія ролу (секунди). Зона: [початок стискання, кінець]. F = початок фіналу.
 const T = { LAND: 3.4, S: [[5.2, 10.2], [11.9, 16.7], [18.4, 22.4]], F: 22.4 };
 const ZR = [1250, 560, 270, 118];
-const COLORS = ["#ff6600", "#7cff4f", "#a66bff", "#ff3030", "#ffd24a"]; // pumpkins, orders, both, storm, gold
+const COLORS = ["#ff6600", "#74b858", "#8a5fd0", "#d8452e", "#e0b84a"]; // pumpkins, orders, both, storm, gold
 const CSS_URL = new URL("./style.css", import.meta.url).href;
 const A = (n) => new URL(`./assets/${n}`, import.meta.url).href;
 const SPR = (n) => new URL(`../../assets/sprites/${n}.png`, import.meta.url).href;
@@ -22,20 +22,16 @@ const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload 
 
 // Локації: центр спрайта у світових координатах 1920x1080, ширина відмальовування.
 const POIS = [
-  { n: "Гарбузове поле", k: "field", x: 430, y: 235, w: 460, h: 290 },
-  { n: "Цвинтар", k: "yard", x: 1575, y: 240, w: 430, h: 357 },
-  { n: "Маєток", k: "manor", x: 1000, y: 472, w: 390, h: 424 },
-  { n: "Болото", k: "swamp", x: 480, y: 690, w: 450, h: 383 },
-  { n: "Магазин ChiSetup", k: "shop", x: 1520, y: 790, w: 340, h: 347 },
-  { n: "Хатина відьми", k: "hut", x: 990, y: 142, w: 270, h: 267 },
+  { n: "Гарбузове поле", k: "field", x: 410, y: 240, w: 300, h: 248 },
+  { n: "Цвинтар", k: "yard", x: 1570, y: 230, w: 300, h: 278 },
+  { n: "Маєток", k: "manor", x: 990, y: 470, w: 230, h: 404 },
+  { n: "Болото", k: "swamp", x: 350, y: 720, w: 300, h: 188 },
+  { n: "Магазин ChiSetup", k: "shop", x: 1540, y: 790, w: 230, h: 225 },
+  { n: "Хатина відьми", k: "hut", x: 970, y: 200, w: 180, h: 206 },
 ];
-// Декор: [проп, x, y, масштаб]. Запікається в карту. prop4 = смолоскип (полум'я анімується окремо).
-const PROPS = [
-  [10, 700, 330, 0.85], [11, 215, 372, 0.8], [9, 1290, 360, 0.8], [3, 1830, 380, 0.85],
-  [3, 1250, 600, 0.9], [7, 765, 640, 0.8], [6, 215, 870, 0.8], [6, 760, 820, 0.7], [8, 1300, 900, 0.9],
-  [6, 850, 250, 0.7], [5, 1110, 262, 0.7], [10, 1700, 560, 0.7], [7, 1790, 700, 0.8], [11, 330, 480, 0.7],
-];
-const TORCHES = [[870, 668], [1130, 668], [1330, 905], [1710, 905], [1385, 400], [1760, 405], [1130, 252], [690, 575]];
+// Декор: [проп, x, y, масштаб]. Запікається в карту, його мало: карта має лишатися чистою. prop4 = смолоскип.
+const PROPS = [[0, 640, 610, 0.75], [0, 1330, 610, 0.75], [1, 700, 850, 0.7], [7, 1210, 330, 0.8], [7, 260, 560, 0.7]];
+const TORCHES = [[880, 570], [1100, 570], [1450, 890], [1630, 890]];
 
 export function mount(root, ctx) {
   const link = document.createElement("link");
@@ -48,7 +44,7 @@ export function mount(root, ctx) {
       <canvas class="wr-c"></canvas>
       <div class="wr-hud">
         <div class="wr-counter"><div class="wr-alive"><small class="wr-al">УЧАСНИКІВ</small><b class="wr-n">0</b></div><div class="wr-zone"><small class="wr-zk">РАУНД</small><span class="wr-zv">1/5</span></div></div>
-        <div class="wr-title"><i>🎃</i> ГАРБУЗОВИЙ РОЯЛЬ <i>·</i> ChiSetup Halloween</div>
+        <div class="wr-title"><i class="wr-sq"></i>ГАРБУЗОВИЙ РОЯЛЬ <i>·</i> ChiSetup Halloween</div>
         <div class="wr-prize"><canvas class="wr-chest" width="64" height="64"></canvas><div><small>РОЗІГРУЄМО</small><b class="wr-pn"></b><span class="wr-pi"></span></div></div>
         <div class="wr-feed"></div>
         <div class="wr-banner"></div>
@@ -56,7 +52,7 @@ export function mount(root, ctx) {
         <div class="wr-bubble"></div>
         <div class="wr-cam"><b>MAX CAM</b><img alt="" src="${SPR("hero_blink")}"></div>
         <div class="wr-flash"></div>
-        <div class="wr-win"><div class="wr-rays"></div><img class="wr-ribbon" alt="" src="${A("ribbon.webp")}"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div><img class="wr-frame" alt="" src="${A("frame.webp")}"></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
+        <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
       </div>
     </div>`;
   const $ = (s) => root.querySelector(s);
@@ -112,8 +108,8 @@ export function mount(root, ctx) {
     const s = document.createElement("canvas"); s.width = s.height = 48;
     const x = s.getContext("2d"), [r, gg, b] = hex(c);
     const gr = x.createRadialGradient(24, 24, 0, 24, 24, 24);
-    gr.addColorStop(0, `rgba(${r},${gg},${b},0.7)`); gr.addColorStop(0.3, `rgba(${r},${gg},${b},0.32)`);
-    gr.addColorStop(0.62, `rgba(${r},${gg},${b},0.1)`); gr.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+    gr.addColorStop(0, `rgba(${r},${gg},${b},0.42)`); gr.addColorStop(0.3, `rgba(${r},${gg},${b},0.18)`);
+    gr.addColorStop(0.62, `rgba(${r},${gg},${b},0.05)`); gr.addColorStop(1, `rgba(${r},${gg},${b},0)`);
     x.fillStyle = gr; x.fillRect(0, 0, 48, 48);
     return s;
   });
@@ -130,7 +126,7 @@ export function mount(root, ctx) {
       const bx = r() * s.width, by = r() * s.height, rad = 70 + r() * 120;
       for (const ox of [-s.width, 0, s.width]) for (const oy of [-s.height, 0, s.height]) {
         const gr = x.createRadialGradient(bx + ox, by + oy, 0, bx + ox, by + oy, rad);
-        gr.addColorStop(0, k ? "rgba(150,255,170,0.07)" : "rgba(190,170,255,0.09)"); gr.addColorStop(1, "rgba(180,160,255,0)");
+        gr.addColorStop(0, "rgba(160,175,195,0.04)"); gr.addColorStop(1, "rgba(160,175,195,0)");
         x.fillStyle = gr; x.fillRect(bx + ox - rad, by + oy - rad, rad * 2, rad * 2);
       }
     }
@@ -203,9 +199,9 @@ export function mount(root, ctx) {
       if (near || r() < 0.06) shore.push({ x, y, ph: r() * 6.28, sp: 0.6 + r() * 1.5, s: r() < 0.3 ? 4 : 3 });
     }
     const sw = POIS[3]; bubbles = [];
-    for (let i = 0; i < 20; i++) bubbles.push({ x: sw.x - 20 + (r() - 0.5) * 300, y: sw.y - 10 + (r() - 0.5) * 120, ph: r() * 3, per: 2 + r() * 2.2 });
+    for (let i = 0; i < 0; i++) bubbles.push({ x: sw.x - 20 + (r() - 0.5) * 300, y: sw.y - 10 + (r() - 0.5) * 120, ph: r() * 3, per: 2 + r() * 2.2 });
     bats = [];
-    for (let i = 0; i < 9; i++) { const p = POIS[[2, 2, 1, 1, 5, 2, 0, 4, 3][i]]; bats.push({ cx: p.x, cy: p.y - 40, rx: 150 + r() * 120, ry: 50 + r() * 50, sp: (0.4 + r() * 0.5) * (r() < 0.5 ? -1 : 1), ph: r() * 6.28, fp: r() * 3 }); }
+    for (let i = 0; i < 3; i++) { const p = POIS[[2, 1, 5][i]]; bats.push({ cx: p.x, cy: p.y - 40, rx: 150 + r() * 120, ry: 50 + r() * 50, sp: (0.4 + r() * 0.5) * (r() < 0.5 ? -1 : 1), ph: r() * 6.28, fp: r() * 3 }); }
   }
 
   // ----- state -----
@@ -362,7 +358,7 @@ export function mount(root, ctx) {
     if (d.fighter) { cg.globalAlpha = 0.55; aspr(cg, "prop9", d.x, d.y + 4, 0.34); cg.globalAlpha = 1; }
     else { cg.fillStyle = "rgba(0,0,0,0.35)"; cg.fillRect(Math.round(d.x - 2), Math.round(d.y - 1), 4, 3); }
   }
-  const sizeOf = (d) => [60, 68, 78, 90][d.tier] * fmult;
+  const sizeOf = (d) => [54, 61, 70, 80][d.tier] * fmult;
   const tokSize = (d) => [17, 21, 27, 33][d.tier] * mult;
   function killDot(v, by, cause) {
     if (!v.alive || v.role === 1) return;
@@ -376,8 +372,8 @@ export function mount(root, ctx) {
     kills++;
     const hero = v.role > 0 || (by && by.role > 0);
     if (big) {
-      if (by && by !== v && cause !== "zone") feed(by.p.name, "вибив", v.p.name, hero ? "hero" : "", "💀", hero);
-      else feed("", "згорів у шторм", v.p.name, "zone", "⚡", hero);
+      if (by && by !== v && cause !== "zone") feed(by.p.name, "вибив", v.p.name, hero ? "hero" : "", "✕", hero);
+      else feed("", "згорів у шторм", v.p.name, "zone", "▼", hero);
     }
     if (now - lastTick > 0.06) { lastTick = now; ctx.sound?.("tick"); }
     if (v.role === 2 && phase === "roll" && fin.filter((f) => f.alive).length === 2) { banner("ЛИШИЛОСЬ 2", "red", 2.8, 2, true); ctx.sound?.("boom"); shake = ctx.reducedMotion ? 0 : 12; }
@@ -392,7 +388,7 @@ export function mount(root, ctx) {
     const dx = tx - mx, dy = ty - my, dist = Math.hypot(dx, dy) || 1, sp = opt.speed || 780;
     k.face = dx >= 0 ? 1 : -1; k.shoot = 0.16;
     if (bullets.length < 160) bullets.push({ x: mx, y: my, sx: mx, sy: my, ang: Math.atan2(dy, dx), vx: dx / dist * sp, vy: dy / dist * sp, ttl: dist / sp, t: 0, kind: BUL[k.col] || "b_seed", cb: opt.cb || null, big: k.fighter, tx, ty, owner: k });
-    if (k.fighter) fx("muz", mx, my, 0.9, false, Math.atan2(dy, dx), 22);
+    if (k.fighter) fx("muz", mx, my, 0.4, false, Math.atan2(dy, dx), 22);
     if (now - lastShotSnd > 0.09 && k.fighter) { lastShotSnd = now; ctx.sound?.("tick"); }
   }
   function hurt(v, from, force = 190) {
@@ -416,7 +412,7 @@ export function mount(root, ctx) {
         if (f.t >= f.nextK && f.fired < f.n) {
           f.fired++; f.nextK = f.t + (f.hero ? 0.46 : 0.34);
           const last = f.fired === f.n;
-          if (last) fire(k, v.x, v.y - sizeOf(v) * 0.4, { cb: () => { hurt(v, k, f.nonlethal ? 240 : 190); fx("hit", v.x, v.y - sizeOf(v) * 0.42, 0.95); burst(v.x, v.y - 20, "#ffb347", 10, 150, 3); if (!ctx.reducedMotion) shake = Math.max(shake, f.hero ? 12 : 5); if (f.hero) ctx.sound?.("boom"); f.dieAt = f.t + 0.34; if (f.nonlethal) v.hp = 0.08; } });
+          if (last) fire(k, v.x, v.y - sizeOf(v) * 0.4, { cb: () => { hurt(v, k, f.nonlethal ? 240 : 190); fx("hit", v.x, v.y - sizeOf(v) * 0.42, 0.7); burst(v.x, v.y - 20, "#e89a4a", 10, 150, 3); if (!ctx.reducedMotion) shake = Math.max(shake, f.hero ? 12 : 5); if (f.hero) ctx.sound?.("boom"); f.dieAt = f.t + 0.34; if (f.nonlethal) v.hp = 0.08; } });
           else { const off = (Math.random() < 0.5 ? -1 : 1) * (26 + Math.random() * 30); const nx = -dy / dist, ny = dx / dist; fire(k, v.x + nx * off, v.y - sizeOf(v) * 0.4 + ny * off, { cb: null }); }
         }
         if (f.t >= f.nextV && f.fired < f.n && v.fighter) {
@@ -430,7 +426,7 @@ export function mount(root, ctx) {
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i]; b.t += dt; b.x += b.vx * dt; b.y += b.vy * dt;
       if (b.t >= b.ttl) {
-        if (b.cb) b.cb(); else { fx("hit", b.tx, b.ty, 0.45, false, 0, 18); burst(b.tx, b.ty, "#ffb347", 3, 70, 2); }
+        if (b.cb) b.cb(); else { fx("hit", b.tx, b.ty, 0.45, false, 0, 18); burst(b.tx, b.ty, "#e89a4a", 3, 70, 2); }
         bullets.splice(i, 1);
       }
     }
@@ -523,8 +519,8 @@ export function mount(root, ctx) {
     el.prizewin.classList.toggle("on", !!prize); if (prize) el.pwn.textContent = prize.name;
     el.win.classList.add("on");
     el.al.textContent = "ЖИВИХ"; el.n.textContent = 1; hudAlive = 1;
-    el.zk.textContent = "ПЕРЕМОГА"; el.zv.textContent = "#1 🎃"; el.zone.classList.remove("hot");
-    if (!ctx.reducedMotion) for (let i = 0; i < 200; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.8, vy: 120 + Math.random() * 260, vx: (Math.random() - 0.5) * 120, c: COLORS[(Math.random() * 3) | 0], s: 6 + ((Math.random() * 3) | 0) * 2, rot: Math.random() * 6 });
+    el.zk.textContent = "ПЕРЕМОГА"; el.zv.textContent = "#1"; el.zone.classList.remove("hot");
+    if (!ctx.reducedMotion) for (let i = 0; i < 50; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.8, vy: 120 + Math.random() * 260, vx: (Math.random() - 0.5) * 120, c: COLORS[(Math.random() * 3) | 0], s: 4 + ((Math.random() * 3) | 0) * 2, rot: Math.random() * 6 });
     ctx.sound?.("win"); ctx.sound?.("boom"); say("ГГ!!! ВІТАЮ!!!", 4.5, 2);
     flash("white"); shake = ctx.reducedMotion ? 0 : 16;
     setTimeout(() => { const r = rollResolve; rollResolve = null; r?.(); }, 700);
@@ -672,7 +668,7 @@ export function mount(root, ctx) {
     const sw = d.hurt > 0 ? (Math.random() - 0.5) * 3 : 0;
     g.save(); g.translate(x + sw, y - bob); if (d.face < 0) g.scale(-1, 1);
     g.drawImage(IM.fighters, fr * 192, row * 192, 192, 192, -s * 0.46, -s * 0.97, s, s);
-    if (d.hurt > 0 && ((now * 30) | 0) % 2 === 0) { g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.65; g.drawImage(IM.fighters, fr * 192, row * 192, 192, 192, -s * 0.46, -s * 0.97, s, s); g.globalCompositeOperation = "source-over"; }
+    if (d.hurt > 0 && ((now * 30) | 0) % 2 === 0) { g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.4; g.drawImage(IM.fighters, fr * 192, row * 192, 192, 192, -s * 0.46, -s * 0.97, s, s); g.globalCompositeOperation = "source-over"; }
     g.restore(); g.globalAlpha = 1;
     if (chute) aspr(g, "chute", x, y - s * 0.55, s / 130);
   }
@@ -721,11 +717,11 @@ export function mount(root, ctx) {
     if (map) { g.drawImage(map, 0, 0); g.drawImage(corpse, 0, 0); } else { g.fillStyle = "#14101e"; g.fillRect(0, 0, W, H); }
 
     // water glints, swamp bubbles, torch flames, manor glow
-    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.55) continue; g.fillStyle = `rgba(200,180,255,${(a - 0.5) * 1.2})`; g.fillRect(s.x, s.y, s.s, s.s); g.fillRect(s.x - s.s, s.y + 1, s.s * 3, 1); }
+    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.55) continue; g.fillStyle = `rgba(150,170,195,${(a - 0.5) * 0.8})`; g.fillRect(s.x, s.y, s.s, s.s); g.fillRect(s.x - s.s, s.y + 1, s.s * 3, 1); }
     g.globalCompositeOperation = "lighter";
     for (const b of bubbles) { const u = ((now + b.ph) % b.per) / b.per; g.strokeStyle = `rgba(150,255,110,${0.5 * (1 - u)})`; g.lineWidth = 1.5; g.beginPath(); g.arc(b.x, b.y - u * 14, 1 + u * 5, 0, 6.283); g.stroke(); }
-    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.9 * f; g.drawImage(flameStamp, x - 40 * f, y - 98 - 40 * f, 80 * f, 80 * f); }
-    { const m = POIS[2]; g.globalAlpha = 0.1 + 0.05 * Math.sin(now * 2.3); g.drawImage(flameStamp, m.x - 160, m.y - 30, 320, 240); }
+    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.55 * f; g.drawImage(flameStamp, x - 40 * f, y - 98 - 40 * f, 80 * f, 80 * f); }
+    { const m = POIS[2]; g.globalAlpha = 0.05 + 0.02 * Math.sin(now * 2.3); g.drawImage(flameStamp, m.x - 160, m.y - 30, 320, 240); }
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
     // fog (under characters)
     for (let i = 0; i < 2; i++) { const ox = ((now * (6 + i * 5) * (i ? -1 : 1)) % W + W) % W; g.drawImage(fogLayers[i], ox, 0, W, H); g.drawImage(fogLayers[i], ox - W, 0, W, H); }
@@ -734,10 +730,10 @@ export function mount(root, ctx) {
     if (idle) {
       if (g.createConicGradient) {
         const cgr = g.createConicGradient(radarA - 0.5, W / 2, H / 2);
-        cgr.addColorStop(0, "rgba(124,255,79,0)"); cgr.addColorStop(0.08, "rgba(124,255,79,0.11)"); cgr.addColorStop(0.0805, "rgba(124,255,79,0)");
+        cgr.addColorStop(0, "rgba(200,210,225,0)"); cgr.addColorStop(0.08, "rgba(200,210,225,0.05)"); cgr.addColorStop(0.0805, "rgba(200,210,225,0)");
         g.fillStyle = cgr; g.beginPath(); g.arc(W / 2, H / 2, 1300, 0, 6.283); g.fill();
       }
-      g.strokeStyle = "rgba(124,255,79,0.4)"; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2, H / 2); g.lineTo(W / 2 + Math.cos(radarA) * 1300, H / 2 + Math.sin(radarA) * 1300); g.stroke();
+      g.strokeStyle = "rgba(255,102,0,0.22)"; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2, H / 2); g.lineTo(W / 2 + Math.cos(radarA) * 1300, H / 2 + Math.sin(radarA) * 1300); g.stroke();
     }
 
     // final arena
@@ -748,7 +744,7 @@ export function mount(root, ctx) {
 
     // tokens (many)
     const pct = clamp(150 / Math.max(1, N), 0.05, 1);
-    const showGlow = N <= 500;
+    const showGlow = N <= 160;
     const tokenDraw = [];
     for (const d of dots) {
       if ((!d.alive && !d.won) || d.fighter) continue;
@@ -756,7 +752,7 @@ export function mount(root, ctx) {
       const age = now - d.spawn; let yo = 0, a = 1, sc = 1;
       if (d.spawn && age < d.dur) { const u = age / d.dur, e = 1 - (1 - u) * (1 - u); yo = -(1 - e) * 240; sc = 1 + (1 - e) * 0.9; a = Math.min(1, u * 3); }
       const sz = tokSize(d) * sc, name = d.won ? "tok3" : "tok" + d.col, outside = d.out > 0.05;
-      if (showGlow || d.tier >= 2) { g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.won ? 0.6 : 0.8) * a; const gs = sz * (d.tier >= 2 ? 2.6 : 2.1); g.drawImage(stamps[outside ? 3 : d.won ? 4 : d.col], d.x - gs / 2, d.y + yo - gs / 2, gs, gs); g.globalCompositeOperation = "source-over"; }
+      if (showGlow || d.tier >= 2) { g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.won ? 0.5 : 0.6) * a; const gs = sz * (d.tier >= 2 ? 2.2 : 1.8); g.drawImage(stamps[outside ? 3 : d.won ? 4 : d.col], d.x - gs / 2, d.y + yo - gs / 2, gs, gs); g.globalCompositeOperation = "source-over"; }
       g.globalAlpha = d.won ? 0.9 : a;
       const at = AT && AT[name];
       if (at) { const k2 = sz / at[3]; g.drawImage(IM.atlas, at[0], at[1], at[2], at[3], d.x - at[2] * k2 / 2, d.y + yo - sz / 2 - sz * 0.06, at[2] * k2, sz); }
@@ -778,7 +774,7 @@ export function mount(root, ctx) {
       else if (d.air) { d.air = false; fx("hit", d.x, d.y, 0.45, false, 0, 20); burst(d.x, d.y, "#8a7a5a", 5, 60, 2); }
 
       const outside = d.out > 0.05;
-      g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.tier >= 2 ? 0.8 : 0.55) * a; const gs = sizeOf(d) * 1.5; g.drawImage(stamps[outside ? 3 : d.role === 1 && phase === "win" ? 4 : d.col], d.x - gs / 2, d.y - gs * 0.35 + yo, gs, gs * 0.7); g.globalCompositeOperation = "source-over";
+      g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.tier >= 2 ? 0.55 : 0.3) * a; const gs = sizeOf(d) * 1.3; g.drawImage(stamps[outside ? 3 : d.role === 1 && phase === "win" ? 4 : d.col], d.x - gs / 2, d.y - gs * 0.35 + yo, gs, gs * 0.7); g.globalCompositeOperation = "source-over";
       drawFighter(d, a, yo, chute);
     }
     g.globalAlpha = 1;
@@ -788,11 +784,11 @@ export function mount(root, ctx) {
       if (!stormPat && IM.storm) stormPat = g.createPattern(IM.storm, "repeat");
       g.save();
       g.beginPath(); g.rect(-3000, -3000, 8000, 8000); g.arc(z.x, z.y, z.r, 0, 6.283); g.clip("evenodd");
-      g.fillStyle = "rgba(40,8,86,0.42)"; g.fillRect(-3000, -3000, 8000, 8000);
+      g.fillStyle = "rgba(6,8,14,0.5)"; g.fillRect(-3000, -3000, 8000, 8000);
       if (stormPat) {
         for (let i = 0; i < 2; i++) {
           stormPat.setTransform?.(new DOMMatrix().translate(now * (i ? -26 : 34), now * (i ? 18 : -12)).scale(i ? 0.55 : 0.8));
-          g.globalAlpha = i ? 0.2 : 0.42; g.globalCompositeOperation = i ? "lighter" : "source-over"; g.fillStyle = stormPat; g.fillRect(-3000, -3000, 8000, 8000);
+          g.globalAlpha = i ? 0.16 : 0.3; g.globalCompositeOperation = "source-over"; g.fillStyle = stormPat; g.fillRect(-3000, -3000, 8000, 8000);
         }
         g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
       }
@@ -800,18 +796,18 @@ export function mount(root, ctx) {
       // storm wall: bright textured band along the edge
       if (stormPat) {
         g.save(); g.beginPath(); g.arc(z.x, z.y, z.r + 26, 0, 6.283); g.arc(z.x, z.y, z.r - 4, 0, 6.283); g.clip("evenodd");
-        stormPat.setTransform?.(new DOMMatrix().translate(now * 60, -now * 30).scale(0.5)); g.globalCompositeOperation = "lighter"; g.globalAlpha = z.shrink ? 0.95 : 0.7; g.fillStyle = stormPat; g.fillRect(z.x - z.r - 40, z.y - z.r - 40, z.r * 2 + 80, z.r * 2 + 80); g.restore();
+        stormPat.setTransform?.(new DOMMatrix().translate(now * 60, -now * 30).scale(0.5)); g.globalCompositeOperation = "lighter"; g.globalAlpha = z.shrink ? 0.5 : 0.32; g.fillStyle = stormPat; g.fillRect(z.x - z.r - 40, z.y - z.r - 40, z.r * 2 + 80, z.r * 2 + 80); g.restore();
       }
-      g.lineWidth = 4 / cam.s + 1; g.strokeStyle = z.shrink ? "#ff4040" : "#ff8a3d"; g.shadowColor = z.shrink ? "#ff2020" : "#ff6600"; g.shadowBlur = 22;
+      g.lineWidth = 3 / cam.s + 1; g.strokeStyle = z.shrink ? "#d8452e" : "#c8641e"; g.shadowColor = z.shrink ? "#d8452e" : "#ff6600"; g.shadowBlur = 5;
       g.beginPath(); g.arc(z.x, z.y, z.r, 0, 6.283); g.stroke(); g.shadowBlur = 0;
-      if (!ctx.reducedMotion && z.r < 1100 && Math.random() < 0.18) { // lightning bolts on the wall
+      if (false) { // lightning bolts on the wall
         const a0 = Math.random() * 6.283; g.strokeStyle = "rgba(230,210,255,0.95)"; g.lineWidth = 2.5 / cam.s + 0.8; g.beginPath();
         let a = a0, rr = z.r + 36; g.moveTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr);
         for (let i = 0; i < 7; i++) { a += (Math.random() - 0.5) * 0.04; rr -= 8 + Math.random() * 14; g.lineTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr); }
         g.stroke();
       }
       if (z.next) {
-        g.lineWidth = 3 / cam.s + 0.5; g.strokeStyle = "rgba(255,255,255,0.8)"; g.setLineDash([14 / cam.s + 4, 10 / cam.s + 4]); g.lineDashOffset = -now * 18;
+        g.lineWidth = 3 / cam.s + 0.5; g.strokeStyle = "rgba(255,255,255,0.4)"; g.setLineDash([14 / cam.s + 4, 10 / cam.s + 4]); g.lineDashOffset = -now * 18;
         g.beginPath(); g.arc(z.next.x, z.next.y, z.next.r, 0, 6.283); g.stroke(); g.setLineDash([]);
       }
     }
@@ -854,7 +850,7 @@ export function mount(root, ctx) {
       if (st >= T.F - 0.8) {
         const w = 74 / s, h = 8 / s, x0 = d.x - w / 2, y0 = yy + 4 / s;
         g.fillStyle = "#000000cc"; g.fillRect(x0 - 2 / s, y0 - 2 / s, w + 4 / s, h + 4 / s);
-        g.fillStyle = d.hp < 0.3 ? "#ff3030" : "#7cff4f"; g.fillRect(x0, y0, w * d.hp, h);
+        g.fillStyle = d.hp < 0.3 ? "#d8452e" : "#e8e4dc"; g.fillRect(x0, y0, w * d.hp, h);
       }
       drawLabel(d, d.x, yy - 6 / s - 8 / s, s, true);
     }
@@ -875,7 +871,7 @@ export function mount(root, ctx) {
     g.setTransform(bk, 0, 0, bk, 0, 0);
     if (phase === "roll" && z && z.shrink && !ctx.reducedMotion) {
       const gr = g.createRadialGradient(W / 2, H / 2, 420, W / 2, H / 2, 1150);
-      gr.addColorStop(0, "rgba(255,40,40,0)"); gr.addColorStop(1, `rgba(255,40,40,${0.13 + 0.06 * Math.sin(now * 8)})`);
+      gr.addColorStop(0, "rgba(216,69,46,0)"); gr.addColorStop(1, `rgba(216,69,46,${0.07 + 0.03 * Math.sin(now * 8)})`);
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
     } else {
       const gr = g.createRadialGradient(W / 2, H / 2, 460, W / 2, H / 2, 1200);
