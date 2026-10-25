@@ -94,6 +94,8 @@ export type AdminOrderCard = OrderCardDto & {
   returnStatus?: ReturnStatus | null;
   /** Units on their way back right now (V68). */
   returningUnits?: number;
+  /** Units already given back (received / restocked / written off). */
+  returnedUnits?: number;
   /** What is in the order — the picture strip of the card. */
   lines?: CardLine[];
   /** Replacement of an exchange on that order (V69). */
@@ -108,6 +110,8 @@ export interface CardLine {
   title: string;
   quantity: number;
   returning: number;
+  /** Units of this line already given back. */
+  returned?: number;
   gift: boolean;
 }
 

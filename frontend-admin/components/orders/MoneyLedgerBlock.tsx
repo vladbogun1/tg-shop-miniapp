@@ -83,9 +83,13 @@ export function MoneyLedgerBlock({ order }: { order: AdminOrderDetail }) {
           <span>
             Возвращено <b className="tabular text-[var(--text)]">{money(refunded, cur)}</b>
           </span>
-          <span>
-            Удержано <b className="tabular text-[var(--text)]">{money(retained || admin.retainedMinor, cur)}</b>
-          </span>
+          {/* Kept only on a refused parcel (the prepayment pays for delivery) — no line when nothing was kept. */}
+          {(retained || admin.retainedMinor) > 0 && (
+            <span>
+              Удержано за доставку{" "}
+              <b className="tabular text-[var(--text)]">{money(retained || admin.retainedMinor, cur)}</b>
+            </span>
+          )}
         </div>
       )}
 

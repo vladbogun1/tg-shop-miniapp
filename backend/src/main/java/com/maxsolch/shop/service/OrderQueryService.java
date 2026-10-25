@@ -163,7 +163,7 @@ public class OrderQueryService {
                     .add(new OrderCardDto.CardLine(productId == null ? null : thumbnails.get(productId),
                             it.getTitleSnapshot()
                                     + (it.getVariantNameSnapshot() == null ? "" : " · " + it.getVariantNameSnapshot()),
-                            it.getQuantity(), it.getReturnPendingQty(), it.isGift()));
+                            it.getQuantity(), it.getReturnPendingQty(), it.getReturnedQty(), it.isGift()));
         }
         return out;
     }
@@ -211,6 +211,7 @@ public class OrderQueryService {
                 o.getArchivedAt() != null,
                 o.getReturnStatus(),
                 ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returning).sum(),
+                ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returned).sum(),
                 ctx.linesFor(id),
                 o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
                 ctx.exchangesOf(id));

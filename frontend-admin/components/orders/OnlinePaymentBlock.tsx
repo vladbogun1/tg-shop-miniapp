@@ -265,10 +265,14 @@ function InvoiceRow({ inv, currency, onRefund }: { inv: AdminInvoice; currency: 
       )}
 
       {canRefund && (
-        <div className="pt-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
           <Button size="sm" variant="surface" icon={<Undo2 className="h-4 w-4" />} onClick={onRefund}>
-            Вернуть деньги
+            Вернуть только деньги
           </Button>
+          {/* Two ways to give money back confused admins: this one never touches the goods. */}
+          <span className="text-[11.5px] text-[var(--text-faint)]">
+            Товар и склад не трогает — для возврата товара есть «Возврат».
+          </span>
         </div>
       )}
     </li>

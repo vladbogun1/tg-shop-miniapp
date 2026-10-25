@@ -46,16 +46,20 @@ test("возврат по позиции с суммой", async ({ page, api })
   const modal = dialog(page, "↩️ Возврат");
   const next = modal.getByRole("button", { name: "Далее" });
   await expect(next).toBeDisabled();
-  const capLine = containerOf(modal, page.getByText("E2E Кепка", { exact: true }), page.getByRole("button", { name: "+" }));
-  await capLine.getByRole("button", { name: "+" }).click();
-  await expect(capLine.getByRole("button", { name: "+" })).toBeDisabled(); // only 1 in the order
-  await modal.getByRole("button", { name: "На склад", exact: true }).click();
+  await modal.getByRole("button", { name: "Уже у нас" }).click();
+  const capLine = containerOf(
+    modal,
+    page.getByText("E2E Кепка", { exact: true }),
+    page.getByRole("switch", { name: "Вернуть" })
+  );
+  await capLine.getByRole("switch", { name: "Вернуть" }).click();
+  await expect(modal.getByText("Пришло целым — вернётся на склад")).toBeVisible(); // «Брак» is off
   await next.click();
 
-  // Step 2 — money: the cap's price is suggested as a manual refund; the way must be chosen.
-  const amount = modal.getByLabel("Сумма, UAH");
+  // Step 2 — money: what the customer paid for the cap is suggested as is, from the admin's own money.
+  const amount = modal.getByLabel("Сколько вернуть, UAH");
   await expect(amount).toHaveValue("349");
-  await modal.getByLabel("Способ возврата").selectOption({ label: "Перевод на карту" });
+  await expect(modal.getByText("С личных средств.")).toBeVisible();
   // More than was received is refused on the spot.
   await amount.fill("5000");
   await expect(modal.getByText(/можно не больше/)).toBeVisible();

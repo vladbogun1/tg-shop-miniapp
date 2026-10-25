@@ -30,6 +30,8 @@ public record OrderCardDto(
         String returnStatus,
         /** Units on their way back right now (the «Едет назад» card shows only these). */
         int returningUnits,
+        /** Units already given back (received / restocked / written off) — «Возврат 1 из 3» on the card. */
+        int returnedUnits,
         /** What is in the order, for the picture strip on the card. */
         java.util.List<CardLine> lines,
         /** This order is the replacement of an exchange on that order (V69); null = not. */
@@ -39,7 +41,8 @@ public record OrderCardDto(
 
     /**
      * @param returning units of this line on their way back
+     * @param returned  units of this line already given back
      */
-    public record CardLine(String imageUrl, String title, int quantity, int returning, boolean gift) {
+    public record CardLine(String imageUrl, String title, int quantity, int returning, int returned, boolean gift) {
     }
 }

@@ -15,7 +15,7 @@
  *    are not dragged — the order (or its rest, after a partial return) stays in its status column.
  *  - Realtime: polling refetch (board query refetchInterval).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   DndContext,
@@ -44,6 +44,7 @@ import {
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
+import { useFillHeight } from "@/lib/use-fill-height";
 import { useToast } from "@/lib/toast";
 import { refreshInbox } from "@/lib/inbox";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -297,6 +298,9 @@ export default function BoardPage() {
     </Button>
   );
 
+  const boardRef = useRef<HTMLDivElement>(null);
+  useFillHeight(boardRef, view === "board" && isDesktop && !!board);
+
   return (
     <div>
       {/* On a phone the title is already in the shell header — no second one. */}
@@ -368,7 +372,9 @@ export default function BoardPage() {
                   onDragEnd={onDragEnd}
                   onDragCancel={() => setActiveId(null)}
                 >
-                  <div className="thin-scroll flex gap-4 overflow-x-auto pb-4">
+                  {/* The board fills the screen: one horizontal scrollbar at its bottom, each column
+                      scrolls on its own, the page stays put. */}
+                  <div ref={boardRef} className="thin-scroll flex items-stretch gap-4 overflow-x-auto pb-3">
                     {BOARD_ORDER.map((s) => (
                       <KanbanColumn
                         key={s}

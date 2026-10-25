@@ -34,7 +34,7 @@ test("онлайн-оплата: платёж в карточке, возвра�
   // Paid: no deadline any more.
   await expect(block).not.toContainText("Оплатить до");
 
-  await block.getByRole("button", { name: "Вернуть деньги" }).click();
+  await block.getByRole("button", { name: "Вернуть только деньги" }).click();
   const modal = refundDialog(page);
   await expect(modal).toBeVisible();
   const full = modal.getByRole("button", { name: /^Всю сумму/ });
@@ -79,7 +79,7 @@ test("ждёт онлайн-оплату: срок «Оплатить до», с
   await expect(block).toContainText("Ссылка выдана");
   await expect(block).toContainText(`К оплате онлайн: ${money(PREPAY)}`);
   // Nothing paid → nothing to refund.
-  await expect(block.getByRole("button", { name: "Вернуть деньги" })).toHaveCount(0);
+  await expect(block.getByRole("button", { name: "Вернуть только деньги" })).toHaveCount(0);
 
   const order = await api.order(ORDER.awaiting);
   expect(order.paid).toBe(false);

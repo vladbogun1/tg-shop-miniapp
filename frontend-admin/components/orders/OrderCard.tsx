@@ -39,7 +39,11 @@ function LineStrip({ lines, units, returning }: { lines: CardLine[]; units: numb
   const shown = lines.slice(0, STRIP_MAX);
   const more = lines.length - shown.length;
   const tip = lines
-    .map((l) => `${l.gift ? "🎁 " : ""}${l.title} ×${returning ? l.returning : l.quantity}`)
+    .map(
+      (l) =>
+        `${l.gift ? "🎁 " : ""}${l.title} ×${returning ? l.returning : l.quantity}` +
+        (!returning && (l.returned ?? 0) > 0 ? ` (возвращено ${l.returned})` : "")
+    )
     .join("\n");
   return (
     <span className="flex min-w-0 items-center gap-1.5" title={tip}>
@@ -52,7 +56,9 @@ function LineStrip({ lines, units, returning }: { lines: CardLine[]; units: numb
             size={48}
             className={cn(
               "h-[22px] w-[22px] shrink-0 rounded-[5px] border border-[var(--line)] bg-[var(--surface-2)] ring-2 ring-[var(--surface)]",
-              i > 0 && "-ml-1.5"
+              i > 0 && "-ml-1.5",
+              // A line given back in full is greyed out: it is no longer with the customer.
+              !returning && (l.returned ?? 0) >= l.quantity && "opacity-35 grayscale"
             )}
           />
         ))}
@@ -130,9 +136,27 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
             <Undo2 className="h-3 w-3" />
             {units === order.itemsCount ? "вся посылка" : `${units} из ${order.itemsCount}`}
           </span>
-        ) : (
+        ) : order.returnStatus === "IN_TRANSIT" ? (
           <ReturnBadge status={order.returnStatus} className="shrink-0 !px-1.5 !text-[10.5px]" />
-        )}
+        ) : order.returnStatus === "RECEIVED" && order.status === "REJECTED" ? (
+          <span
+            className="chip-tint shrink-0 !gap-1 !px-1.5 !text-[10.5px]"
+            style={{ "--chip": "var(--st-returning)" } as CSSProperties}
+            title="Отказ: посылка вернулась, товар принят на склад"
+          >
+            <Undo2 className="h-3 w-3" />
+            вернулась
+          </span>
+        ) : (order.returnedUnits ?? 0) > 0 ? (
+          <span
+            className="chip-tint shrink-0 !gap-1 !px-1.5 !text-[10.5px]"
+            style={{ "--chip": "var(--st-returning)" } as CSSProperties}
+            title="Покупатель вернул часть заказа (или весь)"
+          >
+            <Undo2 className="h-3 w-3" />
+            {(order.returnedUnits ?? 0) >= order.itemsCount ? "возвращён" : `возврат ${order.returnedUnits} из ${order.itemsCount}`}
+          </span>
+        ) : null}
         {(order.exchangeOfId || (order.exchangeOrderIds?.length ?? 0) > 0) && (
           // Icon only: the row is full on a narrow column; the tooltip names the other order.
           <span

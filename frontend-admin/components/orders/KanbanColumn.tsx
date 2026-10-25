@@ -71,7 +71,7 @@ export function KanbanColumn({
         ref={setNodeRef}
         title={`${BOARD_LABEL[status]}: пусто`}
         className={cn(
-          "flex w-11 shrink-0 flex-col items-center gap-3 self-start overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] pb-4 transition-opacity duration-150",
+          "flex w-11 shrink-0 flex-col items-center gap-3 overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] pb-4 transition-opacity duration-150",
           dim && "opacity-40"
         )}
       >
@@ -93,7 +93,7 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-[232px] max-w-[340px] flex-1 basis-0 flex-col self-start overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
+        "flex min-h-0 min-w-[232px] max-w-[340px] flex-1 basis-0 flex-col overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
         dim && "opacity-40",
         validTarget && dragActive && !lit && "border-[var(--line-strong)]"
       )}
@@ -131,7 +131,8 @@ export function KanbanColumn({
         </div>
       </header>
 
-      <div className="thin-scroll flex max-h-[calc(100dvh-280px)] flex-col gap-2 overflow-y-auto p-2.5">
+      {/* Fills the column; scrolling stops at its ends instead of carrying the page along. */}
+      <div className="thin-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2.5">
         {orders.length === 0 ? (
           <div className="font-display flex flex-col items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--line)] px-3 py-8 text-center text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
             <Inbox className="h-5 w-5 opacity-60" />
