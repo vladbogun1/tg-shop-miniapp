@@ -642,6 +642,10 @@ export function mount(root, ctx) {
   }
 
   // ----- camera -----
+  // Final arena: the island fades away, the arena alone sits in the middle of the screen (0 → 1).
+  const AR_FROM = T.F - 1.8, AR_LEN = 1.6;
+  function arenaU() { return phase === "win" ? 1 : phase === "roll" ? smooth(clamp((st - AR_FROM) / AR_LEN, 0, 1)) : 0; }
+  function arenaScale() { const ah = IM.arena ? 360 * IM.arena.height / IM.arena.width : 300; return Math.min(1180 / 360, (H * 0.74) / ah); }
   function camTarget(z) {
     if (phase === "win") return { x: winnerDot.x, y: winnerDot.y, s: 2.6 };
     if (phase !== "roll") return { x: W / 2, y: H / 2, s: 1 };
@@ -651,6 +655,8 @@ export function mount(root, ctx) {
       x = zones[3].x; y = zones[3].y; if (al.length) { x = lerp(x, al.reduce((a, f) => a + f.x, 0) / al.length, 0.4); y = lerp(y, al.reduce((a, f) => a + f.y, 0) / al.length, 0.4); }
       s = 2.6;
     }
+    const ar = arenaU();
+    if (ar > 0) return { x: lerp(x, zones[3].x, ar), y: lerp(y, zones[3].y, ar), s: lerp(s, arenaScale(), ar) };
     const wgt = clamp((s - 1) / 0.8, 0, 1);
     return { x: lerp(W / 2, x, wgt), y: lerp(H / 2, y, wgt), s };
   }
@@ -705,7 +711,8 @@ export function mount(root, ctx) {
     const k = 1 - Math.exp(-dt * (phase === "win" ? 2.2 : 2.6));
     cam.x = lerp(cam.x, ct.x, k); cam.y = lerp(cam.y, ct.y, k); cam.s = lerp(cam.s, ct.s, k);
     const hw = W / (2 * cam.s), hh = H / (2 * cam.s);
-    const cx = clamp(cam.x, hw, W - hw), cy = clamp(cam.y, hh, H - hh);
+    const AR = arenaU(), ka = 1 - AR; // with the map gone the camera may leave the island's bounds
+    const cx = lerp(clamp(cam.x, hw, W - hw), cam.x, AR), cy = lerp(clamp(cam.y, hh, H - hh), cam.y, AR);
     shake = Math.max(0, shake - dt * 36);
 
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -714,17 +721,23 @@ export function mount(root, ctx) {
     const S = bk * cam.s;
     g.setTransform(S, 0, 0, S, (-cx * cam.s + W / 2 + sx) * bk, (-cy * cam.s + H / 2 + sy) * bk);
     g.imageSmoothingEnabled = cam.s < 1.05;
+    if (ka > 0.01) {
+    g.globalAlpha = ka;
     if (map) { g.drawImage(map, 0, 0); g.drawImage(corpse, 0, 0); } else { g.fillStyle = "#14101e"; g.fillRect(0, 0, W, H); }
+    g.globalAlpha = 1;
 
     // water glints, swamp bubbles, torch flames, manor glow
-    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.55) continue; g.fillStyle = `rgba(150,170,195,${(a - 0.5) * 0.8})`; g.fillRect(s.x, s.y, s.s, s.s); g.fillRect(s.x - s.s, s.y + 1, s.s * 3, 1); }
+    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.55) continue; g.fillStyle = `rgba(150,170,195,${(a - 0.5) * 0.8 * ka})`; g.fillRect(s.x, s.y, s.s, s.s); g.fillRect(s.x - s.s, s.y + 1, s.s * 3, 1); }
     g.globalCompositeOperation = "lighter";
     for (const b of bubbles) { const u = ((now + b.ph) % b.per) / b.per; g.strokeStyle = `rgba(150,255,110,${0.5 * (1 - u)})`; g.lineWidth = 1.5; g.beginPath(); g.arc(b.x, b.y - u * 14, 1 + u * 5, 0, 6.283); g.stroke(); }
-    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.55 * f; g.drawImage(flameStamp, x - 40 * f, y - 98 - 40 * f, 80 * f, 80 * f); }
-    { const m = POIS[2]; g.globalAlpha = 0.05 + 0.02 * Math.sin(now * 2.3); g.drawImage(flameStamp, m.x - 160, m.y - 30, 320, 240); }
+    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.55 * f * ka; g.drawImage(flameStamp, x - 40 * f, y - 98 - 40 * f, 80 * f, 80 * f); }
+    { const m = POIS[2]; g.globalAlpha = (0.05 + 0.02 * Math.sin(now * 2.3)) * ka; g.drawImage(flameStamp, m.x - 160, m.y - 30, 320, 240); }
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
     // fog (under characters)
+    g.globalAlpha = ka;
     for (let i = 0; i < 2; i++) { const ox = ((now * (6 + i * 5) * (i ? -1 : 1)) % W + W) % W; g.drawImage(fogLayers[i], ox, 0, W, H); g.drawImage(fogLayers[i], ox - W, 0, W, H); }
+    g.globalAlpha = 1;
+    }
 
     // radar
     if (idle) {
@@ -737,6 +750,11 @@ export function mount(root, ctx) {
     }
 
     // final arena
+    if (AR > 0 && zones[3]) {
+      const az = zones[3], gr = g.createRadialGradient(az.x, az.y, 20, az.x, az.y, 330);
+      gr.addColorStop(0, `rgba(255,102,0,${0.16 * AR})`); gr.addColorStop(0.55, `rgba(120,70,40,${0.07 * AR})`); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gr; g.fillRect(az.x - 340, az.y - 340, 680, 680);
+    }
     if (phase !== "idle" && zones[3] && IM.arena && (st > T.S[2][0] - 0.5 || phase === "win")) {
       const u = phase === "win" ? 1 : clamp((st - (T.S[2][0] - 0.5)) / 2.2, 0, 1), az = zones[3], aw = 360 * u, ah = aw * (IM.arena.height / IM.arena.width);
       g.globalAlpha = u; g.drawImage(IM.arena, az.x - aw / 2, az.y - ah * 0.52, aw, ah); g.globalAlpha = 1;
@@ -753,7 +771,7 @@ export function mount(root, ctx) {
       if (d.spawn && age < d.dur) { const u = age / d.dur, e = 1 - (1 - u) * (1 - u); yo = -(1 - e) * 240; sc = 1 + (1 - e) * 0.9; a = Math.min(1, u * 3); }
       const sz = tokSize(d) * sc, name = d.won ? "tok3" : "tok" + d.col, outside = d.out > 0.05;
       if (showGlow || d.tier >= 2) { g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.won ? 0.5 : 0.6) * a; const gs = sz * (d.tier >= 2 ? 2.2 : 1.8); g.drawImage(stamps[outside ? 3 : d.won ? 4 : d.col], d.x - gs / 2, d.y + yo - gs / 2, gs, gs); g.globalCompositeOperation = "source-over"; }
-      g.globalAlpha = d.won ? 0.9 : a;
+      g.globalAlpha = (d.won ? 0.9 : a) * ka;
       const at = AT && AT[name];
       if (at) { const k2 = sz / at[3]; g.drawImage(IM.atlas, at[0], at[1], at[2], at[3], d.x - at[2] * k2 / 2, d.y + yo - sz / 2 - sz * 0.06, at[2] * k2, sz); }
       else { g.fillStyle = COLORS[d.col]; g.fillRect(d.x - 3, d.y - 3, 6, 6); }
@@ -780,15 +798,15 @@ export function mount(root, ctx) {
     g.globalAlpha = 1;
 
     // storm
-    if (z) {
+    if (z && ka > 0.01) {
       if (!stormPat && IM.storm) stormPat = g.createPattern(IM.storm, "repeat");
       g.save();
       g.beginPath(); g.rect(-3000, -3000, 8000, 8000); g.arc(z.x, z.y, z.r, 0, 6.283); g.clip("evenodd");
-      g.fillStyle = "rgba(6,8,14,0.5)"; g.fillRect(-3000, -3000, 8000, 8000);
+      g.fillStyle = `rgba(6,8,14,${0.5 * ka})`; g.fillRect(-3000, -3000, 8000, 8000);
       if (stormPat) {
         for (let i = 0; i < 2; i++) {
           stormPat.setTransform?.(new DOMMatrix().translate(now * (i ? -26 : 34), now * (i ? 18 : -12)).scale(i ? 0.55 : 0.8));
-          g.globalAlpha = i ? 0.16 : 0.3; g.globalCompositeOperation = "source-over"; g.fillStyle = stormPat; g.fillRect(-3000, -3000, 8000, 8000);
+          g.globalAlpha = (i ? 0.16 : 0.3) * ka; g.globalCompositeOperation = "source-over"; g.fillStyle = stormPat; g.fillRect(-3000, -3000, 8000, 8000);
         }
         g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
       }
@@ -796,10 +814,10 @@ export function mount(root, ctx) {
       // storm wall: bright textured band along the edge
       if (stormPat) {
         g.save(); g.beginPath(); g.arc(z.x, z.y, z.r + 26, 0, 6.283); g.arc(z.x, z.y, z.r - 4, 0, 6.283); g.clip("evenodd");
-        stormPat.setTransform?.(new DOMMatrix().translate(now * 60, -now * 30).scale(0.5)); g.globalCompositeOperation = "lighter"; g.globalAlpha = z.shrink ? 0.5 : 0.32; g.fillStyle = stormPat; g.fillRect(z.x - z.r - 40, z.y - z.r - 40, z.r * 2 + 80, z.r * 2 + 80); g.restore();
+        stormPat.setTransform?.(new DOMMatrix().translate(now * 60, -now * 30).scale(0.5)); g.globalCompositeOperation = "lighter"; g.globalAlpha = (z.shrink ? 0.5 : 0.32) * ka; g.fillStyle = stormPat; g.fillRect(z.x - z.r - 40, z.y - z.r - 40, z.r * 2 + 80, z.r * 2 + 80); g.restore();
       }
-      g.lineWidth = 3 / cam.s + 1; g.strokeStyle = z.shrink ? "#d8452e" : "#c8641e"; g.shadowColor = z.shrink ? "#d8452e" : "#ff6600"; g.shadowBlur = 5;
-      g.beginPath(); g.arc(z.x, z.y, z.r, 0, 6.283); g.stroke(); g.shadowBlur = 0;
+      g.globalAlpha = ka; g.lineWidth = 3 / cam.s + 1; g.strokeStyle = z.shrink ? "#d8452e" : "#c8641e"; g.shadowColor = z.shrink ? "#d8452e" : "#ff6600"; g.shadowBlur = 5;
+      g.beginPath(); g.arc(z.x, z.y, z.r, 0, 6.283); g.stroke(); g.shadowBlur = 0; g.globalAlpha = 1;
       if (false) { // lightning bolts on the wall
         const a0 = Math.random() * 6.283; g.strokeStyle = "rgba(230,210,255,0.95)"; g.lineWidth = 2.5 / cam.s + 0.8; g.beginPath();
         let a = a0, rr = z.r + 36; g.moveTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr);
@@ -813,7 +831,7 @@ export function mount(root, ctx) {
     }
 
     // bats
-    if (AT) for (const b of bats) { const a = now * b.sp + b.ph, x = b.cx + Math.cos(a) * b.rx, y = b.cy + Math.sin(a) * b.ry, fr = ((now * 9 + b.fp) | 0) % 6; g.globalAlpha = 0.95; aspr(g, "bat" + fr, x, y, 0.8, Math.cos(a) * b.sp > 0); }
+    if (AT) for (const b of bats) { const a = now * b.sp + b.ph, x = b.cx + Math.cos(a) * b.rx, y = b.cy + Math.sin(a) * b.ry, fr = ((now * 9 + b.fp) | 0) % 6; g.globalAlpha = 0.95 * ka; aspr(g, "bat" + fr, x, y, 0.8, Math.cos(a) * b.sp > 0); }
     g.globalAlpha = 1;
 
     // bullets and fx
