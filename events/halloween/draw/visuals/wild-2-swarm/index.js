@@ -239,9 +239,9 @@ export function mount(root, ctx) {
     b.save(); b.translate(ox, oy); b.scale(sc, sc);
     const r = (cx, cy, rad, c0, c1) => { const gr = b.createRadialGradient(cx, cy, 0, cx, cy, rad); gr.addColorStop(0, c0); gr.addColorStop(1, c1); b.fillStyle = gr; b.fillRect(cx - rad, cy - rad, rad * 2, rad * 2); };
     if (A.sky) b.drawImage(A.sky, 0, 0, W0, H0);
-    r(CX, CY, 900, "rgba(138,63,252,.17)", "rgba(138,63,252,0)");
-    r(300, 1100, 700, "rgba(255,102,0,.16)", "rgba(255,102,0,0)");
-    r(1700, 1100, 700, "rgba(124,255,79,.07)", "rgba(124,255,79,0)");
+    r(CX, CY, 900, "rgba(138,63,252,.04)", "rgba(138,63,252,0)");
+    r(300, 1100, 700, "rgba(255,102,0,.05)", "rgba(255,102,0,0)");
+    r(1700, 1100, 700, "rgba(124,255,79,.015)", "rgba(124,255,79,0)");
     if (!A.sky) { // запасний варіант без ассетів: пікселі-зірки
       const rnd = mulberry(7);
       for (let i = 0; i < 160; i++) { b.fillStyle = `rgba(244,241,234,${0.12 + rnd() * 0.35})`; const s = rnd() < 0.15 ? 4 : 2; b.fillRect(Math.floor(rnd() * W0 / 4) * 4, Math.floor(rnd() * 800 / 4) * 4, s, s); }
@@ -512,17 +512,17 @@ export function mount(root, ctx) {
       g.fillRect(Math.round(p.x - p.ds / 2), Math.round(p.y - p.ds / 2), p.ds, p.ds);
     }
   }
-  let dustPal = ["#8a3ffc", "#ff6600", "#7cff4f", "#b9a9d8"];
+  let dustPal = ["#6b7280", "#ff6600", "#8a93a6", "#c9c4b8"];
 
   // ---------- жива сцена: місяць, хмари, зірки, туман, світлячки, кажани ----------
   const clouds = [[1, 60, 96, 11, 0.9], [3, 780, 190, 17, 0.8], [2, 1300, 70, 8, 0.85], [4, 380, 330, 13, 0.7], [1, 1600, 420, 20, 0.6], [3, 120, 520, 9, 0.5]]
     .map(([i, x, y, s, a], n) => ({ i, x, y, s, a, k: 0.55 + (n % 3) * 0.12 }));
-  const tw = Array.from({ length: 26 }, (_, i) => { const r = mulberry(900 + i); return { x: Math.floor(r() * 1900 / 4) * 4, y: Math.floor(r() * 640 / 4) * 4, ph: r() * 6.28, sp: 0.8 + r() * 1.8, c: ["#fff3d0", "#ffb000", "#c9a8ff"][i % 3] }; });
-  const flies = Array.from({ length: 26 }, (_, i) => { const r = mulberry(5000 + i); return { x: r() * W0, y: 700 + r() * 330, ph: r() * 6.28, sp: 0.25 + r() * 0.5, c: i % 3 === 0 ? "#ff8a2b" : "#7cff4f" }; });
+  const tw = Array.from({ length: 26 }, (_, i) => { const r = mulberry(900 + i); return { x: Math.floor(r() * 1900 / 4) * 4, y: Math.floor(r() * 640 / 4) * 4, ph: r() * 6.28, sp: 0.8 + r() * 1.8, c: ["#c9c4b8", "#8a93a6", "#c9c4b8"][i % 3] }; });
+  const flies = Array.from({ length: 26 }, (_, i) => { const r = mulberry(5000 + i); return { x: r() * W0, y: 700 + r() * 330, ph: r() * 6.28, sp: 0.25 + r() * 0.5, c: i % 3 === 0 ? "#ff8a2b" : (i % 7 === 1 ? "#7cff4f" : "#8a93a6") }; });
   const fogs = Array.from({ length: 6 }, (_, i) => ({ x: i * 380, y: 930 + (i % 3) * 36, w: 900 + (i % 2) * 300, s: 6 + i * 2.2, a: 0.07 + (i % 3) * 0.02 }));
   const fogSprite = (() => {
     const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
-    const gr = x.createRadialGradient(128, 32, 0, 128, 32, 128); gr.addColorStop(0, "rgba(170,140,255,.9)"); gr.addColorStop(0.5, "rgba(140,100,230,.35)"); gr.addColorStop(1, "rgba(140,100,230,0)");
+    const gr = x.createRadialGradient(128, 32, 0, 128, 32, 128); gr.addColorStop(0, "rgba(120,130,150,.5)"); gr.addColorStop(0.5, "rgba(100,110,130,.2)"); gr.addColorStop(1, "rgba(100,110,130,0)");
     x.save(); x.scale(1, 0.25); x.fillStyle = gr; x.fillRect(0, 0, 256, 256 * 4); x.restore(); return c;
   })();
   const bats = Array.from({ length: 4 }, (_, i) => ({ x: i * 520 - 100, y: 220 + (i * 97) % 260, v: (i % 2 ? -1 : 1) * (70 + i * 24), ph: i * 1.7, s: 0.8 + (i % 3) * 0.25 }));
@@ -533,7 +533,7 @@ export function mount(root, ctx) {
     if (A.moon) {
       const mx = 1640, my = 330, ms = 300;
       g.globalCompositeOperation = "lighter";
-      g.globalAlpha = 0.42 + 0.1 * Math.sin(T * 0.7); g.drawImage(glowFor("#ff9a30"), mx - 330, my - 330, 660, 660);
+      g.globalAlpha = 0.14 + 0.04 * Math.sin(T * 0.7); g.drawImage(glowFor("#c9a070"), mx - 330, my - 330, 660, 660);
       g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
       g.drawImage(A.moon, mx - ms / 2, my - ms / 2, ms, ms);
     }
@@ -683,7 +683,7 @@ export function mount(root, ctx) {
     const p = fin.W;
     if (p.st === HIDE) return;
     g.globalCompositeOperation = "lighter";
-    const s = p.kb * 9 * p.sm * 3.2; g.globalAlpha = 0.85; g.drawImage(glowFor("#ffd84a"), p.x - s / 2, p.y - s / 2, s, s); g.globalAlpha = 1;
+    const s = p.kb * 9 * p.sm * 3.2; g.globalAlpha = 0.85; g.drawImage(glowFor("#ff9a3d"), p.x - s / 2, p.y - s / 2, s, s); g.globalAlpha = 1;
     g.globalCompositeOperation = "source-over";
     drawPt(p);
   }
@@ -826,12 +826,12 @@ export function mount(root, ctx) {
     const gl = glowFor("#ff6600"); g.globalAlpha = a * 0.5; g.drawImage(gl, CX - 900, fin.nameY - 280, 1800, 560); g.globalAlpha = a;
     g.globalCompositeOperation = "source-over";
     font(800, 44); g.fillStyle = "#7cff4f"; if ("letterSpacing" in g) g.letterSpacing = "14px";
-    g.shadowColor = "#7cff4f"; g.shadowBlur = 18;
+    g.shadowColor = "#7cff4f"; g.shadowBlur = 6;
     g.fillText("ПЕРЕМОЖЕЦЬ", CX, 160); g.shadowBlur = 0;
     if ("letterSpacing" in g) g.letterSpacing = "0px";
     font(900, fin.fs); g.lineJoin = "round"; g.lineWidth = Math.max(8, fin.fs * 0.07);
     g.strokeStyle = "#1a0b00"; g.strokeText(fin.name, CX, fin.nameY);
-    const gr = g.createLinearGradient(0, fin.nameY - fin.fs * 0.5, 0, fin.nameY + fin.fs * 0.5); gr.addColorStop(0, "#fff1b8"); gr.addColorStop(0.5, "#ffb000"); gr.addColorStop(1, "#ff6600");
+    const gr = g.createLinearGradient(0, fin.nameY - fin.fs * 0.5, 0, fin.nameY + fin.fs * 0.5); gr.addColorStop(0, "#f4efe4"); gr.addColorStop(0.5, "#ff8a1a"); gr.addColorStop(1, "#ff6600");
     g.shadowColor = "#ff6600"; g.shadowBlur = 34; g.fillStyle = gr; g.fillText(fin.name, CX, fin.nameY); g.shadowBlur = 0;
     if (fin.handle) { font(700, 46); g.fillStyle = "#d9d4ca"; g.fillText(fin.handle, CX, fin.nameY + fin.fs * 0.5 + 52); }
     font(600, 32); g.fillStyle = "#9a958c";
@@ -955,7 +955,7 @@ export function mount(root, ctx) {
       return { p, gone: false, st: SEEK };
     });
     for (const p of pool) if (!S3.includes(p) && !p.dead) sched(p, T + 0.05 + rnd() * 0.8, FALL);
-    dustPal = ["#8a3ffc", "#a566ff", "#7cff4f", "#ff6600"]; glowCol = "#8a3ffc";
+    dustPal = ["#6b7280", "#8a3ffc", "#8a93a6", "#ff6600"]; glowCol = "#4a3a6a";
     const rp = ringPoints(K, R, a0, Math.floor(dusts.length * 0.9), rnd);
     shuffle(dusts.slice(), rnd).forEach((p, i) => { if (i < rp.length) sched(p, T + rnd() * 0.6, SEEK, rp[i][0], rp[i][1], true); else sched(p, T + rnd() * 0.6, ORB); });
     setCount(c2, K, 1.4, "ФІНАЛІСТИ");
@@ -994,13 +994,13 @@ export function mount(root, ctx) {
     say(`Переможець: ${clip(winner.name, 22)}! Вітаю!`);
     snd("win");
     if (mon) mon.ta = 0;
-    for (let i = 0; i < 150; i++) conf.push({ x: CX + (rnd() - 0.5) * 300, y: CY - 100, vx: (rnd() - 0.5) * 1700, vy: -700 - rnd() * 900, c: ["#ff6600", "#7cff4f", "#8a3ffc", "#ffd84a", "#f4f1ea"][i % 5], life: 3 });
+    for (let i = 0; i < 150; i++) conf.push({ x: CX + (rnd() - 0.5) * 300, y: CY - 100, vx: (rnd() - 0.5) * 1700, vy: -700 - rnd() * 900, c: ["#ff6600", "#c9c4b8", "#ff6600", "#ffb36b", "#8a93a6"][i % 5], life: 3 });
     W.smt = 250 / (9 * W.kb); sched(W, T, SEEK, CX, lay.portraitY);
     tween(0.6, (u) => { if (fin) fin.hudFade = u; }).catch(() => {});
     await wait(0.6);
     morph(winner, W, av, lay, rnd);
     snd("whoosh");
-    phaseName = "final"; dbg.phase = phaseName; glowCol = "#ffb000";
+    phaseName = "final"; dbg.phase = phaseName; glowCol = "#ff7a1a";
     tween(1.0, (u) => { frameA = u; }).catch(() => {});
     await wait(2.1);
     await tween(0.5, (u) => { fin.a = u; });
@@ -1082,7 +1082,7 @@ export function mount(root, ctx) {
     mon = null; frameA = 0; oopsT = 0;
     fin = null; finalists = []; ring = null; ptrShow = 0; hitT = 0; conf = []; fx = [];
     contract = 1; spin = 1; glowA = 0; hud.show = 0; flash = 0;
-    dustPal = ["#8a3ffc", "#ff6600", "#7cff4f", "#b9a9d8"]; glowCol = "#ff6600";
+    dustPal = ["#6b7280", "#ff6600", "#8a93a6", "#c9c4b8"]; glowCol = "#ff6600";
     heap.fill(0);
     // winners of finished rounds leave the swarm until the host tells us the new list
     const keep = parts.filter((p) => !extraWon.has(p.part.id));
