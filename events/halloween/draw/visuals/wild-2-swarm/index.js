@@ -11,6 +11,13 @@ const W0 = 1920, H0 = 1080, CX = 960, CY = 500, FLOOR = 1042;
 const FONT = '"Exo 2", system-ui, sans-serif';
 const ORB = 0, SEEK = 1, FALL = 2, PILE = 3, HIDE = 4;
 const SPR_URL = (n) => new URL(`../../assets/sprites/${n}.png`, import.meta.url).href;
+const ASSET_URL = (n) => new URL(`./assets/${n}.webp`, import.meta.url).href;
+// Речь ведущего: медленная печать (симв/с) и минимум секунд, которые строка висит после того, как допечаталась.
+const CPS = 20, HOLD = 2.6;
+// Файлы в ./assets (пиксель-арт, webp). Покадровые ленты режутся на равные ячейки по числу кадров.
+const ASSET_NAMES = ["host-idle", "host-present", "host-talk", "host-point", "host-oops", "host-cheer", "glutton", "skull", "souls", "circle", "pointer", "frame", "plaque", "dialog", "bats", "moon", "cloud-1", "cloud-2", "cloud-3", "cloud-4", "sky", "far", "near"];
+const FRAMES = { glutton: 3, skull: 3, bats: 4 };
+const SOUL_COLS = 4, SOUL_ROWS = 3;
 
 // ---------- utils ----------
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -48,6 +55,36 @@ function spriteFor(kind, dead, k) {
   if (dead) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(34,26,60,.62)"; g.fillRect(0, 0, c.width, c.height); }
   spriteCache.set(key, c);
   return c;
+}
+// ---------- новые пиксель-арт ассеты ----------
+const A = {};            // name -> HTMLImageElement
+const soulCache = new Map();
+// Душа из атласа souls.webp: ряд = вид (гарбуз / привид / кажан-привид), колонки 0-1 обычная (2 кадра), 2-3 «элітна» (4+ квитків).
+function soulSprite(kind, elite, fr, dead, wpx) {
+  const at = A.souls;
+  if (!at) return null;
+  const key = ((kind * 2 + elite) * 2 + fr) * 2 + (dead ? 1 : 0) + wpx * 64;
+  let c = soulCache.get(key);
+  if (c) return c;
+  const cw = at.width / SOUL_COLS, chh = at.height / SOUL_ROWS;
+  c = document.createElement("canvas");
+  c.width = wpx; c.height = Math.max(1, Math.round((wpx * chh) / cw));
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = wpx <= cw; g.imageSmoothingQuality = "high";
+  g.drawImage(at, ((elite ? 2 : 0) + fr) * cw, kind * chh, cw, chh, 0, 0, c.width, c.height);
+  if (dead) { g.globalCompositeOperation = "source-atop"; g.fillStyle = "rgba(24,18,46,.66)"; g.fillRect(0, 0, c.width, c.height); }
+  soulCache.set(key, c);
+  return c;
+}
+// Панель из 9 частей: углы cs (в пикселях исходника) рисуем в масштабе k, края тянем.
+function nineSlice(g, im, x, y, w, h, cs, k) {
+  const iw = im.width, ih = im.height, c = cs * k;
+  const xs = [0, cs, iw - cs, iw], ys = [0, cs, ih - cs, ih];
+  const dx = [x, x + c, x + w - c, x + w], dy = [y, y + c, y + h - c, y + h];
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+    const sw = xs[i + 1] - xs[i], sh = ys[j + 1] - ys[j], dw = dx[i + 1] - dx[i], dh = dy[j + 1] - dy[j];
+    if (dw > 0 && dh > 0) g.drawImage(im, xs[i], ys[j], sw, sh, dx[i], dy[j], dw, dh);
+  }
 }
 const glowCache = new Map();
 function glowFor(col) {
@@ -125,7 +162,7 @@ export function mount(root, ctx) {
   let bg = null;
   const imgs = {};
   let alive = true;
-  let T = 0, last = 0, raf = 0;
+  let T = 0, last = 0, raf = 0, FD = 1 / 60;
   const dbg = { frameMs: 0, frames: 0, phase: "idle", winner: "", remaining: 0 };
   root.__swarm = dbg;
 
@@ -139,6 +176,10 @@ export function mount(root, ctx) {
   let tags = [], tagT = 0;
   let hud = { round: 1, total: 5, seed: "", remaining: 0, show: 0, label: "", tickets: 0 };
   let dlg = { text: "", t0: 0, talk: 0 };
+  let lineEnd = 0;                 // когда текущую реплику уже можно менять (допечаталась + HOLD)
+  let prize = null;                // { name, items } | null — приз раунда
+  let mon = null;                  // монстр-«едок» на сцене: { kind: "glutton"|"skull", t0, a, ta, lastFr }
+  let ringArtA = 0, frameA = 0, oopsT = 0, prizeA = 0, prizeShake = 0;
   let idleLineT = 3, idleLineI = 0;
   let finalists = [], ring = null, ptr = 0, wSlot = -1, hitSlot = -1, hitT = 0, ptrShow = 0;
   let lastWinner = null;
@@ -165,7 +206,17 @@ export function mount(root, ctx) {
     });
   }
   const wait = (d) => tween(d, () => {});
-  function say(text) { dlg = { text, t0: T, talk: T + text.length / 42 + 0.4 }; sr.textContent = text; }
+  // Реплика ведущего: печатается со скоростью CPS, после допечатки висит минимум HOLD секунд.
+  // Пока ведущий «говорит» (печать), у него шевелится рот. Следующая реплика ждёт waitLine().
+  function say(text) {
+    const typeDur = text.length / CPS;
+    dlg = { text, t0: T, talk: T + typeDur + 0.15 };
+    lineEnd = T + typeDur + HOLD;
+    sr.textContent = text;
+  }
+  const waitLine = () => wait(Math.max(0.01, lineEnd - T));
+  const clip = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+  const prizeName = () => (prize && prize.name ? String(prize.name) : "");
   const snd = (n) => { try { ctx.sound?.(n); } catch { /* sound is optional */ } };
 
   // ---------- layout / resize ----------
@@ -176,38 +227,47 @@ export function mount(root, ctx) {
     canvas.width = cw; canvas.height = ch;
     sc = Math.min(cw / W0, ch / H0);
     ox = (cw - W0 * sc) / 2; oy = (ch - H0 * sc) / 2;
-    spriteCache.clear();
+    spriteCache.clear(); soulCache.clear();
     buildBg();
   }
+  let fg = null; // дальній план + передній план + віньєтка (прозорий, у екранних координатах)
   function buildBg() {
     bg = document.createElement("canvas"); bg.width = cw; bg.height = ch;
     const b = bg.getContext("2d");
+    b.imageSmoothingEnabled = false;
     b.fillStyle = "#0e0e10"; b.fillRect(0, 0, cw, ch);
     b.save(); b.translate(ox, oy); b.scale(sc, sc);
     const r = (cx, cy, rad, c0, c1) => { const gr = b.createRadialGradient(cx, cy, 0, cx, cy, rad); gr.addColorStop(0, c0); gr.addColorStop(1, c1); b.fillStyle = gr; b.fillRect(cx - rad, cy - rad, rad * 2, rad * 2); };
+    if (A.sky) b.drawImage(A.sky, 0, 0, W0, H0);
     r(CX, CY, 900, "rgba(138,63,252,.17)", "rgba(138,63,252,0)");
     r(300, 1100, 700, "rgba(255,102,0,.16)", "rgba(255,102,0,0)");
     r(1700, 1100, 700, "rgba(124,255,79,.07)", "rgba(124,255,79,0)");
-    // pixel stars
-    const rnd = mulberry(7);
-    for (let i = 0; i < 160; i++) { b.fillStyle = `rgba(244,241,234,${0.12 + rnd() * 0.35})`; const s = rnd() < 0.15 ? 4 : 2; b.fillRect(Math.floor(rnd() * W0 / 4) * 4, Math.floor(rnd() * 800 / 4) * 4, s, s); }
-    // moon
-    const mx = 1620, my = 250;
-    r(mx, my, 260, "rgba(255,160,60,.20)", "rgba(255,160,60,0)");
-    b.fillStyle = "#ffcf8a";
-    for (let y = -90; y <= 90; y += 6) { const hw = Math.floor(Math.sqrt(90 * 90 - y * y) / 6) * 6; b.fillRect(mx - hw, my + y, hw * 2, 7); }
-    b.fillStyle = "#f0b46e"; [[-40, -30, 24], [30, 20, 30], [-10, 50, 18], [45, -45, 14]].forEach(([x, y, s]) => b.fillRect(mx + x, my + y, s, s * 0.6));
-    // ground + tombstones
-    b.fillStyle = "#08080a"; b.fillRect(0, FLOOR, W0, H0 - FLOOR);
-    b.fillStyle = "#141218"; b.fillRect(0, FLOOR, W0, 6);
-    const stone = (x, h, w) => { b.fillStyle = "#17151c"; b.fillRect(x, FLOOR - h, w, h); b.fillRect(x + 6, FLOOR - h - 8, w - 12, 8); b.fillStyle = "#211e29"; b.fillRect(x + w / 2 - 3, FLOOR - h + 14, 6, 26); b.fillRect(x + w / 2 - 12, FLOOR - h + 22, 24, 6); };
-    [[40, 96, 64], [150, 70, 54], [1750, 100, 66], [1650, 66, 52], [1850, 74, 56]].forEach(([x, h, w]) => stone(x, h, w));
-    b.fillStyle = "#14121a"; // dead tree
-    b.fillRect(1560, FLOOR - 190, 14, 190); b.fillRect(1530, FLOOR - 150, 34, 8); b.fillRect(1574, FLOOR - 170, 40, 8); b.fillRect(1600, FLOOR - 210, 8, 48); b.fillRect(1520, FLOOR - 190, 8, 44);
-    // vignette
-    const v = b.createRadialGradient(CX, 540, 480, CX, 540, 1200); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.55)");
-    b.fillStyle = v; b.fillRect(0, 0, W0, H0);
+    if (!A.sky) { // запасний варіант без ассетів: пікселі-зірки
+      const rnd = mulberry(7);
+      for (let i = 0; i < 160; i++) { b.fillStyle = `rgba(244,241,234,${0.12 + rnd() * 0.35})`; const s = rnd() < 0.15 ? 4 : 2; b.fillRect(Math.floor(rnd() * W0 / 4) * 4, Math.floor(rnd() * 800 / 4) * 4, s, s); }
+    }
+    if (!A.moon) {
+      const mx = 1620, my = 250;
+      r(mx, my, 260, "rgba(255,160,60,.20)", "rgba(255,160,60,0)");
+      b.fillStyle = "#ffcf8a";
+      for (let y = -90; y <= 90; y += 6) { const hw = Math.floor(Math.sqrt(90 * 90 - y * y) / 6) * 6; b.fillRect(mx - hw, my + y, hw * 2, 7); }
+    }
     b.restore();
+    fg = document.createElement("canvas"); fg.width = cw; fg.height = ch;
+    const f = fg.getContext("2d");
+    f.imageSmoothingEnabled = false;
+    f.save(); f.translate(ox, oy); f.scale(sc, sc);
+    if (A.far) f.drawImage(A.far, 0, 0, W0, H0);
+    if (A.near) f.drawImage(A.near, 0, 0, W0, H0);
+    else { // запасний варіант: надгробки
+      f.fillStyle = "#08080a"; f.fillRect(0, FLOOR, W0, H0 - FLOOR);
+      f.fillStyle = "#141218"; f.fillRect(0, FLOOR, W0, 6);
+      const stone = (x, h, w) => { f.fillStyle = "#17151c"; f.fillRect(x, FLOOR - h, w, h); f.fillRect(x + 6, FLOOR - h - 8, w - 12, 8); };
+      [[40, 96, 64], [150, 70, 54], [1750, 100, 66], [1650, 66, 52], [1850, 74, 56]].forEach(([x, h, w]) => stone(x, h, w));
+    }
+    const v = f.createRadialGradient(CX, 540, 480, CX, 540, 1200); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,.5)");
+    f.fillStyle = v; f.fillRect(0, 0, W0, H0);
+    f.restore();
   }
 
   // ---------- participants ----------
@@ -323,10 +383,18 @@ export function mount(root, ctx) {
     shake = Math.max(0, shake - dt * 22); flash = Math.max(0, flash - dt * 2.2);
     ptrShow += ((rolling && finalists.length > 1 && phaseName === "pointer" ? 1 : 0) - ptrShow) * (1 - Math.exp(-8 * dt));
     hitT = Math.max(0, hitT - dt);
+    ringArtA += ((rolling && (phaseName === "ring" || phaseName === "pointer") ? 1 : 0) - ringArtA) * (1 - Math.exp(-4 * dt));
+    frameA = rolling || phaseName === "final" || phaseName === "done" ? frameA : Math.max(0, frameA - dt * 2);
+    prizeA += ((prizeName() && !(rolling && (phaseName === "reveal" || phaseName === "final")) && phaseName !== "done" ? 1 : 0) - prizeA) * (1 - Math.exp(-3 * dt));
+    prizeShake = Math.max(0, prizeShake - dt * 0.8);
+    stepMon(dt);
     // idle talk + name tags
     if (!rolling && phaseName === "idle") {
       idleLineT -= dt;
-      if (idleLineT <= 0 && T - dlg.t0 > 3) { say(IDLE_LINES[idleLineI++ % IDLE_LINES.length]); idleLineT = 9; }
+      if (idleLineT <= 0 && T >= lineEnd) {
+        const lines = prizeName() ? IDLE_LINES.concat([`Розігруємо: ${clip(prizeName(), 30)}. Хто забере?`]) : IDLE_LINES;
+        say(lines[idleLineI++ % lines.length]); idleLineT = 5;
+      }
       tagT -= dt;
       if (tagT <= 0 && parts.length) {
         tagT = 1.0;
@@ -351,6 +419,17 @@ export function mount(root, ctx) {
     if (p.born > T || p.st === HIDE) return;
     const pop = p.born + 0.55 > T ? easeOutBack(clamp((T - p.born) / 0.55, 0, 1)) : 1;
     const kk = p.kb * p.sm * pop;
+    if (A.souls) {
+      const wpx = clamp(Math.round((kk * 9 * 1.2 * sc) / 2) * 2, 8, 420);
+      const spr = soulSprite(p.kind, p.tk >= 4 ? 1 : 0, ((T * 4 + p.ph * 1.3) | 0) & 1, p.dead, wpx);
+      if (spr) {
+        const w = spr.width / sc, h = spr.height / sc;
+        let x = p.x, y = p.y + Math.sin(T * 3 + p.ph) * (p.st === ORB ? 2 : 0.8);
+        if (p.st === SEEK) { x += Math.sin(T * 2.3 + p.ph) * 1.6; y += Math.cos(T * 1.9 + p.ph * 1.3) * 1.6; }
+        g.drawImage(spr, x - w / 2, y - h / 2, w, h);
+        return;
+      }
+    }
     const kd = clamp(Math.round(kk * sc), 1, 60);
     const spr = spriteFor(p.kind, p.dead, kd);
     const w = spr.width / sc, h = spr.height / sc;
@@ -365,7 +444,7 @@ export function mount(root, ctx) {
     const t0 = performance.now();
     let dt = last ? (now - last) / 1000 : 1 / 60; last = now;
     dt = clamp(dt, 1 / 240, 1 / 20);
-    T += dt;
+    T += dt; FD = dt;
     // fixed sub-stepping keeps physics stable on slow frames
     step(dt);
     draw();
@@ -382,7 +461,14 @@ export function mount(root, ctx) {
     g.globalCompositeOperation = "lighter";
     if (glowA > 0.01) { g.globalAlpha = glowA * 0.55; const gl = glowFor(glowCol); g.drawImage(gl, CX - 560, CY - 560, 1120, 1120); g.globalAlpha = 1; }
     g.globalCompositeOperation = "source-over";
-    drawBats();
+    drawSky();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    if (fg) g.drawImage(fg, 0, 0);
+    g.setTransform(sc, 0, 0, sc, ox + (shk ? (Math.random() - 0.5) * shk * sc : 0), oy + (shk ? (Math.random() - 0.5) * shk * sc : 0));
+    drawAtmos();
+    drawMonster();
+    drawWinFrame();
+    drawRingArt();
     drawCrisp();
     // pile (dead) first
     for (let i = 0; i < parts.length; i++) { const p = parts[i]; if (p.dead && (p.st === PILE || p.st === FALL)) drawPt(p); }
@@ -402,6 +488,8 @@ export function mount(root, ctx) {
     drawFx();
     drawNameTags();
     drawHud();
+    drawPrize();
+    drawHost();
     drawDialog();
     if (flash > 0.01 && !reduced) { g.fillStyle = `rgba(255,236,200,${flash * 0.55})`; g.fillRect(0, 0, W0, H0); }
   }
@@ -426,14 +514,169 @@ export function mount(root, ctx) {
   }
   let dustPal = ["#8a3ffc", "#ff6600", "#7cff4f", "#b9a9d8"];
 
-  const bats = Array.from({ length: 5 }, (_, i) => ({ x: i * 420, y: 120 + (i * 97) % 380, v: 60 + i * 23, ph: i }));
-  function drawBats() {
-    g.fillStyle = "#1d1626";
-    for (const b of bats) {
-      b.x += b.v * (1 / 60) * (reduced ? 0.5 : 1); if (b.x > W0 + 60) { b.x = -60; b.y = 100 + Math.random() * 420; }
-      const y = b.y + Math.sin(T * 1.2 + b.ph) * 18, flap = Math.sin(T * 9 + b.ph) > 0 ? 1 : 0.4;
-      g.fillRect(b.x - 4, y, 8, 8); g.fillRect(b.x - 16, y - 8 * flap, 12, 6); g.fillRect(b.x + 4, y - 8 * flap, 12, 6); g.fillRect(b.x - 24, y - 2 * flap, 8, 6); g.fillRect(b.x + 16, y - 2 * flap, 8, 6);
+  // ---------- жива сцена: місяць, хмари, зірки, туман, світлячки, кажани ----------
+  const clouds = [[1, 60, 96, 11, 0.9], [3, 780, 190, 17, 0.8], [2, 1300, 70, 8, 0.85], [4, 380, 330, 13, 0.7], [1, 1600, 420, 20, 0.6], [3, 120, 520, 9, 0.5]]
+    .map(([i, x, y, s, a], n) => ({ i, x, y, s, a, k: 0.55 + (n % 3) * 0.12 }));
+  const tw = Array.from({ length: 26 }, (_, i) => { const r = mulberry(900 + i); return { x: Math.floor(r() * 1900 / 4) * 4, y: Math.floor(r() * 640 / 4) * 4, ph: r() * 6.28, sp: 0.8 + r() * 1.8, c: ["#fff3d0", "#ffb000", "#c9a8ff"][i % 3] }; });
+  const flies = Array.from({ length: 26 }, (_, i) => { const r = mulberry(5000 + i); return { x: r() * W0, y: 700 + r() * 330, ph: r() * 6.28, sp: 0.25 + r() * 0.5, c: i % 3 === 0 ? "#ff8a2b" : "#7cff4f" }; });
+  const fogs = Array.from({ length: 6 }, (_, i) => ({ x: i * 380, y: 930 + (i % 3) * 36, w: 900 + (i % 2) * 300, s: 6 + i * 2.2, a: 0.07 + (i % 3) * 0.02 }));
+  const fogSprite = (() => {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 64; const x = c.getContext("2d");
+    const gr = x.createRadialGradient(128, 32, 0, 128, 32, 128); gr.addColorStop(0, "rgba(170,140,255,.9)"); gr.addColorStop(0.5, "rgba(140,100,230,.35)"); gr.addColorStop(1, "rgba(140,100,230,0)");
+    x.save(); x.scale(1, 0.25); x.fillStyle = gr; x.fillRect(0, 0, 256, 256 * 4); x.restore(); return c;
+  })();
+  const bats = Array.from({ length: 4 }, (_, i) => ({ x: i * 520 - 100, y: 220 + (i * 97) % 260, v: (i % 2 ? -1 : 1) * (70 + i * 24), ph: i * 1.7, s: 0.8 + (i % 3) * 0.25 }));
+
+  // небо: місяць + хмари + зірки (між небом bg і дальнім планом fg)
+  function drawSky() {
+    const k = reduced ? 0.4 : 1;
+    if (A.moon) {
+      const mx = 1640, my = 330, ms = 300;
+      g.globalCompositeOperation = "lighter";
+      g.globalAlpha = 0.42 + 0.1 * Math.sin(T * 0.7); g.drawImage(glowFor("#ff9a30"), mx - 330, my - 330, 660, 660);
+      g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
+      g.drawImage(A.moon, mx - ms / 2, my - ms / 2, ms, ms);
     }
+    for (const t of tw) { g.globalAlpha = 0.25 + 0.75 * Math.max(0, Math.sin(T * t.sp + t.ph)); g.fillStyle = t.c; g.fillRect(t.x, t.y, 4, 4); }
+    g.globalAlpha = 1;
+    for (const c of clouds) {
+      const im = A["cloud-" + c.i]; if (!im) continue;
+      const w = im.width * c.k, h = im.height * c.k, span = W0 + w + 200;
+      const x = ((c.x + T * c.s * k) % span + span) % span - w - 100;
+      g.globalAlpha = c.a; g.drawImage(im, x, c.y, w, h);
+    }
+    g.globalAlpha = 1;
+  }
+  // туман, світлячки, кажани: поверх дальнього плану
+  function drawAtmos() {
+    const k = reduced ? 0.4 : 1;
+    g.globalCompositeOperation = "lighter";
+    for (const f of fogs) {
+      const span = W0 + f.w, x = ((f.x + T * f.s * k) % span + span) % span - f.w;
+      g.globalAlpha = f.a; g.drawImage(fogSprite, x, f.y, f.w, f.w * 0.16);
+    }
+    for (const f of flies) {
+      const x = f.x + Math.sin(T * f.sp + f.ph) * 60, y = f.y + Math.cos(T * f.sp * 1.3 + f.ph) * 34, a = 0.35 + 0.65 * Math.max(0, Math.sin(T * 1.7 + f.ph * 3));
+      g.globalAlpha = a * 0.5; g.drawImage(glowFor(f.c), x - 16, y - 16, 32, 32);
+      g.globalAlpha = a; g.fillStyle = f.c; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+    }
+    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    const bi = A.bats;
+    for (const b of bats) {
+      b.x += b.v * FD * k; if (b.v > 0 && b.x > W0 + 90) { b.x = -90; b.y = 200 + Math.random() * 300; } else if (b.v < 0 && b.x < -90) { b.x = W0 + 90; b.y = 200 + Math.random() * 300; }
+      const y = b.y + Math.sin(T * 1.2 + b.ph) * 22;
+      if (bi) {
+        const n = FRAMES.bats, fw = bi.width / n, fr = Math.floor((T * 9 + b.ph * 3) % n), w = fw * 0.6 * b.s, h = bi.height * 0.6 * b.s;
+        if (b.v < 0) { g.save(); g.translate(b.x, y); g.scale(-1, 1); g.drawImage(bi, fr * fw, 0, fw, bi.height, -w / 2, -h / 2, w, h); g.restore(); }
+        else g.drawImage(bi, fr * fw, 0, fw, bi.height, b.x - w / 2, y - h / 2, w, h);
+      } else {
+        const flap = Math.sin(T * 9 + b.ph) > 0 ? 1 : 0.4;
+        g.fillStyle = "#1d1626"; g.fillRect(b.x - 4, y, 8, 8); g.fillRect(b.x - 16, y - 8 * flap, 12, 6); g.fillRect(b.x + 4, y - 8 * flap, 12, 6);
+      }
+    }
+  }
+  // ---------- монстр-«їдок» (гарбуз / череп): ассет із 3 кадрів ----------
+  function monStart(kind) {
+    if (!A[kind]) { mon = null; return; }
+    mon = { kind, t0: T - 0.5, a: mon ? mon.a : 0, ta: 1, lastFr: -1, born: T };
+  }
+  function monFrame() {
+    const c = (T - mon.t0) % 1.25;
+    return c < 0.62 ? (mon.kind === "skull" ? 1 : 1) : c < 0.8 ? 2 : 0;
+  }
+  function stepMon(dt) {
+    if (!mon) return;
+    mon.a += (mon.ta - mon.a) * (1 - Math.exp(-5 * dt));
+    if (mon.ta === 0 && mon.a < 0.02) { mon = null; return; }
+    const fr = monFrame();
+    if (fr === 2 && mon.lastFr !== 2 && mon.ta > 0) { // «ам!»: тряска й іскри
+      shake = Math.max(shake, 6);
+      fx.push({ x: CX + (Math.random() - 0.5) * 120, y: CY + 50, t0: T, s: 2.4 });
+    }
+    mon.lastFr = fr;
+  }
+  function drawMonster() {
+    if (!mon) return;
+    const im = A[mon.kind]; if (!im) return;
+    const n = FRAMES[mon.kind], fw = im.width / n, fr = monFrame();
+    const pop = easeOutBack(clamp((T - mon.born) / 0.7, 0, 1));
+    const hgt = (mon.kind === "skull" ? 640 : 590) * pop, wd = hgt * fw / im.height;
+    const y = CY + (mon.kind === "skull" ? 30 : 12) + Math.sin(T * 2.6) * 7;
+    g.globalCompositeOperation = "lighter"; g.globalAlpha = mon.a * (0.28 + (fr === 1 ? 0.16 : 0));
+    g.drawImage(glowFor(mon.kind === "skull" ? "#7cff4f" : "#ff6600"), CX - 520, y - 470, 1040, 940);
+    g.globalCompositeOperation = "source-over"; g.globalAlpha = mon.a * 0.7;
+    g.drawImage(im, fr * fw, 0, fw, im.height, CX - wd / 2, y - hgt / 2, wd, hgt);
+    g.globalAlpha = 1;
+  }
+
+  // ---------- магічне коло та стрілка ----------
+  function drawRingArt() {
+    if (ringArtA < 0.02 || !ring || !A.circle) return;
+    const im = A.circle, s = (ring.R + 125) * 2, rot = ringRot * 0.7;
+    g.save(); g.translate(CX, CY); g.rotate(rot);
+    g.imageSmoothingEnabled = true;
+    g.globalAlpha = ringArtA * 0.78; g.drawImage(im, -s / 2, -s / 2, s, s);
+    g.globalCompositeOperation = "lighter"; g.globalAlpha = ringArtA * (0.25 + 0.12 * Math.sin(T * 2)); g.drawImage(im, -s / 2, -s / 2, s, s);
+    g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.imageSmoothingEnabled = false;
+  }
+
+  // ---------- ведучий-качок ----------
+  const VOWELS = "аеєиіїоуюяaeiouyАЕЄИІЇОУЮЯAEIOUY";
+  function mouthOpen() {
+    const f = (T - dlg.t0) * CPS, i = Math.floor(f);
+    if (i >= dlg.text.length) return false;
+    return VOWELS.includes(dlg.text[Math.max(0, i - 1)] || "") && f - i < 0.8;
+  }
+  function hostImg() {
+    const talking = T < dlg.talk;
+    if (phaseName === "reveal" || phaseName === "final" || phaseName === "done") return "host-cheer";
+    if (T < oopsT) return "host-oops";
+    if (phaseName === "pointer" || phaseName === "ring") return "host-point";
+    if (talking) return mouthOpen() ? "host-talk" : "host-present";
+    return "host-idle";
+  }
+  const HOST_H = 440;
+  function hostRect() { const im = A["host-idle"]; if (!im) return { w: 190, k: 2 }; const k = HOST_H / im.height; return { w: im.width * k, k }; }
+  function drawHost() {
+    const nm = hostImg(), im = A[nm] || A["host-idle"];
+    if (!im) return;
+    const k = HOST_H / im.height, w = im.width * k;
+    const bob = nm === "host-cheer" ? Math.abs(Math.sin(T * 5)) * 18 : 0;
+    const br = 1 + 0.012 * Math.sin(T * 2.2);
+    const h = im.height * k * br;
+    g.drawImage(im, -14, H0 - 4 - h - bob, w, h);
+  }
+
+  // ---------- табличка з призом ----------
+  function drawPrize() {
+    if (prizeA < 0.02) return;
+    const name = prizeName(); if (!name && prizeA < 0.5) return;
+    const pw = 440, im = A.plaque, ph = im ? pw * im.height / im.width : 150;
+    const sway = Math.sin(T * 1.3) * 3 + Math.sin(T * 9) * prizeShake * 6;
+    const x = W0 - 44 - pw + sway, y = -(1 - easeOutBack(clamp(prizeA, 0, 1))) * (ph + 40);
+    g.globalAlpha = Math.min(1, prizeA * 1.5);
+    if (im) g.drawImage(im, x, y, pw, ph);
+    else { g.fillStyle = "#3a2312"; g.fillRect(x, y + ph * 0.5, pw, ph * 0.5); }
+    const bx0 = x + pw * 0.1, bw = pw * 0.8, by0 = y + ph * (im ? 0.55 : 0.5), bh = ph * (im ? 0.4 : 0.5);
+    g.textAlign = "center"; g.textBaseline = "middle";
+    font(700, 17); g.fillStyle = "#ffd27a"; if ("letterSpacing" in g) g.letterSpacing = "4px";
+    g.fillText("РОЗІГРУЄМО", bx0 + bw / 2, by0 + bh * 0.22); if ("letterSpacing" in g) g.letterSpacing = "0px";
+    let fs = 34; font(900, fs);
+    while (fs > 18 && g.measureText(name).width > bw) { fs -= 2; font(900, fs); }
+    let txt = name; while (txt.length > 4 && g.measureText(txt).width > bw) txt = txt.slice(0, -2);
+    if (txt !== name) txt = txt.trimEnd() + "…";
+    g.shadowColor = "#000"; g.shadowBlur = 4; g.fillStyle = "#fff3d0"; g.fillText(txt, bx0 + bw / 2, by0 + bh * 0.66); g.shadowBlur = 0;
+    g.globalAlpha = 1; g.textBaseline = "alphabetic";
+  }
+
+  // ---------- рамка картки переможця ----------
+  function drawWinFrame() {
+    if (frameA < 0.02) return;
+    const fx0 = 330, fy0 = 96, fw = 1260, fh = 836;
+    g.globalAlpha = frameA * 0.62; g.fillStyle = "#0e0e10"; g.fillRect(fx0 + 30, fy0 + 30, fw - 60, fh - 60);
+    g.globalAlpha = frameA;
+    if (A.frame) nineSlice(g, A.frame, fx0, fy0, fw, fh, 170, 0.62);
+    g.globalAlpha = 1;
   }
 
   function drawWinnerSoul() {
@@ -470,9 +713,16 @@ export function mount(root, ctx) {
       const gr = g.createLinearGradient(40, 0, R - 40, 0); gr.addColorStop(0, "rgba(255,102,0,0)"); gr.addColorStop(1, `rgba(255,170,60,${0.6 * pulse + 0.2})`);
       g.fillStyle = gr; g.beginPath(); g.moveTo(40, -10); g.lineTo(R - 44, -34); g.lineTo(R - 44, 34); g.lineTo(40, 10); g.fill();
       g.globalCompositeOperation = "source-over";
-      g.fillStyle = "#ffd84a"; g.fillRect(40, -5, R - 120, 10);
-      g.beginPath(); g.moveTo(R - 78, -26); g.lineTo(R - 36, 0); g.lineTo(R - 78, 26); g.closePath(); g.fill();
-      g.fillStyle = "#ff6600"; g.beginPath(); g.arc(0, 0, 26, 0, 7); g.fill(); g.fillStyle = "#0e0e10"; g.beginPath(); g.arc(0, 0, 11, 0, 7); g.fill();
+      if (A.pointer) {
+        const pim = A.pointer, k = (R - 6) / (pim.width * 0.93), pw = pim.width * k, ph = pim.height * k;
+        g.imageSmoothingEnabled = true;
+        g.drawImage(pim, -pw * 0.07, -ph * 0.68, pw, ph * 1.36);
+        g.imageSmoothingEnabled = false;
+      } else {
+        g.fillStyle = "#ffd84a"; g.fillRect(40, -5, R - 120, 10);
+        g.beginPath(); g.moveTo(R - 78, -26); g.lineTo(R - 36, 0); g.lineTo(R - 78, 26); g.closePath(); g.fill();
+        g.fillStyle = "#ff6600"; g.beginPath(); g.arc(0, 0, 26, 0, 7); g.fill(); g.fillStyle = "#0e0e10"; g.beginPath(); g.arc(0, 0, 11, 0, 7); g.fill();
+      }
       g.restore(); g.globalAlpha = 1;
     }
   }
@@ -507,15 +757,20 @@ export function mount(root, ctx) {
     g.textAlign = "left"; g.textBaseline = "alphabetic";
     font(900, 40); g.fillStyle = "#ff6600"; g.shadowColor = "#ff660088"; g.shadowBlur = 16;
     g.fillText(`Раунд ${(rolling || phaseName !== "idle") ? hud.round : Math.min(hud.total, wonIds.size + extraWon.size + 1)} з ${hud.total}`, 44, 66); g.shadowBlur = 0;
+    const hf = fin ? 1 - fin.hudFade : 1; // у картки переможця лівий блок гаснемо, щоб не лізти на рамку
+    g.globalAlpha = hf;
     font(600, 26); g.fillStyle = "#c9c4ba";
     g.fillText(`Учасники: ${parts.length}   ·   Квитки: ${hud.tickets}`, 44, 104);
     // legend
     let lx = 44; const ly = 132;
     [[0, "гарбузи"], [1, "замовлення"], [2, "обидва"]].forEach(([k, label]) => {
-      const kd = Math.max(1, Math.round(2 * sc)), s = spriteFor(k, false, kd);
-      g.drawImage(s, lx, ly, s.width / sc, s.height / sc); lx += s.width / sc + 8;
+      let s, dw, dh;
+      if (A.souls) { s = soulSprite(k, 0, 0, false, Math.max(8, Math.round(34 * sc))); dw = s.width / sc; dh = s.height / sc; }
+      else { s = spriteFor(k, false, Math.max(1, Math.round(2 * sc))); dw = s.width / sc; dh = s.height / sc; }
+      g.drawImage(s, lx, ly - (A.souls ? 6 : 0), dw, dh); lx += dw + 8;
       font(500, 20); g.fillStyle = "#9a958c"; g.fillText(label, lx, ly + 17); lx += g.measureText(label).width + 22;
     });
+    g.globalAlpha = 1;
     if (hud.show > 0.01 || phaseName !== "idle") {
       const a = phaseName === "idle" ? 0 : phaseName === "reveal" || phaseName === "final" ? Math.max(0, 1 - (fin?.hudFade ?? 0)) : 1;
       if (a > 0.01) {
@@ -531,21 +786,34 @@ export function mount(root, ctx) {
 
   function drawDialog() {
     if (!dlg.text) return;
-    const bx = 40, by = H0 - 168, bh = 130;
-    const typed = Math.min(dlg.text.length, Math.floor((T - dlg.t0) * 42));
+    const hr = hostRect(), hasHost = !!A["host-idle"];
     font(700, 32);
     const full = wrapText(dlg.text, 760);
-    const talking = T < dlg.talk;
-    const tw = Math.max(0, ...full.slice(0, 3).map((l) => g.measureText(l).width));
-    const bw = Math.max(560, 190 + tw + 60);
-    g.fillStyle = "rgba(14,14,16,.92)"; g.fillRect(bx, by, bw, bh);
-    g.fillStyle = "#ff6600"; g.fillRect(bx, by, bw, 4); g.fillRect(bx, by + bh - 4, bw, 4); g.fillRect(bx, by, 4, bh); g.fillRect(bx + bw - 4, by, 4, bh);
-    const hero = (talking && Math.floor(T * 3.5) % 2 === 0) || phaseName === "final" ? imgs.wave : imgs.blink;
-    if (hero) { const k = 2, bob = talking ? Math.sin(T * 14) * 2 : 0; g.drawImage(hero, bx + 14, by + bh - hero.naturalHeight * k - 4 + bob, hero.naturalWidth * k, hero.naturalHeight * k); }
-    font(700, 32); g.textAlign = "left"; g.textBaseline = "top"; g.fillStyle = "#f4f1ea";
-    let shown = typed, ly = by + 16;
     const lines = full.slice(0, 3);
-    for (const ln of lines) { g.fillText(ln.slice(0, Math.max(0, shown)), bx + 168, ly); shown -= ln.length + 1; ly += 38; }
+    const tw = Math.max(0, ...lines.map((l) => g.measureText(l).width));
+    const bx = hasHost ? Math.round(hr.w * 0.74) : 40;
+    const bw = Math.max(560, tw + (A.dialog ? 180 : 140)), nL = Math.max(2, lines.length), bh = (A.dialog ? 76 : 40) + 40 * nL;
+    const by = H0 - 34 - bh;
+    const typed = Math.min(dlg.text.length, Math.floor((T - dlg.t0) * CPS));
+    if (A.dialog) { g.imageSmoothingEnabled = false; nineSlice(g, A.dialog, bx, by, bw, bh, 56, 0.8); }
+    else { g.fillStyle = "rgba(14,14,16,.92)"; g.fillRect(bx, by, bw, bh); g.fillStyle = "#ff6600"; g.fillRect(bx, by, bw, 4); g.fillRect(bx, by + bh - 4, bw, 4); g.fillRect(bx, by, 4, bh); g.fillRect(bx + bw - 4, by, 4, bh); }
+    if (hasHost) { // хвостик репліки до ведучого
+      const ty = by + bh * 0.45;
+      g.fillStyle = "#ff6600"; g.beginPath(); g.moveTo(bx + 4, ty - 20); g.lineTo(bx - 30, ty + 4); g.lineTo(bx + 4, ty + 22); g.closePath(); g.fill();
+      g.fillStyle = "#14121a"; g.beginPath(); g.moveTo(bx + 8, ty - 12); g.lineTo(bx - 18, ty + 4); g.lineTo(bx + 8, ty + 14); g.closePath(); g.fill();
+    } else {
+      const hero = (T < dlg.talk && Math.floor(T * 3.5) % 2 === 0) ? imgs.wave : imgs.blink;
+      if (hero) g.drawImage(hero, bx + 14, by + bh - hero.naturalHeight * 2 - 4, hero.naturalWidth * 2, hero.naturalHeight * 2);
+    }
+    font(700, 32); g.textAlign = "left"; g.textBaseline = "top"; g.fillStyle = "#f4f1ea";
+    let shown = typed, ly = by + (bh - lines.length * 40) / 2 - 2;
+    const tx = bx + (A.dialog ? 88 : (hasHost ? 36 : 168)); // clear of the frame's corner rivets
+    for (const ln of lines) { g.fillText(ln.slice(0, Math.max(0, shown)), tx, ly); shown -= ln.length + 1; ly += 40; }
+    if (typed < dlg.text.length && Math.floor(T * 3) % 2 === 0) { // курсор, поки друкується
+      const cl = Math.max(0, lines.findIndex((_, i) => lines.slice(0, i + 1).join(" ").length >= typed));
+      const pre = lines.slice(0, cl).join(" ").length + (cl ? 1 : 0), part = (lines[cl] || "").slice(0, Math.max(0, typed - pre));
+      g.fillStyle = "#ff6600"; g.fillRect(tx + g.measureText(part).width + 4, by + (bh - lines.length * 40) / 2 - 2 + cl * 40 + 4, 14, 26);
+    }
     g.textBaseline = "alphabetic";
   }
 
@@ -565,9 +833,11 @@ export function mount(root, ctx) {
     g.strokeStyle = "#1a0b00"; g.strokeText(fin.name, CX, fin.nameY);
     const gr = g.createLinearGradient(0, fin.nameY - fin.fs * 0.5, 0, fin.nameY + fin.fs * 0.5); gr.addColorStop(0, "#fff1b8"); gr.addColorStop(0.5, "#ffb000"); gr.addColorStop(1, "#ff6600");
     g.shadowColor = "#ff6600"; g.shadowBlur = 34; g.fillStyle = gr; g.fillText(fin.name, CX, fin.nameY); g.shadowBlur = 0;
-    if (fin.handle) { font(700, 46); g.fillStyle = "#d9d4ca"; g.fillText(fin.handle, CX, fin.nameY + fin.fs * 0.5 + 56); }
+    if (fin.handle) { font(700, 46); g.fillStyle = "#d9d4ca"; g.fillText(fin.handle, CX, fin.nameY + fin.fs * 0.5 + 52); }
     font(600, 32); g.fillStyle = "#9a958c";
-    g.fillText(fin.meta, CX, fin.nameY + fin.fs * 0.5 + (fin.handle ? 112 : 62));
+    const my = fin.nameY + fin.fs * 0.5 + (fin.handle ? 106 : 62);
+    g.fillText(fin.meta, CX, my);
+    if (fin.prize) { font(800, 40); g.fillStyle = "#ffd27a"; g.shadowColor = "#ff6600"; g.shadowBlur = 14; g.fillText(`Виграв: ${clip(fin.prize, 32)}`, CX, my + 50); g.shadowBlur = 0; }
     g.globalAlpha = 1; g.textBaseline = "alphabetic";
   }
 
@@ -611,6 +881,7 @@ export function mount(root, ctx) {
     survivors.forEach((p, i) => { const q = sp[i % sp.length]; sched(p, T + rnd() * 0.5, SEEK, q[0], q[1]); p.smt = 1; });
     for (const p of pool) if (!surv.has(p)) { sched(p, T + 0.05 + rnd() * 0.9, FALL); p.boom = false; }
     dustPal = pal; glowCol = color;
+    monStart(shapeName === "pumpkin" ? "glutton" : "skull");
     const dd = shuffle(dusts.slice(), rnd);
     dd.forEach((p, i) => { if (i < rest.length) sched(p, T + rnd() * 0.6, SEEK, rest[i][0], rest[i][1]); else sched(p, T + rnd() * 0.6, ORB); p.ds = 5; p.polar = false; });
     tween(0.9, (u) => { glowA = lerp(glowA, 1, u * 0.2); }).catch(() => {});
@@ -620,6 +891,7 @@ export function mount(root, ctx) {
   async function roll(winner, info) {
     if (rolling) return;
     rolling = true; const my = ++epoch;
+    if (info && info.prize !== undefined) setPrize(info.prize);
     fin = null; hud.seed = info.seedHash || ""; hud.round = info.round; hud.total = info.totalRounds;
     dbg.winner = winner.name; dbg.phase = "start";
     try {
@@ -651,26 +923,28 @@ export function mount(root, ctx) {
 
     const setCount = (from, to, d, label) => { tween(d, (u) => { hud.remaining = Math.round(lerp(from, to, easeOutCubic(u))); hud.label = label; }).catch(() => {}); };
 
-    // 0. prelude
+    // 0. prelude (реплика читается целиком: ~20 симв/с + HOLD)
     phaseName = "prelude"; dbg.phase = phaseName; hud.show = 1; hud.remaining = N; hud.label = "ЛИШИЛОСЬ ДУШ"; glowCol = "#ff6600";
-    say(`Раунд ${info.round} з ${info.totalRounds}! Усі душі в вихор, виживе лише одна.`);
+    say(prizeName() ? `Раунд ${info.round}! Розігруємо: ${clip(prizeName(), 24)}` : `Раунд ${info.round} з ${info.totalRounds}! Усі душі — у вихор!`);
     snd("drum");
-    await tween(1.1, (u) => { contract = 1 - 0.5 * easeInOut(u); spin = 1 + 4 * easeInOut(u); glowA = u * 0.6; });
+    await tween(2.2, (u) => { contract = 1 - 0.5 * easeInOut(u); spin = 1 + 4 * easeInOut(u); glowA = u * 0.6; });
+    await waitLine();
     // 1. pumpkin
     phaseName = "cut1"; dbg.phase = phaseName; snd("boom"); shake = 14; flash = 0.5;
-    say("Гарбуз-ненажера! Він їсть душі пачками.");
+    say("Гарбуз-ненажера їсть душі!");
     runStage(S1, "pumpkin", ["#ff6600", "#ff8a2b", "#ffb347", "#ffd27a"], "#ff6600", rnd);
-    setCount(N, c1, 1.4, "ЛИШИЛОСЬ ДУШ");
-    await wait(2.0);
+    setCount(N, c1, 2.2, "ЛИШИЛОСЬ ДУШ");
+    await waitLine();
     // 2. skull
     phaseName = "cut2"; dbg.phase = phaseName; snd("boom"); shake = 16; flash = 0.5; contract = 0.5;
-    say(c1 > c2 ? "Череп голодний! Лишаються найвитриваліші." : "Череп придивляється до кожного.");
+    say(c1 > c2 ? "Череп голодний! Хто виживе?" : "Череп придивляється…");
     runStage(S2, "skull", ["#7cff4f", "#a8ff8a", "#d4ffc4", "#f2fff0"], "#7cff4f", rnd);
-    setCount(c1, c2, 1.3, "ЛИШИЛОСЬ ДУШ");
-    await wait(1.9);
+    setCount(c1, c2, 2.0, "ЛИШИЛОСЬ ДУШ");
+    await waitLine();
     // 3. magic circle with finalists
     phaseName = "ring"; dbg.phase = phaseName; snd("whoosh"); shake = 8;
-    say(K > 1 ? `Лишилось ${K}. Магічне коло обере одну душу.` : "Лишилась одна душа.");
+    say(K > 1 ? `Лишилось ${K}. Коло обирає одну!` : "Лишилась одна душа.");
+    if (mon) mon.ta = 0;
     const a0 = K === 2 ? Math.PI : -Math.PI / 2, R = K <= 2 ? 300 : 250;
     ring = { a0, R };
     const slots = shuffle(S3.slice(), rnd);
@@ -684,29 +958,32 @@ export function mount(root, ctx) {
     dustPal = ["#8a3ffc", "#a566ff", "#7cff4f", "#ff6600"]; glowCol = "#8a3ffc";
     const rp = ringPoints(K, R, a0, Math.floor(dusts.length * 0.9), rnd);
     shuffle(dusts.slice(), rnd).forEach((p, i) => { if (i < rp.length) sched(p, T + rnd() * 0.6, SEEK, rp[i][0], rp[i][1], true); else sched(p, T + rnd() * 0.6, ORB); });
-    setCount(c2, K, 1.0, "ФІНАЛІСТИ");
-    await wait(1.1);
-    // 4. pointer with a false stop
+    setCount(c2, K, 1.4, "ФІНАЛІСТИ");
+    await wait(1.5);
+    // 4. pointer with a false stop (стрілка сповільнюється ближче до кінця)
     phaseName = "pointer"; dbg.phase = phaseName; hud.label = "ФІНАЛІСТИ"; ptr = Math.floor(rnd() * K);
     let lastTick = -1, lastTickT = 0;
     const tickCheck = () => { const idx = Math.floor(ptr + 0.5); if (idx !== lastTick) { lastTick = idx; if (T - lastTickT > 0.045) { snd("tick"); lastTickT = T; } } };
     if (K > 1) {
-      say("Стрілка пішла. Хто ж це буде?");
       const s0 = ptr;
       const mod = (v) => ((v % K) + K) % K;
       const f = (wSlot + 1 + Math.floor(rnd() * (K - 1))) % K; // a wrong slot, deterministic from the seed
       const aEnd = s0 + K * 2 + mod(f - s0);
-      await tween(2.0, (u) => { ptr = lerp(s0, aEnd, 1 - Math.pow(1 - u, 3.4)); tickCheck(); });
-      hitSlot = f; hitT = 0.9; snd("drum"); fx.push({ x: finalists[f].p.x, y: finalists[f].p.y, t0: T, s: 3 });
-      say("Ой, ні-ні-ні, не він! Стрілка ще не вирішила.");
-      await wait(0.6);
+      await tween(2.7, (u) => { ptr = lerp(s0, aEnd, 1 - Math.pow(1 - u, 3.4)); tickCheck(); });
+      await waitLine();
+      hitSlot = f; hitT = 1.6; oopsT = T + 3.2; snd("drum"); fx.push({ x: finalists[f].p.x, y: finalists[f].p.y, t0: T, s: 3 });
+      say("Ой, ні-ні-ні, не він!");
+      await wait(1.3);
       const bEnd = aEnd + K + mod(wSlot - f);
-      await tween(1.7, (u) => { ptr = lerp(aEnd, bEnd + 0.62, easeOutCubic(u)); tickCheck(); });
+      await tween(2.4, (u) => { ptr = lerp(aEnd, bEnd + 0.62, easeOutCubic(u)); tickCheck(); });
+      await waitLine();
       say("Ще крок… Ні, назад!");
-      await tween(0.4, (u) => { ptr = lerp(bEnd + 0.62, bEnd, easeInOut(u)); tickCheck(); });
-      hitSlot = wSlot; hitT = 1;
-    } else { ptr = 0; await wait(0.4); }
-    await wait(0.2);
+      await wait(1.5);
+      await tween(0.9, (u) => { ptr = lerp(bEnd + 0.62, bEnd, easeInOut(u)); tickCheck(); });
+      hitSlot = wSlot; hitT = 1.2;
+      await waitLine();
+    } else { ptr = 0; await wait(0.8); }
+    await wait(0.4);
     // 5. reveal: others burst, winner grows, everything rises into the name
     phaseName = "reveal"; dbg.phase = phaseName; snd("boom"); shake = 24; flash = 1; ptrShow = 0;
     const av = await avatarPromise;
@@ -714,8 +991,9 @@ export function mount(root, ctx) {
     lastWinner = W;
     fin = { W, a: 0, hudFade: 0, ...lay };
     finalists.forEach((f, j) => { if (f.p !== W) { f.gone = true; f.p.boom = true; sched(f.p, T, FALL); f.p.smt = 1.2; fx.push({ x: f.p.x, y: f.p.y, t0: T, s: 3.2 }); } });
-    say(`Переможець: ${winner.name}! Вітаю!`);
+    say(`Переможець: ${clip(winner.name, 22)}! Вітаю!`);
     snd("win");
+    if (mon) mon.ta = 0;
     for (let i = 0; i < 150; i++) conf.push({ x: CX + (rnd() - 0.5) * 300, y: CY - 100, vx: (rnd() - 0.5) * 1700, vy: -700 - rnd() * 900, c: ["#ff6600", "#7cff4f", "#8a3ffc", "#ffd84a", "#f4f1ea"][i % 5], life: 3 });
     W.smt = 250 / (9 * W.kb); sched(W, T, SEEK, CX, lay.portraitY);
     tween(0.6, (u) => { if (fin) fin.hudFade = u; }).catch(() => {});
@@ -723,19 +1001,22 @@ export function mount(root, ctx) {
     morph(winner, W, av, lay, rnd);
     snd("whoosh");
     phaseName = "final"; dbg.phase = phaseName; glowCol = "#ffb000";
+    tween(1.0, (u) => { frameA = u; }).catch(() => {});
     await wait(2.1);
     await tween(0.5, (u) => { fin.a = u; });
-    dbg.phase = "done"; dbg.winnerShown = fin.name;
+    dbg.phase = "done"; dbg.winnerShown = fin.name; dbg.prizeShown = prizeName();
+    await waitLine();
   }
 
   function layoutName(winner, W, rnd) {
     const name = winner.name || "—";
     let fs = 220;
     font(900, fs);
-    const wmax = 1640, wd = g.measureText(name).width;
+    const wmax = 1180, wd = g.measureText(name).width;
     if (wd > wmax) fs = Math.floor((fs * wmax) / wd);
+    const pz = prizeName();
     const meta = `Квитки: ${winner.tickets}   ·   Гарбузи: ${winner.pumpkins}${winner.orders ? `   ·   Замовлення: ${winner.orders}` : ""}`;
-    return { name, fs, nameY: 600, portraitY: 350, handle: winner.handle, meta, a: 0 };
+    return { name, fs, nameY: pz ? 570 : 600, portraitY: pz ? 335 : 350, handle: winner.handle, meta, prize: pz, a: 0 };
   }
 
   function sampleText(name, fs, nameY) {
@@ -798,6 +1079,7 @@ export function mount(root, ctx) {
     for (const t of tasks) t.rej?.(); tasks.length = 0;
     if (lastWinner) extraWon.add(lastWinner.part.id);
     lastWinner = null;
+    mon = null; frameA = 0; oopsT = 0;
     fin = null; finalists = []; ring = null; ptrShow = 0; hitT = 0; conf = []; fx = [];
     contract = 1; spin = 1; glowA = 0; hud.show = 0; flash = 0;
     dustPal = ["#8a3ffc", "#ff6600", "#7cff4f", "#b9a9d8"]; glowCol = "#ff6600";
@@ -822,10 +1104,17 @@ export function mount(root, ctx) {
   resize();
   (async () => {
     try { await Promise.all([document.fonts.load('900 60px "Exo 2"'), document.fonts.load('700 30px "Exo 2"', "Привіт")]); } catch { /* ok */ }
+    await Promise.all(ASSET_NAMES.map(async (n) => { const im = await loadImg(ASSET_URL(n)); if (im) A[n] = im; }));
+    soulCache.clear(); buildBg();
     imgs.wave = await loadImg(SPR_URL("hero_wave")); imgs.blink = await loadImg(SPR_URL("hero_blink")); imgs.spark = await loadImg(SPR_URL("spark"));
   })();
   say("Привіт, чат! Це Хеллоуїн-розіграш ChiSetup.");
   raf = requestAnimationFrame(frame);
 
-  return { setParticipants, roll, reset, destroy };
+  function setPrize(p) {
+    const np = p && typeof p === "object" && p.name ? { name: String(p.name), items: Array.isArray(p.items) ? p.items.map(String).slice(0, 12) : [] } : null;
+    if ((np && np.name) !== (prize && prize.name)) prizeShake = 1;
+    prize = np;
+  }
+  return { setParticipants, roll, reset, destroy, setPrize };
 }
