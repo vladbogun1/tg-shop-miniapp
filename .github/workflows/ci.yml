@@ -201,6 +201,9 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      # Mini App only: the admin runs on the owner's desktop browser (docs/BROWSER-SUPPORT.md).
+      - name: Browser compatibility (iOS 15.4+ / Chrome 92+)
+        run: node scripts/check-browser-compat.mjs frontend
 
   # Public website (site/): its own job so a site failure is visible on its own, and so the two
   # older apps' job stays unchanged. Lint runs here too; the build needs no backend (ISR on demand).
@@ -218,3 +221,5 @@ jobs:
       - run: npm run lint -w site
       - run: npm run typecheck -w site
       - run: npm run build -w site
+      - name: Browser compatibility (iOS 15.4+ / Chrome 92+)
+        run: node scripts/check-browser-compat.mjs site

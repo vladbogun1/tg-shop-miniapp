@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { CHUNK_RECOVERY_SCRIPT } from "@shop/shared";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
@@ -66,6 +67,8 @@ export default function RootLayout({
     // first paint is not lying about the most common case.
     <html lang="uk" suppressHydrationWarning>
       <head>
+        {/* First thing on the page: reload once if a chunk of another build breaks it (@shop/shared chunk-recovery). */}
+        <script dangerouslySetInnerHTML={{ __html: CHUNK_RECOVERY_SCRIPT }} />
         {/* DEV ONLY. Outside Telegram there is no window.Telegram.WebApp, so the Mini App stays
             unauthenticated and half the screens cannot be opened — which made UI defects
             impossible to reproduce locally or in Playwright. ?tgstub=<telegramUserId> installs a
