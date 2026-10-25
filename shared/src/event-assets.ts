@@ -12,6 +12,9 @@ export const HW_SITE_ASSETS: ReadonlySet<string> = new Set([
   "/mascot/banner/peek_wave2.webp",
   "/mascot/banner/peek_wink.webp",
   "/mascot/coin.png",
+  "/mascot/hw/hero.webp",
+  "/mascot/hw/preloader.webp",
+  "/mascot/hw/winner.webp",
   "/mascot/icons/blower.webp",
   "/mascot/icons/cable.webp",
   "/mascot/icons/chair.webp",
@@ -65,5 +68,18 @@ export const HW_SITE_ASSETS: ReadonlySet<string> = new Set([
 
 /** Mini App paths (/case/…) that have a redrawn copy under frontend/public/case-hw. */
 export const HW_APP_ASSETS: ReadonlySet<string> = new Set([
-
+  "/case/bronze/case-closed-sm.webp",
+  "/case/bronze/case-closed.webp",
+  "/case/bronze/case-open.webp",
+  "/case/case-closed-sm.webp",
+  "/case/case-closed.webp",
+  "/case/case-open.webp",
+  "/case/gold/case-closed-sm.webp",
+  "/case/gold/case-closed.webp",
+  "/case/gold/case-open.webp",
+  "/case/scene-tall.webp",
+  "/case/scene-wide.webp",
+  "/case/silver/case-closed-sm.webp",
+  "/case/silver/case-closed.webp",
+  "/case/silver/case-open.webp",
 ]);
