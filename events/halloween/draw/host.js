@@ -7,6 +7,10 @@ const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
 const ROUNDS = 5;
 const API = "/hw/api/admin";
+// Rehearsal: random real customers from the shop database play with made-up tickets; the real list,
+// lock and rounds are not touched (server/src/test-draw.js).
+const TEST = !MOCK && qs.get("test") === "1";
+const P = TEST ? "/test" : "";
 const TOKEN_KEY = "tgshop_admin_jwt"; // the admin panel's token, same origin
 
 const $ = (id) => document.getElementById(id);
@@ -54,7 +58,7 @@ async function load() {
     state.seedHash = "mock";
     return;
   }
-  const data = await api("/participants");
+  const data = await api(P + "/participants");
   state.participants = data.participants; // `won` comes from the server: voided winners stay out too
   state.winners = data.winners; // [{round, participantId}], live (not voided) draws only
   state.seedHash = data.seedHash;
@@ -69,7 +73,7 @@ async function draw(reroll) {
     const { winner, totalTickets } = mockDraw(state.participants);
     return { winner, round: state.winners.length + 1, totalTickets };
   }
-  return api(reroll ? "/reroll" : "/draw", { method: "POST", body: "{}" });
+  return api(P + (reroll ? "/reroll" : "/draw"), { method: "POST", body: "{}" });
 }
 
 // ---------- ui ----------
@@ -180,9 +184,24 @@ function setupControls() {
     history.replaceState(null, "", "?" + qs);
     mountVisual(sel.value).catch((e) => ($("msg").textContent = String(e)));
   };
+  $("test").checked = TEST;
+  $("test").disabled = Boolean(MOCK);
+  $("test").onchange = (e) => {
+    if (e.target.checked) qs.set("test", "1");
+    else qs.delete("test");
+    location.search = "?" + qs;
+  };
+  document.body.classList.toggle("test", TEST);
+  $("newTest").hidden = !TEST;
+  $("newTest").onclick = async () => {
+    try {
+      await api("/test/reset", { method: "POST", body: "{}" });
+      location.reload();
+    } catch (e) { fail(e); }
+  };
   $("roll").onclick = () => roll(false);
   $("reroll").onclick = () =>
-    confirm("Перекрутити останній раунд? Попередній переможець цього раунду вибуває і в розіграші більше не бере участі.") && roll(true);
+    TEST || confirm("Перекрутити останній раунд? Попередній переможець цього раунду вибуває і в розіграші більше не бере участі.") && roll(true);
   $("lock").onclick = lockList;
   $("contacts").onclick = () => showContacts().catch(fail);
   $("codes").onclick = () => showCodes().catch(fail);
@@ -211,9 +230,9 @@ function dialog(title, html) {
 }
 
 async function lockList() {
-  if (!confirm("Зафіксувати список учасників? Після цього нові гарбузи й замовлення вже не додадуть квитків.")) return;
+  if (!TEST && !confirm("Зафіксувати список учасників? Після цього нові гарбузи й замовлення вже не додадуть квитків.")) return;
   try {
-    await api("/lock", { method: "POST", body: "{}" });
+    await api(P + "/lock", { method: "POST", body: "{}" });
     await load();
     state.visual?.setParticipants(visibleList());
     renderStats();
@@ -222,7 +241,7 @@ async function lockList() {
 
 // Full names and Telegram ids, for Maxim to message the winners. Never shown on the stream screen.
 async function showContacts() {
-  if (MOCK) return fail("У mock-режимі контактів немає");
+  if (MOCK || TEST) return fail("У тестовому режимі контактів немає: учасники несправжні");
   const rows = await api("/winners");
   const body = rows.length
     ? `<table><tr><th>Раунд</th><th>Імʼя</th><th>Telegram</th><th>id</th><th>Коли</th></tr>${rows
@@ -277,7 +296,7 @@ async function showCodes() {
 }
 
 async function downloadProof() {
-  if (MOCK) return fail("У mock-режимі доказу немає");
+  if (MOCK || TEST) return fail("У тестовому режимі доказу немає");
   const data = await api("/proof");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
@@ -297,7 +316,7 @@ async function downloadProof() {
     $("msg").textContent = String(e.message || e);
   }
   // Live: new participants keep coming until the stream starts.
-  if (!MOCK) setInterval(async () => {
+  if (!MOCK && !TEST) setInterval(async () => {
     if (state.rolling) return;
     try {
       const before = state.participants.length;

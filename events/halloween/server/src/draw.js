@@ -118,7 +118,7 @@ export function publicId(tgId) {
   return sha256(`hw:${config.jwtSecret}:${tgId}`).slice(0, 12);
 }
 
-function displayName(p) {
+export function displayName(p) {
   const first = (p?.first_name || "").trim();
   const last = (p?.last_name || "").trim();
   if (first) return `${first.slice(0, 18)}${last ? " " + [...last][0] + "." : ""}`;
@@ -126,7 +126,7 @@ function displayName(p) {
   return "Гравець";
 }
 
-function maskHandle(u) {
+export function maskHandle(u) {
   if (!u) return null;
   return "@" + u.slice(0, Math.min(3, Math.max(1, u.length - 2))) + "***";
 }

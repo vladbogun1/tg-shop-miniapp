@@ -62,3 +62,26 @@ html[data-event="halloween"] .hud-frame::after { border-color: rgba(160, 110, 25
 /* Counter slot in the header (the element itself is drawn by /hw/spawner.js). */
 .hw-counter { flex: none; }
 .hw-counter[hidden] { display: none; }
+
+/* Hunt card under the home header (HalloweenBanner). Static: no animated layers (iOS). */
+.hw-banner {
+  position: relative; display: flex; align-items: stretch; width: 100%; min-height: 92px; margin: 10px 0 4px;
+  overflow: hidden; border-radius: var(--r); border: 1px solid rgba(255, 140, 40, .35); text-align: left;
+  background:
+    radial-gradient(ellipse 60% 120% at 100% 100%, rgba(255, 102, 0, .28), transparent 70%),
+    linear-gradient(135deg, #241634 0%, #17121f 60%, #120f18 100%);
+  box-shadow: 0 6px 22px -10px rgba(255, 102, 0, .5);
+}
+.hw-banner[data-state="stream"] { border-color: rgba(124, 255, 79, .45); box-shadow: 0 6px 22px -8px rgba(124, 255, 79, .45); }
+.hw-banner-text { position: relative; z-index: 1; display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; padding: 11px 0 11px 14px; max-width: calc(100% - 108px); }
+.hw-banner-title { display: flex; align-items: center; gap: 7px; font: 800 16px/1.15 var(--font-display, inherit); color: #ffb35c; }
+.hw-banner[data-state="stream"] .hw-banner-title { color: #9dff7a; }
+.hw-banner-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 0 3px rgba(255, 59, 59, .25); }
+.hw-banner-sub { font-size: 12.5px; line-height: 1.3; color: var(--muted); }
+.hw-banner-go { margin-top: 2px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.hw-banner-art { position: absolute; right: -4px; bottom: -14px; height: 118px; width: auto; image-rendering: pixelated; pointer-events: none; }
+@media (max-width: 359px) {
+  .hw-banner-text { max-width: calc(100% - 78px); padding-left: 12px; }
+  .hw-banner-art { height: 100px; right: -8px; }
+  .hw-banner-sub { font-size: 12px; }
+}

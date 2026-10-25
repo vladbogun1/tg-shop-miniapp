@@ -94,6 +94,8 @@ html[data-event="halloween"] footer.chrome::before {
 /* Counter slot in the header (the element itself is drawn by /hw/spawner.js). */
 .hw-counter { flex: none; }
 .hw-counter[hidden] { display: none; }
+/* 320-px phones: the header is full; the counter shrinks to a bare pumpkin (spawner.js) and eats into the gaps */
+@media (max-width: 359px) { .hw-counter { margin: 0 -6px; } }
 
 /* Preloader: a jack-o'-lantern lighting up (8 frames, 160×160) above a smaller logo. */
 html[data-event="halloween"] #cs-preloader .cspl-in::before {

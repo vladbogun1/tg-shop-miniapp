@@ -11,6 +11,7 @@ import { config } from "./config.js";
 import { customer, admin } from "./auth.js";
 import * as game from "./game.js";
 import * as draw from "./draw.js";
+import * as rehearsal from "./test-draw.js";
 import { db } from "./db.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -118,6 +119,14 @@ async function adminApi(req, res, path) {
   if (!who) return send(res, 401, { error: "admin only" });
   const b = req.method === "POST" ? await body(req) : {};
   try {
+    // Rehearsal (?test=1 on the screen): random customers, nothing real is touched.
+    if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen());
+    if (path === "test/reset" && req.method === "POST") {
+      await rehearsal.reset(b.count);
+      return send(res, 200, await rehearsal.screen());
+    }
+    if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock()).commitment });
+    if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") return send(res, 200, await rehearsal.drawRound(path === "test/reroll"));
     if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen());
     if (path === "lock" && req.method === "POST") {
       const l = await draw.lock(who.tgId);

@@ -30,7 +30,7 @@ import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
 import { ProductView } from "@/components/catalog/ProductView";
 import { FilterSheet, activeFilterChips } from "@/components/catalog/FilterSheet";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { HalloweenCounter } from "@/components/Halloween";
+import { HalloweenBanner, HalloweenCounter } from "@/components/Halloween";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
 import { CompareSheet } from "@/components/compare/CompareSheet";
@@ -195,6 +195,7 @@ export default function CatalogPage() {
             <LanguageToggle />
           </div>
         </header>
+        <HalloweenBanner />
       </div>
 
       {/* ── STICKY CONTROLS ──────────────────────────────────────────────

@@ -8,6 +8,7 @@
 - **Заказы.** Каждый заказ за неделю даёт +1 билет: он оплачен или принят и не отклонён.
 - **Кодовые слова.** Слово называют на стриме, оно даёт +N тыкв. Число вводов ограничено, один человек вводит слово один раз.
 - **Розыгрыш.** В пятницу 30.10 вечером на стриме, экран `/hw/draw/` на домене админки, 5 раундов. Шанс пропорционален билетам, один человек выигрывает один раз.
+- **Где об этом узнают.** Сайт: первый слайд баннера на главной (до 31.10). Mini App: карточка под шапкой главной: «Завтра старт» → «Охота на тыквы» → «Розыгрыш идёт сейчас» (от `HW_STREAM_AT` три часа, тап открывает `HW_STREAM_URL`), потом пропадает. Даты карточка берёт из `/hw/api/state`; если сервис лежит, карточки нет.
 - **Заказов не создаёт.** Призы Максим выдаёт сам, контакты победителей есть на экране розыгрыша.
 
 Правила акции для покупателей: `site/content/legal/{uk,ru,en}/halloween-rules.md`, на сайте это `/halloween-rules`.
@@ -91,9 +92,13 @@ cd events/halloween/server && npm install && HW_DEV_AUTH=1 HW_STARTS_AT=2026-10-
 
 - Сервис: `cd events/halloween/server && node --env-file=../_tmp/local.env src/server.js`. В `_tmp/local.env` (в git не попадает) лежат `JWT_SECRET` стенда, read-only пользователь `hw_ro` на `uxtest_mysql` :3398, `HW_BACKEND_URL=http://localhost:8080` и ранний `HW_STARTS_AT`.
 - Фронты из ветки: записи `halloween-site` (:3046), `halloween-admin` (:3047), `halloween-miniapp` (:3048) в `shop/.claude/launch.json`. `/hw/` в `next dev` проксируется на :8090 (rewrites в `next.config.ts`).
-- Админка на стенде входит сама, без пароля и кода: `DEV_ADMIN_CREDS=<путь к local.json>` + `next dev` (`frontend-admin/app/dev-login/route.ts`). В сборке для прода маршрут отвечает 404.
+- Админка на стенде входит сама, без пароля и кода: `DEV_ADMIN_CREDS=<путь к local.json>` + `next dev` (`frontend-admin/app/dev-login/route.ts`). В сборке для прода маршрут отвечает 404. Токен один на все вкладки (кэш до истечения, один вход за раз): иначе каждая вкладка входила заново, повторный код 2FA засчитывался ошибкой, и бэкенд блокировал админа (5 ошибок → 15 мин) и IP (10 входов за 5 мин → 429). Снять блокировку на стенде: `docker restart cmp_backend` (лимит по IP в памяти) и `UPDATE admin_users SET failed_attempts=0, locked_until=NULL`.
 - Mini App на :3048: порт 3004 бывает занят, поэтому API идёт через dev-прокси (`NEXT_PUBLIC_API_BASE_URL=http://localhost:3048`, `DEV_API_ORIGIN=http://localhost:8080`).
 - Открыть: сайт `http://localhost:3046`, Mini App `http://localhost:3048/?tgstub=502540144`, розыгрыш `http://localhost:3047/hw/draw/`.
+
+### Тестовый розыгрыш (репетиция)
+
+Галка «тестовий» на экране розыгрыша (`/hw/draw/?test=1`): случайные 80 покупателей из базы магазина (имена и аватарки из Telegram) с выдуманными тыквами, заказами и билетами. Всё в памяти сервиса (`server/src/test-draw.js`, маршруты `/hw/api/admin/test/*`): настоящий список, фиксация и раунды не меняются. «Нові учасники» — другой набор, раунды с нуля. Красная плашка «ТЕСТ» видна и со спрятанной панелью. Контактов и доказа в тесте нет.
 
 Клавиши экрана: **R** — крутить, **H** — спрятать панель (для OBS), **M** — звук.
 
@@ -119,7 +124,7 @@ cd events/halloween/server && npm install && HW_DEV_AUTH=1 HW_STARTS_AT=2026-10-
    - убрать `HalloweenWidget`/`data-event` из `site/app/[locale]/layout.tsx` и `HalloweenCounter` из `site/components/layout/Header.tsx`;
    - убрать подмену `-hw` из `site/middleware.ts`;
    - убрать `batFlock` и `halloween`-ветку из `site/components/scene/SceneFx.tsx`.
-5. Mini App: удалить `frontend/components/Halloween.tsx`, `frontend/components/halloween.css`, `frontend/middleware.ts`, `frontend/public/case-hw/`, убрать их использование в `frontend/app/layout.tsx` и `frontend/app/page.tsx`.
+5. Mini App: удалить `frontend/components/Halloween.tsx`, `frontend/components/halloween.css`, `frontend/middleware.ts`, `frontend/public/case-hw/`, убрать их использование в `frontend/app/layout.tsx` и `frontend/app/page.tsx` (`HalloweenCounter`, `HalloweenBanner`).
 6. dev-прокси `/hw/` и `skipTrailingSlashRedirect` в `site/`, `frontend/`, `frontend-admin/next.config.ts` (вход без пароля `dev-login` можно оставить: он не про акцию).
 7. Админка: пункт «Розыгрыш 🎃» и поле `external` в `frontend-admin/components/layout/Shell.tsx`.
 8. Shared: `shared/src/event.ts`, `shared/src/event-assets.ts`, экспорт в `shared/src/index.ts` и `"./event"` в `shared/package.json`.

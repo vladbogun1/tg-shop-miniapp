@@ -66,3 +66,17 @@ export async function profiles(ids) {
   }
   return out;
 }
+
+/** Rehearsal draw only (test-draw.js): random customers, preferring those with a Telegram photo. */
+export async function randomCustomers(n) {
+  if (!pool) return [];
+  const [rows] = await pool.query(
+    `SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name, photo_url
+       FROM users
+      WHERE telegram_user_id IS NOT NULL
+      ORDER BY (photo_url IS NOT NULL AND photo_url <> '') DESC, RAND()
+      LIMIT ?`,
+    [n],
+  );
+  return rows.filter((r) => !config.excludeIds.includes(String(r.tg_id)));
+}

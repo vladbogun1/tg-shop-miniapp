@@ -216,6 +216,8 @@
     .center { text-align: center; }
     .center .big { margin: 0 auto 8px; width: 110px; height: 110px; position: relative; }
     .center .big .art { position: absolute; inset: 0; animation: pk-bob 1.6s ease-in-out infinite; }
+    .big .art { display: block; }
+    .big .art img, .big .art svg { width: 100%; height: 100%; display: block; object-fit: contain; image-rendering: pixelated; }
     .center .big.winner { width: 180px; height: 180px; margin-top: -24px; }
     .center .big.winner img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; animation: pk-bob 1.6s ease-in-out infinite; }
   </style>`;
@@ -249,6 +251,9 @@
           .ok { width: 16px; height: 16px; border-radius: 50%; background: #7cff4f; color: #0e0e10; display: grid; place-items: center; font-size: 11px; }
           .pop { animation: pop .5s cubic-bezier(.2,1.8,.4,1); }
           @keyframes pop { 40% { transform: scale(1.25) } }
+          /* phone headers have no spare room: drop "/50", and on the narrowest only the pumpkin stays (the panel shows the count) */
+          @media (max-width: 399px) { .of { display: none; } button { gap: 3px; padding: 0 8px 0 3px; } }
+          @media (max-width: 359px) { .n { display: none; } button { padding: 0; background: none; border: 0; } }
         </style><button type="button" part="button" aria-label="Halloween"><span class="ic"></span><span class="n"></span></button>`;
         r.querySelector(".ic").append(pumpkinArt(1));
         r.querySelector("button").addEventListener("click", () => openPanel());

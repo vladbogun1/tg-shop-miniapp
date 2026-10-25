@@ -64,3 +64,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 #dlg tr.voided td { opacity: .45; text-decoration: line-through; }
 #dlg form.add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
 #dlg a { color: var(--orange); }
+
+/* rehearsal (?test=1): impossible to mistake for the real draw, even with the panel hidden */
+#test-badge { display: none; }
+body.test #test-badge { display: block; position: fixed; top: 12px; right: 12px; z-index: 50; padding: 6px 12px; border-radius: 8px;
+  background: #e11d48; color: #fff; font: 800 14px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  box-shadow: 0 0 0 2px #fff3, 0 6px 20px #0008; pointer-events: none; }
+body.test #panel { outline: 2px dashed #e11d48; }
+.test-toggle { color: #ff8aa5; font-weight: 700; }

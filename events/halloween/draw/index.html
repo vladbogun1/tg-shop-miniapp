@@ -9,6 +9,7 @@
 </head>
 <body>
   <div id="stage"></div>
+  <div id="test-badge" aria-hidden="true">ТЕСТ · учасники несправжні</div>
   <div id="rail" aria-label="Переможці"></div>
   <div id="panel">
     <div class="row">
@@ -19,6 +20,8 @@
     <div class="row">
       <button id="roll" class="primary">Крутити (R)</button>
       <button id="reroll" title="Переможець не відповів — перекрутити останній раунд">Перекрутити раунд</button>
+      <label class="test-toggle" title="Випадкові покупці з бази, вигадані квитки. Справжній список і раунди не змінюються"><input type="checkbox" id="test" /> тестовий</label>
+      <button id="newTest" hidden title="Інші випадкові покупці, раунди з нуля">Нові учасники</button>
       <label><input type="checkbox" id="avatars" checked /> аватарки</label>
       <label><input type="checkbox" id="sound" checked /> звук (M)</label>
       <button id="hide" title="H">Сховати панель (H)</button>
