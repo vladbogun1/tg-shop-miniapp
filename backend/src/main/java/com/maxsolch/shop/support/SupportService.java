@@ -269,6 +269,34 @@ public class SupportService {
         return page(load(threadId).getId(), before, limit);
     }
 
+    /**
+     * The admin writes first (a giveaway winner, a question about a returned parcel): a new thread with
+     * the admin message in it, so the customer gets the usual bot DM with a button into the chat and
+     * the answer lands in the admin chats. No customer rate limits or thread slots: they are the
+     * customer's limits.
+     */
+    @Transactional
+    public ThreadDto startAsAdmin(long userId, Long adminId, String adminName, String subject, SendMessageRequest req) {
+        requireContent(req);
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(messages.current("api.support.notFound")));
+        Instant now = clock.instant();
+        SupportThread t = new SupportThread();
+        t.setId(UuidUtil.randomBytes());
+        t.setUserId(userId);
+        t.setTgUserId(userId > 0 ? userId : null);
+        t.setCustomerName(displayName(u));
+        t.setSource(SOURCE_MINIAPP);
+        t.setStatus(SupportStatus.OPEN);
+        t.setCreatedAt(now);
+        t.setLastMessageAt(now);
+        String s = subject == null ? null : subject.strip();
+        t.setSubject(s == null || s.isEmpty() ? null : ellipsize(s, SUBJECT_MAX));
+        threads.saveAndFlush(t);
+        sendAsAdmin(UuidUtil.toString(t.getId()), adminId, adminName, req);
+        return toDto(threads.findById(t.getId()).orElse(t), true);
+    }
+
     /** Admin reply: the customer gets it live and as a bot DM; a closed thread reopens. */
     @Transactional
     public MessageDto sendAsAdmin(String threadId, Long adminId, String adminName, SendMessageRequest req) {

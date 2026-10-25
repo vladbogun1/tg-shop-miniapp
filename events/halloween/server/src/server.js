@@ -12,6 +12,7 @@ import { customer, admin } from "./auth.js";
 import * as game from "./game.js";
 import * as draw from "./draw.js";
 import * as rehearsal from "./test-draw.js";
+import * as prizes from "./prizes.js";
 import { db } from "./db.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -136,7 +137,35 @@ async function adminApi(req, res, path) {
       const r = await draw.drawRound(who.tgId, path === "reroll");
       return send(res, 200, { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets });
     }
-    if (path === "winners" && req.method === "GET") return send(res, 200, await draw.winnersFull());
+    if (path === "winners" && req.method === "GET") {
+      const sent = prizes.contacted();
+      return send(res, 200, (await draw.winnersFull()).map((w) => ({ ...w, contacted: sent.get(w.drawId) || null, prize: prizes.prizeFor(w.round) })));
+    }
+    // Prize packs and the round → pack choice (made before the stream, changeable any time).
+    if (path === "prizes" && req.method === "GET") return send(res, 200, prizes.state());
+    if (path === "prizes" && req.method === "POST") return send(res, 200, prizes.save(b));
+    if (path === "prizes/delete" && req.method === "POST") return send(res, 200, prizes.remove(b.id));
+    if (path === "prizes/assign" && req.method === "POST") return send(res, 200, prizes.assign(b.round, b.prizeId));
+    if (path === "prizes/template" && req.method === "POST") return send(res, 200, prizes.setTemplate(b.text));
+    // «Написати переможцю»: preview the filled template, then send it as a support chat message.
+    // In a rehearsal the message goes to the admin pressing the button, never to the random customer.
+    if ((path === "contact/preview" || path === "contact/send") && req.method === "POST") {
+      const round = Number(b.round);
+      const w = b.test ? rehearsal.winnerOf(round) : (await draw.winnersFull()).find((x) => x.round === round && !x.voided);
+      if (!w) return send(res, 404, { error: "У цьому раунді ще немає переможця" });
+      const prize = prizes.prizeFor(round);
+      if (path === "contact/preview") {
+        const drawSent = w.drawId ? prizes.contacted().get(w.drawId) : null;
+        return send(res, 200, { round, to: { name: w.name, username: w.username }, prize, text: prizes.render(prizes.template(), { name: w.name, round, prize }), sent: drawSent || null, test: Boolean(b.test) });
+      }
+      const text = String(b.text || "").trim().slice(0, 3500);
+      if (!text) return send(res, 400, { error: "Порожнє повідомлення" });
+      const token = (req.headers.authorization || "").slice(7).trim();
+      const r = b.test
+        ? await prizes.send({ token, by: who.tgId, tgId: who.tgId, drawId: null, round, text: `[ТЕСТ: справжньому переможцю це не пішло]\n\n${text}` })
+        : await prizes.send({ token, by: who.tgId, tgId: w.tgId, drawId: w.drawId, round, text });
+      return send(res, 200, { ok: true, threadId: r.threadId, to: b.test ? "you" : "winner" });
+    }
     if (path === "proof" && req.method === "GET") return send(res, 200, draw.proof() || {});
     if (path === "stats" && req.method === "GET") {
       const live = await draw.liveEntries();

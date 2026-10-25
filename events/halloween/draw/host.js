@@ -15,7 +15,8 @@ const TOKEN_KEY = "tgshop_admin_jwt"; // the admin panel's token, same origin
 
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
-const state = { participants: [], winners: [], seedHash: "", locked: false, visual: null, rolling: false };
+// prizes: { prizes: [{id, name, items}], rounds: {round: prizeId}, template } — see server/src/prizes.js
+const state = { participants: [], winners: [], seedHash: "", locked: false, visual: null, rolling: false, prizes: { prizes: [], rounds: {}, template: "" } };
 const prefs = { avatars: true, sound: true };
 
 // ---------- sound (synthesised, no files) ----------
@@ -58,7 +59,8 @@ async function load() {
     state.seedHash = "mock";
     return;
   }
-  const data = await api(P + "/participants");
+  const [data, pz] = await Promise.all([api(P + "/participants"), api("/prizes")]);
+  state.prizes = pz;
   state.participants = data.participants; // `won` comes from the server: voided winners stay out too
   state.winners = data.winners; // [{round, participantId}], live (not voided) draws only
   state.seedHash = data.seedHash;
@@ -94,8 +96,34 @@ function renderRail() {
     el.className = "slot" + (p ? "" : " empty");
     el.innerHTML = `<b>Раунд ${r}</b>`;
     el.append(p ? `${p.name}${p.handle ? " " + p.handle : ""}` : "—");
+    const pr = prizeOf(r);
+    if (pr) {
+      const i = document.createElement("i");
+      i.textContent = pr.name;
+      el.append(i);
+    }
     rail.append(el);
   }
+}
+
+const nextRound = () => Math.min(state.winners.length + 1, ROUNDS);
+
+function prizeOf(round) {
+  const p = state.prizes.prizes.find((x) => x.id === state.prizes.rounds[round]);
+  return p ? { name: p.name, items: p.items } : null;
+}
+
+/** The prize selector next to «Крутити» and the visual's prize plate follow the next round. */
+function renderPrize() {
+  const r = nextRound();
+  $("prizeRound").textContent = r;
+  const sel = $("prizeSel");
+  sel.innerHTML = "";
+  sel.add(new Option("— без призу —", ""));
+  for (const p of state.prizes.prizes) sel.add(new Option(p.name, p.id));
+  sel.value = state.prizes.rounds[r] ?? "";
+  sel.disabled = state.rolling || Boolean(MOCK) || state.winners.length >= ROUNDS;
+  state.visual?.setPrize?.(state.winners.length >= ROUNDS ? null : prizeOf(r));
 }
 
 function renderStats() {
@@ -109,6 +137,8 @@ function renderStats() {
   $("lock").disabled = state.rolling || state.locked || Boolean(MOCK);
   $("roll").disabled = state.rolling || state.winners.length >= ROUNDS || !pool.length;
   $("reroll").disabled = state.rolling || !state.winners.length;
+  $("contact").hidden = state.rolling || !state.winners.length || Boolean(MOCK);
+  renderPrize();
 }
 
 function ctx() {
@@ -134,10 +164,13 @@ async function mountVisual(id) {
   document.title = `${mod.meta?.title ?? id} · Halloween Draw`;
   state.visual = mod.mount(root, ctx());
   state.visual.setParticipants(visibleList());
+  renderPrize();
 }
 
 async function roll(reroll = false) {
   if (state.rolling) return;
+  const round = reroll ? Math.max(...state.winners.map((w) => w.round)) : nextRound();
+  if (!MOCK && !TEST && state.prizes.prizes.length && !prizeOf(round) && !confirm(`Приз раунду ${round} не вибрано. Крутити без призу?`)) return;
   state.rolling = true;
   renderStats();
   $("msg").textContent = "";
@@ -160,7 +193,7 @@ async function roll(reroll = false) {
     state.visual.setParticipants(visibleList());
     renderRail();
     const shown = prefs.avatars ? winner : { ...winner, avatar: null };
-    await state.visual.roll(shown, { round: res.round, totalRounds: ROUNDS, totalTickets: res.totalTickets, seedHash: state.seedHash });
+    await state.visual.roll(shown, { round: res.round, totalRounds: ROUNDS, totalTickets: res.totalTickets, seedHash: state.seedHash, prize: prizeOf(res.round) });
     state.winners.push({ round: res.round, participantId: winner.id });
     winner.won = true;
     markWon();
@@ -209,10 +242,16 @@ function setupControls() {
   $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value); };
   $("sound").onchange = (e) => { prefs.sound = e.target.checked; };
   $("hide").onclick = () => $("panel").classList.add("hidden");
+  $("fs").onclick = toggleFullscreen;
+  document.body.classList.toggle("no-hints", qs.get("hints") === "0");
+  $("prizeSel").onchange = (e) => assignPrize(nextRound(), e.target.value);
+  $("prizes").onclick = () => showPrizes().catch(fail);
+  $("contact").onclick = () => showContact(Math.max(...state.winners.map((w) => w.round))).catch(fail);
   addEventListener("keydown", (e) => {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || $("dlg").open) return;
     if (e.code === "KeyR") roll(false);
     if (e.code === "KeyH") $("panel").classList.toggle("hidden");
+    if (e.code === "KeyF") toggleFullscreen();
     if (e.code === "KeyM") { prefs.sound = !prefs.sound; $("sound").checked = prefs.sound; }
   });
   return sel.value;
@@ -244,16 +283,122 @@ async function showContacts() {
   if (MOCK || TEST) return fail("У тестовому режимі контактів немає: учасники несправжні");
   const rows = await api("/winners");
   const body = rows.length
-    ? `<table><tr><th>Раунд</th><th>Імʼя</th><th>Telegram</th><th>id</th><th>Коли</th></tr>${rows
+    ? `<table><tr><th>Раунд</th><th>Імʼя</th><th>Telegram</th><th>id</th><th>Коли</th><th></th></tr>${rows
         .map(
           (r) =>
             `<tr class="${r.voided ? "voided" : ""}"><td>${r.round}${r.attempt > 1 ? ` (спроба ${r.attempt})` : ""}</td><td>${esc(r.name)}</td><td>${
               r.username ? `<a href="https://t.me/${esc(r.username)}" target="_blank" rel="noopener">@${esc(r.username)}</a>` : "—"
-            }</td><td>${esc(r.tgId)}</td><td>${new Date(r.drawnAt).toLocaleString("uk-UA")}</td></tr>`
+            }</td><td>${esc(r.tgId)}</td><td>${new Date(r.drawnAt).toLocaleString("uk-UA")}</td><td>${
+              r.voided ? "" : r.contacted ? `<a href="/support?thread=${esc(r.contacted.threadId)}" target="_blank" rel="noopener" class="ok">✓ написано</a>` : `<button data-msg="${r.round}">Написати</button>`
+            }</td></tr>`
         )
         .join("")}</table><p class="muted">Закреслені — перекручені раунди. Без username — пишіть через бота або чат в адмінці за id.</p>`
     : "<p>Ще ніхто не виграв.</p>";
-  dialog("Контакти переможців (не показувати на стрімі)", body);
+  const el = dialog("Контакти переможців (не показувати на стрімі)", body);
+  el.querySelectorAll("[data-msg]").forEach((b) => (b.onclick = () => showContact(Number(b.dataset.msg)).catch(fail)));
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else document.documentElement.requestFullscreen?.().catch(fail);
+}
+
+async function assignPrize(round, prizeId) {
+  try {
+    state.prizes = await api("/prizes/assign", { method: "POST", body: JSON.stringify({ round, prizeId: prizeId ? Number(prizeId) : null }) });
+  } catch (e) { fail(e); }
+  renderPrize();
+  renderRail();
+}
+
+// Prize packs, which pack each round plays for, and the winner message template.
+async function showPrizes() {
+  if (MOCK) return fail("У mock-режимі призів немає");
+  state.prizes = await api("/prizes");
+  const { prizes, rounds, template } = state.prizes;
+  const opts = (r) =>
+    `<option value="">— без призу —</option>${prizes.map((p) => `<option value="${p.id}"${rounds[r] === p.id ? " selected" : ""}>${esc(p.name)}</option>`).join("")}`;
+  const list =
+    prizes
+      .map((p) => `<tr><td><b>${esc(p.name)}</b></td><td>${p.items.map(esc).join("<br>") || "—"}</td><td><button data-edit="${p.id}">Змінити</button> <button data-del="${p.id}" aria-label="Видалити">✕</button></td></tr>`)
+      .join("") || "<tr><td colspan=3>Поки немає. Додайте паки нижче.</td></tr>";
+  const el = dialog(
+    "Призи розіграшу",
+    `<table><tr><th>Пак</th><th>Що всередині</th><th></th></tr>${list}</table>
+    <form class="pack" style="margin-top:12px;display:grid;gap:8px">
+      <input type="hidden" name="id" />
+      <input name="name" placeholder="Назва паку, напр. «Мишка Lamzu + килимок»" required maxlength="120" />
+      <textarea name="items" rows="3" placeholder="Що входить, по рядку на пункт"></textarea>
+      <div><button class="primary">Зберегти пак</button> <button type="button" data-new hidden>Скасувати</button></div>
+    </form>
+    <h3 style="margin:18px 0 8px">Який пак у якому раунді</h3>
+    <div class="grid2">${Array.from({ length: ROUNDS }, (_, i) => `<label>Раунд ${i + 1} <select data-round="${i + 1}">${opts(i + 1)}</select></label>`).join("")}</div>
+    <h3 style="margin:18px 0 8px">Повідомлення переможцю</h3>
+    <textarea name="tpl" rows="9">${esc(template)}</textarea>
+    <p class="muted">Підстановки: {name} — імʼя, {round} — раунд, {prize} — назва паку, {items} — список із паку. Перед відправкою текст можна поправити.</p>
+    <button data-tpl>Зберегти шаблон</button>`
+  );
+  const post = async (path, payload) => {
+    try {
+      state.prizes = await api(path, { method: "POST", body: JSON.stringify(payload) });
+      renderPrize();
+      renderRail();
+      return true;
+    } catch (err) {
+      fail(err);
+      return false;
+    }
+  };
+  const form = el.querySelector("form.pack");
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const f = new FormData(form);
+    if (await post("/prizes", { id: f.get("id") ? Number(f.get("id")) : undefined, name: f.get("name"), items: f.get("items") })) showPrizes();
+  };
+  el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => {
+    const p = prizes.find((x) => x.id === Number(b.dataset.edit));
+    form.elements.id.value = p.id;
+    form.elements.name.value = p.name;
+    form.elements.items.value = p.items.join("\n");
+    form.querySelector("[data-new]").hidden = false;
+    form.elements.name.focus();
+  }));
+  form.querySelector("[data-new]").onclick = () => showPrizes();
+  el.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async () => {
+    if (confirm("Видалити пак? Раунди з ним залишаться без призу.") && (await post("/prizes/delete", { id: Number(b.dataset.del) }))) showPrizes();
+  }));
+  el.querySelectorAll("[data-round]").forEach((s) => (s.onchange = () => post("/prizes/assign", { round: Number(s.dataset.round), prizeId: s.value ? Number(s.value) : null })));
+  el.querySelector("[data-tpl]").onclick = async () => {
+    if (await post("/prizes/template", { text: el.querySelector("[name=tpl]").value })) el.querySelector("[data-tpl]").textContent = "Збережено ✓";
+  };
+}
+
+// «Написати переможцю»: the filled template, editable, goes to the winner as a shop chat message
+// (bot DM with a button into the chat; the answer comes to «Чати» in the admin panel).
+async function showContact(round) {
+  if (MOCK) return fail("У mock-режимі писати нікому");
+  const pv = await api("/contact/preview", { method: "POST", body: JSON.stringify({ round, test: TEST }) });
+  const who = `${esc(pv.to.name || "без імені")}${pv.to.username ? ` · <a href="https://t.me/${esc(pv.to.username)}" target="_blank" rel="noopener">@${esc(pv.to.username)}</a>` : ""}`;
+  const el = dialog(
+    `Написати переможцю раунду ${round}`,
+    `<p>Кому: <b>${who}</b>${pv.prize ? ` · приз: <b>${esc(pv.prize.name)}</b>` : ' · <span class="warn">приз раунду не вибрано</span>'}</p>
+    ${pv.test ? '<p class="warn">Тестовий режим: повідомлення прийде вам у чат магазину, а не цій людині.</p>' : ""}
+    ${pv.sent ? `<p class="warn">Уже написано ${new Date(pv.sent.sentAt).toLocaleString("uk-UA")}. Ще одне повідомлення відкриє новий чат.</p>` : ""}
+    <textarea rows="11" name="text">${esc(pv.text)}</textarea>
+    <p class="muted">Людина отримає повідомлення від бота з кнопкою в чат. Відповідь прийде в адмінку → «Чати».</p>
+    <button class="primary" data-send>Надіслати</button> <span data-res></span>`
+  );
+  const btn = el.querySelector("[data-send]");
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const r = await api("/contact/send", { method: "POST", body: JSON.stringify({ round, test: TEST, text: el.querySelector("[name=text]").value }) });
+      el.querySelector("[data-res]").innerHTML = `<span class="ok">Надіслано ✓</span>${r.threadId ? ` · <a href="/support?thread=${esc(r.threadId)}" target="_blank" rel="noopener">відкрити чат</a>` : ""}`;
+    } catch (e) {
+      btn.disabled = false;
+      el.querySelector("[data-res]").innerHTML = `<span class="warn">${esc(e.message || e)}</span>`;
+    }
+  };
 }
 
 async function showCodes() {

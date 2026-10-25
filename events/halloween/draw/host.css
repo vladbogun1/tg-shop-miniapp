@@ -56,7 +56,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 }
 #dlg::backdrop { background: #000a; }
 #dlg .dlg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-#dlg button, #dlg input { font: inherit; color: var(--text); background: #222; border: 1px solid #ffffff2a; border-radius: 8px; padding: 5px 10px; }
+#dlg button, #dlg input, #dlg select { font: inherit; color: var(--text); background: #222; border: 1px solid #ffffff2a; border-radius: 8px; padding: 5px 10px; }
 #dlg button { cursor: pointer; }
 #dlg table { width: 100%; border-collapse: collapse; }
 #dlg td, #dlg th { padding: 6px 8px; border-bottom: 1px solid #ffffff14; text-align: left; vertical-align: top; }
@@ -67,8 +67,23 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 
 /* rehearsal (?test=1): impossible to mistake for the real draw, even with the panel hidden */
 #test-badge { display: none; }
-body.test #test-badge { display: block; position: fixed; top: 12px; right: 12px; z-index: 50; padding: 6px 12px; border-radius: 8px;
+body.test #test-badge { display: block; position: fixed; bottom: 16px; right: 16px; z-index: 50; padding: 6px 12px; border-radius: 8px;
   background: #e11d48; color: #fff; font: 800 14px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
   box-shadow: 0 0 0 2px #fff3, 0 6px 20px #0008; pointer-events: none; }
 body.test #panel { outline: 2px dashed #e11d48; }
 .test-toggle { color: #ff8aa5; font-weight: 700; }
+
+/* barely-there key hints on the right edge; ?hints=0 hides them for the OBS capture */
+#hints { position: fixed; right: 14px; top: 50%; transform: translateY(-50%); z-index: 15; margin: 0; padding: 0; list-style: none;
+  display: grid; gap: 6px; font-size: 12px; color: #fff; opacity: .16; pointer-events: none; text-align: right; }
+#hints kbd { display: inline-block; min-width: 20px; margin-right: 6px; padding: 1px 5px; border: 1px solid #fff8; border-radius: 4px; font: 700 11px/1.4 ui-monospace, monospace; text-align: center; }
+body.no-hints #hints { display: none; }
+.prize-pick { display: inline-flex; gap: 6px; align-items: center; }
+.prize-pick select { max-width: 220px; }
+#panel button.win-btn { background: var(--slime); color: #071400; border-color: transparent; font-weight: 700; }
+#rail .slot i { display: block; color: var(--muted); font-style: normal; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dlg textarea { width: 100%; font: inherit; color: var(--text); background: #222; border: 1px solid #ffffff2a; border-radius: 8px; padding: 8px 10px; resize: vertical; }
+#dlg .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#dlg .ok { color: var(--slime); }
+#dlg .warn { color: #ffb35c; }
+#dlg button.primary { background: var(--orange); color: #140800; border-color: transparent; font-weight: 700; }

@@ -170,6 +170,7 @@ export async function winnersFull() {
   return ds.map((d) => {
     const p = prof.get(d.tg_id) || {};
     return {
+      drawId: d.id,
       round: d.round,
       attempt: d.attempt,
       voided: Boolean(d.voided),

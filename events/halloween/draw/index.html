@@ -11,6 +11,7 @@
   <div id="stage"></div>
   <div id="test-badge" aria-hidden="true">ТЕСТ · учасники несправжні</div>
   <div id="rail" aria-label="Переможці"></div>
+  <ul id="hints" aria-hidden="true"><li><kbd>R</kbd> крутити</li><li><kbd>H</kbd> панель</li><li><kbd>F</kbd> весь екран</li><li><kbd>M</kbd> звук</li></ul>
   <div id="panel">
     <div class="row">
       <strong class="brand">🎃 ChiSetup · Halloween</strong>
@@ -18,16 +19,20 @@
       <span id="stats"></span>
     </div>
     <div class="row">
+      <label class="prize-pick">Приз раунду <b id="prizeRound">1</b> <select id="prizeSel" aria-label="Приз раунду"></select></label>
       <button id="roll" class="primary">Крутити (R)</button>
       <button id="reroll" title="Переможець не відповів — перекрутити останній раунд">Перекрутити раунд</button>
       <label class="test-toggle" title="Випадкові покупці з бази, вигадані квитки. Справжній список і раунди не змінюються"><input type="checkbox" id="test" /> тестовий</label>
       <button id="newTest" hidden title="Інші випадкові покупці, раунди з нуля">Нові учасники</button>
       <label><input type="checkbox" id="avatars" checked /> аватарки</label>
       <label><input type="checkbox" id="sound" checked /> звук (M)</label>
+      <button id="fs" title="F">На весь екран (F)</button>
       <button id="hide" title="H">Сховати панель (H)</button>
     </div>
     <div class="row">
       <button id="lock" title="Зафіксувати список і показати відбиток seed до першого ролу">Зафіксувати список</button>
+      <button id="prizes">Призи</button>
+      <button id="contact" class="win-btn" hidden>Написати переможцю</button>
       <button id="contacts">Контакти переможців</button>
       <button id="codes">Кодові слова</button>
       <button id="proof" title="seed, список і всі роли — для перевірки після стріму">Доказ (json)</button>

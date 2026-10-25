@@ -74,6 +74,22 @@ public class AdminSupportController {
         return support.adminMessages(id, before, limit);
     }
 
+    /** Body: {userId, subject?, text}. userId is the customer's id (their Telegram id). */
+    public record StartThreadRequest(Long userId, String subject, String text) {
+    }
+
+    @PostMapping("/threads")
+    @Operation(summary = "Write to a customer first — opens a thread, the customer gets a bot DM")
+    public ThreadDto start(@RequestBody StartThreadRequest req) {
+        if (req == null || req.userId() == null) {
+            throw new com.maxsolch.shop.web.BadRequestException("userId required");
+        }
+        ThreadDto t = support.startAsAdmin(req.userId(), SecurityUtil.currentUserId(), audit.currentAdminName(),
+                req.subject(), new SendMessageRequest(req.text(), null, null, null, null, null));
+        audit.record("support.start", "support_thread", t.id(), "user " + req.userId());
+        return t;
+    }
+
     @PostMapping("/threads/{id}/messages")
     @Operation(summary = "Answer — the customer gets a bot DM with a button to the thread")
     public MessageDto send(@PathVariable String id, @RequestBody SendMessageRequest req) {

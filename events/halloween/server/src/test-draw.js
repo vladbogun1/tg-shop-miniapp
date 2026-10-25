@@ -63,6 +63,14 @@ export async function drawRound(reroll) {
   return { round, attempt, winner: publicId(entry.tgId), totalTickets: total };
 }
 
+/** The live winner of a rehearsal round, with the real name: who the message would go to. */
+export function winnerOf(round) {
+  const d = session?.draws.find((x) => x.round === Number(round) && !x.voided);
+  if (!d) return null;
+  const p = session.profiles.get(d.tgId) || {};
+  return { tgId: d.tgId, username: p.username || null, name: [p.first_name, p.last_name].filter(Boolean).join(" ") || null };
+}
+
 /** Same shape as draw.screen(), plus `test: true`. */
 export async function screen() {
   const s = await current();

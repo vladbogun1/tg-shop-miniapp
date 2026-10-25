@@ -55,7 +55,7 @@ type Participant = {
 };
 ```
 
-`info` в `roll`: `{ round: 1..5, totalRounds: 5, totalTickets, seedHash }`.
+`info` в `roll`: `{ round: 1..5, totalRounds: 5, totalTickets, seedHash, prize }`. `prize` — `{ name, items: string[] } | null`: пак призов, который Максим выбрал для раунда. Необязательный метод контроллера `setPrize(prize | null)` хост вызывает, когда меняется приз следующего раунда (до ролла): показать «Розігруємо: …».
 
 ### ctx
 
