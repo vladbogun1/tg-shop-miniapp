@@ -540,4 +540,68 @@ class OrderAdjustmentServiceTest {
                 "owner", true);
         assertThat(r.auditDetails()).contains("monobank");
     }
+
+    // ---------- «Едет назад» per line (V68) ----------
+
+    @Test
+    void wizard_inTransit_countsTheUnitsReturned_butKeepsThemOffTheShelf() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        Product mouse = product(0);
+        OrderItem it = item(o, mouse, 1L, 3);
+        wireLedger();
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(), 0, 0), "owner");
+
+        assertThat(r.order().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(r.order().getReturnSentAt()).isNotNull();
+        assertThat(it.getReturnedQty()).isEqualTo(1);
+        assertThat(it.getReturnPendingQty()).isEqualTo(1);
+        assertThat(it.getRestockedQty()).isZero();
+        assertThat(mouse.getStock()).isZero();
+        assertThat(r.auditDetails()).contains("едет назад");
+    }
+
+    @Test
+    void wizard_inTransit_notForAParcelStillOnItsWayOut() {
+        Order o = order(OrderStatus.SHIPPED);
+        o.setReceivedMinor(30_000);
+        item(o, product(0), 1L, 1);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void receiveReturn_partialReturnOfADeliveredOrder_takesOnlyTheTravellingUnits() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        Product mouse = product(0);
+        OrderItem back = item(o, mouse, 1L, 3);
+        back.setReturnedQty(2);
+        back.setReturnPendingQty(2);
+        OrderItem stays = item(o, product(0), 2L, 1);
+        when(productRepository.findByIdForUpdate(mouse.getId())).thenReturn(Optional.of(mouse));
+        com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
+        service.setWriteoffs(writeoffs);
+
+        OrderAdjustmentService.Result r = service.receiveReturn(o.getId(),
+                List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
+                null, "owner");
+
+        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_RECEIVED);
+        assertThat(r.order().getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(mouse.getStock()).isEqualTo(1);
+        assertThat(back.getRestockedQty()).isEqualTo(1);
+        assertThat(back.getReturnedQty()).isEqualTo(2);
+        assertThat(back.getReturnPendingQty()).isZero();
+        assertThat(stays.getRestockedQty()).isZero();
+        verify(writeoffs).save(any());
+    }
 }

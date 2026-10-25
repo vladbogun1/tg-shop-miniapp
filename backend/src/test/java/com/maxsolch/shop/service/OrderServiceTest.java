@@ -1109,6 +1109,8 @@ class OrderServiceTest {
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(rejected.getReturnSentAt()).isNotNull();
+        assertThat(it.getReturnPendingQty()).isEqualTo(1);
         verify(productRepository, never()).findByIdForUpdate(any());
         verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
                 any(), eq(10_000L), any(), any(), any(), any());

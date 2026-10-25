@@ -13,7 +13,6 @@ import {
   apiPost,
   apiPut,
   type AuditEntry,
-  type BoardDto,
   type DispatchOrder,
   type MessageDto,
   type OrderCardDto,
@@ -22,7 +21,7 @@ import {
   type TimeRange,
   type UserCardDto,
 } from "./api";
-import type { MovementChannel, MovementKind, RejectReasonCode } from "./orders";
+import type { BoardKey, MovementChannel, MovementKind, RejectReasonCode } from "./orders";
 
 export type { NpCity, NpWarehouse };
 
@@ -37,6 +36,8 @@ export type AdminOrderDetail = Omit<OrderDetailDto, "items"> & {
     returnedQty?: number;
     /** Price of one unit after the proportional discount (0 for gifts) — V68. */
     unitPaidMinor?: number;
+    /** Units on their way back to the shop (V68). */
+    returnPendingQty?: number;
   })[];
   /** Exchanges made on this order, oldest first. */
   exchanges?: OrderExchange[];
@@ -84,7 +85,23 @@ export interface OrderAdminExtras {
 }
 
 /** Board / table card with the V68 fields. */
-export type AdminOrderCard = OrderCardDto & { archived?: boolean; returnStatus?: ReturnStatus | null };
+export type AdminOrderCard = OrderCardDto & {
+  archived?: boolean;
+  returnStatus?: ReturnStatus | null;
+  /** Units on their way back right now (V68). */
+  returningUnits?: number;
+  /** What is in the order — the picture strip of the card. */
+  lines?: CardLine[];
+};
+
+/** One line of a card's picture strip; `returning` = its units on the way back. */
+export interface CardLine {
+  imageUrl?: string | null;
+  title: string;
+  quantity: number;
+  returning: number;
+  gift: boolean;
+}
 
 /** One exchange (V51): what came back, what went out instead, ТТН and total before. */
 export interface OrderExchange {
@@ -112,7 +129,12 @@ export interface CancelApproveResult {
 }
 
 /** Board + true per-column money totals from the server. */
-export type AdminBoard = BoardDto & { sums?: Record<OrderStatus, number> };
+export type AdminBoard = {
+  /** Cards per column: the five statuses + RETURNING («Едет назад», V68). */
+  columns: Record<BoardKey, AdminOrderCard[]>;
+  counts: Record<BoardKey, number>;
+  sums?: Record<OrderStatus, number>;
+};
 
 /** Dispatch row; `status` is NEW for orders that can be shipped without approving first. */
 export type AdminDispatchOrder = DispatchOrder & { status?: "NEW" | "APPROVED" };
@@ -171,7 +193,7 @@ export interface DeliveryPatch {
 }
 
 /** Where a returned unit goes: shelf, write-off, or stays with the customer (compensation). */
-export type ReturnOutcome = "RESTOCK" | "DEFECT" | "KEPT";
+export type ReturnOutcome = "RESTOCK" | "DEFECT" | "KEPT" | "IN_TRANSIT";
 
 /** POST …/returns — the return wizard. */
 export interface ReturnWizardBody {

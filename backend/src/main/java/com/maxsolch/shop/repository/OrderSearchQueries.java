@@ -55,8 +55,23 @@ final class OrderSearchQueries {
 
     static final String WHERE_LIST = " where " + ANY_STATUS + "and " + ARCHIVE + "and " + RANGE + "and " + TEXT;
 
-    static final String WHERE_COLUMN = " where " + ONE_STATUS + "and " + LIVE + "and " + RANGE + "and " + TEXT;
+    /** A parcel on its way back to the shop (V68): the board's «Едет назад» column. */
+    static final String RETURNING = "o.returnStatus = 'IN_TRANSIT' ";
+
+    /**
+     * A refused parcel travelling back sits only in «Едет назад» — none of it is «Отклонён» yet.
+     * A partial return of a delivered order stays in «Доставлен» too: the rest of it is delivered.
+     */
+    static final String NOT_REFUSED_RETURNING = "not (o.status = com.maxsolch.shop.domain.OrderStatus.REJECTED "
+            + "and coalesce(o.returnStatus, '') = 'IN_TRANSIT') ";
+
+    static final String WHERE_COLUMN = " where " + ONE_STATUS + "and " + LIVE + "and " + NOT_REFUSED_RETURNING
+            + "and " + RANGE + "and " + TEXT;
 
     /** Same filters as a board column, but across every status (for the grouped count query). */
-    static final String WHERE_COLUMN_ALL_STATUSES = " where " + LIVE + "and " + RANGE + "and " + TEXT;
+    static final String WHERE_COLUMN_ALL_STATUSES = " where " + LIVE + "and " + NOT_REFUSED_RETURNING
+            + "and " + RANGE + "and " + TEXT;
+
+    /** «Едет назад»: never limited by the period — a parcel in transit is work to do. */
+    static final String WHERE_RETURNING = " where " + RETURNING + "and " + LIVE + "and " + TEXT;
 }

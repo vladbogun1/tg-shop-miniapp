@@ -10,16 +10,17 @@
 import type { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Inbox } from "lucide-react";
-import type { OrderCardDto, OrderStatus } from "@/lib/api";
+import type { AdminOrderCard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
-import { STATUS_LABEL, STATUS_VAR } from "@/lib/orders";
+import { BOARD_LABEL, BOARD_VAR, RETURNING, type BoardKey } from "@/lib/orders";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { DraggableOrderCard } from "./DraggableOrderCard";
+import { OrderCard } from "./OrderCard";
 
 interface Props {
-  status: OrderStatus;
-  orders: OrderCardDto[];
+  status: BoardKey;
+  orders: AdminOrderCard[];
   /** REAL total for this status (may exceed orders.length when capped). */
   count: number;
   /** REAL money total for this status (minor units), from the server. */
@@ -45,8 +46,10 @@ export function KanbanColumn({
   loadingMore,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
+  const returning = status === RETURNING;
   const total = sum ?? orders.reduce((acc, o) => acc + o.totalMinor, 0);
-  const accent = STATUS_VAR[status];
+  const returningUnits = orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0);
+  const accent = BOARD_VAR[status];
 
   const dim = dragActive && !validTarget;
   const lit = isOver && validTarget;
@@ -80,7 +83,7 @@ export function KanbanColumn({
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: accent, boxShadow: `0 0 8px color-mix(in srgb, ${accent} 55%, transparent)` }}
             />
-            <span className="section-title truncate leading-none">{STATUS_LABEL[status]}</span>
+            <span className="section-title truncate leading-none">{BOARD_LABEL[status]}</span>
           </div>
           <span
             className="count-badge"
@@ -91,7 +94,7 @@ export function KanbanColumn({
         </div>
 
         <div className="tabular px-3.5 pb-3 pt-1.5 text-[12px] font-semibold text-[var(--text-muted)]">
-          {money(total, "UAH")}
+          {returning ? `${returningUnits} шт. в пути на склад` : money(total, "UAH")}
           {orders.length < count && (
             <span className="ml-2 font-normal text-[var(--text-faint)]">
               · показано {orders.length} из {count}
@@ -107,7 +110,13 @@ export function KanbanColumn({
             Пусто
           </div>
         ) : (
-          orders.map((o) => <DraggableOrderCard key={o.id} order={o} onClick={() => onCardClick(o.id)} />)
+          orders.map((o) =>
+            returning ? (
+              <OrderCard key={o.id} order={o} returning onClick={() => onCardClick(o.id)} />
+            ) : (
+              <DraggableOrderCard key={o.id} order={o} onClick={() => onCardClick(o.id)} />
+            )
+          )
         )}
         {onMore && orders.length < count && (
           <Button size="sm" variant="ghost" loading={loadingMore} onClick={onMore} className="self-center">

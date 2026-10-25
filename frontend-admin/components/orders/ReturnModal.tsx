@@ -40,12 +40,14 @@ interface ManualRow {
 type Step = 1 | 2 | 3;
 
 const OUTCOMES: { value: ReturnOutcome; label: string }[] = [
+  { value: "IN_TRANSIT", label: "Едет назад (почтой)" },
   { value: "RESTOCK", label: "На склад" },
   { value: "DEFECT", label: "Брак (списать)" },
   { value: "KEPT", label: "У покупателя (компенсация)" },
 ];
 
 const OUTCOME_SHORT: Record<ReturnOutcome, string> = {
+  IN_TRANSIT: "едет назад — примете, когда придёт",
   RESTOCK: "на склад",
   DEFECT: "брак, списать",
   KEPT: "остаётся у покупателя",
@@ -87,6 +89,12 @@ export function ReturnModal({
   const [rowSeq, setRowSeq] = useState(1);
 
   const orderId = order?.id ?? null;
+  // A delivered order's goods are with the customer: they come back by post (Нова пошта) — «Едет
+  // назад» first, shelf or write-off when the parcel arrives. A parcel still on its way out
+  // (SHIPPED) or a self-pickup handed back at the counter is taken right here.
+  const outcomes = OUTCOMES.filter((o) => o.value !== "IN_TRANSIT" || order?.status === "DELIVERED");
+  const firstOutcome: ReturnOutcome =
+    order?.status === "DELIVERED" && order.deliveryMethod === "NOVA_POSHTA" ? "IN_TRANSIT" : "RESTOCK";
   // Money only: a rejected order (the parcel is received with «Посылка вернулась») or an overpaid one.
   const moneyOnly =
     !!order && (order.status === "REJECTED" || order.status === "NEW" || order.status === "APPROVED");
@@ -182,7 +190,7 @@ export function ReturnModal({
   // ---- helpers ----
   function setLine(id: number, patch: Partial<LineState>) {
     setLines((prev) => {
-      const c = prev[id] ?? { qty: 0, outcome: "RESTOCK" as ReturnOutcome };
+      const c = prev[id] ?? { qty: 0, outcome: firstOutcome };
       return { ...prev, [id]: { ...c, ...patch } };
     });
   }
@@ -303,7 +311,7 @@ export function ReturnModal({
               if (it.id == null) return null;
               const left = it.quantity - (it.returnedQty ?? 0);
               if (left <= 0) return null;
-              const l = lines[it.id] ?? { qty: 0, outcome: "RESTOCK" as ReturnOutcome };
+              const l = lines[it.id] ?? { qty: 0, outcome: firstOutcome };
               const unit = it.unitPaidMinor ?? (it.gift ? 0 : it.priceMinor);
               return (
                 <div key={it.id ?? i} className="card-2 px-3 py-2.5">
@@ -331,8 +339,8 @@ export function ReturnModal({
                     </div>
                   </div>
                   {l.qty > 0 && (
-                    <div className="mt-2 grid grid-cols-3 gap-1">
-                      {OUTCOMES.map((o) => (
+                    <div className={cn("mt-2 grid gap-1", outcomes.length > 3 ? "grid-cols-2" : "grid-cols-3")}>
+                      {outcomes.map((o) => (
                         <button
                           key={o.value}
                           type="button"

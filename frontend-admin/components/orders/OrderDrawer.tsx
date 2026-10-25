@@ -77,8 +77,11 @@ interface Props {
   orderId: string | null;
   onClose: () => void;
   initialTab?: "details" | "chat";
-  /** Scroll to the «Онлайн-оплата» section once the order has loaded («Внимание» → «Оплаты»). */
-  initialAction?: "payment";
+  /**
+   * Once the order has loaded: «payment» scrolls to «Онлайн-оплата» («Внимание» → «Оплаты»),
+   * «return» opens the return wizard, «received» opens «Посылка вернулась» (board «Едет назад»).
+   */
+  initialAction?: "payment" | "return" | "received";
   /** `onClose` navigates to another page (the /orders/{id} deep link) — see useBackToClose. */
   closeNavigates?: boolean;
 }
@@ -152,6 +155,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   useEffect(() => {
     setAutoPaymentFor(orderId && initialAction === "payment" ? orderId : null);
   }, [orderId, initialAction]);
+  const [autoModalFor, setAutoModalFor] = useState<string | null>(null);
+  useEffect(() => {
+    setAutoModalFor(orderId && (initialAction === "return" || initialAction === "received") ? orderId : null);
+  }, [orderId, initialAction]);
+  useEffect(() => {
+    if (autoModalFor && order && autoModalFor === orderId) {
+      if (initialAction === "return") setReturnOpen(true);
+      else if (initialAction === "received" && order.admin?.returnStatus === "IN_TRANSIT") setReceivedOpen(true);
+      setAutoModalFor(null);
+    }
+  }, [autoModalFor, order, orderId, initialAction]);
   useEffect(() => {
     if (autoPaymentFor && order && autoPaymentFor === orderId && tab === "details") {
       // After the details have rendered (the section mounts with the order).

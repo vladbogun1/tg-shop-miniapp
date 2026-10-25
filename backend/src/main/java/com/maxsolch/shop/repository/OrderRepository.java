@@ -89,6 +89,18 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
      * {@code [status, count, sum(totalMinor)]}. The column sum used to be added up on the client
      * from the (capped) cards it had loaded.
      */
+    /** The «Едет назад» column: orders whose parcel (or part of it) is on its way back, oldest trip first. */
+    @Query("select o from Order o" + OrderSearchQueries.WHERE_RETURNING + "order by o.returnSentAt asc, o.createdAt desc")
+    List<Order> searchReturning(@Param("q") String q,
+                                @Param("idLo") byte[] idLo,
+                                @Param("idHi") byte[] idHi,
+                                Pageable pageable);
+
+    @Query("select count(o) from Order o" + OrderSearchQueries.WHERE_RETURNING)
+    long countReturning(@Param("q") String q,
+                        @Param("idLo") byte[] idLo,
+                        @Param("idHi") byte[] idHi);
+
     @Query("select o.status, count(o), coalesce(sum(o.totalMinor), 0) from Order o"
             + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES + "group by o.status")
     List<Object[]> statsByStatus(@Param("q") String q,

@@ -27,5 +27,15 @@ public record OrderCardDto(
         /** In the archive (V68): shown only with the «Архив» filter / in a customer's profile. */
         boolean archived,
         /** IN_TRANSIT | RECEIVED | null — refused parcel on its way back (V68). */
-        String returnStatus) {
+        String returnStatus,
+        /** Units on their way back right now (the «Едет назад» card shows only these). */
+        int returningUnits,
+        /** What is in the order, for the picture strip on the card. */
+        java.util.List<CardLine> lines) {
+
+    /**
+     * @param returning units of this line on their way back
+     */
+    public record CardLine(String imageUrl, String title, int quantity, int returning, boolean gift) {
+    }
 }

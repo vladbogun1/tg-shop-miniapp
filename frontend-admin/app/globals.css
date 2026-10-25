@@ -73,6 +73,8 @@
   --st-shipped: #F5A623;
   --st-delivered: #22C07D;
   --st-rejected: #F0503C;
+  /* «Едет назад» (V68): a board column, not an order status. */
+  --st-returning: #F472B6;
 
   /* Radii. --chamfer = the frontend name; the --r-* scale is the admin's. */
   --chamfer: 10px;

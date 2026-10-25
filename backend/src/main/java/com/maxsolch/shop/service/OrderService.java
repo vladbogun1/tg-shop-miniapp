@@ -581,6 +581,10 @@ public class OrderService {
         boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
         if (inTransit) {
             order.setReturnStatus(RETURN_IN_TRANSIT);
+            order.setReturnSentAt(Instant.now());
+            for (OrderItem item : order.getItems()) {
+                item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
+            }
         } else if (restock) {
             restoreStock(order);
         }

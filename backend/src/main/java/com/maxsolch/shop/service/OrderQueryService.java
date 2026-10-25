@@ -90,10 +90,15 @@ public class OrderQueryService {
      * @param unread     order id (UUID string) → unread messages from the other side
      * @param itemCounts order id (UUID string) → total units in the order
      */
-    public record CardContext(Map<String, Long> unread, Map<String, Integer> itemCounts) {
+    public record CardContext(Map<String, Long> unread, Map<String, Integer> itemCounts,
+                              Map<String, List<OrderCardDto.CardLine>> lines) {
 
         static CardContext empty() {
-            return new CardContext(Map.of(), Map.of());
+            return new CardContext(Map.of(), Map.of(), Map.of());
+        }
+
+        List<OrderCardDto.CardLine> linesFor(String orderId) {
+            return lines.getOrDefault(orderId, List.of());
         }
 
         long unreadFor(String orderId) {
@@ -127,7 +132,23 @@ public class OrderQueryService {
         for (Object[] row : orderItemRepository.itemCountsByOrder(ids)) {
             itemCounts.put(UuidUtil.toString((byte[]) row[0]), ((Number) row[1]).intValue());
         }
-        return new CardContext(unread, itemCounts);
+        return new CardContext(unread, itemCounts, unreadFrom == SenderType.CUSTOMER ? cardLines(ids) : Map.of());
+    }
+
+    /** The picture strip of the admin cards: every line with its first photo, two queries per page. */
+    private Map<String, List<OrderCardDto.CardLine>> cardLines(List<byte[]> orderIds) {
+        List<OrderItem> items = orderItemRepository.findByOrderIds(orderIds);
+        Map<String, String> thumbnails = thumbnailsFor(items);
+        Map<String, List<OrderCardDto.CardLine>> out = new HashMap<>();
+        for (OrderItem it : items) {
+            String productId = it.getProductId() == null ? null : UuidUtil.toString(it.getProductId());
+            out.computeIfAbsent(UuidUtil.toString(it.getOrder().getId()), k -> new ArrayList<>())
+                    .add(new OrderCardDto.CardLine(productId == null ? null : thumbnails.get(productId),
+                            it.getTitleSnapshot()
+                                    + (it.getVariantNameSnapshot() == null ? "" : " · " + it.getVariantNameSnapshot()),
+                            it.getQuantity(), it.getReturnPendingQty(), it.isGift()));
+        }
+        return out;
     }
 
     @Transactional(readOnly = true)
@@ -171,7 +192,9 @@ public class OrderQueryService {
                 sourceOf(o),
                 o.getCancelRequestStatus(),
                 o.getArchivedAt() != null,
-                o.getReturnStatus());
+                o.getReturnStatus(),
+                ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returning).sum(),
+                ctx.linesFor(id));
     }
 
     private static String sourceOf(Order o) {
@@ -441,7 +464,8 @@ public class OrderQueryService {
                 it.isAutoGift(),
                 it.getCaseRarity(),
                 it.isVariantPending(),
-                OrderAdjustmentService.unitPaidMinor(o, it));
+                OrderAdjustmentService.unitPaidMinor(o, it),
+                it.getReturnPendingQty());
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

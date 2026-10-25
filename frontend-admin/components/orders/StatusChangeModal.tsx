@@ -59,13 +59,15 @@ interface Props {
   /** Resolves true when the server accepted the change (the modal is then closed by the caller). */
   onConfirm: (payload: StatusChangePayload) => Promise<boolean> | boolean | void;
   loading?: boolean;
+  /** «Посылка едет назад» ticked from the start (a card dropped on «Едет назад»). */
+  initialInTransit?: boolean;
 }
 
 /** PAYMENT_TIMEOUT is set by the server only (not paid online within 24 h) — never offered here. */
 const SYSTEM_REASONS: RejectReasonCode[] = ["PAYMENT_TIMEOUT"];
 const REASONS = (Object.keys(REJECT_REASON_LABEL) as RejectReasonCode[]).filter((r) => !SYSTEM_REASONS.includes(r));
 
-export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading }: Props) {
+export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading, initialInTransit }: Props) {
   const [ttn, setTtn] = useState("");
   const [reason, setReason] = useState("");
   const [code, setCode] = useState<RejectReasonCode | null>(null);
@@ -80,8 +82,8 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
     setReason("");
     setCode(null);
     setRestock(true);
-    setInTransit(false);
-  }, [open, target, orderId]);
+    setInTransit(!!initialInTransit);
+  }, [open, target, orderId, initialInTransit]);
 
   if (!target) return null;
   const needsTtn = target === "SHIPPED";

@@ -7,10 +7,17 @@ ALTER TABLE orders
     ADD COLUMN archived_at    TIMESTAMP(6) NULL,
     ADD COLUMN archived_by    VARCHAR(255) NULL,
     ADD COLUMN archive_reason VARCHAR(500) NULL,
-    -- the parcel was refused / sent back and is on its way to the shop: IN_TRANSIT, then RECEIVED
+    -- the parcel was refused / sent back and is on its way to the shop: IN_TRANSIT, then RECEIVED.
+    -- A partial return of a delivered order is IN_TRANSIT too: only its units travel (order_items.return_pending_qty)
     ADD COLUMN return_status  VARCHAR(16)  NULL,
+    ADD COLUMN return_sent_at TIMESTAMP(6) NULL,
     ADD COLUMN return_received_at TIMESTAMP(6) NULL,
-    ADD KEY ix_orders_archived (archived_at);
+    ADD KEY ix_orders_archived (archived_at),
+    ADD KEY ix_orders_return_status (return_status);
+
+-- Units of a line on their way back to the shop: on arrival each goes back on the shelf or is written off.
+ALTER TABLE order_items
+    ADD COLUMN return_pending_qty INT NOT NULL DEFAULT 0;
 
 -- 2. Payment records must outlive any mistake: an order row can no longer take its invoices
 --    (and through them the fiscal receipts) with it.

@@ -281,7 +281,12 @@ public class OrderAdjustmentService {
         /** Came back broken: written off (report «Списания»). */
         DEFECT,
         /** The customer keeps the goods (compensation only): the units stay sold. */
-        KEPT
+        KEPT,
+        /**
+         * Sent back by post, not here yet: the units count as returned (no longer sold), the order
+         * shows in «Едет назад» and «Посылка вернулась» decides shelf or write-off.
+         */
+        IN_TRANSIT
     }
 
     /** One line of the wizard. */
@@ -384,6 +389,17 @@ public class OrderAdjustmentService {
                     customerParts.add(title + " ×" + line.quantity());
                 }
                 case KEPT -> parts.add(title + " ×" + line.quantity() + " (осталось у покупателя, компенсация)");
+                case IN_TRANSIT -> {
+                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
+                    item.setReturnPendingQty(item.getReturnPendingQty() + line.quantity());
+                    if (!OrderService.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+                        order.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+                        order.setReturnSentAt(Instant.now());
+                        order.setReturnReceivedAt(null);
+                    }
+                    parts.add(title + " ×" + line.quantity() + " (едет назад)");
+                    customerParts.add(title + " ×" + line.quantity());
+                }
             }
             units += line.quantity();
         }
@@ -428,6 +444,9 @@ public class OrderAdjustmentService {
         }
         List<WizardLine> lines = plan.lines() == null ? List.of()
                 : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
+        if (s == OrderStatus.SHIPPED && lines.stream().anyMatch(l -> l.outcome() == LineOutcome.IN_TRANSIT)) {
+            throw new BadRequestException("посылка ещё не у покупателя — если её не забрали, отклоните заказ с «Посылка едет назад»");
+        }
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
             throw new BadRequestException(s == OrderStatus.REJECTED
                     ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
@@ -475,9 +494,10 @@ public class OrderAdjustmentService {
     }
 
     /**
-     * The refused parcel of a rejected order is back at the shop ({@code return_status}
-     * IN_TRANSIT → RECEIVED): sellable units go back on the shelf, broken ones are written off.
-     * Lines not listed come back as sellable.
+     * The parcel is back at the shop ({@code return_status} IN_TRANSIT → RECEIVED): the refused
+     * parcel of a rejected order, or the units of a delivered one the wizard sent «едет назад».
+     * Sellable units go back on the shelf, broken ones are written off. Lines not listed come back
+     * as sellable.
      */
     @Transactional
     public Result receiveReturn(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
@@ -487,9 +507,14 @@ public class OrderAdjustmentService {
         }
         List<ReceivedLine> given = lines == null ? List.of() : lines;
         String cleanNote = note == null || note.isBlank() ? null : note.trim();
+        boolean refused = order.getStatus() == OrderStatus.REJECTED;
+        boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
         List<String> parts = new ArrayList<>();
         for (OrderItem item : order.getItems()) {
-            int out = item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty());
+            // Units on their way back; a refused parcel from before the per-line count travels whole.
+            int out = anyPending ? item.getReturnPendingQty()
+                    : refused ? item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty()) : 0;
+            item.setReturnPendingQty(0);
             if (out <= 0) {
                 continue;
             }
@@ -502,11 +527,14 @@ public class OrderAdjustmentService {
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
             if (sellable > 0) {
-                orderService.restockItem(item, sellable);
+                orderService.restockItem(item, Math.min(sellable, item.getQuantity() - item.getRestockedQty()));
                 parts.add(title + " ×" + sellable + " (на склад)");
             }
             if (defect > 0) {
-                item.setReturnedQty(item.getReturnedQty() + defect);
+                if (refused) {
+                    // A delivered order's returned units were counted when the return was registered.
+                    item.setReturnedQty(item.getReturnedQty() + defect);
+                }
                 writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
                 parts.add(title + " ×" + defect + " (брак, списан)");
             }

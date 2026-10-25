@@ -78,4 +78,11 @@ public class OrderItem {
      */
     @Column(name = "restocked_qty", nullable = false)
     private int restockedQty = 0;
+
+    /**
+     * Units on their way back to the shop (V68): a refused parcel or the returned part of a delivered
+     * order. Not on the shelf yet — «Посылка вернулась» restocks them or writes them off.
+     */
+    @Column(name = "return_pending_qty", nullable = false)
+    private int returnPendingQty = 0;
 }

@@ -210,6 +210,10 @@ public class Order {
     @Column(name = "return_status", length = 16)
     private String returnStatus;
 
+    /** When the parcel (or the returned units) set off back to the shop: «едет назад» since. */
+    @Column(name = "return_sent_at")
+    private Instant returnSentAt;
+
     @Column(name = "return_received_at")
     private Instant returnReceivedAt;
 

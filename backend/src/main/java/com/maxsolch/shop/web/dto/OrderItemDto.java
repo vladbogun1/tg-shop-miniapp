@@ -19,5 +19,7 @@ public record OrderItemDto(
         /** A case prize whose size the customer has not chosen yet (V59). */
         boolean variantPending,
         /** What one unit actually cost: price with the order discount spread in proportion (V68). */
-        long unitPaidMinor) {
+        long unitPaidMinor,
+        /** Units on their way back to the shop (V68): «Посылка вернулась» takes these. */
+        int returnPendingQty) {
 }

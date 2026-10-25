@@ -176,14 +176,14 @@ public class IncidentService {
     /** A refused parcel marked «едет назад» that never arrived. */
     private List<Found> returnStuck() {
         return jdbc.query("""
-                select bin_to_uuid(o.id) ref, o.total_minor, o.rejected_at, o.tracking_number
+                select bin_to_uuid(o.id) ref, o.total_minor, coalesce(o.return_sent_at, o.rejected_at) rejected_at, o.tracking_number
                 from orders o
-                where o.return_status = 'IN_TRANSIT' and o.rejected_at < now() - interval ? day
+                where o.return_status = 'IN_TRANSIT' and coalesce(o.return_sent_at, o.rejected_at) < now() - interval ? day
                 """, (rs, n) -> {
             String ref = rs.getString("ref");
             return new Found(AUTO + "return-stuck:" + ref, "Посылка едет назад дольше " + RETURN_STUCK_DAYS + " дней",
                     ref, "MEDIUM",
-                    "Сумма заказа " + uah(rs.getLong("total_minor")) + ", отказ " + when(rs.getTimestamp("rejected_at"))
+                    "Сумма заказа " + uah(rs.getLong("total_minor")) + ", отправлен назад " + when(rs.getTimestamp("rejected_at"))
                             + (rs.getString("tracking_number") == null ? "" : ", ТТН " + rs.getString("tracking_number")) + ".",
                     "Посылка застряла на отделении/складе НП или её получили, но не отметили «Посылка вернулась».",
                     "Проверьте ТТН в НП; если товар уже дома — нажмите «Посылка вернулась», иначе заберите или "

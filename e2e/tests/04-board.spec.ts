@@ -52,7 +52,8 @@ test("поиск по #короткому-номеру оставляет оди
   await boardSearch(page).fill(shortId(ORDER.shipped));
   await expect(page.getByText(CUSTOMER.stale, { exact: true })).toHaveCount(0);
   await expect(page.getByText(CUSTOMER.shipped, { exact: true })).toHaveCount(1);
-  await expect(page.getByText("Пусто")).toHaveCount(4);
+  // The four other statuses + «Едет назад».
+  await expect(page.getByText("Пусто")).toHaveCount(5);
   await expect(column(page, "Отправлен").getByText(CUSTOMER.shipped, { exact: true })).toBeVisible();
 
   // Without "#" and with only the first characters it still finds the order.

@@ -30,6 +30,19 @@ import {
  * Admin transitions: the shared table still lists DELIVERED → REJECTED, but the server refuses it
  * since 25.10.2026 (ORDER_DELIVERED_REJECT) — a delivered order is handled with «Возврат».
  */
+import { ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL } from "@shop/shared";
+
+/**
+ * «Едет назад» (V68) — a board column, not a status: a refused parcel (REJECTED) or the returned
+ * part of a delivered order travelling back, until «Посылка вернулась» puts it on the shelf or
+ * writes it off. The order is never split: a partial return also stays in «Доставлен».
+ */
+export const RETURNING = "RETURNING" as const;
+export type BoardKey = OrderStatus | typeof RETURNING;
+export const BOARD_ORDER: BoardKey[] = ["NEW", "APPROVED", "SHIPPED", "DELIVERED", RETURNING, "REJECTED"];
+export const BOARD_LABEL: Record<BoardKey, string> = { ...STATUS_COLUMN_LABEL, RETURNING: "Едет назад" };
+export const BOARD_VAR: Record<BoardKey, string> = { ...ORDER_STATUS_COLOR, RETURNING: "var(--st-returning)" };
+
 export function allowedTargets(from: OrderStatus): OrderStatus[] {
   return sharedAllowedTargets(from).filter((t) => !(from === "DELIVERED" && t === "REJECTED"));
 }

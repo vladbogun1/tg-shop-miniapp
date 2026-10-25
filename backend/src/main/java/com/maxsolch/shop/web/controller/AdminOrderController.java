@@ -95,6 +95,9 @@ public class AdminOrderController {
         this.payments = payments;
     }
 
+    /** Board column key of the parcels on their way back (not an {@link OrderStatus}). */
+    static final String RETURNING_COLUMN = "RETURNING";
+
     /** Per-status column cap on the board so we never load all 10k orders. */
     private static final int BOARD_COLUMN_LIMIT = 300;
 
@@ -143,8 +146,15 @@ public class AdminOrderController {
             byStatus.put(status.name(), orders);
             all.addAll(orders);
         }
+        // «Едет назад» is not a status: a refused parcel (REJECTED) or the returned part of a
+        // delivered order travelling back — a column of its own until «Посылка вернулась».
+        List<Order> returning = orderRepository.searchReturning(term.like(), term.idLo(), term.idHi(),
+                PageRequest.of(0, BOARD_COLUMN_LIMIT));
+        byStatus.put(RETURNING_COLUMN, returning);
+        List<Order> withReturning = new ArrayList<>(all);
+        withReturning.addAll(returning);
         OrderQueryService.CardContext ctx =
-                orderQueryService.cardContext(all, SenderType.CUSTOMER);
+                orderQueryService.cardContext(withReturning, SenderType.CUSTOMER);
 
         Map<String, List<OrderCardDto>> columns = new LinkedHashMap<>();
         byStatus.forEach((status, orders) ->
@@ -161,6 +171,7 @@ public class AdminOrderController {
         List<Object[]> ranged = from == null ? allTime : orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), from);
         putStats(allTime, false, counts, sums);
         putStats(ranged, true, counts, sums);
+        counts.put(RETURNING_COLUMN, orderRepository.countReturning(term.like(), term.idLo(), term.idHi()));
         return new OrderBoardDto(columns, counts, sums);
     }
 
