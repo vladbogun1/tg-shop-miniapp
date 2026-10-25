@@ -362,7 +362,8 @@ export function ExchangeModal({
             </div>
             {due > 0 && (
               <p className="font-semibold text-[var(--accent-hi)]">
-                Доплата {money(due, cur)} — наложкой при отправке нового заказа (или отметьте оплату вручную).
+                Доплата {money(due, cur)} — покупатель выберет сам: онлайн в новом заказе через monobank (кнопка
+                «Доплатить» у него в заказе) или наложкой при получении.
               </p>
             )}
             {over > 0 && (

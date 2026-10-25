@@ -144,7 +144,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
           )}
         </Tile>
         <Tile icon={<CreditCard className="h-5 w-5" />} label={t("order.payment")}>
-          {order.paymentOptionTitle ?? "—"}
+          {order.exchangeOfId ? t("pay.exchangeMethod") : order.paymentOptionTitle ?? "—"}
           <span className="mt-1 block text-[13px] font-semibold text-[var(--muted)]">
             {t("order.total")}: {fmt.money(order.totalMinor, order.currency)}
           </span>

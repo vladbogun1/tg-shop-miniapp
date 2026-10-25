@@ -359,7 +359,9 @@ export function OrderPayment({
       </p>
       {topUp && (
         <p className="mt-1 text-[12px] text-[var(--muted)]">
-          {t("pay.topUpText", { paid: money(order.receivedMinor, order.currency) })}
+          {t(order.exchangeOfId ? "pay.exchangeText" : "pay.topUpText", {
+            paid: money(order.receivedMinor, order.currency),
+          })}
         </p>
       )}
       {restOnDelivery > 0 && (

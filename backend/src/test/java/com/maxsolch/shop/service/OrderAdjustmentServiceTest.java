@@ -239,6 +239,9 @@ class OrderAdjustmentServiceTest {
         assertThat(child.getTotalMinor()).isEqualTo(15_000);
         assertThat(child.getReceivedMinor()).isEqualTo(10_000);   // credit; 50 ₴ to pay
         assertThat(child.getPaymentDueAt()).isNull();
+        // The difference can be paid online in full (or наложкой): no prepayment cap.
+        assertThat(child.getPrepaymentMinor()).isZero();
+        assertThat(OrderService.amountDueMinor(child)).isEqualTo(5_000);
         assertThat(other.getStock()).isEqualTo(2);                // reserved for the new parcel
         assertThat(r.auditDetails()).contains("Клава").contains("зачтено 100 ₴").contains("доплата 50 ₴");
 

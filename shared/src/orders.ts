@@ -123,10 +123,16 @@ export function codMinor(order: { totalMinor: number; receivedMinor?: number }):
 /**
  * A paid order that still has money due online: the shop added an item after the payment, the
  * customer pays the difference ("Доплатити"). Only while the order can still change (NEW / APPROVED).
+ * The replacement of an exchange too (paid or not): its difference is paid here or on delivery.
  */
-export function needsTopUp(order: { paid: boolean; status?: OrderStatus; amountDueMinor?: number }): boolean {
+export function needsTopUp(order: {
+  paid: boolean;
+  status?: OrderStatus;
+  amountDueMinor?: number;
+  exchangeOfId?: string | null;
+}): boolean {
   return (
-    order.paid &&
+    (order.paid || !!order.exchangeOfId) &&
     (order.amountDueMinor ?? 0) > 0 &&
     (order.status === "NEW" || order.status === "APPROVED")
   );

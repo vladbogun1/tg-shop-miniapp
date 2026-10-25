@@ -334,6 +334,7 @@ public class OrderQueryService {
                 OrderService.giftCaseOpenable(o),
                 giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
                 o.getGiftDiscountMinor(),
+                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
                 customer ? null : adminExtras(o));
     }
 

@@ -353,6 +353,8 @@ export interface OrderDetail {
   giftCaseOpenable?: boolean;
   /** Part of discountMinor that is the guaranteed gift discount (the customer chose it instead of the case). */
   giftDiscountMinor?: number;
+  /** Replacement of an exchange on that order (V69): the difference is paid online or on delivery. */
+  exchangeOfId?: string | null;
   /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
   gift?: OrderGift | null;
   totalMinor: number;

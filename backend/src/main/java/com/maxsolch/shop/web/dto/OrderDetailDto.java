@@ -68,6 +68,8 @@ public record OrderDetailDto(
         com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
         long giftDiscountMinor,
+        /** Replacement of an exchange on that order (V69): the difference is paid online or наложкой. */
+        String exchangeOfId,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         AdminExtras admin) {
 

@@ -707,6 +707,9 @@ public class OrderAdjustmentService {
         }
         child.setExchangeOfOrderId(order.getId());
         child.setUserId(order.getUserId());
+        // The customer chooses how to pay the difference: online in the order («Доплатити», the whole
+        // rest through monobank) or наложкой on delivery. A prepayment snapshot would cap the online part.
+        child.setPrepaymentMinor(0);
         if (to == OrderStatus.APPROVED) {
             child.setStatus(OrderStatus.APPROVED);
             child.setApprovedAt(Instant.now());

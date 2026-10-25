@@ -369,11 +369,11 @@ function OrderBody({
                   (order.npWarehouseName ? `, ${order.npWarehouseName}` : "")
             }
           />
-          {order.paymentOptionTitle && (
+          {(order.paymentOptionTitle || order.exchangeOfId) && (
             <InfoRow
               icon={<CreditCard className="h-4 w-4" strokeWidth={2.5} />}
               label={t("order.payment")}
-              value={order.paymentOptionTitle}
+              value={order.exchangeOfId ? t("pay.exchangeMethod") : order.paymentOptionTitle!}
             />
           )}
           {order.comment && (
