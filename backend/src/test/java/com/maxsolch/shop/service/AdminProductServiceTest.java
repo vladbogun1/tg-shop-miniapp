@@ -3,6 +3,10 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.domain.StockWriteoff;
+import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.repository.StockWriteoffRepository;
+import org.mockito.ArgumentCaptor;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.catalog.BrandAdminService;
@@ -45,6 +49,8 @@ class AdminProductServiceTest {
     @Mock ImageStorageService imageStorageService;
     @Mock SlugService slugService;
     @Mock TranslationService translationService;
+    @Mock StockWriteoffRepository writeoffRepository;
+    @Mock AdminAuditService audit;
 
     AdminProductService service;
     Product product;
@@ -53,7 +59,8 @@ class AdminProductServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
-                catalogDirectory, brandService);
+                catalogDirectory, brandService, writeoffRepository, audit);
+        lenient().when(audit.currentAdminName()).thenReturn("Влад");
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
         product = new Product();
@@ -165,6 +172,94 @@ class AdminProductServiceTest {
                 new VariantInput(UuidUtil.toString(white.getId()), "white", 4, 3)))))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("white");
+    }
+
+    private static ProductUpsertRequest withReason(Integer stock, List<VariantInput> variants, String reason,
+                                                   String note) {
+        return new ProductUpsertRequest("Mouse X", "new description", 90_000, null, stock, null,
+                null, variants, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, reason, note);
+    }
+
+    @Test
+    void loweringStockWithoutAReasonIsRefused() {
+        product.setStock(5);
+        assertThatThrownBy(() -> service.update(id, req(3, null, null)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("причину")
+                .extracting("code").isEqualTo("STOCK_REASON_REQUIRED");
+        verify(productRepository, never()).save(any());
+        verify(writeoffRepository, never()).save(any());
+    }
+
+    @Test
+    void reasonOtherNeedsANote() {
+        product.setStock(5);
+        assertThatThrownBy(() -> service.update(id, withReason(3, null, "OTHER", "  ")))
+                .isInstanceOf(BadRequestException.class)
+                .extracting("code").isEqualTo("STOCK_REASON_REQUIRED");
+        verify(writeoffRepository, never()).save(any());
+    }
+
+    @Test
+    void unknownReasonCountsAsMissing() {
+        product.setStock(5);
+        assertThatThrownBy(() -> service.update(id, withReason(3, null, "BECAUSE", null)))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void loweringStockWithAReasonWritesOffTheDifferenceAtTheCurrentPrice() {
+        product.setStock(5);
+        service.update(id, withReason(3, null, "defect", null));
+
+        ArgumentCaptor<StockWriteoff> cap = ArgumentCaptor.forClass(StockWriteoff.class);
+        verify(writeoffRepository).save(cap.capture());
+        StockWriteoff w = cap.getValue();
+        assertThat(w.getQuantity()).isEqualTo(2);
+        assertThat(w.getReason()).isEqualTo("DEFECT");
+        assertThat(w.getUnitValueMinor()).isEqualTo(90_000);
+        assertThat(w.getTitle()).isEqualTo("Mouse X");
+        assertThat(w.getVariantId()).isNull();
+        assertThat(w.getAdminName()).isEqualTo("Влад");
+    }
+
+    @Test
+    void raisingStockNeedsNoReasonAndWritesNothing() {
+        service.update(id, req(4, null, null));
+        verify(writeoffRepository, never()).save(any());
+    }
+
+    @Test
+    void loweringAVariantWritesOffThatVariantNotTheRollup() {
+        ProductVariant white = variant("white", 4);
+        product.getVariants().add(white);
+        product.setStock(4);
+
+        service.update(id, withReason(null, List.of(
+                new VariantInput(UuidUtil.toString(white.getId()), "white", 1, 4)), "INVENTORY", null));
+
+        ArgumentCaptor<StockWriteoff> cap = ArgumentCaptor.forClass(StockWriteoff.class);
+        verify(writeoffRepository).save(cap.capture());
+        assertThat(cap.getValue().getQuantity()).isEqualTo(3);
+        assertThat(cap.getValue().getTitle()).isEqualTo("Mouse X / white");
+        assertThat(cap.getValue().getVariantId()).isEqualTo(white.getId());
+        assertThat(cap.getValue().getReason()).isEqualTo("INVENTORY");
+    }
+
+    @Test
+    void loweringTwoVariantsUnderOneReasonWritesTwoRows() {
+        ProductVariant white = variant("white", 4);
+        ProductVariant black = variant("black", 2);
+        product.getVariants().add(white);
+        product.getVariants().add(black);
+        product.setStock(6);
+
+        service.update(id, withReason(5, List.of(
+                new VariantInput(UuidUtil.toString(white.getId()), "white", 2, null),
+                new VariantInput(UuidUtil.toString(black.getId()), "black", 1, null)), "MISSORT", null));
+
+        verify(writeoffRepository, org.mockito.Mockito.times(2)).save(any());
     }
 
     private ProductVariant variant(String name, int stock) {

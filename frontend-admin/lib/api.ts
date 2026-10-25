@@ -829,6 +829,10 @@ export interface ProductWriteRequest {
   stock?: number;
   /** Stock the form was opened with; a changed `stock` over a moved value -> 409 STOCK_CONFLICT. */
   expectedStock?: number;
+  /** Required when `stock` or a variant stock goes DOWN: DEFECT | INVENTORY | MISSORT | SOLD_OFFLINE | OTHER (else 400 STOCK_REASON_REQUIRED). */
+  stockReason?: string;
+  /** Free text of the write-off; required for OTHER. */
+  stockNote?: string;
   active: boolean;
   imageKeys: string[];
   /** Leaf category; required for new products. null = keep, "" = none. */

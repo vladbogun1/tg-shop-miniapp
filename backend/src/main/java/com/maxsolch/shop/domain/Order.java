@@ -193,6 +193,26 @@ public class Order {
     @Column(name = "dispatch_message_id")
     private Integer dispatchMessageId;
 
+    /**
+     * Archived by the main admin (V68): hidden from the board, the lists and the customer's
+     * history, kept with everything attached. Orders are never deleted.
+     */
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Column(name = "archived_by", length = 255)
+    private String archivedBy;
+
+    @Column(name = "archive_reason", length = 500)
+    private String archiveReason;
+
+    /** Refused / sent-back parcel on its way to the shop (V68): IN_TRANSIT, then RECEIVED; null = none. */
+    @Column(name = "return_status", length = 16)
+    private String returnStatus;
+
+    @Column(name = "return_received_at")
+    private Instant returnReceivedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 

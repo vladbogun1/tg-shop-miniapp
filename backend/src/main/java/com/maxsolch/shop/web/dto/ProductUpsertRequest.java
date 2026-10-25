@@ -47,7 +47,24 @@ public record ProductUpsertRequest(
         /** Characteristics (replaces the stored ones); validated against the category schema. */
         Map<String, Object> specs,
         /** DRAFT | AI_FILLED | READY — the admin may set it by hand. */
-        String cardStatus) {
+        String cardStatus,
+        // ---- stock write-off (2026-10-25) ----
+        /** Required when stock or a variant's stock goes down: DEFECT | INVENTORY | MISSORT | SOLD_OFFLINE | OTHER. */
+        String stockReason,
+        /** Free text; required for OTHER. */
+        @Size(max = 500) String stockNote) {
+
+    /** Same request without the write-off reason (older callers, tests). */
+    public ProductUpsertRequest(String title, String description, long priceMinor, String currency, Integer stock,
+                                Boolean active, List<String> imageKeys, List<VariantInput> variants, String slug,
+                                Long compareAtMinor, String seoTitle, String seoDescription, String sku,
+                                Integer expectedStock, String categoryId, String brandId, String brandName,
+                                String condition, String conditionNote, Map<String, Object> specs,
+                                String cardStatus) {
+        this(title, description, priceMinor, currency, stock, active, imageKeys, variants, slug, compareAtMinor,
+                seoTitle, seoDescription, sku, expectedStock, categoryId, brandId, brandName, condition,
+                conditionNote, specs, cardStatus, null, null);
+    }
 
     /**
      * @param id existing variant id, when the client is editing a variant that already exists.

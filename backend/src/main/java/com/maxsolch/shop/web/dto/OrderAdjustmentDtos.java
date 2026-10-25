@@ -41,6 +41,39 @@ public final class OrderAdjustmentDtos {
     }
 
     /**
+     * POST /api/admin/orders/{id}/returns — the return wizard (V68): lines with their state,
+     * manual refunds by channel, an optional refund through monobank, money the shop keeps.
+     */
+    public record ReturnWizardRequest(
+            @Valid List<WizardLine> lines,
+            @Valid List<Refund> refunds,
+            /** Sent back to the card through monobank after the return is saved (null/0 = none). */
+            Long monoRefundMinor,
+            /** Kept by the shop on purpose — e.g. the prepayment that paid for delivery. */
+            Long retainMinor,
+            @Size(max = 500) String note,
+            Boolean notifyCustomer) {
+
+        /** outcome: RESTOCK (на склад) | DEFECT (брак, списать) | KEPT (осталось у покупателя). */
+        public record WizardLine(long itemId, int quantity, String outcome) {
+        }
+
+        /** channel: NP_COD | NP_PAYMENT_CONTROL | CARD_TRANSFER | CASH | NP_CLAIM | OTHER. */
+        public record Refund(String channel, long amountMinor, @Size(max = 500) String note) {
+        }
+    }
+
+    /** POST /api/admin/orders/{id}/return-received — the refused parcel is back; DEFECT lines are written off. */
+    public record ReceiveReturnRequest(
+            @Valid List<ReturnWizardRequest.WizardLine> lines,
+            @Size(max = 500) String note) {
+    }
+
+    /** POST /api/admin/orders/{id}/archive — main admin only. */
+    public record ArchiveRequest(@Size(max = 500) String reason) {
+    }
+
+    /**
      * POST /api/admin/orders/{id}/exchange — what came back (restock = back into circulation),
      * what goes out instead, and where the order goes next: NEW (default) or APPROVED.
      */

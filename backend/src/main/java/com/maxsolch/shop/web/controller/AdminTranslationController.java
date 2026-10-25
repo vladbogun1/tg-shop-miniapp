@@ -2,7 +2,9 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.security.AdminAccess;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.security.RequiredSuperAdmin;
 import com.maxsolch.shop.translation.TranslationAdminService;
 import com.maxsolch.shop.translation.TranslationDtos.AcceptRequest;
 import com.maxsolch.shop.translation.TranslationDtos.AcceptResult;
@@ -42,12 +44,14 @@ public class AdminTranslationController {
     private final TranslationAdminService service;
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
+    private final AdminAccess adminAccess;
 
     public AdminTranslationController(TranslationAdminService service, AdminAuditService audit,
-                                      SiteRevalidator siteRevalidator) {
+                                      SiteRevalidator siteRevalidator, AdminAccess adminAccess) {
         this.service = service;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
+        this.adminAccess = adminAccess;
     }
 
     @GetMapping("/export")
@@ -113,12 +117,31 @@ public class AdminTranslationController {
         return service.stats();
     }
 
-    @DeleteMapping
-    @Operation(summary = "Delete translations of a language, optionally of one entity type / one entity")
+    /** Reset of ONE entity (a field of a product...): any admin. A blank entityId would mean the whole language. */
+    @DeleteMapping(params = "entityId")
+    @Operation(summary = "Delete translations of one entity (optionally one field)")
     public DeleteResult delete(@RequestParam String locale,
                                @RequestParam(required = false) String entityType,
-                               @RequestParam(required = false) String entityId,
+                               @RequestParam String entityId,
                                @RequestParam(required = false) String field) {
+        if (entityId.isBlank()) {
+            adminAccess.requireSuperAdmin(org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication(), "Удаление переводов целого языка");
+        }
+        return doDelete(locale, entityType, entityId.isBlank() ? null : entityId, field);
+    }
+
+    /** A whole language (optionally one entity type) — for good, so the main admin only. */
+    @DeleteMapping(params = "!entityId")
+    @RequiredSuperAdmin
+    @Operation(summary = "Delete translations of a whole language / entity type (main admin only)")
+    public DeleteResult deleteLanguage(@RequestParam String locale,
+                                       @RequestParam(required = false) String entityType,
+                                       @RequestParam(required = false) String field) {
+        return doDelete(locale, entityType, null, field);
+    }
+
+    private DeleteResult doDelete(String locale, String entityType, String entityId, String field) {
         int deleted = service.delete(locale, entityType, entityId, field);
         audit.record("TRANSLATIONS_DELETE", "TRANSLATION", entityId == null ? locale : entityId,
                 "locale " + locale + (entityType == null ? "" : ", " + entityType)

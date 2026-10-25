@@ -3,7 +3,8 @@
 /**
  * StatusChangeModal — asks for what a transition needs before it is applied:
  *  - SHIPPED   → tracking number (ТТН, required; Nova Poshta format is checked as a hint)
- *  - REJECTED  → reason from the fixed list (+ optional text; required for "Другое") and restock
+ *  - REJECTED  → reason from the fixed list (+ optional text; required for "Другое") and restock;
+ *                of a SHIPPED order also «посылка едет назад» (stock returns with «Посылка вернулась»)
  *  - DELIVERED → an explicit confirmation: it also marks the order fully paid and notifies the customer
  *
  * The form belongs to ONE order: every open resets it (a ТТН typed for order A and cancelled used
@@ -40,7 +41,15 @@ export interface StatusTargetOrder {
   /** Units that would go back to stock on REJECTED + restock. */
   restockUnits?: number;
   deliveryMethod?: "NOVA_POSHTA" | "PICKUP";
+  /** Current status — a SHIPPED order that is rejected may be a parcel coming back. */
+  fromStatus?: OrderStatus;
+  /** Money received so far / the prepayment of the order (for the «предоплата удержана» hint). */
+  receivedMinor?: number;
+  prepaymentMinor?: number;
 }
+
+/** Reasons that mean the parcel travels back to the shop. */
+const BACK_REASONS: RejectReasonCode[] = ["REFUSED_AT_POST", "RETURNED"];
 
 interface Props {
   open: boolean;
@@ -61,6 +70,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
   const [reason, setReason] = useState("");
   const [code, setCode] = useState<RejectReasonCode | null>(null);
   const [restock, setRestock] = useState(true);
+  const [inTransit, setInTransit] = useState(false);
 
   // A fresh form for every open, target and order.
   const orderId = order?.id ?? null;
@@ -70,12 +80,16 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
     setReason("");
     setCode(null);
     setRestock(true);
+    setInTransit(false);
   }, [open, target, orderId]);
 
   if (!target) return null;
   const needsTtn = target === "SHIPPED";
   const needsReason = target === "REJECTED";
   const isDelivered = target === "DELIVERED";
+  const shippedReject = needsReason && order?.fromStatus === "SHIPPED";
+  const received = order?.receivedMinor ?? 0;
+  const prepay = order?.prepaymentMinor;
 
   const ttnClean = ttn.replace(/\s+/g, "");
   const ttnLooksWrong = needsTtn && ttnClean.length > 0 && !isNovaPoshtaTtn(ttnClean);
@@ -90,7 +104,8 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
       trackingNumber: needsTtn ? ttnClean : undefined,
       rejectReasonCode: needsReason && code ? code : undefined,
       rejectReason: needsReason && reason.trim() ? reason.trim() : undefined,
-      restock: needsReason ? restock : undefined,
+      restock: needsReason && !(shippedReject && inTransit) ? restock : undefined,
+      returnInTransit: shippedReject ? inTransit : undefined,
     });
     // Nothing is cleared here: on success the caller closes the modal (the next open resets the
     // form), on failure the admin keeps what they typed.
@@ -172,7 +187,10 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setCode(r)}
+                  onClick={() => {
+                    setCode(r);
+                    if (shippedReject) setInTransit(BACK_REASONS.includes(r));
+                  }}
                   className={cn(
                     "nb-press min-h-10 rounded-[var(--r-md)] border px-3 py-2 text-left text-[12.5px] font-medium leading-tight transition-colors",
                     code === r
@@ -192,6 +210,40 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
             onChange={(e) => setReason(e.target.value)}
             hint="Текст увидит клиент в уведомлении об отклонении."
           />
+          {shippedReject && (
+            <div className="card-2 px-3.5 py-3">
+              <Toggle
+                checked={inTransit}
+                onChange={setInTransit}
+                label="Посылка едет назад — вернуть на склад, когда придёт"
+              />
+              <p className="mt-1.5 text-[12px] text-[var(--text-muted)]">
+                {inTransit
+                  ? "Товар на склад сейчас не вернётся: заказ получит метку «Едет назад», а когда посылка придёт — кнопка «Посылка вернулась» вернёт товар на склад (брак можно списать)."
+                  : "Посылка не вернётся (например, потеряна) — склад решается переключателем ниже."}
+              </p>
+            </div>
+          )}
+          {shippedReject && received > 0 && (
+            <p className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5 text-[12.5px] text-[var(--text-muted)]">
+              {prepay != null && prepay > 0 && received <= prepay ? (
+                <>
+                  Предоплата <b className="tabular text-[var(--text)]">{money(received, order?.currency)}</b> останется у
+                  магазина — это оплата доставки (запишется в журнал денег как «Удержано: доставка»).
+                </>
+              ) : prepay != null && received > prepay ? (
+                <>
+                  Получено больше предоплаты — автоматически ничего не удерживается. Деньги вернёте через «Возврат».
+                </>
+              ) : (
+                <>
+                  Если по заказу была предоплата, она останется у магазина (оплата доставки). Остальное вернёте через
+                  «Возврат».
+                </>
+              )}
+            </p>
+          )}
+          {!(shippedReject && inTransit) && (
           <div className="card-2 px-3.5 py-3">
             <Toggle
               checked={restock}
@@ -207,6 +259,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
               товарном виде. Частичный возврат — кнопка «Возврат» в карточке заказа.
             </p>
           </div>
+          )}
         </div>
       )}
 

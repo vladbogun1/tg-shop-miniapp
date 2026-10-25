@@ -67,7 +67,43 @@ public record OrderDetailDto(
         /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
         com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
-        long giftDiscountMinor) {
+        long giftDiscountMinor,
+        /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
+        AdminExtras admin) {
+
+    public record AdminExtras(Instant archivedAt,
+                              String archivedBy,
+                              String archiveReason,
+                              /** IN_TRANSIT | RECEIVED | null — the refused parcel on its way back. */
+                              String returnStatus,
+                              Instant returnReceivedAt,
+                              List<MovementDto> movements,
+                              /** Sum of RETAINED rows: kept by the shop on purpose (delivery). */
+                              long retainedMinor,
+                              /** What can still go back to the card through monobank (all paid invoices). */
+                              long monoRefundableMinor,
+                              List<WriteoffDto> writeoffs) {
+    }
+
+    public record MovementDto(long id,
+                              String kind,
+                              String channel,
+                              long amountMinor,
+                              Instant occurredAt,
+                              String adminName,
+                              String note,
+                              String invoiceExtId,
+                              String source) {
+    }
+
+    public record WriteoffDto(String title,
+                              int quantity,
+                              String reason,
+                              long unitValueMinor,
+                              String note,
+                              String adminName,
+                              Instant createdAt) {
+    }
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,

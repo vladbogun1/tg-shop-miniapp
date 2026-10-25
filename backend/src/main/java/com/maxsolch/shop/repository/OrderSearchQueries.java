@@ -46,10 +46,17 @@ final class OrderSearchQueries {
     /** Exact status filter, for the per-column board queries. */
     static final String ONE_STATUS = "o.status = :status ";
 
-    static final String WHERE_LIST = " where " + ANY_STATUS + "and " + RANGE + "and " + TEXT;
+    /** The table shows either the live orders (archived = false) or only the archive (V68). */
+    static final String ARCHIVE = "((:archived = true and o.archivedAt is not null) "
+            + "or (:archived = false and o.archivedAt is null)) ";
 
-    static final String WHERE_COLUMN = " where " + ONE_STATUS + "and " + RANGE + "and " + TEXT;
+    /** The board never shows archived orders. */
+    static final String LIVE = "o.archivedAt is null ";
+
+    static final String WHERE_LIST = " where " + ANY_STATUS + "and " + ARCHIVE + "and " + RANGE + "and " + TEXT;
+
+    static final String WHERE_COLUMN = " where " + ONE_STATUS + "and " + LIVE + "and " + RANGE + "and " + TEXT;
 
     /** Same filters as a board column, but across every status (for the grouped count query). */
-    static final String WHERE_COLUMN_ALL_STATUSES = " where " + RANGE + "and " + TEXT;
+    static final String WHERE_COLUMN_ALL_STATUSES = " where " + LIVE + "and " + RANGE + "and " + TEXT;
 }

@@ -217,7 +217,8 @@ public class MeController {
     public List<OrderSummaryDto> myOrders() {
         long userId = SecurityUtil.currentUserId();
         // Unread and item counts come from two grouped queries, not one pair per order.
-        return orderQueryService.toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(userId));
+        return orderQueryService.toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(o -> o.getArchivedAt() == null).toList());
     }
 
     @GetMapping("/orders/{id}")
@@ -428,6 +429,8 @@ public class MeController {
             throw new NotFoundException(messages.current("api.order.notFound"));
         }
         Order order = orderRepository.findById(key)
+                // Archived orders are gone for the customer (V68): no chat, case or cancel on them.
+                .filter(o -> o.getArchivedAt() == null)
                 .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
         long userId = SecurityUtil.currentUserId();
         if (order.getUserId() == null || order.getUserId() != userId) {

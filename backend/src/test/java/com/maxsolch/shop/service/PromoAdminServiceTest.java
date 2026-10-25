@@ -58,6 +58,37 @@ class PromoAdminServiceTest {
     }
 
     @Test
+    void usedCode_cannotBeDeleted() {
+        existing.setUsesCount(2);
+        when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("можно только выключить")
+                .extracting("code").isEqualTo("PROMO_USED");
+        verify(repository, never()).delete(any());
+    }
+
+    @Test
+    void codeReferencedByAnOrder_cannotBeDeletedEvenWithZeroUses() {
+        when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
+        when(repository.countOrdersWithCode("SALE")).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.delete(id))
+                .isInstanceOf(BadRequestException.class)
+                .extracting("code").isEqualTo("PROMO_USED");
+        verify(repository, never()).delete(any());
+    }
+
+    @Test
+    void neverUsedCode_isDeleted() {
+        when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
+
+        assertThat(service.delete(id)).isSameAs(existing);
+        verify(repository).delete(existing);
+    }
+
+    @Test
     void usedCode_cannotBeRenamed() {
         existing.setUsesCount(1);
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));

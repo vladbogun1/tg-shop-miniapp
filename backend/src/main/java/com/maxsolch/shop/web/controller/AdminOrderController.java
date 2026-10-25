@@ -13,6 +13,7 @@ import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.OrderSearchTerm;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.security.RequiredSuperAdmin;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
@@ -71,6 +72,8 @@ public class AdminOrderController {
     private final UploadValidator uploadValidator;
     private final OrderAdjustmentService adjustments;
     private final OnlinePaymentService payments;
+    /** Orders whose return wizard is running right now (one backend instance): no double submit. */
+    private final java.util.Set<String> returnsInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
@@ -194,14 +197,15 @@ public class AdminOrderController {
                                    @RequestParam(defaultValue = "0") int page,
                                    @RequestParam(defaultValue = "20") int size,
                                    @RequestParam(defaultValue = "createdAt") String sortBy,
-                                   @RequestParam(defaultValue = "desc") String sortDir) {
+                                   @RequestParam(defaultValue = "desc") String sortDir,
+                                   @RequestParam(defaultValue = "false") boolean archived) {
         OrderStatus statusFilter = parseStatusOrNull(status);
         OrderSearchTerm term = OrderSearchTerm.parse(q);
         Instant from = TimeRange.parse(range).from();
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
                 sortOf(sortBy, sortDir));
         return orderQueryService.toCards(
-                orderRepository.search(statusFilter, term.like(), term.idLo(), term.idHi(), from, pageable).getContent(),
+                orderRepository.search(statusFilter, archived, term.like(), term.idLo(), term.idHi(), from, pageable).getContent(),
                 SenderType.CUSTOMER);
     }
 
@@ -255,8 +259,11 @@ public class AdminOrderController {
         // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
         boolean unpaidShip = target == OrderStatus.SHIPPED && OrderService.onlinePaymentMissing(before);
         long missingMinor = unpaidShip ? OrderService.amountDueMinor(before) : 0;
-        Order updated = orderService.changeStatus(before.getId(), target,
-                req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
+        boolean inTransit = target == OrderStatus.REJECTED && Boolean.TRUE.equals(req.returnInTransit());
+        Order updated = inTransit
+                ? orderService.reject(before.getId(), req.rejectReason(), reasonCode, restock, true)
+                : orderService.changeStatus(before.getId(), target,
+                        req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
         if (target == OrderStatus.REJECTED) {
             // An approved order stays payable past its deadline — close the open monobank pages, so
             // nobody pays for an order we have just cancelled.
@@ -273,7 +280,11 @@ public class AdminOrderController {
                         + (req.trackingNumber() == null ? "" : ", ТТН " + req.trackingNumber())
                         + (reasonCode == null ? "" : ", код причины " + reasonCode.name())
                         + (req.rejectReason() == null || req.rejectReason().isBlank() ? "" : ", причина: " + req.rejectReason())
-                        + (target == OrderStatus.REJECTED ? (restock ? ", сток возвращён" : ", БЕЗ возврата стока") : ""));
+                        + (target == OrderStatus.REJECTED
+                                ? (OrderService.RETURN_IN_TRANSIT.equals(updated.getReturnStatus())
+                                        ? ", посылка едет назад (сток — по приходу)"
+                                        : restock ? ", сток возвращён" : ", БЕЗ возврата стока")
+                                : ""));
         return orderQueryService.toDetail(updated);
     }
 
@@ -340,15 +351,49 @@ public class AdminOrderController {
         return orderQueryService.toDetail(r.order());
     }
 
+    @PostMapping
+    @Operation(summary = "Create an order by hand (a sale by phone / in person): source ADMIN, no payment deadline")
+    public OrderDetailDto create(@Valid @RequestBody com.maxsolch.shop.web.dto.AdminCreateOrderRequest req) {
+        com.maxsolch.shop.domain.OrderMoneyMovement.Channel channel =
+                req.paidChannel() == null || req.paidChannel().isBlank()
+                        ? com.maxsolch.shop.domain.OrderMoneyMovement.Channel.OTHER
+                        : com.maxsolch.shop.service.MoneyLedger.parseChannel(req.paidChannel());
+        com.maxsolch.shop.service.CreateOrderCommand cmd = new com.maxsolch.shop.service.CreateOrderCommand(
+                null, req.tgUserId(), null,
+                req.items().stream()
+                        .map(l -> new com.maxsolch.shop.service.CreateOrderCommand.Line(l.productId(), l.variantId(),
+                                l.quantity()))
+                        .toList(),
+                req.customerName(), req.phone(), req.comment(), req.promoCode(), req.deliveryMethod(),
+                req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
+                req.paymentOptionId(), com.maxsolch.shop.domain.OrderSource.ADMIN);
+        Order created = orderService.createAdminOrder(cmd, req.paidMinor(), channel, audit.currentAdminName(),
+                req.note());
+        audit.record("ORDER_CREATE_ADMIN", "ORDER", com.maxsolch.shop.common.UuidUtil.toString(created.getId()),
+                "ручной заказ на " + MoneyFormat.uah(created.getTotalMinor())
+                        + (req.paidMinor() > 0
+                                ? ", получено " + MoneyFormat.uah(req.paidMinor()) + " ("
+                                        + OrderAdjustmentService.channelLabel(channel) + ")"
+                                : ""));
+        return orderQueryService.toDetail(created);
+    }
+
     @PatchMapping("/{id}/paid")
     @Operation(summary = "Set the order's paid flag")
     public OrderDetailDto setPaid(@PathVariable String id,
                                   @Valid @RequestBody com.maxsolch.shop.web.dto.SetPaidRequest req) {
-        Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor());
+        com.maxsolch.shop.domain.OrderMoneyMovement.Channel channel =
+                req.channel() == null || req.channel().isBlank()
+                        ? com.maxsolch.shop.domain.OrderMoneyMovement.Channel.OTHER
+                        : com.maxsolch.shop.service.MoneyLedger.parseChannel(req.channel());
+        Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor(), channel,
+                audit.currentAdminName(), req.note());
         audit.record("ORDER_PAID", "ORDER", id,
-                req.receivedMinor() > 0
+                (req.receivedMinor() > 0
                         ? "подтверждено получено: " + MoneyFormat.uah(req.receivedMinor())
-                        : "оплата снята");
+                        : "оплата снята")
+                        + " (" + OrderAdjustmentService.channelLabel(channel) + ")"
+                        + (req.note() == null || req.note().isBlank() ? "" : "; " + req.note().trim()));
         return orderQueryService.toDetail(updated);
     }
 
@@ -418,24 +463,114 @@ public class AdminOrderController {
     }
 
     /**
-     * Hard delete of a closed order (DELIVERED / REJECTED; anything else is a 400). See
-     * {@link OrderService#delete}: a delivered order's stock stays as is (the goods are with the
-     * customer — deleting is clean-up, not a return) unless {@code restock=true} is passed,
-     * the promo use is released, chat files and the dispatch card are removed after the commit.
-     * Audited only once the delete has actually happened.
+     * Orders are never deleted (25.10.2026): the main admin archives a closed one instead — it
+     * leaves the board and the lists with everything kept. {@code DELETE} stays as an alias for an
+     * admin panel opened before the update, and needs the same role and a reason.
      */
+    @PostMapping("/{id}/archive")
+    @RequiredSuperAdmin
+    @Operation(summary = "Archive a DELIVERED/REJECTED order (main admin only; reason required)")
+    public OrderDetailDto archive(@PathVariable String id,
+                                  @Valid @RequestBody OrderAdjustmentDtos.ArchiveRequest req) {
+        Order archived = orderService.archive(load(id).getId(), req.reason(), audit.currentAdminName());
+        audit.record("ORDER_ARCHIVE", "ORDER", id,
+                "в архив: " + archived.getCustomerName() + ", " + MoneyFormat.uah(archived.getTotalMinor())
+                        + ", статус " + archived.getStatus() + "; причина: " + archived.getArchiveReason());
+        return orderQueryService.toDetail(archived);
+    }
+
+    @PostMapping("/{id}/unarchive")
+    @RequiredSuperAdmin
+    @Operation(summary = "Bring an order back from the archive (main admin only)")
+    public OrderDetailDto unarchive(@PathVariable String id) {
+        Order back = orderService.unarchive(load(id).getId());
+        audit.record("ORDER_UNARCHIVE", "ORDER", id, "возвращён из архива");
+        return orderQueryService.toDetail(back);
+    }
+
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a DELIVERED/REJECTED order (restock=true returns a delivered order's units to stock)")
-    public ResponseEntity<Void> delete(@PathVariable String id,
-                                       @RequestParam(defaultValue = "false") boolean restock) {
-        OrderService.DeletedOrder d = orderService.delete(load(id).getId(), restock);
-        audit.record("ORDER_DELETE", "ORDER", id,
-                "удалён заказ " + d.customerName() + ", " + MoneyFormat.uah(d.totalMinor()) + ", статус "
-                        + d.status()
-                        + (d.restocked() ? ", сток возвращён" : "")
-                        + (d.promoCode() == null ? "" : ", промокод " + d.promoCode() + " освобождён")
-                        + (d.attachments() == 0 ? "" : ", файлов чата: " + d.attachments()));
-        return ResponseEntity.noContent().build();
+    @RequiredSuperAdmin
+    @Operation(summary = "Deprecated: archives the order (orders are never deleted); reason required")
+    public OrderDetailDto delete(@PathVariable String id, @RequestParam(required = false) String reason) {
+        return archive(id, new OrderAdjustmentDtos.ArchiveRequest(reason));
+    }
+
+    /**
+     * Return wizard (V68). The goods and the manual refunds are saved first; a refund through
+     * monobank is requested after that commit (it is an outside call) and booked when the bank
+     * confirms — so it is never counted twice.
+     */
+    @PostMapping("/{id}/returns")
+    @Operation(summary = "Return wizard: lines (RESTOCK/DEFECT/KEPT), manual refunds by channel, "
+            + "optional monobank refund, retained amount")
+    public OrderDetailDto returnWizard(@PathVariable String id,
+                                       @Valid @RequestBody OrderAdjustmentDtos.ReturnWizardRequest req) {
+        Order order = load(id);
+        List<OrderAdjustmentService.WizardLine> lines = req.lines() == null ? List.of()
+                : req.lines().stream()
+                        .map(l -> new OrderAdjustmentService.WizardLine(l.itemId(), l.quantity(), parseOutcome(l.outcome())))
+                        .toList();
+        List<OrderAdjustmentService.ManualRefund> refunds = req.refunds() == null ? List.of()
+                : req.refunds().stream()
+                        .filter(r -> r.amountMinor() != 0)
+                        .map(r -> new OrderAdjustmentService.ManualRefund(
+                                com.maxsolch.shop.service.MoneyLedger.parseChannel(r.channel()), r.amountMinor(), r.note()))
+                        .toList();
+        long mono = req.monoRefundMinor() == null ? 0 : req.monoRefundMinor();
+        OrderAdjustmentService.ReturnPlan plan = new OrderAdjustmentService.ReturnPlan(lines, refunds,
+                req.retainMinor() == null ? 0 : req.retainMinor(), mono, req.note(),
+                req.notifyCustomer() == null || req.notifyCustomer());
+        String key = UuidUtil.toString(order.getId());
+        if (!returnsInFlight.add(key)) {
+            throw new BadRequestException("возврат по этому заказу уже оформляется — дождитесь окончания");
+        }
+        try {
+            // Check first, then the bank, then the books: a refused plan sends no money, and a refund
+            // monobank refuses leaves nothing half-saved to be entered twice on a retry.
+            adjustments.checkReturnPlan(order.getId(), plan);
+            if (mono > 0) {
+                String monoInvoice = payments.refundableInvoice(order.getId(), mono);
+                try {
+                    payments.refund(order.getId(), monoInvoice, mono);
+                } catch (BadRequestException e) {
+                    throw new BadRequestException("monobank не принял возврат денег: " + e.getMessage()
+                            + ". Ничего не сохранено — исправьте и повторите.", "MONO_REFUND_FAILED");
+                }
+                audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
+                        "возврат на карту через monobank " + MoneyFormat.uah(mono) + " (мастер возврата)");
+            }
+            OrderAdjustmentService.Result r = adjustments.registerReturnPlan(order.getId(), plan,
+                    audit.currentAdminName(), mono > 0);
+            audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
+        } finally {
+            returnsInFlight.remove(key);
+        }
+        return orderQueryService.toDetail(orderService.get(order.getId()));
+    }
+
+    @PostMapping("/{id}/return-received")
+    @Operation(summary = "The refused parcel is back at the shop: sellable units restocked, DEFECT lines written off")
+    public OrderDetailDto returnReceived(@PathVariable String id,
+                                         @Valid @RequestBody OrderAdjustmentDtos.ReceiveReturnRequest req) {
+        List<OrderAdjustmentService.ReceivedLine> lines = req.lines() == null ? List.of()
+                : req.lines().stream()
+                        .map(l -> new OrderAdjustmentService.ReceivedLine(l.itemId(), l.quantity(), parseOutcome(l.outcome())))
+                        .toList();
+        OrderAdjustmentService.Result r = adjustments.receiveReturn(load(id).getId(), lines, req.note(),
+                audit.currentAdminName());
+        audit.record("ORDER_RETURN_RECEIVED", "ORDER", id, r.auditDetails());
+        return orderQueryService.toDetail(r.order());
+    }
+
+    private static OrderAdjustmentService.LineOutcome parseOutcome(String s) {
+        if (s == null || s.isBlank()) {
+            return OrderAdjustmentService.LineOutcome.RESTOCK;
+        }
+        try {
+            return OrderAdjustmentService.LineOutcome.valueOf(s.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("неизвестное состояние товара: " + s);
+        }
     }
 
     /**

@@ -18,6 +18,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.catalog.CatalogDtos.SpecAttributeUpsertRequest;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
+import com.maxsolch.shop.security.AdminAccess;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.site.SiteRevalidator;
@@ -67,12 +68,14 @@ public class AdminCatalogController {
     private final SiteRevalidator siteRevalidator;
     private final UploadValidator uploadValidator;
     private final ImageStorageService imageStorageService;
+    private final AdminAccess adminAccess;
 
     public AdminCatalogController(CategoryAdminService categories, BrandAdminService brands,
                                   SpecAttributeAdminService attributes, CatalogSchemaService schema,
                                   CatalogSchemaImporter importer, CardsService cards, AdminProductService products,
                                   AdminAuditService audit, SiteRevalidator siteRevalidator,
-                                  UploadValidator uploadValidator, ImageStorageService imageStorageService) {
+                                  UploadValidator uploadValidator, ImageStorageService imageStorageService,
+                                  AdminAccess adminAccess) {
         this.categories = categories;
         this.brands = brands;
         this.attributes = attributes;
@@ -84,6 +87,7 @@ public class AdminCatalogController {
         this.siteRevalidator = siteRevalidator;
         this.uploadValidator = uploadValidator;
         this.imageStorageService = imageStorageService;
+        this.adminAccess = adminAccess;
     }
 
     private static Long adminId() {
@@ -232,9 +236,13 @@ public class AdminCatalogController {
     }
 
     @DeleteMapping("/spec-attributes/{id}")
-    @Operation(summary = "Delete attribute (409 ATTRIBUTE_IN_USE {count} unless force=1)")
+    @Operation(summary = "Delete attribute (409 ATTRIBUTE_IN_USE {count} unless force=1; force=1 — main admin only)")
     public ResponseEntity<Void> deleteAttribute(@PathVariable String id,
                                                 @RequestParam(required = false) String force) {
+        if (flag(force)) {
+            adminAccess.requireSuperAdmin(org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication(), "Принудительное удаление характеристики");
+        }
         String key = attributes.delete(id, flag(force));
         audit.record("SPEC_ATTRIBUTE_DELETE", "SPEC_ATTRIBUTE", id, key + (flag(force) ? ", принудительно" : ""));
         siteRevalidator.allChanged();

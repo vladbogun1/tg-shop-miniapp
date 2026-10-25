@@ -27,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -366,5 +367,177 @@ class OrderAdjustmentServiceTest {
 
         assertThatThrownBy(() -> service.registerReturn(o.getId(), List.of(), 0, null))
                 .isInstanceOf(BadRequestException.class);
+    }
+
+    // ---------- return wizard (V68) ----------
+
+    private MoneyLedger wireLedger() {
+        MoneyLedger ledger = org.mockito.Mockito.mock(MoneyLedger.class);
+        service.setMoneyLedger(ledger);
+        return ledger;
+    }
+
+    private static OrderAdjustmentService.ReturnPlan plan(List<OrderAdjustmentService.WizardLine> lines,
+                                                          List<OrderAdjustmentService.ManualRefund> refunds,
+                                                          long retain, long mono) {
+        return new OrderAdjustmentService.ReturnPlan(lines, refunds, retain, mono, null, false);
+    }
+
+    @Test
+    void wizard_rejectedOrder_retainsPrepaymentAndRefundsTheRest_inTheJournal() {
+        Order o = order(OrderStatus.REJECTED);
+        o.setReceivedMinor(30_000);
+        MoneyLedger ledger = wireLedger();
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(List.of(),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 20_000, null)),
+                10_000, 0), "owner");
+
+        assertThat(r.order().getRefundedMinor()).isEqualTo(20_000);
+        assertThat(r.order().getReturnedAt()).isNotNull();
+        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.REFUND),
+                eq(com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER), eq(20_000L),
+                any(), eq("owner"), any(), any());
+        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
+                any(), eq(10_000L), any(), eq("owner"), any(), any());
+        assertThat(r.auditDetails()).contains("удержано").contains("перевод на карту");
+    }
+
+    @Test
+    void wizard_moreThanReceived_isRejected() {
+        Order o = order(OrderStatus.REJECTED);
+        o.setReceivedMinor(10_000);
+        o.setRefundedMinor(2_000);
+        wireLedger();
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(List.of(),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CASH, 5_000, null)),
+                4_000, 0), "owner"))
+                .isInstanceOf(BadRequestException.class);
+        assertThat(o.getRefundedMinor()).isEqualTo(2_000);
+    }
+
+    @Test
+    void wizard_rejectedOrder_withGoods_isRejected() {
+        Order o = order(OrderStatus.REJECTED);
+        o.setReceivedMinor(10_000);
+        Product p = product(0);
+        item(o, p, 1L, 1);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void wizard_refundWithoutChannel_isRejected() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(List.of(),
+                List.of(new OrderAdjustmentService.ManualRefund(null, 1_000, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void wizard_defect_isWrittenOffAtThePaidPrice_notRestocked() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setSubtotalMinor(20_000);
+        o.setDiscountMinor(2_000);
+        Product p = product(0);
+        OrderItem it = item(o, p, 1L, 2);
+        wireLedger();
+        com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
+        service.setWriteoffs(writeoffs);
+
+        service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 9_000, null)),
+                0, 0), "owner");
+
+        assertThat(it.getReturnedQty()).isEqualTo(1);
+        assertThat(it.getRestockedQty()).isZero();
+        assertThat(p.getStock()).isZero();
+        ArgumentCaptor<com.maxsolch.shop.domain.StockWriteoff> w =
+                ArgumentCaptor.forClass(com.maxsolch.shop.domain.StockWriteoff.class);
+        verify(writeoffs).save(w.capture());
+        assertThat(w.getValue().getQuantity()).isEqualTo(1);
+        // 10 000 at −10 % order discount
+        assertThat(w.getValue().getUnitValueMinor()).isEqualTo(9_000);
+        assertThat(w.getValue().getReason()).isEqualTo("DEFECT");
+    }
+
+    @Test
+    void receiveReturn_onlyForAParcelOnItsWayBack() {
+        Order o = order(OrderStatus.REJECTED);
+
+        assertThatThrownBy(() -> service.receiveReturn(o.getId(), List.of(), null, "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void receiveReturn_brokenUnits_areWrittenOff_andTheParcelIsMarkedReceived() {
+        Order o = order(OrderStatus.REJECTED);
+        o.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        Product p = product(0);
+        OrderItem it = item(o, p, 1L, 1);
+        com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
+        service.setWriteoffs(writeoffs);
+
+        OrderAdjustmentService.Result r = service.receiveReturn(o.getId(),
+                List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
+                null, "owner");
+
+        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_RECEIVED);
+        assertThat(r.order().getReturnReceivedAt()).isNotNull();
+        assertThat(it.getReturnedQty()).isEqualTo(1);
+        verify(writeoffs).save(any());
+    }
+
+    @Test
+    void unitPaidMinor_spreadsTheOrderDiscount_andGiftsCostNothing() {
+        Order o = new Order();
+        o.setItems(new ArrayList<>());
+        o.setSubtotalMinor(40_000);
+        o.setDiscountMinor(10_000);
+        OrderItem it = item(o, product(1), 1L, 1);
+        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isEqualTo(7_500);
+        it.setGift(true);
+        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isZero();
+    }
+
+    @Test
+    void wizard_prepaymentAlreadyRetainedOnRefusal_cannotBeKeptOrRefundedAgain() {
+        Order o = order(OrderStatus.REJECTED);
+        o.setReceivedMinor(20_000);
+        MoneyLedger ledger = wireLedger();
+        when(ledger.retainedMinor(o.getId())).thenReturn(20_000L);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(List.of(), List.of(), 20_000, 0), "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("уже удержанных");
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(List.of(),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CASH, 1_000, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void wizard_monoAlreadySent_isLeftOutOfTheLimit() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(10_000);
+        o.setRefundedMinor(10_000); // the bank refund is already booked by the time the books are written
+        wireLedger();
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(List.of(), List.of(), 0, 10_000),
+                "owner", true);
+        assertThat(r.auditDetails()).contains("monobank");
     }
 }

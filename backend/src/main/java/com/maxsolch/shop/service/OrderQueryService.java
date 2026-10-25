@@ -169,7 +169,9 @@ public class OrderQueryService {
                 o.getPaymentDueAt(),
                 OrderService.amountDueMinor(o),
                 sourceOf(o),
-                o.getCancelRequestStatus());
+                o.getCancelRequestStatus(),
+                o.getArchivedAt() != null,
+                o.getReturnStatus());
     }
 
     private static String sourceOf(Order o) {
@@ -220,7 +222,7 @@ public class OrderQueryService {
         boolean sealed = customer && OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
         List<OrderItemDto> items = orderItems.stream()
                 .filter(it -> !(sealed && it.isAutoGift() && it.getCaseRarity() != null))
-                .map(it -> toItemDto(it, thumbnails, names))
+                .map(it -> toItemDto(o, it, thumbnails, names))
                 .toList();
         OnlinePaymentDto payment = onlinePayment(o);
         // The language the customer chose in the shop (users.locale): the admin answers in it.
@@ -288,7 +290,44 @@ public class OrderQueryService {
                 o.getGiftCaseOpenedAt(),
                 OrderService.giftCaseOpenable(o),
                 giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
-                o.getGiftDiscountMinor());
+                o.getGiftDiscountMinor(),
+                customer ? null : adminExtras(o));
+    }
+
+    /** Money journal and write-offs (optional: unit tests build the service without them). */
+    private com.maxsolch.shop.repository.OrderMoneyMovementRepository movementRepository;
+    private com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setMovementRepository(com.maxsolch.shop.repository.OrderMoneyMovementRepository movementRepository) {
+        this.movementRepository = movementRepository;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setWriteoffRepository(com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository) {
+        this.writeoffRepository = writeoffRepository;
+    }
+
+    private OrderDetailDto.AdminExtras adminExtras(Order o) {
+        List<OrderDetailDto.MovementDto> movements = movementRepository == null ? List.of()
+                : movementRepository.findByOrderIdOrderByOccurredAtAscIdAsc(o.getId()).stream()
+                        .map(m -> new OrderDetailDto.MovementDto(m.getId(), m.getKind(), m.getChannel(),
+                                m.getAmountMinor(), m.getOccurredAt(), m.getAdminName(), m.getNote(),
+                                m.getInvoiceExtId(), m.getSource()))
+                        .toList();
+        long retained = movements.stream().filter(m -> "RETAINED".equals(m.kind()))
+                .mapToLong(OrderDetailDto.MovementDto::amountMinor).sum();
+        long monoLeft = invoiceRepository.findByOrderIdOrderByCreatedAtDesc(o.getId()).stream()
+                .filter(i -> i.getAppliedAt() != null)
+                .mapToLong(i -> Math.max(0, i.getAmountMinor() - i.getRefundedMinor()))
+                .sum();
+        List<OrderDetailDto.WriteoffDto> writeoffs = writeoffRepository == null ? List.of()
+                : writeoffRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
+                        .map(w -> new OrderDetailDto.WriteoffDto(w.getTitle(), w.getQuantity(), w.getReason(),
+                                w.getUnitValueMinor(), w.getNote(), w.getAdminName(), w.getCreatedAt()))
+                        .toList();
+        return new OrderDetailDto.AdminExtras(o.getArchivedAt(), o.getArchivedBy(), o.getArchiveReason(),
+                o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs);
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
@@ -384,7 +423,7 @@ public class OrderQueryService {
         return first;
     }
 
-    private OrderItemDto toItemDto(OrderItem it, Map<String, String> thumbnails,
+    private OrderItemDto toItemDto(Order o, OrderItem it, Map<String, String> thumbnails,
                                    TranslationService.ItemNames names) {
         String productId = it.getProductId() == null ? null : UuidUtil.toString(it.getProductId());
         String variantId = it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId());
@@ -401,7 +440,8 @@ public class OrderQueryService {
                 it.getReturnedQty(),
                 it.isAutoGift(),
                 it.getCaseRarity(),
-                it.isVariantPending());
+                it.isVariantPending(),
+                OrderAdjustmentService.unitPaidMinor(o, it));
     }
 
     /** Latest monobank invoice of the order, as the customer apps need it. */

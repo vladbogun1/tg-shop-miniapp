@@ -85,6 +85,17 @@ public class OrderNotificationListener {
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onReturned(OrderEvents.Returned event) {
+        withOrder(event.orderId(), order -> {
+            refreshDispatch(order);
+            if (event.notifyCustomer()) {
+                notificationService.notifyCustomerReturn(order, event.itemsSummary(), event.refundMinor());
+            }
+        });
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGiftCasePromo(OrderEvents.GiftCasePromo event) {
         withOrder(event.orderId(), order -> notificationService.notifyCustomerCasePromo(
                 order, event.code(), event.percent(), event.amountMinor(), event.expiresAt()));

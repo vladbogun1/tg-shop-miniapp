@@ -90,6 +90,24 @@ public class AdminMetricsController {
         return metrics.today();
     }
 
+    /** «Возвраты» (V68); a setter so the tests' constructor stays. */
+    private com.maxsolch.shop.analytics.metrics.ReturnsReport returnsReport;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setReturnsReport(com.maxsolch.shop.analytics.metrics.ReturnsReport returnsReport) {
+        this.returnsReport = returnsReport;
+    }
+
+    @GetMapping("/returns")
+    @Operation(summary = "Returns block: refunds by the date they went back and by channel, retained money, write-offs")
+    public com.maxsolch.shop.analytics.metrics.ReturnsReport.Returns returns(
+            @RequestParam(defaultValue = "month") String period,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        MetricsPeriod p = period(period, from, to);
+        return returnsReport.compute(p.from(), p.to());
+    }
+
     private MetricsPeriod period(String token, String from, String to) {
         return metrics.period(token, from, to);
     }

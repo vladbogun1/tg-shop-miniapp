@@ -6,6 +6,7 @@ import com.maxsolch.shop.review.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.ReviewDtos.ReplyRequest;
 import com.maxsolch.shop.review.ReviewService;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.security.RequiredSuperAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -72,7 +73,8 @@ public class AdminReviewController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a review for good")
+    @RequiredSuperAdmin
+    @Operation(summary = "Delete a review for good (main admin only)")
     public ResponseEntity<Void> delete(@PathVariable long id) {
         AdminReview r = reviewService.delete(id);
         audit.record("REVIEW_DELETE", ENTITY, String.valueOf(id), describe(r));

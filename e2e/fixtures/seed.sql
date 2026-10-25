@@ -13,6 +13,10 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM order_messages;
+DELETE FROM order_money_movements;
+DELETE FROM order_exchange_lines;
+DELETE FROM stock_writeoffs;
+DELETE FROM admin_incidents;
 DELETE FROM order_items;
 DELETE FROM orders;
 DELETE FROM cart_items;

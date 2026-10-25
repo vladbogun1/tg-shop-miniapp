@@ -9,7 +9,8 @@
  */
 import type { CSSProperties, ReactNode } from "react";
 import { Ban, Truck, Store, MessageCircle, Package2 } from "lucide-react";
-import type { OrderCardDto } from "@/lib/api";
+import type { AdminOrderCard } from "@/lib/orders-api";
+import { ReturnBadge } from "@/components/orders/ReturnBadge";
 import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
@@ -17,7 +18,7 @@ import { SourceBadge } from "@/components/orders/SourceBadge";
 import { cn } from "@/lib/cn";
 
 interface Props {
-  order: OrderCardDto;
+  order: AdminOrderCard;
   onClick?: () => void;
   /** dnd-kit dragging visual */
   dragging?: boolean;
@@ -70,6 +71,7 @@ export function OrderCard({ order, onClick, dragging, headerAction }: Props) {
         <span className="shrink-0 whitespace-nowrap">
           <PaymentBadge order={order} showTimeLeft />
         </span>
+        <ReturnBadge status={order.returnStatus} className="shrink-0 !px-1.5 !text-[10.5px]" />
         {order.cancelRequestStatus === "PENDING" && (
           <span
             className="chip-tint shrink-0 !gap-1 !px-1.5 !text-[10.5px]"

@@ -65,6 +65,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query(value = "select o from Order o" + OrderSearchQueries.WHERE_LIST,
             countQuery = "select count(o) from Order o" + OrderSearchQueries.WHERE_LIST)
     Page<Order> search(@Param("status") OrderStatus status,
+                       @Param("archived") boolean archived,
                        @Param("q") String q,
                        @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,

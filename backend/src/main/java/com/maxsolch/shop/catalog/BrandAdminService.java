@@ -2,6 +2,7 @@ package com.maxsolch.shop.catalog;
 
 import com.maxsolch.shop.catalog.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.CatalogDtos.BrandUpsertRequest;
+import com.maxsolch.shop.common.AfterCommit;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -92,7 +93,9 @@ public class BrandAdminService {
         Brand b = load(id);
         productRepository.moveBrand(b.getId(), null);
         repository.delete(b);
-        storage.deleteQuietly(b.getLogoUrl());
+        // The file goes only once the delete has committed: a rollback must not leave a brand without its logo.
+        String logo = b.getLogoUrl();
+        AfterCommit.run(() -> storage.deleteQuietly(logo));
         directory.evictAll();
         return b.getName();
     }

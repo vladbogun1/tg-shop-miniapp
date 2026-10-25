@@ -21,6 +21,7 @@ import { Modal, ModalCancel } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Image } from "@/lib/image";
 
 interface BackLine {
@@ -205,14 +206,17 @@ export function ExchangeModal({
                 </div>
                 {l.qty > 0 && (
                   <div className="mt-2 flex flex-col gap-1">
-                    <Toggle
-                      checked={l.restock}
-                      onChange={(v) => setBackLine(it.id!, { restock: v })}
-                      label={`Вернуть в оборот (на склад +${l.qty} шт.)`}
+                    <SegmentedControl
+                      options={[
+                        { value: "stock", label: `На склад (+${l.qty} шт.)` },
+                        { value: "defect", label: "Брак (списать)" },
+                      ]}
+                      value={l.restock ? "stock" : "defect"}
+                      onChange={(v) => setBackLine(it.id!, { restock: v === "stock" })}
                     />
                     {!l.restock && (
                       <span className="text-[12px] text-[var(--text-faint)]">
-                        Товар не в продажном виде — будет списан, на склад не вернётся.
+                        Товар не в продажном виде — будет списан (попадёт в «Списания»), на склад не вернётся.
                       </span>
                     )}
                   </div>

@@ -6,8 +6,6 @@
  * that the server accepts, and offered a "В новые" action the server always rejects).
  */
 export {
-  allowedTargets,
-  canTransition,
   codMinor,
   formatDateTime,
   isNovaPoshtaTtn,
@@ -21,7 +19,29 @@ export {
   type RejectReasonCode,
 } from "@shop/shared";
 
-import type { DeliveryMethod, OrderStatus } from "@shop/shared";
+import {
+  allowedTargets as sharedAllowedTargets,
+  canTransition as sharedCanTransition,
+  type DeliveryMethod,
+  type OrderStatus,
+} from "@shop/shared";
+
+/**
+ * Admin transitions: the shared table still lists DELIVERED → REJECTED, but the server refuses it
+ * since 25.10.2026 (ORDER_DELIVERED_REJECT) — a delivered order is handled with «Возврат».
+ */
+export function allowedTargets(from: OrderStatus): OrderStatus[] {
+  return sharedAllowedTargets(from).filter((t) => !(from === "DELIVERED" && t === "REJECTED"));
+}
+
+export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
+  if (from === "DELIVERED" && to === "REJECTED") return false;
+  return sharedCanTransition(from, to);
+}
+
+/** Shown when a delivered order is dragged to «Отклонён». */
+export const DELIVERED_REJECT_HINT =
+  "Доставленный заказ не отклоняют — оформите «Возврат» в карточке заказа";
 
 export const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
   NOVA_POSHTA: "Нова Пошта",
@@ -30,3 +50,51 @@ export const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
 
 /** Closed columns: the period filter and the short "20 + ещё" list apply only to them. */
 export const CLOSED_STATUSES: OrderStatus[] = ["DELIVERED", "REJECTED"];
+
+// ---- money journal (V68) -----------------------------------------------------
+
+export type MovementKind = "PAYMENT" | "REFUND" | "RETAINED" | "CORRECTION";
+export type MovementChannel =
+  | "MONO"
+  | "NP_COD"
+  | "NP_PAYMENT_CONTROL"
+  | "CARD_TRANSFER"
+  | "CASH"
+  | "NP_CLAIM"
+  | "OTHER";
+
+export const MOVEMENT_KIND_LABEL: Record<MovementKind, string> = {
+  PAYMENT: "Пришло",
+  REFUND: "Вернули",
+  RETAINED: "Удержано",
+  CORRECTION: "Исправление",
+};
+
+export const MOVEMENT_CHANNEL_LABEL: Record<MovementChannel, string> = {
+  MONO: "Карта (monobank)",
+  NP_COD: "Наложка НП",
+  NP_PAYMENT_CONTROL: "Контроль оплаты НП",
+  CARD_TRANSFER: "Перевод на карту",
+  CASH: "Наличные",
+  NP_CLAIM: "Претензия НП",
+  OTHER: "Другое",
+};
+
+/** How money came in (PATCH …/paid): by hand, without monobank (credited by the bank itself). */
+export const PAID_CHANNELS: { value: MovementChannel; label: string }[] = [
+  { value: "NP_COD", label: "Наложка НП" },
+  { value: "NP_PAYMENT_CONTROL", label: "Контроль оплаты НП" },
+  { value: "CARD_TRANSFER", label: "Перевод на карту" },
+  { value: "CASH", label: "Наличные" },
+  { value: "OTHER", label: "Другое" },
+];
+
+/** How money goes back by hand (return wizard): without monobank — that is its own field. */
+export const REFUND_CHANNELS: { value: MovementChannel; label: string }[] = [
+  { value: "CARD_TRANSFER", label: "Перевод на карту" },
+  { value: "CASH", label: "Наличные" },
+  { value: "NP_COD", label: "Наложка НП (возврат)" },
+  { value: "NP_PAYMENT_CONTROL", label: "Контроль оплаты НП" },
+  { value: "NP_CLAIM", label: "Претензия НП" },
+  { value: "OTHER", label: "Другое" },
+];

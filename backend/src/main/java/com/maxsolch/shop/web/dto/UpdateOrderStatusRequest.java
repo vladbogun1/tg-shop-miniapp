@@ -11,5 +11,10 @@ public record UpdateOrderStatusRequest(
         /** For REJECTED: RejectReasonCode name (NO_RESPONSE, CHANGED_MIND, …); text is then optional. */
         String rejectReasonCode,
         /** For SHIPPED: the admin confirmed shipping although the online payment has not arrived. */
-        Boolean shipUnpaid) {
+        Boolean shipUnpaid,
+        /**
+         * For REJECTED of a SHIPPED order: the parcel was refused and is coming back — nothing is
+         * restocked now, the order waits as «посылка едет назад» (V68).
+         */
+        Boolean returnInTransit) {
 }

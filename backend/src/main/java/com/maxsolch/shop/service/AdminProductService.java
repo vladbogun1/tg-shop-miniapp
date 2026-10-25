@@ -10,13 +10,16 @@ import com.maxsolch.shop.catalog.ProductCatalogFields;
 import com.maxsolch.shop.catalog.ProductCondition;
 import com.maxsolch.shop.catalog.SpecsJson;
 import com.maxsolch.shop.catalog.SpecsValidator;
+import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.AfterCommit;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.domain.StockWriteoff;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.BadRequestException;
@@ -54,6 +57,7 @@ public class AdminProductService {
 
     public static final String CARD_NOT_READY = "CARD_NOT_READY";
     public static final String NOT_PUBLISHABLE = "PRODUCT_NOT_PUBLISHABLE";
+    public static final String STOCK_REASON_REQUIRED = "STOCK_REASON_REQUIRED";
 
     private final ProductRepository productRepository;
     private final ImageStorageService imageStorageService;
@@ -61,19 +65,25 @@ public class AdminProductService {
     private final TranslationService translationService;
     private final CatalogDirectory catalogDirectory;
     private final BrandAdminService brandService;
+    private final StockWriteoffRepository writeoffRepository;
+    private final AdminAuditService audit;
 
     public AdminProductService(ProductRepository productRepository,
                                ImageStorageService imageStorageService,
                                SlugService slugService,
                                TranslationService translationService,
                                CatalogDirectory catalogDirectory,
-                               BrandAdminService brandService) {
+                               BrandAdminService brandService,
+                               StockWriteoffRepository writeoffRepository,
+                               AdminAuditService audit) {
         this.productRepository = productRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;
         this.translationService = translationService;
         this.catalogDirectory = catalogDirectory;
         this.brandService = brandService;
+        this.writeoffRepository = writeoffRepository;
+        this.audit = audit;
     }
 
     @Transactional(readOnly = true)
@@ -121,7 +131,7 @@ public class AdminProductService {
         p.setActive(false);
         p.setCardStatus(CardStatus.DRAFT);
         p.setUnfinished(true);
-        applyVariants(p, req);
+        applyVariants(p, req, null);
         return toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
     }
 
@@ -151,7 +161,7 @@ public class AdminProductService {
             throw new BadRequestException("product title already exists");
         }
         boolean wasActive = p.isActive();
-        applyScalars(p, req);
+        int productDrop = applyScalars(p, req);
         applyImages(p, req);
         CatalogSnapshot catalog = catalogDirectory.load();
         List<SpecsValidator.Issue> issues = applyCatalog(p, req, catalog);
@@ -159,7 +169,13 @@ public class AdminProductService {
             checkPublishable(p, force);
         }
         syncUnfinished(p);
-        List<byte[]> removedVariants = applyVariants(p, req);
+        List<StockDrop> drops = new ArrayList<>();
+        List<byte[]> removedVariants = applyVariants(p, req, drops);
+        // With variants the product stock is their rollup: only the variant drops count then.
+        if (productDrop > 0 && (p.getVariants().isEmpty() || req.variants() == null)) {
+            drops.add(new StockDrop(null, null, productDrop));
+        }
+        recordWriteoffs(p, drops, req);
         AdminProductDto saved = toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
         // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
         translationService.deleteForEntities(TranslationEntityType.VARIANT, removedVariants);
@@ -271,7 +287,9 @@ public class AdminProductService {
 
     // ----- internals -----
 
-    private void applyScalars(Product p, ProductUpsertRequest req) {
+    /** @return how many units the product stock dropped by (0 when it did not decrease). */
+    private int applyScalars(Product p, ProductUpsertRequest req) {
+        int drop = 0;
         if (req.title() != null) {
             p.setTitle(req.title().trim());
         }
@@ -284,12 +302,14 @@ public class AdminProductService {
         // null = the admin did not touch the field, so units sold meanwhile are not overwritten.
         if (req.stock() != null) {
             checkStock(p.getStock(), req.stock(), req.expectedStock(), p.getTitle());
+            drop = Math.max(0, p.getStock() - req.stock());
             p.setStock(req.stock());
         }
         if (req.active() != null) {
             p.setActive(req.active());
         }
         applyStorefront(p, req);
+        return drop;
     }
 
     /**
@@ -464,7 +484,7 @@ public class AdminProductService {
      * one, then by name (the admin UI historically sent no ids at all), so existing rows keep their
      * identity either way; only genuinely removed variants are deleted.
      */
-    private List<byte[]> applyVariants(Product p, ProductUpsertRequest req) {
+    private List<byte[]> applyVariants(Product p, ProductUpsertRequest req, List<StockDrop> drops) {
         if (req.variants() == null) {
             return List.of();
         }
@@ -506,6 +526,9 @@ public class AdminProductService {
                 if (v.getId() != null) {
                     checkStock(v.getStock(), vi.stock(), vi.expectedStock(),
                             p.getTitle() + " / " + v.getName());
+                    if (drops != null && vi.stock() < v.getStock()) {
+                        drops.add(new StockDrop(v.getId(), v.getName(), v.getStock() - vi.stock()));
+                    }
                 }
                 v.setStock(vi.stock());
             }
@@ -527,6 +550,55 @@ public class AdminProductService {
             p.setStock(rollup);
         }
         return removed;
+    }
+
+    /** Units a stock edit took off the shelf: a variant (id + name) or, with nulls, the product itself. */
+    private record StockDrop(byte[] variantId, String variantName, int quantity) {
+    }
+
+    /**
+     * Lowering stock by hand needs a reason (owner, 2026-10-25): without one the save is refused with
+     * 400 {@code STOCK_REASON_REQUIRED}; every decrease leaves a {@code stock_writeoffs} row valued at
+     * the current price. Raising stock needs nothing.
+     */
+    private void recordWriteoffs(Product p, List<StockDrop> drops, ProductUpsertRequest req) {
+        if (drops.isEmpty()) {
+            return;
+        }
+        StockWriteoff.Reason reason = parseReason(req.stockReason());
+        String note = trimToNull(req.stockNote());
+        if (reason == null) {
+            throw new BadRequestException("Остаток уменьшен — укажите причину: брак, инвентаризация, пересорт, "
+                    + "продано вне сайта или другое", STOCK_REASON_REQUIRED);
+        }
+        if (reason == StockWriteoff.Reason.OTHER && note == null) {
+            throw new BadRequestException("Причина «Другое» — напишите, что случилось (поле «Пояснение»)",
+                    STOCK_REASON_REQUIRED);
+        }
+        String admin = audit.currentAdminName();
+        for (StockDrop d : drops) {
+            StockWriteoff w = new StockWriteoff();
+            w.setProductId(p.getId());
+            w.setVariantId(d.variantId());
+            w.setTitle(d.variantName() == null ? p.getTitle() : p.getTitle() + " / " + d.variantName());
+            w.setQuantity(d.quantity());
+            w.setReason(reason.name());
+            w.setNote(note == null ? null : note.length() > 500 ? note.substring(0, 500) : note);
+            w.setUnitValueMinor(p.getPriceMinor());
+            w.setAdminName(admin);
+            writeoffRepository.save(w);
+        }
+    }
+
+    static StockWriteoff.Reason parseReason(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return StockWriteoff.Reason.valueOf(raw.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**

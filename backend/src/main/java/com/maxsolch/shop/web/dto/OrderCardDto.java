@@ -23,5 +23,9 @@ public record OrderCardDto(
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
         String source,
         /** PENDING | APPROVED | DECLINED — customer's cancellation request; null = none. */
-        String cancelRequestStatus) {
+        String cancelRequestStatus,
+        /** In the archive (V68): shown only with the «Архив» filter / in a customer's profile. */
+        boolean archived,
+        /** IN_TRANSIT | RECEIVED | null — refused parcel on its way back (V68). */
+        String returnStatus) {
 }

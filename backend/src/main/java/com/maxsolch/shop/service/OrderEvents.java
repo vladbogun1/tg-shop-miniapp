@@ -41,6 +41,10 @@ public final class OrderEvents {
     }
 
     /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
+    /** A return was registered in the wizard (V68): DM the customer what was accepted and refunded. */
+    public record Returned(byte[] orderId, boolean notifyCustomer, String itemsSummary, long refundMinor) {
+    }
+
     public record PaymentReceived(byte[] orderId, long amountMinor) {
     }
 

@@ -4,12 +4,18 @@ import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderExchange;
+import com.maxsolch.shop.domain.OrderExchangeLine;
+import com.maxsolch.shop.domain.OrderMoneyMovement;
+import com.maxsolch.shop.domain.StockWriteoff;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.repository.OrderExchangeLineRepository;
 import com.maxsolch.shop.repository.OrderExchangeRepository;
+import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +48,26 @@ public class OrderAdjustmentService {
         this.orderService = orderService;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
+    }
+
+    /** Money journal, write-offs, exchange lines (optional: unit tests build the service without them). */
+    private MoneyLedger moneyLedger;
+    private StockWriteoffRepository writeoffs;
+    private OrderExchangeLineRepository exchangeLines;
+
+    @Autowired(required = false)
+    void setMoneyLedger(MoneyLedger moneyLedger) {
+        this.moneyLedger = moneyLedger;
+    }
+
+    @Autowired(required = false)
+    void setWriteoffs(StockWriteoffRepository writeoffs) {
+        this.writeoffs = writeoffs;
+    }
+
+    @Autowired(required = false)
+    void setExchangeLines(OrderExchangeLineRepository exchangeLines) {
+        this.exchangeLines = exchangeLines;
     }
 
     /** Result of an adjustment: the saved order and the audit line. */
@@ -233,6 +259,10 @@ public class OrderAdjustmentService {
         if (refundMinor > 0) {
             order.setRefundedMinor(order.getRefundedMinor() + refundMinor);
             parts.add("возврат денег " + MoneyFormat.uah(refundMinor));
+            if (moneyLedger != null) {
+                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
+                        refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
+            }
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
@@ -240,6 +270,301 @@ public class OrderAdjustmentService {
         String details = "возврат: " + String.join(", ", parts)
                 + (note == null || note.isBlank() ? "" : "; " + note.trim());
         return new Result(saved, details);
+    }
+
+    // ----- return wizard (V68) -----
+
+    /** What happens to the returned units of one line. */
+    public enum LineOutcome {
+        /** Came back sellable: back on the shelf. */
+        RESTOCK,
+        /** Came back broken: written off (report «Списания»). */
+        DEFECT,
+        /** The customer keeps the goods (compensation only): the units stay sold. */
+        KEPT
+    }
+
+    /** One line of the wizard. */
+    public record WizardLine(long itemId, int quantity, LineOutcome outcome) {
+    }
+
+    /** Money given back by hand, not through monobank: Nova Poshta, card transfer, cash… */
+    public record ManualRefund(OrderMoneyMovement.Channel channel, long amountMinor, String note) {
+    }
+
+    /**
+     * The whole return in one go.
+     *
+     * @param retainMinor   money the shop keeps on purpose (the prepayment that paid for delivery)
+     * @param monoRefundMinor what the controller will send back through monobank after this commits;
+     *                        only validated here (booked when the bank confirms, never twice)
+     */
+    public record ReturnPlan(List<WizardLine> lines, List<ManualRefund> refunds, long retainMinor,
+                             long monoRefundMinor, String note, boolean notifyCustomer) {
+    }
+
+    /**
+     * The return wizard: which units came back and in what state, how much money goes back and
+     * through which channel, what the shop keeps. Status is not touched (as with
+     * {@link #registerReturn}); every amount lands in the money journal; defects in «Списания».
+     */
+    @Transactional
+    public Result registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName) {
+        return registerReturnPlan(orderId, plan, adminName, false);
+    }
+
+    /**
+     * The wizard's checks without changing anything — run before monobank is asked for the refund,
+     * so a refused plan never sends money and a refused refund never leaves half a return behind.
+     */
+    @Transactional(readOnly = true)
+    public void checkReturnPlan(byte[] orderId, ReturnPlan plan) {
+        Order order = orderService.get(orderId);
+        validatePlan(order, plan, false);
+        List<WizardLine> lines = plan.lines() == null ? List.of()
+                : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
+        for (WizardLine line : lines) {
+            OrderItem item = order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == line.itemId())
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException("order item not found"));
+            int left = item.getQuantity() - item.getReturnedQty();
+            if (line.outcome() != LineOutcome.KEPT && line.quantity() > left) {
+                throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
+                        + "» можно вернуть не больше " + left + " шт.");
+            }
+        }
+    }
+
+    /**
+     * @param monoSent the monobank part was already accepted by the bank (checked by
+     *                 {@link #checkReturnPlan} first): it may already be booked as refunded, so it is
+     *                 left out of the limit here
+     */
+    @Transactional
+    public Result registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName, boolean monoSent) {
+        Order order = load(orderId);
+        validatePlan(order, plan, monoSent);
+        OrderStatus s = order.getStatus();
+        List<WizardLine> lines = plan.lines() == null ? List.of()
+                : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
+        List<ManualRefund> refunds = plan.refunds() == null ? List.of()
+                : plan.refunds().stream().filter(r -> r.amountMinor() != 0).toList();
+        long manual = refunds.stream().mapToLong(ManualRefund::amountMinor).sum();
+        String cleanNote = plan.note() == null || plan.note().isBlank() ? null : plan.note().trim();
+
+        List<String> parts = new ArrayList<>();
+        List<String> customerParts = new ArrayList<>();
+        int units = 0;
+        for (WizardLine line : lines) {
+            OrderItem item = order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == line.itemId())
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException("order item not found"));
+            LineOutcome outcome = line.outcome() == null ? LineOutcome.RESTOCK : line.outcome();
+            int left = item.getQuantity() - item.getReturnedQty();
+            if (outcome != LineOutcome.KEPT && line.quantity() > left) {
+                throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
+                        + "» можно вернуть не больше " + left + " шт.");
+            }
+            String title = item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            switch (outcome) {
+                case RESTOCK -> {
+                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
+                    int canRestock = item.getQuantity() - item.getRestockedQty();
+                    orderService.restockItem(item, Math.min(line.quantity(), canRestock));
+                    parts.add(title + " ×" + line.quantity() + " (на склад)");
+                    customerParts.add(title + " ×" + line.quantity());
+                }
+                case DEFECT -> {
+                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
+                    writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                    parts.add(title + " ×" + line.quantity() + " (брак, списан)");
+                    customerParts.add(title + " ×" + line.quantity());
+                }
+                case KEPT -> parts.add(title + " ×" + line.quantity() + " (осталось у покупателя, компенсация)");
+            }
+            units += line.quantity();
+        }
+        if (units == 0 && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
+            throw new BadRequestException("укажите, что вернули, или сумму возврата");
+        }
+        for (ManualRefund r : refunds) {
+            order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
+            parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + channelLabel(r.channel()) + ")");
+            if (moneyLedger != null) {
+                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
+                        OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
+            }
+        }
+        if (plan.monoRefundMinor() > 0) {
+            parts.add("на карту через monobank " + MoneyFormat.uah(plan.monoRefundMinor()) + " (запрошено)");
+        }
+        if (plan.retainMinor() > 0) {
+            parts.add("удержано " + MoneyFormat.uah(plan.retainMinor()) + " (доставка)");
+            if (moneyLedger != null) {
+                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER,
+                        plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
+                        cleanNote == null ? "удержано: доставка" : cleanNote, null);
+            }
+        }
+        order.setReturnedAt(Instant.now());
+        Order saved = orderRepository.save(order);
+        long refundedNow = manual + plan.monoRefundMinor();
+        events.publishEvent(new OrderEvents.Returned(saved.getId(), plan.notifyCustomer(),
+                String.join(", ", customerParts), refundedNow));
+        String details = "возврат: " + String.join(", ", parts) + (cleanNote == null ? "" : "; " + cleanNote);
+        return new Result(saved, details);
+    }
+
+    /** Status, amounts and channels of a wizard plan; nothing is changed. */
+    private void validatePlan(Order order, ReturnPlan plan, boolean monoSent) {
+        OrderStatus s = order.getStatus();
+        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
+                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+        if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
+            throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
+        }
+        List<WizardLine> lines = plan.lines() == null ? List.of()
+                : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
+        if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
+            throw new BadRequestException(s == OrderStatus.REJECTED
+                    ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
+                    : "заказ ещё не отправлен — можно вернуть только переплату");
+        }
+        List<ManualRefund> refunds = plan.refunds() == null ? List.of()
+                : plan.refunds().stream().filter(r -> r.amountMinor() != 0).toList();
+        long manual = 0;
+        for (ManualRefund r : refunds) {
+            if (r.amountMinor() < 0) {
+                throw new BadRequestException("сумма возврата не может быть отрицательной");
+            }
+            if (r.channel() == null) {
+                throw new BadRequestException("укажите, как вернули деньги");
+            }
+            if (r.channel() == OrderMoneyMovement.Channel.MONO) {
+                throw new BadRequestException("возврат на карту через monobank — отдельной строкой «через monobank»");
+            }
+            manual += r.amountMinor();
+        }
+        if (plan.retainMinor() < 0 || plan.monoRefundMinor() < 0) {
+            throw new BadRequestException("сумма не может быть отрицательной");
+        }
+        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
+        long refundable = Math.max(0, refundableMinor(order) - retainedBefore);
+        long mono = monoSent ? 0 : plan.monoRefundMinor();
+        if (manual + mono + plan.retainMinor() > refundable) {
+            throw new BadRequestException("вернуть и удержать вместе можно не больше, чем получено и ещё не возвращено"
+                    + (retainedBefore > 0 ? " (без уже удержанных " + MoneyFormat.uah(retainedBefore) + ")" : "")
+                    + ": " + MoneyFormat.uah(refundable));
+        }
+        if (overpaidInWork) {
+            long over = order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor();
+            if (manual + mono > over) {
+                throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(over));
+            }
+        }
+        if (lines.isEmpty() && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
+            throw new BadRequestException("укажите, что вернули, или сумму возврата");
+        }
+    }
+
+    /** One line of «Посылка вернулась»: units of this order line and what state they came in. */
+    public record ReceivedLine(long itemId, int quantity, LineOutcome outcome) {
+    }
+
+    /**
+     * The refused parcel of a rejected order is back at the shop ({@code return_status}
+     * IN_TRANSIT → RECEIVED): sellable units go back on the shelf, broken ones are written off.
+     * Lines not listed come back as sellable.
+     */
+    @Transactional
+    public Result receiveReturn(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
+        Order order = load(orderId);
+        if (!OrderService.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+            throw new BadRequestException("заказ не ждёт возвращения посылки");
+        }
+        List<ReceivedLine> given = lines == null ? List.of() : lines;
+        String cleanNote = note == null || note.isBlank() ? null : note.trim();
+        List<String> parts = new ArrayList<>();
+        for (OrderItem item : order.getItems()) {
+            int out = item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty());
+            if (out <= 0) {
+                continue;
+            }
+            int defect = given.stream()
+                    .filter(l -> l.itemId() == (item.getId() == null ? -1 : item.getId())
+                            && l.outcome() == LineOutcome.DEFECT)
+                    .mapToInt(ReceivedLine::quantity).sum();
+            defect = Math.max(0, Math.min(defect, out));
+            int sellable = out - defect;
+            String title = item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            if (sellable > 0) {
+                orderService.restockItem(item, sellable);
+                parts.add(title + " ×" + sellable + " (на склад)");
+            }
+            if (defect > 0) {
+                item.setReturnedQty(item.getReturnedQty() + defect);
+                writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                parts.add(title + " ×" + defect + " (брак, списан)");
+            }
+        }
+        order.setReturnStatus(OrderService.RETURN_RECEIVED);
+        order.setReturnReceivedAt(Instant.now());
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return new Result(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
+                + (cleanNote == null ? "" : "; " + cleanNote));
+    }
+
+    /**
+     * What one unit of a line actually cost the customer: its price with the order discount spread
+     * over the paid lines in proportion (gifts cost nothing). The wizard's suggested refund.
+     */
+    public static long unitPaidMinor(Order order, OrderItem item) {
+        if (item.isGift() || item.getPriceMinorSnapshot() <= 0) {
+            return 0;
+        }
+        long subtotal = order.getSubtotalMinor();
+        long discount = Math.max(0, order.getDiscountMinor());
+        if (subtotal <= 0 || discount == 0) {
+            return item.getPriceMinorSnapshot();
+        }
+        double share = Math.min(1.0, (double) discount / subtotal);
+        return Math.round(item.getPriceMinorSnapshot() * (1.0 - share));
+    }
+
+    private void writeOff(OrderItem item, int quantity, long unitValueMinor, byte[] orderId, String note,
+                          String adminName) {
+        if (writeoffs == null || quantity <= 0) {
+            return;
+        }
+        StockWriteoff w = new StockWriteoff();
+        w.setProductId(item.getProductId());
+        w.setVariantId(item.getVariantId());
+        w.setTitle(cut(item.getTitleSnapshot()
+                + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")"), 255));
+        w.setQuantity(quantity);
+        w.setReason(StockWriteoff.Reason.DEFECT.name());
+        w.setNote(note == null ? null : cut(note, 500));
+        w.setOrderId(orderId);
+        w.setUnitValueMinor(unitValueMinor);
+        w.setAdminName(adminName);
+        writeoffs.save(w);
+    }
+
+    public static String channelLabel(OrderMoneyMovement.Channel c) {
+        return switch (c) {
+            case MONO -> "monobank";
+            case NP_COD -> "наложка НП";
+            case NP_PAYMENT_CONTROL -> "контроль оплаты НП";
+            case CARD_TRANSFER -> "перевод на карту";
+            case CASH -> "наличные";
+            case NP_CLAIM -> "претензия НП";
+            case OTHER -> "другое";
+        };
     }
 
     // ----- exchange -----
@@ -297,6 +622,7 @@ public class OrderAdjustmentService {
 
         // 1. What came back: stock (or written off), then the units leave the order.
         List<String> backParts = new ArrayList<>();
+        List<OrderExchangeLine> backLines = new ArrayList<>();
         for (ReturnLine line : back) {
             OrderItem item = order.getItems().stream()
                     .filter(i -> i.getId() != null && i.getId() == line.itemId())
@@ -309,7 +635,19 @@ public class OrderAdjustmentService {
             }
             if (line.restock()) {
                 orderService.releaseUnits(item, line.quantity());
+            } else {
+                writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(),
+                        "обмен" + (cleanNote == null ? "" : ": " + cleanNote), adminName);
             }
+            OrderExchangeLine el = new OrderExchangeLine();
+            el.setProductId(item.getProductId());
+            el.setVariantId(item.getVariantId());
+            el.setTitle(cut(item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")"), 255));
+            el.setQuantity(line.quantity());
+            el.setUnitPriceMinor(unitPaidMinor(order, item));
+            el.setOutcome(line.restock() ? "RESTOCK" : "DEFECT");
+            backLines.add(el);
             backParts.add(item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")")
                     + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (списано)"));
@@ -347,7 +685,11 @@ public class OrderAdjustmentService {
         ex.setTotalAfterMinor(saved.getTotalMinor());
         ex.setNote(cleanNote);
         ex.setAdminName(adminName);
-        exchangeRepository.save(ex);
+        OrderExchange savedEx = exchangeRepository.save(ex);
+        if (exchangeLines != null && savedEx != null && savedEx.getId() != null) {
+            backLines.forEach(l -> l.setExchangeId(savedEx.getId()));
+            exchangeLines.saveAll(backLines);
+        }
 
         events.publishEvent(new OrderEvents.Exchanged(saved.getId(), notifyCustomer,
                 String.join(", ", outParts)));

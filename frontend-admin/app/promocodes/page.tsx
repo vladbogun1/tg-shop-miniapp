@@ -578,6 +578,8 @@ function PromoRow({
             size="icon"
             aria-label="Удалить"
             className="hover:text-[var(--danger-ink)]"
+            disabled={used > 0}
+            title={used > 0 ? "Промокод уже использовали — его можно только выключить" : undefined}
             onClick={onDelete}
           >
             <Trash2 className="h-4 w-4" />

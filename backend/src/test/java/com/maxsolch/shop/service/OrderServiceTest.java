@@ -36,6 +36,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -645,16 +646,15 @@ class OrderServiceTest {
     }
 
     @Test
-    void reject_deliveredOrder_allowedForReturns() {
-        // A delivered order can be cancelled (e.g. a Nova Poshta return). With
-        // restock=false the items are NOT put back on the shelf.
+    void reject_deliveredOrder_isRefused_useReturnInstead() {
+        // Rejecting a delivered order kept its automatic «получено» — money that never was.
         Order o = persistedOrder(OrderStatus.DELIVERED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order rejected = service.reject(o.getId(), "возврат на НП", false);
-
-        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
-        assertThat(rejected.getRejectReason()).isEqualTo("возврат на НП");
+        assertThatThrownBy(() -> service.reject(o.getId(), "возврат на НП", false))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("оформите «Возврат»");
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
     }
 
     @Test
@@ -671,7 +671,7 @@ class OrderServiceTest {
 
     @Test
     void reject_afterPartialReturn_doesNotRestockReturnedUnitsTwice() {
-        Order o = persistedOrder(OrderStatus.DELIVERED);
+        Order o = persistedOrder(OrderStatus.SHIPPED);
         Product p = simpleProduct(0, 1_000);
         OrderItem it = new OrderItem();
         it.setProductId(p.getId());
@@ -692,7 +692,7 @@ class OrderServiceTest {
 
     @Test
     void reject_afterReturnWithoutRestock_doesNotPutWrittenOffUnitsBack() {
-        Order o = persistedOrder(OrderStatus.DELIVERED);
+        Order o = persistedOrder(OrderStatus.SHIPPED);
         Product p = simpleProduct(0, 1_000);
         OrderItem it = new OrderItem();
         it.setProductId(p.getId());
@@ -1020,15 +1020,15 @@ class OrderServiceTest {
         verify(orderRepository, never()).save(any());
     }
 
-    // ---------- hard delete ----------
+    // ---------- archive (orders are never deleted) ----------
 
     @Test
-    void delete_inProgressOrder_isRejected() {
+    void archive_inProgressOrder_isRejected() {
         for (OrderStatus status : List.of(OrderStatus.NEW, OrderStatus.APPROVED, OrderStatus.SHIPPED)) {
             Order o = persistedOrder(status);
             when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-            assertThatThrownBy(() -> service.delete(o.getId(), true))
+            assertThatThrownBy(() -> service.archive(o.getId(), "дубль заказа", "Влад"))
                     .isInstanceOf(BadRequestException.class)
                     .hasMessageContaining("только доставленный или отклонённый");
         }
@@ -1036,99 +1036,47 @@ class OrderServiceTest {
     }
 
     @Test
-    void delete_delivered_restocksReleasesPromoAndSchedulesCleanup() {
+    void archive_keepsEverything_noStockNoPromoNoDelete() {
         Order o = persistedOrder(OrderStatus.DELIVERED);
         o.setPromoCode("SALE");
-        o.setDispatchMessageId(77);
-        Product p = simpleProduct(1, 1_000);
-        OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setQuantity(2);
-        o.getItems().add(it);
-        o.setMessages(new ArrayList<>(List.of(message("chat/a/receipt.png"), message("products/x/old.png"),
-                message(null))));
-        PromoCode promo = new PromoCode();
-        promo.setCode("SALE");
-        promo.setUsesCount(3);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
-        when(promoCodeRepository.findByCodeForUpdate("SALE")).thenReturn(Optional.of(promo));
-
-        OrderService.DeletedOrder d = service.delete(o.getId(), true);
-
-        assertThat(d.restocked()).isTrue();
-        assertThat(p.getStock()).isEqualTo(3);
-        assertThat(promo.getUsesCount()).isEqualTo(2);
-        verify(orderRepository).delete(o);
-        ArgumentCaptor<OrderEvents.Deleted> event = ArgumentCaptor.forClass(OrderEvents.Deleted.class);
-        verify(events).publishEvent(event.capture());
-        assertThat(event.getValue().dispatchMessageId()).isEqualTo(77);
-        // Only the private chat/ objects; a products/ key may be shared, it is left alone.
-        assertThat(event.getValue().attachmentKeys()).containsExactly("chat/a/receipt.png");
-    }
-
-    @Test
-    void delete_delivered_withRestockFalse_keepsStock() {
-        Order o = persistedOrder(OrderStatus.DELIVERED);
         OrderItem it = new OrderItem();
         it.setProductId(productId);
         it.setQuantity(2);
         o.getItems().add(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        OrderService.DeletedOrder d = service.delete(o.getId(), false);
+        Order archived = service.archive(o.getId(), "тестовый заказ", "Влад");
 
-        assertThat(d.restocked()).isFalse();
+        assertThat(archived.getArchivedAt()).isNotNull();
+        assertThat(archived.getArchivedBy()).isEqualTo("Влад");
+        assertThat(archived.getArchiveReason()).isEqualTo("тестовый заказ");
+        assertThat(archived.getItems()).hasSize(1);
         verify(productRepository, never()).findByIdForUpdate(any());
-        verify(orderRepository).delete(o);
-    }
-
-    @Test
-    void delete_rejected_neverRestocksAgain() {
-        // Rejecting already settled the stock (returned, or deliberately kept off the shelf).
-        Order o = persistedOrder(OrderStatus.REJECTED);
-        OrderItem it = new OrderItem();
-        it.setProductId(productId);
-        it.setQuantity(2);
-        o.getItems().add(it);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-
-        OrderService.DeletedOrder d = service.delete(o.getId(), true);
-
-        assertThat(d.restocked()).isFalse();
-        verify(productRepository, never()).findByIdForUpdate(any());
-        verify(orderRepository).delete(o);
-    }
-
-    @Test
-    void delete_paidOnlineNotRefunded_isRejected_untilEverythingWentBack() {
-        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
-                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
-        service.setPaymentInvoices(invoices);
-        Order o = persistedOrder(OrderStatus.REJECTED);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-        com.maxsolch.shop.payment.PaymentInvoice paid = new com.maxsolch.shop.payment.PaymentInvoice();
-        paid.setStatus(com.maxsolch.shop.payment.PaymentInvoice.SUCCESS);
-        paid.setAmountMinor(150_000);
-        paid.setAppliedAt(Instant.now());
-        paid.setRefundedMinor(100_000); // partly refunded: 500 ₴ still with the shop
-        com.maxsolch.shop.payment.PaymentInvoice expired = new com.maxsolch.shop.payment.PaymentInvoice();
-        expired.setStatus(com.maxsolch.shop.payment.PaymentInvoice.EXPIRED);
-        expired.setAmountMinor(150_000);
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(paid, expired));
-
-        assertThatThrownBy(() -> service.delete(o.getId(), false))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»");
+        verify(promoCodeRepository, never()).findByCodeForUpdate(any());
         verify(orderRepository, never()).delete(any());
-
-        paid.setRefundedMinor(150_000); // the rest went back to the card
-        service.delete(o.getId(), false);
-        verify(orderRepository).delete(o);
     }
 
     @Test
-    void delete_paymentStillProcessing_isRejected() {
+    void archive_needsReason_andUnarchiveRestores() {
+        Order o = persistedOrder(OrderStatus.REJECTED);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+
+        assertThatThrownBy(() -> service.archive(o.getId(), " ", "Влад"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("почему");
+
+        service.archive(o.getId(), "дубль", "Влад");
+        assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("уже в архиве");
+
+        Order back = service.unarchive(o.getId());
+        assertThat(back.getArchivedAt()).isNull();
+        assertThat(back.getArchiveReason()).isNull();
+    }
+
+    @Test
+    void archive_paymentStillProcessing_isRejected() {
         com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
                 org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
         service.setPaymentInvoices(invoices);
@@ -1139,25 +1087,31 @@ class OrderServiceTest {
         processing.setAmountMinor(150_000);
         when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 
-        assertThatThrownBy(() -> service.delete(o.getId(), false))
+        assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("банк ещё обрабатывает");
-        verify(orderRepository, never()).delete(any());
     }
 
     @Test
-    void delete_manualPaymentWithoutInvoices_staysAllowed() {
-        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
-                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
-        service.setPaymentInvoices(invoices);
-        Order o = persistedOrder(OrderStatus.DELIVERED);
-        o.setPaid(true); // «оплачен» by hand / card transfer — no bank record
+    void rejectShipped_withReturnInTransit_doesNotRestock_andRetainsPrepayment() {
+        MoneyLedger ledger = org.mockito.Mockito.mock(MoneyLedger.class);
+        service.setMoneyLedger(ledger);
+        Order o = persistedOrder(OrderStatus.SHIPPED);
+        o.setPrepaymentMinor(10_000);
+        o.setReceivedMinor(10_000);
+        OrderItem it = new OrderItem();
+        it.setProductId(productId);
+        it.setQuantity(1);
+        o.getItems().add(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of());
 
-        service.delete(o.getId(), false);
+        Order rejected = service.reject(o.getId(), null, RejectReasonCode.REFUSED_AT_POST, true, true);
 
-        verify(orderRepository).delete(o);
+        assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(rejected.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
+                any(), eq(10_000L), any(), any(), any(), any());
     }
 
     private static OrderMessage message(String attachment) {

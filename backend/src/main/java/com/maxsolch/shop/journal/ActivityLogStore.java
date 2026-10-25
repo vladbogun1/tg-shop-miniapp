@@ -202,11 +202,36 @@ public class ActivityLogStore {
         return out;
     }
 
-    /** Deletes rows older than {@code before}, in chunks so the table is never locked for long. */
+    /**
+     * Rows about money — payment events (source PAYMENT), invoices, receipts, refunds, amount
+     * mismatches — which live longer than the rest ({@code app.journal.money-retention-days}).
+     */
+    static final String MONEY_ROWS = "(source = 'PAYMENT' OR type LIKE 'PAYMENT%' OR type LIKE 'INVOICE%' "
+            + "OR type LIKE 'RECEIPT%' OR type LIKE 'REFUND%' OR type = 'AMOUNT_MISMATCH')";
+
+    /** True for a row {@link #MONEY_ROWS} keeps longer (same rule, for code that has the type at hand). */
+    public static boolean isMoneyEvent(String source, String type) {
+        if ("PAYMENT".equals(source)) {
+            return true;
+        }
+        return type != null && (type.startsWith("PAYMENT") || type.startsWith("INVOICE")
+                || type.startsWith("RECEIPT") || type.startsWith("REFUND") || type.equals("AMOUNT_MISMATCH"));
+    }
+
+    /** Deletes NON-money rows older than {@code before}, in chunks so the table is never locked for long. */
     public int purgeBefore(Instant before) {
+        return purge("DELETE FROM activity_log WHERE created_at < ? AND NOT " + MONEY_ROWS + " LIMIT 5000", before);
+    }
+
+    /** Deletes every row (money ones included) older than {@code before}. */
+    public int purgeMoneyBefore(Instant before) {
+        return purge("DELETE FROM activity_log WHERE created_at < ? LIMIT 5000", before);
+    }
+
+    private int purge(String sql, Instant before) {
         int total = 0;
         for (int i = 0; i < 1000; i++) {
-            int n = jdbc.update("DELETE FROM activity_log WHERE created_at < ? LIMIT 5000", Timestamp.from(before));
+            int n = jdbc.update(sql, Timestamp.from(before));
             total += n;
             if (n < 5000) {
                 break;

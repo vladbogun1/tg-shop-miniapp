@@ -429,6 +429,39 @@ public class NotificationService {
         }
     }
 
+    /** A return was registered (V68) → DM the customer what came back and what is refunded. */
+    public void notifyCustomerReturn(Order order, String itemsSummary, long refundMinor) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String cur = nz(order.getCurrency());
+            StringBuilder t = new StringBuilder();
+            t.append(messages.get(locale, "bot.return.title")).append('\n');
+            t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            if (itemsSummary != null && !itemsSummary.isBlank()) {
+                t.append(messages.get(locale, "bot.return.items", escHtml(itemsSummary))).append('\n');
+            }
+            if (refundMinor > 0) {
+                t.append(messages.get(locale, "bot.return.refund", money(refundMinor) + " " + cur)).append('\n');
+            }
+            t.append(messages.get(locale, "bot.return.questions"));
+            dm("ORDER_RETURN", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerReturn failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** The tracking number was corrected after shipping → DM the customer the new one. */
     public void notifyCustomerTracking(Order order) {
         if (!enabled()) {

@@ -23,11 +23,11 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Search, RefreshCw, X } from "lucide-react";
+import { Search, RefreshCw, X, Plus } from "lucide-react";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { useConfirm } from "@/components/ui/ConfirmModal";
-import { CLOSED_STATUSES, STATUS_LABEL, STATUS_ORDER, canTransition, shortId } from "@/lib/orders";
+import { CLOSED_STATUSES, DELIVERED_REJECT_HINT, STATUS_LABEL, STATUS_ORDER, canTransition, shortId } from "@/lib/orders";
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
@@ -44,6 +44,7 @@ import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
 import { OrdersTable } from "@/components/orders/OrdersTable";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { StatusChangeModal, type StatusChangePayload } from "@/components/orders/StatusChangeModal";
 
 type View = "board" | "table";
@@ -74,6 +75,7 @@ export default function BoardPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pending, setPending] = useState<{ order: OrderCardDto; to: OrderStatus } | null>(null);
   const [changing, setChanging] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -193,7 +195,7 @@ export default function BoardPage() {
 
   function requestMove(id: string, from: OrderStatus, to: OrderStatus) {
     if (!canTransition(from, to)) {
-      push("Недопустимый переход статуса", "error");
+      push(from === "DELIVERED" && to === "REJECTED" ? DELIVERED_REJECT_HINT : "Недопустимый переход статуса", "error");
       return;
     }
     const card = findCard(id);
@@ -236,11 +238,29 @@ export default function BoardPage() {
     </Button>
   );
 
+  const newOrderButton = (
+    <Button
+      variant="accent"
+      icon={<Plus className="h-4 w-4" />}
+      onClick={() => setNewOpen(true)}
+      aria-label="Новый заказ"
+      className="max-lg:w-11 max-lg:px-0"
+    >
+      <span className="max-lg:hidden">Новый заказ</span>
+    </Button>
+  );
+
   return (
     <div>
       {/* On a phone the title is already in the shell header — no second one. */}
       <div className="hidden lg:block">
-        <PageHeader title="Заказы" subtitle="Управляйте заказами на доске или в таблице" actions={refreshButton} />
+        <PageHeader title="Заказы" subtitle="Управляйте заказами на доске или в таблице" actions={
+            <>
+              {refreshButton}
+              {newOrderButton}
+            </>
+          }
+        />
       </div>
 
       {/* Toolbar */}
@@ -255,7 +275,10 @@ export default function BoardPage() {
               // 38 + 2px border = 40 (44 on touch): the same height as the buttons and segments beside it.
             />
           </div>
-          <div className="lg:hidden">{refreshButton}</div>
+          <div className="flex items-center gap-2 lg:hidden">
+            {refreshButton}
+            {newOrderButton}
+          </div>
         </div>
         {showRange && (
           <div className="thin-scroll flex max-w-full items-center gap-2 overflow-x-auto">
@@ -338,6 +361,7 @@ export default function BoardPage() {
       )}
 
       <OrderDrawer orderId={openId} onClose={() => setOpenId(null)} />
+      <NewOrderModal open={newOpen} onClose={() => setNewOpen(false)} onCreated={setOpenId} />
 
       <StatusChangeModal
         open={pending !== null}
@@ -351,6 +375,8 @@ export default function BoardPage() {
                 currency: pending.order.currency,
                 restockUnits: pending.order.itemsCount,
                 deliveryMethod: pending.order.deliveryMethod,
+                fromStatus: pending.order.status,
+                receivedMinor: pending.order.receivedMinor,
               }
             : null
         }

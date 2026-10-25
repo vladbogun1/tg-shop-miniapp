@@ -16,12 +16,13 @@ import {
   type BoardDto,
   type DispatchOrder,
   type MessageDto,
+  type OrderCardDto,
   type OrderDetailDto,
   type OrderStatus,
   type TimeRange,
   type UserCardDto,
 } from "./api";
-import type { RejectReasonCode } from "./orders";
+import type { MovementChannel, MovementKind, RejectReasonCode } from "./orders";
 
 export type { NpCity, NpWarehouse };
 
@@ -32,10 +33,58 @@ export type AdminOrderDetail = Omit<OrderDetailDto, "items"> & {
   returnedAt?: string | null;
   npCityRef?: string | null;
   npWarehouseRef?: string | null;
-  items: (OrderDetailDto["items"][number] & { returnedQty?: number })[];
+  items: (OrderDetailDto["items"][number] & {
+    returnedQty?: number;
+    /** Price of one unit after the proportional discount (0 for gifts) — V68. */
+    unitPaidMinor?: number;
+  })[];
   /** Exchanges made on this order, oldest first. */
   exchanges?: OrderExchange[];
+  /** Archive, money journal, write-offs, the parcel on its way back (V68). */
+  admin?: OrderAdminExtras | null;
 };
+
+/** One row of the order's money journal. */
+export interface OrderMovement {
+  id: number;
+  kind: MovementKind;
+  channel: MovementChannel;
+  amountMinor: number;
+  occurredAt: string;
+  adminName?: string | null;
+  note?: string | null;
+  invoiceExtId?: string | null;
+  /** BACKFILL = restored on 25.10 from the old data. */
+  source: "AUTO" | "ADMIN" | "BACKFILL";
+}
+
+export interface OrderWriteoff {
+  title: string;
+  quantity: number;
+  reason: string;
+  unitValueMinor: number;
+  note?: string | null;
+  adminName?: string | null;
+  createdAt: string;
+}
+
+export type ReturnStatus = "IN_TRANSIT" | "RECEIVED";
+
+export interface OrderAdminExtras {
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  archiveReason?: string | null;
+  returnStatus?: ReturnStatus | null;
+  returnReceivedAt?: string | null;
+  movements: OrderMovement[];
+  retainedMinor: number;
+  /** What can still go back to the card through monobank. */
+  monoRefundableMinor: number;
+  writeoffs: OrderWriteoff[];
+}
+
+/** Board / table card with the V68 fields. */
+export type AdminOrderCard = OrderCardDto & { archived?: boolean; returnStatus?: ReturnStatus | null };
 
 /** One exchange (V51): what came back, what went out instead, ТТН and total before. */
 export interface OrderExchange {
@@ -74,6 +123,8 @@ export interface StatusChangeBody {
   rejectReason?: string;
   rejectReasonCode?: RejectReasonCode;
   restock?: boolean;
+  /** REJECTED of a SHIPPED order: the parcel is coming back, stock returns with «Посылка вернулась». */
+  returnInTransit?: boolean;
   /** SHIPPED although the online payment has not arrived — the admin confirmed (see changeStatusConfirmingUnpaid). */
   shipUnpaid?: boolean;
 }
@@ -119,9 +170,32 @@ export interface DeliveryPatch {
   npWarehouseName?: string;
 }
 
-export interface ReturnBody {
-  lines: { itemId: number; quantity: number; restock: boolean }[];
-  refundMinor: number;
+/** Where a returned unit goes: shelf, write-off, or stays with the customer (compensation). */
+export type ReturnOutcome = "RESTOCK" | "DEFECT" | "KEPT";
+
+/** POST …/returns — the return wizard. */
+export interface ReturnWizardBody {
+  lines: { itemId: number; quantity: number; outcome: ReturnOutcome }[];
+  /** Manual refunds; monobank is NOT a channel here — it is monoRefundMinor. */
+  refunds: { channel: MovementChannel; amountMinor: number; note?: string }[];
+  monoRefundMinor: number;
+  retainMinor: number;
+  note?: string;
+  notifyCustomer: boolean;
+}
+
+/** POST …/return-received — the refused parcel is back (everything but DEFECT goes on the shelf). */
+export interface ReturnReceivedBody {
+  lines: { itemId: number; quantity: number; outcome: "RESTOCK" | "DEFECT" }[];
+  note?: string;
+}
+
+/** Backend code: the bank refused the refund after the return itself was saved. */
+export const MONO_REFUND_FAILED_CODE = "MONO_REFUND_FAILED";
+
+export interface SetPaidBody {
+  receivedMinor: number;
+  channel?: MovementChannel;
   note?: string;
 }
 
@@ -165,7 +239,26 @@ export interface RenderedTemplate {
 /** Page size of the order chat (the backend default). */
 export const CHAT_PAGE = 50;
 
+export interface AdminCreateOrderBody {
+  items: { productId: string; variantId: string | null; quantity: number }[];
+  customerName: string;
+  phone: string;
+  comment?: string;
+  promoCode?: string;
+  deliveryMethod: "NOVA_POSHTA" | "PICKUP";
+  npCityName?: string;
+  npWarehouseName?: string;
+  paymentOptionId: string;
+  tgUserId?: number;
+  /** Kopecks already received; 0 = not paid yet. */
+  paidMinor: number;
+  paidChannel: MovementChannel;
+  note?: string;
+}
+
 export const ordersApi = {
+  /** POST /api/admin/orders — a manual order (phone, Instagram, in person). */
+  create: (body: AdminCreateOrderBody) => apiPost<AdminOrderDetail>("/api/admin/orders", body),
   board: (params: { q?: string; range?: TimeRange; closedLimit?: number } = {}) => {
     const sp = new URLSearchParams();
     if (params.q) sp.set("q", params.q);
@@ -188,9 +281,47 @@ export const ordersApi = {
   updateDelivery: (id: string, patch: DeliveryPatch) =>
     apiPatch<AdminOrderDetail>(`/api/admin/orders/${id}/delivery`, patch),
 
-  /** POST /api/admin/orders/{id}/return — (partial) return + refund. */
-  registerReturn: (id: string, body: ReturnBody) =>
-    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return`, body),
+  /** POST /api/admin/orders/{id}/returns — the return wizard (goods + money + retained amount). */
+  registerReturn: (id: string, body: ReturnWizardBody) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/returns`, body),
+
+  /** POST /api/admin/orders/{id}/return-received — the parcel that went back has arrived. */
+  receiveReturn: (id: string, body: ReturnReceivedBody) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/return-received`, body),
+
+  /** PATCH /api/admin/orders/{id}/paid — received amount + how it came (money journal). */
+  setPaid: (id: string, body: SetPaidBody) =>
+    apiPatch<AdminOrderDetail>(`/api/admin/orders/${id}/paid`, body),
+
+  /** POST …/archive — main admin only; orders are never deleted. */
+  archive: (id: string, reason: string) =>
+    apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/archive`, { reason }),
+
+  /** POST …/unarchive — main admin only. */
+  unarchive: (id: string) => apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/unarchive`),
+
+  /** GET /api/admin/orders (plain array); `archived` = only the archived ones (default: none of them). */
+  list: (params: {
+    status?: string;
+    q?: string;
+    range?: TimeRange;
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+    archived?: boolean;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params.status) sp.set("status", params.status);
+    if (params.q) sp.set("q", params.q);
+    if (params.range) sp.set("range", params.range);
+    sp.set("page", String(params.page ?? 0));
+    sp.set("size", String(params.size ?? 20));
+    if (params.sortBy) sp.set("sortBy", params.sortBy);
+    if (params.sortDir) sp.set("sortDir", params.sortDir);
+    if (params.archived) sp.set("archived", "true");
+    return apiGet<AdminOrderCard[]>(`/api/admin/orders?${sp.toString()}`);
+  },
 
   /**
    * POST /api/admin/orders/{id}/gift-case — give a gift case: the server draws the prize now among the

@@ -20,6 +20,8 @@ import {
   Undo2,
   Wallet,
   Repeat,
+  Archive,
+  PackageCheck,
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
@@ -40,6 +42,7 @@ import { cn } from "@/lib/cn";
 import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
+import { MoneyLedgerBlock } from "./MoneyLedgerBlock";
 
 export interface DetailHandlers {
   busyKey: string | null;
@@ -55,6 +58,10 @@ export interface DetailHandlers {
   onReturn?: () => void;
   /** Exchange goods (shipped / delivered orders): back to NEW for a new ТТН. */
   onExchange?: () => void;
+  /** «Посылка вернулась» — only while the refused parcel is on its way back. */
+  onReturnReceived?: () => void;
+  /** «Вернуть из архива» — main admin only, archived orders. */
+  onUnarchive?: () => void;
   /** Invoices refreshed or refunded — reload the order and the lists. */
   onPaymentChanged?: () => void;
   /** The «Онлайн-оплата» section, to scroll to it («Внимание» → «Оплаты»). */
@@ -75,6 +82,61 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
 
   return (
     <div className="flex flex-col gap-4">
+      {order.admin?.archivedAt && (
+        <div className="card flex flex-col gap-2 border-[var(--line-strong)] p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
+            <Archive className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+            В архиве
+          </div>
+          <p className="text-[13px] text-[var(--text-muted)]">
+            {order.admin.archiveReason ? <>Причина: {order.admin.archiveReason}. </> : null}
+            {order.admin.archivedBy && <>{order.admin.archivedBy}, </>}
+            {formatDateTime(order.admin.archivedAt)}
+          </p>
+          {h.onUnarchive && (
+            <Button
+              size="sm"
+              variant="surface"
+              className="self-start"
+              loading={h.busyKey === "unarchive"}
+              disabled={!!h.busyKey && h.busyKey !== "unarchive"}
+              onClick={h.onUnarchive}
+            >
+              Вернуть из архива
+            </Button>
+          )}
+        </div>
+      )}
+
+      {order.admin?.returnStatus === "IN_TRANSIT" && (
+        <div className="card flex flex-col gap-2 border-[color-mix(in_srgb,var(--warn)_45%,transparent)] p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
+            <Undo2 className="h-4 w-4 shrink-0 text-[var(--warn)]" />
+            Посылка едет назад
+          </div>
+          <p className="text-[13px] text-[var(--text-muted)]">
+            Товар ещё не на складе. Когда посылка придёт — отметьте это, и товар вернётся на склад (брак можно списать).
+          </p>
+          {h.onReturnReceived && (
+            <Button
+              size="sm"
+              variant="accent"
+              className="self-start"
+              icon={<PackageCheck className="h-4 w-4" />}
+              disabled={!!h.busyKey}
+              onClick={h.onReturnReceived}
+            >
+              Посылка вернулась
+            </Button>
+          )}
+        </div>
+      )}
+      {order.admin?.returnStatus === "RECEIVED" && order.admin.returnReceivedAt && (
+        <p className="px-1 text-[12.5px] text-[var(--text-muted)]">
+          Посылка вернулась на склад {formatDateTime(order.admin.returnReceivedAt)}.
+        </p>
+      )}
+
       {/* Customer */}
       <Section
         title="Клиент"
@@ -204,6 +266,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
       <CancelRequestBlock order={order} onChanged={h.onPaymentChanged} />
 
       <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
+
+      <MoneyLedgerBlock order={order} />
 
       {/* Items */}
       <Section title="Состав">
