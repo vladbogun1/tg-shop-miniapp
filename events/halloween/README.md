@@ -87,6 +87,14 @@ cd events/halloween/server && npm install && HW_DEV_AUTH=1 HW_STARTS_AT=2026-10-
 - `http://localhost:8090/hw/draw/?mock=180&visual=roulette` — экран розыгрыша на выдуманных участниках (`?mock=N`, любой `visual` из `draw/visuals/`).
 - `http://localhost:8090/hw/draw/` с `localStorage.tgshop_admin_jwt = "dev-admin"` — экран на данных сервиса.
 
+### На локальном стенде (данные прода, shop-local-stand)
+
+- Сервис: `cd events/halloween/server && node --env-file=../_tmp/local.env src/server.js`. В `_tmp/local.env` (в git не попадает) лежат `JWT_SECRET` стенда, read-only пользователь `hw_ro` на `uxtest_mysql` :3398, `HW_BACKEND_URL=http://localhost:8080` и ранний `HW_STARTS_AT`.
+- Фронты из ветки: записи `halloween-site` (:3046), `halloween-admin` (:3047), `halloween-miniapp` (:3048) в `shop/.claude/launch.json`. `/hw/` в `next dev` проксируется на :8090 (rewrites в `next.config.ts`).
+- Админка на стенде входит сама, без пароля и кода: `DEV_ADMIN_CREDS=<путь к local.json>` + `next dev` (`frontend-admin/app/dev-login/route.ts`). В сборке для прода маршрут отвечает 404.
+- Mini App на :3048: порт 3004 бывает занят, поэтому API идёт через dev-прокси (`NEXT_PUBLIC_API_BASE_URL=http://localhost:3048`, `DEV_API_ORIGIN=http://localhost:8080`).
+- Открыть: сайт `http://localhost:3046`, Mini App `http://localhost:3048/?tgstub=502540144`, розыгрыш `http://localhost:3047/hw/draw/`.
+
 Клавиши экрана: **R** — крутить, **H** — спрятать панель (для OBS), **M** — звук.
 
 ## Перед стримом (чек-лист)
@@ -106,12 +114,14 @@ cd events/halloween/server && npm install && HW_DEV_AUTH=1 HW_STARTS_AT=2026-10-
 3. Удалить блоки `location /hw/` и `^~ /hw/(draw|api/admin)` из `infra/gateway.conf`, `gateway-site.conf`, `gateway-admin.conf`.
 4. Сайт:
    - удалить `site/components/event/`, `site/app/[locale]/halloween-rules/`, `site/content/legal/*/halloween-rules.md`, `site/public/mascot-hw/`, `site/public/case-hw/`;
+   - удалить `site/components/event/HwBannerSlide.tsx` и его слайд в `site/components/mascot/HeroBanner.tsx` (`hw`, `isHuntOn`);
    - убрать `halloweenRules` из `site/lib/legal.ts`;
    - убрать `HalloweenWidget`/`data-event` из `site/app/[locale]/layout.tsx` и `HalloweenCounter` из `site/components/layout/Header.tsx`;
    - убрать подмену `-hw` из `site/middleware.ts`;
    - убрать `batFlock` и `halloween`-ветку из `site/components/scene/SceneFx.tsx`.
 5. Mini App: удалить `frontend/components/Halloween.tsx`, `frontend/components/halloween.css`, `frontend/middleware.ts`, `frontend/public/case-hw/`, убрать их использование в `frontend/app/layout.tsx` и `frontend/app/page.tsx`.
-6. Админка: пункт «Розыгрыш 🎃» и поле `external` в `frontend-admin/components/layout/Shell.tsx`.
-7. Shared: `shared/src/event.ts`, `shared/src/event-assets.ts`, экспорт в `shared/src/index.ts` и `"./event"` в `shared/package.json`.
+6. dev-прокси `/hw/` и `skipTrailingSlashRedirect` в `site/`, `frontend/`, `frontend-admin/next.config.ts` (вход без пароля `dev-login` можно оставить: он не про акцию).
+7. Админка: пункт «Розыгрыш 🎃» и поле `external` в `frontend-admin/components/layout/Shell.tsx`.
+8. Shared: `shared/src/event.ts`, `shared/src/event-assets.ts`, экспорт в `shared/src/index.ts` и `"./event"` в `shared/package.json`.
 
 Проверка, что ничего не осталось: `git grep -n -i "halloween\|/hw/\|isHalloween\|-hw/"`.

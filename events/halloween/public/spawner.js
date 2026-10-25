@@ -216,6 +216,8 @@
     .center { text-align: center; }
     .center .big { margin: 0 auto 8px; width: 110px; height: 110px; position: relative; }
     .center .big .art { position: absolute; inset: 0; animation: pk-bob 1.6s ease-in-out infinite; }
+    .center .big.winner { width: 180px; height: 180px; margin-top: -24px; }
+    .center .big.winner img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; animation: pk-bob 1.6s ease-in-out infinite; }
   </style>`;
   const layer = document.createElement("div");
   root.append(layer);
@@ -504,10 +506,9 @@
 
   function openWin() {
     cfg.haptic && cfg.haptic("success");
-    const s = modal(`<div class="center"><div class="big"></div><h2>${t().win}</h2><p>${t().winText}</p>
+    const s = modal(`<div class="center"><div class="big winner"><img src="${BASE}/sprites/winner.webp" alt="" width="180" height="180" /></div><h2>${t().win}</h2><p>${t().winText}</p>
       <p><b>${t().stream}:</b> ${streamWhen()}</p>
       <button class="btn wide" type="button" data-close>OK</button></div>`);
-    s.querySelector(".big").append(pumpkinArt(4));
     s.querySelector("[data-close]").onclick = closeModal;
     for (let i = 0; i < 4; i++) setTimeout(() => burst(innerWidth * (0.2 + Math.random() * 0.6), innerHeight * (0.25 + Math.random() * 0.4)), i * 220);
   }
@@ -590,6 +591,7 @@
     /** The host calls this after sign-in / sign-out so the widget picks the new identity up. */
     refresh: () => loadState().then(() => schedule(rand(4, 8))).catch(() => {}),
     _debugSpawn: () => tick(),
+    _debugWin: () => openWin(),
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

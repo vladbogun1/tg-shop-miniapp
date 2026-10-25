@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { artKindOf, type CategoryKind } from "./category-kind";
+import { isHuntOn } from "@shop/shared";
+import { HwBannerSlide } from "@/components/event/HwBannerSlide";
 import "./hero-banner.css";
 
 /**
@@ -65,14 +67,20 @@ const slogan = (kind: CategoryKind, n: number) => `home.banner.${kind}.${VARIANT
 const reaction = (kind: CategoryKind, n: number) => REACTIONS[kind][n % REACTIONS[kind].length];
 
 export type BannerCategory = { slug: string; name: string; productCount: number; artKind?: string | null };
-type Slide = { slug: string; name: string; kind: CategoryKind };
+/** `hw` — the Halloween 2026 pumpkin hunt slide (components/event), first while the hunt runs. */
+type Slide = { slug: string; name: string; kind: CategoryKind; hw?: boolean };
 /** A mounted slide: index, visit number (picks slogan + reaction), key, leaving or not. */
 type Layer = { i: number; v: number; id: number; out: boolean };
 
 export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
   const { t, href } = useI18n();
   const slides = useMemo<Slide[]>(
-    () => categories.filter((c) => c.productCount > 0).map((c) => ({ slug: c.slug, name: c.name, kind: artKindOf(c.artKind, c.slug, c.name) })),
+    () => {
+      const list: Slide[] = categories
+        .filter((c) => c.productCount > 0)
+        .map((c) => ({ slug: c.slug, name: c.name, kind: artKindOf(c.artKind, c.slug, c.name) }));
+      return isHuntOn() && list.length ? [{ slug: "", name: "", kind: list[0].kind, hw: true }, ...list] : list;
+    },
     [categories]
   );
 
@@ -118,6 +126,7 @@ export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
     if (count < 2) return;
     const n = (shown.i + 1) % count;
     const s = slides[n];
+    if (s.hw) return;
     const r = reaction(s.kind, n === 0 ? shown.v + 1 : shown.v);
     new Image().src = iconSrc(s.kind, "webp");
     if ("scene" in r) new Image().src = sceneSrc(r.scene);
@@ -177,6 +186,7 @@ export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
 
       {layers.map((l) => {
         const s = slides[l.i] ?? slides[0];
+        if (s.hw) return <HwBannerSlide key={l.id} out={l.out} first={l.id === 0} num={String(l.i + 1).padStart(2, "0")} total={total} />;
         const text = t(slogan(s.kind, l.v));
         return (
           <Link
@@ -227,9 +237,11 @@ export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
         );
       })}
 
-      {layers.map((l) => (
-        <Mascot key={`m${l.id}`} r={reaction((slides[l.i] ?? slides[0]).kind, l.v)} out={l.out} first={l.id === 0} still={still} />
-      ))}
+      {layers.map((l) =>
+        (slides[l.i] ?? slides[0]).hw ? null : (
+          <Mascot key={`m${l.id}`} r={reaction((slides[l.i] ?? slides[0]).kind, l.v)} out={l.out} first={l.id === 0} still={still} />
+        )
+      )}
 
       {tick > 0 && <span key={`g${tick}`} aria-hidden className="hb-glitch" />}
 

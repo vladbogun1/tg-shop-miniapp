@@ -17,6 +17,7 @@ import {
   ApiError,
   authAdminLogin,
   confirmTwoFactorSetup,
+  setAccessToken,
   startTwoFactorSetup,
   verifyTwoFactor,
   type AdminLoginResult,
@@ -60,6 +61,24 @@ export function Login({ onSuccess, initial }: { onSuccess: () => void; initial?:
     push("Вход выполнен", "ok");
     onSuccess();
   }, [onSuccess, push]);
+
+  // Local stand only (`next dev` + DEV_ADMIN_CREDS, see app/dev-login/route.ts): no password, no code.
+  // In a production build the condition is a constant false and the block is dropped.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    let cancelled = false;
+    fetch("/dev-login", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((r: { accessToken?: string } | null) => {
+        if (cancelled || !r?.accessToken) return;
+        setAccessToken(r.accessToken);
+        done();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [done]);
 
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-8 sm:py-10">

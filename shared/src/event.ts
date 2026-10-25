@@ -10,6 +10,13 @@ export function isHalloween(now: number = Date.now()): boolean {
   return now < HALLOWEEN_UNTIL;
 }
 
+/** The pumpkin hunt itself (the stream draw is that evening): the home banner advertises it until then. */
+export const HUNT_UNTIL = Date.parse("2026-10-30T22:00:00Z"); // 31.10.2026 00:00 Kyiv
+
+export function isHuntOn(now: number = Date.now()): boolean {
+  return now < HUNT_UNTIL;
+}
+
 /** `<html data-event>` value while the event runs. */
 export const EVENT_ATTR = "halloween";
 

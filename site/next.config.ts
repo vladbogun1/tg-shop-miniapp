@@ -10,8 +10,12 @@ import type { NextConfig } from "next";
  */
 const DEV_API = process.env.DEV_API_ORIGIN ?? "http://localhost:8080";
 const DEV_IMG = process.env.DEV_IMG_ORIGIN ?? "http://localhost:8082";
+// Halloween 2026: the /hw/ service (events/halloween), proxied by nginx in production.
+const DEV_HW = process.env.DEV_HW_ORIGIN ?? "http://localhost:8090";
 
 const nextConfig: NextConfig = {
+  // dev only: /hw/draw/ is proxied as is (Next would strip the slash and the service would add it back)
+  skipTrailingSlashRedirect: process.env.NODE_ENV === "development",
   reactStrictMode: true,
   // dev only: the «N» badge sat in the bottom-left corner over the tab bar / catalog tiles
   devIndicators: false,
@@ -39,7 +43,7 @@ const nextConfig: NextConfig = {
         { source: "/", destination: "/uk" },
         {
           source:
-            "/:path((?!(?:ru|en|uk)(?:/|$)|api(?:/|$)|ws$|img/|_next/|_site/|_vercel|favicon\\.ico$|sitemap\\.xml$|robots\\.txt$|.*\\.[a-zA-Z0-9]+$).+)",
+            "/:path((?!(?:ru|en|uk)(?:/|$)|api(?:/|$)|ws$|img/|hw/|_next/|_site/|_vercel|favicon\\.ico$|sitemap\\.xml$|robots\\.txt$|.*\\.[a-zA-Z0-9]+$).+)",
           destination: "/uk/:path",
         },
       ],
@@ -49,6 +53,7 @@ const nextConfig: NextConfig = {
               { source: "/api/:path*", destination: `${DEV_API}/api/:path*` },
               { source: "/ws", destination: `${DEV_API}/ws` },
               { source: "/img/:path*", destination: `${DEV_IMG}/img/:path*` },
+              { source: "/hw/:path*", destination: `${DEV_HW}/hw/:path*` },
             ]
           : [],
       fallback: [],
