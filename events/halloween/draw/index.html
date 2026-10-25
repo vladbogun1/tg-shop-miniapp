@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Halloween Draw · ChiSetup</title>
+  <link rel="stylesheet" href="./host.css" />
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="rail" aria-label="Переможці"></div>
+  <div id="panel">
+    <div class="row">
+      <strong class="brand">🎃 ChiSetup · Halloween</strong>
+      <select id="visual" aria-label="Візуал"></select>
+      <span id="stats"></span>
+    </div>
+    <div class="row">
+      <button id="roll" class="primary">Крутити (R)</button>
+      <button id="reroll" title="Переможець не відповів — перекрутити останній раунд">Перекрутити раунд</button>
+      <label><input type="checkbox" id="avatars" checked /> аватарки</label>
+      <label><input type="checkbox" id="sound" checked /> звук (M)</label>
+      <button id="hide" title="H">Сховати панель (H)</button>
+      <span id="seed" class="muted"></span>
+    </div>
+    <div id="msg" class="muted"></div>
+  </div>
+  <script type="module" src="./host.js"></script>
+</body>
+</html>

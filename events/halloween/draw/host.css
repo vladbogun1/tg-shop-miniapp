@@ -1,0 +1,50 @@
+@font-face {
+  font-family: "Exo 2";
+  src: url("./assets/fonts/exo2-cyrillic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Exo 2";
+  src: url("./assets/fonts/exo2-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+:root {
+  --bg: #0e0e10;
+  --orange: #ff6600;
+  --slime: #7cff4f;
+  --violet: #8a3ffc;
+  --text: #f4f1ea;
+  --muted: #9a958c;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: "Exo 2", system-ui, sans-serif; overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+
+#rail {
+  position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 20; pointer-events: none;
+}
+#rail .slot {
+  width: 150px; padding: 8px 10px; border: 1px solid #ffffff22; border-radius: 10px; background: #0e0e10cc;
+  font-size: 13px; line-height: 1.25; backdrop-filter: blur(6px);
+}
+#rail .slot b { display: block; color: var(--orange); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+#rail .slot.empty { opacity: .35; }
+
+#panel {
+  position: fixed; left: 16px; bottom: 16px; z-index: 30; padding: 12px 14px; border-radius: 12px;
+  background: #16161acc; border: 1px solid #ffffff1f; backdrop-filter: blur(8px); font-size: 14px;
+  display: grid; gap: 8px; max-width: calc(100vw - 32px);
+}
+#panel.hidden { display: none; }
+#panel .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+#panel button, #panel select {
+  font: inherit; color: var(--text); background: #222; border: 1px solid #ffffff2a; border-radius: 8px; padding: 6px 12px; cursor: pointer;
+}
+#panel button.primary { background: var(--orange); color: #140800; border-color: transparent; font-weight: 700; }
+#panel button:disabled { opacity: .45; cursor: default; }
+.muted { color: var(--muted); font-size: 12px; }
+.brand { color: var(--orange); }
