@@ -38,7 +38,10 @@ export const KNOWN_BRANDS = [
 ];
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const BRAND_RE = new RegExp(`(?<![\\p{L}\\p{N}])(${KNOWN_BRANDS.map(escape).join("|")})(?![\\p{L}\\p{N}])`, "giu");
+// No lookbehind `(?<!…)`: Safari before 16.4 (iOS 15/16) throws on it, and since this module is in
+// the shared bundle that killed the whole site and Mini App on those phones. The preceding non-letter
+// is captured instead (group 1) and skipped when computing the index.
+const BRAND_RE = new RegExp(`(^|[^\\p{L}\\p{N}])(${KNOWN_BRANDS.map(escape).join("|")})(?![\\p{L}\\p{N}])`, "giu");
 const BRAND_LINE_RE = /^[\s•*-]*(?:Бренд|Brand|Виробник|Производитель|Manufacturer)\s*:\s*([^\n]+)$/imu;
 
 /**
@@ -57,8 +60,9 @@ export function guessProductBrand(p: { title: string; description?: string | nul
   }
   let best: { index: number; name: string } | null = null;
   for (const m of p.title.matchAll(BRAND_RE)) {
-    if (!best || m.index < best.index) {
-      best = { index: m.index, name: KNOWN_BRANDS.find((b) => b.toLowerCase() === m[1].toLowerCase()) ?? m[1] };
+    const index = m.index + m[1].length;
+    if (!best || index < best.index) {
+      best = { index, name: KNOWN_BRANDS.find((b) => b.toLowerCase() === m[2].toLowerCase()) ?? m[2] };
     }
   }
   return best?.name ?? null;
