@@ -286,6 +286,8 @@ public class OrderService {
         OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
+        settleFreeOrder(order);
+
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
         if (drawn != null) {
@@ -748,7 +750,7 @@ public class OrderService {
                 note == null || note.isBlank() ? (diff > 0 ? "отмечено получено" : "исправлено «получено»") : note,
                 null);
         order.setReceivedMinor(received);
-        boolean paid = received > 0;
+        boolean paid = received > 0 || order.getTotalMinor() == 0; // a free order stays paid (settleFreeOrder)
         // Correcting the amount of an order that is already paid keeps the original payment date:
         // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
         boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
@@ -1022,6 +1024,7 @@ public class OrderService {
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
         order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
+        settleFreeOrder(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
@@ -1264,6 +1267,22 @@ public class OrderService {
         order.setDiscountMinor(discount);
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
         order.setTotalMinor(Math.max(0, subtotal - discount));
+        settleFreeOrder(order);
+    }
+
+    /**
+     * Nothing to pay: a discount (a case prize, a manual one) covers the whole order. It counts as paid at
+     * once and has no payment deadline — otherwise it hung as «не оплачен» with a timer, and a NEW one was
+     * auto-cancelled for non-payment. If an item is added later, the paid order asks for a top-up as usual.
+     */
+    static void settleFreeOrder(Order order) {
+        if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
+                || (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED)) {
+            return;
+        }
+        order.setPaid(true);
+        order.setPaidAt(Instant.now());
+        order.setPaymentDueAt(null);
     }
 
     /**

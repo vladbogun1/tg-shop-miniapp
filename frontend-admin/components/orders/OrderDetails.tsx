@@ -7,6 +7,7 @@
 import type { Ref } from "react";
 import {
   Phone,
+  Merge,
   User,
   Truck,
   Store,
@@ -59,7 +60,9 @@ export interface DetailHandlers {
   onReturn?: () => void;
   /** Exchange goods (delivered orders): the replacement goes out as a new linked order. */
   onExchange?: () => void;
-  /** Open another order in the same drawer (the two sides of an exchange). */
+  /** «Объединить заказы» (NEW / APPROVED): another order of the same customer joins this one. */
+  onMerge?: () => void;
+  /** Open another order in the same drawer (the two sides of an exchange or a merge). */
   onOpenOrder?: (id: string) => void;
   /** «Посылка вернулась» — only while the refused parcel is on its way back. */
   onReturnReceived?: () => void;
@@ -85,6 +88,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
 
   const exchangeOf = order.admin?.exchangeOfId ?? null;
   const exchangeKids = order.admin?.exchangeOrderIds ?? [];
+  const mergedInto = order.admin?.mergedIntoId ?? null;
+  const mergedFrom = order.admin?.mergedFromIds ?? [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,6 +105,27 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span className="text-[var(--text-muted)]">
               Обмен: {exchangeKids.length > 1 ? "новые заказы" : "новый заказ"}{" "}
               {exchangeKids.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <OrderLink id={id} onOpen={h.onOpenOrder} />
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+      {(mergedInto || mergedFrom.length > 0) && (
+        <div className="card flex flex-wrap items-center gap-x-3 gap-y-1.5 border-[rgba(255,102,0,.35)] px-4 py-3 text-[13px]">
+          <Merge className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />
+          {mergedInto && (
+            <span className="text-[var(--text-muted)]">
+              Объединён в заказ <OrderLink id={mergedInto} onOpen={h.onOpenOrder} /> — товары и оплата там
+            </span>
+          )}
+          {mergedFrom.length > 0 && (
+            <span className="text-[var(--text-muted)]">
+              В этот заказ {mergedFrom.length > 1 ? "объединены" : "объединён"}{" "}
+              {mergedFrom.map((id, i) => (
                 <span key={id}>
                   {i > 0 && ", "}
                   <OrderLink id={id} onOpen={h.onOpenOrder} />
@@ -452,7 +478,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
         </div>
-        {(editable || h.onReturn || h.onExchange) && (
+        {(editable || h.onReturn || h.onExchange || h.onMerge) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {editable && (
               <>
@@ -468,6 +494,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   </Button>
                 )}
               </>
+            )}
+            {h.onMerge && (
+              <Button size="sm" variant="surface" icon={<Merge className="h-4 w-4" />} onClick={h.onMerge}>
+                Объединить
+              </Button>
             )}
             {h.onExchange && (
               <Button size="sm" variant="surface" icon={<Repeat className="h-4 w-4" />} onClick={h.onExchange}>

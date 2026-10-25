@@ -77,6 +77,13 @@ public final class OrderAdjustmentDtos {
     }
 
     /** POST /api/admin/stock-writeoffs/{id}/restore — a written-off unit goes back on the shelf. */
+    /** Merge {@code sourceId} into the order of the URL (V71). */
+    public record MergeRequest(@jakarta.validation.constraints.NotBlank String sourceId,
+                               Boolean useSourceDelivery,
+                               Boolean notifyCustomer,
+                               @jakarta.validation.constraints.Size(max = 500) String note) {
+    }
+
     public record RestoreWriteoffRequest(int quantity, @Size(max = 500) String note) {
     }
 

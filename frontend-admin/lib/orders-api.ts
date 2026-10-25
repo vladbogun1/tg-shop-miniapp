@@ -92,6 +92,37 @@ export interface OrderAdminExtras {
   exchangeOrderIds?: string[];
   /** Returns and exchanges of this order (V70), oldest first. */
   returns?: ReturnRecord[];
+  /** This order was merged into that one (V71). */
+  mergedIntoId?: string | null;
+  /** Orders merged into this one, oldest first. */
+  mergedFromIds?: string[];
+}
+
+/** Another open order of the same customer for «Объединить» (V71) and the merged result. */
+export interface MergeCandidate {
+  id: string;
+  status: "NEW" | "APPROVED";
+  createdAt: string;
+  totalMinor: number;
+  receivedMinor: number;
+  prepaymentMinor: number;
+  paid: boolean;
+  paymentOptionTitle?: string | null;
+  npCityName?: string | null;
+  npWarehouseName?: string | null;
+  customerName?: string | null;
+  trackingNumber?: string | null;
+  giftCaseStatus?: string | null;
+  lines: string[];
+  /** Why it cannot be merged now; null = it can. */
+  blocker?: string | null;
+}
+
+export interface MergeBody {
+  sourceId: string;
+  useSourceDelivery: boolean;
+  notifyCustomer: boolean;
+  note?: string;
 }
 
 export type ReturnLineOutcome = "RESTOCK" | "DEFECT" | "KEPT" | "IN_TRANSIT";
@@ -376,6 +407,12 @@ export const ordersApi = {
   /** POST …/returns/{rid}/cancel — the customer changed their mind: units back into the order. */
   cancelReturn: (id: string, returnId: number, body: { money?: CancelMoney; note: string }) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/returns/${returnId}/cancel`, body),
+
+  /** GET …/merge-candidates — other open orders of the same customer (V71). */
+  mergeCandidates: (id: string) => apiGet<MergeCandidate[]>(`/api/admin/orders/${id}/merge-candidates`),
+
+  /** POST …/merge — merge `sourceId` into this order; returns this order. */
+  merge: (id: string, body: MergeBody) => apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/merge`, body),
 
   /** POST …/returns/{rid}/debt-paid — the money of a cancelled return came back. */
   returnDebtPaid: (id: string, returnId: number) =>

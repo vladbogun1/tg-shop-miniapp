@@ -669,6 +669,7 @@ public class OrderAdjustmentService {
             case NP_CLAIM -> "претензия НП";
             case OTHER -> "другое";
             case EXCHANGE -> "зачёт в обмен";
+            case MERGE -> "перенос при объединении";
         };
     }
 

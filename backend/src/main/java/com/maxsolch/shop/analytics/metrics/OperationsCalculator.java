@@ -43,6 +43,7 @@ public final class OperationsCalculator {
         REASON_LABELS.put("PAYMENT_TIMEOUT", "Не оплатил за сутки");
         REASON_LABELS.put("REFUSED_AT_POST", "Отказ на почте");
         REASON_LABELS.put("RETURNED", "Возврат");
+        REASON_LABELS.put("MERGED", "Объединён с другим");
         REASON_LABELS.put("OTHER", "Другое");
         REASON_LABELS.put(UNSPECIFIED, "Не указано");
     }

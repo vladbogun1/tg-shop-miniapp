@@ -218,6 +218,10 @@ public class Order {
     @Column(name = "exchange_of_order_id", columnDefinition = "BINARY(16)")
     private byte[] exchangeOfOrderId;
 
+    /** The order this one was merged into (V71): closed as REJECTED with code MERGED, its lines live on there. */
+    @Column(name = "merged_into_order_id", columnDefinition = "BINARY(16)")
+    private byte[] mergedIntoOrderId;
+
     @Column(name = "return_received_at")
     private Instant returnReceivedAt;
 

@@ -241,6 +241,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   NP_CLAIM: "Претензия НП",
   OTHER: "Другое",
   EXCHANGE: "Зачёт в обмен",
+  MERGE: "Перенос при объединении",
 };
 const REASON_LABEL: Record<string, string> = {
   DEFECT: "Брак",

@@ -24,6 +24,7 @@ import {
   MoreHorizontal,
   Undo2,
   Repeat,
+  Merge,
 } from "lucide-react";
 import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
 import {
@@ -32,6 +33,7 @@ import {
   type AdminOrderDetail,
   type DeliveryPatch,
   type ExchangeBody,
+  type MergeBody,
   type ReturnReceivedBody,
   type ReturnWizardBody,
 } from "@/lib/orders-api";
@@ -65,6 +67,7 @@ import { TrackingModal } from "./TrackingModal";
 import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
+import { MergeModal } from "./MergeModal";
 import { GiftCaseModal } from "./GiftCaseModal";
 import { CASE_RARITY_LABEL } from "@/lib/gift";
 import { caseDiscountText, type CaseTier } from "@shop/shared";
@@ -124,6 +127,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [exchangeOpen, setExchangeOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const [receivedOpen, setReceivedOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const isSuper = useIsSuperAdmin() === true;
@@ -382,6 +386,28 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
     }
   }
 
+  /** «Объединить»: the other order closes as «Объединён»; the drawer jumps to the one that stays. */
+  async function saveMerge(targetId: string, body: MergeBody) {
+    const id = orderId;
+    if (!id) return;
+    let target: AdminOrderDetail | null = null;
+    const ok = await run("merge", async () => {
+      target = await ordersApi.merge(targetId, body);
+      return target;
+    });
+    if (ok && target) {
+      const t: AdminOrderDetail = target;
+      setMergeOpen(false);
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.invalidateQueries({ queryKey: ["order", body.sourceId] });
+      qc.invalidateQueries({ queryKey: ["merge-candidates"] });
+      qc.setQueryData(["order", t.id], t);
+      refreshLists();
+      push(`Заказы объединены в ${shortId(t.id)}`, "ok");
+      if (t.id !== id) setJumped(t.id);
+    }
+  }
+
   /** «🎁 Выдать кейс»: the server draws the prize now; the toast names it. */
   async function grantCase(tier: CaseTier, notifyCustomer: boolean) {
     const id = orderId;
@@ -450,6 +476,8 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   // Exchange: the goods reached (or are on the way to) the customer — swap them in this same order.
   // Only once the customer has the parcel: a refused one comes back through «Отклонить».
   const canExchange = !!order && order.status === "DELIVERED";
+  // Merge: two orders of the same customer that have not shipped yet go out as one parcel.
+  const canMerge = !!order && (order.status === "NEW" || order.status === "APPROVED") && !archived;
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
@@ -533,6 +561,9 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         ...(canExchange
           ? [{ key: "exchange", label: "Обмен", icon: <Repeat className="h-4 w-4" />, onSelect: () => setExchangeOpen(true) }]
           : []),
+        ...(canMerge
+          ? [{ key: "merge", label: "Объединить заказы", icon: <Merge className="h-4 w-4" />, onSelect: () => setMergeOpen(true) }]
+          : []),
         ...(canReturn
           ? [{ key: "return", label: "Возврат", icon: <Undo2 className="h-4 w-4" />, onSelect: () => setReturnOpen(true) }]
           : []),
@@ -609,6 +640,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
                       onReturnReceived: inTransit ? () => setReceivedOpen(true) : undefined,
                       onUnarchive: canUnarchive ? () => void applyUnarchive() : undefined,
                       onExchange: canExchange ? () => setExchangeOpen(true) : undefined,
+                      onMerge: canMerge ? () => setMergeOpen(true) : undefined,
                       onOpenOrder: setJumped,
                       onPaymentChanged: refreshLists,
                       paymentRef,
@@ -776,6 +808,14 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         loading={busyKey === "exchange"}
         onClose={() => setExchangeOpen(false)}
         onSave={saveExchange}
+      />
+
+      <MergeModal
+        open={mergeOpen}
+        order={order ?? null}
+        loading={busyKey === "merge"}
+        onClose={() => setMergeOpen(false)}
+        onSave={saveMerge}
       />
 
       <ItemPicker

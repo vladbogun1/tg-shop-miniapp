@@ -75,7 +75,8 @@ export type MovementChannel =
   | "CASH"
   | "NP_CLAIM"
   | "OTHER"
-  | "EXCHANGE";
+  | "EXCHANGE"
+  | "MERGE";
 
 export const MOVEMENT_KIND_LABEL: Record<MovementKind, string> = {
   PAYMENT: "Пришло",
@@ -93,6 +94,7 @@ export const MOVEMENT_CHANNEL_LABEL: Record<MovementChannel, string> = {
   NP_CLAIM: "Претензия НП",
   OTHER: "Другое",
   EXCHANGE: "Зачёт в обмен",
+  MERGE: "Перенос при объединении",
 };
 
 /** How money came in (PATCH …/paid): by hand, without monobank (credited by the bank itself). */

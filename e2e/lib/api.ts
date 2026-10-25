@@ -30,7 +30,16 @@ export interface OrderDetail {
   amountDueMinor?: number;
   items: { id: number; title: string; quantity: number; returnedQty?: number }[];
   /** Admin-only extras (V68/V69): the parcel coming back, the two sides of an exchange. */
-  admin?: { returnStatus?: string | null; exchangeOfId?: string | null; exchangeOrderIds?: string[] } | null;
+  admin?: {
+    returnStatus?: string | null;
+    exchangeOfId?: string | null;
+    exchangeOrderIds?: string[];
+    mergedIntoId?: string | null;
+    mergedFromIds?: string[];
+  } | null;
+  deliveryMethod?: string;
+  npWarehouseName?: string | null;
+  discountMinor?: number;
 }
 
 /** One monobank invoice of an order (GET /api/admin/orders/{id}/payments). */

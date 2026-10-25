@@ -31,6 +31,10 @@ export const ORDER = {
   paidOnline: "e2e0000d-0000-4000-8000-00000000000d",
   /** DELIVERED, paid in full — exchanged for another product (a new linked order, V69). */
   exchange: "e2e0000e-0000-4000-8000-00000000000e",
+  /** APPROVED, older, 150 ₴ prepayment paid — the order that stays after «Объединить» (V71). */
+  mergeKeep: "e2e00010-0000-4000-8000-000000000010",
+  /** NEW, same customer, other branch, fully covered by a promo code (total 0) — merged into the one above. */
+  mergeAway: "e2e00011-0000-4000-8000-000000000011",
 } as const;
 
 export const CUSTOMER: Record<keyof typeof ORDER, string> = {
@@ -48,6 +52,8 @@ export const CUSTOMER: Record<keyof typeof ORDER, string> = {
   audit: "Лариса Журнальна",
   paidOnline: "Віра Онлайн",
   exchange: "Ольга Обмінна",
+  mergeKeep: "Максим Двічі",
+  mergeAway: "Максим Двічі",
 };
 
 export const PRODUCT = {

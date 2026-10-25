@@ -438,6 +438,43 @@ public class NotificationService {
         }
     }
 
+    /** Two orders of the customer became one (V71) → DM what goes in the parcel and what is left to pay. */
+    public void notifyCustomerMerged(Order order, String mergedShortId) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String cur = nz(order.getCurrency());
+            StringBuilder t = new StringBuilder();
+            t.append(messages.get(locale, "bot.merge.title")).append('\n');
+            t.append(messages.get(locale, "bot.merge.body", mergedShortId, shortId(order))).append('\n');
+            long due = com.maxsolch.shop.service.OrderService.amountDueMinor(order);
+            long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
+            if (order.isPaid() && due > 0) {
+                t.append(messages.get(locale, "bot.merge.payChoice", money(due) + " " + cur));
+            } else if (due > 0) {
+                t.append(messages.get(locale, "bot.merge.payOnline", money(due) + " " + cur));
+            } else if (cod > 0) {
+                t.append(messages.get(locale, "bot.merge.toPay", money(cod) + " " + cur));
+            } else {
+                t.append(messages.get(locale, "bot.merge.paid"));
+            }
+            dm("ORDER_MERGE", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(orderButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerMerged failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
     /** A return was registered (V68) → DM the customer what came back and what is refunded. */
     public void notifyCustomerReturn(Order order, String itemsSummary, long refundMinor) {
         if (!enabled()) {

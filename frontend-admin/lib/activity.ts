@@ -128,6 +128,7 @@ export const TYPE_LABEL: Record<string, string> = {
   ORDER_CHANGED: "Заказ изменён",
   ORDER_TRACKING: "Новая ТТН",
   ORDER_EXCHANGE: "Обмен оформлен",
+  ORDER_MERGE: "Заказы объединены",
   CHAT_REPLY: "Ответ в чате заказа",
   PAYMENT_RECEIVED: "«Оплату отримано»",
   RECEIPT: "Чек PDF",

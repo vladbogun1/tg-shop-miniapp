@@ -56,6 +56,13 @@ class CustomerRejectReasonTest {
     }
 
     @Test
+    void mergedIntoAnotherOrder() {
+        String stored = com.maxsolch.shop.service.OrderMergeService.MERGED_PREFIX + "803d9cb6";
+        assertThat(reasons.localize(stored, UK)).isEqualTo("Обʼєднано із замовленням #803d9cb6");
+        assertThat(reasons.localize(stored, EN)).isEqualTo("Merged into order #803d9cb6");
+    }
+
+    @Test
     void paymentTimeout() {
         assertThat(reasons.localize(CustomerRejectReason.UNPAID_PREFIX + "24 ч", EN))
                 .isEqualTo("The order was not paid within 24 h and was cancelled automatically");

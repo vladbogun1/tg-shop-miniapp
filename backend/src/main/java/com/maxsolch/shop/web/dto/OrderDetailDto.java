@@ -90,7 +90,35 @@ public record OrderDetailDto(
                               /** Replacement orders of exchanges made on this one, oldest first. */
                               List<String> exchangeOrderIds,
                               /** Returns and exchanges of this order (V70), oldest first. */
-                              List<ReturnRecordDto> returns) {
+                              List<ReturnRecordDto> returns,
+                              /** This order was merged into that one (V71); null = not. */
+                              String mergedIntoId,
+                              /** Orders merged into this one, oldest first. */
+                              List<String> mergedFromIds) {
+    }
+
+    /** Another open order of the same customer for «Объединить» (V71) and the merged result. */
+    public record MergeCandidateDto(String id,
+                                    String status,
+                                    Instant createdAt,
+                                    long totalMinor,
+                                    long receivedMinor,
+                                    long prepaymentMinor,
+                                    boolean paid,
+                                    String paymentOptionTitle,
+                                    String npCityName,
+                                    String npWarehouseName,
+                                    String customerName,
+                                    String trackingNumber,
+                                    String giftCaseStatus,
+                                    List<String> lines,
+                                    /** Why it cannot be merged now; null = it can. */
+                                    String blocker,
+                                    /** The order that stays, after the merge. */
+                                    long mergedTotalMinor,
+                                    long mergedReceivedMinor,
+                                    long mergedAmountDueMinor,
+                                    long mergedCodMinor) {
     }
 
     /** One return / exchange; only the newest active one can be cancelled ({@code cancellable}). */

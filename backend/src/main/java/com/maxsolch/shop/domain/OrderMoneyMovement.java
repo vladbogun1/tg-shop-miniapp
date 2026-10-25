@@ -37,7 +37,9 @@ public class OrderMoneyMovement {
     public enum Channel {
         MONO, NP_COD, NP_PAYMENT_CONTROL, CARD_TRANSFER, CASH, NP_CLAIM, OTHER,
         /** Paid value moved between an order and its exchange replacement (V69): no real money. */
-        EXCHANGE
+        EXCHANGE,
+        /** Money moved from a merged order to the one it was merged into (V71): no real money. */
+        MERGE
     }
 
     public enum Source {

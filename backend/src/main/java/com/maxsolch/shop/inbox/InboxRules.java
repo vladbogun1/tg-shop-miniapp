@@ -53,6 +53,7 @@ public final class InboxRules {
             "PAYMENT_TIMEOUT", "не оплачен за сутки",
             "REFUSED_AT_POST", "отказ на почте",
             "RETURNED", "возврат",
+            "MERGED", "объединён с другим",
             "OTHER", "другое");
 
     private InboxRules() {

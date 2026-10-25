@@ -398,6 +398,25 @@ class OrderServiceTest {
         assertThat(order.getTotalMinor()).isEqualTo(990_000);
     }
 
+    @Test
+    void createOrder_promoCoversEverything_isPaidAtOnce_withoutDeadline() {
+        Product p = simpleProduct(10, 15_000); // glides at 150 ₴, a case prize code for 150 ₴
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        PromoCode promo = new PromoCode();
+        promo.setCode("CASE150");
+        promo.setDiscountAmountMinor(15_000);
+        promo.setActive(true);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("CASE150")).thenReturn(Optional.of(promo));
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "CASE150"));
+
+        assertThat(order.getTotalMinor()).isZero();
+        assertThat(order.isPaid()).isTrue();
+        assertThat(order.getPaidAt()).isNotNull();
+        assertThat(order.getPaymentDueAt()).isNull();
+        assertThat(OrderService.onlinePaymentMissing(order)).isFalse();
+    }
+
     // ---------- a case promo code and low-margin products (docs/GIFT-CASE.md) ----------
 
     /** A mouse at 4 000 ₴ marked low-margin + this test's product (a pad) at 800 ₴; returns the mouse id. */

@@ -21,6 +21,8 @@ const ACTION_LABEL: Record<string, string> = {
   ORDER_DELIVERY: "Получатель / доставка",
   ORDER_RETURN: "Возврат",
   ORDER_EXCHANGE: "Обмен",
+  ORDER_MERGE: "Объединение заказов",
+  ORDER_MERGED_INTO: "Объединён в другой заказ",
   ORDER_DELETE: "Удаление",
 };
 

@@ -23,6 +23,11 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             + "where o.exchangeOfOrderId in :ids order by o.createdAt")
     java.util.List<Object[]> exchangeChildren(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
 
+    /** [order id, merged order id] — the orders merged into these (V71), oldest first. */
+    @org.springframework.data.jpa.repository.Query("select o.mergedIntoOrderId, o.id from Order o "
+            + "where o.mergedIntoOrderId in :ids order by o.createdAt")
+    java.util.List<Object[]> mergedChildren(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
+
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Order> findByTgUserIdOrderByCreatedAtDesc(Long tgUserId);

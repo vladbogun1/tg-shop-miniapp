@@ -57,6 +57,8 @@ export type RejectReasonCode =
   | "PAYMENT_TIMEOUT"
   | "REFUSED_AT_POST"
   | "RETURNED"
+  /** Set by the server: merged into another order of the same customer (V71). Not offered in the picker. */
+  | "MERGED"
   | "OTHER";
 
 /** ADMIN ONLY (Russian): labels for the reject reason picker and the order card. */
@@ -69,6 +71,7 @@ export const REJECT_REASON_LABEL: Record<RejectReasonCode, string> = {
   PAYMENT_TIMEOUT: "Не оплатил за сутки",
   REFUSED_AT_POST: "Отказ на почте",
   RETURNED: "Возврат после получения",
+  MERGED: "Объединён с другим заказом",
   OTHER: "Другое",
 };
 

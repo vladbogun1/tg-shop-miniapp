@@ -64,7 +64,7 @@ interface Props {
 }
 
 /** PAYMENT_TIMEOUT is set by the server only (not paid online within 24 h) — never offered here. */
-const SYSTEM_REASONS: RejectReasonCode[] = ["PAYMENT_TIMEOUT"];
+const SYSTEM_REASONS: RejectReasonCode[] = ["PAYMENT_TIMEOUT", "MERGED"];
 const REASONS = (Object.keys(REJECT_REASON_LABEL) as RejectReasonCode[]).filter((r) => !SYSTEM_REASONS.includes(r));
 
 export function StatusChangeModal({ open, target, order, onClose, onConfirm, loading, initialInTransit }: Props) {

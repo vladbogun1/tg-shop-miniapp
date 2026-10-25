@@ -16,6 +16,7 @@ import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.security.RequiredSuperAdmin;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
+import com.maxsolch.shop.service.OrderMergeService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.TimeRange;
@@ -74,6 +75,14 @@ public class AdminOrderController {
     private final OnlinePaymentService payments;
     /** Orders whose return wizard is running right now (one backend instance): no double submit. */
     private final java.util.Set<String> returnsInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** Merging orders (V71). */
+    private OrderMergeService merges;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setMerges(OrderMergeService merges) {
+        this.merges = merges;
+    }
 
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
@@ -361,6 +370,33 @@ public class AdminOrderController {
                 req.notifyCustomer() == null || req.notifyCustomer(), req.note(), audit.currentAdminName());
         audit.record("ORDER_EXCHANGE", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
+    }
+
+    @GetMapping("/{id}/merge-candidates")
+    @Operation(summary = "Other open (not shipped) orders of the same customer, each with what the merged order would be")
+    public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(@PathVariable String id) {
+        return orderQueryService.mergeCandidates(merges.candidates(load(id).getId()));
+    }
+
+    @PostMapping("/{id}/merge")
+    @Operation(summary = "Merge another open order of the same customer into this one: its lines, discount and "
+            + "received money move here, it is closed as REJECTED (MERGED); returns this order")
+    public OrderDetailDto merge(@PathVariable String id, @Valid @RequestBody OrderAdjustmentDtos.MergeRequest req) {
+        Order target = load(id);
+        Order source = load(req.sourceId());
+        if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
+            throw new BadRequestException("по одному из заказов банк ещё проводит оплату — подождите пару минут");
+        }
+        OrderMergeService.Result r = merges.merge(target.getId(), source.getId(),
+                Boolean.TRUE.equals(req.useSourceDelivery()), req.notifyCustomer() == null || req.notifyCustomer(),
+                req.note(), audit.currentAdminName());
+        // The merged order will not be paid any more; the open pages of this one are for the old amount.
+        payments.closeOpenInvoices(source.getId());
+        payments.closeOpenInvoices(target.getId());
+        audit.record("ORDER_MERGE", "ORDER", id, r.auditDetails());
+        audit.record("ORDER_MERGED_INTO", "ORDER", UuidUtil.toString(source.getId()),
+                "объединён в заказ #" + OrderMergeService.shortId(target.getId()));
+        return orderQueryService.toDetail(orderService.get(r.target().getId()));
     }
 
     @PostMapping

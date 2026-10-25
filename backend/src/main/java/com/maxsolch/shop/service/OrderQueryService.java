@@ -384,7 +384,28 @@ public class OrderQueryService {
                 o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs,
                 o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
                 exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()),
-                returnRecords(o));
+                returnRecords(o),
+                o.getMergedIntoOrderId() == null ? null : UuidUtil.toString(o.getMergedIntoOrderId()),
+                orderRepository.mergedChildren(List.of(o.getId())).stream()
+                        .map(r -> UuidUtil.toString((byte[]) r[1]))
+                        .toList());
+    }
+
+    /** Rows of the «Объединить» window (V71). */
+    public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(List<OrderMergeService.Candidate> found) {
+        return found.stream().map(c -> {
+            Order o = c.order();
+            return new OrderDetailDto.MergeCandidateDto(UuidUtil.toString(o.getId()), o.getStatus().name(),
+                    o.getCreatedAt(), o.getTotalMinor(), Math.max(0, o.getReceivedMinor()), o.getPrepaymentMinor(), o.isPaid(),
+                    o.getPaymentOptionTitle(), o.getNpCityName(), o.getNpWarehouseName(), o.getCustomerName(),
+                    o.getTrackingNumber(), o.getGiftCaseStatus(),
+                    o.getItems().stream()
+                            .map(i -> i.getTitleSnapshot()
+                                    + (i.getVariantNameSnapshot() == null ? "" : " (" + i.getVariantNameSnapshot() + ")")
+                                    + " ×" + i.getQuantity() + (i.isGift() ? " · подарок" : ""))
+                            .toList(),
+                    c.blocker(), c.totalMinor(), c.receivedMinor(), c.amountDueMinor(), c.codMinor());
+        }).toList();
     }
 
     /** The order's return records for the drawer, with what each did and whether it can be undone. */

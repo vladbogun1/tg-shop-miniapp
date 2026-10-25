@@ -22,6 +22,8 @@ public enum RejectReasonCode {
     REFUSED_AT_POST,
     /** The goods came back after delivery. */
     RETURNED,
+    /** Merged into another order of the same customer (V71) — set by the server, not a refusal. */
+    MERGED,
     OTHER;
 
     /** Parses a code from the API; null/blank → null, anything unknown → IllegalArgumentException. */
