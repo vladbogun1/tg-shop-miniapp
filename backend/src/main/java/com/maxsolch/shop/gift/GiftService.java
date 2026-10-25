@@ -46,6 +46,8 @@ public class GiftService {
     /** Customer's choice at checkout when the tier offers a guaranteed discount. */
     public static final String CHOICE_CASE = "CASE";
     public static final String CHOICE_DISCOUNT = "DISCOUNT";
+    /** No gift at all: the replacement order of an exchange (V69). */
+    public static final String CHOICE_NONE = "NONE";
 
     /** Promo codes issued by the case (a discount prize, a swap): «Персональные» in the admin. */
     public static final String PROMO_SOURCE = "GIFT_CASE";

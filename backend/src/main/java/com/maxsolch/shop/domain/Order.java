@@ -214,6 +214,10 @@ public class Order {
     @Column(name = "return_sent_at")
     private Instant returnSentAt;
 
+    /** The order this one replaces goods of (V69): set on the replacement parcel of an exchange. */
+    @Column(name = "exchange_of_order_id", columnDefinition = "BINARY(16)")
+    private byte[] exchangeOfOrderId;
+
     @Column(name = "return_received_at")
     private Instant returnReceivedAt;
 

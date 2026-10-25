@@ -335,14 +335,15 @@ public class AdminOrderController {
     }
 
     @PostMapping("/{id}/exchange")
-    @Operation(summary = "Exchange goods in a shipped / delivered order: returned units (restock or write off), "
-            + "replacement lines at today's price; the order goes back to NEW (or APPROVED) for a new ТТН")
+    @Operation(summary = "Exchange on a delivered order: the returned units come back like a return (on their way "
+            + "or already in stock / written off), the replacement goes out as a NEW linked order with its own ТТН; "
+            + "returns the new order")
     public OrderDetailDto exchange(@PathVariable String id,
                                    @Valid @RequestBody OrderAdjustmentDtos.ExchangeRequest req) {
-        List<OrderAdjustmentService.ReturnLine> returned = req.returned() == null ? List.of()
+        List<OrderAdjustmentService.WizardLine> returned = req.returned() == null ? List.of()
                 : req.returned().stream()
-                        .map(l -> new OrderAdjustmentService.ReturnLine(l.itemId(), l.quantity(),
-                                l.restock() == null || l.restock()))
+                        .map(l -> new OrderAdjustmentService.WizardLine(l.itemId(), l.quantity(),
+                                l.outcome() == null || l.outcome().isBlank() ? null : parseOutcome(l.outcome())))
                         .toList();
         List<OrderAdjustmentService.ExchangeNewLine> items = req.items() == null ? List.of()
                 : req.items().stream()

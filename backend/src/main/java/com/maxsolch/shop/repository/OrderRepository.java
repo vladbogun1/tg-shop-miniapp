@@ -18,6 +18,11 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, byte[]> {
 
+    /** [original id, replacement id] of exchanges made on these orders (V69), oldest first. */
+    @org.springframework.data.jpa.repository.Query("select o.exchangeOfOrderId, o.id from Order o "
+            + "where o.exchangeOfOrderId in :ids order by o.createdAt")
+    java.util.List<Object[]> exchangeChildren(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
+
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Order> findByTgUserIdOrderByCreatedAtDesc(Long tgUserId);

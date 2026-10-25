@@ -412,6 +412,10 @@ public class NotificationService {
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.exchange.title")).append('\n');
             t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            if (order.getExchangeOfOrderId() != null) {
+                t.append(messages.get(locale, "bot.exchange.ofOrder",
+                        com.maxsolch.shop.common.UuidUtil.toString(order.getExchangeOfOrderId()).substring(0, 8))).append('\n');
+            }
             t.append(messages.get(locale, "bot.exchange.body", escHtml(nz(givenSummary)))).append('\n');
             long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
             if (cod > 0) {

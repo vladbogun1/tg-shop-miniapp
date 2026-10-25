@@ -10,7 +10,7 @@
  * `returning` = the card in «Едет назад»: the strip and the count show only the units on their way back.
  */
 import type { CSSProperties, ReactNode } from "react";
-import { Ban, Truck, Store, MessageCircle, Package2, Undo2 } from "lucide-react";
+import { Ban, Truck, Store, MessageCircle, Package2, Undo2, Repeat } from "lucide-react";
 import type { AdminOrderCard, CardLine } from "@/lib/orders-api";
 import { Image } from "@/lib/image";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
@@ -117,7 +117,7 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
         )}
       </div>
 
-      <div className="mt-2 flex min-w-0 items-center gap-1.5">
+      <div className="mt-2 flex min-w-0 items-center gap-1.5 overflow-hidden">
         <span className="shrink-0 whitespace-nowrap">
           <PaymentBadge order={order} showTimeLeft />
         </span>
@@ -132,6 +132,21 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
           </span>
         ) : (
           <ReturnBadge status={order.returnStatus} className="shrink-0 !px-1.5 !text-[10.5px]" />
+        )}
+        {(order.exchangeOfId || (order.exchangeOrderIds?.length ?? 0) > 0) && (
+          // Icon only: the row is full on a narrow column; the tooltip names the other order.
+          <span
+            className="chip-tint shrink-0 !px-1 !text-[10.5px]"
+            style={{ "--chip": "var(--accent-hi)" } as CSSProperties}
+            aria-label={order.exchangeOfId ? "Замена по обмену" : "Был обмен"}
+            title={
+              order.exchangeOfId
+                ? `Замена по обмену из заказа #${shortId(order.exchangeOfId)}`
+                : `Обмен: новый заказ ${order.exchangeOrderIds!.map((id) => "#" + shortId(id)).join(", ")}`
+            }
+          >
+            <Repeat className="h-3 w-3" />
+          </span>
         )}
         {order.cancelRequestStatus === "PENDING" && (
           <span

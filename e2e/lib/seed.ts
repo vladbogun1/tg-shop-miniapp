@@ -29,7 +29,7 @@ export const ORDER = {
   audit: "e2e0000c-0000-4000-8000-00000000000c",
   /** NEW, 150 ₴ prepayment paid online (monobank invoice, card •••• 1902) — inbox PAYMENT, refund dialog. */
   paidOnline: "e2e0000d-0000-4000-8000-00000000000d",
-  /** DELIVERED, paid in full — exchanged for another product (back to NEW, new ТТН). */
+  /** DELIVERED, paid in full — exchanged for another product (a new linked order, V69). */
   exchange: "e2e0000e-0000-4000-8000-00000000000e",
 } as const;
 

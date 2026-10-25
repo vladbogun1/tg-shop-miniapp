@@ -57,6 +57,10 @@ public class OrderExchange {
     @Column(name = "admin_name", length = 255)
     private String adminName;
 
+    /** The replacement order created by the exchange (V69); null for exchanges made before it. */
+    @Column(name = "new_order_id", columnDefinition = "BINARY(16)")
+    private byte[] newOrderId;
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

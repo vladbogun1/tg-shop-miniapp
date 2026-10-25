@@ -45,12 +45,12 @@ public class ReturnsReport {
         Timestamp t = Timestamp.from(to);
         List<ChannelRow> channels = new ArrayList<>(jdbc.query(
                 "select channel, sum(amount_minor) s, count(*) c from order_money_movements "
-                        + "where kind = 'REFUND' and occurred_at >= ? and occurred_at < ? group by channel order by s desc",
+                        + "where kind = 'REFUND' and channel <> 'EXCHANGE' and occurred_at >= ? and occurred_at < ? group by channel order by s desc",
                 (rs, i) -> new ChannelRow(rs.getString("channel"), rs.getLong("s"), rs.getLong("c")), f, t));
         long refunded = channels.stream().mapToLong(ChannelRow::amountMinor).sum();
         Long refundOrders = jdbc.queryForObject(
                 "select count(distinct order_id) from order_money_movements "
-                        + "where kind = 'REFUND' and occurred_at >= ? and occurred_at < ?", Long.class, f, t);
+                        + "where kind = 'REFUND' and channel <> 'EXCHANGE' and occurred_at >= ? and occurred_at < ?", Long.class, f, t);
         long[] retained = jdbc.queryForObject(
                 "select coalesce(sum(amount_minor), 0) s, count(distinct order_id) c from order_money_movements "
                         + "where kind = 'RETAINED' and occurred_at >= ? and occurred_at < ?",

@@ -56,8 +56,10 @@ export interface DetailHandlers {
   onEditTracking: () => void;
   onOpenCustomer?: () => void;
   onReturn?: () => void;
-  /** Exchange goods (shipped / delivered orders): back to NEW for a new ТТН. */
+  /** Exchange goods (delivered orders): the replacement goes out as a new linked order. */
   onExchange?: () => void;
+  /** Open another order in the same drawer (the two sides of an exchange). */
+  onOpenOrder?: (id: string) => void;
   /** «Посылка вернулась» — only while the refused parcel is on its way back. */
   onReturnReceived?: () => void;
   /** «Вернуть из архива» — main admin only, archived orders. */
@@ -80,8 +82,32 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
   const cod = codMinor(order);
   const refunded = order.refundedMinor ?? 0;
 
+  const exchangeOf = order.admin?.exchangeOfId ?? null;
+  const exchangeKids = order.admin?.exchangeOrderIds ?? [];
+
   return (
     <div className="flex flex-col gap-4">
+      {(exchangeOf || exchangeKids.length > 0) && (
+        <div className="card flex flex-wrap items-center gap-x-3 gap-y-1.5 border-[rgba(255,102,0,.35)] px-4 py-3 text-[13px]">
+          <Repeat className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />
+          {exchangeOf && (
+            <span className="text-[var(--text-muted)]">
+              Замена по обмену из заказа <OrderLink id={exchangeOf} onOpen={h.onOpenOrder} />
+            </span>
+          )}
+          {exchangeKids.length > 0 && (
+            <span className="text-[var(--text-muted)]">
+              Обмен: {exchangeKids.length > 1 ? "новые заказы" : "новый заказ"}{" "}
+              {exchangeKids.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <OrderLink id={id} onOpen={h.onOpenOrder} />
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
       {order.admin?.archivedAt && (
         <div className="card flex flex-col gap-2 border-[var(--line-strong)] p-4">
           <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
@@ -487,10 +513,17 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 <div className="text-[var(--text-muted)]">
                   <span className="font-semibold text-[var(--text)]">Взамен:</span> {ex.givenSummary}
                 </div>
-                <div className="tabular text-[var(--text-faint)]">
-                  Сумма {money(ex.totalBeforeMinor, order.currency)} → {money(ex.totalAfterMinor, order.currency)}
-                  {ex.previousTracking ? ` · старая ТТН ${ex.previousTracking}` : ""}
-                </div>
+                {ex.newOrderId ? (
+                  <div className="tabular text-[var(--text-faint)]">
+                    Зачтено {money(ex.totalBeforeMinor, order.currency)} · новый заказ{" "}
+                    <OrderLink id={ex.newOrderId} onOpen={h.onOpenOrder} /> на {money(ex.totalAfterMinor, order.currency)}
+                  </div>
+                ) : (
+                  <div className="tabular text-[var(--text-faint)]">
+                    Сумма {money(ex.totalBeforeMinor, order.currency)} → {money(ex.totalAfterMinor, order.currency)}
+                    {ex.previousTracking ? ` · старая ТТН ${ex.previousTracking}` : ""}
+                  </div>
+                )}
                 {ex.note && <div className="text-[var(--text-faint)]">{ex.note}</div>}
               </div>
             ))}
@@ -617,5 +650,20 @@ function Timeline({ order }: { order: AdminOrderDetail }) {
         </li>
       )}
     </ol>
+  );
+}
+
+/** «#1a2b3c4d» that opens that order in the same drawer (plain text without a handler). */
+function OrderLink({ id, onOpen }: { id: string; onOpen?: (id: string) => void }) {
+  const label = `#${id.slice(0, 8)}`;
+  if (!onOpen) return <span className="tabular font-semibold text-[var(--text)]">{label}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(id)}
+      className="tabular hit font-semibold text-[var(--accent-hi)] hover:underline"
+    >
+      {label}
+    </button>
   );
 }

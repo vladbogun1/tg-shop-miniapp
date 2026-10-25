@@ -592,6 +592,7 @@ public class OrderAdjustmentService {
             case CASH -> "наличные";
             case NP_CLAIM -> "претензия НП";
             case OTHER -> "другое";
+            case EXCHANGE -> "зачёт в обмен";
         };
     }
 
@@ -601,37 +602,41 @@ public class OrderAdjustmentService {
     public record ExchangeNewLine(String productId, String variantId, int quantity) {
     }
 
-    /** Where the order goes after an exchange: back to «Новый» (default) or straight to «Одобрен». */
+    /** Where the replacement order of an exchange starts: «Новый» (default) or straight «Одобрен». */
     public static boolean isExchangeTarget(OrderStatus s) {
         return s == OrderStatus.NEW || s == OrderStatus.APPROVED;
     }
 
     /**
-     * Exchange on an order the customer already received (or that is on its way): some units come
-     * back — each line either returns to stock or is written off — and other goods go out in the
-     * same order, so a customer who paid is never asked to place and pay a new one.
+     * Exchange on a delivered order (V69): the delivered order is NOT reopened. It keeps its status,
+     * ТТН, delivery date and receipt; the units the customer gives back are registered like any
+     * return — on their way by post («Едет назад», accepted later with «Посылка вернулась») or
+     * already at the shop (stock / write-off). The goods sent instead form a NEW order linked to
+     * this one, shipped with its own ТТН.
      *
-     * <p>The returned units leave the order, the new ones are added at today's price with their
-     * stock reserved, the totals are recomputed (the stored discount amount stays). Money is not
-     * touched: a dearer replacement leaves the difference as cash on delivery (or online payment
-     * for a fully prepaid option), a cheaper one leaves an overpayment for the admin to refund.
-     * The order goes back to NEW (or APPROVED) with the tracking number cleared, so it is shipped
-     * again with a new ТТН; the old one stays in {@link OrderExchange}.
+     * <p>Money: the paid value of the returned units is moved to the replacement through the money
+     * journal (REFUND «зачёт в обмен» here, PAYMENT on the new order, both channel EXCHANGE), so the
+     * sale is not counted twice. A dearer replacement leaves the difference to pay on the new order
+     * (наложка or online); a cheaper one leaves the rest refundable here, for the return wizard.
      */
     @Transactional
-    public Result exchange(byte[] orderId, List<ReturnLine> returned, List<ExchangeNewLine> given,
+    public Result exchange(byte[] orderId, List<WizardLine> returned, List<ExchangeNewLine> given,
                            OrderStatus target, boolean notifyCustomer, String note, String adminName) {
         Order order = load(orderId);
-        OrderStatus before = order.getStatus();
-        if (before != OrderStatus.SHIPPED && before != OrderStatus.DELIVERED) {
-            throw new BadRequestException("обмен оформляется для отправленного или доставленного заказа");
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new BadRequestException(order.getStatus() == OrderStatus.SHIPPED
+                    ? "посылка ещё не у покупателя — обмен оформляется после доставки (не забрали — отклоните заказ с «Посылка едет назад»)"
+                    : "обмен оформляется для доставленного заказа");
         }
         OrderStatus to = target == null ? OrderStatus.NEW : target;
         if (!isExchangeTarget(to)) {
-            throw new BadRequestException("после обмена заказ уходит в «Новый» или «Одобрен»");
+            throw new BadRequestException("новый заказ обмена начинается с «Новый» или «Одобрен»");
         }
-        List<ReturnLine> back = returned == null ? List.of()
-                : returned.stream().filter(l -> l.quantity() > 0).toList();
+        // No outcome = the unit is sent back by post (the usual case for an exchange).
+        List<WizardLine> back = returned == null ? List.of()
+                : returned.stream().filter(l -> l.quantity() > 0)
+                        .map(l -> l.outcome() == null ? new WizardLine(l.itemId(), l.quantity(), LineOutcome.IN_TRANSIT) : l)
+                        .toList();
         List<ExchangeNewLine> out = given == null ? List.of()
                 : given.stream().filter(l -> l.quantity() > 0).toList();
         if (back.isEmpty()) {
@@ -645,13 +650,15 @@ public class OrderAdjustmentService {
             throw new BadRequestException("комментарий длиннее 500 символов");
         }
 
-        long totalBefore = order.getTotalMinor();
-        String trackingBefore = order.getTrackingNumber();
-
-        // 1. What came back: stock (or written off), then the units leave the order.
+        // 1. What comes back and what it was paid for (checked again by the return below).
+        long credit = 0;
         List<String> backParts = new ArrayList<>();
         List<OrderExchangeLine> backLines = new ArrayList<>();
-        for (ReturnLine line : back) {
+        for (WizardLine line : back) {
+            LineOutcome outcome = line.outcome();
+            if (outcome == LineOutcome.KEPT) {
+                throw new BadRequestException("при обмене товар возвращается: едет назад, на склад или в брак");
+            }
             OrderItem item = order.getItems().stream()
                     .filter(i -> i.getId() != null && i.getId() == line.itemId())
                     .findFirst()
@@ -661,56 +668,72 @@ public class OrderAdjustmentService {
                 throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
                         + "» можно обменять не больше " + left + " шт.");
             }
-            if (line.restock()) {
-                orderService.releaseUnits(item, line.quantity());
-            } else {
-                writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(),
-                        "обмен" + (cleanNote == null ? "" : ": " + cleanNote), adminName);
-            }
+            long unit = unitPaidMinor(order, item);
+            credit += unit * line.quantity();
+            String title = item.getTitleSnapshot()
+                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
+            backParts.add(title + " ×" + line.quantity() + switch (outcome) {
+                case RESTOCK -> " (на склад)";
+                case DEFECT -> " (брак, списан)";
+                default -> " (едет назад)";
+            });
             OrderExchangeLine el = new OrderExchangeLine();
             el.setProductId(item.getProductId());
             el.setVariantId(item.getVariantId());
-            el.setTitle(cut(item.getTitleSnapshot()
-                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")"), 255));
+            el.setTitle(cut(title, 255));
             el.setQuantity(line.quantity());
-            el.setUnitPriceMinor(unitPaidMinor(order, item));
-            el.setOutcome(line.restock() ? "RESTOCK" : "DEFECT");
+            el.setUnitPriceMinor(unit);
+            el.setOutcome(outcome.name());
             backLines.add(el);
-            backParts.add(item.getTitleSnapshot()
-                    + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")")
-                    + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (списано)"));
-            int remaining = item.getQuantity() - line.quantity();
-            if (remaining <= 0) {
-                order.getItems().remove(item);
-            } else {
-                item.setQuantity(remaining);
-                item.setRestockedQty(Math.min(item.getRestockedQty(), remaining));
-            }
         }
 
-        // 2. What goes out instead, at today's price.
-        List<String> outParts = new ArrayList<>();
-        for (ExchangeNewLine line : out) {
-            outParts.add(orderService.addExchangeLine(order, line.productId(), line.variantId(), line.quantity()));
+        // 2. The replacement: a new order of the same customer and address, no gift, no deadline.
+        String shortId = shortId(order.getId());
+        Order child = orderService.createAdminOrder(new CreateOrderCommand(
+                null, order.getTgUserId(), order.getTgUsername(),
+                out.stream().map(l -> new CreateOrderCommand.Line(l.productId(), l.variantId(), l.quantity())).toList(),
+                order.getCustomerName(), order.getPhone(), null, null,
+                order.getDeliveryMethod() == null ? null : order.getDeliveryMethod().name(),
+                order.getNpCityRef(), order.getNpCityName(), order.getNpWarehouseRef(), order.getNpWarehouseName(),
+                orderService.exchangePaymentOptionId(order), com.maxsolch.shop.domain.OrderSource.ADMIN,
+                com.maxsolch.shop.gift.GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
+        String childShort = shortId(child.getId());
+        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
+        long moved = Math.max(0, Math.min(Math.min(credit, refundableMinor(order) - retainedBefore),
+                child.getTotalMinor()));
+        if (moved > 0) {
+            child = orderService.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
+                    "зачёт по обмену из заказа #" + shortId);
         }
-        orderService.recomputeOrderTotals(order);
+        child.setExchangeOfOrderId(order.getId());
+        child.setUserId(order.getUserId());
+        if (to == OrderStatus.APPROVED) {
+            child.setStatus(OrderStatus.APPROVED);
+            child.setApprovedAt(Instant.now());
+        }
+        child = orderRepository.save(child);
 
-        // 3. Back into the pipeline: shipped again with a new ТТН.
-        order.setStatus(to);
-        order.setTrackingNumber(null);
-        order.setShippedAt(null);
-        order.setDeliveredAt(null);
-        order.setApprovedAt(to == OrderStatus.APPROVED ? Instant.now() : null);
-        Order saved = orderRepository.save(order);
+        // 3. This order: the units come back (or are on their way), their paid value moves over.
+        List<ManualRefund> refunds = moved > 0
+                ? List.of(new ManualRefund(OrderMoneyMovement.Channel.EXCHANGE, moved, "зачёт в обмен, заказ #" + childShort))
+                : List.of();
+        registerReturnPlan(order.getId(), new ReturnPlan(back, refunds, 0, 0,
+                cleanNote == null ? "обмен, новый заказ #" + childShort : cleanNote, false), adminName, false);
 
+        List<String> outParts = child.getItems().stream()
+                .map(i -> i.getTitleSnapshot()
+                        + (i.getVariantNameSnapshot() == null ? "" : " (" + i.getVariantNameSnapshot() + ")")
+                        + " ×" + i.getQuantity())
+                .toList();
         OrderExchange ex = new OrderExchange();
-        ex.setOrderId(saved.getId());
-        ex.setPreviousStatus(before.name());
-        ex.setPreviousTracking(trackingBefore);
+        ex.setOrderId(order.getId());
+        ex.setNewOrderId(child.getId());
+        ex.setPreviousStatus(order.getStatus().name());
+        ex.setPreviousTracking(order.getTrackingNumber());
         ex.setReturnedSummary(cut(String.join("; ", backParts), 2000));
         ex.setGivenSummary(cut(String.join("; ", outParts), 2000));
-        ex.setTotalBeforeMinor(totalBefore);
-        ex.setTotalAfterMinor(saved.getTotalMinor());
+        ex.setTotalBeforeMinor(credit);
+        ex.setTotalAfterMinor(child.getTotalMinor());
         ex.setNote(cleanNote);
         ex.setAdminName(adminName);
         OrderExchange savedEx = exchangeRepository.save(ex);
@@ -719,19 +742,22 @@ public class OrderAdjustmentService {
             exchangeLines.saveAll(backLines);
         }
 
-        events.publishEvent(new OrderEvents.Exchanged(saved.getId(), notifyCustomer,
-                String.join(", ", outParts)));
+        events.publishEvent(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
 
-        long diff = saved.getTotalMinor() - totalBefore;
+        long due = child.getTotalMinor() - moved;
+        long over = credit - moved;
         String details = "обмен: вернули " + String.join(", ", backParts)
-                + "; взамен " + String.join(", ", outParts)
-                + "; сумма " + MoneyFormat.uah(totalBefore) + " → " + MoneyFormat.uah(saved.getTotalMinor())
-                + (diff > 0 ? " (доплата " + MoneyFormat.uah(diff) + ")"
-                        : diff < 0 ? " (к возврату " + MoneyFormat.uah(-diff) + ")" : "")
-                + (trackingBefore == null ? "" : "; старая ТТН " + trackingBefore)
-                + "; статус " + before.name() + " → " + to.name()
+                + "; взамен новый заказ #" + childShort + " (" + String.join(", ", outParts) + ") на "
+                + MoneyFormat.uah(child.getTotalMinor())
+                + "; зачтено " + MoneyFormat.uah(moved)
+                + (due > 0 ? "; доплата " + MoneyFormat.uah(due) : "")
+                + (over > 0 ? "; к возврату " + MoneyFormat.uah(over) + " (кнопка «Возврат» в заказе #" + shortId + ")" : "")
                 + (cleanNote == null ? "" : "; " + cleanNote);
-        return new Result(saved, details);
+        return new Result(child, details);
+    }
+
+    private static String shortId(byte[] id) {
+        return com.maxsolch.shop.common.UuidUtil.toString(id).substring(0, 8);
     }
 
     private static String cut(String s, int max) {

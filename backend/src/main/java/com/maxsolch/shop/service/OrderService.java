@@ -214,7 +214,9 @@ public class OrderService {
         lines.sort(Comparator.comparing(l -> l.productId));
         // The gift for the order sum is locked in the same id order, up front: taking its row after
         // the cart's could deadlock with an order that has the gift product in its cart.
+        // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
         Optional<GiftService.GiftConfig> giftCfg = giftService == null
+                || GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
                 ? Optional.empty() : giftService.giftConfig();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
@@ -323,6 +325,24 @@ public class OrderService {
                     note == null || note.isBlank() ? "оплата при ручном заказе" : note);
         }
         return order;
+    }
+
+    /**
+     * Payment option of an exchange replacement: the original order's while it is still offered,
+     * otherwise the first active one (the rest of a dearer replacement is collected through it).
+     */
+    public String exchangePaymentOptionId(Order original) {
+        if (original.getPaymentOptionId() != null) {
+            Optional<PaymentOption> po = paymentOptionRepository.findById(original.getPaymentOptionId())
+                    .filter(PaymentOption::isActive);
+            if (po.isPresent()) {
+                return UuidUtil.toString(po.get().getId());
+            }
+        }
+        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
+                .findFirst()
+                .map(po -> UuidUtil.toString(po.getId()))
+                .orElseThrow(() -> new BadRequestException("нет активного способа оплаты для нового заказа"));
     }
 
     @Transactional
@@ -1177,58 +1197,6 @@ public class OrderService {
             }
             productRepository.save(product);
         });
-    }
-
-    /**
-     * Reserves stock for a paid line going out with an exchange and adds it to the order (merged
-     * into the same product + variant line when there is one). Returns "Title (variant) ×qty" for
-     * the history. The caller holds the order lock and recomputes the totals.
-     */
-    String addExchangeLine(Order order, String productId, String variantId, int qty) {
-        if (qty < 1) {
-            throw new BadRequestException("количество должно быть не меньше 1");
-        }
-        Product product = productRepository.findByIdForUpdate(toBytes(productId, "productId"))
-                .orElseThrow(() -> new BadRequestException("товар не найден: " + productId));
-        if (product.isArchived()) {
-            throw new BadRequestException("товар в архиве: " + product.getTitle());
-        }
-        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
-        ProductVariant variant = null;
-        if (hasVariants) {
-            if (variantId == null || variantId.isBlank()) {
-                throw new BadRequestException("выберите вариант товара «" + product.getTitle() + "»");
-            }
-            variant = findVariant(product, variantId);
-            if (variant == null) {
-                throw new BadRequestException("вариант не принадлежит товару «" + product.getTitle() + "»");
-            }
-        }
-        reserveStock(product, variant, qty);
-        productRepository.save(product);
-
-        byte[] vId = variant == null ? null : variant.getId();
-        OrderItem existing = order.getItems().stream()
-                .filter(i -> !i.isGift())
-                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
-                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
-                .findFirst().orElse(null);
-        if (existing != null) {
-            existing.setQuantity(existing.getQuantity() + qty);
-        } else {
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProductId(product.getId());
-            item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(product.getPriceMinor());
-            item.setQuantity(qty);
-            if (variant != null) {
-                item.setVariantId(variant.getId());
-                item.setVariantNameSnapshot(variant.getName());
-            }
-            order.getItems().add(item);
-        }
-        return product.getTitle() + (variant == null ? "" : " (" + variant.getName() + ")") + " ×" + qty;
     }
 
     /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */

@@ -31,7 +31,11 @@ public record OrderCardDto(
         /** Units on their way back right now (the «Едет назад» card shows only these). */
         int returningUnits,
         /** What is in the order, for the picture strip on the card. */
-        java.util.List<CardLine> lines) {
+        java.util.List<CardLine> lines,
+        /** This order is the replacement of an exchange on that order (V69); null = not. */
+        String exchangeOfId,
+        /** Replacement orders created by exchanges on this one (V69), oldest first. */
+        java.util.List<String> exchangeOrderIds) {
 
     /**
      * @param returning units of this line on their way back

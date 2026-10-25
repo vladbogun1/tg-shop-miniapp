@@ -82,6 +82,10 @@ export interface OrderAdminExtras {
   /** What can still go back to the card through monobank. */
   monoRefundableMinor: number;
   writeoffs: OrderWriteoff[];
+  /** This order is the replacement of an exchange on that order (V69). */
+  exchangeOfId?: string | null;
+  /** Replacement orders of exchanges made on this one, oldest first. */
+  exchangeOrderIds?: string[];
 }
 
 /** Board / table card with the V68 fields. */
@@ -92,6 +96,10 @@ export type AdminOrderCard = OrderCardDto & {
   returningUnits?: number;
   /** What is in the order — the picture strip of the card. */
   lines?: CardLine[];
+  /** Replacement of an exchange on that order (V69). */
+  exchangeOfId?: string | null;
+  /** Replacements created by exchanges on this order. */
+  exchangeOrderIds?: string[];
 };
 
 /** One line of a card's picture strip; `returning` = its units on the way back. */
@@ -114,6 +122,8 @@ export interface OrderExchange {
   totalAfterMinor: number;
   note?: string | null;
   adminName?: string | null;
+  /** The replacement order (V69); null for exchanges made before it. */
+  newOrderId?: string | null;
 }
 
 /** POST …/cancel-request/approve — what happened to the money. */
@@ -194,6 +204,7 @@ export interface DeliveryPatch {
 
 /** Where a returned unit goes: shelf, write-off, or stays with the customer (compensation). */
 export type ReturnOutcome = "RESTOCK" | "DEFECT" | "KEPT" | "IN_TRANSIT";
+export type ExchangeOutcome = Exclude<ReturnOutcome, "KEPT">;
 
 /** POST …/returns — the return wizard. */
 export interface ReturnWizardBody {
@@ -222,8 +233,8 @@ export interface SetPaidBody {
 }
 
 export interface ExchangeBody {
-  /** restock = the returned units go back into circulation (on the shelf). */
-  returned: { itemId: number; quantity: number; restock: boolean }[];
+  /** IN_TRANSIT = sent back by post («Едет назад»); RESTOCK / DEFECT = already at the shop. */
+  returned: { itemId: number; quantity: number; outcome: ExchangeOutcome }[];
   items: { productId: string; variantId?: string; quantity: number }[];
   targetStatus: "NEW" | "APPROVED";
   notifyCustomer: boolean;

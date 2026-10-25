@@ -103,7 +103,12 @@ const PRIMARY_TARGET: Partial<Record<OrderStatus, OrderStatus>> = {
 /** Transitions that open a modal (extra input or an explicit confirmation). */
 const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 
-export function OrderDrawer({ orderId, onClose, initialTab = "details", initialAction, closeNavigates }: Props) {
+export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", initialAction, closeNavigates }: Props) {
+  // An exchange opens its new order in the same drawer; the links between the two switch back and
+  // forth. Opening another order from outside starts over from it.
+  const [jumped, setJumped] = useState<string | null>(null);
+  useEffect(() => setJumped(null), [propId]);
+  const orderId = propId ? jumped ?? propId : null;
   const qc = useQueryClient();
   const { push } = useToast();
   const isDesktop = useIsDesktop();
@@ -206,7 +211,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     setBusyKey(key);
     try {
       const updated = await fn();
-      if (updated && typeof updated === "object" && "id" in updated) {
+      // Only this order's own detail (an exchange answers with its new order).
+      if (updated && typeof updated === "object" && "id" in updated && updated.id === orderId) {
         qc.setQueryData(["order", orderId], updated);
       }
       if (okText) push(okText, "ok");
@@ -357,11 +363,22 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   async function saveExchange(body: ExchangeBody) {
     const id = orderId;
     if (!id) return;
-    const msg = body.targetStatus === "APPROVED" ? "Обмен оформлен — заказ ждёт отправки" : "Обмен оформлен — заказ снова в «Новых»";
-    if (await run("exchange", () => ordersApi.exchange(id, body), msg)) {
+    let child: AdminOrderDetail | null = null;
+    const ok = await run("exchange", async () => {
+      child = await ordersApi.exchange(id, body);
+      return child;
+    });
+    if (ok && child) {
+      const c: AdminOrderDetail = child;
       setExchangeOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
-      qc.invalidateQueries({ queryKey: ["order-audit", id] });
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.setQueryData(["order", c.id], c);
+      push(
+        `Обмен оформлен — создан заказ #${c.id.slice(0, 8)}${body.targetStatus === "APPROVED" ? ", ждёт отправки" : " в «Новых»"}`,
+        "ok"
+      );
+      setJumped(c.id);
     }
   }
 
@@ -431,7 +448,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       ((order.status === "NEW" || order.status === "APPROVED") &&
         order.receivedMinor - (order.refundedMinor ?? 0) > order.totalMinor));
   // Exchange: the goods reached (or are on the way to) the customer — swap them in this same order.
-  const canExchange = !!order && (order.status === "SHIPPED" || order.status === "DELIVERED");
+  // Only once the customer has the parcel: a refused one comes back through «Отклонить».
+  const canExchange = !!order && order.status === "DELIVERED";
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
@@ -591,6 +609,7 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onReturnReceived: inTransit ? () => setReceivedOpen(true) : undefined,
                       onUnarchive: canUnarchive ? () => void applyUnarchive() : undefined,
                       onExchange: canExchange ? () => setExchangeOpen(true) : undefined,
+                      onOpenOrder: setJumped,
                       onPaymentChanged: refreshLists,
                       paymentRef,
                     }}

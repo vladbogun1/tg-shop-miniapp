@@ -85,7 +85,7 @@ class OrderAdjustmentServiceTest {
         o.setNpWarehouseName("Відділення №1");
         o.setItems(new ArrayList<>());
         o.setTotalMinor(30_000);
-        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }
 
@@ -174,12 +174,38 @@ class OrderAdjustmentServiceTest {
 
     // ---------- exchange ----------
 
+    /** Saved orders get an id like @PrePersist would, and are found again by findByIdForUpdate. */
+    private List<Order> trackOrders(Order original) {
+        List<Order> all = new ArrayList<>(List.of(original));
+        lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order x = inv.getArgument(0);
+            if (x.getId() == null) {
+                x.setId(UuidUtil.randomBytes());
+            }
+            if (all.stream().noneMatch(y -> y == x)) {
+                all.add(x);
+            }
+            return x;
+        });
+        lenient().when(orderRepository.findByIdForUpdate(any())).thenAnswer(inv -> all.stream()
+                .filter(y -> java.util.Arrays.equals(y.getId(), inv.getArgument(0)))
+                .findFirst());
+        com.maxsolch.shop.domain.PaymentOption po = new com.maxsolch.shop.domain.PaymentOption();
+        po.setId(UuidUtil.randomBytes());
+        po.setTitle("Наложений платіж");
+        lenient().when(paymentOptionRepository.findById(any())).thenReturn(Optional.of(po));
+        lenient().when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of(po));
+        return all;
+    }
+
     @Test
-    void exchange_returnsAndReplaces_backToNewWithoutTracking() {
+    void exchange_deliveredOrderKeepsItsTracking_replacementIsANewLinkedOrder() {
         Order o = order(OrderStatus.DELIVERED);
         o.setTrackingNumber("20450000000000");
+        o.setPaymentOptionId(UuidUtil.randomBytes());
         o.setReceivedMinor(20_000);
         o.setPaid(true);
+        o.setUserId(77L);
         Product mouse = product(5);
         Product other = product(3);
         other.setTitle("Клава");
@@ -187,42 +213,48 @@ class OrderAdjustmentServiceTest {
         item(o, mouse, 1L, 2);
         o.setSubtotalMinor(20_000);
         o.setTotalMinor(20_000);
-        when(productRepository.findByIdForUpdate(mouse.getId())).thenReturn(Optional.of(mouse));
+        List<Order> all = trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
         OrderAdjustmentService.Result r = service.exchange(o.getId(),
-                List.of(new OrderAdjustmentService.ReturnLine(1L, 1, true)),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
                 OrderStatus.NEW, true, "не подошёл цвет", "admin");
 
-        Order saved = r.order();
-        assertThat(mouse.getStock()).isEqualTo(6);          // back into circulation
-        assertThat(other.getStock()).isEqualTo(2);          // reserved for the new parcel
-        assertThat(saved.getItems()).hasSize(2);
-        assertThat(saved.getItems().get(0).getQuantity()).isEqualTo(1);
-        assertThat(saved.getTotalMinor()).isEqualTo(25_000);
-        assertThat(saved.getReceivedMinor()).isEqualTo(20_000); // money untouched → 50 ₴ наложкой
-        assertThat(saved.isPaid()).isTrue();
-        assertThat(saved.getStatus()).isEqualTo(OrderStatus.NEW);
-        assertThat(saved.getTrackingNumber()).isNull();
-        assertThat(saved.getDeliveredAt()).isNull();
-        assertThat(r.auditDetails()).contains("Клава").contains("доплата 50 ₴").contains("20450000000000");
+        // The delivered order stays where it was; the unit is on its way back.
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(o.getTrackingNumber()).isEqualTo("20450000000000");
+        assertThat(o.getItems().get(0).getReturnPendingQty()).isEqualTo(1);
+        assertThat(o.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(o.getRefundedMinor()).isEqualTo(10_000);       // paid value moved over
+        assertThat(mouse.getStock()).isEqualTo(5);                // not on the shelf yet
+
+        Order child = r.order();
+        assertThat(child).isNotSameAs(o);
+        assertThat(all).contains(child);
+        assertThat(child.getExchangeOfOrderId()).isEqualTo(o.getId());
+        assertThat(child.getUserId()).isEqualTo(77L);
+        assertThat(child.getStatus()).isEqualTo(OrderStatus.NEW);
+        assertThat(child.getTrackingNumber()).isNull();
+        assertThat(child.getTotalMinor()).isEqualTo(15_000);
+        assertThat(child.getReceivedMinor()).isEqualTo(10_000);   // credit; 50 ₴ to pay
+        assertThat(child.getPaymentDueAt()).isNull();
+        assertThat(other.getStock()).isEqualTo(2);                // reserved for the new parcel
+        assertThat(r.auditDetails()).contains("Клава").contains("зачтено 100 ₴").contains("доплата 50 ₴");
 
         ArgumentCaptor<com.maxsolch.shop.domain.OrderExchange> ex =
                 ArgumentCaptor.forClass(com.maxsolch.shop.domain.OrderExchange.class);
         verify(exchangeRepository).save(ex.capture());
-        assertThat(ex.getValue().getPreviousTracking()).isEqualTo("20450000000000");
-        assertThat(ex.getValue().getPreviousStatus()).isEqualTo("DELIVERED");
-        assertThat(ex.getValue().getReturnedSummary()).contains("(на склад)");
-        assertThat(ex.getValue().getTotalBeforeMinor()).isEqualTo(20_000);
-        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
-        assertThat(event.getValue()).isInstanceOf(OrderEvents.Exchanged.class);
+        assertThat(ex.getValue().getOrderId()).isEqualTo(o.getId());
+        assertThat(ex.getValue().getNewOrderId()).isEqualTo(child.getId());
+        assertThat(ex.getValue().getReturnedSummary()).contains("(едет назад)");
+        assertThat(ex.getValue().getTotalBeforeMinor()).isEqualTo(10_000);
+        verify(events).publishEvent(any(OrderEvents.Exchanged.class));
     }
 
     @Test
-    void exchange_writeOff_removesLineWithoutRestock_andCanGoStraightToApproved() {
-        Order o = order(OrderStatus.SHIPPED);
+    void exchange_alreadyAtTheShop_writeOff_cheaperReplacementLeavesTheRestRefundable() {
+        Order o = order(OrderStatus.DELIVERED);
         Product mouse = product(5);
         Product other = product(3);
         other.setPriceMinor(5_000);
@@ -230,36 +262,50 @@ class OrderAdjustmentServiceTest {
         o.setSubtotalMinor(10_000);
         o.setTotalMinor(10_000);
         o.setReceivedMinor(10_000);
+        trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
         OrderAdjustmentService.Result r = service.exchange(o.getId(),
-                List.of(new OrderAdjustmentService.ReturnLine(1L, 1, false)),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
                 OrderStatus.APPROVED, false, null, "admin");
 
-        assertThat(mouse.getStock()).isEqualTo(5);          // written off
-        assertThat(r.order().getItems()).hasSize(1);
-        assertThat(r.order().getTotalMinor()).isEqualTo(5_000);
+        assertThat(mouse.getStock()).isEqualTo(5);                // written off, not restocked
+        assertThat(o.getItems().get(0).getReturnedQty()).isEqualTo(1);
+        assertThat(o.getReturnStatus()).isNull();
+        assertThat(o.getRefundedMinor()).isEqualTo(5_000);        // only what the new order takes
         assertThat(r.order().getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(r.order().getApprovedAt()).isNotNull();
-        assertThat(r.auditDetails()).contains("к возврату 50 ₴").contains("списано");
+        assertThat(r.order().isPaid()).isTrue();
+        assertThat(r.auditDetails()).contains("к возврату 50 ₴").contains("брак");
     }
 
     @Test
-    void exchange_beforeShipping_orWithoutReplacement_isRejected() {
-        Order fresh = order(OrderStatus.APPROVED);
+    void exchange_notDelivered_keptGoods_orWithoutReplacement_isRejected() {
         Product mouse = product(5);
-        item(fresh, mouse, 1L, 1);
-        assertThatThrownBy(() -> service.exchange(fresh.getId(),
-                List.of(new OrderAdjustmentService.ReturnLine(1L, 1, true)),
+        Order shipped = order(OrderStatus.SHIPPED);
+        item(shipped, mouse, 1L, 1);
+        assertThatThrownBy(() -> service.exchange(shipped.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(mouse.getId()), null, 1)),
                 OrderStatus.NEW, true, null, "admin"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("после доставки");
 
         Order delivered = order(OrderStatus.DELIVERED);
         item(delivered, mouse, 2L, 1);
         assertThatThrownBy(() -> service.exchange(delivered.getId(),
-                List.of(new OrderAdjustmentService.ReturnLine(2L, 1, true)), List.of(),
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, null)), List.of(),
+                OrderStatus.NEW, true, null, "admin"))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.exchange(delivered.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.KEPT)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(mouse.getId()), null, 1)),
+                OrderStatus.NEW, true, null, "admin"))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.exchange(delivered.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(2L, 2, null)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(mouse.getId()), null, 1)),
                 OrderStatus.NEW, true, null, "admin"))
                 .isInstanceOf(BadRequestException.class);
         verify(events, never()).publishEvent(any());

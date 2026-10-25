@@ -74,11 +74,12 @@ public final class OrderAdjustmentDtos {
     }
 
     /**
-     * POST /api/admin/orders/{id}/exchange — what came back (restock = back into circulation),
-     * what goes out instead, and where the order goes next: NEW (default) or APPROVED.
+     * POST /api/admin/orders/{id}/exchange (delivered orders) — what the customer gives back
+     * (outcome IN_TRANSIT = on its way by post, default; RESTOCK / DEFECT = already at the shop),
+     * what goes out instead as a new linked order, and where that order starts: NEW (default) or APPROVED.
      */
     public record ExchangeRequest(
-            @Valid List<RegisterReturnRequest.ReturnLine> returned,
+            @Valid List<ReturnWizardRequest.WizardLine> returned,
             @Valid List<NewLine> items,
             String targetStatus,
             Boolean notifyCustomer,

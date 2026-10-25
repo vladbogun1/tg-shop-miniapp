@@ -6,6 +6,9 @@
  * total of the column (from the server — it used to add up only the loaded cards, at most 300 of
  * them). Closed columns load a short list with "Показать ещё". Highlights when a valid drag hovers;
  * dims when it can't land.
+ * Width: the columns share the board (232–340px each) so six of them fit a 1920 screen without a
+ * sideways scroll; an empty «Едет назад» folds into a 44px rail and opens while a card that may
+ * land there is dragged.
  */
 import type { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
@@ -53,6 +56,7 @@ export function KanbanColumn({
 
   const dim = dragActive && !validTarget;
   const lit = isOver && validTarget;
+  const rail = returning && count === 0 && !(dragActive && validTarget);
 
   const litStyle: CSSProperties | undefined = lit
     ? {
@@ -61,11 +65,35 @@ export function KanbanColumn({
       }
     : undefined;
 
+  if (rail) {
+    return (
+      <div
+        ref={setNodeRef}
+        title={`${BOARD_LABEL[status]}: пусто`}
+        className={cn(
+          "flex w-11 shrink-0 flex-col items-center gap-3 self-start overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] pb-4 transition-opacity duration-150",
+          dim && "opacity-40"
+        )}
+      >
+        <div aria-hidden className="h-0.5 w-full" style={{ background: accent }} />
+        <span
+          className="count-badge"
+          style={{ background: `color-mix(in srgb, ${accent} 18%, transparent)`, color: accent }}
+        >
+          0
+        </span>
+        <span className="section-title whitespace-nowrap leading-none [writing-mode:vertical-rl]">
+          {BOARD_LABEL[status]}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-72 shrink-0 flex-col self-start overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
+        "flex min-w-[232px] max-w-[340px] flex-1 basis-0 flex-col self-start overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
         dim && "opacity-40",
         validTarget && dragActive && !lit && "border-[var(--line-strong)]"
       )}

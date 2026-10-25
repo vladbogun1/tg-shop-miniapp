@@ -91,10 +91,15 @@ public class OrderQueryService {
      * @param itemCounts order id (UUID string) → total units in the order
      */
     public record CardContext(Map<String, Long> unread, Map<String, Integer> itemCounts,
-                              Map<String, List<OrderCardDto.CardLine>> lines) {
+                              Map<String, List<OrderCardDto.CardLine>> lines,
+                              Map<String, List<String>> exchangeChildren) {
 
         static CardContext empty() {
-            return new CardContext(Map.of(), Map.of(), Map.of());
+            return new CardContext(Map.of(), Map.of(), Map.of(), Map.of());
+        }
+
+        List<String> exchangesOf(String orderId) {
+            return exchangeChildren.getOrDefault(orderId, List.of());
         }
 
         List<OrderCardDto.CardLine> linesFor(String orderId) {
@@ -132,7 +137,19 @@ public class OrderQueryService {
         for (Object[] row : orderItemRepository.itemCountsByOrder(ids)) {
             itemCounts.put(UuidUtil.toString((byte[]) row[0]), ((Number) row[1]).intValue());
         }
-        return new CardContext(unread, itemCounts, unreadFrom == SenderType.CUSTOMER ? cardLines(ids) : Map.of());
+        boolean admin = unreadFrom == SenderType.CUSTOMER;
+        return new CardContext(unread, itemCounts, admin ? cardLines(ids) : Map.of(),
+                admin ? exchangeChildren(ids) : Map.of());
+    }
+
+    /** original id → its exchange replacements (V69), one query per page. */
+    private Map<String, List<String>> exchangeChildren(List<byte[]> orderIds) {
+        Map<String, List<String>> out = new HashMap<>();
+        for (Object[] row : orderRepository.exchangeChildren(orderIds)) {
+            out.computeIfAbsent(UuidUtil.toString((byte[]) row[0]), k -> new ArrayList<>())
+                    .add(UuidUtil.toString((byte[]) row[1]));
+        }
+        return out;
     }
 
     /** The picture strip of the admin cards: every line with its first photo, two queries per page. */
@@ -194,7 +211,9 @@ public class OrderQueryService {
                 o.getArchivedAt() != null,
                 o.getReturnStatus(),
                 ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returning).sum(),
-                ctx.linesFor(id));
+                ctx.linesFor(id),
+                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
+                ctx.exchangesOf(id));
     }
 
     private static String sourceOf(Order o) {
@@ -307,7 +326,8 @@ public class OrderQueryService {
                 customer ? List.of() : exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
                         .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
                                 e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
-                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName()))
+                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName(),
+                                e.getNewOrderId() == null ? null : UuidUtil.toString(e.getNewOrderId())))
                         .toList(),
                 o.getGiftCaseStatus(),
                 o.getGiftCaseOpenedAt(),
@@ -350,7 +370,9 @@ public class OrderQueryService {
                                 w.getUnitValueMinor(), w.getNote(), w.getAdminName(), w.getCreatedAt()))
                         .toList();
         return new OrderDetailDto.AdminExtras(o.getArchivedAt(), o.getArchivedBy(), o.getArchiveReason(),
-                o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs);
+                o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs,
+                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
+                exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()));
     }
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */

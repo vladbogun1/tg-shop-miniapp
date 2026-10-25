@@ -45,7 +45,10 @@ public class OrderNotificationListener {
     public void onCreated(OrderEvents.Created event) {
         withOrder(event.orderId(), order -> {
             notificationService.onNewOrder(order);
-            notificationService.notifyCustomerStatus(order);
+            // The replacement of an exchange is announced by onExchanged (one message, not two).
+            if (order.getExchangeOfOrderId() == null) {
+                notificationService.notifyCustomerStatus(order);
+            }
         });
     }
 

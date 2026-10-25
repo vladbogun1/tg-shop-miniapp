@@ -2,7 +2,7 @@
  * Rejecting with a reason from the fixed list (and restocking), and a partial return of one line
  * with a refund.
  */
-import { CUSTOMER, ORDER, PRODUCT, money } from "../lib/seed";
+import { CUSTOMER, ORDER, PRODUCT } from "../lib/seed";
 import { containerOf, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
 
 test("отклонение: причина из списка обязательна, товар возвращается на склад", async ({ page, api }) => {
@@ -42,30 +42,32 @@ test("возврат по позиции с суммой", async ({ page, api })
   const drawer = await openOrderFromBoard(page, ORDER.delivered, CUSTOMER.delivered);
   await drawer.getByRole("button", { name: "Возврат", exact: true }).click();
 
-  const modal = dialog(page, "Что вернули");
-  const submit = modal.getByRole("button", { name: "Оформить возврат" });
-  await expect(submit).toBeDisabled();
-
-  // One cap back on the shelf; the t-shirt stays with the customer.
+  // Step 1 — what came back: one cap, already here, back on the shelf; the t-shirt stays.
+  const modal = dialog(page, "↩️ Возврат");
+  const next = modal.getByRole("button", { name: "Далее" });
+  await expect(next).toBeDisabled();
   const capLine = containerOf(modal, page.getByText("E2E Кепка", { exact: true }), page.getByRole("button", { name: "+" }));
   await capLine.getByRole("button", { name: "+" }).click();
-  await expect(modal.getByRole("switch", { name: "На склад: +1 шт." })).toHaveAttribute("aria-checked", "true");
   await expect(capLine.getByRole("button", { name: "+" })).toBeDisabled(); // only 1 in the order
+  await modal.getByRole("button", { name: "На склад", exact: true }).click();
+  await next.click();
 
-  await modal.getByRole("button", { name: `Подставить стоимость возвращённого: ${money(34900)}` }).click();
-  const refund = modal.getByLabel("Вернуть денег, UAH");
-  await expect(refund).toHaveValue("349");
+  // Step 2 — money: the cap's price is suggested as a manual refund; the way must be chosen.
+  const amount = modal.getByLabel("Сумма, UAH");
+  await expect(amount).toHaveValue("349");
+  await modal.getByLabel("Способ возврата").selectOption({ label: "Перевод на карту" });
   // More than was received is refused on the spot.
-  await refund.fill("5000");
-  await expect(modal.getByText(`Не больше полученного: ${money(94800)}`)).toBeVisible();
-  await expect(submit).toBeDisabled();
-  await refund.fill("349");
+  await amount.fill("5000");
+  await expect(modal.getByText(/можно не больше/)).toBeVisible();
+  await amount.fill("349");
+  await next.click();
+
+  // Step 3 — confirm.
   await modal.getByLabel("Комментарий (в журнал)").fill("e2e: вернули кепку");
-  await submit.click();
+  await modal.getByRole("button", { name: "Оформить возврат" }).click();
 
   await expect(toast(page, "Возврат оформлен")).toBeVisible();
   await expect(modal).toBeHidden();
-  await expect(drawer).toContainText("Возврат оформлен");
 
   const order = await api.order(ORDER.delivered);
   expect(order.refundedMinor).toBe(34900);

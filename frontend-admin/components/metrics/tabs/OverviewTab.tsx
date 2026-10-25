@@ -240,6 +240,7 @@ const CHANNEL_LABEL: Record<string, string> = {
   CASH: "Наличные",
   NP_CLAIM: "Претензия НП",
   OTHER: "Другое",
+  EXCHANGE: "Зачёт в обмен",
 };
 const REASON_LABEL: Record<string, string> = {
   DEFECT: "Брак",

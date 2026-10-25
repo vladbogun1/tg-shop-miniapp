@@ -82,7 +82,11 @@ public record OrderDetailDto(
                               long retainedMinor,
                               /** What can still go back to the card through monobank (all paid invoices). */
                               long monoRefundableMinor,
-                              List<WriteoffDto> writeoffs) {
+                              List<WriteoffDto> writeoffs,
+                              /** This order replaces goods of that one (V69 exchange); null = not. */
+                              String exchangeOfId,
+                              /** Replacement orders of exchanges made on this one, oldest first. */
+                              List<String> exchangeOrderIds) {
     }
 
     public record MovementDto(long id,
@@ -113,6 +117,8 @@ public record OrderDetailDto(
                               long totalBeforeMinor,
                               long totalAfterMinor,
                               String note,
-                              String adminName) {
+                              String adminName,
+                              /** The replacement order (V69); null for exchanges made before it. */
+                              String newOrderId) {
     }
 }
