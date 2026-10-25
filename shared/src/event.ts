@@ -12,3 +12,6 @@ export function isHalloween(now: number = Date.now()): boolean {
 
 /** `<html data-event>` value while the event runs. */
 export const EVENT_ATTR = "halloween";
+
+/** Which pictures have a redrawn copy (generated list). */
+export { HW_SITE_ASSETS, HW_APP_ASSETS } from "./event-assets";

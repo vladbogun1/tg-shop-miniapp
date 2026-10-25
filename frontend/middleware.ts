@@ -3,10 +3,11 @@
  * until the event ends; after that this does nothing and can be deleted with the event.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { isHalloween } from "@shop/shared/event";
+import { HW_APP_ASSETS, isHalloween } from "@shop/shared/event";
 
 export function middleware(req: NextRequest) {
-  if (!isHalloween()) return NextResponse.next();
+  // Only the pictures that were redrawn (list: events/halloween/tools/hw-manifest.mjs).
+  if (!isHalloween() || !HW_APP_ASSETS.has(req.nextUrl.pathname)) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = url.pathname.replace(/^\/case\//, "/case-hw/");
   return NextResponse.rewrite(url);

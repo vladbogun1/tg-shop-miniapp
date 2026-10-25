@@ -22,7 +22,7 @@
 | Виджет тыкв | `public/spawner.js` (vanilla, shadow DOM) | тыквы, счётчик `<hw-counter>`, панель акции, ввод кода |
 | Экран розыгрыша | `draw/` (`host.js` + визуалы в `draw/visuals/*`, контракт в `draw/VISUAL-CONTRACT.md`) | выбор визуала, ролл, перекрут, фиксация списка, контакты, коды, доказ |
 | Тема Хеллоуина | `site/components/event/*`, `frontend/components/Halloween.tsx` + `halloween.css`, `site/components/scene/SceneFx.tsx` (летучие мыши, цветные искры) | включается сама по дате, `isHalloween()` в `shared/src/event.ts` (до 01.11 00:00 Киев) |
-| Хеллоуин-ассеты | `site/public/mascot-hw/`, `site/public/case-hw/`, `frontend/public/case-hw/` | на время акции middleware подменяет `/mascot/*` → `/mascot-hw/*`, `/case/*` → `/case-hw/*` |
+| Хеллоуин-ассеты | `site/public/mascot-hw/`, `site/public/case-hw/`, `frontend/public/case-hw/` | на время акции middleware подменяет `/mascot/*` → `/mascot-hw/*`, `/case/*` → `/case-hw/*`, но только файлы из списка `shared/src/event-assets.ts`. Добавили или убрали картинку — `node events/halloween/tools/hw-manifest.mjs` |
 | Шлюзы | `infra/gateway*.conf`, блоки `location /hw/` | проксируют на `halloween:8090`. На сайте и в app закрыты `/hw/draw` и `/hw/api/admin` |
 | Пункт меню | `frontend-admin/components/layout/Shell.tsx` | «Розыгрыш 🎃» в «Клиенты», открывает `/hw/draw/` в новой вкладке |
 
@@ -112,6 +112,6 @@ cd events/halloween/server && npm install && HW_DEV_AUTH=1 HW_STARTS_AT=2026-10-
    - убрать `batFlock` и `halloween`-ветку из `site/components/scene/SceneFx.tsx`.
 5. Mini App: удалить `frontend/components/Halloween.tsx`, `frontend/components/halloween.css`, `frontend/middleware.ts`, `frontend/public/case-hw/`, убрать их использование в `frontend/app/layout.tsx` и `frontend/app/page.tsx`.
 6. Админка: пункт «Розыгрыш 🎃» и поле `external` в `frontend-admin/components/layout/Shell.tsx`.
-7. Shared: `shared/src/event.ts`, его экспорт в `shared/src/index.ts` и `"./event"` в `shared/package.json`.
+7. Shared: `shared/src/event.ts`, `shared/src/event-assets.ts`, экспорт в `shared/src/index.ts` и `"./event"` в `shared/package.json`.
 
 Проверка, что ничего не осталось: `git grep -n -i "halloween\|/hw/\|isHalloween\|-hw/"`.

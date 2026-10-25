@@ -11,14 +11,15 @@
  * the end of Halloween 2026, swaps the mascot/case pictures for their Halloween versions.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { isHalloween } from "@shop/shared/event";
+import { HW_SITE_ASSETS, isHalloween } from "@shop/shared/event";
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   // Halloween 2026: the same mascot/case pictures, redrawn, under public/mascot-hw and public/case-hw.
   if (/^\/(mascot|case)\//.test(pathname)) {
-    if (!isHalloween()) return NextResponse.next();
+    // Only the pictures that were redrawn (list: events/halloween/tools/hw-manifest.mjs).
+    if (!isHalloween() || !HW_SITE_ASSETS.has(pathname)) return NextResponse.next();
     const url = req.nextUrl.clone();
     url.pathname = pathname.replace(/^\/(mascot|case)\//, "/$1-hw/");
     return NextResponse.rewrite(url);
