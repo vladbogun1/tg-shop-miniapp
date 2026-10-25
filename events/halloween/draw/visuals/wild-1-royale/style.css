@@ -1,44 +1,57 @@
 .wr-root { position: absolute; inset: 0; overflow: hidden; background: #0e0e10; font-family: "Exo 2", system-ui, sans-serif; color: #f4f1ea; user-select: none; }
 .wr-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
-.wr-stage canvas { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+.wr-stage canvas.wr-c { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
 .wr-hud { position: absolute; inset: 0; pointer-events: none; }
+.wr-hud canvas, .wr-hud img { image-rendering: pixelated; }
 
-.wr-counter { position: absolute; left: 28px; top: 24px; display: flex; gap: 14px; align-items: stretch; }
-.wr-alive { background: #0e0e10d9; border: 2px solid #ff660099; border-radius: 14px; padding: 6px 22px 8px; min-width: 210px; box-shadow: 0 0 28px #ff660033; }
+/* pixel plates: stepped corners instead of border-radius */
+.wr-alive, .wr-zone, .wr-title, .wr-prize, .wr-kf, .wr-bottom, .wr-bubble { border-radius: 0; box-shadow: 0 -4px 0 0 var(--pc, #ff660099), 0 4px 0 0 var(--pc, #ff660099), -4px 0 0 0 var(--pc, #ff660099), 4px 0 0 0 var(--pc, #ff660099), 0 8px 18px #000a; }
+
+.wr-counter { position: absolute; left: 32px; top: 28px; display: flex; gap: 18px; align-items: stretch; }
+.wr-alive { --pc: #ff6600; background: #0e0e10e6; padding: 6px 22px 8px; min-width: 210px; }
 .wr-alive small { display: block; font-size: 17px; letter-spacing: .2em; color: #ff8a3d; font-weight: 700; }
-.wr-alive b { display: block; font-size: 66px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
-.wr-zone { background: #0e0e10d9; border: 2px solid #8a3ffc99; border-radius: 14px; padding: 8px 18px; display: flex; flex-direction: column; justify-content: center; font-weight: 800; }
+.wr-alive b { display: block; font-size: 66px; line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; text-shadow: 0 4px 0 #000; }
+.wr-zone { --pc: #8a3ffc; background: #0e0e10e6; padding: 8px 18px; display: flex; flex-direction: column; justify-content: center; font-weight: 800; }
 .wr-zone small { font-size: 15px; letter-spacing: .18em; color: #b78aff; }
 .wr-zone span { font-size: 26px; font-variant-numeric: tabular-nums; }
-.wr-zone.hot { border-color: #ff3b3b; } .wr-zone.hot span { color: #ff6b6b; }
+.wr-zone.hot { --pc: #ff3b3b; } .wr-zone.hot span { color: #ff6b6b; }
 
-.wr-title { position: absolute; left: 28px; top: 138px; padding: 6px 22px; border-radius: 99px; background: #0e0e10cc; border: 1px solid #ffffff26; font-weight: 800; letter-spacing: .14em; font-size: 19px; white-space: nowrap; }
+.wr-title { --pc: #ffffff30; position: absolute; left: 32px; top: 150px; padding: 5px 20px; background: #0e0e10d9; font-weight: 800; letter-spacing: .14em; font-size: 18px; white-space: nowrap; }
 .wr-title i { color: #ff6600; font-style: normal; }
 
-.wr-banner { position: absolute; left: 0; right: 0; top: 150px; text-align: center; font-size: 72px; font-weight: 900; letter-spacing: .06em; color: #fff; text-shadow: 0 0 30px #ff6600, 0 4px 0 #000; opacity: 0; transform: scale(1.4); transition: opacity .25s, transform .25s; white-space: nowrap; }
-.wr-banner.on { opacity: 1; transform: scale(1); }
-.wr-banner.red { color: #ff5252; text-shadow: 0 0 34px #ff0000, 0 4px 0 #000; }
-.wr-banner.green { color: #7cff4f; text-shadow: 0 0 30px #7cff4f66, 0 4px 0 #000; }
+/* prize plate, top centre */
+.wr-prize { --pc: #7cff4f; position: absolute; left: 50%; top: 30px; transform: translateX(-50%) scale(.9); opacity: 0; transition: opacity .3s, transform .3s; display: flex; align-items: center; gap: 14px; padding: 8px 26px 8px 14px; background: #0e0e10f0; max-width: 780px; }
+.wr-prize.on { opacity: 1; transform: translateX(-50%) scale(1); }
+.wr-prize canvas { width: 64px; height: 64px; flex: none; }
+.wr-prize small { display: block; font-size: 15px; letter-spacing: .24em; color: #7cff4f; font-weight: 800; }
+.wr-prize b { display: block; font-size: 34px; line-height: 1.1; font-weight: 900; max-width: 640px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 3px 0 #000; }
+.wr-prize span { display: block; font-size: 18px; color: #ffd0a8; font-weight: 700; max-width: 640px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.wr-feed { position: absolute; right: 24px; top: 130px; width: 560px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
-.wr-kf { display: flex; gap: 10px; align-items: center; max-width: 560px; font-size: 22px; font-weight: 700; padding: 4px 14px; border-radius: 8px; background: #0e0e10d9; border-right: 4px solid #ffffff44; animation: wr-in .18s ease-out; white-space: nowrap; overflow: hidden; }
-.wr-kf .k { color: #ffb27a; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-.wr-kf .v { color: #f4f1ea; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
-.wr-kf i { font-style: normal; opacity: .85; font-size: 19px; }
-.wr-kf.zone { border-right-color: #8a3ffc; } .wr-kf.zone .v { color: #c9a8ff; }
-.wr-kf.hero { border-right-color: #ff6600; background: #3a1a00e6; font-size: 26px; }
-.wr-kf.fade { opacity: 0; transition: opacity .6s; }
+.wr-banner { position: absolute; left: 0; right: 0; top: 190px; text-align: center; font-size: 76px; font-weight: 900; letter-spacing: .06em; color: #fff; text-shadow: 0 0 30px #ff6600, 0 5px 0 #000, 4px 0 0 #000, -4px 0 0 #000; opacity: 0; transform: scale(1.35); transition: opacity .25s, transform .25s; white-space: nowrap; }
+.wr-banner.on { opacity: 1; transform: scale(1); }
+.wr-banner.red { color: #ff5252; text-shadow: 0 0 34px #ff0000, 0 5px 0 #000, 4px 0 0 #000, -4px 0 0 #000; }
+.wr-banner.green { color: #7cff4f; text-shadow: 0 0 30px #7cff4f88, 0 5px 0 #000, 4px 0 0 #000, -4px 0 0 #000; }
+
+.wr-feed { position: absolute; right: 30px; top: 130px; width: 640px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.wr-kf { --pc: #ffffff22; display: flex; gap: 10px; align-items: center; max-width: 640px; font-size: 22px; font-weight: 700; padding: 3px 14px; background: #0e0e10e6; animation: wr-in .2s ease-out; white-space: nowrap; overflow: hidden; }
+.wr-kf .k { color: #ffb27a; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
+.wr-kf .v { color: #f4f1ea; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.wr-kf .m { color: #ff5252; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; font-size: 18px; }
+.wr-kf .ic { font-size: 19px; }
+.wr-kf.zone { --pc: #8a3ffc88; } .wr-kf.zone .v { color: #c9a8ff; } .wr-kf.zone .m { color: #b78aff; }
+.wr-kf.hero { --pc: #ff6600; background: #3a1a00f0; font-size: 26px; }
 @keyframes wr-in { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
 
-.wr-bottom { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; gap: 22px; align-items: center; padding: 8px 24px; border-radius: 99px; background: #0e0e10cc; border: 1px solid #ffffff22; font-size: 20px; font-weight: 700; white-space: nowrap; }
+.wr-bottom { --pc: #ffffff1c; position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; gap: 22px; align-items: center; padding: 6px 24px; background: #0e0e10e0; font-size: 19px; font-weight: 700; white-space: nowrap; }
 .wr-bottom span { display: flex; align-items: center; gap: 8px; color: #cfcabf; }
-.wr-bottom em { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.wr-bottom canvas { width: 28px; height: 32px; }
 
-.wr-cam { position: absolute; right: 28px; bottom: 26px; width: 200px; height: 190px; border: 3px solid #ff6600; border-radius: 14px; background: radial-gradient(circle at 50% 60%, #2a1448, #0e0e10); box-shadow: 0 0 24px #ff660044; overflow: hidden; }
+.wr-cam { position: absolute; right: 32px; bottom: 28px; width: 200px; height: 190px; border: 0; background: radial-gradient(circle at 50% 60%, #2a1448, #0e0e10); box-shadow: 0 -4px 0 0 #ff6600, 0 4px 0 0 #ff6600, -4px 0 0 0 #ff6600, 4px 0 0 0 #ff6600, 0 0 24px #ff660055; overflow: hidden; }
 .wr-cam img { position: absolute; left: 50%; bottom: -4px; width: 150px; transform: translateX(-50%); image-rendering: pixelated; animation: wr-bob 1.2s steps(2) infinite; }
-.wr-cam b { position: absolute; left: 10px; top: 8px; font-size: 14px; letter-spacing: .12em; color: #fff; }
-.wr-cam b::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff2d2d; margin-right: 6px; animation: wr-blink 1s steps(2) infinite; }
-.wr-bubble { position: absolute; right: 246px; bottom: 120px; max-width: 360px; padding: 10px 18px; background: #f4f1ea; color: #0e0e10; font-weight: 800; font-size: 24px; border-radius: 16px 16px 4px 16px; opacity: 0; transition: opacity .2s; }
+.wr-cam b { position: absolute; left: 10px; top: 8px; font-size: 14px; letter-spacing: .12em; color: #fff; z-index: 2; text-shadow: 0 1px 3px #000; }
+.wr-cam b::before { content: ""; display: inline-block; width: 10px; height: 10px; background: #ff2d2d; margin-right: 6px; animation: wr-blink 1s steps(2) infinite; }
+.wr-bubble { --pc: #0e0e10; position: absolute; right: 262px; bottom: 120px; max-width: 460px; padding: 10px 20px; background: #f4f1ea; color: #0e0e10; font-weight: 900; font-size: 28px; opacity: 0; transition: opacity .2s; }
+.wr-bubble::after { content: ""; position: absolute; right: -16px; bottom: 14px; border: 8px solid transparent; border-left: 12px solid #f4f1ea; }
 .wr-bubble.on { opacity: 1; }
 @keyframes wr-bob { 50% { transform: translateX(-50%) translateY(-5px); } }
 @keyframes wr-blink { 50% { opacity: 0; } }
@@ -46,22 +59,31 @@
 .wr-flash { position: absolute; inset: 0; background: #ff2d2d; opacity: 0; pointer-events: none; }
 .wr-flash.go { animation: wr-flash .5s ease-out; }
 .wr-flash.white { background: #fff; }
-@keyframes wr-flash { from { opacity: .45; } to { opacity: 0; } }
+@keyframes wr-flash { from { opacity: .4; } to { opacity: 0; } }
 
-.wr-win { position: absolute; inset: 0; display: none; pointer-events: none; background: radial-gradient(circle at 50% 46%, #0e0e1000 0, #0e0e1088 40%, #0e0e10d0 100%); }
+.wr-win { position: absolute; inset: 0; display: none; pointer-events: none; background: radial-gradient(circle at 50% 46%, #0e0e1022 0, #0e0e10aa 40%, #0e0e10e0 100%); }
 .wr-win.on { display: block; animation: wr-fade .5s ease-out; }
 @keyframes wr-fade { from { opacity: 0; } to { opacity: 1; } }
 .wr-rays { position: absolute; left: 50%; top: 40%; width: 1600px; height: 1600px; margin: -800px 0 0 -800px; background: repeating-conic-gradient(from 0deg, #ff660040 0 7deg, transparent 7deg 18deg); -webkit-mask-image: radial-gradient(circle, #000 0, transparent 62%); mask-image: radial-gradient(circle, #000 0, transparent 62%); animation: wr-spin 24s linear infinite; }
 @keyframes wr-spin { to { transform: rotate(360deg); } }
-.wr-kicker { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-size: 40px; font-weight: 800; letter-spacing: .2em; color: #7cff4f; text-shadow: 0 0 22px #7cff4f66; }
-.wr-emblem { position: absolute; left: 50%; top: 40%; width: 280px; height: 280px; margin: -140px 0 0 -140px; border-radius: 50%; border: 8px solid #ff6600; box-shadow: 0 0 0 10px #ff660033, 0 0 90px #ff6600aa; background: radial-gradient(circle at 35% 30%, #ff9a3d, #ff6600 60%, #a33a00); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 150px; font-weight: 900; color: #1a0a00; animation: wr-pop .7s cubic-bezier(.2, 1.6, .4, 1); }
+.wr-ribbon { position: absolute; left: 50%; top: 40px; width: 900px; margin-left: -450px; animation: wr-rise .6s both; }
+.wr-kicker { position: absolute; left: 0; right: 0; top: 83px; text-align: center; font-size: 38px; font-weight: 900; letter-spacing: .2em; color: #fff; text-shadow: 0 3px 0 #000, 0 0 18px #7cff4f; animation: wr-rise .6s .05s both; }
+.wr-emblemwrap { position: absolute; left: 50%; top: 40%; width: 560px; height: 564px; margin: -300px 0 0 -280px; animation: wr-pop .7s cubic-bezier(.2, 1.6, .4, 1); }
+.wr-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wr-emblem { position: absolute; left: 50%; top: 50%; width: 262px; height: 262px; margin: -131px 0 0 -131px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff9a3d, #ff6600 60%, #a33a00); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 150px; font-weight: 900; color: #1a0a00; box-shadow: 0 0 60px #ff6600aa; }
 .wr-emblem img { width: 100%; height: 100%; object-fit: cover; }
 @keyframes wr-pop { from { transform: scale(0.1) rotate(-30deg); } to { transform: none; } }
-.wr-name { position: absolute; left: 0; right: 0; top: 63%; text-align: center; font-size: 132px; line-height: 1.05; font-weight: 900; text-shadow: 0 0 40px #ff6600, 0 6px 0 #000; white-space: nowrap; padding: 0 60px; animation: wr-rise .6s .15s both; }
-.wr-sub { position: absolute; left: 0; right: 0; top: 79%; text-align: center; font-size: 42px; font-weight: 700; color: #ffd0a8; animation: wr-rise .6s .3s both; }
+.wr-name { position: absolute; left: 0; right: 0; top: 66%; text-align: center; font-size: 128px; line-height: 1.05; font-weight: 900; text-shadow: 0 0 40px #ff6600, 0 6px 0 #000, 5px 0 0 #000, -5px 0 0 #000; white-space: nowrap; padding: 0 60px; animation: wr-rise .6s .15s both; }
+.wr-sub { position: absolute; left: 0; right: 0; top: 81%; text-align: center; font-size: 40px; font-weight: 700; color: #ffd0a8; animation: wr-rise .6s .3s both; text-shadow: 0 3px 0 #000; }
 .wr-sub b { color: #7cff4f; }
+.wr-prizewin { display: none; position: absolute; left: 50%; top: 89%; transform: translateX(-50%); align-items: center; gap: 14px; padding: 6px 28px 6px 12px; background: #0e0e10f0; font-size: 38px; font-weight: 800; white-space: nowrap; box-shadow: 0 -4px 0 0 #7cff4f, 0 4px 0 0 #7cff4f, -4px 0 0 0 #7cff4f, 4px 0 0 0 #7cff4f; animation: wr-rise .6s .45s both; }
+.wr-prizewin.on { display: flex; }
+.wr-prizewin canvas { width: 64px; height: 64px; }
+.wr-prizewin span { color: #7cff4f; letter-spacing: .08em; }
+.wr-prizewin b { color: #fff; letter-spacing: 0; }
 @keyframes wr-rise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+.wr-prizewin { animation-name: wr-rise2; }
+@keyframes wr-rise2 { from { opacity: 0; margin-top: 40px; } to { opacity: 1; margin-top: 0; } }
 
-.wr-hero { position: absolute; left: 150px; bottom: 30px; width: 330px; image-rendering: pixelated; animation: wr-hop .5s steps(2) infinite; }
+.wr-hero { position: absolute; left: 130px; bottom: 30px; width: 330px; image-rendering: pixelated; animation: wr-hop .5s steps(2) infinite; }
 @keyframes wr-hop { 50% { transform: translateY(-14px); } }
-.wr-cam b { z-index: 2; text-shadow: 0 1px 3px #000; }
