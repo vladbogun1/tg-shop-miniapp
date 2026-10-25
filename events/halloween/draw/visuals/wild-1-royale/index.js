@@ -836,8 +836,10 @@ export function mount(root, ctx) {
 
     // bullets and fx
     for (const b of bullets) {
-      aspr(g, b.kind, b.x, b.y, b.big ? 0.95 : 0.55, false, b.ang);
-      g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.5; g.drawImage(flameStamp, b.x - 14, b.y - 14, 28, 28); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+      // keep tracers the same size on screen: the arena close-up zooms ~3x and they turned into rockets
+      const bz = Math.min(1, 1.25 / cam.s), gw = 18 * bz;
+      aspr(g, b.kind, b.x, b.y, (b.big ? 0.8 : 0.55) * bz, false, b.ang);
+      g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.35; g.drawImage(flameStamp, b.x - gw / 2, b.y - gw / 2, gw, gw); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
     }
     for (let i = fxs.length - 1; i >= 0; i--) {
       const f = fxs[i]; f.t += dt; const n = f.kind === "poof" ? 6 : f.kind === "hit" ? 6 : 6, idx = Math.floor(f.t * (f.kind === "poof" ? 8 : f.fps));

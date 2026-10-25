@@ -20,8 +20,10 @@ export function verifyJwt(token) {
   } catch {
     return null;
   }
-  if (header.alg !== "HS256") return null;
-  const expected = b64url(createHmac("sha256", key).update(`${h}.${p}`).digest());
+  // jjwt picks the algorithm from the key length (Keys.hmacShaKeyFor): a 64+ byte secret signs HS512.
+  const hash = { HS256: "sha256", HS384: "sha384", HS512: "sha512" }[header.alg];
+  if (!hash) return null;
+  const expected = b64url(createHmac(hash, key).update(`${h}.${p}`).digest());
   const a = Buffer.from(s);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
