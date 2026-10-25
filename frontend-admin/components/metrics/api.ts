@@ -304,6 +304,19 @@ export interface Today {
   monthForecast: MonthForecast;
 }
 
+/** «Возвраты» (V68): the order money journal and stock write-offs for the period. */
+export interface Returns {
+  refundedMinor: number;
+  refundOrders: number;
+  byChannel: { channel: string; amountMinor: number; count: number }[];
+  retainedMinor: number;
+  retainedOrders: number;
+  writeoffUnits: number;
+  writeoffMinor: number;
+  writeoffsByReason: { reason: string; units: number; valueMinor: number }[];
+  returnedOrders: number;
+}
+
 function qs(p: PeriodParams, extra?: Record<string, string | number>): string {
   const q = new URLSearchParams({ period: p.period, channel: p.channel });
   if (p.period === "custom" && p.from && p.to) {
@@ -323,6 +336,7 @@ export const metricsApi = {
   operations: (p: PeriodParams) => apiGet<Operations>(`/api/admin/metrics/operations?${qs(p)}`),
   forecast: (channel: Channel) => apiGet<Forecast>(`/api/admin/metrics/forecast?channel=${channel}`),
   today: () => apiGet<Today>("/api/admin/metrics/today"),
+  returns: (p: PeriodParams) => apiGet<Returns>(`/api/admin/metrics/returns?${qs(p)}`),
   /** «Скрыть» from the dead-stock table: same endpoint as the products page toggle. */
   hideProduct: (id: string) => apiPatch<unknown>(`/api/admin/products/${id}/active`, { active: false }),
 };

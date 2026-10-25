@@ -1,8 +1,8 @@
 /**
  * Rejecting with a reason from the fixed list (and restocking), and a partial return of one line
- * with a refund.
+ * with a refund — then the return is cancelled (V70).
  */
-import { CUSTOMER, ORDER, PRODUCT, money } from "../lib/seed";
+import { CUSTOMER, ORDER, PRODUCT } from "../lib/seed";
 import { containerOf, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
 
 test("отклонение: причина из списка обязательна, товар возвращается на склад", async ({ page, api }) => {
@@ -42,30 +42,36 @@ test("возврат по позиции с суммой", async ({ page, api })
   const drawer = await openOrderFromBoard(page, ORDER.delivered, CUSTOMER.delivered);
   await drawer.getByRole("button", { name: "Возврат", exact: true }).click();
 
-  const modal = dialog(page, "Что вернули");
-  const submit = modal.getByRole("button", { name: "Оформить возврат" });
-  await expect(submit).toBeDisabled();
+  // Step 1 — what came back: one cap, already here, back on the shelf; the t-shirt stays.
+  const modal = dialog(page, "↩️ Возврат");
+  const next = modal.getByRole("button", { name: "Далее" });
+  await expect(next).toBeDisabled();
+  await modal.getByRole("button", { name: "Уже у нас" }).click();
+  const capLine = containerOf(
+    modal,
+    page.getByText("E2E Кепка", { exact: true }),
+    page.getByRole("switch", { name: "Вернуть" })
+  );
+  await capLine.getByRole("switch", { name: "Вернуть" }).click();
+  await expect(modal.getByText("Пришло целым — вернётся на склад")).toBeVisible(); // «Брак» is off
+  await next.click();
 
-  // One cap back on the shelf; the t-shirt stays with the customer.
-  const capLine = containerOf(modal, page.getByText("E2E Кепка", { exact: true }), page.getByRole("button", { name: "+" }));
-  await capLine.getByRole("button", { name: "+" }).click();
-  await expect(modal.getByRole("switch", { name: "На склад: +1 шт." })).toHaveAttribute("aria-checked", "true");
-  await expect(capLine.getByRole("button", { name: "+" })).toBeDisabled(); // only 1 in the order
-
-  await modal.getByRole("button", { name: `Подставить стоимость возвращённого: ${money(34900)}` }).click();
-  const refund = modal.getByLabel("Вернуть денег, UAH");
-  await expect(refund).toHaveValue("349");
+  // Step 2 — money: what the customer paid for the cap is suggested as is, from the admin's own money.
+  const amount = modal.getByLabel("Сколько вернуть, UAH");
+  await expect(amount).toHaveValue("349");
+  await expect(modal.getByText("С личных средств.")).toBeVisible();
   // More than was received is refused on the spot.
-  await refund.fill("5000");
-  await expect(modal.getByText(`Не больше полученного: ${money(94800)}`)).toBeVisible();
-  await expect(submit).toBeDisabled();
-  await refund.fill("349");
+  await amount.fill("5000");
+  await expect(modal.getByText(/можно не больше/)).toBeVisible();
+  await amount.fill("349");
+  await next.click();
+
+  // Step 3 — confirm.
   await modal.getByLabel("Комментарий (в журнал)").fill("e2e: вернули кепку");
-  await submit.click();
+  await modal.getByRole("button", { name: "Оформить возврат" }).click();
 
   await expect(toast(page, "Возврат оформлен")).toBeVisible();
   await expect(modal).toBeHidden();
-  await expect(drawer).toContainText("Возврат оформлен");
 
   const order = await api.order(ORDER.delivered);
   expect(order.refundedMinor).toBe(34900);
@@ -75,4 +81,21 @@ test("возврат по позиции с суммой", async ({ page, api })
   expect(cap.returnedQty).toBe(1);
   expect(tee.returnedQty ?? 0).toBe(0);
   expect((await api.product(PRODUCT.cap)).stock).toBe(capBefore + 1);
+
+  // The customer changed their mind: the cap goes back into the order, the money came back.
+  await drawer.getByRole("button", { name: "Отменить возврат" }).click();
+  const cancel = dialog(page, "Что вернётся в заказ");
+  await expect(cancel.getByText("1 шт заберём со склада")).toBeVisible();
+  const submit = cancel.getByRole("button", { name: "Отменить возврат" });
+  await cancel.getByLabel("Почему отменяем (обязательно)").fill("e2e: передумал");
+  await expect(submit).toBeDisabled(); // the money question is not answered yet
+  await cancel.getByRole("button", { name: /Покупатель уже вернул деньги/ }).click();
+  await submit.click();
+
+  await expect(toast(page, "Возврат отменён, товар снова в заказе")).toBeVisible();
+  await expect(drawer).toContainText("отменён");
+  const after = await api.order(ORDER.delivered);
+  expect(after.refundedMinor).toBe(0);
+  expect(after.items.find((i) => i.title === "E2E Кепка")!.returnedQty ?? 0).toBe(0);
+  expect((await api.product(PRODUCT.cap)).stock).toBe(capBefore);
 });

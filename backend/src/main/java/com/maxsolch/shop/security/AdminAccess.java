@@ -2,6 +2,7 @@ package com.maxsolch.shop.security;
 
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.web.ForbiddenException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,16 @@ public class AdminAccess {
             return false;
         }
         return isSuperAdmin(p.telegramUserId());
+    }
+
+    /**
+     * For a rule that depends on a request parameter (e.g. {@code force=1}), where a method-level
+     * {@link RequiredSuperAdmin} would be too coarse: 403 with a readable text unless the caller is SUPER_ADMIN.
+     */
+    public void requireSuperAdmin(Authentication authentication, String what) {
+        if (!isSuperAdmin(authentication)) {
+            throw new ForbiddenException(what + " — только главный админ");
+        }
     }
 
     public boolean isSuperAdmin(long adminId) {

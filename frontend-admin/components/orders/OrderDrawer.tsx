@@ -18,20 +18,32 @@ import {
   Send,
   PackageCheck,
   Ban,
-  Trash2,
+  Archive,
+  ArchiveRestore,
   WalletMinimal,
   MoreHorizontal,
   Undo2,
   Repeat,
+  Merge,
 } from "lucide-react";
 import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
-import { changeStatusConfirmingUnpaid, ordersApi, type AdminOrderDetail, type DeliveryPatch, type ExchangeBody, type ReturnBody } from "@/lib/orders-api";
+import {
+  changeStatusConfirmingUnpaid,
+  ordersApi,
+  type AdminOrderDetail,
+  type DeliveryPatch,
+  type ExchangeBody,
+  type MergeBody,
+  type ReturnReceivedBody,
+  type ReturnWizardBody,
+} from "@/lib/orders-api";
+import type { MovementChannel } from "@/lib/orders";
 import { allowedTargets, shortId, STATUS_ACTION_LABEL, STATUS_LABEL } from "@/lib/orders";
 import { useToast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import { useIsDesktop } from "@/lib/use-media";
 import { useBackToClose } from "@/lib/use-back-close";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { SourceBadge } from "@/components/orders/SourceBadge";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +52,10 @@ import { Drawer } from "@/components/ui/Drawer";
 import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
+import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { ReturnBadge } from "./ReturnBadge";
+import { ReturnReceivedModal } from "./ReturnReceivedModal";
+import { ArchiveModal } from "./ArchiveModal";
 import { OrderChat } from "./OrderChat";
 import { OrderDetails } from "./OrderDetails";
 import { OrderHistory } from "./OrderHistory";
@@ -51,12 +67,12 @@ import { TrackingModal } from "./TrackingModal";
 import { DeliveryEditModal } from "./DeliveryEditModal";
 import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
+import { MergeModal } from "./MergeModal";
 import { GiftCaseModal } from "./GiftCaseModal";
 import { CASE_RARITY_LABEL } from "@/lib/gift";
 import { caseDiscountText, type CaseTier } from "@shop/shared";
 import { money } from "@/lib/money";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
-import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
 type Tab = "details" | "chat" | "history";
 
@@ -64,8 +80,11 @@ interface Props {
   orderId: string | null;
   onClose: () => void;
   initialTab?: "details" | "chat";
-  /** Scroll to the «Онлайн-оплата» section once the order has loaded («Внимание» → «Оплаты»). */
-  initialAction?: "payment";
+  /**
+   * Once the order has loaded: «payment» scrolls to «Онлайн-оплата» («Внимание» → «Оплаты»),
+   * «return» opens the return wizard, «received» opens «Посылка вернулась» (board «Едет назад»).
+   */
+  initialAction?: "payment" | "return" | "received";
   /** `onClose` navigates to another page (the /orders/{id} deep link) — see useBackToClose. */
   closeNavigates?: boolean;
 }
@@ -87,7 +106,12 @@ const PRIMARY_TARGET: Partial<Record<OrderStatus, OrderStatus>> = {
 /** Transitions that open a modal (extra input or an explicit confirmation). */
 const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 
-export function OrderDrawer({ orderId, onClose, initialTab = "details", initialAction, closeNavigates }: Props) {
+export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", initialAction, closeNavigates }: Props) {
+  // An exchange opens its new order in the same drawer; the links between the two switch back and
+  // forth. Opening another order from outside starts over from it.
+  const [jumped, setJumped] = useState<string | null>(null);
+  useEffect(() => setJumped(null), [propId]);
+  const orderId = propId ? jumped ?? propId : null;
   const qc = useQueryClient();
   const { push } = useToast();
   const isDesktop = useIsDesktop();
@@ -103,6 +127,10 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [exchangeOpen, setExchangeOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [receivedOpen, setReceivedOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const isSuper = useIsSuperAdmin() === true;
   const [moreOpen, setMoreOpen] = useState(false);
   const [profile, setProfile] = useState<UserCardDto | null>(null);
 
@@ -118,6 +146,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     setDeliveryOpen(false);
     setReturnOpen(false);
     setExchangeOpen(false);
+    setReceivedOpen(false);
+    setArchiveOpen(false);
     setMoreOpen(false);
   }, [orderId, initialTab]);
 
@@ -134,6 +164,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
   useEffect(() => {
     setAutoPaymentFor(orderId && initialAction === "payment" ? orderId : null);
   }, [orderId, initialAction]);
+  const [autoModalFor, setAutoModalFor] = useState<string | null>(null);
+  useEffect(() => {
+    setAutoModalFor(orderId && (initialAction === "return" || initialAction === "received") ? orderId : null);
+  }, [orderId, initialAction]);
+  useEffect(() => {
+    if (autoModalFor && order && autoModalFor === orderId) {
+      if (initialAction === "return") setReturnOpen(true);
+      else if (initialAction === "received" && order.admin?.returnStatus === "IN_TRANSIT") setReceivedOpen(true);
+      setAutoModalFor(null);
+    }
+  }, [autoModalFor, order, orderId, initialAction]);
   useEffect(() => {
     if (autoPaymentFor && order && autoPaymentFor === orderId && tab === "details") {
       // After the details have rendered (the section mounts with the order).
@@ -174,7 +215,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     setBusyKey(key);
     try {
       const updated = await fn();
-      if (updated && typeof updated === "object" && "id" in updated) {
+      // Only this order's own detail (an exchange answers with its new order).
+      if (updated && typeof updated === "object" && "id" in updated && updated.id === orderId) {
         qc.setQueryData(["order", orderId], updated);
       }
       if (okText) push(okText, "ok");
@@ -214,12 +256,12 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     return ok && !declined;
   }
 
-  async function applyPayment(receivedMinor: number): Promise<boolean> {
+  async function applyPayment(receivedMinor: number, channel?: MovementChannel, note?: string): Promise<boolean> {
     const id = orderId;
     if (!id) return false;
     const ok = await run(
       "pay",
-      () => adminApi.setPaid(id, receivedMinor),
+      () => ordersApi.setPaid(id, { receivedMinor, channel: receivedMinor > 0 ? channel : undefined, note }),
       receivedMinor > 0 ? "Оплата обновлена" : "Оплата снята",
       "Ошибка смены оплаты"
     );
@@ -269,23 +311,100 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     }
   }
 
-  async function saveReturn(body: ReturnBody) {
+  async function saveReturn(body: ReturnWizardBody) {
     const id = orderId;
     if (!id) return;
-    if (await run("return", () => ordersApi.registerReturn(id, body), "Возврат оформлен")) {
+    setBusyKey("return");
+    try {
+      const updated = await ordersApi.registerReturn(id, body);
+      qc.setQueryData(["order", id], updated);
+      push("Возврат оформлен", "ok");
       setReturnOpen(false);
+    } catch (e) {
+      // Also MONO_REFUND_FAILED: the bank refused before anything was saved — the wizard stays open.
+      push(e instanceof ApiError ? e.message : "Не удалось оформить возврат", "error");
+      return;
+    } finally {
+      setBusyKey(null);
+    }
+    refreshLists();
+    qc.invalidateQueries({ queryKey: ["products"] });
+    qc.invalidateQueries({ queryKey: ["metrics2"] });
+  }
+
+  async function saveReturnReceived(body: ReturnReceivedBody) {
+    const id = orderId;
+    if (!id) return;
+    if (await run("return-received", () => ordersApi.receiveReturn(id, body), "Посылка принята, товар на складе")) {
+      setReceivedOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
     }
+  }
+
+  async function applyArchive(reason: string) {
+    const id = orderId;
+    if (!id) return;
+    if (await run("archive", () => ordersApi.archive(id, reason), "Заказ в архиве", "Не удалось архивировать")) {
+      setArchiveOpen(false);
+      qc.invalidateQueries({ queryKey: ["metrics2"] });
+      close();
+    }
+  }
+
+  async function applyUnarchive() {
+    const id = orderId;
+    if (!id) return;
+    const ok = await confirm({
+      title: "Вернуть из архива?",
+      message: "Заказ снова появится в таблице и на доске.",
+      confirmLabel: "Вернуть",
+    });
+    if (!ok) return;
+    await run("unarchive", () => ordersApi.unarchive(id), "Заказ возвращён из архива", "Не удалось вернуть из архива");
+    qc.invalidateQueries({ queryKey: ["metrics2"] });
   }
 
   async function saveExchange(body: ExchangeBody) {
     const id = orderId;
     if (!id) return;
-    const msg = body.targetStatus === "APPROVED" ? "Обмен оформлен — заказ ждёт отправки" : "Обмен оформлен — заказ снова в «Новых»";
-    if (await run("exchange", () => ordersApi.exchange(id, body), msg)) {
+    let child: AdminOrderDetail | null = null;
+    const ok = await run("exchange", async () => {
+      child = await ordersApi.exchange(id, body);
+      return child;
+    });
+    if (ok && child) {
+      const c: AdminOrderDetail = child;
       setExchangeOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
-      qc.invalidateQueries({ queryKey: ["order-audit", id] });
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.setQueryData(["order", c.id], c);
+      push(
+        `Обмен оформлен — создан заказ #${c.id.slice(0, 8)}${body.targetStatus === "APPROVED" ? ", ждёт отправки" : " в «Новых»"}`,
+        "ok"
+      );
+      setJumped(c.id);
+    }
+  }
+
+  /** «Объединить»: the other order closes as «Объединён»; the drawer jumps to the one that stays. */
+  async function saveMerge(targetId: string, body: MergeBody) {
+    const id = orderId;
+    if (!id) return;
+    let target: AdminOrderDetail | null = null;
+    const ok = await run("merge", async () => {
+      target = await ordersApi.merge(targetId, body);
+      return target;
+    });
+    if (ok && target) {
+      const t: AdminOrderDetail = target;
+      setMergeOpen(false);
+      qc.invalidateQueries({ queryKey: ["order", id] });
+      qc.invalidateQueries({ queryKey: ["order", body.sourceId] });
+      qc.invalidateQueries({ queryKey: ["merge-candidates"] });
+      qc.setQueryData(["order", t.id], t);
+      refreshLists();
+      push(`Заказы объединены в ${shortId(t.id)}`, "ok");
+      if (t.id !== id) setJumped(t.id);
     }
   }
 
@@ -319,25 +438,6 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     else void applyStatus({ status: target });
   }
 
-  async function applyDelete() {
-    const id = orderId;
-    if (!id) return;
-    const ok = await confirm({
-      title: "Удалить заказ навсегда?",
-      message:
-        "Все данные о заказе (позиции, чат) будут стёрты, он исчезнет из метрик. Действие необратимо.",
-      confirmLabel: "Удалить навсегда",
-      danger: true,
-    });
-    if (!ok) return;
-    const done = await run("delete", () => adminApi.deleteOrder(id), "Заказ удалён навсегда", "Ошибка удаления");
-    if (done) {
-      // «Метрики» queries live under ["metrics2", …] — ["metrics"] matched nothing.
-      qc.invalidateQueries({ queryKey: ["metrics2"] });
-      close();
-    }
-  }
-
   async function openCustomer() {
     if (!order?.tgUserId) return;
     const tgId = order.tgUserId;
@@ -359,22 +459,12 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
     }
   }
 
-  // Hard-delete only at a terminal stage — for purging test orders. Irreversible.
+  // Orders are never deleted: the main admin archives a closed one (reason required).
   const isTerminal = !!order && (order.status === "DELIVERED" || order.status === "REJECTED");
-  // An order paid through monobank cannot be deleted until the money is back on the card (the
-  // backend refuses with the same text) — same query/cache as the «Онлайн-оплата» block.
-  const paymentsQ = useQuery({
-    queryKey: orderPaymentsKey(orderId ?? ""),
-    queryFn: () => adminApi.getOrderPayments(orderId as string),
-    enabled: !!orderId && isTerminal,
-  });
-  const deleteBlockedReason = !isTerminal
-    ? null
-    : (paymentsQ.data ?? []).some((i) => !!i.appliedAt && i.refundedMinor < i.amountMinor)
-      ? "Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»"
-      : (paymentsQ.data ?? []).some((i) => i.status === "processing" || i.status === "hold")
-        ? "Банк ещё обрабатывает онлайн-платёж — дождитесь итога в блоке «Онлайн-оплата»"
-        : null;
+  const archived = !!order?.admin?.archivedAt;
+  const canArchive = isSuper && isTerminal && !archived;
+  const canUnarchive = isSuper && archived;
+  const inTransit = order?.admin?.returnStatus === "IN_TRANSIT";
   const canReturn =
     !!order &&
     (order.status === "SHIPPED" ||
@@ -384,7 +474,17 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       ((order.status === "NEW" || order.status === "APPROVED") &&
         order.receivedMinor - (order.refundedMinor ?? 0) > order.totalMinor));
   // Exchange: the goods reached (or are on the way to) the customer — swap them in this same order.
-  const canExchange = !!order && (order.status === "SHIPPED" || order.status === "DELIVERED");
+  // Only once the customer has the parcel: a refused one comes back through «Отклонить».
+  const canExchange = !!order && order.status === "DELIVERED";
+  // Merge: two orders of the same customer that have not shipped yet go out as one parcel. The
+  // button shows only when the customer has another order it can be merged with right now.
+  const mergeable = !!order && (order.status === "NEW" || order.status === "APPROVED") && !archived;
+  const mergeQ = useQuery({
+    queryKey: ["merge-candidates", order?.id ?? null],
+    queryFn: () => ordersApi.mergeCandidates(order!.id),
+    enabled: mergeable,
+  });
+  const canMerge = mergeable && (mergeQ.data ?? []).some((c) => !c.blocker);
   const targets = order ? allowedTargets(order.status) : [];
   const primary = order ? PRIMARY_TARGET[order.status] : undefined;
 
@@ -399,6 +499,8 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
       {order && <StatusBadge status={order.status} />}
       {order && <PaymentBadge order={order} />}
       {order && <SourceBadge source={order.source} />}
+      {order && <ReturnBadge status={order.admin?.returnStatus} />}
+      {archived && <Badge>В архиве</Badge>}
     </div>
   );
 
@@ -466,27 +568,20 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         ...(canExchange
           ? [{ key: "exchange", label: "Обмен", icon: <Repeat className="h-4 w-4" />, onSelect: () => setExchangeOpen(true) }]
           : []),
+        ...(canMerge
+          ? [{ key: "merge", label: "Объединить заказы", icon: <Merge className="h-4 w-4" />, onSelect: () => setMergeOpen(true) }]
+          : []),
         ...(canReturn
           ? [{ key: "return", label: "Возврат", icon: <Undo2 className="h-4 w-4" />, onSelect: () => setReturnOpen(true) }]
           : []),
-        ...(isTerminal
-          ? [
-              {
-                key: "delete",
-                label: deleteBlockedReason ? (
-                  <span className="flex flex-col">
-                    Удалить навсегда
-                    <span className="text-[11.5px] font-normal text-[var(--text-muted)]">{deleteBlockedReason}</span>
-                  </span>
-                ) : (
-                  "Удалить навсегда"
-                ),
-                icon: <Trash2 className="h-4 w-4" />,
-                danger: true,
-                disabled: !!deleteBlockedReason,
-                onSelect: () => void applyDelete(),
-              },
-            ]
+        ...(inTransit
+          ? [{ key: "return-received", label: "Посылка вернулась", icon: <PackageCheck className="h-4 w-4" />, onSelect: () => setReceivedOpen(true) }]
+          : []),
+        ...(canArchive
+          ? [{ key: "archive", label: "В архив", icon: <Archive className="h-4 w-4" />, danger: true, onSelect: () => setArchiveOpen(true) }]
+          : []),
+        ...(canUnarchive
+          ? [{ key: "unarchive", label: "Вернуть из архива", icon: <ArchiveRestore className="h-4 w-4" />, onSelect: () => void applyUnarchive() }]
           : []),
       ]
     : [];
@@ -549,7 +644,11 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                       onEditTracking: () => setTrackingOpen(true),
                       onOpenCustomer: order.tgUserId ? openCustomer : undefined,
                       onReturn: canReturn ? () => setReturnOpen(true) : undefined,
+                      onReturnReceived: inTransit ? () => setReceivedOpen(true) : undefined,
+                      onUnarchive: canUnarchive ? () => void applyUnarchive() : undefined,
                       onExchange: canExchange ? () => setExchangeOpen(true) : undefined,
+                      onMerge: canMerge ? () => setMergeOpen(true) : undefined,
+                      onOpenOrder: setJumped,
                       onPaymentChanged: refreshLists,
                       paymentRef,
                     }}
@@ -563,23 +662,41 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                   <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-5 py-3.5">
                     {payButton()}
                     {targets.map((t) => statusButton(t))}
-                    {isTerminal && deleteBlockedReason && (
-                      <span className="ml-auto max-w-[260px] text-right text-[11.5px] leading-snug text-[var(--text-muted)]">
-                        {deleteBlockedReason}
-                      </span>
-                    )}
-                    {isTerminal && (
+                    {inTransit && (
                       <Button
                         size="sm"
-                        variant="danger"
-                        className={deleteBlockedReason ? undefined : "ml-auto"}
-                        loading={busyKey === "delete"}
-                        disabled={(!!busyKey && busyKey !== "delete") || !!deleteBlockedReason}
-                        title={deleteBlockedReason ?? undefined}
-                        icon={<Trash2 className="h-4 w-4" />}
-                        onClick={applyDelete}
+                        variant="accent"
+                        icon={<PackageCheck className="h-4 w-4" />}
+                        disabled={!!busyKey}
+                        onClick={() => setReceivedOpen(true)}
                       >
-                        Удалить навсегда
+                        Посылка вернулась
+                      </Button>
+                    )}
+                    {canArchive && (
+                      <Button
+                        size="sm"
+                        variant="surface"
+                        className="ml-auto"
+                        loading={busyKey === "archive"}
+                        disabled={!!busyKey && busyKey !== "archive"}
+                        icon={<Archive className="h-4 w-4" />}
+                        onClick={() => setArchiveOpen(true)}
+                      >
+                        В архив
+                      </Button>
+                    )}
+                    {canUnarchive && (
+                      <Button
+                        size="sm"
+                        variant="surface"
+                        className="ml-auto"
+                        loading={busyKey === "unarchive"}
+                        disabled={!!busyKey && busyKey !== "unarchive"}
+                        icon={<ArchiveRestore className="h-4 w-4" />}
+                        onClick={() => void applyUnarchive()}
+                      >
+                        Вернуть из архива
                       </Button>
                     )}
                   </div>
@@ -632,6 +749,9 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
                 currency: order.currency,
                 restockUnits,
                 deliveryMethod: order.deliveryMethod,
+                fromStatus: order.status,
+                receivedMinor: order.receivedMinor,
+                prepaymentMinor: order.prepaymentMinor,
               }
             : null
         }
@@ -673,12 +793,36 @@ export function OrderDrawer({ orderId, onClose, initialTab = "details", initialA
         onSave={saveReturn}
       />
 
+      <ReturnReceivedModal
+        open={receivedOpen}
+        order={order ?? null}
+        loading={busyKey === "return-received"}
+        onClose={() => setReceivedOpen(false)}
+        onSave={saveReturnReceived}
+      />
+
+      <ArchiveModal
+        open={archiveOpen}
+        label={order ? shortId(order.id) : undefined}
+        loading={busyKey === "archive"}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={applyArchive}
+      />
+
       <ExchangeModal
         open={exchangeOpen}
         order={order ?? null}
         loading={busyKey === "exchange"}
         onClose={() => setExchangeOpen(false)}
         onSave={saveExchange}
+      />
+
+      <MergeModal
+        open={mergeOpen}
+        order={order ?? null}
+        loading={busyKey === "merge"}
+        onClose={() => setMergeOpen(false)}
+        onSave={saveMerge}
       />
 
       <ItemPicker

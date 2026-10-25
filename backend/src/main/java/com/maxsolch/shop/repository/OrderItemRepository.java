@@ -19,6 +19,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             + "group by it.productId")
     List<Object[]> soldCountsByProduct();
 
+    /** The lines of a page of orders in one query (card previews), instead of a lazy load per card. */
+    @Query("select it from OrderItem it where it.order.id in :orderIds order by it.id")
+    List<OrderItem> findByOrderIds(@Param("orderIds") List<byte[]> orderIds);
+
     /** Item counts for a set of orders, so order cards do not each trigger a lazy collection load. */
     @Query("select it.order.id, sum(it.quantity) from OrderItem it "
             + "where it.order.id in :orderIds group by it.order.id")

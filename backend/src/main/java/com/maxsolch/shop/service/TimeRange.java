@@ -11,6 +11,7 @@ import java.time.Instant;
  * <p>Uses day-based {@link Duration} (Instant does not support month/year units).
  */
 public enum TimeRange {
+    WEEK(Duration.ofDays(7)),
     MONTH(Duration.ofDays(30)),
     HALFYEAR(Duration.ofDays(182)),
     YEAR(Duration.ofDays(365)),

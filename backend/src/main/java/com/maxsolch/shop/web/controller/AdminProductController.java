@@ -149,6 +149,41 @@ public class AdminProductController {
         return sb.toString();
     }
 
+    private static final java.util.Map<String, String> WRITEOFF_LABELS = java.util.Map.of(
+            "DEFECT", "брак", "INVENTORY", "инвентаризация", "MISSORT", "пересорт",
+            "SOLD_OFFLINE", "продано вне сайта", "OTHER", "другое");
+
+    /** ", причина списания: брак (текст)" when the save lowered the product's or a variant's stock. */
+    static String writeoffSummary(AdminProductDto before, AdminProductDto after, ProductUpsertRequest req) {
+        if (req.stockReason() == null || !stockDropped(before, after)) {
+            return "";
+        }
+        String label = WRITEOFF_LABELS.getOrDefault(req.stockReason().trim().toUpperCase(java.util.Locale.ROOT),
+                req.stockReason());
+        String note = req.stockNote() == null || req.stockNote().isBlank() ? "" : " (" + req.stockNote().trim() + ")";
+        return ", причина списания: " + label + note;
+    }
+
+    private static boolean stockDropped(AdminProductDto before, AdminProductDto after) {
+        if (before == null) {
+            return false;
+        }
+        if (after.stock() < before.stock()) {
+            return true;
+        }
+        if (before.variants() == null || after.variants() == null) {
+            return false;
+        }
+        for (var b : before.variants()) {
+            for (var a : after.variants()) {
+                if (java.util.Objects.equals(a.id(), b.id()) && a.stock() < b.stock()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @GetMapping("/products")
     @Operation(summary = "List non-archived products")
     public List<AdminProductDto> products() {
@@ -179,6 +214,7 @@ public class AdminProductController {
         AdminProductDto before = productService.get(id);
         AdminProductDto updated = productService.update(id, req, flag(force));
         audit.record("PRODUCT_UPDATE", "PRODUCT", id, changeSummary(before, updated) + catalogSummary(before, updated)
+                + writeoffSummary(before, updated, req)
                 + (flag(force) && !before.active() && updated.active() ? ", выложен без оформления" : ""));
         return revalidated(updated, before);
     }

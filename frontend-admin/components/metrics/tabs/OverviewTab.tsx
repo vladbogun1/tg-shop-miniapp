@@ -2,12 +2,12 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarClock, CreditCard, Gift, Grid3x3, LineChart as LineIcon, Shapes, Split, TrendingUp, Wallet } from "lucide-react";
+import { CalendarClock, CreditCard, Gift, Grid3x3, LineChart as LineIcon, Shapes, Split, TrendingUp, Undo2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer } from "@/lib/motion";
-import { metricsApi, type Forecast, type OnlinePayments, type Overview, type PeriodParams, type SchemeRow } from "../api";
+import { metricsApi, type Returns, type Forecast, type OnlinePayments, type Overview, type PeriodParams, type SchemeRow } from "../api";
 import { ForecastChart, Heatmap, OrdersChart, RankBars, SalesChart } from "../charts";
 import { dateTime, monthLabel, num, pct, uah, uahExact, uahShort } from "../format";
 import { PREV_LABEL } from "../period";
@@ -226,7 +226,69 @@ function OverviewBody({
           </div>
         </Panel>
       </div>
+
+      <ReturnsPanel params={params} />
     </motion.div>
+  );
+}
+
+const CHANNEL_LABEL: Record<string, string> = {
+  MONO: "monobank (на карту)",
+  NP_COD: "Наложка НП",
+  NP_PAYMENT_CONTROL: "Контроль оплаты НП",
+  CARD_TRANSFER: "Перевод на карту",
+  CASH: "Наличные",
+  NP_CLAIM: "Претензия НП",
+  OTHER: "Другое",
+  EXCHANGE: "Зачёт в обмен",
+  MERGE: "Перенос при объединении",
+};
+const REASON_LABEL: Record<string, string> = {
+  DEFECT: "Брак",
+  INVENTORY: "Инвентаризация",
+  MISSORT: "Пересорт",
+  SOLD_OFFLINE: "Продано вне магазина",
+  OTHER: "Другое",
+};
+
+/** Money that went back by the day it went back, what the shop kept on purpose, and write-offs (V68). */
+function ReturnsPanel({ params }: { params: PeriodParams }) {
+  const q = useQuery({
+    queryKey: ["metrics2", "returns", params],
+    queryFn: () => metricsApi.returns(params),
+    placeholderData: keepPreviousData,
+  });
+  const r: Returns | undefined = q.data;
+  return (
+    <Panel
+      title="Возвраты и списания"
+      icon={Undo2}
+      hint="Возвраты денег — по дню, когда деньги ушли, из журнала денег заказа. Удержано — предоплата, оставленная за доставку при отказе."
+    >
+      {!r ? (
+        <Note>{q.isError ? "Не удалось загрузить" : "Считаем…"}</Note>
+      ) : r.refundedMinor === 0 && r.retainedMinor === 0 && r.writeoffUnits === 0 && r.returnedOrders === 0 ? (
+        <Empty>За период возвратов и списаний нет</Empty>
+      ) : (
+        <div className="grid gap-4 text-[13px] md:grid-cols-3">
+          <div className="flex flex-col gap-2">
+            <Row label="Вернули клиентам" value={uah(r.refundedMinor)} sub={`${num(r.refundOrders)} заказов · возвратов товара: ${num(r.returnedOrders)}`} />
+            {r.byChannel.map((c) => (
+              <Row key={c.channel} label={CHANNEL_LABEL[c.channel] ?? c.channel} value={uah(c.amountMinor)} sub={`${num(c.count)} раз`} />
+            ))}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Row label="Удержано (доставка)" value={uah(r.retainedMinor)} sub={`${num(r.retainedOrders)} заказов`} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Row label="Списано со склада" value={uah(r.writeoffMinor)} sub={`${num(r.writeoffUnits)} шт.`} />
+            {r.writeoffsByReason.map((w) => (
+              <Row key={w.reason} label={REASON_LABEL[w.reason] ?? w.reason} value={uah(w.valueMinor)} sub={`${num(w.units)} шт.`} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Panel>
   );
 }
 

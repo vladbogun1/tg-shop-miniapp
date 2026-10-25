@@ -10,9 +10,12 @@
  *  - The period applies to the closed columns (Доставлен / Отклонён) only: an active order is never
  *    hidden by it. Closed columns load 20 cards + "Показать ещё".
  *  - Column money totals come from the server.
+ *  - «Едет назад» (V68) is a column, not a status: parcels on their way back. A SHIPPED card dropped
+ *    on it = reject with «Посылка едет назад»; a DELIVERED one opens the return wizard. Its cards
+ *    are not dragged — the order (or its rest, after a partial return) stays in its status column.
  *  - Realtime: polling refetch (board query refetchInterval).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   DndContext,
@@ -23,14 +26,25 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Search, RefreshCw, X } from "lucide-react";
+import { Search, RefreshCw, X, Plus } from "lucide-react";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { useConfirm } from "@/components/ui/ConfirmModal";
-import { CLOSED_STATUSES, STATUS_LABEL, STATUS_ORDER, canTransition, shortId } from "@/lib/orders";
+import {
+  BOARD_ORDER,
+  CLOSED_STATUSES,
+  DELIVERED_REJECT_HINT,
+  RETURNING,
+  STATUS_LABEL,
+  STATUS_ORDER,
+  canTransition,
+  shortId,
+  type BoardKey,
+} from "@/lib/orders";
 import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
+import { useFillHeight } from "@/lib/use-fill-height";
 import { useToast } from "@/lib/toast";
 import { refreshInbox } from "@/lib/inbox";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -44,6 +58,7 @@ import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
 import { OrdersTable } from "@/components/orders/OrdersTable";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import { StatusChangeModal, type StatusChangePayload } from "@/components/orders/StatusChangeModal";
 
 type View = "board" | "table";
@@ -69,11 +84,16 @@ export default function BoardPage() {
   const [search, setSearch] = useState("");
   const [range, setRange] = useTimeRange();
   const [closedLimit, setClosedLimit] = useState(CLOSED_PAGE);
-  const [mobileTab, setMobileTab] = useState<OrderStatus>("NEW");
+  const [mobileTab, setMobileTab] = useState<BoardKey>("NEW");
   const [openId, setOpenId] = useState<string | null>(null);
+  /** What the drawer opens with: the return wizard / «Посылка вернулась» (from «Едет назад»). */
+  const [openAction, setOpenAction] = useState<"return" | "received" | undefined>(undefined);
+  /** The pending reject comes from a drop on «Едет назад»: «Посылка едет назад» is pre-ticked. */
+  const [pendingInTransit, setPendingInTransit] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [pending, setPending] = useState<{ order: OrderCardDto; to: OrderStatus } | null>(null);
   const [changing, setChanging] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -94,8 +114,8 @@ export default function BoardPage() {
   const [paidNewOnly, setPaidNewOnly] = useState(false);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const status = params.get("status") as OrderStatus | null;
-    if (status && STATUS_ORDER.includes(status)) setMobileTab(status);
+    const status = params.get("status") as BoardKey | null;
+    if (status && BOARD_ORDER.includes(status)) setMobileTab(status);
     // "claimed" = an old bookmark from the manual-transfer days; the closest thing now is the same.
     const payment = params.get("payment");
     if (payment === "paid" || payment === "claimed") setPaidNewOnly(true);
@@ -143,11 +163,11 @@ export default function BoardPage() {
     const prev = qc.getQueryData<AdminBoard>(boardKey);
     if (prev) {
       const next: AdminBoard = {
-        columns: { ...prev.columns },
+        columns: { ...prev.columns } as AdminBoard["columns"],
         counts: { ...prev.counts },
         sums: prev.sums ? { ...prev.sums } : undefined,
       };
-      let moved: OrderCardDto | undefined;
+      let moved: AdminBoard["columns"][OrderStatus][number] | undefined;
       let from: OrderStatus | undefined;
       for (const s of STATUS_ORDER) {
         const idx = (next.columns[s] ?? []).findIndex((o) => o.id === id);
@@ -178,6 +198,7 @@ export default function BoardPage() {
       }
       push(`Статус: ${STATUS_LABEL[payload.status]}`, "ok");
       setPending(null);
+      setPendingInTransit(false);
       refresh();
       qc.invalidateQueries({ queryKey: ["dispatch"] });
       qc.invalidateQueries({ queryKey: ["order", id] });
@@ -193,7 +214,7 @@ export default function BoardPage() {
 
   function requestMove(id: string, from: OrderStatus, to: OrderStatus) {
     if (!canTransition(from, to)) {
-      push("Недопустимый переход статуса", "error");
+      push(from === "DELIVERED" && to === "REJECTED" ? DELIVERED_REJECT_HINT : "Недопустимый переход статуса", "error");
       return;
     }
     const card = findCard(id);
@@ -213,16 +234,45 @@ export default function BoardPage() {
     const { active, over } = e;
     if (!over) return;
     const from = (active.data.current?.status as OrderStatus) ?? null;
-    const to = over.id as OrderStatus;
+    const to = over.id as BoardKey;
     if (!from || from === to) return;
+    if (to === RETURNING) {
+      sendBack(String(active.id), from);
+      return;
+    }
     requestMove(String(active.id), from, to);
+  }
+
+  /** A card dropped on «Едет назад»: not taken at the post office, or a return of a delivered one. */
+  function sendBack(id: string, from: OrderStatus) {
+    const card = findCard(id);
+    if (from === "SHIPPED" && card) {
+      setPendingInTransit(true);
+      setPending({ order: card, to: "REJECTED" });
+    } else if (from === "DELIVERED") {
+      openOrder(id, "return");
+    } else {
+      push("Назад едет только отправленный или доставленный заказ", "error");
+    }
+  }
+
+  function openOrder(id: string, action?: "return" | "received") {
+    setOpenAction(action);
+    setOpenId(id);
+  }
+
+  /** Where a dragged card may land; «Едет назад» takes a shipped or a delivered order. */
+  function canDrop(card: OrderCardDto | undefined, to: BoardKey): boolean {
+    if (!card) return false;
+    if (to === RETURNING) return card.status === "SHIPPED" || card.status === "DELIVERED";
+    return canTransition(card.status, to);
   }
 
   // The backend caps a closed column at CLOSED_MAX cards; past it «Показать ещё» would do nothing.
   const showMore = closedLimit < CLOSED_MAX ? () => setClosedLimit((n) => Math.min(CLOSED_MAX, n + CLOSED_PAGE)) : undefined;
   const loadingMore = boardQ.isFetching && !boardQ.isLoading;
   // The period matters only for the closed columns / the table.
-  const showRange = view === "table" || isDesktop || CLOSED_STATUSES.includes(mobileTab);
+  const showRange = view === "table" || isDesktop || (mobileTab !== RETURNING && CLOSED_STATUSES.includes(mobileTab));
 
   const refreshButton = (
     <Button
@@ -236,11 +286,32 @@ export default function BoardPage() {
     </Button>
   );
 
+  const newOrderButton = (
+    <Button
+      variant="accent"
+      icon={<Plus className="h-4 w-4" />}
+      onClick={() => setNewOpen(true)}
+      aria-label="Новый заказ"
+      className="max-lg:w-11 max-lg:px-0"
+    >
+      <span className="max-lg:hidden">Новый заказ</span>
+    </Button>
+  );
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  useFillHeight(boardRef, view === "board" && isDesktop && !!board);
+
   return (
     <div>
       {/* On a phone the title is already in the shell header — no second one. */}
       <div className="hidden lg:block">
-        <PageHeader title="Заказы" subtitle="Управляйте заказами на доске или в таблице" actions={refreshButton} />
+        <PageHeader title="Заказы" subtitle="Управляйте заказами на доске или в таблице" actions={
+            <>
+              {refreshButton}
+              {newOrderButton}
+            </>
+          }
+        />
       </div>
 
       {/* Toolbar */}
@@ -255,7 +326,10 @@ export default function BoardPage() {
               // 38 + 2px border = 40 (44 on touch): the same height as the buttons and segments beside it.
             />
           </div>
-          <div className="lg:hidden">{refreshButton}</div>
+          <div className="flex items-center gap-2 lg:hidden">
+            {refreshButton}
+            {newOrderButton}
+          </div>
         </div>
         {showRange && (
           <div className="thin-scroll flex max-w-full items-center gap-2 overflow-x-auto">
@@ -298,18 +372,20 @@ export default function BoardPage() {
                   onDragEnd={onDragEnd}
                   onDragCancel={() => setActiveId(null)}
                 >
-                  <div className="thin-scroll flex gap-4 overflow-x-auto pb-4">
-                    {STATUS_ORDER.map((s) => (
+                  {/* The board fills the screen: one horizontal scrollbar at its bottom, each column
+                      scrolls on its own, the page stays put. */}
+                  <div ref={boardRef} className="thin-scroll flex items-stretch gap-4 overflow-x-auto pb-3">
+                    {BOARD_ORDER.map((s) => (
                       <KanbanColumn
                         key={s}
                         status={s}
                         orders={board.columns[s] ?? []}
                         count={board.counts?.[s] ?? board.columns[s]?.length ?? 0}
-                        sum={board.sums?.[s]}
-                        onCardClick={setOpenId}
+                        sum={s === RETURNING ? undefined : board.sums?.[s]}
+                        onCardClick={(id) => openOrder(id)}
                         dragActive={activeId !== null}
-                        validTarget={!!activeOrder && canTransition(activeOrder.status, s)}
-                        onMore={CLOSED_STATUSES.includes(s) ? showMore : undefined}
+                        validTarget={canDrop(activeOrder, s)}
+                        onMore={s !== RETURNING && CLOSED_STATUSES.includes(s) ? showMore : undefined}
                         loadingMore={loadingMore}
                       />
                     ))}
@@ -327,9 +403,10 @@ export default function BoardPage() {
                   board={board}
                   active={mobileTab}
                   onActiveChange={setMobileTab}
-                  onOpen={setOpenId}
+                  onOpen={(id) => openOrder(id)}
+                  onReceived={(id) => openOrder(id, "received")}
                   onMove={requestMove}
-                  onMore={CLOSED_STATUSES.includes(mobileTab) ? showMore : undefined}
+                  onMore={mobileTab !== RETURNING && CLOSED_STATUSES.includes(mobileTab) ? showMore : undefined}
                   loadingMore={loadingMore}
                 />
               ))}
@@ -337,7 +414,15 @@ export default function BoardPage() {
         </>
       )}
 
-      <OrderDrawer orderId={openId} onClose={() => setOpenId(null)} />
+      <OrderDrawer
+        orderId={openId}
+        initialAction={openAction}
+        onClose={() => {
+          setOpenId(null);
+          setOpenAction(undefined);
+        }}
+      />
+      <NewOrderModal open={newOpen} onClose={() => setNewOpen(false)} onCreated={setOpenId} />
 
       <StatusChangeModal
         open={pending !== null}
@@ -351,11 +436,17 @@ export default function BoardPage() {
                 currency: pending.order.currency,
                 restockUnits: pending.order.itemsCount,
                 deliveryMethod: pending.order.deliveryMethod,
+                fromStatus: pending.order.status,
+                receivedMinor: pending.order.receivedMinor,
               }
             : null
         }
         loading={changing}
-        onClose={() => setPending(null)}
+        initialInTransit={pendingInTransit}
+        onClose={() => {
+          setPending(null);
+          setPendingInTransit(false);
+        }}
         onConfirm={(payload) => (pending ? commitStatus(payload, pending.order.id) : false)}
       />
       {/* After the status modal so «Отправить без предоплаты?» stacks above it. */}

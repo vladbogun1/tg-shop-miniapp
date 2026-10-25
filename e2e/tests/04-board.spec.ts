@@ -52,6 +52,7 @@ test("поиск по #короткому-номеру оставляет оди
   await boardSearch(page).fill(shortId(ORDER.shipped));
   await expect(page.getByText(CUSTOMER.stale, { exact: true })).toHaveCount(0);
   await expect(page.getByText(CUSTOMER.shipped, { exact: true })).toHaveCount(1);
+  // The four other statuses («Едет назад» folds into a rail while empty).
   await expect(page.getByText("Пусто")).toHaveCount(4);
   await expect(column(page, "Отправлен").getByText(CUSTOMER.shipped, { exact: true })).toBeVisible();
 

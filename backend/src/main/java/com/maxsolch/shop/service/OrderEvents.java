@@ -33,6 +33,13 @@ public final class OrderEvents {
     }
 
     /**
+     * Two orders became one (V71): both channel cards move, the seller's dispatch card follows the
+     * order that stays, and (optionally) the customer is told what is left to pay.
+     */
+    public record Merged(byte[] targetId, byte[] sourceId, boolean notifyCustomer) {
+    }
+
+    /**
      * The customer opened a gift case and a discount dropped: its personal promo code was issued just
      * now (once — the case opens once). The bot sends the code itself, not only the shop page.
      */
@@ -41,6 +48,10 @@ public final class OrderEvents {
     }
 
     /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
+    /** A return was registered in the wizard (V68): DM the customer what was accepted and refunded. */
+    public record Returned(byte[] orderId, boolean notifyCustomer, String itemsSummary, long refundMinor) {
+    }
+
     public record PaymentReceived(byte[] orderId, long amountMinor) {
     }
 

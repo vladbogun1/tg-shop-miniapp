@@ -117,7 +117,7 @@ public class PaymentStatusApplier {
         boolean paidState = PaymentInvoice.SUCCESS.equals(st.status()) || PaymentInvoice.REVERSED.equals(st.status());
         if (paidState && inv.getAppliedAt() == null) {
             inv.setAppliedAt(Instant.now());
-            orderService.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor());
+            orderService.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor(), inv.getExternalId());
             log.info("monobank: invoice {} paid, {} kop credited to order {}", inv.getExternalId(),
                     inv.getAmountMinor(), UuidUtil.toString(inv.getOrderId()));
             journal(payment("PAYMENT_SUCCESS", inv)
@@ -141,7 +141,7 @@ public class PaymentStatusApplier {
             long delta = refundedNow - inv.getRefundedMinor();
             if (delta > 0) {
                 inv.setRefundedMinor(refundedNow);
-                orderService.recordOnlineRefund(inv.getOrderId(), delta);
+                orderService.recordOnlineRefund(inv.getOrderId(), delta, inv.getExternalId());
                 log.info("monobank: invoice {} refund {} kop booked", inv.getExternalId(), delta);
                 journal(payment("REFUND", inv)
                         .text("Возврат на карту: " + MoneyFormat.amount(delta) + " грн")

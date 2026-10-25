@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import type { OrderDetailDto } from "@/lib/api";
+import { PAID_CHANNELS, type MovementChannel } from "@/lib/orders";
 
 type Mode = "prepayment" | "full" | "custom";
 
@@ -36,23 +37,28 @@ export function PaymentModal({
   order: OrderDetailDto | null;
   onClose: () => void;
   /** Resolves true when saved (the caller closes the modal). */
-  onConfirm: (receivedMinor: number) => Promise<boolean> | boolean | void;
+  onConfirm: (receivedMinor: number, channel?: MovementChannel, note?: string) => Promise<boolean> | boolean | void;
   loading?: boolean;
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [custom, setCustom] = useState("");
   const [confirmFull, setConfirmFull] = useState(false);
+  const [channel, setChannel] = useState<MovementChannel>("NP_COD");
+  const [note, setNote] = useState("");
   const [confirm, confirmUi] = useConfirm();
 
   const orderId = order?.id ?? null;
   const hasPrepay = !!order && order.prepaymentMinor > 0;
   const nothingYet = !!order && order.receivedMinor <= 0;
+  const pickup = order?.deliveryMethod === "PICKUP";
   useEffect(() => {
     if (!open) return;
     setMode(hasPrepay && nothingYet ? "prepayment" : null);
     setCustom("");
     setConfirmFull(false);
-  }, [open, orderId, hasPrepay, nothingYet]);
+    setChannel(pickup ? "CASH" : "NP_COD");
+    setNote("");
+  }, [open, orderId, hasPrepay, nothingYet, pickup]);
 
   if (!order) return null;
   const cur = order.currency;
@@ -75,7 +81,7 @@ export function PaymentModal({
       setConfirmFull(true);
       return;
     }
-    await onConfirm(amount);
+    await onConfirm(amount, channel, note.trim() || undefined);
   }
 
   async function clearPayment() {
@@ -133,7 +139,7 @@ export function PaymentModal({
         open={open}
         onClose={onClose}
         closeOnBackdrop={false}
-        dirty={mode === "custom" && custom.trim() !== ""}
+        dirty={(mode === "custom" && custom.trim() !== "") || note.trim() !== ""}
         title="💳 Корректировка оплаты"
         footer={
           <>
@@ -183,6 +189,30 @@ export function PaymentModal({
               placeholder="0"
               error={customMinor > order.totalMinor ? "Больше суммы заказа" : undefined}
             />
+          )}
+          {mode !== null && (
+            <div className="flex flex-col gap-2">
+              <div className="field-label">Как получили</div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {PAID_CHANNELS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setChannel(c.value)}
+                    aria-pressed={channel === c.value}
+                    className={cn(
+                      "nb-press min-h-10 rounded-[var(--r-md)] border px-3 py-2 text-left text-[12.5px] font-medium leading-tight transition-colors",
+                      channel === c.value
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                        : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover:border-[var(--line-strong)]"
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <Input label="Заметка (в журнал денег)" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+            </div>
           )}
           {confirmFull ? (
             <p className="rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2.5 text-[13px] font-semibold text-[var(--danger-ink)]">

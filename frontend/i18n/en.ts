@@ -287,6 +287,8 @@ export const en: RuDictionary = {
   "pay.topUpTitle": "Top-up",
   "pay.topUpButton": "Pay the difference {amount}",
   "pay.topUpText": "An item was added to your order. {paid} is already paid — pay only the difference.",
+  "pay.exchangeText": "This is an exchange replacement — {paid} is already counted. Pay the difference here or cash on delivery.",
+  "pay.exchangeMethod": "Exchange: credit + the difference online or cash on delivery",
   "pay.hint": "Payment opens in your browser: Google Pay, Apple Pay, card or monobank. You’ll come back here afterwards.",
   "pay.prepayment": "Prepayment online, the remaining {amount} on delivery.",
   "pay.until": "Pay by {when}",

@@ -193,6 +193,38 @@ public class Order {
     @Column(name = "dispatch_message_id")
     private Integer dispatchMessageId;
 
+    /**
+     * Archived by the main admin (V68): hidden from the board, the lists and the customer's
+     * history, kept with everything attached. Orders are never deleted.
+     */
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
+    @Column(name = "archived_by", length = 255)
+    private String archivedBy;
+
+    @Column(name = "archive_reason", length = 500)
+    private String archiveReason;
+
+    /** Refused / sent-back parcel on its way to the shop (V68): IN_TRANSIT, then RECEIVED; null = none. */
+    @Column(name = "return_status", length = 16)
+    private String returnStatus;
+
+    /** When the parcel (or the returned units) set off back to the shop: «едет назад» since. */
+    @Column(name = "return_sent_at")
+    private Instant returnSentAt;
+
+    /** The order this one replaces goods of (V69): set on the replacement parcel of an exchange. */
+    @Column(name = "exchange_of_order_id", columnDefinition = "BINARY(16)")
+    private byte[] exchangeOfOrderId;
+
+    /** The order this one was merged into (V71): closed as REJECTED with code MERGED, its lines live on there. */
+    @Column(name = "merged_into_order_id", columnDefinition = "BINARY(16)")
+    private byte[] mergedIntoOrderId;
+
+    @Column(name = "return_received_at")
+    private Instant returnReceivedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 

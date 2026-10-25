@@ -21,6 +21,8 @@ import java.util.List;
 @Service
 public class PromoAdminService {
 
+    public static final String PROMO_USED = "PROMO_USED";
+
     private final PromoCodeRepository promoCodeRepository;
 
     public PromoAdminService(PromoCodeRepository promoCodeRepository) {
@@ -77,6 +79,10 @@ public class PromoAdminService {
     public PromoCode delete(String id) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
                 .orElseThrow(() -> new NotFoundException("промокод не найден"));
+        // A used code is history (orders keep it as text, reports and refunds look it up): only switch it off.
+        if (p.getUsesCount() > 0 || promoCodeRepository.countOrdersWithCode(p.getCode()) > 0) {
+            throw new BadRequestException("Промокод уже использовали — его можно только выключить", PROMO_USED);
+        }
         promoCodeRepository.delete(p);
         return p;
     }

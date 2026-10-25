@@ -18,6 +18,16 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, byte[]> {
 
+    /** [original id, replacement id] of exchanges made on these orders (V69), oldest first. */
+    @org.springframework.data.jpa.repository.Query("select o.exchangeOfOrderId, o.id from Order o "
+            + "where o.exchangeOfOrderId in :ids order by o.createdAt")
+    java.util.List<Object[]> exchangeChildren(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
+
+    /** [order id, merged order id] — the orders merged into these (V71), oldest first. */
+    @org.springframework.data.jpa.repository.Query("select o.mergedIntoOrderId, o.id from Order o "
+            + "where o.mergedIntoOrderId in :ids order by o.createdAt")
+    java.util.List<Object[]> mergedChildren(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
+
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Order> findByTgUserIdOrderByCreatedAtDesc(Long tgUserId);
@@ -65,6 +75,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query(value = "select o from Order o" + OrderSearchQueries.WHERE_LIST,
             countQuery = "select count(o) from Order o" + OrderSearchQueries.WHERE_LIST)
     Page<Order> search(@Param("status") OrderStatus status,
+                       @Param("archived") boolean archived,
                        @Param("q") String q,
                        @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,
@@ -88,6 +99,18 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
      * {@code [status, count, sum(totalMinor)]}. The column sum used to be added up on the client
      * from the (capped) cards it had loaded.
      */
+    /** The «Едет назад» column: orders whose parcel (or part of it) is on its way back, oldest trip first. */
+    @Query("select o from Order o" + OrderSearchQueries.WHERE_RETURNING + "order by o.returnSentAt asc, o.createdAt desc")
+    List<Order> searchReturning(@Param("q") String q,
+                                @Param("idLo") byte[] idLo,
+                                @Param("idHi") byte[] idHi,
+                                Pageable pageable);
+
+    @Query("select count(o) from Order o" + OrderSearchQueries.WHERE_RETURNING)
+    long countReturning(@Param("q") String q,
+                        @Param("idLo") byte[] idLo,
+                        @Param("idHi") byte[] idHi);
+
     @Query("select o.status, count(o), coalesce(sum(o.totalMinor), 0) from Order o"
             + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES + "group by o.status")
     List<Object[]> statsByStatus(@Param("q") String q,

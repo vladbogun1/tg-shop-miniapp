@@ -45,7 +45,10 @@ public class OrderNotificationListener {
     public void onCreated(OrderEvents.Created event) {
         withOrder(event.orderId(), order -> {
             notificationService.onNewOrder(order);
-            notificationService.notifyCustomerStatus(order);
+            // The replacement of an exchange is announced by onExchanged (one message, not two).
+            if (order.getExchangeOfOrderId() == null) {
+                notificationService.notifyCustomerStatus(order);
+            }
         });
     }
 
@@ -79,6 +82,34 @@ public class OrderNotificationListener {
             }
             if (event.notifyCustomer()) {
                 notificationService.notifyCustomerExchange(order, event.givenSummary());
+            }
+        });
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onMerged(OrderEvents.Merged event) {
+        withOrder(event.sourceId(), source -> {
+            notificationService.onStatusChanged(source);
+            notificationService.removeDispatchCard(source);
+        });
+        withOrder(event.targetId(), target -> {
+            notificationService.onStatusChanged(target);
+            refreshDispatch(target);
+            if (event.notifyCustomer()) {
+                String from = com.maxsolch.shop.common.UuidUtil.toString(event.sourceId());
+                notificationService.notifyCustomerMerged(target, from == null ? "" : from.substring(0, 8));
+            }
+        });
+    }
+
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onReturned(OrderEvents.Returned event) {
+        withOrder(event.orderId(), order -> {
+            refreshDispatch(order);
+            if (event.notifyCustomer()) {
+                notificationService.notifyCustomerReturn(order, event.itemsSummary(), event.refundMinor());
             }
         });
     }

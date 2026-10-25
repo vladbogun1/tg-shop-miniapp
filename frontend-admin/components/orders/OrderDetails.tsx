@@ -7,6 +7,7 @@
 import type { Ref } from "react";
 import {
   Phone,
+  Merge,
   User,
   Truck,
   Store,
@@ -20,6 +21,8 @@ import {
   Undo2,
   Wallet,
   Repeat,
+  Archive,
+  PackageCheck,
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
@@ -40,6 +43,8 @@ import { cn } from "@/lib/cn";
 import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
+import { MoneyLedgerBlock } from "./MoneyLedgerBlock";
+import { ReturnHistoryBlock } from "./ReturnHistoryBlock";
 
 export interface DetailHandlers {
   busyKey: string | null;
@@ -53,8 +58,16 @@ export interface DetailHandlers {
   onEditTracking: () => void;
   onOpenCustomer?: () => void;
   onReturn?: () => void;
-  /** Exchange goods (shipped / delivered orders): back to NEW for a new ТТН. */
+  /** Exchange goods (delivered orders): the replacement goes out as a new linked order. */
   onExchange?: () => void;
+  /** «Объединить заказы» (NEW / APPROVED): another order of the same customer joins this one. */
+  onMerge?: () => void;
+  /** Open another order in the same drawer (the two sides of an exchange or a merge). */
+  onOpenOrder?: (id: string) => void;
+  /** «Посылка вернулась» — only while the refused parcel is on its way back. */
+  onReturnReceived?: () => void;
+  /** «Вернуть из архива» — main admin only, archived orders. */
+  onUnarchive?: () => void;
   /** Invoices refreshed or refunded — reload the order and the lists. */
   onPaymentChanged?: () => void;
   /** The «Онлайн-оплата» section, to scroll to it («Внимание» → «Оплаты»). */
@@ -73,8 +86,110 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
   const cod = codMinor(order);
   const refunded = order.refundedMinor ?? 0;
 
+  const exchangeOf = order.admin?.exchangeOfId ?? null;
+  const exchangeKids = order.admin?.exchangeOrderIds ?? [];
+  const mergedInto = order.admin?.mergedIntoId ?? null;
+  const mergedFrom = order.admin?.mergedFromIds ?? [];
+
   return (
     <div className="flex flex-col gap-4">
+      {(exchangeOf || exchangeKids.length > 0) && (
+        <div className="card flex flex-wrap items-center gap-x-3 gap-y-1.5 border-[rgba(255,102,0,.35)] px-4 py-3 text-[13px]">
+          <Repeat className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />
+          {exchangeOf && (
+            <span className="text-[var(--text-muted)]">
+              Замена по обмену из заказа <OrderLink id={exchangeOf} onOpen={h.onOpenOrder} />
+            </span>
+          )}
+          {exchangeKids.length > 0 && (
+            <span className="text-[var(--text-muted)]">
+              Обмен: {exchangeKids.length > 1 ? "новые заказы" : "новый заказ"}{" "}
+              {exchangeKids.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <OrderLink id={id} onOpen={h.onOpenOrder} />
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+      {(mergedInto || mergedFrom.length > 0) && (
+        <div className="card flex flex-wrap items-center gap-x-3 gap-y-1.5 border-[rgba(255,102,0,.35)] px-4 py-3 text-[13px]">
+          <Merge className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />
+          {mergedInto && (
+            <span className="text-[var(--text-muted)]">
+              Объединён в заказ <OrderLink id={mergedInto} onOpen={h.onOpenOrder} /> — товары и оплата там
+            </span>
+          )}
+          {mergedFrom.length > 0 && (
+            <span className="text-[var(--text-muted)]">
+              В этот заказ {mergedFrom.length > 1 ? "объединены" : "объединён"}{" "}
+              {mergedFrom.map((id, i) => (
+                <span key={id}>
+                  {i > 0 && ", "}
+                  <OrderLink id={id} onOpen={h.onOpenOrder} />
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+      {order.admin?.archivedAt && (
+        <div className="card flex flex-col gap-2 border-[var(--line-strong)] p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
+            <Archive className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+            В архиве
+          </div>
+          <p className="text-[13px] text-[var(--text-muted)]">
+            {order.admin.archiveReason ? <>Причина: {order.admin.archiveReason}. </> : null}
+            {order.admin.archivedBy && <>{order.admin.archivedBy}, </>}
+            {formatDateTime(order.admin.archivedAt)}
+          </p>
+          {h.onUnarchive && (
+            <Button
+              size="sm"
+              variant="surface"
+              className="self-start"
+              loading={h.busyKey === "unarchive"}
+              disabled={!!h.busyKey && h.busyKey !== "unarchive"}
+              onClick={h.onUnarchive}
+            >
+              Вернуть из архива
+            </Button>
+          )}
+        </div>
+      )}
+
+      {order.admin?.returnStatus === "IN_TRANSIT" && (
+        <div className="card flex flex-col gap-2 border-[color-mix(in_srgb,var(--warn)_45%,transparent)] p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text)]">
+            <Undo2 className="h-4 w-4 shrink-0 text-[var(--warn)]" />
+            Посылка едет назад
+          </div>
+          <p className="text-[13px] text-[var(--text-muted)]">
+            Товар ещё не на складе. Когда посылка придёт — отметьте это, и товар вернётся на склад (брак можно списать).
+          </p>
+          {h.onReturnReceived && (
+            <Button
+              size="sm"
+              variant="accent"
+              className="self-start"
+              icon={<PackageCheck className="h-4 w-4" />}
+              disabled={!!h.busyKey}
+              onClick={h.onReturnReceived}
+            >
+              Посылка вернулась
+            </Button>
+          )}
+        </div>
+      )}
+      {order.admin?.returnStatus === "RECEIVED" && order.admin.returnReceivedAt && (
+        <p className="px-1 text-[12.5px] text-[var(--text-muted)]">
+          Посылка вернулась на склад {formatDateTime(order.admin.returnReceivedAt)}.
+        </p>
+      )}
+
       {/* Customer */}
       <Section
         title="Клиент"
@@ -204,6 +319,10 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
       <CancelRequestBlock order={order} onChanged={h.onPaymentChanged} />
 
       <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
+
+      <ReturnHistoryBlock order={order} onChanged={h.onPaymentChanged} />
+
+      <MoneyLedgerBlock order={order} onChanged={h.onPaymentChanged} />
 
       {/* Items */}
       <Section title="Состав">
@@ -359,7 +478,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
         </div>
-        {(editable || h.onReturn || h.onExchange) && (
+        {(editable || h.onReturn || h.onExchange || h.onMerge) && (
           <div className="mt-3 flex flex-wrap gap-2">
             {editable && (
               <>
@@ -375,6 +494,11 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                   </Button>
                 )}
               </>
+            )}
+            {h.onMerge && (
+              <Button size="sm" variant="surface" icon={<Merge className="h-4 w-4" />} onClick={h.onMerge}>
+                Объединить
+              </Button>
             )}
             {h.onExchange && (
               <Button size="sm" variant="surface" icon={<Repeat className="h-4 w-4" />} onClick={h.onExchange}>
@@ -423,10 +547,17 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 <div className="text-[var(--text-muted)]">
                   <span className="font-semibold text-[var(--text)]">Взамен:</span> {ex.givenSummary}
                 </div>
-                <div className="tabular text-[var(--text-faint)]">
-                  Сумма {money(ex.totalBeforeMinor, order.currency)} → {money(ex.totalAfterMinor, order.currency)}
-                  {ex.previousTracking ? ` · старая ТТН ${ex.previousTracking}` : ""}
-                </div>
+                {ex.newOrderId ? (
+                  <div className="tabular text-[var(--text-faint)]">
+                    Зачтено {money(ex.totalBeforeMinor, order.currency)} · новый заказ{" "}
+                    <OrderLink id={ex.newOrderId} onOpen={h.onOpenOrder} /> на {money(ex.totalAfterMinor, order.currency)}
+                  </div>
+                ) : (
+                  <div className="tabular text-[var(--text-faint)]">
+                    Сумма {money(ex.totalBeforeMinor, order.currency)} → {money(ex.totalAfterMinor, order.currency)}
+                    {ex.previousTracking ? ` · старая ТТН ${ex.previousTracking}` : ""}
+                  </div>
+                )}
                 {ex.note && <div className="text-[var(--text-faint)]">{ex.note}</div>}
               </div>
             ))}
@@ -553,5 +684,20 @@ function Timeline({ order }: { order: AdminOrderDetail }) {
         </li>
       )}
     </ol>
+  );
+}
+
+/** «#1a2b3c4d» that opens that order in the same drawer (plain text without a handler). */
+function OrderLink({ id, onOpen }: { id: string; onOpen?: (id: string) => void }) {
+  const label = `#${id.slice(0, 8)}`;
+  if (!onOpen) return <span className="tabular font-semibold text-[var(--text)]">{label}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(id)}
+      className="tabular hit font-semibold text-[var(--accent-hi)] hover:underline"
+    >
+      {label}
+    </button>
   );
 }

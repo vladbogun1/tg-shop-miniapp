@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { Spinner } from "@/components/ui/Spinner";
 import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { AttributeDialog } from "./AttributeDialog";
 import { GroupsDialog } from "./GroupsDialog";
 
@@ -103,6 +104,7 @@ export function CategoryDialog({
   const { push } = useToast();
   const qc = useQueryClient();
   const [confirm, confirmUi] = useConfirm();
+  const superAdmin = useIsSuperAdmin();
   const [tab, setTab] = useState<Tab>("main");
   const [f, setF] = useState<Form>(() => toForm(category, presetParentId));
   const [initial, setInitial] = useState("");
@@ -189,6 +191,11 @@ export function CategoryDialog({
 
   async function removeAttr(a: AdminSpecAttribute) {
     const used = a.usedCount ?? 0;
+    // Removing a filled characteristic wipes its values from products (force=1): the main admin only.
+    if (used > 0 && superAdmin !== true) {
+      push(`Характеристика заполнена в ${productsWord(used)} — удалить её с очисткой значений может только главный админ`, "error");
+      return;
+    }
     const ok = await confirm({
       title: `Удалить «${a.labelRu}»?`,
       message:
@@ -205,7 +212,9 @@ export function CategoryDialog({
       push("Характеристика удалена", "ok");
       refreshAttrs();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
+      if (e instanceof ApiError && e.status === 409 && superAdmin !== true) {
+        push(`${e.message}. Удалить с очисткой значений может только главный админ`, "error");
+      } else if (e instanceof ApiError && e.status === 409) {
         const force = await confirm({
           title: "Характеристика используется",
           message: `${e.message}. Удалить и вычистить значения из товаров?`,

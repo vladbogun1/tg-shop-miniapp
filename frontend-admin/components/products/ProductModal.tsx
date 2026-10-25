@@ -71,6 +71,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { PhotoUploader } from "@/components/products/PhotoUploader";
+import { useStockReason, type StockReason } from "@/components/products/StockReasonDialog";
 import { CategoryTreeSelect } from "@/components/catalog/CategoryTreeSelect";
 import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombobox";
 import { SpecsForm } from "@/components/catalog/SpecsForm";
@@ -171,6 +172,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   // the `expectedStock` the server verifies (replaced with fresh numbers after a 409).
   const [initialSnapshot, setInitialSnapshot] = useState("");
   const baseStockRef = useRef<{ stock: number; variants: Record<string, number> }>({ stock: 0, variants: {} });
+  // Why the stock was lowered (asked at save time); sent with every body of this save.
+  const stockReasonRef = useRef<StockReason | null>(null);
+  const [askStockReason, stockReasonUi] = useStockReason();
   const resetKey = `${open}-${product?.id ?? "new"}-${f.categoryId}`;
 
   useEffect(() => {
@@ -356,8 +360,21 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       condition: f.condition,
       conditionNote: f.condition === "NEW" ? "" : f.conditionNote.trim(),
       specs,
+      ...(stockReasonRef.current
+        ? { stockReason: stockReasonRef.current.reason, stockNote: stockReasonRef.current.note }
+        : {}),
       ...overrides,
     };
+  }
+
+  /** How many units the form takes off the shelf compared to what it was opened with (0 = none). */
+  function stockDrop(): number {
+    const base = baseStockRef.current;
+    if (!hasVariants) return Math.max(0, base.stock - (Number(f.stock) || 0));
+    return f.variants.reduce((sum, v) => {
+      const was = v.id ? base.variants[v.id] : undefined;
+      return was === undefined ? sum : sum + Math.max(0, was - (Number(v.stock) || 0));
+    }, 0);
   }
 
   function reportIssues(saved: AdminProductSaved) {
@@ -441,6 +458,14 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       push("Товар кладётся в категорию без подкатегорий", "error");
       go(S.category);
       return;
+    }
+    // Lowering stock needs a reason (it goes to «Списания»); a cancelled dialog cancels the save.
+    stockReasonRef.current = null;
+    const drop = stockDrop();
+    if (drop > 0) {
+      const r = await askStockReason(drop);
+      if (!r) return;
+      stockReasonRef.current = r;
     }
     setSaving(true);
     try {
@@ -999,6 +1024,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
         </div>
       </Modal>
       {gateUi}
+      {stockReasonUi}
     </>
   );
 }

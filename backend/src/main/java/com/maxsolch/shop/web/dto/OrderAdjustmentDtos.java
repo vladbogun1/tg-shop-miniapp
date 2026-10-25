@@ -41,11 +41,63 @@ public final class OrderAdjustmentDtos {
     }
 
     /**
-     * POST /api/admin/orders/{id}/exchange — what came back (restock = back into circulation),
-     * what goes out instead, and where the order goes next: NEW (default) or APPROVED.
+     * POST /api/admin/orders/{id}/returns — the return wizard (V68): lines with their state,
+     * manual refunds by channel, an optional refund through monobank, money the shop keeps.
+     */
+    public record ReturnWizardRequest(
+            @Valid List<WizardLine> lines,
+            @Valid List<Refund> refunds,
+            /** Sent back to the card through monobank after the return is saved (null/0 = none). */
+            Long monoRefundMinor,
+            /** Kept by the shop on purpose — e.g. the prepayment that paid for delivery. */
+            Long retainMinor,
+            @Size(max = 500) String note,
+            Boolean notifyCustomer) {
+
+        /** outcome: RESTOCK (на склад) | DEFECT (брак, списать) | KEPT (осталось у покупателя). */
+        public record WizardLine(long itemId, int quantity, String outcome) {
+        }
+
+        /** channel: NP_COD | NP_PAYMENT_CONTROL | CARD_TRANSFER | CASH | NP_CLAIM | OTHER. */
+        public record Refund(String channel, long amountMinor, @Size(max = 500) String note) {
+        }
+    }
+
+    /** POST /api/admin/orders/{id}/return-received — the refused parcel is back; DEFECT lines are written off. */
+    public record ReceiveReturnRequest(
+            @Valid List<ReturnWizardRequest.WizardLine> lines,
+            @Size(max = 500) String note) {
+    }
+
+    /**
+     * POST /api/admin/orders/{id}/returns/{returnId}/cancel — the customer changed their mind.
+     * money: RETURNED (sent back already) | DEBT (owes it) | KEEP (left with them); reason required.
+     */
+    public record CancelReturnRequest(String money, @Size(max = 500) String note) {
+    }
+
+    /** POST /api/admin/stock-writeoffs/{id}/restore — a written-off unit goes back on the shelf. */
+    /** Merge {@code sourceId} into the order of the URL (V71). */
+    public record MergeRequest(@jakarta.validation.constraints.NotBlank String sourceId,
+                               Boolean useSourceDelivery,
+                               Boolean notifyCustomer,
+                               @jakarta.validation.constraints.Size(max = 500) String note) {
+    }
+
+    public record RestoreWriteoffRequest(int quantity, @Size(max = 500) String note) {
+    }
+
+    /** POST /api/admin/orders/{id}/archive — main admin only. */
+    public record ArchiveRequest(@Size(max = 500) String reason) {
+    }
+
+    /**
+     * POST /api/admin/orders/{id}/exchange (delivered orders) — what the customer gives back
+     * (outcome IN_TRANSIT = on its way by post, default; RESTOCK / DEFECT = already at the shop),
+     * what goes out instead as a new linked order, and where that order starts: NEW (default) or APPROVED.
      */
     public record ExchangeRequest(
-            @Valid List<RegisterReturnRequest.ReturnLine> returned,
+            @Valid List<ReturnWizardRequest.WizardLine> returned,
             @Valid List<NewLine> items,
             String targetStatus,
             Boolean notifyCustomer,

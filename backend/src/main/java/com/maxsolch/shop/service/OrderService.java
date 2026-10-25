@@ -10,6 +10,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderMessage;
@@ -112,6 +113,21 @@ public class OrderService {
         this.caseLowMargin = caseLowMargin;
     }
 
+    /** Order money journal (optional: unit tests build the service without it). */
+    private MoneyLedger moneyLedger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setMoneyLedger(MoneyLedger moneyLedger) {
+        this.moneyLedger = moneyLedger;
+    }
+
+    private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
+                        OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
+        if (moneyLedger != null && amountMinor != 0) {
+            moneyLedger.record(order.getId(), kind, channel, amountMinor, source, adminName, note, invoiceExtId);
+        }
+    }
+
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
@@ -198,7 +214,9 @@ public class OrderService {
         lines.sort(Comparator.comparing(l -> l.productId));
         // The gift for the order sum is locked in the same id order, up front: taking its row after
         // the cart's could deadlock with an order that has the gift product in its cart.
+        // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
         Optional<GiftService.GiftConfig> giftCfg = giftService == null
+                || GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
                 ? Optional.empty() : giftService.giftConfig();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
@@ -268,6 +286,8 @@ public class OrderService {
         OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
+        settleFreeOrder(order);
+
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
         if (drawn != null) {
@@ -289,6 +309,42 @@ public class OrderService {
         // then failed to save.
         events.publishEvent(new OrderEvents.Created(saved.getId()));
         return saved;
+    }
+
+    /**
+     * A sale the admin types in (V68): the checkout rules, source ADMIN, no payment deadline (the
+     * admin agreed on the payment with the buyer), and what was already received goes to the money
+     * journal with its channel.
+     */
+    @Transactional
+    public Order createAdminOrder(CreateOrderCommand cmd, long paidMinor, OrderMoneyMovement.Channel channel,
+                                  String adminName, String note) {
+        Order order = createOrder(cmd);
+        order.setPaymentDueAt(null);
+        orderRepository.save(order);
+        if (paidMinor > 0) {
+            return markPaid(order.getId(), paidMinor, channel, adminName,
+                    note == null || note.isBlank() ? "оплата при ручном заказе" : note);
+        }
+        return order;
+    }
+
+    /**
+     * Payment option of an exchange replacement: the original order's while it is still offered,
+     * otherwise the first active one (the rest of a dearer replacement is collected through it).
+     */
+    public String exchangePaymentOptionId(Order original) {
+        if (original.getPaymentOptionId() != null) {
+            Optional<PaymentOption> po = paymentOptionRepository.findById(original.getPaymentOptionId())
+                    .filter(PaymentOption::isActive);
+            if (po.isPresent()) {
+                return UuidUtil.toString(po.get().getId());
+            }
+        }
+        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
+                .findFirst()
+                .map(po -> UuidUtil.toString(po.getId()))
+                .orElseThrow(() -> new BadRequestException("нет активного способа оплаты для нового заказа"));
     }
 
     @Transactional
@@ -353,7 +409,13 @@ public class OrderService {
         // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
         // lowered: after an exchange for something cheaper the customer paid more than the new
         // total, and the metrics read that overpayment to tell a refunded difference from a return.
+        long receivedBefore = order.getReceivedMinor();
         order.setReceivedMinor(Math.max(order.getReceivedMinor(), order.getTotalMinor()));
+        ledger(order, OrderMoneyMovement.Kind.PAYMENT,
+                order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
+                        ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
+                order.getReceivedMinor() - receivedBefore, OrderMoneyMovement.Source.AUTO, null,
+                "остаток при получении (доставлен)", null);
         if (!order.isPaid()) {
             order.setPaid(true);
             order.setPaidAt(Instant.now());
@@ -512,12 +574,49 @@ public class OrderService {
      */
     @Transactional
     public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock) {
+        return reject(orderId, reason, reasonCode, restock, false);
+    }
+
+    /** Shown when someone tries to reject an order the customer already received. */
+    public static final String REJECT_DELIVERED =
+            "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
+
+    /**
+     * @param returnInTransit only for a SHIPPED order (refused at the post office, sent back): the
+     *                        goods are not on the shelf yet, so nothing is restocked now — the
+     *                        order waits as «посылка едет назад» until it is received
+     *                        ({@link OrderAdjustmentService#receiveReturn}).
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock,
+                        boolean returnInTransit) {
         Order order = lock(orderId);
-        if (order.getStatus() == OrderStatus.REJECTED) {
+        OrderStatus before = order.getStatus();
+        if (before == OrderStatus.REJECTED) {
             throw new BadRequestException("заказ уже отклонён");
         }
-        if (restock) {
+        if (before == OrderStatus.DELIVERED) {
+            // Rejecting a delivered order used to keep its «получено» (the automatic full amount
+            // set on delivery) — metrics then showed money that never was. A return records it right.
+            throw new BadRequestException(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
+        }
+        boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
+        if (inTransit) {
+            order.setReturnStatus(RETURN_IN_TRANSIT);
+            order.setReturnSentAt(Instant.now());
+            for (OrderItem item : order.getItems()) {
+                item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
+            }
+        } else if (restock) {
             restoreStock(order);
+        }
+        long kept = Math.max(0, order.getReceivedMinor()) - Math.max(0, order.getRefundedMinor());
+        if (before == OrderStatus.SHIPPED && kept > 0 && order.getPrepaymentMinor() > 0
+                && kept <= order.getPrepaymentMinor()) {
+            // Owner's rule (25.10.2026): the prepayment of a refused parcel pays for its delivery
+            // both ways — it stays with the shop and is never refunded automatically.
+            ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
+                    OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
         }
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectedAt(Instant.now());
@@ -554,7 +653,7 @@ public class OrderService {
             case APPROVED -> approve(orderId);
             case SHIPPED -> ship(orderId, trackingNumber, allowUnpaid);
             case DELIVERED -> deliver(orderId);
-            case REJECTED -> reject(orderId, reason, reasonCode, restock);
+            case REJECTED -> reject(orderId, reason, reasonCode, restock, false);
             case NEW -> throw new BadRequestException("вернуть заказ в «Новые» нельзя");
         };
     }
@@ -623,6 +722,16 @@ public class OrderService {
      */
     @Transactional
     public Order markPaid(byte[] orderId, long receivedMinor) {
+        return markPaid(orderId, receivedMinor, OrderMoneyMovement.Channel.OTHER, null, null);
+    }
+
+    /**
+     * Same, naming how the money came ({@code channel}, the admin, a note) for the money journal:
+     * a raise is a PAYMENT through that channel, a cut a negative CORRECTION.
+     */
+    @Transactional
+    public Order markPaid(byte[] orderId, long receivedMinor, OrderMoneyMovement.Channel channel,
+                          String adminName, String note) {
         Order order = lock(orderId);
         if (receivedMinor < 0) {
             throw new BadRequestException("сумма не может быть отрицательной");
@@ -634,8 +743,14 @@ public class OrderService {
                     + MoneyFormat.uah(order.getTotalMinor()) + ")");
         }
         long received = receivedMinor;
+        long diff = received - order.getReceivedMinor();
+        ledger(order, diff > 0 ? OrderMoneyMovement.Kind.PAYMENT : OrderMoneyMovement.Kind.CORRECTION,
+                channel == null ? OrderMoneyMovement.Channel.OTHER : channel, diff,
+                OrderMoneyMovement.Source.ADMIN, adminName,
+                note == null || note.isBlank() ? (diff > 0 ? "отмечено получено" : "исправлено «получено»") : note,
+                null);
         order.setReceivedMinor(received);
-        boolean paid = received > 0;
+        boolean paid = received > 0 || order.getTotalMinor() == 0; // a free order stays paid (settleFreeOrder)
         // Correcting the amount of an order that is already paid keeps the original payment date:
         // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
         boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
@@ -678,8 +793,22 @@ public class OrderService {
      */
     @Transactional
     public Order recordOnlinePayment(byte[] orderId, long amountMinor) {
+        return recordOnlinePayment(orderId, amountMinor, null);
+    }
+
+    @Transactional
+    public Order recordOnlinePayment(byte[] orderId, long amountMinor, String invoiceExtId) {
         Order order = lock(orderId);
-        long received = Math.min(order.getTotalMinor(), Math.max(0, order.getReceivedMinor()) + amountMinor);
+        long before = Math.max(0, order.getReceivedMinor());
+        long received = Math.min(order.getTotalMinor(), before + amountMinor);
+        // The journal books what the order counts (received is capped at the total), so it always
+        // matches received − refunded; the bank's full amount stays in the note.
+        long counted = Math.max(0, received - before);
+        ledger(order, OrderMoneyMovement.Kind.PAYMENT, OrderMoneyMovement.Channel.MONO, counted,
+                OrderMoneyMovement.Source.AUTO, null,
+                counted == amountMinor ? "оплата monobank"
+                        : "оплата monobank " + MoneyFormat.uah(amountMinor) + ", зачтено в пределах суммы заказа",
+                invoiceExtId);
         order.setReceivedMinor(received);
         if (received > 0 && !order.isPaid()) {
             order.setPaid(true);
@@ -693,7 +822,14 @@ public class OrderService {
     /** A refund went through at monobank: book it as money given back to the customer. */
     @Transactional
     public Order recordOnlineRefund(byte[] orderId, long amountMinor) {
+        return recordOnlineRefund(orderId, amountMinor, null);
+    }
+
+    @Transactional
+    public Order recordOnlineRefund(byte[] orderId, long amountMinor, String invoiceExtId) {
         Order order = lock(orderId);
+        ledger(order, OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.MONO, amountMinor,
+                OrderMoneyMovement.Source.AUTO, null, "возврат на карту (monobank)", invoiceExtId);
         order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -888,86 +1024,86 @@ public class OrderService {
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
         order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
+        settleFreeOrder(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
         return saved;
     }
 
-    // ----- admin hard delete -----
+    // ----- archive (orders are never deleted) -----
 
-    /** What was deleted, for the audit line written after the commit. */
-    public record DeletedOrder(String customerName, long totalMinor, OrderStatus status,
-                               boolean restocked, String promoCode, int attachments) {
-    }
+    /** {@link Order#getReturnStatus()}: the refused parcel is on its way back / has arrived. */
+    public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
+    public static final String RETURN_RECEIVED = "RECEIVED";
 
     /**
-     * Deletes an order for good (cascade: items and chat). Only closed orders — DELIVERED or
-     * REJECTED — may go; anything still in progress is a 400, the UI never offered it and the API
-     * now agrees.
-     *
-     * <p>A deleted order must not leave its side effects behind:
-     * <ul>
-     *   <li>stock — a REJECTED order already settled its stock when it was rejected (restocked or
-     *       deliberately not), so only a DELIVERED one returns its units, and only when
-     *       {@code restock} is true;</li>
-     *   <li>promo usage — rejecting does not give the use back, so it is released here for both;</li>
-     *   <li>chat attachments ({@code chat/*}, customers' photos and files) and the seller's
-     *       dispatch card — removed after the commit (see {@link OrderEvents.Deleted}).</li>
-     * </ul>
+     * Archives a closed order (DELIVERED / REJECTED): it leaves the board, the lists and the
+     * customer's history, and keeps everything — items, chat, payments, receipts, money journal.
+     * Replaces the hard delete (25.10.2026: 49 orders were deleted for good, payment records went
+     * with them). Stock and promo usage are not touched: archiving changes visibility, not history.
+     * The main admin only (checked by the controller).
      */
     @Transactional
-    public DeletedOrder delete(byte[] orderId, boolean restock) {
+    public Order archive(byte[] orderId, String reason, String adminName) {
         Order order = lock(orderId);
+        if (order.getArchivedAt() != null) {
+            throw new BadRequestException("заказ уже в архиве");
+        }
+        if (RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+            throw new BadRequestException("посылка ещё едет назад — сначала отметьте «Посылка вернулась»");
+        }
         OrderStatus status = order.getStatus();
         if (status != OrderStatus.DELIVERED && status != OrderStatus.REJECTED) {
             throw new BadRequestException(
-                    "удалить можно только доставленный или отклонённый заказ — сначала отклоните его");
+                    "в архив можно убрать только доставленный или отклонённый заказ — сначала отклоните его");
         }
-        requireNoOnlineMoneyKept(orderId);
-        boolean restocked = status != OrderStatus.REJECTED && restock;
-        if (restocked) {
-            restoreStock(order);
+        String why = reason == null ? "" : reason.trim();
+        if (why.length() < 3) {
+            throw new BadRequestException("напишите, почему заказ убирается в архив");
         }
-        releasePromoUsage(order.getPromoCode());
-
-        List<String> attachmentKeys = order.getMessages().stream()
-                .map(OrderMessage::getAttachmentUrl)
-                .filter(key -> key != null && key.startsWith("chat/"))
-                .distinct()
-                .toList();
-        Integer dispatchMessageId = order.getDispatchMessageId();
-        DeletedOrder summary = new DeletedOrder(order.getCustomerName(), order.getTotalMinor(), status,
-                restocked, order.getPromoCode(), attachmentKeys.size());
-
-        orderRepository.delete(order);
-        events.publishEvent(new OrderEvents.Deleted(order.getId(), dispatchMessageId, attachmentKeys));
-        return summary;
+        if (why.length() > 500) {
+            throw new BadRequestException("причина длиннее 500 символов");
+        }
+        requireNoOnlineMoneyInFlight(orderId);
+        order.setArchivedAt(Instant.now());
+        order.setArchivedBy(adminName);
+        order.setArchiveReason(why);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
     }
 
-    /** Shown in the admin when deleting an order whose online payment was not returned in full. */
-    public static final String DELETE_ONLINE_PAID =
-            "Заказ оплачен онлайн — сначала верните деньги в блоке «Онлайн-оплата»";
-    public static final String DELETE_ONLINE_IN_FLIGHT =
+    /** Back from the archive, as it was. */
+    @Transactional
+    public Order unarchive(byte[] orderId) {
+        Order order = lock(orderId);
+        if (order.getArchivedAt() == null) {
+            throw new BadRequestException("заказ не в архиве");
+        }
+        order.setArchivedAt(null);
+        order.setArchivedBy(null);
+        order.setArchiveReason(null);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    public static final String ARCHIVE_ONLINE_IN_FLIGHT =
             "По заказу есть онлайн-платёж, который банк ещё обрабатывает — дождитесь итога в блоке «Онлайн-оплата»";
 
     /**
-     * An order paid through monobank acquiring keeps the bank's record (RRN, fiscal receipt,
-     * refunds go through its invoice) — deleting it while the shop still holds any of that money
-     * would leave a payment with no order to refund it from. Old-style payments (marked paid by
-     * hand, card transfers) have no invoice and are not affected.
+     * A payment the bank is still processing must land on a visible order: an archived one would
+     * hide the money from everybody who looks at the board.
      */
-    private void requireNoOnlineMoneyKept(byte[] orderId) {
+    private void requireNoOnlineMoneyInFlight(byte[] orderId) {
         if (paymentInvoices == null) {
             return;
         }
         List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
-        if (invoices.stream().anyMatch(OrderService::keepsOnlineMoney)) {
-            throw new BadRequestException(DELETE_ONLINE_PAID, "ORDER_PAID_ONLINE");
-        }
         if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
                 || PaymentInvoice.HOLD.equals(i.getStatus()))) {
-            throw new BadRequestException(DELETE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
+            throw new BadRequestException(ARCHIVE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
         }
     }
 
@@ -1067,55 +1203,45 @@ public class OrderService {
     }
 
     /**
-     * Reserves stock for a paid line going out with an exchange and adds it to the order (merged
-     * into the same product + variant line when there is one). Returns "Title (variant) ×qty" for
-     * the history. The caller holds the order lock and recomputes the totals.
+     * Inverse of {@link #restockItem}: a cancelled return takes the units it put on the shelf back
+     * into the order. Refused when they were sold meanwhile (not enough stock).
      */
-    String addExchangeLine(Order order, String productId, String variantId, int qty) {
-        if (qty < 1) {
-            throw new BadRequestException("количество должно быть не меньше 1");
+    void takeBackUnits(OrderItem item, int units) {
+        if (units <= 0) {
+            return;
         }
-        Product product = productRepository.findByIdForUpdate(toBytes(productId, "productId"))
-                .orElseThrow(() -> new BadRequestException("товар не найден: " + productId));
-        if (product.isArchived()) {
-            throw new BadRequestException("товар в архиве: " + product.getTitle());
+        Product product = productRepository.findByIdForUpdate(item.getProductId())
+                .orElseThrow(() -> new BadRequestException("товар «" + item.getTitleSnapshot() + "» удалён из каталога"));
+        ProductVariant variant = item.getVariantId() == null ? null
+                : findVariant(product, UuidUtil.toString(item.getVariantId()));
+        int onShelf = variant != null ? variant.getStock() : product.getStock();
+        if (onShelf < units) {
+            throw new BadRequestException("«" + item.getTitleSnapshot() + "» уже продали: на складе " + Math.max(0, onShelf)
+                    + " шт., а вернуть в заказ нужно " + units + ". Верните товар на склад (или поправьте остаток) и повторите.");
         }
-        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
-        ProductVariant variant = null;
-        if (hasVariants) {
-            if (variantId == null || variantId.isBlank()) {
-                throw new BadRequestException("выберите вариант товара «" + product.getTitle() + "»");
-            }
-            variant = findVariant(product, variantId);
-            if (variant == null) {
-                throw new BadRequestException("вариант не принадлежит товару «" + product.getTitle() + "»");
-            }
-        }
-        reserveStock(product, variant, qty);
-        productRepository.save(product);
-
-        byte[] vId = variant == null ? null : variant.getId();
-        OrderItem existing = order.getItems().stream()
-                .filter(i -> !i.isGift())
-                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
-                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
-                .findFirst().orElse(null);
-        if (existing != null) {
-            existing.setQuantity(existing.getQuantity() + qty);
+        if (item.getVariantId() != null && variant == null) {
+            product.setStock(product.getStock() - units);
         } else {
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProductId(product.getId());
-            item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(product.getPriceMinor());
-            item.setQuantity(qty);
-            if (variant != null) {
-                item.setVariantId(variant.getId());
-                item.setVariantNameSnapshot(variant.getName());
-            }
-            order.getItems().add(item);
+            reserveStock(product, variant, units);
         }
-        return product.getTitle() + (variant == null ? "" : " (" + variant.getName() + ")") + " ×" + qty;
+        productRepository.save(product);
+        item.setRestockedQty(Math.max(0, item.getRestockedQty() - units));
+    }
+
+    /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
+    void restockProduct(byte[] productId, byte[] variantId, int units) {
+        if (units <= 0) {
+            return;
+        }
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new BadRequestException("товар удалён из каталога — вернуть на склад некуда"));
+        ProductVariant variant = variantId == null ? null : findVariant(product, UuidUtil.toString(variantId));
+        if (variantId != null && variant == null) {
+            product.setStock(product.getStock() + units);
+        } else {
+            releaseStock(product, variant, units);
+        }
+        productRepository.save(product);
     }
 
     /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
@@ -1141,6 +1267,22 @@ public class OrderService {
         order.setDiscountMinor(discount);
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
         order.setTotalMinor(Math.max(0, subtotal - discount));
+        settleFreeOrder(order);
+    }
+
+    /**
+     * Nothing to pay: a discount (a case prize, a manual one) covers the whole order. It counts as paid at
+     * once and has no payment deadline — otherwise it hung as «не оплачен» with a timer, and a NEW one was
+     * auto-cancelled for non-payment. If an item is added later, the paid order asks for a top-up as usual.
+     */
+    static void settleFreeOrder(Order order) {
+        if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
+                || (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED)) {
+            return;
+        }
+        order.setPaid(true);
+        order.setPaidAt(Instant.now());
+        order.setPaymentDueAt(null);
     }
 
     /**

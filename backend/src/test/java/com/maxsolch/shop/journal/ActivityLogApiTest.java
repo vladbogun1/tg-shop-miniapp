@@ -35,7 +35,7 @@ class ActivityLogApiTest {
     void setUp() {
         store = mock(ActivityLogStore.class);
         broadcasts = mock(BroadcastRepository.class);
-        controller = new ActivityLogController(store, broadcasts, new ActivityLogRetention(store, 90), "Europe/Kyiv");
+        controller = new ActivityLogController(store, broadcasts, new ActivityLogRetention(store, 90, 1095), "Europe/Kyiv");
     }
 
     private static ActivityLogStore.Filter filter(String order, String q) {
@@ -170,10 +170,11 @@ class ActivityLogApiTest {
 
     @Test
     void retentionNeverGoesBelowAWeek() {
-        ActivityLogRetention r = new ActivityLogRetention(store, 1);
+        ActivityLogRetention r = new ActivityLogRetention(store, 1, 1095);
         assertThat(r.retentionDays()).isEqualTo(7);
         r.purge();
         verify(store).purgeBefore(any());
+        verify(store).purgeMoneyBefore(any());
         verify(store, never()).search(any(), anyInt(), anyInt());
     }
 }

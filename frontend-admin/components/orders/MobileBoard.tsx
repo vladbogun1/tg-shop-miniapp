@@ -7,11 +7,11 @@
  * The active tab is owned by the page (the period control is shown only for closed tabs).
  */
 import { useState } from "react";
-import { ArrowRightLeft, Inbox } from "lucide-react";
+import { ArrowRightLeft, Inbox, PackageCheck } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminBoard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
-import { STATUS_ORDER, STATUS_LABEL, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets } from "@/lib/orders";
+import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, type BoardKey } from "@/lib/orders";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { OrderCard } from "./OrderCard";
@@ -19,25 +19,28 @@ import { ActionSheet } from "./ActionSheet";
 
 interface Props {
   board: AdminBoard;
-  active: OrderStatus;
-  onActiveChange: (s: OrderStatus) => void;
+  active: BoardKey;
+  onActiveChange: (s: BoardKey) => void;
   onOpen: (id: string) => void;
+  /** «Посылка вернулась» for a card of «Едет назад». */
+  onReceived: (id: string) => void;
   onMove: (id: string, from: OrderStatus, to: OrderStatus) => void;
   /** Load more cards for a closed tab. */
   onMore?: () => void;
   loadingMore?: boolean;
 }
 
-export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onMore, loadingMore }: Props) {
+export function MobileBoard({ board, active, onActiveChange, onOpen, onReceived, onMove, onMore, loadingMore }: Props) {
   const [moveFor, setMoveFor] = useState<{ id: string; from: OrderStatus; label: string } | null>(null);
 
   const orders = board.columns[active] ?? [];
   const count = board.counts?.[active] ?? orders.length;
-  const sum = board.sums?.[active];
+  const returning = active === RETURNING;
+  const sum = returning ? undefined : board.sums?.[active];
 
-  const segOptions = STATUS_ORDER.map((s) => ({
+  const segOptions = BOARD_ORDER.map((s) => ({
     value: s,
-    label: STATUS_LABEL[s],
+    label: BOARD_LABEL[s],
     count: board.counts?.[s] ?? board.columns[s]?.length ?? 0,
   }));
 
@@ -64,9 +67,22 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onMove, onM
             <OrderCard
               key={o.id}
               order={o}
+              returning={returning}
               onClick={() => onOpen(o.id)}
               headerAction={
-                allowedTargets(o.status).length > 0 ? (
+                returning ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReceived(o.id);
+                    }}
+                    className="nb-press hit -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]"
+                    aria-label="Посылка вернулась"
+                    title="Посылка вернулась"
+                  >
+                    <PackageCheck className="h-4 w-4" />
+                  </button>
+                ) : allowedTargets(o.status).length > 0 ? (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

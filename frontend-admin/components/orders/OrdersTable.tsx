@@ -16,16 +16,17 @@ import {
   MessageCircle,
   ExternalLink,
   PackageSearch,
+  Archive,
 } from "lucide-react";
 import {
-  adminApi,
-  type OrderCardDto,
   type OrderSortBy,
   type OrderStatus,
   type SortDir,
   type TimeRange,
 } from "@/lib/api";
 import { money } from "@/lib/money";
+import { ordersApi, type AdminOrderCard } from "@/lib/orders-api";
+import { ReturnBadge } from "@/components/orders/ReturnBadge";
 import {
   STATUS_LABEL,
   STATUS_ORDER,
@@ -63,13 +64,15 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 export function OrdersTable({ search, range, onOpen }: Props) {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<StatusFilter>("ALL");
+  // Archive: everyone may look, only the main admin changes (inside the order card).
+  const [archived, setArchived] = useState(false);
   const [sortBy, setSortBy] = useState<OrderSortBy>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   // reset to first page whenever filters/sort change
   useEffect(() => {
     setPage(0);
-  }, [search, range, status, sortBy, sortDir]);
+  }, [search, range, status, sortBy, sortDir, archived]);
 
   // Toggle direction when re-clicking the active column, otherwise switch
   // column and default to descending.
@@ -83,9 +86,10 @@ export function OrdersTable({ search, range, onOpen }: Props) {
   }
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
-    queryKey: ["orders-table", search, range, status, page, sortBy, sortDir],
+    queryKey: ["orders-table", search, range, status, page, sortBy, sortDir, archived],
     queryFn: () =>
-      adminApi.orders({
+      ordersApi.list({
+        archived,
         q: search || undefined,
         range,
         status: status === "ALL" ? undefined : status,
@@ -97,18 +101,34 @@ export function OrdersTable({ search, range, onOpen }: Props) {
     placeholderData: keepPreviousData,
   });
 
-  const rows: OrderCardDto[] = data ?? [];
+  const rows: AdminOrderCard[] = data ?? [];
   const hasNext = rows.length >= SIZE;
 
   return (
     <div>
       {/* Status filter */}
-      <div className="thin-scroll mb-4 overflow-x-auto pb-1">
-        <SegmentedControl
-          options={STATUS_FILTER_OPTIONS}
-          value={status}
-          onChange={setStatus}
-        />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="thin-scroll min-w-0 max-w-full overflow-x-auto pb-1">
+          <SegmentedControl
+            options={STATUS_FILTER_OPTIONS}
+            value={status}
+            onChange={setStatus}
+          />
+        </div>
+        <button
+          type="button"
+          aria-pressed={archived}
+          onClick={() => setArchived((v) => !v)}
+          className={cn(
+            "nb-press font-display inline-flex h-10 items-center gap-1.5 rounded-[var(--r-md)] border px-3 text-[12px] font-semibold uppercase tracking-[0.06em] transition-colors",
+            archived
+              ? "border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+              : "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text-muted)] hover:text-[var(--text)]"
+          )}
+        >
+          <Archive className="h-3.5 w-3.5" />
+          Архив
+        </button>
       </div>
 
       {isError && !data ? (
@@ -134,8 +154,8 @@ export function OrdersTable({ search, range, onOpen }: Props) {
             {rows.length === 0 ? (
               <EmptyState
                 icon={PackageSearch}
-                title="Заказы не найдены"
-                description="Попробуйте изменить фильтры или поисковый запрос."
+                title={archived ? "В архиве пусто" : "Заказы не найдены"}
+                description={archived ? "Архивные заказы появятся здесь." : "Попробуйте изменить фильтры или поисковый запрос."}
               />
             ) : (
               rows.map((o) => (
@@ -217,7 +237,10 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       {money(o.totalMinor, o.currency)}
                     </td>
                     <td>
-                      <StatusBadge status={o.status} />
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <StatusBadge status={o.status} />
+                        <ReturnBadge status={o.returnStatus} icon={false} />
+                      </span>
                     </td>
                     <td className="whitespace-nowrap !text-[var(--text-muted)]">
                       {DELIVERY_LABEL[o.deliveryMethod]}
@@ -257,8 +280,8 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                     <td colSpan={10} className="!px-4 !py-12">
                       <EmptyState
                         icon={PackageSearch}
-                        title="Заказы не найдены"
-                        description="Попробуйте изменить фильтры или поисковый запрос."
+                        title={archived ? "В архиве пусто" : "Заказы не найдены"}
+                        description={archived ? "Архивные заказы появятся здесь." : "Попробуйте изменить фильтры или поисковый запрос."}
                       />
                     </td>
                   </tr>

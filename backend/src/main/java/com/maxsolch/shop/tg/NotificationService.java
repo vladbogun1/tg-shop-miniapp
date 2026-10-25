@@ -412,9 +412,18 @@ public class NotificationService {
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.exchange.title")).append('\n');
             t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            if (order.getExchangeOfOrderId() != null) {
+                t.append(messages.get(locale, "bot.exchange.ofOrder",
+                        com.maxsolch.shop.common.UuidUtil.toString(order.getExchangeOfOrderId()).substring(0, 8))).append('\n');
+            }
             t.append(messages.get(locale, "bot.exchange.body", escHtml(nz(givenSummary)))).append('\n');
             long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
-            if (cod > 0) {
+            // A replacement order: the difference is paid online in the order or наложкой — their choice.
+            boolean payChoice = order.getExchangeOfOrderId() != null
+                    && com.maxsolch.shop.service.OrderService.amountDueMinor(order) > 0;
+            if (payChoice) {
+                t.append(messages.get(locale, "bot.exchange.payChoice", money(cod) + " " + cur)).append('\n');
+            } else if (cod > 0) {
                 t.append(messages.get(locale, "bot.exchange.toPay", money(cod) + " " + cur)).append('\n');
             }
             t.append(messages.get(locale, "bot.exchange.ttn"));
@@ -422,10 +431,80 @@ public class NotificationService {
                     .chatId(String.valueOf(tgUserId))
                     .text(t.toString())
                     .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
+                    .replyMarkup(payChoice ? orderButton(order, locale) : chatButton(order, locale))
                     .build());
         } catch (Exception e) {
             log.warn("notifyCustomerExchange failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** Two orders of the customer became one (V71) → DM what goes in the parcel and what is left to pay. */
+    public void notifyCustomerMerged(Order order, String mergedShortId) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String cur = nz(order.getCurrency());
+            StringBuilder t = new StringBuilder();
+            t.append(messages.get(locale, "bot.merge.title")).append('\n');
+            t.append(messages.get(locale, "bot.merge.body", mergedShortId, shortId(order))).append('\n');
+            long due = com.maxsolch.shop.service.OrderService.amountDueMinor(order);
+            long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
+            if (order.isPaid() && due > 0) {
+                t.append(messages.get(locale, "bot.merge.payChoice", money(due) + " " + cur));
+            } else if (due > 0) {
+                t.append(messages.get(locale, "bot.merge.payOnline", money(due) + " " + cur));
+            } else if (cod > 0) {
+                t.append(messages.get(locale, "bot.merge.toPay", money(cod) + " " + cur));
+            } else {
+                t.append(messages.get(locale, "bot.merge.paid"));
+            }
+            dm("ORDER_MERGE", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(orderButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerMerged failed for order {}: {}", idStr(order), e.getMessage());
+        }
+    }
+
+    /** A return was registered (V68) → DM the customer what came back and what is refunded. */
+    public void notifyCustomerReturn(Order order, String itemsSummary, long refundMinor) {
+        if (!enabled()) {
+            return;
+        }
+        Long tgUserId = order.getTgUserId();
+        if (tgUserId == null || tgUserId <= 0) {
+            return;
+        }
+        try {
+            Locale locale = messages.localeOf(tgUserId);
+            String cur = nz(order.getCurrency());
+            StringBuilder t = new StringBuilder();
+            t.append(messages.get(locale, "bot.return.title")).append('\n');
+            t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
+            if (itemsSummary != null && !itemsSummary.isBlank()) {
+                t.append(messages.get(locale, "bot.return.items", escHtml(itemsSummary))).append('\n');
+            }
+            if (refundMinor > 0) {
+                t.append(messages.get(locale, "bot.return.refund", money(refundMinor) + " " + cur)).append('\n');
+            }
+            t.append(messages.get(locale, "bot.return.questions"));
+            dm("ORDER_RETURN", order, SendMessage.builder()
+                    .chatId(String.valueOf(tgUserId))
+                    .text(t.toString())
+                    .parseMode("HTML")
+                    .replyMarkup(chatButton(order, locale))
+                    .build());
+        } catch (Exception e) {
+            log.warn("notifyCustomerReturn failed for order {}: {}", idStr(order), e.getMessage());
         }
     }
 

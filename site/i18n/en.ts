@@ -458,6 +458,8 @@ export const en: RuDictionary = {
   "pay.topUpTitle": "Top-up",
   "pay.topUpButton": "Pay the difference {amount}",
   "pay.topUpText": "An item was added to your order. {paid} is already paid — pay only the difference.",
+  "pay.exchangeText": "This is an exchange replacement — {paid} is already counted. Pay the difference here or cash on delivery.",
+  "pay.exchangeMethod": "Exchange: credit + the difference online or cash on delivery",
   "pay.failed": "The payment didn't go through{reason}. Try again or use another card.",
   "pay.startFailed": "Couldn't open the payment page",
   "pay.checking": "Checking the payment…",

@@ -386,7 +386,9 @@ export function OrderPayment({
         </div>
         {topUp && (
           <p className="mt-2 text-[13px] font-semibold text-[var(--muted)]">
-            {t("pay.topUpText", { paid: fmt.money(order.receivedMinor, order.currency) })}
+            {t(order.exchangeOfId ? "pay.exchangeText" : "pay.topUpText", {
+              paid: fmt.money(order.receivedMinor, order.currency),
+            })}
           </p>
         )}
         {afterPayment > 0 && (

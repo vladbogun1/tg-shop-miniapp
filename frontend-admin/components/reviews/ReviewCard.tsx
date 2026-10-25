@@ -49,6 +49,7 @@ export function ReviewCard({
   onHide,
   onReply,
   onDelete,
+  canDelete = true,
   onOpenOrder,
 }: {
   review: AdminReview;
@@ -59,6 +60,8 @@ export function ReviewCard({
   /** Resolves true when the reply was saved (the editor closes then). */
   onReply: (text: string) => Promise<boolean>;
   onDelete: () => void;
+  /** Deleting a review for good is the main admin's (SUPER_ADMIN) right; the others can hide it. */
+  canDelete?: boolean;
   onOpenOrder: (orderId: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -217,17 +220,23 @@ export function ReviewCard({
           >
             {r.adminReply ? "Изменить ответ" : "Ответить"}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto hover:text-[var(--danger-ink)]"
-            loading={busy === "delete"}
-            disabled={!!busy}
-            icon={<Trash2 className="h-4 w-4" />}
-            onClick={onDelete}
-          >
-            Удалить
-          </Button>
+          {canDelete ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto hover:text-[var(--danger-ink)]"
+              loading={busy === "delete"}
+              disabled={!!busy}
+              icon={<Trash2 className="h-4 w-4" />}
+              onClick={onDelete}
+            >
+              Удалить
+            </Button>
+          ) : (
+            <span className="ml-auto text-[12px] text-[var(--text-faint)]" title="Удалить отзыв навсегда может только главный админ">
+              Удаляет главный админ
+            </span>
+          )}
         </div>
       )}
     </motion.li>

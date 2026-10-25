@@ -34,9 +34,11 @@ import {
   BellRing,
   UserRound,
   UsersRound,
+  Siren,
   Star,
   LifeBuoy,
   ClipboardCheck,
+  PackageMinus,
   ChevronDown,
   ChevronRight,
   Gift,
@@ -139,6 +141,7 @@ const SECTIONS: NavSection[] = [
     icon: BarChart3,
     items: [
       { href: "/metrics", label: "Метрики", icon: BarChart3 },
+      { href: "/writeoffs", label: "Списания", icon: PackageMinus },
       { href: "/audit", label: "Журнал", icon: ScrollText },
     ],
   },
@@ -150,6 +153,7 @@ const SECTIONS: NavSection[] = [
       { href: "/payment", label: "Оплата", icon: CreditCard },
       { href: "/settings", label: "Настройки", icon: Settings },
       { href: "/admins", label: "Админы", icon: UsersRound, superOnly: true },
+      { href: "/incidents", label: "Инциденты", icon: Siren, superOnly: true },
     ],
   },
 ];
@@ -169,6 +173,7 @@ const TITLE: Record<string, string> = {
   "/support": "Поддержка",
   "/dispatch": "Отправка",
   "/metrics": "Метрики",
+  "/writeoffs": "Списания",
   "/users": "Пользователи",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
@@ -184,6 +189,7 @@ const TITLE: Record<string, string> = {
   "/audit": "Журнал",
   "/settings": "Настройки",
   "/admins": "Админы",
+  "/incidents": "Инциденты",
   "/account": "Мой аккаунт",
 };
 

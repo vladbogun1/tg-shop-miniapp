@@ -57,6 +57,8 @@ export type RejectReasonCode =
   | "PAYMENT_TIMEOUT"
   | "REFUSED_AT_POST"
   | "RETURNED"
+  /** Set by the server: merged into another order of the same customer (V71). Not offered in the picker. */
+  | "MERGED"
   | "OTHER";
 
 /** ADMIN ONLY (Russian): labels for the reject reason picker and the order card. */
@@ -69,6 +71,7 @@ export const REJECT_REASON_LABEL: Record<RejectReasonCode, string> = {
   PAYMENT_TIMEOUT: "Не оплатил за сутки",
   REFUSED_AT_POST: "Отказ на почте",
   RETURNED: "Возврат после получения",
+  MERGED: "Объединён с другим заказом",
   OTHER: "Другое",
 };
 
@@ -123,10 +126,16 @@ export function codMinor(order: { totalMinor: number; receivedMinor?: number }):
 /**
  * A paid order that still has money due online: the shop added an item after the payment, the
  * customer pays the difference ("Доплатити"). Only while the order can still change (NEW / APPROVED).
+ * The replacement of an exchange too (paid or not): its difference is paid here or on delivery.
  */
-export function needsTopUp(order: { paid: boolean; status?: OrderStatus; amountDueMinor?: number }): boolean {
+export function needsTopUp(order: {
+  paid: boolean;
+  status?: OrderStatus;
+  amountDueMinor?: number;
+  exchangeOfId?: string | null;
+}): boolean {
   return (
-    order.paid &&
+    (order.paid || !!order.exchangeOfId) &&
     (order.amountDueMinor ?? 0) > 0 &&
     (order.status === "NEW" || order.status === "APPROVED")
   );

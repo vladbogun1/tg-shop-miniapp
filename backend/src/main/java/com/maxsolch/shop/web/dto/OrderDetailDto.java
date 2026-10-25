@@ -67,7 +67,117 @@ public record OrderDetailDto(
         /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
         com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
-        long giftDiscountMinor) {
+        long giftDiscountMinor,
+        /** Replacement of an exchange on that order (V69): the difference is paid online or наложкой. */
+        String exchangeOfId,
+        /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
+        AdminExtras admin) {
+
+    public record AdminExtras(Instant archivedAt,
+                              String archivedBy,
+                              String archiveReason,
+                              /** IN_TRANSIT | RECEIVED | null — the refused parcel on its way back. */
+                              String returnStatus,
+                              Instant returnReceivedAt,
+                              List<MovementDto> movements,
+                              /** Sum of RETAINED rows: kept by the shop on purpose (delivery). */
+                              long retainedMinor,
+                              /** What can still go back to the card through monobank (all paid invoices). */
+                              long monoRefundableMinor,
+                              List<WriteoffDto> writeoffs,
+                              /** This order replaces goods of that one (V69 exchange); null = not. */
+                              String exchangeOfId,
+                              /** Replacement orders of exchanges made on this one, oldest first. */
+                              List<String> exchangeOrderIds,
+                              /** Returns and exchanges of this order (V70), oldest first. */
+                              List<ReturnRecordDto> returns,
+                              /** This order was merged into that one (V71); null = not. */
+                              String mergedIntoId,
+                              /** Orders merged into this one, oldest first. */
+                              List<String> mergedFromIds) {
+    }
+
+    /** Another open order of the same customer for «Объединить» (V71) and the merged result. */
+    public record MergeCandidateDto(String id,
+                                    String status,
+                                    Instant createdAt,
+                                    long totalMinor,
+                                    long receivedMinor,
+                                    long prepaymentMinor,
+                                    boolean paid,
+                                    String paymentOptionTitle,
+                                    String npCityName,
+                                    String npWarehouseName,
+                                    String customerName,
+                                    String trackingNumber,
+                                    String giftCaseStatus,
+                                    List<String> lines,
+                                    /** Why it cannot be merged now; null = it can. */
+                                    String blocker,
+                                    /** The order that stays, after the merge. */
+                                    long mergedTotalMinor,
+                                    long mergedReceivedMinor,
+                                    long mergedAmountDueMinor,
+                                    long mergedCodMinor) {
+    }
+
+    /** One return / exchange; only the newest active one can be cancelled ({@code cancellable}). */
+    public record ReturnRecordDto(long id,
+                                  /** RETURN | EXCHANGE */
+                                  String kind,
+                                  Instant createdAt,
+                                  String adminName,
+                                  String note,
+                                  List<ReturnRecordLineDto> lines,
+                                  long refundMinor,
+                                  String refundChannel,
+                                  long monoRefundMinor,
+                                  /** Replacement order of an exchange. */
+                                  String newOrderId,
+                                  Instant cancelledAt,
+                                  String cancelledBy,
+                                  String cancelNote,
+                                  long debtMinor,
+                                  Instant debtPaidAt,
+                                  boolean cancellable,
+                                  /** Why the newest record cannot be cancelled now (shown on the button). */
+                                  String cancelBlocker) {
+    }
+
+    public record ReturnRecordLineDto(long itemId,
+                                      String title,
+                                      String imageUrl,
+                                      int quantity,
+                                      /** RESTOCK | DEFECT | KEPT | IN_TRANSIT */
+                                      String outcome,
+                                      int restockedQty,
+                                      int defectQty,
+                                      int pendingQty) {
+    }
+
+    public record MovementDto(long id,
+                              String kind,
+                              String channel,
+                              long amountMinor,
+                              Instant occurredAt,
+                              String adminName,
+                              String note,
+                              String invoiceExtId,
+                              String source) {
+    }
+
+    public record WriteoffDto(long id,
+                              String title,
+                              int quantity,
+                              /** Of them: cancelled with the return or back on the shelf (V70). */
+                              int undoneQty,
+                              String undoneNote,
+                              String reason,
+                              long unitValueMinor,
+                              String note,
+                              String adminName,
+                              Instant createdAt) {
+    }
 
     public record ExchangeDto(Instant createdAt,
                               String previousStatus,
@@ -77,6 +187,8 @@ public record OrderDetailDto(
                               long totalBeforeMinor,
                               long totalAfterMinor,
                               String note,
-                              String adminName) {
+                              String adminName,
+                              /** The replacement order (V69); null for exchanges made before it. */
+                              String newOrderId) {
     }
 }

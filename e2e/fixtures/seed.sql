@@ -13,6 +13,10 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM order_messages;
+DELETE FROM order_money_movements;
+DELETE FROM order_exchange_lines;
+DELETE FROM stock_writeoffs;
+DELETE FROM admin_incidents;
 DELETE FROM order_items;
 DELETE FROM orders;
 DELETE FROM cart_items;
@@ -369,3 +373,23 @@ INSERT INTO support_messages (thread_id, sender_type, sender_id, sender_name, ty
    'E2E: коли відправляєте?', NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY),
   (UUID_TO_BIN('e2e05001-0000-4000-8000-000000000002'), 'ADMIN', 1, 'Bootstrap admin', 'TEXT',
    'E2E: відправляємо щодня', NOW() - INTERVAL 2 DAY, NOW() - INTERVAL 2 DAY);
+
+-- ---------- «Объединить заказы» (37-merge, V71): two orders of one customer, neither shipped ----------
+-- #e2e00010 APPROVED, older: a backpack with the 150 ₴ prepayment paid. #e2e00011 NEW, newer, to another
+-- branch: a cap fully covered by a promo code — total 0, paid at once (no online deadline).
+INSERT INTO orders (id, user_id, subtotal_minor, discount_minor, total_minor, currency, customer_name, phone,
+                    status, approved_at, delivery_method, np_city_ref, np_city_name, np_warehouse_ref, np_warehouse_name,
+                    payment_option_id, payment_option_title, paid, paid_at, prepayment_minor, received_minor, promo_code,
+                    tg_user_id, tg_username, source, created_at) VALUES
+  (UUID_TO_BIN('e2e00010-0000-4000-8000-000000000010'), NULL, 129900, 0, 129900, 'UAH', 'Максим Двічі', '+380000000020',
+   'APPROVED', NOW() - INTERVAL 2 HOUR, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-1', 'Відділення №1 (тест): вул. Вигадана, 1',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000001'), 'Предоплата 150 ₴', TRUE, NOW() - INTERVAL 3 HOUR, 15000, 15000, NULL,
+   900000020, 'e2e_maksym', 'MINIAPP', NOW() - INTERVAL 3 HOUR),
+  (UUID_TO_BIN('e2e00011-0000-4000-8000-000000000011'), NULL, 34900, 34900, 0, 'UAH', 'Максим Двічі', '+380000000020',
+   'NEW', NULL, 'NOVA_POSHTA', 'e2e-city', 'Київ', 'e2e-wh-2', 'Відділення №2 (тест): вул. Інша, 2',
+   UUID_TO_BIN('e2e0b001-0000-4000-8000-000000000003'), 'Полная оплата онлайн', TRUE, NOW() - INTERVAL 20 MINUTE, 0, 0, 'E2EFREECAP',
+   900000020, 'e2e_maksym', 'MINIAPP', NOW() - INTERVAL 20 MINUTE);
+INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snapshot, variant_id, variant_name_snapshot,
+                         quantity, gift, returned_qty, restocked_qty) VALUES
+  (UUID_TO_BIN('e2e00010-0000-4000-8000-000000000010'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), 'E2E Рюкзак городской', 129900, NULL, NULL, 1, FALSE, 0, 0),
+  (UUID_TO_BIN('e2e00011-0000-4000-8000-000000000011'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);

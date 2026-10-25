@@ -50,6 +50,10 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
     List<com.maxsolch.shop.domain.Order> ordersWithCode(@Param("code") String code,
                                                        org.springframework.data.domain.Pageable pageable);
 
+    /** How many orders carry this code (deleting a code that any order used is refused). */
+    @Query("select count(o) from Order o where o.promoCode = :code")
+    long countOrdersWithCode(@Param("code") String code);
+
     /**
      * Orders with an admin's manual amount/percent discount ({@code promo_code} starts with
      * {@code prefix}, see {@link com.maxsolch.shop.domain.PromoOrigin#MANUAL_DISCOUNT_LABEL}), newest first.

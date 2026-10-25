@@ -393,6 +393,29 @@ public class OnlinePaymentService {
         refresh(inv);
     }
 
+    /**
+     * The paid invoice of the order that can take a refund of {@code amountMinor} (newest first),
+     * for the return wizard; a 400 naming what is refundable when none can.
+     */
+    public String refundableInvoice(byte[] orderId, long amountMinor) {
+        List<PaymentInvoice> all = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
+        if (all.stream().anyMatch(i -> i.getRefundPendingUntil() != null && i.getRefundPendingUntil().isAfter(Instant.now()))) {
+            // Not booked as refunded until the bank confirms: a second wizard now could return it twice.
+            throw new BadRequestException("предыдущий возврат через monobank ещё обрабатывается банком — подождите подтверждения");
+        }
+        List<PaymentInvoice> paid = all.stream()
+                .filter(i -> i.getAppliedAt() != null)
+                .toList();
+        long most = paid.stream().mapToLong(i -> i.getAmountMinor() - i.getRefundedMinor()).max().orElse(0);
+        return paid.stream()
+                .filter(i -> i.getAmountMinor() - i.getRefundedMinor() >= amountMinor)
+                .map(PaymentInvoice::getExternalId)
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException(most <= 0
+                        ? "через monobank по этому заказу вернуть нечего"
+                        : "через monobank можно вернуть не больше " + MoneyFormat.uah(most) + " одним возвратом"));
+    }
+
     /** Closes the payment pages of an order that will not be paid any more (cancelled). */
     public void closeOpenInvoices(byte[] orderId) {
         if (!mono.isEnabled()) {

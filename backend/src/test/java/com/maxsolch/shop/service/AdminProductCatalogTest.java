@@ -42,7 +42,9 @@ class AdminProductCatalogTest {
     @BeforeEach
     void setUp() {
         service = new AdminProductService(products, mock(ImageStorageService.class), mock(SlugService.class),
-                mock(TranslationService.class), directory, brands);
+                mock(TranslationService.class), directory, brands,
+                mock(com.maxsolch.shop.repository.StockWriteoffRepository.class),
+                mock(com.maxsolch.shop.audit.AdminAuditService.class));
         when(directory.load()).thenReturn(CatalogFixtures.snapshot());
         when(directory.snapshot()).thenReturn(CatalogFixtures.snapshot());
         when(products.save(any())).thenAnswer(i -> i.getArgument(0));

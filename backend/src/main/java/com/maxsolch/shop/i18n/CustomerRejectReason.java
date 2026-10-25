@@ -32,6 +32,10 @@ public class CustomerRejectReason {
     /** Written by {@code OrderService.expireUnpaid}: "Не оплачен в течение 24 ч". */
     public static final String UNPAID_PREFIX = "Не оплачен в течение ";
 
+    /** Written by {@code OrderMergeService.merge}: "Объединён с заказом #1a2b3c4d". */
+    private static final Pattern MERGED = Pattern.compile("^" + Pattern.quote(
+            com.maxsolch.shop.service.OrderMergeService.MERGED_PREFIX) + "([0-9a-f]{8})$");
+
     private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(UNPAID_PREFIX) + "(\\d+) ч$");
 
     /**
@@ -62,6 +66,10 @@ public class CustomerRejectReason {
             return stored;
         }
         String s = stored.trim();
+        Matcher merged = MERGED.matcher(s);
+        if (merged.matches()) {
+            return messages.get(locale, "api.reject.merged", merged.group(1));
+        }
         Matcher unpaid = UNPAID.matcher(s);
         if (unpaid.matches()) {
             return messages.get(locale, "api.reject.unpaid", Integer.parseInt(unpaid.group(1)));

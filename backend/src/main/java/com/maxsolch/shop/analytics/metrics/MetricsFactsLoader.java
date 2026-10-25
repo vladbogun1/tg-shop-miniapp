@@ -102,7 +102,10 @@ public class MetricsFactsLoader {
                 + (invoices ? "coalesce(pi.online_paid_minor, 0)" : "0") + " online_paid_minor, "
                 + (invoices ? "pi.online_paid_at" : "null") + " online_paid_at, "
                 + (invoices ? "pi.online_refund_at" : "null") + " online_refund_at "
-                + "from orders o " + online + "order by o.created_at";
+                + "from orders o " + online
+                // A merged order (V71) is not an order of its own: its lines live on in the one it joined.
+                + (hasOrderColumn("reject_reason_code") ? "where coalesce(o.reject_reason_code, '') <> 'MERGED' " : "")
+                + "order by o.created_at";
         return jdbc.query(sql, (rs, i) -> new MetricsFacts.OrderFact(
                 rs.getString("id"),
                 OrderStatus.valueOf(rs.getString("status")),

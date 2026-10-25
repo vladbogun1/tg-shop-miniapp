@@ -47,7 +47,8 @@ function InputModality() {
     const root = document.documentElement;
     const pointer = () => root.setAttribute("data-input", "pointer");
     const keyboard = (e: KeyboardEvent) => {
-      if (e.key === "Tab" || e.key.startsWith("Arrow") || e.key === "Escape") root.setAttribute("data-input", "keyboard");
+      // e.key can be undefined: Chrome on Android fires keydown without it on autofill (prod errors on /checkout).
+      if (e.key === "Tab" || e.key?.startsWith("Arrow") || e.key === "Escape") root.setAttribute("data-input", "keyboard");
     };
     window.addEventListener("pointerdown", pointer, true);
     window.addEventListener("keydown", keyboard, true);
