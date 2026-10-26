@@ -13,6 +13,7 @@
 import type { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Inbox } from "lucide-react";
+import { payableMinor } from "@shop/shared";
 import type { AdminOrderCard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { BOARD_LABEL, BOARD_VAR, RETURNING, type BoardKey } from "@/lib/orders";
@@ -50,7 +51,7 @@ export function KanbanColumn({
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const returning = status === RETURNING;
-  const total = sum ?? orders.reduce((acc, o) => acc + o.totalMinor, 0);
+  const total = sum ?? orders.reduce((acc, o) => acc + payableMinor(o), 0);
   const returningUnits = orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0);
   const accent = BOARD_VAR[status];
 

@@ -24,6 +24,7 @@ import {
   type SortDir,
   type TimeRange,
 } from "@/lib/api";
+import { payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
 import { ordersApi, type AdminOrderCard } from "@/lib/orders-api";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
@@ -234,7 +235,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       </span>
                     </td>
                     <td className="r font-display whitespace-nowrap font-bold !text-[var(--ink)]">
-                      {money(o.totalMinor, o.currency)}
+                      {money(payableMinor(o), o.currency)}
                     </td>
                     <td>
                       <span className="inline-flex flex-wrap items-center gap-1">

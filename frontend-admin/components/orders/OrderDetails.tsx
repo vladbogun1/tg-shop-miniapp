@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
-import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText } from "@shop/shared";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText, payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
 import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "@/lib/gift";
 import {
@@ -477,6 +477,18 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span className="text-[13px] uppercase tracking-[0.06em]">Итого</span>
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
+          {(order.uncollectedMinor ?? 0) > 0 && (
+            <>
+              <div className="flex justify-between font-semibold text-[var(--danger-ink)]">
+                <span>Не выкуплено на почте</span>
+                <span>−{money(order.uncollectedMinor ?? 0, order.currency)}</span>
+              </div>
+              <div className="font-display flex items-baseline justify-between pt-0.5 text-[16px] font-bold text-[var(--ink)]">
+                <span className="text-[13px] uppercase tracking-[0.06em]">К оплате</span>
+                <span>{money(payableMinor(order), order.currency)}</span>
+              </div>
+            </>
+          )}
         </div>
         {(editable || h.onReturn || h.onExchange || h.onMerge) && (
           <div className="mt-3 flex flex-wrap gap-2">

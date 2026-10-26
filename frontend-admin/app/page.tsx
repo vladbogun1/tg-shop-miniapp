@@ -27,6 +27,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { Search, RefreshCw, X, Plus } from "lucide-react";
+import { payableMinor } from "@shop/shared";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { useConfirm } from "@/components/ui/ConfirmModal";
@@ -183,8 +184,8 @@ export default function BoardPage() {
         next.counts[from] = Math.max(0, (next.counts[from] ?? 0) - 1);
         next.counts[payload.status] = (next.counts[payload.status] ?? 0) + 1;
         if (next.sums) {
-          next.sums[from] = Math.max(0, (next.sums[from] ?? 0) - moved.totalMinor);
-          next.sums[payload.status] = (next.sums[payload.status] ?? 0) + moved.totalMinor;
+          next.sums[from] = Math.max(0, (next.sums[from] ?? 0) - payableMinor(moved));
+          next.sums[payload.status] = (next.sums[payload.status] ?? 0) + payableMinor(moved);
         }
         qc.setQueryData(boardKey, next);
       }

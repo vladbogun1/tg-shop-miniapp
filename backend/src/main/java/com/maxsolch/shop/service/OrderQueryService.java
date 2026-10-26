@@ -193,7 +193,8 @@ public class OrderQueryService {
                 OrderService.amountDueMinor(o),
                 o.getCancelRequestStatus(),
                 o.getGiftCaseStatus(),
-                OrderService.giftCaseOpenable(o));
+                OrderService.giftCaseOpenable(o),
+                Math.max(0, o.getUncollectedMinor()));
     }
 
     @Transactional(readOnly = true)
@@ -222,7 +223,8 @@ public class OrderQueryService {
                 ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returned).sum(),
                 ctx.linesFor(id),
                 o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
-                ctx.exchangesOf(id));
+                ctx.exchangesOf(id),
+                Math.max(0, o.getUncollectedMinor()));
     }
 
     private static String sourceOf(Order o) {

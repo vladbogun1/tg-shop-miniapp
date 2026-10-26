@@ -14,6 +14,7 @@ import { Ban, Truck, Store, MessageCircle, Package2, Undo2, Repeat } from "lucid
 import type { AdminOrderCard, CardLine } from "@/lib/orders-api";
 import { Image } from "@/lib/image";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
+import { payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
@@ -79,6 +80,8 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
   const allLines = order.lines ?? [];
   const lines = returning ? allLines.filter((l) => l.returning > 0) : allLines;
   const units = returning ? order.returningUnits ?? 0 : order.itemsCount;
+  // Partial pickup: the card shows what the customer actually pays, the tooltip — the full order.
+  const uncollected = order.uncollectedMinor ?? 0;
   return (
     <div
       onClick={onClick}
@@ -99,7 +102,16 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
       </div>
 
       <div className="mt-1.5 flex items-center gap-2.5">
-        <span className="font-display tabular text-[16px] font-bold text-[var(--ink)]">{money(order.totalMinor, order.currency)}</span>
+        <span
+          className="font-display tabular text-[16px] font-bold text-[var(--ink)]"
+          title={
+            uncollected > 0
+              ? `Заказ на ${money(order.totalMinor, order.currency)}, не выкуплено на почте ${money(uncollected, order.currency)}`
+              : undefined
+          }
+        >
+          {money(payableMinor(order), order.currency)}
+        </span>
         {lines.length > 0 ? (
           <LineStrip lines={lines} units={units} returning={returning} />
         ) : (

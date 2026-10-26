@@ -37,7 +37,9 @@ public record OrderCardDto(
         /** This order is the replacement of an exchange on that order (V69); null = not. */
         String exchangeOfId,
         /** Replacement orders created by exchanges on this one (V69), oldest first. */
-        java.util.List<String> exchangeOrderIds) {
+        java.util.List<String> exchangeOrderIds,
+        /** Refused at the Nova Poshta branch (partial pickup, V72): the card shows total − this. */
+        long uncollectedMinor) {
 
     /**
      * @param returning units of this line on their way back

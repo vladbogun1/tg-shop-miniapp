@@ -326,6 +326,8 @@ export interface OrderSummary {
   giftCaseStatus?: "SEALED" | "OPENED" | null;
   /** SEALED and the order is paid (not rejected): the customer can open it now. */
   giftCaseOpenable?: boolean;
+  /** Refused at the Nova Poshta branch (partial pickup): not paid for. */
+  uncollectedMinor?: number;
 }
 
 /** Customer's request to cancel a PAID order (one per order). */
@@ -419,6 +421,8 @@ export interface OrderCard {
   amountDueMinor?: number;
   /** PENDING = the customer asks to cancel this paid order. */
   cancelRequestStatus?: CancelRequestStatus | null;
+  /** Refused at the Nova Poshta branch (partial pickup): the card shows total − this. */
+  uncollectedMinor?: number;
 }
 
 // ---- chat -------------------------------------------------------------------
