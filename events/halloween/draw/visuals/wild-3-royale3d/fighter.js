@@ -2,6 +2,7 @@
 // Персонаж дивиться вздовж +Z, права рука на -X. Кути в радіанах, порядок обертань YXZ.
 import * as THREE from "./vendor/three.module.min.js";
 import { Trail } from "./fx.js";
+import { tex } from "./tex.js";
 
 export const CH = ["hx", "hy", "hz", "sx", "sy", "sz", "nx", "ny", "nz", "lax", "lay", "laz", "lex", "rax", "ray", "raz", "rex", "wx", "wy", "wz",
   "llx", "lly", "llz", "lkx", "rlx", "rly", "rlz", "rkx", "ry", "rz", "yaw"];
@@ -189,10 +190,10 @@ export class Fighter {
     const fc = FACTION[factionOf(p)];
     const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
     this.mats = {
-      cloth: M({ color: CLOTH[(h >>> 3) % 4], flatShading: true }),
+      cloth: M({ color: CLOTH[(h >>> 3) % 4], flatShading: true, map: tex("cloth"), bumpMap: tex("cloth"), bumpScale: 1.5 }),
       dark: M({ color: 0x141418, roughness: 0.9 }),
       scarf: M({ color: fc, roughness: 0.9, emissive: fc, emissiveIntensity: 0.08, flatShading: true }),
-      head: M({ color: 0xb4581e, roughness: 0.62, emissive: 0xffb050, emissiveIntensity: 2.4, emissiveMap: faceTex(h % 12) }),
+      head: M({ color: 0xc0601e, roughness: 0.62, map: tex("pumpkin"), emissive: 0xffb050, emissiveIntensity: 2.4, emissiveMap: faceTex(h % 12) }),
       stem: M({ color: 0x3d3a22 }),
       metal: M({ color: 0x9aa0aa, roughness: 0.35, metalness: 0.8 }),
       wood: M({ color: 0x3b2a1c, roughness: 0.9 }),

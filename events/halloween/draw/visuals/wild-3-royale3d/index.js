@@ -12,6 +12,7 @@ import { Fighter } from "./fighter.js";
 import { Crowd } from "./crowd.js";
 import { makeRoll } from "./director.js";
 import { sfx, stormLevel, stopAll } from "./audio.js";
+import { disposeTex } from "./tex.js";
 
 export const meta = { id: "wild-3-royale3d", title: "Гарбузовий рояль 3D", author: "agent" };
 
@@ -64,7 +65,7 @@ export function mount(root, ctx) {
         <div class="r3-vs"><div class="r3-side l"><div class="r3-av"></div><div class="r3-meta"><b></b><div class="r3-hp"><i></i></div></div><div class="r3-combo"></div></div>
           <div class="r3-vsx">VS</div>
           <div class="r3-side r"><div class="r3-combo"></div><div class="r3-meta"><b></b><div class="r3-hp"><i></i></div></div><div class="r3-av"></div></div></div>
-        <div class="r3-idle">Шукай себе на острові, чат!</div>
+        <div class="r3-idle">Шукай себе на острові, чат!<small>Бій почнеться, коли ведучий запустить розіграш</small></div>
         <div class="r3-seed"></div>
         <div class="r3-flash"></div>
         <div class="r3-win"><div class="r3-kicker"></div><div class="r3-emb"></div><div class="r3-name"></div><div class="r3-sub"></div><div class="r3-pw">ВИГРАВ: <b></b></div></div>
@@ -101,7 +102,7 @@ export function mount(root, ctx) {
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.6, 0.5, 0.82);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.5, 0.45, 0.92);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   const finalPass = new ShaderPass(FINAL_SHADER);
@@ -142,7 +143,9 @@ export function mount(root, ctx) {
   function homeOf(p, i) {
     const h = h32(p.id), poi = POIS[i % POIS.length];
     const a = ((h >>> 3) % 628) / 100, r = poi.r * (0.2 + ((h >>> 11) % 50) / 100);
-    return { x: poi.x + Math.cos(a) * r, z: poi.z + Math.sin(a) * r, yaw: ((h >>> 7) % 628) / 100, poi };
+    let x = poi.x + Math.cos(a) * r, z = poi.z + Math.sin(a) * r;
+    if (!world.free(x, z, 1.2)) { x = poi.x + Math.cos(a) * 2.5; z = poi.z + Math.sin(a) * 2.5; }
+    return { x, z, yaw: ((h >>> 7) % 628) / 100, poi };
   }
   function crowdSpot(p) {
     const h = h32(p.id), r = mulberry(h);
@@ -150,7 +153,7 @@ export function mount(root, ctx) {
       let x, z;
       if (r() < 0.62) { const poi = POIS[Math.floor(r() * POIS.length)], a = r() * 6.283, d = poi.r * 0.5 + r() * (poi.r + 8); x = poi.x + Math.cos(a) * d; z = poi.z + Math.sin(a) * d; }
       else { const a = r() * 6.283, d = ARENA_R + 6 + r() * 80; x = Math.cos(a) * d; z = Math.sin(a) * d; }
-      if (Math.hypot(x, z) > ARENA_R + 4 && isLand(x, z) && heightAt(x, z) > 0.6) return { x, z };
+      if (Math.hypot(x, z) > ARENA_R + 4 && isLand(x, z) && heightAt(x, z) > 0.6 && world.free(x, z, 1)) return { x, z };
     }
     const poi = POIS[h % POIS.length]; return { x: poi.x + ((h >>> 4) % 9) - 4, z: poi.z + ((h >>> 8) % 9) - 4 };
   }
@@ -369,6 +372,7 @@ export function mount(root, ctx) {
   function updateCamera(dt) {
     if (!shot) return 0;
     const fov = desired(shot, now - shotStart);
+    world.clearView(P, L);
     let blur = 0;
     if (snapNext) { cam.pos.copy(P); cam.look.copy(L); cam.fov = fov; snapNext = false; }
     else if (fly && fly.t < fly.dur) {
@@ -398,8 +402,7 @@ export function mount(root, ctx) {
   }
 
   // ---------- idle ----------
-  let idleShots = [], idleI = 0, idleNext = 0, popT = 0;
-  const pops = [];
+  let idleI = 0, idleNext = 0;
   function idleCam() {
     if (now < idleNext) return;
     idleI++;
@@ -408,7 +411,8 @@ export function mount(root, ctx) {
     else {
       const f = heroes[Math.floor(Math.random() * heroes.length)];
       const poi = f ? f.home.poi : POIS[idleI % POIS.length];
-      s = { kind: "poi", poi, fly: true, flyDur: 2.4, a0: Math.random() * 6.28, loc: poi.n }; idleNext = now + 9;
+      // look from the arena side: the buildings stand behind each place, so the view stays open
+      s = { kind: "poi", poi, fly: true, flyDur: 2.4, a0: Math.atan2(-poi.z, -poi.x) + (Math.random() - 0.5) * 1.2, loc: poi.n }; idleNext = now + 9;
     }
     startShot(s);
   }
@@ -424,51 +428,16 @@ export function mount(root, ctx) {
       f.idleT -= dt;
       if (f.mode === "kneel" && st > (f.kneelUntil || 0)) f.setMode("idle");
       if (f.idleT > 0 || f.mode === "clip" || f.mode === "air") continue;
-      if (f.spar) { f.spar = null; f.opp = null; f.circle = 0; f.setMode("idle"); f.idleT = 1 + Math.random() * 2; continue; }
       const r = Math.random(), hm = f.home;
-      if (r < 0.45) {
-        const a = Math.random() * 6.283, d = Math.random() * hm.poi.r * 0.6;
-        f.runTo(hm.poi.x + Math.cos(a) * d, hm.poi.z + Math.sin(a) * d, 2.2 + Math.random() * 1.5, (q) => q.setMode("idle"));
+      if (r < 0.5) {
+        const a = Math.random() * 6.283, d = Math.random() * hm.poi.r * 0.6, x = hm.poi.x + Math.cos(a) * d, z = hm.poi.z + Math.sin(a) * d;
+        if (world.free(x, z, 1.2)) f.runTo(x, z, 2.2 + Math.random() * 1.5, (q) => q.setMode("idle"));
         f.idleT = 3 + Math.random() * 3;
-      } else if (r < 0.62) { f.play("taunt", "idle"); f.idleT = 2.5 + Math.random() * 2; }
-      else {
-        const o = heroes.find((q) => q !== f && q.alive && !q.spar && q.mode !== "clip" && q.home.poi === hm.poi);
-        if (o) {
-          f.spar = o; o.spar = f; f.engage(o, 1.9); o.engage(f, 1.9); f.circle = o.circle = 0.6; f.idleT = o.idleT = 4.5;
-          for (let k = 0; k < 3; k++) {
-            const [att, def] = k % 2 ? [o, f] : [f, o];
-            idleQ.push({ t: now + 0.9 + k * 1.1, fn: () => { if (!att.spar) return; att.play(k === 1 ? "thrust" : "slashR", "guard"); } });
-            idleQ.push({ t: now + 0.9 + k * 1.1 + 0.12, fn: () => { if (!def.spar) return; def.play("block", "guard"); } });
-            idleQ.push({ t: now + 0.9 + k * 1.1 + 0.27, fn: () => { if (!att.spar) return; att.chest(c1); def.chest(c2); c1.lerp(c2, 0.7); fx.sparks(c1.x, c1.y, c1.z, 14, [2.6, 1.6, 0.7], 5); fx.flash(c1.x, c1.y, c1.z, 0.9, 0xffe0b0, 0.1); if (S.visible(att) && camera.position.distanceTo(att.pos) < 30) sfx("clang", 1, 0.25); } });
-          }
-        } else { f.setMode("idle"); f.idleT = 2 + Math.random() * 3; }
-      }
+      } else if (r < 0.75) { f.play("taunt", "idle"); f.idleT = 2.5 + Math.random() * 2; }
+      else { f.setMode("idle"); f.idleT = 2 + Math.random() * 3; }
     }
   }
   const idleQ = [];
-  function crowdPops(dt) {
-    popT -= dt;
-    if (popT <= 0 && crowd.list.length && pops.length < 8) {
-      popT = 0.45;
-      for (let k = 0; k < 6; k++) {
-        const d = crowd.list[Math.floor(Math.random() * crowd.list.length)];
-        pv.set(d.x, d.y + 2, d.z);
-        if (camera.position.distanceTo(pv) > 75) continue;
-        pv.project(camera);
-        if (pv.z > 1 || Math.abs(pv.x) > 0.85 || Math.abs(pv.y) > 0.8) continue;
-        const e = document.createElement("div"); e.className = "r3-pop"; e.textContent = d.p.name; labelsEl.append(e);
-        pops.push({ d, e, t: now }); break;
-      }
-    }
-    for (let i = pops.length - 1; i >= 0; i--) {
-      const q = pops[i], age = now - q.t;
-      pv.set(q.d.x, q.d.y + 1.9 + age * 0.15, q.d.z); pv.project(camera);
-      if (age > 3.2 || pv.z > 1 || phase !== "idle") { q.e.remove(); pops.splice(i, 1); continue; }
-      q.e.style.transform = `translate(${((pv.x + 1) / 2) * W}px, ${((1 - pv.y) / 2) * H}px) translate(-50%, -100%)`;
-      q.e.style.opacity = Math.min(1, age * 3, (3.2 - age) * 2);
-    }
-  }
-
   // ---------- roll ----------
   function roll(w, inf) {
     return new Promise((resolve) => {
@@ -478,7 +447,7 @@ export function mount(root, ctx) {
       winner = byId.get(w.id);
       buildHeroes(chooseHeroIds(people, winner.id));
       crowd.revive();
-      for (const p of pops) p.e.remove(); pops.length = 0; idleQ.length = 0;
+      idleQ.length = 0;
       fx.clear();
       rollRnd = mulberry(h32(String(info.seedHash || "") + ":" + info.round + ":" + w.id));
       const W0 = heroes.find((f) => f.id === winner.id);
@@ -649,9 +618,9 @@ export function mount(root, ctx) {
     if (flashT) { const k = 1 - (now - flashT) / 0.35; el.flash.style.opacity = Math.max(0, k * 0.3); if (k <= 0) flashT = 0; }
     for (const s of vsSide) if (s.f) { s.hpShown += (s.f.hp - s.hpShown) * Math.min(1, dt * 10); s.hp.style.width = (s.hpShown * 100).toFixed(1) + "%"; s.hp.classList.toggle("low", s.hpShown < 0.3); }
     for (const k of el.feed.children) if (now - k._t > 6) k.classList.add("old");
-    if (phase === "idle") crowdPops(dt);
   }
   function moveCam(dt, fov) {
+    world.clearView(P, L);
     let blur = 0;
     if (fly && fly.t < fly.dur) {
       fly.t += dt; const u = smooth(clamp(fly.t / fly.dur, 0, 1)), dist = fly.pos.distanceTo(P);
@@ -671,26 +640,60 @@ export function mount(root, ctx) {
     if (camera.position.y > 40) focusV.set(0, AY, 0);
     return focusV;
   }
+  const tags = [], placed = [], cand = [], wp = new THREE.Vector3();
+  function tag(i) {
+    let e = tags[i];
+    if (!e) { e = document.createElement("div"); e.className = "r3-lbl r3-cl"; e.innerHTML = "<b></b>"; e._b = e.firstChild; e._n = ""; labelsEl.append(e); tags[i] = e; }
+    return e;
+  }
+  function fits(x, y, w, h) {
+    for (const r of placed) if (x < r[0] + r[2] && x + w > r[0] && y < r[1] + r[3] && y + h > r[1]) return false;
+    placed.push([x, y, w, h]); return true;
+  }
   function labels() {
-    const show = [];
+    const idle = phase === "idle", far = idle ? 170 : 45;
+    cand.length = 0; placed.length = 0;
     for (const f of heroes) {
-      const lb = f.label;
-      if (!f.alive || !f.root.visible || f.dying || (phase === "win" && f.id !== winner?.id)) { lb.style.display = "none"; continue; }
-      const d = camera.position.distanceTo(f.pos);
-      pv.copy(f.pos); pv.y += 2.05 * f.scale; pv.project(camera);
-      if (pv.z > 1 || Math.abs(pv.x) > 1.05 || Math.abs(pv.y) > 1.05 || d > (phase === "idle" ? 80 : 45)) { lb.style.display = "none"; continue; }
-      show.push([f, d, pv.x, pv.y]);
+      f.label.style.display = "none";
+      if (!f.alive || !f.root.visible || f.dying || phase === "win") continue;
+      wp.copy(f.pos); wp.y += 2.05 * f.scale;
+      const d = camera.position.distanceTo(wp);
+      if (d > far) continue;
+      pv.copy(wp).project(camera);
+      if (pv.z > 1 || Math.abs(pv.x) > 1.02 || Math.abs(pv.y) > 1.02) continue;
+      cand.push({ f, d, x: pv.x, y: pv.y, w: wp.clone(), pr: d * 0.6 });
     }
-    show.sort((a, b) => a[1] - b[1]);
-    show.forEach(([f, d, x, y], i) => {
-      const lb = f.label;
-      if (i >= 10 || (phase === "win")) { lb.style.display = "none"; return; }
-      lb.style.display = "";
-      const k = clamp(22 / Math.max(6, d), 0.55, 1.15);
-      lb.style.transform = `translate(${((x + 1) / 2) * W}px, ${((1 - y) / 2) * H}px) translate(-50%, -100%) scale(${k.toFixed(3)})`;
-      f.lhp.style.width = (f.hp * 100).toFixed(0) + "%";
-      lb.classList.toggle("hurt", f.hp < 0.35);
-    });
+    if (idle) for (const q of crowd.list) {
+      wp.set(q.x, q.y + 1.75, q.z);
+      const d = camera.position.distanceTo(wp);
+      if (d > far) continue;
+      pv.copy(wp).project(camera);
+      if (pv.z > 1 || Math.abs(pv.x) > 0.98 || Math.abs(pv.y) > 0.95) continue;
+      cand.push({ q, d, x: pv.x, y: pv.y, w: wp.clone(), pr: d });
+    }
+    cand.sort((a, b) => a.pr - b.pr);
+    let ti = 0, shown = 0;
+    const cap = idle ? 70 : 10;
+    for (const c of cand) {
+      if (shown >= cap) break;
+      const sx = ((c.x + 1) / 2) * W, sy = ((1 - c.y) / 2) * H;
+      const k = c.f ? clamp(22 / Math.max(6, c.d), idle ? 0.6 : 0.55, 1.15) : clamp(34 / Math.max(8, c.d), 0.62, 1.05);
+      const name = (c.f ? c.f.p.name : c.q.p.name) || "";
+      const w = (Math.min(name.length, 18) * (c.f ? 13 : 11) + 14) * k, h = (c.f && !idle ? 36 : 26) * k;
+      if (!fits(sx - w / 2, sy - h, w, h)) continue;
+      if (world.occluded(camera.position, c.w)) { placed.pop(); continue; }
+      shown++;
+      const tf = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%) scale(${k.toFixed(3)})`;
+      if (c.f) {
+        const lb = c.f.label; lb.style.display = ""; lb.style.transform = tf;
+        c.f.lhp.style.width = (c.f.hp * 100).toFixed(0) + "%"; lb.classList.toggle("hurt", c.f.hp < 0.35);
+      } else {
+        const e = tag(ti++);
+        if (e._n !== name) { e._n = name; e._b.textContent = name; e.className = "r3-lbl r3-cl" + (c.q.tier > 0 ? " t" + c.q.tier : ""); }
+        e.style.display = ""; e.style.transform = tf;
+      }
+    }
+    for (let i = ti; i < tags.length; i++) if (tags[i].style.display !== "none") tags[i].style.display = "none";
   }
 
   root._r3h = () => heroes;
@@ -711,7 +714,7 @@ export function mount(root, ctx) {
       stopAll();
       for (const f of heroes) f.dispose();
       crowd.dispose();
-      composer.dispose?.(); rt.dispose(); renderer.dispose();
+      composer.dispose?.(); rt.dispose(); renderer.dispose(); disposeTex();
       link.remove(); root.innerHTML = ""; root.classList.remove("r3-root", "idle", "lb");
     },
   };

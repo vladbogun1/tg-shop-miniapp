@@ -2,6 +2,7 @@
 // Тримає 2000+ без гальм. Хто з більшою кількістю квитків — трохи більший і з кільцем під ногами.
 import * as THREE from "./vendor/three.module.min.js";
 import { faceTex, factionOf } from "./fighter.js";
+import { tex } from "./tex.js";
 
 const FAC_COL = { pumpkins: new THREE.Color(0x6a3a1c), orders: new THREE.Color(0x2f4d28), both: new THREE.Color(0x3e2d62) };
 const RING_COL = { pumpkins: new THREE.Color(1.3, 0.55, 0.15), orders: new THREE.Color(0.45, 1.2, 0.35), both: new THREE.Color(0.8, 0.45, 1.5) };
@@ -16,8 +17,8 @@ export class Crowd {
     head.translate(0, 1.14, 0);
     const ring = new THREE.RingGeometry(0.42, 0.55, 24); ring.rotateX(-Math.PI / 2); ring.translate(0, 0.06, 0);
     this.geo = { body, head, ring };
-    this.mBody = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true });
-    this.mHead = new THREE.MeshStandardMaterial({ color: 0xb4581e, roughness: 0.65, emissive: 0xffa040, emissiveIntensity: 2.0, emissiveMap: faceTex(1) });
+    this.mBody = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, flatShading: true, map: tex("cloth") });
+    this.mHead = new THREE.MeshStandardMaterial({ color: 0xc0601e, roughness: 0.65, map: tex("pumpkin"), emissive: 0xffa040, emissiveIntensity: 2.0, emissiveMap: faceTex(1) });
     this.mRing = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
     this.m4 = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.e = new THREE.Euler(); this.v = new THREE.Vector3(); this.s = new THREE.Vector3();
   }

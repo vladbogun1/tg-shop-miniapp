@@ -78,9 +78,12 @@
 .r3-lhp i { display: block; height: 100%; background: #7cff4f; }
 .r3-lbl.hurt .r3-lhp i { background: #ff5a3a; }
 .r3-root.idle .r3-lhp { display: none; }
-.r3-pop { position: absolute; left: 0; top: 0; font-size: 17px; font-weight: 700; color: #e9e3d6; text-shadow: 0 2px 0 #000, 0 0 5px #000; white-space: nowrap; }
+/* crowd names in the lobby */
+.r3-cl b { font-size: 20px; font-weight: 700; color: #e9e3d6; }
+.r3-cl.t1 b { color: #ffd2a8; } .r3-cl.t2 b { color: #ffb070; } .r3-cl.t3 b { color: #ff8a3d; }
 
-.r3-idle { position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); font-size: 30px; font-weight: 900; letter-spacing: .06em; color: #fff; text-shadow: 0 3px 0 #000; opacity: 0; transition: opacity .4s; }
+.r3-idle small { display: block; margin-top: 4px; font-size: 20px; font-weight: 700; letter-spacing: .04em; color: #c9c3b8; text-align: center; }
+.r3-idle { text-align: center; position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); font-size: 30px; font-weight: 900; letter-spacing: .06em; color: #fff; text-shadow: 0 3px 0 #000; opacity: 0; transition: opacity .4s; }
 .r3-root.idle .r3-idle { opacity: 1; animation: r3-breath 2.4s ease-in-out infinite; }
 @keyframes r3-breath { 50% { transform: translateX(-50%) scale(1.04); } }
 .r3-seed { position: absolute; right: 28px; bottom: 26px; padding: 3px 12px; font-size: 15px; color: #9aa0ab; font-weight: 700; z-index: 2; }

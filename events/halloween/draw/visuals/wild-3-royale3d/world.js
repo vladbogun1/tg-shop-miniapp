@@ -1,6 +1,7 @@
 // Острів: рельєф, вода, небо, локації з простих форм, арена в центрі, стіна шторму.
 import * as THREE from "./vendor/three.module.min.js";
 import { glowTex } from "./fx.js";
+import { tex, triplanar } from "./tex.js";
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
@@ -122,7 +123,7 @@ export function buildWorld(scene) {
   }
 
   // ---------- light ----------
-  const hemi = new THREE.HemisphereLight(0x5a6890, 0x1a1210, 0.85); root.add(hemi);
+  const hemi = new THREE.HemisphereLight(0x5a6890, 0x1a1210, 1.1); root.add(hemi);
   const moonL = new THREE.DirectionalLight(0xb9c6ff, 1.5);
   moonL.position.copy(moonDir).multiplyScalar(60); moonL.castShadow = true;
   moonL.shadow.mapSize.set(2048, 2048);
@@ -172,6 +173,7 @@ export function buildWorld(scene) {
         gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * vec3(0.5, 0.32, 0.75) + vec3(0.045, 0.0, 0.08), o);
         gl_FragColor.rgb += vec3(1.1, 0.45, 1.6) * smoothstep(0.8, 0.0, abs(dR)) * uStormOp;`);
   };
+  gmat.userData.storm = true; triplanar(gmat, tex("ground"), 0.2, 0.45);
   const ground = new THREE.Mesh(gg, gmat);
   ground.receiveShadow = true; root.add(ground);
   const water = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: 0x080b12, roughness: 0.18, metalness: 0.7 }));
@@ -183,23 +185,28 @@ export function buildWorld(scene) {
   // ---------- materials ----------
   const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true, ...o });
   const mat = {
-    stone: M(0x4a4950), dstone: M(0x2d2c33), wood: M(0x3a2a1e), roof: M(0x221a20), grave: M(0x55555d), iron: M(0x1d1d22, { roughness: 0.6, metalness: 0.5 }),
-    pumpkin: M(0xb0561c, { roughness: 0.7, flatShading: false }), lit: M(0xb0561c, { roughness: 0.7, flatShading: false, emissive: 0xff8a30, emissiveIntensity: 0.9 }),
-    win: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.7, 0.95, 0.42), toneMapped: false }),
-    green: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 1.6, 0.45), toneMapped: false }),
-    swamp: new THREE.MeshStandardMaterial({ color: 0x0c1610, roughness: 0.15, metalness: 0.6, emissive: 0x0b2a12, emissiveIntensity: 0.6 }),
-    tree: M(0x241d18), leaf: M(0x2a2f22), sign: null,
+    stone: triplanar(M(0x5a5860), tex("brick"), 0.25), dstone: triplanar(M(0x3a3840), tex("brick"), 0.25), wood: triplanar(M(0x5a4030), tex("wood"), 0.45),
+    roof: triplanar(M(0x3a2a30), tex("roof"), 0.4), grave: triplanar(M(0x60606a), tex("stone"), 0.3), iron: M(0x1d1d22, { roughness: 0.6, metalness: 0.5 }),
+    pumpkin: M(0xc0601e, { roughness: 0.7, flatShading: false, map: tex("pumpkin") }), lit: M(0xc0601e, { roughness: 0.7, flatShading: false, map: tex("pumpkin"), emissive: 0xff8a30, emissiveIntensity: 0.7 }),
+    // windows glow, but stay under the bloom threshold up close
+    win: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.05, 0.66, 0.32), toneMapped: false }),
+    green: new THREE.MeshBasicMaterial({ color: new THREE.Color(0.45, 1.2, 0.4), toneMapped: false }),
+    swamp: new THREE.MeshStandardMaterial({ color: 0x0c1610, roughness: 0.55, metalness: 0.2, emissive: 0x0b2a12, emissiveIntensity: 0.6 }),
+    tree: triplanar(M(0x3a2e26), tex("bark"), 0.3), leaf: M(0x2a2f22), sign: null,
   };
   const add = (geo, m, x, y, z, ry = 0, cast = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = cast; o.receiveShadow = true; root.add(o); return o; };
   const box = (w, h, d, m, x, y, z, ry = 0) => add(new THREE.BoxGeometry(w, h, d), m, x, y + h / 2, z, ry);
   const flames = [];
+  // solid things the camera and the people must stay out of: circle in plan + top height
+  const blockers = [];
+  const block = (x, z, r, top) => blockers.push({ x, z, r, top });
   function flame(x, y, z, s = 1, light = false) {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: new THREE.Color(2.2, 1.0, 0.35), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
     sp.position.set(x, y, z); sp.scale.setScalar(1.4 * s); root.add(sp);
     const core = new THREE.Mesh(new THREE.ConeGeometry(0.18 * s, 0.6 * s, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.4, 0.5), toneMapped: false }));
     core.position.set(x, y + 0.1 * s, z); root.add(core);
     let L = null;
-    if (light) { L = new THREE.PointLight(0xff7a2a, 9, 16, 1.7); L.position.set(x, y + 0.6, z); root.add(L); }
+    if (light) { L = new THREE.PointLight(0xff7a2a, 7, 16, 1.7); L.position.set(x, y + 0.6, z); root.add(L); }
     flames.push({ sp, core, L, s, ph: R() * 10, x, y, z });
   }
   function torch(x, z) { const y = rawHeight(x, z); add(new THREE.CylinderGeometry(0.07, 0.09, 2.2, 5), mat.wood, x, y + 1.1, z); flame(x, y + 2.35, z, 0.6); }
@@ -237,7 +244,7 @@ export function buildWorld(scene) {
   // ---------- POIs ----------
   const P = Object.fromEntries(POIS.map((p) => [p.k, p]));
   { // manor
-    const p = P.manor, y = p.h, x0 = p.x, z0 = p.z;
+    const p = P.manor, y = p.h, x0 = p.x, z0 = p.z - 9;
     box(14, 7, 9, mat.dstone, x0, y, z0 - 2);
     const roof = add(new THREE.ConeGeometry(9.2, 4.2, 4), mat.roof, x0, y + 9.1, z0 - 2, Math.PI / 4); roof.scale.set(1.08, 1, 0.68);
     box(3.2, 12, 3.2, mat.stone, x0 + 6.4, y, z0 + 1.2);
@@ -245,9 +252,12 @@ export function buildWorld(scene) {
     for (const [wx, wy] of [[-4.5, 2.2], [-1.5, 2.2], [1.5, 2.2], [-4.5, 5], [-1.5, 5], [1.5, 5], [4.5, 5]]) add(new THREE.PlaneGeometry(1.1, 1.5), mat.win, x0 + wx, y + wy, z0 + 2.52, 0, false);
     add(new THREE.PlaneGeometry(0.9, 1.4), mat.win, x0 + 6.4, y + 9.5, z0 + 2.82, 0, false);
     box(2, 3, 0.4, mat.wood, x0 + 4.5, y, z0 + 2.6);
-    for (let i = -6; i <= 6; i += 1.2) { box(0.08, 1.6, 0.08, mat.iron, x0 + i, y, z0 + 8); }
-    box(13.2, 0.08, 0.08, mat.iron, x0, y + 1.3, z0 + 8);
-    torch(x0 - 3, z0 + 9); torch(x0 + 3, z0 + 9);
+    for (let i = -6; i <= 6; i += 1.2) if (Math.abs(i) > 1.5) box(0.08, 1.6, 0.08, mat.iron, x0 + i, y, z0 + 4.6);
+    box(4.6, 0.08, 0.08, mat.iron, x0 - 3.9, y + 1.3, z0 + 4.6); box(4.6, 0.08, 0.08, mat.iron, x0 + 3.9, y + 1.3, z0 + 4.6);
+    torch(x0 - 2.2, z0 + 5.2); torch(x0 + 2.2, z0 + 5.2);
+    // the moon is behind the house: a warm porch light keeps the facade readable
+    const porch = new THREE.PointLight(0xffa060, 14, 22, 1.6); porch.position.set(x0, y + 4, z0 + 9); root.add(porch);
+    block(x0 - 1.5, z0 - 2, 8.6, y + 11.5); block(x0 + 6.4, z0 + 1.2, 2.6, y + 16.2);
   }
   { // graveyard
     const p = P.yard;
@@ -259,7 +269,7 @@ export function buildWorld(scene) {
       s.rotation.z = (R() - 0.5) * 0.25;
       if (R() < 0.3) { const cr = add(new THREE.BoxGeometry(0.16, 1.4, 0.16), mat.grave, gx, y + 0.7, gz + 0.6); cr.rotation.z = (R() - 0.5) * 0.3; add(new THREE.BoxGeometry(0.7, 0.16, 0.16), mat.grave, gx, y + 1.0, gz + 0.6); }
     }
-    box(4.5, 3.2, 5, mat.stone, p.x + 2, p.h, p.z - 11);
+    box(4.5, 3.2, 5, mat.stone, p.x + 2, p.h, p.z - 11); block(p.x + 2, p.z - 11, 3.6, p.h + 5.2);
     const r = add(new THREE.ConeGeometry(3.6, 1.8, 4), mat.roof, p.x + 2, p.h + 4.1, p.z - 11, Math.PI / 4); r.scale.set(0.9, 1, 1.0);
     add(new THREE.PlaneGeometry(1.2, 1.9), mat.green, p.x + 2, p.h + 0.95, p.z - 8.47, 0, false);
     add(deadTreeGeo, mat.tree, p.x - 6, p.h - 0.2, p.z - 9, 0.4).scale.setScalar(1.5);
@@ -270,22 +280,24 @@ export function buildWorld(scene) {
     for (let i = 0; i < 70; i++) {
       const row = i % 7, k = Math.floor(i / 7);
       const px = p.x - 11 + k * 2.4 + (R() - 0.5) * 0.8, pz = p.z - 9 + row * 3.0 + (R() - 0.5) * 0.6;
-      if (Math.hypot(px - p.x, pz - p.z) < 3 || R() < 0.15) continue;
+      if (Math.hypot(px - p.x, pz - p.z) < 3 || Math.hypot(px - p.x - 6, pz - p.z + 7) < 1.6 || R() < 0.15) continue;
       pumpkin(px, pz, 0.7 + R() * 0.7, R() < 0.18);
     }
-    const y = p.h;
-    add(new THREE.CylinderGeometry(0.1, 0.12, 3.6, 5), mat.wood, p.x, y + 1.8, p.z);
-    add(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 5), mat.wood, p.x, y + 2.6, p.z).rotation.z = Math.PI / 2;
-    add(new THREE.CylinderGeometry(0.35, 0.55, 1.4, 6), M(0x2e2620), p.x, y + 2.3, p.z);
-    const sh = add(pumpkinGeo(0.42), mat.lit, p.x, y + 3.4, p.z); sh.castShadow = true;
-    add(new THREE.ConeGeometry(0.4, 0.8, 8), mat.roof, p.x, y + 4.0, p.z);
+    const y = p.h, sx = p.x + 6, sz = p.z - 7;
+    add(new THREE.CylinderGeometry(0.1, 0.12, 3.6, 5), mat.wood, sx, y + 1.8, sz);
+    add(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 5), mat.wood, sx, y + 2.6, sz).rotation.z = Math.PI / 2;
+    add(new THREE.CylinderGeometry(0.35, 0.55, 1.4, 6), triplanar(M(0x4a3c30), tex("cloth"), 0.8), sx, y + 2.3, sz);
+    const sh = add(pumpkinGeo(0.42), mat.lit, sx, y + 3.4, sz); sh.castShadow = true;
+    add(new THREE.ConeGeometry(0.4, 0.8, 8), mat.roof, sx, y + 4.0, sz);
+    block(sx, sz, 0.9, y + 4.4);
   }
   { // witch hut
-    const p = P.hut, y = p.h;
-    const hb = box(5, 3.2, 4.4, mat.wood, p.x - 2, y, p.z - 2, 0.15); hb.rotation.z = 0.04;
-    add(new THREE.ConeGeometry(4.2, 4.2, 5), mat.roof, p.x - 2, y + 5.2, p.z - 2, 0.3).rotation.z = 0.08;
-    box(0.7, 2.2, 0.7, mat.stone, p.x - 3.6, y + 3.8, p.z - 3);
-    add(new THREE.PlaneGeometry(0.9, 0.9), mat.win, p.x - 0.8, y + 1.9, p.z + 0.25, 0.15, false);
+    const p = P.hut, y = p.h, hx = p.x - 6, hz = p.z - 5;
+    const hb = box(5, 3.2, 4.4, mat.wood, hx, y, hz, 0.15); hb.rotation.z = 0.04;
+    add(new THREE.ConeGeometry(4.2, 4.2, 5), mat.roof, hx, y + 5.2, hz, 0.3).rotation.z = 0.08;
+    box(0.7, 2.2, 0.7, mat.stone, hx - 1.6, y + 3.8, hz - 1);
+    add(new THREE.PlaneGeometry(0.9, 0.9), mat.win, hx + 1.2, y + 1.9, hz + 2.25, 0.15, false);
+    block(hx, hz, 4.2, y + 7.4); block(p.x + 2.8, p.z + 2.2, 1.2, y + 1.6);
     // cauldron
     add(new THREE.SphereGeometry(1.0, 12, 8, 0, Math.PI * 2, Math.PI * 0.35, Math.PI * 0.65), mat.iron, p.x + 2.8, y + 1.05, p.z + 2.2);
     const brew = add(new THREE.CircleGeometry(0.82, 18), mat.green, p.x + 2.8, y + 1.5, p.z + 2.2, 0, false); brew.rotation.x = -Math.PI / 2;
@@ -307,7 +319,8 @@ export function buildWorld(scene) {
     for (let i = 0; i < 6; i++) flame(p.x + (R() - 0.5) * 12, p.h + 0.6 + R() * 1.4, p.z + (R() - 0.5) * 10, 0.25);
   }
   { // shop
-    const p = P.shop, y = p.h, x0 = p.x + 1, z0 = p.z + 4;
+    const p = P.shop, y = p.h, x0 = p.x + 4, z0 = p.z + 8;
+    block(x0, z0, 5.8, y + 6.6);
     box(9, 4.6, 6.5, mat.dstone, x0, y, z0, -0.75);
     const g = new THREE.Group(); g.position.set(x0, y, z0); g.rotation.y = -0.75; root.add(g);
     const sgn = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.3), new THREE.MeshBasicMaterial({ map: textTex("ChiSetup", 1024, 208, "900 150px 'Exo 2', sans-serif", "#ff7a1a", "#ff6600"), toneMapped: false }));
@@ -324,7 +337,7 @@ export function buildWorld(scene) {
 
   // ---------- scattered decor ----------
   const trees = new THREE.InstancedMesh(deadTreeGeo, mat.tree, 110); trees.castShadow = true;
-  const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), mat.rock = M(0x3c3c44), 80); rocks.castShadow = true; rocks.receiveShadow = true;
+  const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), mat.rock = triplanar(M(0x55555e), tex("stone"), 0.35), 80); rocks.castShadow = true; rocks.receiveShadow = true;
   const lp = new THREE.InstancedMesh(pumpkinGeo(0.4), mat.lit, 60);
   const okSpot = (x, z, pad) => {
     if (!isLand(x, z) || rawHeight(x, z) < 0.8) return false;
@@ -354,14 +367,12 @@ export function buildWorld(scene) {
   // ---------- ground fog ----------
   const fogs = [];
   {
-    const fm = new THREE.SpriteMaterial({ map: glow, color: 0x6a6f86, transparent: true, opacity: 0.07, depthWrite: false });
     for (let i = 0; i < 46; i++) {
       const a = R() * 6.283, r = 10 + R() * 85, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const s = new THREE.Sprite(fm); s.scale.set(26 + R() * 18, 7 + R() * 4, 1); s.position.set(x, rawHeight(x, z) + 1.4, z); root.add(s);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x6a6f86, transparent: true, opacity: 0.07, depthWrite: false })); s.userData.op = 0.07; s.scale.set(26 + R() * 18, 7 + R() * 4, 1); s.position.set(x, rawHeight(x, z) + 1.4, z); root.add(s);
       fogs.push({ s, x, z, ph: R() * 6 });
     }
-    const sm = new THREE.SpriteMaterial({ map: glow, color: 0x4aa060, transparent: true, opacity: 0.09, depthWrite: false });
-    for (let i = 0; i < 10; i++) { const p = P.swamp, x = p.x + (R() - 0.5) * 16, z = p.z + (R() - 0.5) * 14; const s = new THREE.Sprite(sm); s.scale.set(14, 4, 1); s.position.set(x, p.h + 1, z); root.add(s); fogs.push({ s, x, z, ph: R() * 6 }); }
+    for (let i = 0; i < 10; i++) { const p = P.swamp, x = p.x + (R() - 0.5) * 16, z = p.z + (R() - 0.5) * 14; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x4aa060, transparent: true, opacity: 0.09, depthWrite: false })); s.userData.op = 0.09; s.scale.set(14, 4, 1); s.position.set(x, p.h + 1, z); root.add(s); fogs.push({ s, x, z, ph: R() * 6 }); }
   }
 
   // ---------- storm ----------
@@ -379,17 +390,49 @@ export function buildWorld(scene) {
     for (const f of flames) {
       const k = 0.85 + 0.15 * Math.sin(t * 11 + f.ph) + 0.08 * Math.sin(t * 23 + f.ph * 2);
       f.sp.scale.setScalar(1.4 * f.s * k); f.core.scale.set(1, k, 1);
-      if (f.L) f.L.intensity = 9 * k;
+      if (f.L) f.L.intensity = 7 * k;
+      if (camera) { const d = camera.position.distanceTo(f.sp.position); f.sp.material.opacity = clamp((d - 2) / 10, 0.12, 1); }
     }
     for (const a of anim) a(t, dt);
-    for (const f of fogs) { f.s.position.x = f.x + Math.sin(t * 0.07 + f.ph) * 4; f.s.position.z = f.z + Math.cos(t * 0.05 + f.ph) * 3; }
+    for (const f of fogs) {
+      f.s.position.x = f.x + Math.sin(t * 0.07 + f.ph) * 4; f.s.position.z = f.z + Math.cos(t * 0.05 + f.ph) * 3;
+      // a fog bank right in front of the lens turns the frame into milk
+      if (camera) f.s.material.opacity = f.s.userData.op * clamp((camera.position.distanceTo(f.s.position) - 6) / 18, 0, 1);
+    }
     stormMat.uniforms.uTime.value = t;
     if (focus) {
       moonL.position.set(focus.x + moonDir.x * 60, focus.y + moonDir.y * 60, focus.z + moonDir.z * 60);
       moonL.target.position.copy(focus); moonL.target.updateMatrixWorld();
       key.position.set(focus.x + 2, focus.y + 5, focus.z + 3);
     }
-    void camera;
   }
-  return { root, update, setStorm, get stormR() { return stormR; }, key, moonL, heightAt, POIS };
+  /** true when (x,z) is clear of buildings, with a margin */
+  function free(x, z, pad = 1) { for (const b of blockers) if (Math.hypot(x - b.x, z - b.z) < b.r + pad) return false; return true; }
+  /** push a camera position out of buildings and raise it until the view to `look` is clear */
+  const tv = new THREE.Vector3();
+  function clearView(pos, look) {
+    for (const b of blockers) {
+      const d = Math.hypot(pos.x - b.x, pos.z - b.z);
+      if (d < b.r + 1.5 && pos.y < b.top + 1.5) pos.y = b.top + 1.5;
+    }
+    for (let it = 0; it < 12; it++) {
+      let hit = null;
+      for (let k = 1; k < 16 && !hit; k++) {
+        tv.copy(pos).lerp(look, k / 16);
+        for (const b of blockers) if (tv.y < b.top && Math.hypot(tv.x - b.x, tv.z - b.z) < b.r) { hit = b; break; }
+      }
+      if (!hit) break;
+      pos.y += 1.2;
+    }
+    return pos;
+  }
+  /** is the segment a→b blocked by a building (for hiding name labels behind walls) */
+  function occluded(a, b) {
+    for (let k = 1; k < 12; k++) {
+      tv.copy(a).lerp(b, k / 12);
+      for (const q of blockers) if (tv.y < q.top - 0.5 && Math.hypot(tv.x - q.x, tv.z - q.z) < q.r - 0.4) return true;
+    }
+    return false;
+  }
+  return { root, update, setStorm, get stormR() { return stormR; }, key, moonL, heightAt, POIS, blockers, free, clearView, occluded };
 }
