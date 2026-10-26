@@ -409,13 +409,17 @@ public class OrderService {
         // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
         // lowered: after an exchange for something cheaper the customer paid more than the new
         // total, and the metrics read that overpayment to tell a refunded difference from a return.
+        // Units refused at the branch (partial pickup) were never paid for: left out.
         long receivedBefore = order.getReceivedMinor();
-        order.setReceivedMinor(Math.max(order.getReceivedMinor(), order.getTotalMinor()));
+        order.setReceivedMinor(Math.max(order.getReceivedMinor(), collectableMinor(order)));
         ledger(order, OrderMoneyMovement.Kind.PAYMENT,
                 order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
                         ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
                 order.getReceivedMinor() - receivedBefore, OrderMoneyMovement.Source.AUTO, null,
-                "остаток при получении (доставлен)", null);
+                order.getUncollectedMinor() > 0
+                        ? "остаток при получении (частичный выкуп, не выкуплено "
+                                + MoneyFormat.uah(order.getUncollectedMinor()) + ")"
+                        : "остаток при получении (доставлен)", null);
         if (!order.isPaid()) {
             order.setPaid(true);
             order.setPaidAt(Instant.now());
@@ -760,6 +764,11 @@ public class OrderService {
         // COD on the seller's card changes with the received amount — keep it in sync.
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return saved;
+    }
+
+    /** What the customer pays for the order in the end: the total without the units refused at the branch. */
+    public static long collectableMinor(Order order) {
+        return Math.max(0, order.getTotalMinor() - Math.max(0, order.getUncollectedMinor()));
     }
 
     /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */

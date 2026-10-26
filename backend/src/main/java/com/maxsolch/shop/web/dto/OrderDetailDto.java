@@ -70,6 +70,8 @@ public record OrderDetailDto(
         long giftDiscountMinor,
         /** Replacement of an exchange on that order (V69): the difference is paid online or наложкой. */
         String exchangeOfId,
+        /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
+        long uncollectedMinor,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         AdminExtras admin) {
 

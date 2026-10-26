@@ -119,8 +119,18 @@ export function allowedTargets(from: OrderStatus): OrderStatus[] {
 }
 
 /** Cash to collect on delivery: everything not yet confirmed as received. */
-export function codMinor(order: { totalMinor: number; receivedMinor?: number }): number {
-  return Math.max(0, order.totalMinor - Math.max(0, order.receivedMinor ?? 0));
+export function codMinor(order: {
+  totalMinor: number;
+  receivedMinor?: number;
+  /** Units refused at the branch (partial pickup) are not paid for. */
+  uncollectedMinor?: number;
+}): number {
+  return Math.max(
+    0,
+    order.totalMinor -
+      Math.max(0, order.uncollectedMinor ?? 0) -
+      Math.max(0, order.receivedMinor ?? 0),
+  );
 }
 
 /**

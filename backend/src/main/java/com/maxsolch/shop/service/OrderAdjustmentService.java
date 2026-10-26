@@ -431,6 +431,15 @@ public class OrderAdjustmentService {
         if (units == 0 && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
             throw new BadRequestException("укажите, что вернули, или сумму возврата");
         }
+        if (s == OrderStatus.SHIPPED) {
+            // Partial pickup: what the customer refused at the branch is never paid for.
+            long refused = refusedValueMinor(order, lines);
+            if (refused > 0) {
+                order.setUncollectedMinor(Math.max(0, order.getUncollectedMinor()) + refused);
+                parts.add("не выкуплено на почте " + MoneyFormat.uah(refused) + ", наложка теперь "
+                        + MoneyFormat.uah(OrderQueryService.codMinor(order)));
+            }
+        }
         for (ManualRefund r : refunds) {
             order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
             parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + channelLabel(r.channel()) + ")");
@@ -483,9 +492,10 @@ public class OrderAdjustmentService {
         }
         List<WizardLine> lines = plan.lines() == null ? List.of()
                 : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
-        if (s == OrderStatus.SHIPPED && lines.stream().anyMatch(l -> l.outcome() == LineOutcome.IN_TRANSIT)) {
-            throw new BadRequestException("посылка ещё не у покупателя — если её не забрали, отклоните заказ с «Посылка едет назад»");
+        if (s == OrderStatus.SHIPPED && !lines.isEmpty() && nothingPickedUp(order, lines)) {
+            throw new BadRequestException("покупатель не забрал ничего — отклоните заказ с «Посылка едет назад»");
         }
+        long pickupValue = s == OrderStatus.SHIPPED ? refusedValueMinor(order, lines) : 0;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
             throw new BadRequestException(s == OrderStatus.REJECTED
                     ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
@@ -523,9 +533,56 @@ public class OrderAdjustmentService {
                 throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(over));
             }
         }
+        if (s == OrderStatus.SHIPPED && manual + mono > 0) {
+            // Partial pickup: the refused units come off наложка; only money paid above what the
+            // customer owes for the rest goes back.
+            long over = Math.max(0, order.getReceivedMinor() - Math.max(0, order.getRefundedMinor())
+                    - (OrderService.collectableMinor(order) - pickupValue));
+            if (manual + mono > over) {
+                throw new BadRequestException(over == 0
+                        ? "посылка ещё на почте — за невыкупленное покупатель просто не платит наложку, вернуть нечего"
+                        : "посылка ещё на почте — вернуть можно только переплату: " + MoneyFormat.uah(over));
+            }
+        }
         if (lines.isEmpty() && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
             throw new BadRequestException("укажите, что вернули, или сумму возврата");
         }
+    }
+
+    /** Every paid unit of a shipped order would be refused — that is a refused parcel, not a partial pickup. */
+    private static boolean nothingPickedUp(Order order, List<WizardLine> lines) {
+        for (OrderItem item : order.getItems()) {
+            if (item.isGift() || item.getId() == null) {
+                continue;
+            }
+            int back = lines.stream()
+                    .filter(l -> l.itemId() == item.getId() && l.outcome() != LineOutcome.KEPT)
+                    .mapToInt(WizardLine::quantity).sum();
+            if (item.getQuantity() - item.getReturnedQty() - back > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Paid value of the units of a shipped order the customer refused at the branch (partial
+     * pickup): every line that comes back, wherever it is now; a compensation (KEPT) is not one.
+     */
+    static long refusedValueMinor(Order order, List<WizardLine> lines) {
+        long sum = 0;
+        for (WizardLine l : lines) {
+            if (l.outcome() == LineOutcome.KEPT || l.quantity() <= 0) {
+                continue;
+            }
+            OrderItem item = order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == l.itemId())
+                    .findFirst().orElse(null);
+            if (item != null) {
+                sum += unitPaidMinor(order, item) * l.quantity();
+            }
+        }
+        return sum;
     }
 
     /** One line of «Посылка вернулась»: units of this order line and what state they came in. */
@@ -969,12 +1026,20 @@ public class OrderAdjustmentService {
             otherPosted = returnLines.findByReturnIdInOrderByIdAsc(otherIds).stream()
                     .anyMatch(l -> LineOutcome.IN_TRANSIT.name().equals(l.getOutcome()));
         }
+        // Registered while the parcel was at the branch (partial pickup): the refused value comes back into наложка.
+        boolean pickup = !exchange && order.getShippedAt() != null && rec.getCreatedAt() != null
+                && rec.getCreatedAt().isAfter(order.getShippedAt())
+                && (order.getDeliveredAt() == null || rec.getCreatedAt().isBefore(order.getDeliveredAt()));
+        long refusedBack = 0;
         for (OrderReturnLine l : returnLines.findByReturnIdInOrderByIdAsc(List.of(rec.getId()))) {
             OrderItem item = order.getItems().stream()
                     .filter(i -> i.getId() != null && i.getId() == l.getItemId())
                     .findFirst().orElse(null);
             if (item == null) {
                 continue;
+            }
+            if (pickup && !LineOutcome.KEPT.name().equals(l.getOutcome())) {
+                refusedBack += unitPaidMinor(order, item) * l.getQuantity();
             }
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
@@ -999,6 +1064,11 @@ public class OrderAdjustmentService {
             }
             item.setReturnedQty(Math.max(0, item.getReturnedQty() - l.getQuantity()));
             parts.add(title + " ×" + l.getQuantity() + " снова в заказе");
+        }
+        if (refusedBack > 0 && order.getUncollectedMinor() > 0) {
+            long back = Math.min(refusedBack, order.getUncollectedMinor());
+            order.setUncollectedMinor(order.getUncollectedMinor() - back);
+            parts.add("снова к оплате наложкой " + MoneyFormat.uah(back));
         }
         boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
         if (!anyPending && order.getStatus() != OrderStatus.REJECTED) {

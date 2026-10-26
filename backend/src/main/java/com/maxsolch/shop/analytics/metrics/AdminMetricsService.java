@@ -117,8 +117,8 @@ public class AdminMetricsService {
                 toApprove++;
             } else if (readyToShip(o)) {
                 toShip++;
-            } else if (o.status() == OrderStatus.SHIPPED && o.totalMinor() > o.receivedMinor()) {
-                cod += o.totalMinor() - o.receivedMinor();
+            } else if (o.status() == OrderStatus.SHIPPED && o.codMinor() > 0) {
+                cod += o.codMinor();
             }
             if (OverviewCalculator.awaitingConfirmation(o)) {
                 awaiting++;

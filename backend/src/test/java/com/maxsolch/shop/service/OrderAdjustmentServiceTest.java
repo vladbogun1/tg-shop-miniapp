@@ -615,7 +615,7 @@ class OrderAdjustmentServiceTest {
     }
 
     @Test
-    void wizard_inTransit_notForAParcelStillOnItsWayOut() {
+    void wizard_shippedParcelRefusedWhole_isARejectionNotAPartialPickup() {
         Order o = order(OrderStatus.SHIPPED);
         o.setReceivedMinor(30_000);
         item(o, product(0), 1L, 1);
@@ -623,7 +623,76 @@ class OrderAdjustmentServiceTest {
         assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
                 List.of(), 0, 0), "owner"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("не забрал ничего");
+    }
+
+    @Test
+    void wizard_partialPickupWithCod_refusedPartComesOffNalozhka_andDeliveryBooksOnlyTheRest() {
+        // 1C60C7C7: prepayment 100 ₴, the customer took the keyboard and refused the mouse at the branch.
+        Order o = order(OrderStatus.SHIPPED);
+        o.setTotalMinor(30_000);
+        o.setSubtotalMinor(30_000);
+        o.setPrepaymentMinor(100);
+        o.setReceivedMinor(100);
+        o.setPaid(true);
+        Product mouse = product(0);
+        OrderItem keyboard = item(o, product(0), 1L, 2);
+        OrderItem refused = item(o, mouse, 2L, 1);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 100, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("вернуть нечего");
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(), 0, 0), "owner");
+
+        assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
+        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(refused.getReturnPendingQty()).isEqualTo(1);
+        assertThat(keyboard.getReturnedQty()).isZero();
+        assertThat(mouse.getStock()).isZero(); // on its way, not on the shelf yet
+        assertThat(OrderQueryService.codMinor(r.order())).isEqualTo(19_900);
+        assertThat(r.auditDetails()).contains("не выкуплено на почте 100 ₴").contains("наложка теперь 199 ₴");
+
+        OrderService orderService = new OrderService(orderRepository, productRepository,
+                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoService, cartService, messages, entityManager);
+        Order delivered = orderService.deliver(o.getId());
+
+        assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
+        assertThat(OrderQueryService.codMinor(delivered)).isZero();
+    }
+
+    @Test
+    void wizard_partialPickupOfAPrepaidOrder_refundsTheRefusedPart() {
+        Order o = order(OrderStatus.SHIPPED);
+        o.setTotalMinor(30_000);
+        o.setSubtotalMinor(30_000);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        item(o, product(0), 1L, 2);
+        item(o, product(0), 2L, 1);
+        List<OrderAdjustmentService.WizardLine> back =
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT));
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(back,
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_001, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("100 ₴");
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(back,
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_000, null)), 0, 0), "owner");
+
+        assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
+        assertThat(r.order().getRefundedMinor()).isEqualTo(10_000);
+        assertThat(OrderQueryService.codMinor(r.order())).isZero();
     }
 
     @Test

@@ -344,6 +344,7 @@ public class OrderQueryService {
                 giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
                 o.getGiftDiscountMinor(),
                 o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
+                Math.max(0, o.getUncollectedMinor()),
                 customer ? null : adminExtras(o));
     }
 
@@ -462,9 +463,9 @@ public class OrderQueryService {
         return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
     }
 
-    /** Cash-on-delivery (наложка) to collect at Nova Poshta. */
+    /** Cash-on-delivery (наложка) to collect at Nova Poshta; units refused at the branch are not paid for. */
     public static long codMinor(Order o) {
-        return Math.max(0, o.getTotalMinor() - receivedMinor(o));
+        return Math.max(0, OrderService.collectableMinor(o) - receivedMinor(o));
     }
 
     /** All APPROVED orders mapped to dispatch rows (newest first). */

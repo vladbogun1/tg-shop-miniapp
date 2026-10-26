@@ -355,6 +355,8 @@ export interface OrderDetail {
   giftDiscountMinor?: number;
   /** Replacement of an exchange on that order (V69): the difference is paid online or on delivery. */
   exchangeOfId?: string | null;
+  /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
+  uncollectedMinor?: number;
   /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
   gift?: OrderGift | null;
   totalMinor: number;
