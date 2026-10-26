@@ -103,7 +103,7 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
 
       <div className="mt-1.5 flex items-center gap-2.5">
         <span
-          className="font-display tabular text-[16px] font-bold text-[var(--ink)]"
+          className="font-display tabular whitespace-nowrap text-[16px] font-bold text-[var(--ink)]"
           title={
             uncollected > 0
               ? `Заказ на ${money(order.totalMinor, order.currency)}, не выкуплено на почте ${money(uncollected, order.currency)}`
