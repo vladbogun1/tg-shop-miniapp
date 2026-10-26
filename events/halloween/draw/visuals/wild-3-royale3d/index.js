@@ -88,7 +88,8 @@ export function mount(root, ctx) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.4;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b0a10);
+  const BG0 = new THREE.Color(0x0b0a10), BG1 = new THREE.Color(0x1d1a2a), FOG0 = new THREE.Color(0x100c16);
+  scene.background = BG0.clone();
   scene.fog = new THREE.FogExp2(0x100c16, 0.0065);
   const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 2000);
   camera.position.set(0, 60, 120);
@@ -173,7 +174,7 @@ export function mount(root, ctx) {
       const p = byId.get(id), f = new Fighter(scene, p, fx);
       f.setGround(ground); f.home = homeOf(p, i); f.place(f.home.x, f.home.z, f.home.yaw);
       f.setMode("idle"); f.onLand = onLand;
-      const lb = document.createElement("div"); lb.className = "r3-lbl"; lb.innerHTML = `<b>${esc(p.name)}</b><span class="r3-lhp"><i></i></span>`;
+      const lb = document.createElement("div"); lb.className = "r3-lbl"; lb.innerHTML = `<b>${esc(nick(p))}</b><span class="r3-lhp"><i></i></span>`;
       if ((p.tickets || 1) > 1) lb.classList.add("t" + Math.min(3, Math.floor(Math.log2(p.tickets))));
       labelsEl.append(lb); f.label = lb; f.lhp = lb.querySelector("i"); f.idleT = 1 + Math.random() * 4;
       return f;
@@ -602,6 +603,7 @@ export function mount(root, ctx) {
     const focus = camFocus();
     world.key.intensity = phase === "idle" ? 0 : 26;
     world.update(now, dt, focus, camera);
+    { const up = clamp((camera.position.y - 14) / 36, 0, 1); renderer.toneMappingExposure = 1.4 + 0.5 * up; scene.fog.density = 0.0065 * (1 - 0.65 * up); scene.background.copy(BG0).lerp(BG1, up); scene.fog.color.copy(FOG0).lerp(BG1, up); }
     fx.update(sdt, camera);
     // post
     const slow = phase === "roll" && rate < 0.6;
@@ -650,9 +652,12 @@ export function mount(root, ctx) {
     for (const r of placed) if (x < r[0] + r[2] && x + w > r[0] && y < r[1] + r[3] && y + h > r[1]) return false;
     placed.push([x, y, w, h]); return true;
   }
+  /** a masked username reads as a nick (@abc***), a real name stays a name */
+  function nick(p) { const n = String(p.name || ""); return n.endsWith("***") && n[0] !== "@" ? "@" + n : n; }
   function labels() {
     const idle = phase === "idle", far = idle ? 170 : 45;
     cand.length = 0; placed.length = 0;
+    if (idle) placed.push([W / 2 - 320, H - 120, 640, 90]); // keep the lobby caption clear
     for (const f of heroes) {
       f.label.style.display = "none";
       if (!f.alive || !f.root.visible || f.dying || phase === "win") continue;
@@ -678,7 +683,7 @@ export function mount(root, ctx) {
       if (shown >= cap) break;
       const sx = ((c.x + 1) / 2) * W, sy = ((1 - c.y) / 2) * H;
       const k = c.f ? clamp(22 / Math.max(6, c.d), idle ? 0.6 : 0.55, 1.15) : clamp(34 / Math.max(8, c.d), 0.62, 1.05);
-      const name = (c.f ? c.f.p.name : c.q.p.name) || "";
+      const name = nick(c.f ? c.f.p : c.q.p);
       const w = (Math.min(name.length, 18) * (c.f ? 13 : 11) + 14) * k, h = (c.f && !idle ? 36 : 26) * k;
       if (!fits(sx - w / 2, sy - h, w, h)) continue;
       if (world.occluded(camera.position, c.w)) { placed.pop(); continue; }

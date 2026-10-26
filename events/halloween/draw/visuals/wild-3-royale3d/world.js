@@ -400,6 +400,11 @@ export function buildWorld(scene) {
       if (camera) f.s.material.opacity = f.s.userData.op * clamp((camera.position.distanceTo(f.s.position) - 6) / 18, 0, 1);
     }
     stormMat.uniforms.uTime.value = t;
+    // from high up the island would sink into the night: lift the moon and sky fill with altitude
+    if (camera) {
+      const up = clamp((camera.position.y - 14) / 36, 0, 1);
+      hemi.intensity = 1.1 + 3.2 * up; moonL.intensity = 1.5 + 2.4 * up;
+    }
     if (focus) {
       moonL.position.set(focus.x + moonDir.x * 60, focus.y + moonDir.y * 60, focus.z + moonDir.z * 60);
       moonL.target.position.copy(focus); moonL.target.updateMatrixWorld();
@@ -434,5 +439,5 @@ export function buildWorld(scene) {
     }
     return false;
   }
-  return { root, update, setStorm, get stormR() { return stormR; }, key, moonL, heightAt, POIS, blockers, free, clearView, occluded };
+  return { root, update, setStorm, get stormR() { return stormR; }, key, moonL, hemi, heightAt, POIS, blockers, free, clearView, occluded };
 }

@@ -122,7 +122,7 @@ export function displayName(p) {
   const first = (p?.first_name || "").trim();
   const last = (p?.last_name || "").trim();
   if (first) return `${first.slice(0, 18)}${last ? " " + [...last][0] + "." : ""}`;
-  if (p?.username) return p.username.slice(0, 3) + "***";
+  if (p?.username) return maskHandle(p.username);
   return "Гравець";
 }
 

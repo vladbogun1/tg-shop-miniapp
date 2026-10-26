@@ -105,7 +105,7 @@ function pumpkinGeo(r, ws = 22, hs = 14) {
   const p = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i);
-    const a = Math.atan2(v.z, v.x), lobe = 1 - 0.075 * (0.5 - 0.5 * Math.cos(a * 8));
+    const a = Math.atan2(v.z, v.x), rib = 0.5 - 0.5 * Math.cos(a * 8), lobe = 1 - 0.11 * rib * Math.sqrt(rib);
     const yy = v.y / r;
     v.x *= lobe * 1.12; v.z *= lobe * 1.12; v.y *= 0.84;
     if (Math.abs(yy) > 0.8) v.y -= Math.sign(yy) * (Math.abs(yy) - 0.8) * r * 0.5;
@@ -114,14 +114,34 @@ function pumpkinGeo(r, ws = 22, hs = 14) {
   g.computeVertexNormals();
   return g;
 }
+/** one geometry from several (same material → one draw call) */
+export function merge(list) {
+  const parts = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  const n = parts.reduce((a, g) => a + g.attributes.position.count, 0), out = new THREE.BufferGeometry();
+  for (const [k, w] of [["position", 3], ["normal", 3], ["uv", 2]]) {
+    const arr = new Float32Array(n * w); let o = 0;
+    for (const g of parts) { const a = g.attributes[k]; if (a) arr.set(a.array, o); o += g.attributes.position.count * w; }
+    out.setAttribute(k, new THREE.BufferAttribute(arr, w));
+  }
+  return out;
+}
+const at = (g, x, y, z) => { g.translate(x, y, z); return g; };
+const dome = (r, sy = 1) => { const g = new THREE.SphereGeometry(r, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, sy, 1); return g; };
 function limb(r, len) { const g = new THREE.CapsuleGeometry(r, len, 4, 8); g.translate(0, -len / 2, 0); return g; }
 function geos() {
   if (GEO) return GEO;
   const cyl = (a, b, h, s = 8) => new THREE.CylinderGeometry(a, b, h, s);
   const zAxis = (g) => { g.rotateX(Math.PI / 2); return g; };
   GEO = {
-    head: pumpkinGeo(0.27), headLo: pumpkinGeo(0.2, 12, 8),
-    stem: (() => { const g = cyl(0.025, 0.04, 0.12, 5); g.translate(0, 0.27, 0); g.rotateZ(0.2); return g; })(),
+    head: pumpkinGeo(0.27, 32, 18), headLo: pumpkinGeo(0.2, 12, 8),
+    // stem with a bend, two leaves and a curl of vine
+    stem: (() => {
+      const st = cyl(0.022, 0.042, 0.14, 6, 3); { const p = st.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) + (y + 0.07) * (y + 0.07) * 2.2); } }
+      st.translate(0, 0.27, 0); st.rotateZ(0.2);
+      const leaf = (a) => { const g = new THREE.SphereGeometry(0.07, 8, 4); g.scale(1, 0.18, 0.55); g.translate(0.07, 0, 0); g.rotateZ(-0.35); g.rotateY(a); g.translate(0, 0.235, 0); return g; };
+      const vine = new THREE.TorusGeometry(0.045, 0.008, 4, 12, Math.PI * 1.6); vine.rotateY(0.6); vine.translate(-0.06, 0.25, 0.04);
+      return merge([st, leaf(0.4), leaf(2.6), vine]);
+    })(),
     torso: (() => { const g = cyl(0.25, 0.33, 0.66, 8); g.translate(0, 0.33, 0); return g; })(),
     skirt: (() => { const g = cyl(0.33, 0.46, 0.5, 8, 1); g.translate(0, -0.18, 0); return g; })(),
     pelvis: (() => { const g = cyl(0.27, 0.3, 0.2, 8); return g; })(),
@@ -129,18 +149,50 @@ function geos() {
     tail: (() => { const g = new THREE.BoxGeometry(0.12, 0.42, 0.04); g.translate(0, -0.2, 0); return g; })(),
     uArm: limb(0.075, 0.24), lArm: limb(0.068, 0.22), hand: new THREE.SphereGeometry(0.085, 8, 6),
     uLeg: limb(0.095, 0.32), lLeg: limb(0.085, 0.32),
-    boot: (() => { const g = new THREE.BoxGeometry(0.16, 0.12, 0.3); g.translate(0, -0.06, 0.06); return g; })(),
+    boot: (() => {
+      const cuff = cyl(0.11, 0.095, 0.16, 8); cuff.translate(0, 0.02, 0);
+      const foot = new THREE.CapsuleGeometry(0.08, 0.16, 4, 8); foot.rotateX(Math.PI / 2); foot.scale(1, 0.75, 1); foot.translate(0, -0.08, 0.07);
+      const sole = new THREE.BoxGeometry(0.15, 0.03, 0.32); sole.translate(0, -0.135, 0.07);
+      return merge([cuff, foot, sole]);
+    })(),
+    // belt with a buckle and a pouch, a strap across the chest
+    belt: (() => { const g = new THREE.TorusGeometry(0.295, 0.04, 6, 22); g.rotateX(Math.PI / 2); g.translate(0, 0.07, 0); return merge([g, at(new THREE.BoxGeometry(0.1, 0.12, 0.08), 0.19, -0.02, 0.24)]); })(),
+    buckle: (() => { const f = new THREE.TorusGeometry(0.05, 0.014, 4, 4); f.rotateZ(Math.PI / 4); f.scale(1.2, 1, 1); return at(f, 0, 0.07, 0.33); })(),
+    strap: (() => { const g = new THREE.TorusGeometry(0.33, 0.024, 4, 24); g.scale(1, 1.35, 1.05); g.rotateY(Math.PI / 2); g.rotateZ(0.62); g.translate(0, 0.38, 0); return g; })(),
+    // shoulder pads (dome + rim), bracers, knee caps
+    pad: (() => { const g = dome(0.15, 0.7); g.rotateZ(-0.25); g.translate(0.02, 0.03, 0); const rim = new THREE.TorusGeometry(0.15, 0.018, 4, 14); rim.rotateX(Math.PI / 2); rim.rotateZ(-0.25); rim.translate(0.02, 0.03, 0); return merge([g, rim]); })(),
+    bracer: (() => { const g = cyl(0.088, 0.078, 0.15, 8); g.translate(0, -0.17, 0); return merge([g, at(new THREE.TorusGeometry(0.086, 0.012, 4, 10).rotateX(Math.PI / 2), 0, -0.1, 0)]); })(),
+    knee: (() => { const g = dome(0.075, 0.6); g.rotateX(Math.PI / 2); return at(g, 0, -0.01, 0.07); })(),
+    // glove: a fist with a thumb
+    glove: (() => { const f = new THREE.SphereGeometry(0.085, 10, 8); f.scale(1, 1.05, 1.15); const th = new THREE.CapsuleGeometry(0.026, 0.05, 3, 6); th.rotateZ(0.6); th.translate(0.07, 0.01, 0.03); const cuff = cyl(0.075, 0.09, 0.07, 8); cuff.translate(0, 0.09, 0); return merge([f, th, cuff]); })(),
+    // cape: a slice of a cone hanging from the shoulders, folds in the hem
+    cape: (() => {
+      const g = new THREE.CylinderGeometry(0.3, 0.52, 0.98, 14, 5, true, Math.PI * 0.64, Math.PI * 0.72);
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) { const y = p.getY(i), a = Math.atan2(p.getX(i), p.getZ(i)), f = (0.49 - y) / 0.98, k = 1 + 0.07 * f * Math.sin(a * 9); p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); }
+      g.computeVertexNormals(); g.translate(0, -0.49, 0.04); return g;
+    })(),
     hat: (() => { const g = new THREE.ConeGeometry(0.24, 0.55, 9); g.translate(0, 0.42, 0); return g; })(),
     brim: (() => { const g = cyl(0.42, 0.42, 0.025, 16); g.translate(0, 0.16, 0); return g; })(),
     band: (() => { const g = cyl(0.245, 0.245, 0.06, 12, 1); g.translate(0, 0.2, 0); return g; })(),
     // weapons: grip at the origin, blade along +Z
-    swGrip: zAxis(cyl(0.028, 0.028, 0.24, 6)), swGuard: (() => { const g = new THREE.BoxGeometry(0.22, 0.04, 0.05); g.translate(0, 0, 0.13); return g; })(),
-    swBlade: (() => { const g = new THREE.BoxGeometry(0.075, 0.016, 0.88); g.translate(0, 0, 0.59); return g; })(),
+    swGrip: merge([zAxis(cyl(0.028, 0.028, 0.24, 6)), ...[-0.06, 0, 0.06].map((z) => at(zAxis(cyl(0.033, 0.033, 0.02, 6)), 0, 0, z))]),
+    swGuard: (() => { const g = new THREE.BoxGeometry(0.24, 0.04, 0.05); g.translate(0, 0, 0.13); const b = (x) => at(new THREE.SphereGeometry(0.03, 6, 4), x, 0, 0.13); const pm = at(new THREE.SphereGeometry(0.045, 8, 6), 0, 0, -0.14); return merge([g, b(0.13), b(-0.13), pm]); })(),
+    // tapered blade with a point (flat in XZ, pointing +Z)
+    swBlade: (() => {
+      const s = new THREE.Shape(); s.moveTo(-0.04, 0); s.lineTo(0.04, 0); s.lineTo(0.032, 0.78); s.lineTo(0, 0.9); s.lineTo(-0.032, 0.78); s.lineTo(-0.04, 0);
+      const g = new THREE.ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.004, bevelSegments: 1 });
+      g.translate(0, 0, -0.006); g.rotateX(Math.PI / 2); g.translate(0, 0, 0.15); return g;
+    })(),
     shaft: (len) => { const g = zAxis(cyl(0.03, 0.03, len, 6)); g.translate(0, 0, len / 2 - 0.25); return g; },
     axeHead: (() => { const s = new THREE.Shape(); s.moveTo(0, -0.1); s.lineTo(0.3, -0.24); s.quadraticCurveTo(0.38, 0, 0.3, 0.24); s.lineTo(0, 0.1); s.lineTo(0, -0.1);
       const g = new THREE.ExtrudeGeometry(s, { depth: 0.03, bevelEnabled: false }); g.translate(0, 0, -0.015); g.rotateY(-Math.PI / 2); g.rotateZ(Math.PI / 2); g.translate(0, 0, 0.62); return g; })(),
     scythe: (() => { const g = new THREE.TorusGeometry(0.46, 0.035, 4, 18, 1.9); g.scale(1, 1, 0.35); g.rotateY(Math.PI / 2); g.rotateX(Math.PI); g.translate(0, -0.46 + 0.02, 1.08); return g; })(),
     orb: new THREE.SphereGeometry(0.1, 12, 8),
+    // metal fittings: axe back spike + bands, scythe collar, staff claws round the orb
+    axeFit: merge([at(new THREE.ConeGeometry(0.035, 0.16, 6).rotateZ(Math.PI / 2), -0.1, 0, 0.62), ...[0.5, 0.74].map((z) => at(zAxis(cyl(0.04, 0.04, 0.04, 6)), 0, 0, z))]),
+    scyFit: merge([at(zAxis(cyl(0.045, 0.045, 0.1, 6)), 0, 0, 1.1), at(zAxis(cyl(0.036, 0.036, 0.03, 6)), 0, 0, -0.2)]),
+    staffFit: merge([0, 2.09, 4.19].map((a) => { const c = new THREE.ConeGeometry(0.02, 0.2, 4); c.rotateX(-0.45); c.translate(0, 0.1, 0.12); c.rotateX(Math.PI / 2); c.rotateZ(a); c.translate(0, 0, 0.98); return c; }).concat([at(new THREE.TorusGeometry(0.05, 0.015, 4, 10), 0, 0, 0.99)])),
     crown: (() => { const g = new THREE.CylinderGeometry(0.2, 0.2, 0.14, 10, 1, true); g.translate(0, 0.33, 0); return g; })(),
   };
   return GEO;
@@ -198,6 +250,8 @@ export class Fighter {
       metal: M({ color: 0x9aa0aa, roughness: 0.35, metalness: 0.8 }),
       wood: M({ color: 0x3b2a1c, roughness: 0.9 }),
       orb: new THREE.MeshBasicMaterial({ color: new THREE.Color(fc).multiplyScalar(2.2), toneMapped: false }),
+      leather: M({ color: 0x3a2618, roughness: 0.7, flatShading: true }),
+      cape: M({ color: new THREE.Color(fc).multiplyScalar(0.45), roughness: 0.9, side: THREE.DoubleSide, map: tex("cloth"), flatShading: true }),
       gold: M({ color: 0xd9a63a, roughness: 0.3, metalness: 0.9, emissive: 0x6a4a10, emissiveIntensity: 0.6 }),
     };
     const mk = (geo, mat, parent, cast = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; parent.add(m); return m; };
@@ -207,8 +261,12 @@ export class Fighter {
     const J = (this.j = {});
     J.hips = grp(this.root, 0, 0.95, 0);
     mk(g.pelvis, this.mats.cloth, J.hips); mk(g.skirt, this.mats.cloth, J.hips);
+    mk(g.belt, this.mats.leather, J.hips, false); mk(g.buckle, this.mats.gold, J.hips, false);
+    const armour = (h >>> 11) % 3 ? this.mats.metal : this.mats.leather;
     J.spine = grp(J.hips, 0, 0.08, 0);
     mk(g.torso, this.mats.cloth, J.spine);
+    if ((h >>> 13) % 2) mk(g.strap, this.mats.leather, J.spine, false);
+    if ((h >>> 8) % 3) { J.cape = grp(J.spine, 0, 0.74, -0.02); mk(g.cape, this.mats.cape, J.cape); }
     J.head = grp(J.spine, 0, 0.92, 0);
     const head = mk(g.head, this.mats.head, J.head); head.position.y = 0.04;
     mk(g.stem, this.mats.stem, head, false);
@@ -217,25 +275,27 @@ export class Fighter {
     const sc = mk(g.scarf, this.mats.scarf, J.spine); sc.position.y = 0.7;
     J.tail = grp(J.spine, 0.06, 0.68, -0.2); mk(g.tail, this.mats.scarf, J.tail);
     J.armL = grp(J.spine, 0.33, 0.6, 0); mk(g.uArm, this.mats.cloth, J.armL);
-    J.elbowL = grp(J.armL, 0, -0.31, 0); mk(g.lArm, this.mats.cloth, J.elbowL);
-    const hl = mk(g.hand, this.mats.dark, J.elbowL); hl.position.y = -0.3;
+    mk(g.pad, armour, J.armL, false);
+    J.elbowL = grp(J.armL, 0, -0.31, 0); mk(g.lArm, this.mats.cloth, J.elbowL); mk(g.bracer, this.mats.leather, J.elbowL, false);
+    const hl = mk(g.glove, this.mats.dark, J.elbowL); hl.position.y = -0.3;
     J.armR = grp(J.spine, -0.33, 0.6, 0); mk(g.uArm, this.mats.cloth, J.armR);
-    J.elbowR = grp(J.armR, 0, -0.31, 0); mk(g.lArm, this.mats.cloth, J.elbowR);
-    J.wrist = grp(J.elbowR, 0, -0.3, 0); mk(g.hand, this.mats.dark, J.wrist);
+    const pr = mk(g.pad, armour, J.armR, false); pr.scale.x = -1;
+    J.elbowR = grp(J.armR, 0, -0.31, 0); mk(g.lArm, this.mats.cloth, J.elbowR); mk(g.bracer, this.mats.leather, J.elbowR, false);
+    J.wrist = grp(J.elbowR, 0, -0.3, 0); const gr = mk(g.glove, this.mats.dark, J.wrist); gr.scale.x = -1;
     J.legL = grp(J.hips, 0.14, -0.04, 0); mk(g.uLeg, this.mats.dark, J.legL);
-    J.kneeL = grp(J.legL, 0, -0.42, 0); mk(g.lLeg, this.mats.dark, J.kneeL);
-    const bl = mk(g.boot, this.mats.dark, J.kneeL); bl.position.y = -0.36;
+    J.kneeL = grp(J.legL, 0, -0.42, 0); mk(g.lLeg, this.mats.dark, J.kneeL); mk(g.knee, armour, J.kneeL, false);
+    const bl = mk(g.boot, this.mats.leather, J.kneeL); bl.position.y = -0.36;
     J.legR = grp(J.hips, -0.14, -0.04, 0); mk(g.uLeg, this.mats.dark, J.legR);
-    J.kneeR = grp(J.legR, 0, -0.42, 0); mk(g.lLeg, this.mats.dark, J.kneeR);
-    const br = mk(g.boot, this.mats.dark, J.kneeR); br.position.y = -0.36;
+    J.kneeR = grp(J.legR, 0, -0.42, 0); mk(g.lLeg, this.mats.dark, J.kneeR); mk(g.knee, armour, J.kneeR, false);
+    const br = mk(g.boot, this.mats.leather, J.kneeR); br.position.y = -0.36;
 
     // weapon
     const W = (this.wpn = grp(J.wrist));
     this.tip = new THREE.Object3D(); this.base = new THREE.Object3D(); W.add(this.tip, this.base);
     if (this.weapon === "sword") { mk(g.swGrip, this.mats.dark, W); mk(g.swGuard, this.mats.metal, W); mk(g.swBlade, this.mats.metal, W); this.base.position.set(0, 0, 0.2); this.tip.position.set(0, 0, 1.02); }
-    else if (this.weapon === "axe") { mk(g.shaft(0.95), this.mats.wood, W); mk(g.axeHead, this.mats.metal, W); this.base.position.set(0, 0, 0.45); this.tip.position.set(-0.36, 0, 0.62); }
-    else if (this.weapon === "scythe") { mk(g.shaft(1.4), this.mats.wood, W); mk(g.scythe, this.mats.metal, W); this.base.position.set(0, 0, 1.0); this.tip.position.set(0, -0.62, 0.78); }
-    else { mk(g.shaft(1.35), this.mats.wood, W); const o = mk(g.orb, this.mats.orb, W, false); o.position.z = 1.12; this.base.position.set(0, 0, 0.6); this.tip.position.set(0, 0, 1.12); }
+    else if (this.weapon === "axe") { mk(g.shaft(0.95), this.mats.wood, W); mk(g.axeHead, this.mats.metal, W); mk(g.axeFit, this.mats.metal, W, false); this.base.position.set(0, 0, 0.45); this.tip.position.set(-0.36, 0, 0.62); }
+    else if (this.weapon === "scythe") { mk(g.shaft(1.4), this.mats.wood, W); mk(g.scythe, this.mats.metal, W); mk(g.scyFit, this.mats.metal, W, false); this.base.position.set(0, 0, 1.0); this.tip.position.set(0, -0.62, 0.78); }
+    else { mk(g.shaft(1.35), this.mats.wood, W); mk(g.staffFit, this.mats.gold, W, false); const o = mk(g.orb, this.mats.orb, W, false); o.position.z = 1.12; this.base.position.set(0, 0, 0.6); this.tip.position.set(0, 0, 1.12); }
 
     this.trail = new Trail(scene, this.weapon === "staff" ? new THREE.Color(fc).multiplyScalar(1.6) : new THREE.Color(1.5, 0.95, 0.6));
     this.cur = new Float32Array(NC); this.tgt = new Float32Array(NC); this.from = new Float32Array(NC);
@@ -405,6 +465,7 @@ export class Fighter {
     J.legL.rotation.set(c[I.llx], c[I.lly], c[I.llz]); J.kneeL.rotation.x = c[I.lkx];
     J.legR.rotation.set(c[I.rlx], c[I.rly], c[I.rlz]); J.kneeR.rotation.x = c[I.rkx];
     J.tail.rotation.x = 0.35 + Math.sin(this.breath * 5) * 0.12 + (this.mode === "run" ? 0.6 : 0);
+    if (J.cape) J.cape.rotation.x = 0.08 - c[I.sx] * 0.7 + Math.sin(this.breath * 3.2) * 0.04 + (this.mode === "run" ? 0.55 : this.mode === "air" ? 0.9 : 0);
     this.root.updateMatrixWorld(true);
   }
   dispose() {
