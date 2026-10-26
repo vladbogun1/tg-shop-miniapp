@@ -191,6 +191,8 @@ export interface CardLine {
   /** Units of this line already given back. */
   returned?: number;
   gift: boolean;
+  /** What the units on their way back cost (price paid). */
+  returningMinor?: number;
 }
 
 /** One exchange (V51): what came back, what went out instead, ТТН and total before. */

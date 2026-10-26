@@ -11,7 +11,7 @@ import { ArrowRightLeft, Inbox, PackageCheck } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminBoard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
-import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, type BoardKey } from "@/lib/orders";
+import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, returningMinor, type BoardKey } from "@/lib/orders";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { OrderCard } from "./OrderCard";
@@ -53,6 +53,12 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onReceived,
       {sum != null && count > 0 && (
         <div className="tabular mb-2 px-0.5 text-[12px] font-semibold text-[var(--text-muted)]">
           {count} шт. · {money(sum, "UAH")}
+        </div>
+      )}
+      {returning && orders.length > 0 && (
+        <div className="tabular mb-2 px-0.5 text-[12px] font-semibold text-[var(--text-muted)]">
+          {orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0)} шт. в пути на склад ·{" "}
+          {money(orders.reduce((acc, o) => acc + returningMinor(o), 0), "UAH")}
         </div>
       )}
 

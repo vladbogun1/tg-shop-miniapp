@@ -12,7 +12,7 @@ import { ArrowLeft, Ban, Check, CheckCircle2, Clock, CreditCard, MapPin, Message
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CANCEL_REASON_MAX, customerCancelMode, paymentState, shortOrderId, type OrderDetail } from "@shop/shared";
+import { CANCEL_REASON_MAX, customerCancelMode, payableMinor, paymentState, shortOrderId, type OrderDetail } from "@shop/shared";
 import { OrderChat } from "@/components/chat/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/components/order/Payment";
 import { OrderReceipts } from "@/components/order/Receipts";
@@ -78,6 +78,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const qc = useQueryClient();
   const router = useRouter();
   const isPickup = order.deliveryMethod === "PICKUP";
+  const uncollected = Math.max(0, order.uncollectedMinor ?? 0);
   const cancelMode = customerCancelMode(order);
   // Gift case (V57): the case card on top (locked until paid), the opening screen (once).
   const giftCase = useOrderGiftCase(order);
@@ -146,7 +147,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
         <Tile icon={<CreditCard className="h-5 w-5" />} label={t("order.payment")}>
           {order.exchangeOfId ? t("pay.exchangeMethod") : order.paymentOptionTitle ?? "—"}
           <span className="mt-1 block text-[13px] font-semibold text-[var(--muted)]">
-            {t("order.total")}: {fmt.money(order.totalMinor, order.currency)}
+            {uncollected > 0 ? t("order.payable") : t("order.total")}: {fmt.money(payableMinor(order), order.currency)}
           </span>
         </Tile>
         <Tile icon={<MapPin className="h-5 w-5" />} label={t("order.address")}>
@@ -171,7 +172,11 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       <section className="nb p-5">
         <h3 className="eyebrow mb-4 text-[11px]">{t("order.items")}</h3>
         <ul className="flex flex-col gap-3">
-          {order.items.map((it, i) => (
+          {order.items.map((it, i) => {
+            // Partial pickup: the units refused at the post office (on their way back, or back already).
+            const pending = it.returnPendingQty ?? 0;
+            const back = uncollected > 0 ? (it.returnedQty ?? 0) + pending : 0;
+            return (
             <li key={it.id ?? i} className="flex items-center gap-3">
               <span className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
                 <Image src={it.imageUrl} alt={it.title} size={140} className="h-full w-full" />
@@ -198,12 +203,24 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                       : t("order.gift")
                     : `${it.quantity} × ${fmt.money(it.priceMinor, it.currency ?? order.currency)}`}
                 </p>
+                {back > 0 && (
+                  <p className="text-[12px] font-semibold text-[var(--danger)]">
+                    {t(pending > 0 ? "order.item.uncollectedBack" : "order.item.uncollected", {
+                      n: back < it.quantity ? ` ${back}/${it.quantity}` : "",
+                    })}
+                  </p>
+                )}
               </div>
-              <span className="shrink-0 font-display text-[15px] font-bold tabular-nums text-[var(--ink)]">
+              <span
+                className={`shrink-0 font-display text-[15px] font-bold tabular-nums ${
+                  back >= it.quantity ? "text-[var(--faint)] line-through" : "text-[var(--ink)]"
+                }`}
+              >
                 {fmt.money(it.gift || it.autoGift ? 0 : it.priceMinor * it.quantity, it.currency ?? order.currency)}
               </span>
             </li>
-          ))}
+            );
+          })}
         </ul>
         <div className="mt-4 flex flex-col gap-1.5 border-t border-[var(--line)] pt-3 text-[14px]">
           <div className="flex justify-between font-semibold text-[var(--muted)]">
@@ -216,10 +233,24 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
               <span className="font-display font-bold tabular-nums text-[var(--ok)]">−{fmt.money(order.discountMinor, order.currency)}</span>
             </div>
           )}
+          {uncollected > 0 && (
+            <>
+              <div className="flex justify-between font-semibold text-[var(--muted)]">
+                <span>{t("order.total")}</span>
+                <span className="font-semibold text-[var(--ink)]">{fmt.money(order.totalMinor, order.currency)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-[var(--muted)]">
+                <span>{t("order.uncollected")}</span>
+                <span className="font-display font-bold tabular-nums text-[var(--danger)]">−{fmt.money(uncollected, order.currency)}</span>
+              </div>
+            </>
+          )}
           <div className="mt-1 flex items-center justify-between">
-            <span className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("order.total")}</span>
+            <span className="font-display text-[15px] font-bold uppercase tracking-[.06em] text-[var(--ink)]">
+              {uncollected > 0 ? t("order.payable") : t("order.total")}
+            </span>
             <span className="font-display text-[18px] font-bold tabular-nums text-[var(--accent)]">
-              {fmt.money(order.totalMinor, order.currency)}
+              {fmt.money(payableMinor(order), order.currency)}
             </span>
           </div>
         </div>

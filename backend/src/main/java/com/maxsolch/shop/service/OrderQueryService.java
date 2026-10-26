@@ -171,7 +171,8 @@ public class OrderQueryService {
                     .add(new OrderCardDto.CardLine(productId == null ? null : thumbnails.get(productId),
                             it.getTitleSnapshot()
                                     + (it.getVariantNameSnapshot() == null ? "" : " · " + it.getVariantNameSnapshot()),
-                            it.getQuantity(), it.getReturnPendingQty(), it.getReturnedQty(), it.isGift()));
+                            it.getQuantity(), it.getReturnPendingQty(), it.getReturnedQty(), it.isGift(),
+                            OrderAdjustmentService.unitPaidMinor(it.getOrder(), it) * it.getReturnPendingQty()));
         }
         return out;
     }

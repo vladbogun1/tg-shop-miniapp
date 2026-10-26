@@ -44,7 +44,9 @@ public record OrderCardDto(
     /**
      * @param returning units of this line on their way back
      * @param returned  units of this line already given back
+     * @param returningMinor what the units on their way back cost (paid price) — the «Едет назад» card shows it
      */
-    public record CardLine(String imageUrl, String title, int quantity, int returning, int returned, boolean gift) {
+    public record CardLine(String imageUrl, String title, int quantity, int returning, int returned, boolean gift,
+                           long returningMinor) {
     }
 }

@@ -51,6 +51,7 @@ import {
   hasOnlinePayment,
   paymentFirst,
   paymentState,
+  payableMinor,
 } from "@shop/shared";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
@@ -273,7 +274,11 @@ function OrderBody({
             <Package className="h-4 w-4" strokeWidth={2.25} /> {t("order.items")}
           </h3>
           <div className="flex flex-col gap-3">
-            {order.items.map((it, i) => (
+            {order.items.map((it, i) => {
+              // Partial pickup: the units refused at the post office (on their way back, or back already).
+              const pending = it.returnPendingQty ?? 0;
+              const back = (order.uncollectedMinor ?? 0) > 0 ? (it.returnedQty ?? 0) + pending : 0;
+              return (
               <div key={it.id ?? i} className="flex items-center gap-3">
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
                   <Image
@@ -309,14 +314,26 @@ function OrderBody({
                         : t("order.gift")
                       : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
                   </p>
+                  {back > 0 && (
+                    <p className="mt-0.5 text-[12px] font-semibold text-[var(--danger)]">
+                      {t(pending > 0 ? "order.item.uncollectedBack" : "order.item.uncollected", {
+                        n: back < it.quantity ? ` ${back}/${it.quantity}` : "",
+                      })}
+                    </p>
+                  )}
                 </div>
-                <span className="font-display shrink-0 text-[14px] font-bold tabular-nums text-[var(--ink)]">
+                <span
+                  className={`font-display shrink-0 text-[14px] font-bold tabular-nums ${
+                    back >= it.quantity ? "text-[var(--faint)] line-through" : "text-[var(--ink)]"
+                  }`}
+                >
                   {it.gift || it.autoGift
                     ? "0 ₴"
                     : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-4 flex flex-col gap-2 border-t border-[var(--line)] pt-3">
@@ -335,11 +352,23 @@ function OrderBody({
                 discount
               />
             )}
-            <TotalRow
-              label={t("order.total")}
-              value={money(order.totalMinor, order.currency)}
-              strong
-            />
+            {(order.uncollectedMinor ?? 0) > 0 ? (
+              <>
+                <TotalRow label={t("order.total")} value={money(order.totalMinor, order.currency)} />
+                <TotalRow
+                  label={t("order.uncollected")}
+                  value={`− ${money(order.uncollectedMinor ?? 0, order.currency)}`}
+                  danger
+                />
+                <TotalRow label={t("order.payable")} value={money(payableMinor(order), order.currency)} strong />
+              </>
+            ) : (
+              <TotalRow
+                label={t("order.total")}
+                value={money(order.totalMinor, order.currency)}
+                strong
+              />
+            )}
           </div>
         </motion.section>
 
@@ -431,11 +460,13 @@ function TotalRow({
   value,
   strong,
   discount,
+  danger,
 }: {
   label: string;
   value: string;
   strong?: boolean;
   discount?: boolean;
+  danger?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -457,6 +488,8 @@ function TotalRow({
           className={
             discount
               ? "font-display text-[13px] font-bold tabular-nums text-[var(--ok)]"
+              : danger
+              ? "font-display text-[13px] font-bold tabular-nums text-[var(--danger)]"
               : "font-display text-[13px] font-semibold tabular-nums text-[var(--ink)]"
           }
         >

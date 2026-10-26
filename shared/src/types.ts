@@ -227,6 +227,12 @@ export interface OrderItem {
   caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
   /** A case prize whose size the customer has not chosen yet (V59). */
   variantPending?: boolean;
+  /** Units the customer gave back (a return, or refused at the post office and already received). */
+  returnedQty?: number;
+  /** Units on their way back to the shop (V68). */
+  returnPendingQty?: number;
+  /** What one unit actually cost: the price with the order discount spread in (V68). */
+  unitPaidMinor?: number;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
