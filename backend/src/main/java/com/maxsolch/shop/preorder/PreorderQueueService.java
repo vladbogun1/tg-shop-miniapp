@@ -208,6 +208,17 @@ public class PreorderQueueService {
         return out;
     }
 
+    /** One place as its owner sees it, with the product (for the bot messages); empty if either is gone. */
+    @Transactional(readOnly = true)
+    public Optional<Described> describe(long subscriptionId) {
+        return subs.findById(subscriptionId).flatMap(s -> products.findById(s.getProductId()).map(p ->
+                new Described(s.getUserId(), toMine(s, p, openEtas().get(lineKey(s.getProductId(), s.getVariantId()))),
+                        p.getPriceMinor())));
+    }
+
+    public record Described(Long userId, MyPreorderDto place, long priceMinor) {
+    }
+
     /** The pre-order block of a product page; {@code userId} null for a guest. */
     @Transactional(readOnly = true)
     public ProductPreorderDto forProduct(String productIdText, Long userId) {
