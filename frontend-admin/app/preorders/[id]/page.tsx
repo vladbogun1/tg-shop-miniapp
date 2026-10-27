@@ -41,6 +41,7 @@ import { ArriveModal } from "@/components/preorders/ArriveModal";
 import { BatchFormModal } from "@/components/preorders/BatchFormModal";
 import { CsvButton } from "@/components/preorders/CsvButton";
 import { SubscribersList } from "@/components/preorders/SubscribersList";
+import { ProductStateChips, useBatchProductTools, useBatchProducts } from "@/components/preorders/BatchItemProduct";
 
 export default function BatchPage() {
   const params = useParams<{ id: string }>();
@@ -86,6 +87,8 @@ function BatchView({ batch }: { batch: Batch }) {
   const distLabel = DISTRIBUTIONS.find((d) => d.value === batch.distribution)?.label ?? batch.distribution;
   const totalPeople = batch.items.reduce((n, i) => n + i.waitingPeople, 0);
   const totalQty = batch.items.reduce((n, i) => n + i.waitingQty, 0);
+  const products = useBatchProducts(batch.items.map((i) => i.productId));
+  const tools = useBatchProductTools();
 
   return (
     <>
@@ -172,12 +175,24 @@ function BatchView({ batch }: { batch: Batch }) {
         {batch.items.map((i) => {
           const cost = batch.moneyVisible ? costUahMinor(i.unitPriceFx, batch.fxRate) : null;
           const enough = i.waitingQty <= i.qtyOrdered;
+          const p = products.byId.get(i.productId);
           return (
             <div key={i.id} className="card flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3">
-              <Image src={i.imageUrl} alt={i.title} size={120} className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)]" />
-              <div className="min-w-0 flex-1 basis-52 text-[14px] font-semibold leading-snug text-[var(--text)]">
-                <span className="line-clamp-2 break-words">{lineTitle(i.title, i.variantName)}</span>
-              </div>
+              <button
+                type="button"
+                disabled={!p}
+                onClick={() => p && tools.openPreview(p)}
+                title={p ? "Быстрый просмотр" : undefined}
+                className="group flex min-w-0 flex-1 basis-52 items-center gap-3 text-left enabled:cursor-pointer"
+              >
+                <Image src={i.imageUrl} alt={i.title} size={120} className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] transition group-enabled:group-hover:border-[var(--accent)]" />
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="line-clamp-2 break-words text-[14px] font-semibold leading-snug text-[var(--text)] group-enabled:group-hover:text-[var(--accent-hi)]">
+                    {lineTitle(i.title, i.variantName)}
+                  </span>
+                  <ProductStateChips p={p} loading={products.loading} />
+                </span>
+              </button>
               <Cell label="Заказано" value={`${i.qtyOrdered}`} />
               <Cell label="Пришло" value={i.qtyArrived != null ? `${i.qtyArrived}` : "—"} />
               <Cell label="Ждут" value={`${i.waitingPeople} чел / ${i.waitingQty} шт`} warn={open && !enough} accent={i.waitingPeople > 0} />
@@ -189,6 +204,17 @@ function BatchView({ batch }: { batch: Batch }) {
                   value={i.unitPriceFx != null ? `${fxToInput(i.unitPriceFx)} ${batch.currency ?? ""}` : "—"}
                   sub={cost != null ? `≈ ${money(cost)}/шт` : undefined}
                 />
+              )}
+              {p && (
+                <div className="flex items-center gap-3">
+                  <Toggle
+                    checked={!!p.active}
+                    disabled={tools.busy === p.id}
+                    onChange={(v) => tools.setActive(p, v)}
+                    label="Показывать"
+                  />
+                  <Button variant="ghost" size="icon" icon={<Pencil className="h-4 w-4" />} onClick={() => tools.openEditor(p)} aria-label="Редактировать товар" title="Редактировать товар" />
+                </div>
               )}
             </div>
           );
@@ -210,6 +236,7 @@ function BatchView({ batch }: { batch: Batch }) {
       </>
       )}
 
+      {tools.ui}
       <BatchFormModal open={editing} onClose={() => setEditing(false)} batch={batch} />
       {open && <ArriveModal open={arriving} onClose={() => setArriving(false)} batch={batch} />}
       <CancelModal open={cancelling} onClose={() => setCancelling(false)} batch={batch} waiting={totalPeople} />
