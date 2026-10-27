@@ -56,6 +56,12 @@ public final class SettingsRegistry {
     public static final String ANTIBOT_MAX_QTY_PER_PRODUCT = "antibot.maxQtyPerProduct";
     public static final String ANTIBOT_MAX_UNITS_PER_ORDER = "antibot.maxUnitsPerOrder";
     public static final String ANTIBOT_MAX_SELF_CANCELS_PER_DAY = "antibot.maxSelfCancelsPerDay";
+    // Pre-orders and the waitlist (V73, preorder.*).
+    public static final String PREORDER_GROUP = "preorder";
+    public static final String PREORDER_ANY_PRODUCT = "preorder.anyProduct";
+    public static final String PREORDER_HOLD_HOURS = "preorder.holdHours";
+    public static final String PREORDER_SHOW_WAITING_FROM = "preorder.showWaitingFrom";
+    public static final String PREORDER_MAX_ACTIVE = "preorder.maxActive";
     // Support threads (SupportService). 0 = no limit / never.
     public static final String SUPPORT_ENABLED = "support.enabled";
     public static final String SUPPORT_COOLDOWN_SEC = "support.cooldownSec";
@@ -101,7 +107,9 @@ public final class SettingsRegistry {
             new Group("antibot", "Защита от ботов и спама",
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
             new Group(GIFT_GROUP, "Подарок за сумму (кейсы)",
-                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."));
+                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."),
+            new Group(PREORDER_GROUP, "Предзаказы и ожидание",
+                    "Очередь на товары, которых нет: поставки, бронь при приезде, что видит покупатель."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -317,6 +325,25 @@ public final class SettingsRegistry {
                     "Заказов за сутки",
                     "Сколько заказов покупатель может оформить за последние 24 часа. 0 — без ограничения.",
                     5, 0, 100, "шт"),
+            boolSetting(PREORDER_ANY_PRODUCT, PREORDER_GROUP,
+                    "Ожидание на любой отсутствующий товар",
+                    "Кнопка «Повідомити, коли з'явиться» на каждом товаре, которого нет, даже без поставки. "
+                            + "Кто ждёт — видно в «Поставки → Чего ждут». Выключено — встать в очередь можно "
+                            + "только на товары из открытой поставки.",
+                    true),
+            intSetting(PREORDER_HOLD_HOURS, PREORDER_GROUP,
+                    "Бронь при приезде",
+                    "Сколько часов товар держится за первым в очереди, когда он приехал. Не купил — бронь "
+                            + "переходит следующему. У поставки можно задать своё значение.",
+                    24, 1, 168, "ч"),
+            intSetting(PREORDER_SHOW_WAITING_FROM, PREORDER_GROUP,
+                    "Показывать «Чекають N людей» от",
+                    "С какого числа ждущих покупатели видят счётчик на странице товара. 0 — не показывать.",
+                    5, 0, 1000, "чел."),
+            intSetting(PREORDER_MAX_ACTIVE, PREORDER_GROUP,
+                    "Очередей у одного покупателя",
+                    "Сколько товаров один покупатель может ждать одновременно. 0 — без ограничения.",
+                    20, 0, 500, "шт"),
             intSetting(ANTIBOT_MAX_QTY_PER_PRODUCT, "antibot",
                     "Штук одного товара в заказе",
                     "Максимум одинаковых товаров (одного варианта) в одном заказе — против скупки. "

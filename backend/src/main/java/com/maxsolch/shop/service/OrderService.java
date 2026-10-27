@@ -89,6 +89,14 @@ public class OrderService {
         this.paymentInvoices = paymentInvoices;
     }
 
+    /** Pre-order holds: units kept for people in a queue (optional: unit tests build the service without it). */
+    private com.maxsolch.shop.preorder.PreorderQueueService preorders;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders) {
+        this.preorders = preorders;
+    }
+
     /** The gift for the order sum / the gift case (optional: unit tests build the service without it). */
     private GiftService giftService;
 
@@ -253,6 +261,7 @@ public class OrderService {
             } else if (hasVariants) {
                 throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
             }
+            requireNotHeld(product, variant, line.quantity, cmd.userId());
             reserveStock(product, variant, line.quantity);
 
             subtotal += product.getPriceMinor() * (long) line.quantity;
@@ -290,6 +299,12 @@ public class OrderService {
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
+        if (preorders != null && cmd.userId() != null) {
+            // The customer's places in the queues of what they just bought are done (a hold is used up).
+            preorders.onOrderPlaced(cmd.userId(), saved.getId(), saved.getItems().stream()
+                    .map(i -> new byte[][]{i.getProductId(), i.getVariantId()})
+                    .toList());
+        }
         if (drawn != null) {
             drawn.setOrderId(saved.getId());
             giftService.saveOrderCase(drawn);
@@ -1141,6 +1156,26 @@ public class OrderService {
      * units on an oversell — {@code Math.max(0, ...)} silently swallowed the difference — and then
      * handed the full quantity back on a cancellation, inventing goods that do not exist.
      */
+    /**
+     * Units on hold for other people in a pre-order queue are not for sale: the customer sees
+     * {@code stock − held for others}. Their own hold counts as available to them.
+     */
+    private void requireNotHeld(Product product, ProductVariant variant, int qty, Long userId) {
+        if (preorders == null) {
+            return;
+        }
+        int held = preorders.heldForOthers(product.getId(), variant == null ? null : variant.getId(), userId);
+        if (held <= 0) {
+            return;
+        }
+        int stock = variant != null ? variant.getStock() : product.getStock();
+        int available = stock - held;
+        if (available < qty) {
+            String title = variant != null ? product.getTitle() + " (" + variant.getName() + ")" : product.getTitle();
+            throw new BadRequestException(messages.current("api.order.outOfStock", title, Math.max(0, available)));
+        }
+    }
+
     private void reserveStock(Product product, ProductVariant variant, int qty) {
         if (variant != null) {
             if (variant.getStock() < qty) {
