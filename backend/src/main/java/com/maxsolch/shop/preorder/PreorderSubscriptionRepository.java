@@ -47,6 +47,11 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
             + "s.status in ('WAITING', 'HELD')")
     long countPeople(@Param("productId") byte[] productId);
 
+    /** Units on hold per line, {@code [productId, variantId, held]} — the catalog shows the rest. */
+    @Query("select s.productId, s.variantId, sum(s.heldQty) from PreorderSubscription s where s.status = 'HELD' "
+            + "and s.heldQty > 0 group by s.productId, s.variantId")
+    List<Object[]> heldByLine();
+
     /** Waiting before this subscription in its queue (its place = this + 1). */
     @Query("select count(s) from PreorderSubscription s where " + SAME_LINE + " and s.status = 'WAITING' "
             + "and (s.createdAt < :createdAt or (s.createdAt = :createdAt and s.id < :id))")

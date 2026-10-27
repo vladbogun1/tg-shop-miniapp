@@ -19,11 +19,16 @@ import com.maxsolch.shop.settings.SettingsRegistry;
 import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.site.SiteRevalidator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -87,6 +92,20 @@ public class PreorderQueueService {
         this.events = events;
         this.messages = messages;
         this.clock = clock;
+    }
+
+    /** The catalog caches stock: a hold that appears or goes away changes what the shop shows as available. */
+    private CacheManager cacheManager;
+    private SiteRevalidator siteRevalidator;
+
+    @Autowired(required = false)
+    void setCacheManager(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
+    @Autowired(required = false)
+    void setSiteRevalidator(SiteRevalidator siteRevalidator) {
+        this.siteRevalidator = siteRevalidator;
     }
 
     /** What a hand-out did on one line. */
@@ -166,6 +185,7 @@ public class PreorderQueueService {
         s.close(Status.CANCELLED, "вышел из очереди", clock.instant());
         subs.save(s);
         if (wasHeld && product != null) {
+            holdsChanged(product);
             handOut(product, variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                     holdHours(s.getBatchId()), false);
         }
@@ -250,6 +270,15 @@ public class PreorderQueueService {
         return (int) subs.heldForOthers(productId, variantId, userId);
     }
 
+    /** Units on hold per line ({@link #lineKey}) — the catalog subtracts them from the stock it shows. */
+    public Map<String, Integer> heldByLine() {
+        Map<String, Integer> out = new HashMap<>();
+        for (Object[] row : subs.heldByLine()) {
+            out.put(lineKey((byte[]) row[0], (byte[]) row[1]), ((Number) row[2]).intValue());
+        }
+        return out;
+    }
+
     /**
      * An order was placed: the buyer's places in these lines are done. A hold bigger than what was bought
      * frees the rest, which goes to the next person. Runs in the order transaction (products locked).
@@ -266,9 +295,11 @@ public class PreorderQueueService {
                 s.setOrderId(orderId);
                 subs.save(s);
                 if (partlyUnused) {
-                    products.findByIdForUpdate(line[0]).ifPresent(p ->
-                            handOut(p, variantById(p, line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
-                                    holdHours(s.getBatchId()), false));
+                    products.findByIdForUpdate(line[0]).ifPresent(p -> {
+                        holdsChanged(p);
+                        handOut(p, variantById(p, line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
+                                holdHours(s.getBatchId()), false);
+                    });
                 }
             }
         }
@@ -291,6 +322,9 @@ public class PreorderQueueService {
         List<PreorderSubscription> queue = subs.lockQueue(product.getId(), variant == null ? null : variant.getId());
         int held = queue.stream().filter(s -> s.statusEnum() == Status.HELD).mapToInt(PreorderSubscription::getHeldQty).sum();
         int over = held - Math.max(0, stockAfter);
+        if (over > 0) {
+            holdsChanged(product);
+        }
         for (int i = queue.size() - 1; i >= 0 && over > 0; i--) {
             PreorderSubscription s = queue.get(i);
             if (s.statusEnum() != Status.HELD) {
@@ -340,6 +374,7 @@ public class PreorderQueueService {
                 }
             }
             subs.saveAll(queue);
+            holdsChanged(product);
             return new HandOut(0, 0, told, 0, free);
         }
         PreorderRules.Allocation a = PreorderRules.allocate(seats(queue), free);
@@ -361,7 +396,41 @@ public class PreorderQueueService {
             }
         }
         subs.saveAll(queue);
+        if (!a.grants().isEmpty()) {
+            holdsChanged(product);
+        }
         return new HandOut(a.grants().size(), a.grantedQty(), 0, a.shorts().size(), a.freeLeft());
+    }
+
+    /**
+     * Holds of a product changed: drop the cached catalog and rebuild its site pages once the
+     * transaction commits (before that another request would cache the old numbers again).
+     */
+    private void holdsChanged(Product product) {
+        String slug = product.getSlug();
+        Runnable flush = () -> {
+            if (cacheManager != null) {
+                for (String name : List.of("products", "productById")) {
+                    Cache c = cacheManager.getCache(name);
+                    if (c != null) {
+                        c.clear();
+                    }
+                }
+            }
+            if (siteRevalidator != null) {
+                siteRevalidator.productChanged(slug, null, null);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    flush.run();
+                }
+            });
+        } else {
+            flush.run();
+        }
     }
 
     /** The same hand-out without touching anything — the «Приехала» preview. */
@@ -400,6 +469,7 @@ public class PreorderQueueService {
             events.publishEvent(new PreorderEvents.HoldExpired(s.getId()));
             done++;
             if (wasHeld && product != null) {
+                holdsChanged(product);
                 handOut(product, variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                         holdHours(s.getBatchId()), false);
             }
@@ -534,7 +604,7 @@ public class PreorderQueueService {
         return v != null ? v.getStock() : p.getStock();
     }
 
-    static String lineKey(byte[] productId, byte[] variantId) {
+    public static String lineKey(byte[] productId, byte[] variantId) {
         return UuidUtil.toString(productId) + ":" + (variantId == null ? "" : UuidUtil.toString(variantId));
     }
 

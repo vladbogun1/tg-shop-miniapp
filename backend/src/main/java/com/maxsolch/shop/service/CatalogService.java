@@ -51,12 +51,25 @@ public class CatalogService {
         this.translationService = translationService;
     }
 
+    /** Pre-order holds: units kept for people in a queue are not shown as in stock (optional in unit tests). */
+    private com.maxsolch.shop.preorder.PreorderQueueService preorders;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders) {
+        this.preorders = preorders;
+    }
+
+    private Map<String, Integer> held() {
+        return preorders == null ? Map.of() : preorders.heldByLine();
+    }
+
     @Transactional(readOnly = true)
     @Cacheable(value = "products", key = LANG_KEY)
     public List<ProductDto> listActiveProducts(String lang) {
         Map<String, Long> sold = soldCounts();
+        Map<String, Integer> held = held();
         List<ProductDto> original = productRepository.findAllActive().stream()
-                .map(p -> toDto(p, sold))
+                .map(p -> toDto(p, sold, held))
                 .toList();
         return translationService.overlay(lang).products(original);
     }
@@ -72,7 +85,7 @@ public class CatalogService {
         }
         return productRepository.findByIdWithDetails(key)
                 .filter(p -> p.isActive() && !p.isArchived())
-                .map(p -> toDto(p, soldCounts()))
+                .map(p -> toDto(p, soldCounts(), held()))
                 .map(translationService.overlay(lang)::product);
     }
 
@@ -93,12 +106,31 @@ public class CatalogService {
         return sold;
     }
 
-    private ProductDto toDto(Product p, Map<String, Long> soldCounts) {
+    /** The stock a customer sees: minus the units held for people in a pre-order queue. */
+    private static int shownStock(Product p, Map<String, Integer> held) {
+        if (held.isEmpty()) {
+            return p.getStock();
+        }
+        int heldHere = 0;
+        if (p.getVariants() == null || p.getVariants().isEmpty()) {
+            heldHere = held.getOrDefault(com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), null), 0);
+        } else {
+            for (var v : p.getVariants()) {
+                heldHere += held.getOrDefault(com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), v.getId()), 0);
+            }
+        }
+        return Math.max(0, p.getStock() - heldHere);
+    }
+
+    private ProductDto toDto(Product p, Map<String, Long> soldCounts, Map<String, Integer> held) {
         List<ProductImageDto> images = p.getImages().stream()
                 .map(i -> new ProductImageDto(i.getId(), i.getUrl(), i.getSortOrder()))
                 .toList();
         List<ProductVariantDto> variants = p.getVariants().stream()
-                .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(), v.getStock(), v.getSortOrder()))
+                .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(),
+                        Math.max(0, v.getStock() - held.getOrDefault(
+                                com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), v.getId()), 0)),
+                        v.getSortOrder()))
                 .toList();
         CatalogSnapshot catalog = catalogDirectory.snapshot();
         String categoryId = ProductCatalogFields.categoryId(p);
@@ -111,7 +143,7 @@ public class CatalogService {
                 p.getDescription(),
                 p.getPriceMinor(),
                 p.getCurrency(),
-                p.getStock(),
+                shownStock(p, held),
                 p.isActive(),
                 soldCounts.getOrDefault(id, 0L),
                 images,
