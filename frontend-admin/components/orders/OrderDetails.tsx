@@ -44,6 +44,7 @@ import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
 import { MoneyLedgerBlock } from "./MoneyLedgerBlock";
+import { OrderProfitBlock } from "./OrderProfitBlock";
 import { ReturnHistoryBlock } from "./ReturnHistoryBlock";
 
 export interface DetailHandlers {
@@ -323,6 +324,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
       <ReturnHistoryBlock order={order} onChanged={h.onPaymentChanged} />
 
       <MoneyLedgerBlock order={order} onChanged={h.onPaymentChanged} />
+
+      <OrderProfitBlock orderId={order.id} />
 
       {/* Items */}
       <Section title="Состав">

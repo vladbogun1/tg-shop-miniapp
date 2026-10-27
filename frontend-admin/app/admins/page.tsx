@@ -51,6 +51,7 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
+import { Toggle } from "@/components/ui/Toggle";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import {
   adminApi,
@@ -129,12 +130,13 @@ function Team() {
         ) : (
           <>
             <div className="card thin-scroll hidden overflow-x-auto p-0 md:block">
-              <table className="data-table min-w-[860px]">
+              <table className="data-table min-w-[940px]">
                 <thead>
                   <tr>
                     <th>Админ</th>
                     <th>Роль</th>
                     <th>2FA</th>
+                    <th>Финансы</th>
                     <th>Последний вход</th>
                     <th>Устройства</th>
                     <th>Создан</th>
@@ -155,6 +157,9 @@ function Team() {
                           <TwoFa on={r.admin.totpEnabled} />
                         </td>
                         <td>
+                          <FinanceSwitch admin={r.admin} actions={actions} />
+                        </td>
+                        <td>
                           <LastLogin admin={r.admin} />
                         </td>
                         <td className="tabular">{r.admin.trustedDevices}</td>
@@ -173,6 +178,7 @@ function Team() {
                         <td>
                           <InviteBadge invite={r.invite} />
                         </td>
+                        <td className="text-[var(--text-faint)]">—</td>
                         <td className="text-[var(--text-faint)]">—</td>
                         <td className="text-[var(--text-faint)]">ещё не входил</td>
                         <td className="text-[var(--text-faint)]">—</td>
@@ -202,6 +208,10 @@ function Team() {
                       <TwoFa on={r.admin.totpEnabled} />
                     </div>
                     <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12.5px]">
+                      <dt className="self-center text-[var(--text-faint)]">Финансы</dt>
+                      <dd className="flex justify-end">
+                        <FinanceSwitch admin={r.admin} actions={actions} />
+                      </dd>
                       <dt className="text-[var(--text-faint)]">Последний вход</dt>
                       <dd className="min-w-0 text-right">
                         <LastLogin admin={r.admin} compact />
@@ -464,6 +474,7 @@ function Popover({ anchor, items, onClose }: { anchor: React.RefObject<HTMLButto
 
 interface AdminActions {
   itemsFor: (row: Row) => MenuItem[];
+  askFinance: (admin: TeamAdmin, on: boolean) => void;
   ui: ReactNode;
 }
 
@@ -713,7 +724,22 @@ function useAdminActions(
       )}
     </>
   );
-  return { itemsFor, ui };
+  const askFinance = useCallback(
+    (a: TeamAdmin, on: boolean) =>
+      setAsk({
+        title: on ? `Включить «Финансы» для «${adminName(a)}»?` : `Выключить «Финансы» у «${adminName(a)}»?`,
+        message: on
+          ? "Админ увидит цены закупки, расходы поставок, себестоимость, прибыль и маржу заказов."
+          : "Админ перестанет видеть закупку, себестоимость, прибыль и маржу.",
+        confirmLabel: on ? "Включить" : "Выключить",
+        run: async (code) => {
+          await teamApi.setFinance(a.telegramUserId, on, code);
+          push(on ? "«Финансы» включены" : "«Финансы» выключены", "ok");
+        },
+      }),
+    [push]
+  );
+  return { itemsFor, askFinance, ui };
 }
 
 /** A dangerous action: what happens + the main admin's own code from the authenticator app. */
@@ -1043,5 +1069,15 @@ function LinkModal({ created, who, onClose }: { created: InviteCreated; who: str
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** «Финансы»: закупка, расходы, маржа. Главному админу включено всегда; смена — по коду из приложения. */
+function FinanceSwitch({ admin, actions }: { admin: TeamAdmin; actions: AdminActions }) {
+  const locked = admin.status === "SUPER_ADMIN" || !admin.active || admin.self;
+  return (
+    <span title={admin.status === "SUPER_ADMIN" ? "У главного админа всегда включено" : undefined}>
+      <Toggle checked={admin.finance || admin.status === "SUPER_ADMIN"} disabled={locked} onChange={(v) => actions.askFinance(admin, v)} />
+    </span>
   );
 }

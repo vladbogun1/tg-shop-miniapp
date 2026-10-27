@@ -19,6 +19,8 @@ import { FunnelTab } from "@/components/metrics/tabs/FunnelTab";
 import { OperationsTab } from "@/components/metrics/tabs/OperationsTab";
 import { OverviewTab } from "@/components/metrics/tabs/OverviewTab";
 import { StockTab } from "@/components/metrics/tabs/StockTab";
+import { MarginTab } from "@/components/metrics/tabs/MarginTab";
+import { useFinanceAccess } from "@/lib/costing";
 
 const TABS = [
   { value: "overview", label: "Обзор" },
@@ -26,6 +28,7 @@ const TABS = [
   { value: "customers", label: "Покупатели" },
   { value: "funnel", label: "Воронка" },
   { value: "operations", label: "Операции" },
+  { value: "margin", label: "Маржа" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
@@ -41,7 +44,9 @@ function Metrics() {
   const router = useRouter();
   const sp = useSearchParams();
   const raw = sp.get("tab");
-  const tab: Tab = TABS.some((t) => t.value === raw) ? (raw as Tab) : "overview";
+  const finance = useFinanceAccess();
+  const tabs = TABS.filter((t) => t.value !== "margin" || finance);
+  const tab: Tab = tabs.some((t) => t.value === raw) ? (raw as Tab) : "overview";
   const [params, setParams] = useMetricsPeriod();
 
   function setTab(t: Tab) {
@@ -57,7 +62,7 @@ function Metrics() {
       <div className="mb-4 flex flex-col gap-3">
         <PeriodPicker params={params} onChange={setParams} />
         <div className="thin-scroll -mx-1 overflow-x-auto overflow-y-hidden px-1 pb-1">
-          <SegmentedControl options={TABS.map((t) => ({ value: t.value, label: t.label }))} value={tab} onChange={setTab} />
+          <SegmentedControl options={tabs.map((t) => ({ value: t.value, label: t.label }))} value={tab} onChange={setTab} />
         </div>
       </div>
 
@@ -66,6 +71,7 @@ function Metrics() {
       {tab === "customers" && <CustomersTab params={params} />}
       {tab === "funnel" && <FunnelTab params={params} />}
       {tab === "operations" && <OperationsTab params={params} />}
+      {tab === "margin" && <MarginTab params={params} />}
     </div>
   );
 }

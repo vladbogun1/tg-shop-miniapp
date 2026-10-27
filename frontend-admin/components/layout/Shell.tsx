@@ -174,6 +174,7 @@ const TITLE: Record<string, string> = {
   "/broadcasts": "Рассылки",
   "/products": "Товары",
   "/preorders": "Поставки",
+  "/opening-cost": "Начальная себестоимость",
   "/reviews": "Отзывы",
   "/categories": "Категории",
   "/brands": "Бренды",

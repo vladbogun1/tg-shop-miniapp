@@ -32,7 +32,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal, ModalCancel } from "@/components/ui/Modal";
 import { QueryState } from "@/components/ui/QueryState";
+import { Tabs } from "@/components/ui/Tabs";
 import { Toggle } from "@/components/ui/Toggle";
+import { useFinanceAccess } from "@/lib/costing";
+import { BatchMoneyTab } from "@/components/preorders/BatchMoneyTab";
+import { BatchSalesTab } from "@/components/preorders/BatchSalesTab";
 import { ArriveModal } from "@/components/preorders/ArriveModal";
 import { BatchFormModal } from "@/components/preorders/BatchFormModal";
 import { SubscribersList } from "@/components/preorders/SubscribersList";
@@ -60,6 +64,9 @@ function BatchView({ batch }: { batch: Batch }) {
   const [arriving, setArriving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const open = isOpenStatus(batch.status);
+  const finance = useFinanceAccess();
+  const [tab, setTab] = useState<"main" | "money" | "sales">("main");
+  const shownTab = finance ? tab : "main";
 
   const subsQ = useQuery({
     queryKey: [...PREORDERS_KEY, "batch-subs", batch.id],
@@ -143,6 +150,22 @@ function BatchView({ batch }: { batch: Batch }) {
         </div>
       )}
 
+      {finance && (
+        <Tabs
+          className="mb-4"
+          value={shownTab}
+          onChange={setTab}
+          items={[
+            { value: "main", label: "Позиции и очередь" },
+            { value: "money", label: "Деньги" },
+            { value: "sales", label: "Продажи" },
+          ]}
+        />
+      )}
+      {shownTab === "money" && <BatchMoneyTab batchId={batch.id} />}
+      {shownTab === "sales" && <BatchSalesTab batchId={batch.id} />}
+      {shownTab === "main" && (
+      <>
       <h2 className="mb-2 font-display text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">Позиции</h2>
       <div className="mb-5 flex min-w-0 flex-col gap-2">
         {batch.items.map((i) => {
@@ -180,6 +203,8 @@ function BatchView({ batch }: { batch: Batch }) {
       <QueryState isLoading={subsQ.isLoading} isError={subsQ.isError} error={subsQ.error} refetch={subsQ.refetch}>
         <SubscribersList subs={subsQ.data ?? []} showLine={batch.items.length > 1} />
       </QueryState>
+      </>
+      )}
 
       <BatchFormModal open={editing} onClose={() => setEditing(false)} batch={batch} />
       {open && <ArriveModal open={arriving} onClose={() => setArriving(false)} batch={batch} />}

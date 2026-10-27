@@ -696,6 +696,8 @@ export interface TeamAdmin {
   /** Open login / password link of this admin. */
   invite: TeamInvite | null;
   telegramLabel: string | null;
+  /** «Финансы»: закупка, расходы, маржа. У главного админа включено всегда. */
+  finance: boolean;
   /** The caller — managed in «Мой аккаунт», not here. */
   self: boolean;
 }
@@ -729,6 +731,7 @@ export const teamApi = {
   forgetDevices: (id: number) => http.post<{ forgotten: number }>(`/api/admin/admins/${id}/forget-devices`),
   block: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/block`, { code }),
   unblock: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/unblock`, { code }),
+  setFinance: (id: number, finance: boolean, code: string) => http.put<void>(`/api/admin/admins/${id}/finance`, { finance, code }),
   remove: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/delete`, { code }),
 };
 

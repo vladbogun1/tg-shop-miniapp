@@ -16,6 +16,7 @@
  * Turning «На витрине» on for a DRAFT card goes through the publishing gate (PublishGate).
  */
 import { WaitLine } from "@/components/preorders/WaitBadge";
+import { ProductCostBlock, marginHint, useProductCost } from "@/components/products/ProductCostBlock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -202,6 +203,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   const catsQ = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, enabled: open, staleTime: 60_000 });
   const brandsQ = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, enabled: open, staleTime: 60_000 });
   const schemaQ = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, enabled: open, staleTime: 60_000 });
+  const costInfo = useProductCost(product?.id, open);
   const categories = useMemo(() => catsQ.data ?? schemaQ.data?.categories ?? [], [catsQ.data, schemaQ.data]);
   const brands = brandsQ.data ?? [];
   const attrs = useMemo(
@@ -268,6 +270,8 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   );
   const priceMinor = f.priceMajor.trim() ? toMinor(f.priceMajor) : 0;
   const compareAtMinor = f.compareAtMajor.trim() ? toMinor(f.compareAtMajor) : 0;
+  // Margin hint under the price field: only once the price differs from the saved one.
+  const priceMarginHint = product && priceMinor !== product.priceMinor ? marginHint(costInfo, priceMinor) : null;
   const compareAtInvalid = compareAtMinor > 0 && compareAtMinor <= priceMinor;
   const slugPreview = f.slug.trim() ? slugify(f.slug) : slugify(f.title);
   // A "Бренд: …" line or a known name in the texts — offered as a one-tap suggestion.
@@ -779,6 +783,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                     onChange={(e) => set("priceMajor", e.target.value)}
                     placeholder="0"
                     error={f.active && priceMinor <= 0 ? "Товару на витрине нужна цена" : undefined}
+                    hint={priceMarginHint ?? undefined}
                   />
                   <Input
                     label="Старая цена, ₴"
@@ -799,6 +804,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                   />
                   <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
                   {product?.id && <WaitLine productId={product.id} title={product.title} />}
+                  {product?.id && <ProductCostBlock productId={product.id} />}
                 </div>
               )}
 
