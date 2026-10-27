@@ -29,20 +29,25 @@ const RU_LABELS: RelativeLabels = {
 
 const DEFAULT_LOCALE = "ru-RU";
 
-export function formatDate(iso: string, locale = DEFAULT_LOCALE): string {
+/*
+ * `timeZone` (e.g. "Europe/Kyiv") pins the calendar day and clock; without it the runtime's zone is
+ * used — fine in the Mini App, but a server-rendered page prints UTC and the browser hydrates in its own.
+ */
+
+export function formatDate(iso: string, locale = DEFAULT_LOCALE, timeZone?: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric" });
+  return d.toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric", timeZone });
 }
 
 /** "10 окт." — day and short month, for tight spots where the year is obvious. */
-export function formatDayMonth(iso: string, locale = DEFAULT_LOCALE): string {
+export function formatDayMonth(iso: string, locale = DEFAULT_LOCALE, timeZone?: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short", timeZone });
 }
 
-export function formatDateTime(iso: string, locale = DEFAULT_LOCALE): string {
+export function formatDateTime(iso: string, locale = DEFAULT_LOCALE, timeZone?: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString(locale, {
@@ -51,6 +56,7 @@ export function formatDateTime(iso: string, locale = DEFAULT_LOCALE): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone,
   });
 }
 
@@ -66,12 +72,12 @@ export function formatShortDateTime(iso: string, locale = DEFAULT_LOCALE): strin
   });
 }
 
-export function formatTime(iso: string, locale = DEFAULT_LOCALE): string {
+export function formatTime(iso: string, locale = DEFAULT_LOCALE, timeZone?: string): string {
   // null/"" would become 1970-01-01 00:00 UTC — a fake «03:00» is worse than no time at all.
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone });
 }
 
 /**
