@@ -345,6 +345,18 @@ export function parseOrderViewDeepLink(param: string | null): string | null {
 }
 
 /**
+ * `pp_<productId>` — open that product (the bot's «приїхав, бронь до …» button). The id is a UUID, with
+ * or without dashes; returned in the dashed form the API uses. Null for anything else.
+ */
+export function parseProductDeepLink(param: string | null): string | null {
+  if (!param) return null;
+  const m = /^pp[_-]([0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})$/.exec(param);
+  if (!m) return null;
+  const h = m[1].replace(/-/g, "").toLowerCase();
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/**
  * Keeps Telegram's native MainButton hidden.
  *
  * The primary action is an in-page button instead: the native one duplicated it and ate vertical

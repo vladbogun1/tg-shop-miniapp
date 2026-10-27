@@ -42,6 +42,9 @@
   --ok: #22C55E;
   --warn: #F59E0B;
   --danger: #EF4444;
+  /* pre-order («їде до нас»): blue-violet, distinct from stock green and the orange CTA */
+  --pre: #8E7CFF;
+  --pre-soft: rgba(142, 124, 255, .12);
 
   /* Order statuses: functional, identical to the admin */
   --st-new: #3F8CF5;

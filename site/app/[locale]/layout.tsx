@@ -10,7 +10,7 @@ import { makeT } from "@/i18n";
 import { CHUNK_RECOVERY_SCRIPT, isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 import { pageMeta } from "@/lib/seo";
-import { getCategories, safe } from "@/lib/server-api";
+import { getCategories, getPreorderIndex, safe } from "@/lib/server-api";
 import { menuTree } from "@/lib/category-tree";
 // Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
 // a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
@@ -71,7 +71,8 @@ export default async function LocaleLayout({
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
   // Root categories with their subcategories; empty ones are hidden from the menus.
-  const tree = menuTree(await safe(getCategories(locale), []));
+  const [categories, pre] = await Promise.all([safe(getCategories(locale), []), getPreorderIndex(locale)]);
+  const tree = menuTree(categories);
 
   return (
     <html lang={LOCALE_TAG[locale]} suppressHydrationWarning>
@@ -85,7 +86,7 @@ export default async function LocaleLayout({
         <SceneFx />
         <Providers locale={locale}>
           <PreloaderReady />
-          <Header tree={tree} />
+          <Header tree={tree} hasComing={(pre?.size ?? 0) > 0} />
           {/* No z-index here: it would trap the sheets and lightboxes rendered inside under the sticky header. */}
           <main id="main" className="relative flex-1">
             {children}

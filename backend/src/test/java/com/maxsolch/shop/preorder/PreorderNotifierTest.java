@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -67,7 +68,8 @@ class PreorderNotifierTest {
     private void place(String status, int qty, Integer position, int heldQty, Instant holdUntil, EtaDto eta) {
         MyPreorderDto p = new MyPreorderDto(7, PRODUCT, null, "MCHOSE Ace 68", "mchose-ace-68", null, null, qty,
                 status, position, heldQty, holdUntil, Instant.parse("2026-10-27T10:00:00Z"), eta);
-        when(queue.describe(7L)).thenReturn(Optional.of(new PreorderQueueService.Described(USER, p, 719900)));
+        when(queue.ownerOf(7L)).thenReturn(USER);
+        when(queue.describe(eq(7L), any())).thenReturn(Optional.of(new PreorderQueueService.Described(USER, p, 719900)));
     }
 
     private SendMessage sent() throws Exception {

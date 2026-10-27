@@ -35,7 +35,7 @@ import { SupportGate } from "@/components/support/SupportGate";
 import { useSupportUnread } from "@/lib/support";
 import "./header.css";
 
-export function Header({ tree }: { tree: MenuNode[] }) {
+export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open pre-order batches exist: «Скоро в наявності» is in the menus. */ hasComing?: boolean }) {
   const { t, href } = useI18n();
   const pathname = stripLocale(usePathname() ?? "/");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,6 +96,11 @@ export function Header({ tree }: { tree: MenuNode[] }) {
         </div>
         <nav aria-label={t("header.nav")} className="ml-3 hidden shrink-0 items-center gap-1 lg:flex">
           <CatalogMenu tree={tree} active={pathname === "/catalog" || !!activeSlug} activeSlug={activeSlug} activeRoot={activeRoot} />
+          {hasComing && (
+            <NavLink href={href("/coming-soon")} active={pathname === "/coming-soon"} className="hidden xl:inline-flex">
+              {t("preorder.coming.title")}
+            </NavLink>
+          )}
           <NavLink href={href("/delivery")} active={pathname === "/delivery"} className="hidden xl:inline-flex">
             {t("header.nav.delivery")}
           </NavLink>
@@ -121,7 +126,7 @@ export function Header({ tree }: { tree: MenuNode[] }) {
         </div>
       </div>
 
-      <MobileMenu open={menuOpen} onClose={closeMenu} tree={tree} activeSlug={activeSlug} activeRoot={activeRoot} />
+      <MobileMenu open={menuOpen} onClose={closeMenu} tree={tree} activeSlug={activeSlug} activeRoot={activeRoot} hasComing={hasComing} />
     </header>
     {/* phone: search on its own row, outside the sticky bar — it scrolls away (see above) */}
     <div ref={searchRow} className="hdr-row2 chrome container-site border-b border-[var(--line)] pb-3 pt-0.5 md:hidden">
@@ -249,12 +254,14 @@ function MobileMenu({
   tree,
   activeSlug,
   activeRoot,
+  hasComing,
 }: {
   open: boolean;
   onClose: () => void;
   tree: MenuNode[];
   activeSlug: string | null;
   activeRoot: string | null;
+  hasComing: boolean;
 }) {
   const { t, href } = useI18n();
   const hydrated = useHydrated();
@@ -307,6 +314,13 @@ function MobileMenu({
                     {t("header.allProducts")}
                   </MenuLink>
                 </li>
+                {hasComing && (
+                  <li>
+                    <MenuLink href={href("/coming-soon")} active={false}>
+                      {t("preorder.coming.title")}
+                    </MenuLink>
+                  </li>
+                )}
                 {tree.map((c) => (
                   <li key={c.id}>
                     <MenuLink href={href(`/catalog/${c.slug}`)} active={activeSlug === c.slug} inPath={activeRoot === c.slug && activeSlug !== c.slug} count={c.productCount}>

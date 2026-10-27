@@ -8,6 +8,7 @@
  */
 import type { CatalogSchema, Locale, StorefrontProduct } from "@shop/shared";
 import { compareGroupOf, specSummary } from "@shop/shared";
+import { type PreorderEta, type PreorderIndex, preorderOf } from "./preorder-core";
 
 /** A catalog tile's data: the product fields below + the spec line computed on the server. */
 export interface CardProduct extends StorefrontProduct {
@@ -15,6 +16,8 @@ export interface CardProduct extends StorefrontProduct {
   specLine?: string;
   /** Comparison group (root category id) — the card's «Порівняти» needs it without the schema. */
   compareGroup?: string;
+  /** Sold out and a batch brings it: the tile turns into «Передзамовлення» (lib/preorder). */
+  preorder?: PreorderEta;
 }
 
 /** Spec summary context; without it the tiles simply have no spec line. */
@@ -22,11 +25,14 @@ export interface CardContext {
   schema: CatalogSchema | null;
   locale: Locale;
   yesNo: [string, string];
+  /** Open pre-order batches; without it a sold-out tile is simply «Немає в наявності». */
+  pre?: PreorderIndex | null;
 }
 
 export function toCardProduct(p: StorefrontProduct, ctx?: CardContext): CardProduct {
   const specLine = ctx?.schema && p.categoryId && p.specs ? specSummary(ctx.schema, p.categoryId, p.specs, ctx.locale, ctx.yesNo) : "";
   const first = (p.images ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+  const preorder = preorderOf(p, ctx?.pre);
   return {
     id: p.id,
     slug: p.slug,
@@ -39,6 +45,7 @@ export function toCardProduct(p: StorefrontProduct, ctx?: CardContext): CardProd
     ratingCount: p.ratingCount,
     condition: p.condition,
     ...(specLine ? { specLine } : {}),
+    ...(preorder ? { preorder } : {}),
     ...(ctx?.schema ? { compareGroup: compareGroupOf(ctx.schema, p.categoryId) } : {}),
     images: first ? [{ url: first.url, sortOrder: first.sortOrder }] : [],
     variants: (p.variants ?? []).map((v) => ({ id: v.id, name: v.name, stock: v.stock, sortOrder: v.sortOrder })),

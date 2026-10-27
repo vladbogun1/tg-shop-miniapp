@@ -25,6 +25,7 @@ import type {
 } from "@shop/shared";
 import { catalogSearchParams, type CatalogQuery } from "./api";
 import { PAGE_SIZE, REVALIDATE_SECONDS } from "./config";
+import { buildPreorderIndex, type ComingBatch, type PreorderIndex, type ProductPreorder } from "./preorder-core";
 
 function apiBase(): string {
   return (process.env.INTERNAL_API_BASE ?? "http://localhost:8080").replace(/\/$/, "");
@@ -161,6 +162,24 @@ export async function getGift(locale: Locale): Promise<GiftResponse> {
   return getJson<GiftResponse>("/api/public/gift", locale, ["catalog", "gift"], 300);
 }
 
+/**
+ * Open pre-order batches («Скоро в наявності»), soonest first. Tagged "catalog": the backend drops that
+ * tag whenever a batch changes status, so a product turns into «Передзамовлення» without waiting.
+ */
+export async function getComingBatches(locale: Locale): Promise<ComingBatch[]> {
+  return getJson<ComingBatch[]>("/api/public/preorders", locale, ["catalog", "preorders"]);
+}
+
+/** Pre-order block of a product for a guest; null when unavailable. */
+export async function getProductPreorder(productId: string, slug: string, locale: Locale): Promise<ProductPreorder | null> {
+  try {
+    return await getJson<ProductPreorder>(`/api/public/products/${productId}/preorder`, locale, ["catalog", "preorders", `product:${slug}`]);
+  } catch (e) {
+    if (e instanceof NotFoundError) return null;
+    throw e;
+  }
+}
+
 /** Slugs only — language-independent. */
 export async function getSitemap(): Promise<PublicSitemap> {
   return getJson<PublicSitemap>("/api/public/sitemap", null);
@@ -173,5 +192,15 @@ export async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
   } catch (e) {
     if (process.env.NODE_ENV === "development") console.warn("[site] data fetch failed:", e);
     return fallback;
+  }
+}
+
+/** Open batches as an index for the tiles; null when the backend has no pre-orders (older) or fails. */
+export async function getPreorderIndex(locale: Locale): Promise<PreorderIndex | null> {
+  try {
+    return buildPreorderIndex(await getComingBatches(locale));
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") console.warn("[site] pre-orders unavailable:", e);
+    return null;
   }
 }

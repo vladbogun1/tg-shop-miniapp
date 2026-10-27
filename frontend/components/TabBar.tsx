@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { useCartCount } from "@/lib/cart";
 import { useCompare, useCompareCount } from "@/lib/compare";
+import { useHeldCount } from "@/lib/preorders";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 const TABS = [
@@ -61,6 +62,8 @@ export function TabBar() {
     if (pathname !== "/") useCompare.getState().closeScreen();
   }, [pathname]);
   const keyboardOpen = useKeyboardOpen();
+  // a dot on «Акаунт» while a unit is held for the customer («Мої очікування»)
+  const heldCount = useHeldCount();
 
   // catalogue only: hide while scrolling down, show on scroll up / near the top
   const autoHide = pathname === "/";
@@ -161,6 +164,9 @@ export function TabBar() {
                 strokeWidth={active ? 2.25 : 2}
                 style={{ color: active ? "var(--accent)" : "var(--muted)" }}
               />
+              {href === "/account" && heldCount > 0 && (
+                <span aria-hidden className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[#1a1a1a]" />
+              )}
               {href === "/cart" && cartCount > 0 && (
                 <span className="font-display absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] ring-2 ring-[#1a1a1a]">
                   {cartCount > 99 ? "99+" : cartCount}

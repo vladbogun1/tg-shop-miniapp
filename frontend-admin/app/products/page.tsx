@@ -52,6 +52,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductModal, type ProductStepKey } from "@/components/products/ProductModal";
+import { WaitBadge } from "@/components/preorders/WaitBadge";
 
 import { useShopSetting } from "@/lib/settings";
 import { invalidateCards } from "@/lib/cards";
@@ -740,6 +741,7 @@ function ProductRow({ p, missing, onComplete, archivedView, onEdit, onActive, on
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--text-muted)]">
           <PriceTag p={p} />
           <StockBadge p={p} />
+          <WaitBadge productId={p.id} title={p.title} />
           {p.variants && p.variants.length > 0 && (
             <span className="tabular">{p.variants.length} вар.</span>
           )}
@@ -819,6 +821,7 @@ function ProductCard({ p, missing, onComplete, archivedView, onEdit, onActive, o
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           <StockBadge p={p} />
+          <WaitBadge productId={p.id} title={p.title} />
           {p.variants && p.variants.length > 0 ? (
             <span className="tabular text-[12px] text-[var(--text-muted)]">
               {p.variants.length} вар.

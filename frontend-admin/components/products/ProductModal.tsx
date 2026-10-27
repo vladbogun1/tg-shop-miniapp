@@ -15,6 +15,7 @@
  * (expectedStock) — the server answers 409 STOCK_CONFLICT if orders moved it meanwhile.
  * Turning «На витрине» on for a DRAFT card goes through the publishing gate (PublishGate).
  */
+import { WaitLine } from "@/components/preorders/WaitBadge";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -797,6 +798,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                     onChange={(e) => set("stock", e.target.value)}
                   />
                   <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
+                  {product?.id && <WaitLine productId={product.id} title={product.title} />}
                 </div>
               )}
 

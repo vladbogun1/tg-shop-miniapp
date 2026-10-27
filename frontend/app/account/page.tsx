@@ -29,6 +29,7 @@ import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { LanguageSegments } from "@/components/LanguageToggle";
 import { SupportEntry } from "@/components/account/SupportEntry";
+import { AccountPreordersLink } from "@/components/preorder/AccountPreordersLink";
 import { AccountReviewsLink } from "@/components/reviews/AccountReviewsLink";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
@@ -111,6 +112,8 @@ export default function AccountPage() {
       <div className="mb-5">
         <LanguageSegments />
       </div>
+
+      <AccountPreordersLink />
 
       <AccountReviewsLink />
 

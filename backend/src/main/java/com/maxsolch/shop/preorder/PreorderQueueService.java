@@ -20,10 +20,14 @@ import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.TranslationEntityType;
+import com.maxsolch.shop.translation.TranslationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +46,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -101,6 +106,13 @@ public class PreorderQueueService {
     @Autowired(required = false)
     void setCacheManager(CacheManager cacheManager) {
         this.cacheManager = cacheManager;
+    }
+
+    private TranslationService translations;
+
+    @Autowired(required = false)
+    void setTranslations(TranslationService translations) {
+        this.translations = translations;
     }
 
     @Autowired(required = false)
@@ -204,16 +216,27 @@ public class PreorderQueueService {
                 out.add(toMine(s, p, etas.get(lineKey(s.getProductId(), s.getVariantId()))));
             }
         }
-        out.sort(Comparator.comparing((MyPreorderDto d) -> Status.valueOf(d.status()).live() ? 0 : 1));
+        // A hold (act now) first, then the queues, then history; newest first inside each.
+        out.sort(Comparator.comparingInt((MyPreorderDto d) -> switch (Status.valueOf(d.status())) {
+            case HELD, NOTIFIED -> 0;
+            case WAITING -> 1;
+            default -> 2;
+        }));
         return out;
+    }
+
+    /** Whose place this is (the bot needs their language before it describes the place). */
+    @Transactional(readOnly = true)
+    public Long ownerOf(long subscriptionId) {
+        return subs.findById(subscriptionId).map(PreorderSubscription::getUserId).orElse(null);
     }
 
     /** One place as its owner sees it, with the product (for the bot messages); empty if either is gone. */
     @Transactional(readOnly = true)
-    public Optional<Described> describe(long subscriptionId) {
+    public Optional<Described> describe(long subscriptionId, Locale locale) {
         return subs.findById(subscriptionId).flatMap(s -> products.findById(s.getProductId()).map(p ->
-                new Described(s.getUserId(), toMine(s, p, openEtas().get(lineKey(s.getProductId(), s.getVariantId()))),
-                        p.getPriceMinor())));
+                new Described(s.getUserId(), toMine(s, p, openEtas().get(lineKey(s.getProductId(), s.getVariantId())),
+                        ContentLocale.normalize(locale)), p.getPriceMinor())));
     }
 
     public record Described(Long userId, MyPreorderDto place, long priceMinor) {
@@ -582,14 +605,25 @@ public class PreorderQueueService {
     }
 
     MyPreorderDto toMine(PreorderSubscription s, Product p, EtaDto eta) {
+        return toMine(s, p, eta, ContentLocale.normalize(LocaleContextHolder.getLocale()));
+    }
+
+    /** {@code lang}: the product and variant names come in it (uk/en translations; ru is the source). */
+    MyPreorderDto toMine(PreorderSubscription s, Product p, EtaDto eta, String lang) {
         Integer position = null;
         if (s.statusEnum() == Status.WAITING) {
             position = (int) subs.countAhead(s.getProductId(), s.getVariantId(), s.getCreatedAt(), s.getId()) + 1;
         }
         ProductVariant v = variantById(p, s.getVariantId());
-        return new MyPreorderDto(s.getId(), UuidUtil.toString(s.getProductId()),
-                s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId()),
-                p.getTitle(), p.getSlug(), imageOf(p), v == null ? null : v.getName(), s.getQty(), s.getStatus(),
+        String productId = UuidUtil.toString(s.getProductId());
+        String variantId = s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId());
+        TranslationService.Overlay overlay = translations == null ? null : translations.overlay(lang);
+        String title = overlay == null ? p.getTitle()
+                : overlay.text(TranslationEntityType.PRODUCT, productId, TranslationEntityType.TITLE, p.getTitle());
+        String variantName = v == null ? null : overlay == null ? v.getName()
+                : overlay.text(TranslationEntityType.VARIANT, variantId, TranslationEntityType.NAME, v.getName());
+        return new MyPreorderDto(s.getId(), productId, variantId,
+                title, p.getSlug(), imageOf(p), variantName, s.getQty(), s.getStatus(),
                 position, s.getHeldQty(), s.getHoldUntil(), s.getCreatedAt(),
                 s.statusEnum().live() ? eta : null);
     }

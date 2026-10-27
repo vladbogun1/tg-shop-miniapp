@@ -1,5 +1,5 @@
 import { activeFilterCount, type Facet, type Locale } from "@shop/shared";
-import { ChevronLeft, ChevronRight, PackageSearch, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, PackageSearch, Truck, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Breadcrumbs, type Crumb } from "@/components/layout/Breadcrumbs";
@@ -32,6 +32,7 @@ export function CatalogView({
   hint,
   card,
   footer,
+  coming = false,
 }: {
   locale: Locale;
   title: string;
@@ -49,6 +50,8 @@ export function CatalogView({
   card: CardContext;
   /** Rendered under the grid and pagination (the category SEO text, see CategoryIntro). */
   footer?: ReactNode;
+  /** Open pre-order batches exist: the category tree gets a «Скоро в наявності» link. */
+  coming?: boolean;
 }) {
   const t = makeT(locale);
   const total = listing?.total ?? 0;
@@ -81,7 +84,7 @@ export function CatalogView({
 
         <div className="flex gap-6">
           <aside className="hidden w-[240px] shrink-0 lg:block" aria-label={t("catalog.categories")}>
-            <CategoryTree locale={locale} tree={tree} activeSlug={activeSlug} />
+            <CategoryTree locale={locale} tree={tree} activeSlug={activeSlug} coming={coming} />
           </aside>
 
           <div className="min-w-0 flex-1">
@@ -142,7 +145,7 @@ export function CatalogView({
  * selected leaf) unfolds its subcategories as an indented tree with a guide line. Plain links, the
  * clean category URLs (filters are not carried over — characteristic facets differ per category).
  */
-function CategoryTree({ locale, tree, activeSlug }: { locale: Locale; tree: MenuNode[]; activeSlug: string | null }) {
+function CategoryTree({ locale, tree, activeSlug, coming }: { locale: Locale; tree: MenuNode[]; activeSlug: string | null; coming: boolean }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
   if (tree.length === 0) return null;
@@ -179,6 +182,16 @@ function CategoryTree({ locale, tree, activeSlug }: { locale: Locale; tree: Menu
             </li>
           );
         })}
+        {coming && (
+          <li className="mt-1 border-t border-[var(--line)] pt-2">
+            <TreeLink href={href("/coming-soon")} active={false}>
+              <span className="flex items-center gap-2">
+                <Truck className="h-4 w-4 shrink-0 text-[var(--pre)]" strokeWidth={2.25} />
+                <span className="truncate">{t("preorder.coming.title")}</span>
+              </span>
+            </TreeLink>
+          </li>
+        )}
       </ul>
     </nav>
   );

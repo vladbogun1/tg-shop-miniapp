@@ -133,11 +133,12 @@ public class PreorderNotifier {
             return;
         }
         try {
-            queue.describe(subscriptionId).ifPresent(d -> {
-                if (d.userId() == null || d.userId() <= 0) {
-                    return;
-                }
-                Locale locale = messages.localeOf(d.userId());
+            Long userId = queue.ownerOf(subscriptionId);
+            if (userId == null || userId <= 0) {
+                return;
+            }
+            Locale locale = messages.localeOf(userId);
+            queue.describe(subscriptionId, locale).ifPresent(d -> {
                 Msg m = builder.build(d, locale);
                 SendMessage msg = SendMessage.builder()
                         .chatId(String.valueOf(d.userId()))

@@ -4,7 +4,7 @@ import { alternates, makeT } from "@/i18n";
 import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
 import { cardContext, computeListing, loadSchema, menuTree } from "@/lib/catalog";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getListingProducts, safe } from "@/lib/server-api";
+import { getCategories, getListingProducts, getPreorderIndex, safe } from "@/lib/server-api";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is
@@ -46,12 +46,13 @@ export default async function SearchPage({
 
   // The backend searches (title, description, brand); the site filters the hits like a category.
   const filter = { ...state.filter, attrs: {} };
-  const [categories, schema, products] = await Promise.all([
+  const [categories, schema, products, pre] = await Promise.all([
     safe(getCategories(locale), []),
     loadSchema(locale),
     safe(getListingProducts(locale, { q }), null),
+    getPreorderIndex(locale),
   ]);
-  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale, state.from) : null;
+  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale, state.from, pre) : null;
   return (
     <CatalogView
       locale={locale}
@@ -61,7 +62,8 @@ export default async function SearchPage({
       listing={listing}
       tree={menuTree(categories)}
       activeSlug={null}
-      card={cardContext(schema, locale)}
+      card={cardContext(schema, locale, pre)}
+      coming={(pre?.size ?? 0) > 0}
     />
   );
 }

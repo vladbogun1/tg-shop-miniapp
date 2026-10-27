@@ -5,7 +5,8 @@
  *  - TanStack Query (data cache, background refetch).
  *  - Telegram init (ready/expand/safe areas) via useTelegram().
  *  - Auth boot: exchange initData → JWT (held in memory by lib/api).
- *  - Deep link: ?startapp=order_<id> opens that order's chat, ?startapp=cart the cart.
+ *  - Deep link: ?startapp=order_<id> opens that order's chat, ?startapp=cart the cart,
+ *    ?startapp=preorders «Мої очікування», ?startapp=pp_<productId> that product.
  *  - Interaction journal (lib/analytics): buffered locally, flushed to the backend in batches.
  *  - Server cart sync (lib/cart-sync): the cart follows the customer to the website and back.
  *  - Language (i18n/context): resolved from the device, then Telegram, then Ukrainian.
@@ -22,7 +23,7 @@ import { startCartSync } from "@/lib/cart-sync";
 import { parseSupportDeepLink } from "@/lib/support";
 import {
   getStartParam,
-  parseOrderDeepLink, parseOrderViewDeepLink,
+  parseOrderDeepLink, parseOrderViewDeepLink, parseProductDeepLink,
   useHideMainButton,
   useTelegram,
 } from "@/lib/telegram";
@@ -92,6 +93,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // cart: the bot's "case discount" message → the cart, where the code is offered.
     if (param === "cart") {
       router.push("/cart");
+      return;
+    }
+    // preorders / pp_<productId>: the bot's queue and hold messages → «Мої очікування» / the product.
+    if (param === "preorders") {
+      router.push("/account/preorders");
+      return;
+    }
+    const productId = parseProductDeepLink(param);
+    if (productId) {
+      if (window.location.pathname === "/") {
+        // already on the catalog: the page listens for this event (router.push would land after it)
+        window.history.replaceState(null, "", `/?product=${productId}`);
+        window.dispatchEvent(new Event("shop:product-link"));
+      } else {
+        router.push(`/?product=${productId}`);
+      }
       return;
     }
     const viewId = parseOrderViewDeepLink(param);
