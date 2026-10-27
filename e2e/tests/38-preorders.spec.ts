@@ -242,8 +242,9 @@ test("«Метрики → Предзаказы» и «Чего ждут» от�
   await expect(page.getByText("Купили из брони", { exact: true })).toBeVisible();
   await expect(page.getByText("Не удалось загрузить")).toHaveCount(0);
 
-  // The default period is «this month»: the subscription made today is in it.
-  const today = new Date().toISOString().slice(0, 10);
+  // The default period is «this month»: the subscription made today is in it. Days are Kyiv days on the
+  // backend, so «today» is too (after 21:00/22:00 UTC the UTC date is still yesterday).
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv" }).format(new Date());
   const { body } = await api.raw("get", `/api/admin/preorders/metrics?from=${today.slice(0, 8)}01&to=${today}`);
   expect((body as unknown as { subscriptions: number }).subscriptions).toBeGreaterThanOrEqual(1);
 
