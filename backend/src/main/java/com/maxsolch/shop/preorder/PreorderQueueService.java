@@ -64,7 +64,7 @@ public class PreorderQueueService {
     public static final String SOURCE_MINIAPP = "MINIAPP";
     public static final String SOURCE_WEB = "WEB";
 
-    static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
+    public static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
     static final Duration REMIND_BEFORE = Duration.ofHours(3);
     static final List<String> LIVE = List.of(Status.WAITING.name(), Status.HELD.name(), Status.NOTIFIED.name());
     /** Queue size when the anti-hoarding limit is off. */
@@ -628,7 +628,7 @@ public class PreorderQueueService {
                 s.statusEnum().live() ? eta : null);
     }
 
-    Map<String, Product> productsOf(Collection<byte[]> ids) {
+    public Map<String, Product> productsOf(Collection<byte[]> ids) {
         Map<String, Product> out = new HashMap<>();
         if (ids.isEmpty()) {
             return out;
@@ -645,7 +645,7 @@ public class PreorderQueueService {
                 .toList();
     }
 
-    static int stockOf(Product p, ProductVariant v) {
+    public static int stockOf(Product p, ProductVariant v) {
         return v != null ? v.getStock() : p.getStock();
     }
 
@@ -653,7 +653,7 @@ public class PreorderQueueService {
         return UuidUtil.toString(productId) + ":" + (variantId == null ? "" : UuidUtil.toString(variantId));
     }
 
-    static String imageOf(Product p) {
+    public static String imageOf(Product p) {
         if (p.getImages() == null) {
             return null;
         }
@@ -663,7 +663,7 @@ public class PreorderQueueService {
                 .orElse(null);
     }
 
-    static ProductVariant variantById(Product p, byte[] variantId) {
+    public static ProductVariant variantById(Product p, byte[] variantId) {
         if (variantId == null || p.getVariants() == null) {
             return null;
         }

@@ -39,6 +39,23 @@ public class AdminAccess {
         }
     }
 
+    /** «Финансы»: purchase prices, batch expenses and margin — the main admin, or one he gave the right. */
+    public boolean canSeeFinance(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)
+                || p.role() != Role.ADMIN) {
+            return false;
+        }
+        return adminUserRepository.findByTelegramUserIdAndActiveTrue(p.telegramUserId())
+                .map(a -> a.isSuperAdmin() || a.isFinance())
+                .orElse(false);
+    }
+
+    public void requireFinance(Authentication authentication) {
+        if (!canSeeFinance(authentication)) {
+            throw new ForbiddenException("Закупка и маржа — только главному админу и тем, у кого есть «Финансы»");
+        }
+    }
+
     public boolean isSuperAdmin(long adminId) {
         return adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
                 .map(AdminUser::isSuperAdmin)

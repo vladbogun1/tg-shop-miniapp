@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.catalog.Brand;
 import com.maxsolch.shop.catalog.BrandAdminService;
 import com.maxsolch.shop.catalog.CardStatus;
@@ -86,6 +87,21 @@ public class AdminProductService {
         this.audit = audit;
     }
 
+    /** FIFO stock lots follow a stock typed by hand (optional: unit tests build the service without it). */
+    private LotLedger ledger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLedger(LotLedger ledger) {
+        this.ledger = ledger;
+    }
+
+    private void syncLots(Product p) {
+        if (ledger != null) {
+            productRepository.flush(); // new variants get their ids before the lots refer to them
+            ledger.syncProduct(p);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<AdminProductDto> list() {
         CatalogSnapshot catalog = catalogDirectory.snapshot();
@@ -132,7 +148,9 @@ public class AdminProductService {
         p.setCardStatus(CardStatus.DRAFT);
         p.setUnfinished(true);
         applyVariants(p, req, null);
-        return toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
+        Product created = productRepository.save(p);
+        syncLots(created);
+        return toAdminDto(created, catalogDirectory.load()).withSpecIssues(issues);
     }
 
     @Caching(evict = {
@@ -176,7 +194,9 @@ public class AdminProductService {
             drops.add(new StockDrop(null, null, productDrop));
         }
         recordWriteoffs(p, drops, req);
-        AdminProductDto saved = toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
+        Product stored = productRepository.save(p);
+        syncLots(stored);
+        AdminProductDto saved = toAdminDto(stored, catalogDirectory.load()).withSpecIssues(issues);
         // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
         translationService.deleteForEntities(TranslationEntityType.VARIANT, removedVariants);
         return saved;

@@ -86,6 +86,14 @@ public class PreorderBatch {
     @Column(name = "fx_rate", precision = 12, scale = 4)
     private BigDecimal fxRate;
 
+    /** How batch expenses are spread over the units (V74): BY_VALUE | BY_QTY | BY_WEIGHT | MANUAL. */
+    @Column(name = "cost_allocation", nullable = false, length = 10)
+    private String costAllocation = "BY_VALUE";
+
+    /** «Все расходы внесены» — until then the cost per unit is preliminary. */
+    @Column(name = "costs_final", nullable = false)
+    private boolean costsFinal;
+
     @Column(name = "created_by", length = 255)
     private String createdBy;
 

@@ -39,4 +39,12 @@ public class PreorderBatchItem {
     /** Purchase price per unit in minor units of the batch currency; main admin only. */
     @Column(name = "unit_price_fx")
     private Long unitPriceFx;
+
+    /** Weight of one unit, grams — for the BY_WEIGHT allocation (V74). */
+    @Column(name = "weight_g")
+    private Integer weightG;
+
+    /** MANUAL allocation: this line's share of the batch expenses, UAH kopecks for the whole line. */
+    @Column(name = "manual_extra_minor")
+    private Long manualExtraMinor;
 }

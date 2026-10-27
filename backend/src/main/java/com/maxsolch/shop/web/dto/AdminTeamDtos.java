@@ -23,6 +23,9 @@ public final class AdminTeamDtos {
     }
 
     /** The super admin's own current code for a dangerous action. */
+    public record FinanceRequest(boolean finance, @Size(max = 16) String code) {
+    }
+
     public record CodeRequest(@Size(max = 16) String code) {
     }
 

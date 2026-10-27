@@ -62,7 +62,7 @@ import java.util.stream.Collectors;
 @Service
 public class PreorderBatchService {
 
-    static final Set<String> CURRENCIES = Set.of("USD", "EUR", "CNY", "PLN", "UAH");
+    public static final Set<String> CURRENCIES = Set.of("USD", "EUR", "CNY", "PLN", "UAH");
     static final int MAX_HOLD_HOURS = 168;
     private static final DateTimeFormatter TITLE_DATE = DateTimeFormatter.ofPattern("dd.MM");
 
@@ -99,6 +99,14 @@ public class PreorderBatchService {
         this.settings = settings;
         this.events = events;
         this.clock = clock;
+    }
+
+    /** FIFO stock lots: an arrival becomes a lot priced by the batch (optional in unit tests). */
+    private com.maxsolch.shop.costing.LotLedger ledger;
+
+    @Autowired(required = false)
+    void setLedger(com.maxsolch.shop.costing.LotLedger ledger) {
+        this.ledger = ledger;
     }
 
     // ---------------------------------------------------------------- batches
@@ -255,6 +263,9 @@ public class PreorderBatchService {
                 }
                 products.save(p);
                 i.setQtyArrived(arrived);
+                if (ledger != null && arrived > 0) {
+                    ledger.receive(p.getId(), i.getVariantId(), i.getId(), arrived);
+                }
                 h = queue.handOut(p, v, b.getId(), mode, hold, true);
             }
             out.add(new ArriveLineResult(i.getId(), p.getTitle(), v == null ? null : v.getName(), arrived, stockAfter,

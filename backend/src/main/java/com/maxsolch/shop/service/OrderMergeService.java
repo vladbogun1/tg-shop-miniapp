@@ -5,6 +5,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.domain.OrderItemLot;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.RejectReasonCode;
@@ -131,11 +132,15 @@ public class OrderMergeService {
                             && i.getPriceMinorSnapshot() == from.getPriceMinorSnapshot()
                             && i.isVariantPending() == from.isVariantPending())
                     .findFirst().orElse(null);
+            OrderItem to;
             if (same != null) {
                 same.setQuantity(same.getQuantity() + from.getQuantity());
+                to = same;
             } else {
-                target.getItems().add(copy(from, target));
+                to = copy(from, target);
+                target.getItems().add(to);
             }
+            moveLots(from, to);
             moved.add(from.getTitleSnapshot()
                     + (from.getVariantNameSnapshot() == null ? "" : " (" + from.getVariantNameSnapshot() + ")")
                     + " ×" + from.getQuantity());
@@ -275,6 +280,22 @@ public class OrderMergeService {
         i.setGiftValueMinor(from.getGiftValueMinor());
         i.setVariantPending(from.isVariantPending());
         return i;
+    }
+
+    /** The stock lots the units came from move with them (V74 cost of goods), never counted twice. */
+    private static void moveLots(OrderItem from, OrderItem to) {
+        if (from.getLots() == null || from.getLots().isEmpty()) {
+            return;
+        }
+        for (OrderItemLot a : from.getLots()) {
+            OrderItemLot b = new OrderItemLot();
+            b.setItem(to);
+            b.setLotId(a.getLotId());
+            b.setQty(a.getQty());
+            b.setCreatedAt(a.getCreatedAt());
+            to.getLots().add(b);
+        }
+        from.getLots().clear();
     }
 
     private static String joinPromo(String a, String b) {

@@ -7,6 +7,7 @@ import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.gift.OrderGiftCase;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
@@ -91,6 +92,14 @@ public class OrderService {
 
     /** Pre-order holds: units kept for people in a queue (optional: unit tests build the service without it). */
     private com.maxsolch.shop.preorder.PreorderQueueService preorders;
+
+    /** FIFO stock lots for the cost of goods (optional: unit tests build the service without it). */
+    private LotLedger ledger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setLedger(LotLedger ledger) {
+        this.ledger = ledger;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders) {
@@ -262,7 +271,7 @@ public class OrderService {
                 throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
             }
             requireNotHeld(product, variant, line.quantity, cmd.userId());
-            reserveStock(product, variant, line.quantity);
+            reserveStock(product, variant, line.quantity, item);
 
             subtotal += product.getPriceMinor() * (long) line.quantity;
             order.getItems().add(item);
@@ -909,18 +918,17 @@ public class OrderService {
                 throw new BadRequestException("variant does not belong to product: " + variantId);
             }
         }
-        reserveStock(product, variant, qty);
-
         byte[] vId = variant == null ? null : variant.getId();
         OrderItem existing = order.getItems().stream()
                 .filter(i -> i.isGift() == gift)
                 .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
                 .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
                 .findFirst().orElse(null);
+        OrderItem item = existing != null ? existing : new OrderItem();
+        reserveStock(product, variant, qty, item);
         if (existing != null) {
             existing.setQuantity(existing.getQuantity() + qty);
         } else {
-            OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProductId(product.getId());
             item.setTitleSnapshot(product.getTitle());
@@ -994,9 +1002,9 @@ public class OrderService {
             ProductVariant variant = item.getVariantId() == null ? null
                     : findVariant(product, UuidUtil.toString(item.getVariantId()));
             if (delta > 0) {
-                reserveStock(product, variant, delta);
+                reserveStock(product, variant, delta, item);
             } else {
-                releaseStock(product, variant, -delta);
+                releaseStock(product, variant, -delta, item);
             }
             productRepository.save(product);
         }
@@ -1176,7 +1184,11 @@ public class OrderService {
         }
     }
 
-    private void reserveStock(Product product, ProductVariant variant, int qty) {
+    /**
+     * Takes {@code qty} units off the shelf for an order line; the line records which stock lots they came
+     * from (FIFO cost of goods, {@link LotLedger}).
+     */
+    private void reserveStock(Product product, ProductVariant variant, int qty, OrderItem item) {
         if (variant != null) {
             if (variant.getStock() < qty) {
                 throw new BadRequestException(messages.current("api.order.outOfStock",
@@ -1191,6 +1203,9 @@ public class OrderService {
             }
             product.setStock(product.getStock() - qty);
         }
+        if (ledger != null) {
+            ledger.take(product.getId(), variant == null ? null : variant.getId(), qty, item);
+        }
         if (preorders != null) {
             // Admin paths (a line added to an order, a cancelled return) may take units that were held for
             // the queue: the latest holds then go back to waiting. In checkout only the buyer's own hold can be
@@ -1199,13 +1214,19 @@ public class OrderService {
         }
     }
 
-    /** Returns qty to stock (inverse of reserveStock; product/variant already loaded and locked). */
-    private void releaseStock(Product product, ProductVariant variant, int qty) {
+    /**
+     * Returns qty to stock (inverse of reserveStock; product/variant already loaded and locked). With the
+     * order line the units go back to the lots they came from; {@code item} null = a write-off restocked.
+     */
+    private void releaseStock(Product product, ProductVariant variant, int qty, OrderItem item) {
         if (variant != null) {
             variant.setStock(variant.getStock() + qty);
             syncRollup(product);
         } else {
             product.setStock(product.getStock() + qty);
+        }
+        if (ledger != null && qty > 0) {
+            ledger.give(product.getId(), variant == null ? null : variant.getId(), qty, item);
         }
         if (preorders != null && qty > 0) {
             // Back in circulation: people waiting for it get holds in turn, as after an arrival.
@@ -1250,7 +1271,7 @@ public class OrderService {
                 // units back on the product so they are not lost entirely.
                 product.setStock(product.getStock() + units);
             } else {
-                releaseStock(product, variant, units);
+                releaseStock(product, variant, units, item);
             }
             productRepository.save(product);
         });
@@ -1276,7 +1297,7 @@ public class OrderService {
         if (item.getVariantId() != null && variant == null) {
             product.setStock(product.getStock() - units);
         } else {
-            reserveStock(product, variant, units);
+            reserveStock(product, variant, units, item);
         }
         productRepository.save(product);
         item.setRestockedQty(Math.max(0, item.getRestockedQty() - units));
@@ -1293,7 +1314,7 @@ public class OrderService {
         if (variantId != null && variant == null) {
             product.setStock(product.getStock() + units);
         } else {
-            releaseStock(product, variant, units);
+            releaseStock(product, variant, units, null);
         }
         productRepository.save(product);
     }
@@ -1354,8 +1375,8 @@ public class OrderService {
                     .max(Comparator.comparingInt(ProductVariant::getStock))
                     .orElseThrow();
         }
-        reserveStock(product, variant, 1);
         OrderItem item = new OrderItem();
+        reserveStock(product, variant, 1, item);
         item.setOrder(order);
         item.setProductId(product.getId());
         item.setTitleSnapshot(product.getTitle());
@@ -1586,9 +1607,9 @@ public class OrderService {
             ProductVariant held = product.getVariants().stream()
                     .filter(v -> java.util.Arrays.equals(v.getId(), item.getVariantId())).findFirst().orElse(null);
             if (held != null) {
-                releaseStock(product, held, item.getQuantity());
+                releaseStock(product, held, item.getQuantity(), item);
             }
-            reserveStock(product, target, item.getQuantity());
+            reserveStock(product, target, item.getQuantity(), item);
             productRepository.save(product);
             item.setVariantId(target.getId());
             item.setVariantNameSnapshot(target.getName());

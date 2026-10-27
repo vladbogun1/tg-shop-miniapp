@@ -6,6 +6,7 @@ import com.maxsolch.shop.adminauth.ClientInfo;
 import com.maxsolch.shop.security.RequiredSuperAdmin;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.AdminTeamDtos.CodeRequest;
+import com.maxsolch.shop.web.dto.AdminTeamDtos.FinanceRequest;
 import com.maxsolch.shop.web.dto.AdminTeamDtos.InviteCreated;
 import com.maxsolch.shop.web.dto.AdminTeamDtos.InviteRequest;
 import com.maxsolch.shop.web.dto.AdminTeamDtos.UpdateRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,6 +76,14 @@ public class AdminTeamController {
     public ResponseEntity<Void> update(@PathVariable long id, @Valid @RequestBody UpdateRequest r,
                                        HttpServletRequest http) {
         team.update(SecurityUtil.currentUserId(), id, r.name(), r.role(), r.code(), ClientInfo.of(http));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/finance")
+    @Operation(summary = "«Финансы» on / off: purchase prices, expenses and margin (needs the caller's code)")
+    public ResponseEntity<Void> finance(@PathVariable long id, @Valid @RequestBody FinanceRequest r,
+                                        HttpServletRequest http) {
+        team.setFinance(SecurityUtil.currentUserId(), id, r.finance(), r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 

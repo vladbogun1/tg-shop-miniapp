@@ -167,8 +167,8 @@ public class AdminPreorderController {
         return dto;
     }
 
-    /** Purchase prices and the exchange rate — the main admin only. */
+    /** Purchase prices and the exchange rate — the main admin and admins with «Финансы». */
     private boolean money() {
-        return adminAccess.isSuperAdmin(SecurityContextHolder.getContext().getAuthentication());
+        return adminAccess.canSeeFinance(SecurityContextHolder.getContext().getAuthentication());
     }
 }
