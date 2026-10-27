@@ -39,6 +39,7 @@ import { BatchMoneyTab } from "@/components/preorders/BatchMoneyTab";
 import { BatchSalesTab } from "@/components/preorders/BatchSalesTab";
 import { ArriveModal } from "@/components/preorders/ArriveModal";
 import { BatchFormModal } from "@/components/preorders/BatchFormModal";
+import { CsvButton } from "@/components/preorders/CsvButton";
 import { SubscribersList } from "@/components/preorders/SubscribersList";
 
 export default function BatchPage() {
@@ -198,6 +199,9 @@ function BatchView({ batch }: { batch: Batch }) {
         <h2 className="font-display text-[13px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">Очередь</h2>
         <span className="tabular text-[12.5px] text-[var(--text-faint)]">
           ждут {totalPeople} чел / {totalQty} шт
+        </span>
+        <span className="ml-auto">
+          <CsvButton scope={{ batchId: batch.id }} />
         </span>
       </div>
       <QueryState isLoading={subsQ.isLoading} isError={subsQ.isError} error={subsQ.error} refetch={subsQ.refetch}>

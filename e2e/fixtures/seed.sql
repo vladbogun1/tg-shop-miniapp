@@ -13,6 +13,14 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM order_messages;
+DELETE FROM order_item_lots;
+DELETE FROM stock_lots;
+DELETE FROM batch_expense_files;
+DELETE FROM batch_expenses;
+DELETE FROM preorder_subscriptions;
+DELETE FROM preorder_batch_items;
+DELETE FROM preorder_batches;
+DELETE FROM suppliers;
 DELETE FROM order_money_movements;
 DELETE FROM order_exchange_lines;
 DELETE FROM stock_writeoffs;
@@ -393,3 +401,12 @@ INSERT INTO order_items (order_id, product_id, title_snapshot, price_minor_snaps
                          quantity, gift, returned_qty, restocked_qty) VALUES
   (UUID_TO_BIN('e2e00010-0000-4000-8000-000000000010'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000003'), 'E2E Рюкзак городской', 129900, NULL, NULL, 1, FALSE, 0, 0),
   (UUID_TO_BIN('e2e00011-0000-4000-8000-000000000011'), UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000002'), 'E2E Кепка', 34900, NULL, NULL, 1, FALSE, 0, 0);
+
+-- ---------- «Поставки» (38-preorders): an out-of-stock product and a customer who queues for it ----------
+-- The spec creates the batch, the queue entry and the order itself (customer calls go through a token
+-- signed with the e2e JWT secret), so the rows below are only the starting point.
+INSERT INTO products (id, title, slug, description, price_minor, currency, stock, active, archived, card_status, unfinished, category_id) VALUES
+  (UUID_TO_BIN('e2e0d001-0000-4000-8000-000000000009'), 'E2E Мышь Майя', 'e2e-mysh-maya',
+   'Игровая мышь, пока нет в наличии.', 300000, 'UAH', 0, TRUE, FALSE, 'READY', FALSE, UUID_TO_BIN('e2e0c001-0000-4000-8000-000000000002'));
+INSERT INTO users (telegram_user_id, username, first_name, last_name, language_code, locale, bot_blocked, created_at) VALUES
+  (900000301, 'e2e_taras_zhdun', 'Тарас', 'Очікувач', 'uk', 'uk', FALSE, NOW() - INTERVAL 5 DAY);

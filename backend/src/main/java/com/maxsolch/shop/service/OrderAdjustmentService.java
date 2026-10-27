@@ -1151,6 +1151,7 @@ public class OrderAdjustmentService {
             throw new BadRequestException("вернуть можно от 1 до " + left + " шт.");
         }
         String cleanNote = note == null || note.isBlank() ? null : cut(note.trim(), 500);
+        int restored = 0; // units already put back through their order line
         if (w.getOrderId() != null && returnLines != null) {
             Order order = load(w.getOrderId());
             int move = quantity;
@@ -1162,8 +1163,14 @@ public class OrderAdjustmentService {
                 l.setDefectQty(l.getDefectQty() - take);
                 l.setRestockedQty(l.getRestockedQty() + take);
                 returnLines.save(l);
-                order.getItems().stream().filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst()
-                        .ifPresent(i -> i.setRestockedQty(Math.min(i.getQuantity(), i.getRestockedQty() + take)));
+                OrderItem line = order.getItems().stream()
+                        .filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst().orElse(null);
+                if (line != null) {
+                    line.setRestockedQty(Math.min(line.getQuantity(), line.getRestockedQty() + take));
+                }
+                // the units go back into the lots the order took them from, so their cost stays known
+                orderService.restockProduct(w.getProductId(), w.getVariantId(), take, line);
+                restored += take;
                 move -= take;
                 if (move == 0) {
                     break;
@@ -1171,7 +1178,7 @@ public class OrderAdjustmentService {
             }
             orderRepository.save(order);
         }
-        orderService.restockProduct(w.getProductId(), w.getVariantId(), quantity);
+        orderService.restockProduct(w.getProductId(), w.getVariantId(), quantity - restored, null);
         w.setUndoneQty(w.getUndoneQty() + quantity);
         w.setUndoneAt(Instant.now());
         w.setUndoneBy(adminName);

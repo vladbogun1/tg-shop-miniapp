@@ -19,12 +19,15 @@ import com.maxsolch.shop.preorder.PreorderBatchRepository;
 import com.maxsolch.shop.preorder.PreorderQueueService;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.settings.SettingsService;
 import com.maxsolch.shop.web.NotFoundException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -46,13 +49,14 @@ import java.util.stream.Collectors;
  * Margin (§5А.3): profit of an order, the P&L of a batch and «Метрики → Маржа». Revenue is what the order
  * keeps (total − refunds − not collected), split over its lines by price; cost of goods comes from the lots
  * each unit left (FIFO), priced now — an expense typed after the sale re-prices it. The acquiring fee is the
- * bank's own ({@code payment_invoices.fee_minor}), {@value #FEE_PERMILLE}‰ when monobank sent none.
+ * bank's own ({@code payment_invoices.fee_minor}), {@code costing.acquiringFeePercent} (1,3 %) when monobank
+ * sent none.
  */
 @Service
 public class MarginService {
 
-    /** monobank acquiring, as measured on prod 27.10.2026 (1,3 % for every method). */
-    static final int FEE_PERMILLE = 13;
+    /** monobank acquiring, as measured on prod 27.10.2026 (1,3 % for every method): the setting's default. */
+    static final BigDecimal DEFAULT_FEE_PERCENT = new BigDecimal("1.3");
 
     private final NamedParameterJdbcTemplate jdbc;
     private final CostingService costing;
@@ -61,10 +65,12 @@ public class MarginService {
     private final PreorderBatchItemRepository batchItems;
     private final PreorderQueueService queue;
     private final MetricsFactsLoader facts;
+    private final SettingsService settings;
 
     public MarginService(NamedParameterJdbcTemplate jdbc, CostingService costing, StockLotRepository lots,
                          PreorderBatchRepository batches, PreorderBatchItemRepository batchItems,
-                         PreorderQueueService queue, MetricsFactsLoader facts) {
+                         PreorderQueueService queue, MetricsFactsLoader facts, SettingsService settings) {
+        this.settings = settings;
         this.jdbc = jdbc;
         this.costing = costing;
         this.lots = lots;
@@ -187,6 +193,11 @@ public class MarginService {
     // ---------------------------------------------------------------- the math
 
     static OrderMoney compute(Bundle b, Function<Long, UnitCost> costOfLot) {
+        return compute(b, costOfLot, DEFAULT_FEE_PERCENT);
+    }
+
+    /** {@code feePercent}: the bank's cut where monobank sent no fee of its own. */
+    static OrderMoney compute(Bundle b, Function<Long, UnitCost> costOfLot, BigDecimal feePercent) {
         long revenue = b.order().revenue();
         long base = b.items().stream().filter(i -> !i.gift()).mapToLong(i -> i.priceMinor() * i.soldUnits()).sum();
         List<ItemRow> paid = b.items().stream().filter(i -> !i.gift() && i.priceMinor() * i.soldUnits() > 0).toList();
@@ -228,16 +239,25 @@ public class MarginService {
             if (inv.feeMinor() > 0) {
                 fee += inv.feeMinor();
             } else if (inv.amountMinor() > 0) {
-                fee += Math.round(inv.amountMinor() * FEE_PERMILLE / 1000.0);
+                fee += fee(inv.amountMinor(), feePercent);
                 estimated = true;
             }
         }
         if (b.invoices().isEmpty() && b.order().onlineDueMinor() > 0) {
             // not paid yet: the fee monobank will take once it is
-            fee = Math.round(b.order().onlineDueMinor() * FEE_PERMILLE / 1000.0);
+            fee = fee(b.order().onlineDueMinor(), feePercent);
             estimated = true;
         }
         return new OrderMoney(b.order(), lines, revenue, cost, fee, estimated, complete, preliminary);
+    }
+
+    static long fee(long amountMinor, BigDecimal feePercent) {
+        return BigDecimal.valueOf(amountMinor).multiply(feePercent).movePointLeft(2)
+                .setScale(0, java.math.RoundingMode.HALF_UP).longValue();
+    }
+
+    private BigDecimal feePercent() {
+        return settings.getDecimal(SettingsRegistry.COSTING_ACQUIRING_FEE_PERCENT);
     }
 
     // ---------------------------------------------------------------- order
@@ -250,7 +270,7 @@ public class MarginService {
         }
         CostBook book = bookFor(List.of(b), List.of());
         Map<Long, StockLot> byId = lotsById(List.of(b));
-        OrderMoney m = compute(b, id -> book.of(byId.get(id)));
+        OrderMoney m = compute(b, id -> book.of(byId.get(id)), feePercent());
         List<OrderLineCostDto> lines = m.lines().stream().map(l -> new OrderLineCostDto(l.item().id(),
                 l.item().title(), l.item().variantName(), l.item().gift(), l.item().unitsOut(), l.revenue(),
                 l.cost(), l.unknownUnits(), l.preliminary())).toList();
@@ -291,7 +311,7 @@ public class MarginService {
         long fee = 0;
         long gifts = 0;
         for (Bundle b : bundles.values()) {
-            OrderMoney m = compute(b, id -> book.of(lotById.get(id)));
+            OrderMoney m = compute(b, id -> book.of(lotById.get(id)), feePercent());
             revenue += m.revenue();
             if (m.complete()) {
                 known += m.revenue();
@@ -419,7 +439,7 @@ public class MarginService {
                 }));
                 continue;
             }
-            OrderMoney m = compute(b, id -> full.of(allLots.get(id)));
+            OrderMoney m = compute(b, id -> full.of(allLots.get(id)), feePercent());
             for (LineMoney l : m.lines()) {
                 int out = Math.max(1, l.item().unitsOut());
                 for (Alloc a : l.allocs()) {

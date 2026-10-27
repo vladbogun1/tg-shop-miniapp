@@ -263,7 +263,7 @@ class PreorderQueueServiceTest {
         product.setStock(1);
         PreorderSubscription mine = seat(1, USER, Status.HELD, 2, 2, 300);
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
-        when(subs.findLive(eq(USER), any(), isNull())).thenReturn(List.of(mine));
+        when(subs.lockLive(eq(USER), any(), isNull())).thenReturn(List.of(mine));
         when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(next)));
         byte[] orderId = UuidUtil.toBytes(UUID.randomUUID());
 
@@ -280,8 +280,8 @@ class PreorderQueueServiceTest {
         PreorderSubscription late = seat(1, 11, Status.HELD, 1, 1, 3000);
         late.setHoldUntil(NOW.minus(Duration.ofMinutes(1)));
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
-        when(subs.findExpiredHolds(eq(NOW), any())).thenReturn(List.of(late));
-        when(subs.findById(1L)).thenReturn(Optional.of(late));
+        when(subs.findExpiredHoldIds(eq(NOW), any())).thenReturn(List.<Object[]>of(new Object[]{1L, product.getId()}));
+        when(subs.findForUpdate(1L)).thenReturn(Optional.of(late));
         when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(next)));
 
         assertThat(service.expireHolds()).isEqualTo(1);
@@ -290,6 +290,20 @@ class PreorderQueueServiceTest {
         assertThat(next.getStatus()).isEqualTo("HELD");
         verify(events).publishEvent(new PreorderEvents.HoldExpired(1L));
         verify(events).publishEvent(new PreorderEvents.HoldGranted(2L));
+    }
+
+    @Test
+    void aHoldBoughtJustBeforeTheJobIsNotExpired() {
+        product.setStock(1);
+        PreorderSubscription bought = seat(1, 11, Status.BOUGHT, 1, 0, 3000);
+        bought.setHoldUntil(NOW.minus(Duration.ofMinutes(1)));
+        when(subs.findExpiredHoldIds(eq(NOW), any())).thenReturn(List.<Object[]>of(new Object[]{1L, product.getId()}));
+        when(subs.findForUpdate(1L)).thenReturn(Optional.of(bought)); // the fresh row: the buyer won the race
+
+        assertThat(service.expireHolds()).isZero();
+
+        assertThat(bought.getStatus()).isEqualTo("BOUGHT");
+        verify(events, never()).publishEvent(any(PreorderEvents.HoldExpired.class));
     }
 
     @Test
@@ -304,11 +318,14 @@ class PreorderQueueServiceTest {
 
     @Test
     void heldForOthersReadsTheRepository() {
-        when(subs.heldForOthers(any(), isNull(), eq(USER))).thenReturn(2L);
+        when(subs.lockQueue(any(), isNull())).thenReturn(List.of(
+                seat(1, USER, Status.HELD, 1, 1, 60),
+                seat(2, 12, Status.HELD, 2, 2, 50),
+                seat(3, 13, Status.HELD, 1, 1, 40),
+                seat(4, 14, Status.WAITING, 1, 0, 30)));
 
-        assertThat(service.heldForOthers(product.getId(), null, USER)).isEqualTo(2);
-        verify(subs, never()).lockQueue(any(), any());
-        verify(products, never()).findByIdForUpdate(any());
+        assertThat(service.heldForOthers(product.getId(), null, USER)).isEqualTo(3);
+
     }
 
     // ---- stock coming back / leaving outside checkout

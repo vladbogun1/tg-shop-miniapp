@@ -5,6 +5,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.CategoryRepository;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.i18n.BotTexts;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.ReplyTemplate;
@@ -98,7 +99,8 @@ public class TranslationAdminService {
             Map.entry("CATEGORY:intro_text", CategoryUpsertRequest.INTRO_MAX_CHARS),
             Map.entry("PAYMENT_OPTION:title", 255),
             Map.entry("PAYMENT_OPTION:description", 1024),
-            Map.entry("REPLY_TEMPLATE:body", ReplyTemplateDtos.BODY_MAX_CHARS));
+            Map.entry("REPLY_TEMPLATE:body", ReplyTemplateDtos.BODY_MAX_CHARS),
+            Map.entry("BOT_TEXT:body", BotTexts.MAX_CHARS));
 
     private final ContentTranslationRepository repository;
     private final ProductRepository productRepository;
@@ -108,6 +110,7 @@ public class TranslationAdminService {
     private final ReplyTemplateRepository replyTemplateRepository;
     private final TranslationService translationService;
     private final CacheManager cacheManager;
+    private final BotTexts botTexts;
 
     public TranslationAdminService(ContentTranslationRepository repository,
                                    ProductRepository productRepository,
@@ -116,7 +119,8 @@ public class TranslationAdminService {
                                    PaymentOptionRepository paymentOptionRepository,
                                    ReplyTemplateRepository replyTemplateRepository,
                                    TranslationService translationService,
-                                   CacheManager cacheManager) {
+                                   CacheManager cacheManager,
+                                   BotTexts botTexts) {
         this.repository = repository;
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
@@ -125,6 +129,7 @@ public class TranslationAdminService {
         this.replyTemplateRepository = replyTemplateRepository;
         this.translationService = translationService;
         this.cacheManager = cacheManager;
+        this.botTexts = botTexts;
     }
 
     // ------------------------------------------------------------------ export / stats
@@ -134,7 +139,7 @@ public class TranslationAdminService {
         String l = requireLocale(locale);
         Status wanted = parseStatus(status);
         TranslationEntityType type = parseTypeOrNull(entityType);
-        Map<Key, ContentTranslation> rows = existing(l);
+        Map<Key, ContentTranslation> rows = withBuiltinBotTexts(existing(l), l);
 
         List<ExportItem> out = new ArrayList<>();
         for (Map.Entry<Key, Source> e : sources().entrySet()) {
@@ -173,7 +178,7 @@ public class TranslationAdminService {
         Map<String, Integer> textBucket = new HashMap<>();
         Map<String, String> hashes = new HashMap<>();
         for (String l : ContentLocale.TRANSLATED) {
-            Map<Key, ContentTranslation> rows = existing(l);
+            Map<Key, ContentTranslation> rows = withBuiltinBotTexts(existing(l), l);
             Map<String, int[]> acc = new LinkedHashMap<>();
             for (TranslationEntityType t : TranslationEntityType.values()) {
                 if (t.translatable()) {
@@ -555,6 +560,17 @@ public class TranslationAdminService {
                 t.setBodyRu(newSource);
                 return "OK";
             }
+            case BOT_TEXT -> {
+                String key = BotTexts.keyOfId(id);
+                String current = key == null ? null : botTexts.sourceRu(key);
+                if (current == null) {
+                    return "NOT_FOUND";
+                }
+                if (!matches(current, wantedHash, newHash)) {
+                    return "STALE";
+                }
+                return botTexts.saveRu(key, newSource) ? "OK" : "INVALID_PLACEHOLDERS";
+            }
             default -> {
                 return "INVALID_ENTITY_TYPE";
             }
@@ -800,6 +816,14 @@ public class TranslationAdminService {
             put(out, TranslationEntityType.REPLY_TEMPLATE, ReplyTemplate.translationKey(t.getId()),
                     TranslationEntityType.BODY, t.getBodyRu(), true, null, t.getTitle());
         }
+        // Bot phrases of the pre-order queue: the key is the context, the source is the Russian text.
+        for (String key : BotTexts.KEYS) {
+            String ru = botTexts.sourceRu(key);
+            if (ru != null) {
+                put(out, TranslationEntityType.BOT_TEXT, BotTexts.idStringOf(key), TranslationEntityType.BODY, ru,
+                        true, null, key);
+            }
+        }
         for (PaymentOption p : paymentOptionRepository.findAll()) {
             String id = UuidUtil.toString(p.getId());
             put(out, TranslationEntityType.PAYMENT_OPTION, id, TranslationEntityType.TITLE, p.getTitle(), p.isActive());
@@ -817,6 +841,33 @@ public class TranslationAdminService {
     private static void put(Map<Key, Source> out, TranslationEntityType type, String id, String field,
                             String text, boolean inScope, String productId, String productTitle) {
         out.put(new Key(type, id, field), new Source(text, inScope, productId, productTitle));
+    }
+
+    /**
+     * Bot phrases without a stored translation are not «missing»: the shipped messages_uk/en text is what
+     * customers get, so it is reported as a reviewed translation of the shipped Russian text. When the owner
+     * edits the Russian source it no longer matches that hash and shows up as STALE. Read-only view for the
+     * export and the counters; imports and accepts keep working on the stored rows.
+     */
+    private Map<Key, ContentTranslation> withBuiltinBotTexts(Map<Key, ContentTranslation> rows, String locale) {
+        for (String key : BotTexts.KEYS) {
+            String text = botTexts.builtin(locale, key);
+            String ru = botTexts.builtinRu(key);
+            if (text == null || ru == null) {
+                continue;
+            }
+            Key k = new Key(TranslationEntityType.BOT_TEXT, BotTexts.idStringOf(key), TranslationEntityType.BODY);
+            if (rows.containsKey(k)) {
+                continue;
+            }
+            ContentTranslation row = new ContentTranslation(new ContentTranslationId(
+                    TranslationEntityType.BOT_TEXT, BotTexts.idOf(key), TranslationEntityType.BODY, locale));
+            row.setText(text);
+            row.setSource(ru);
+            row.setOrigin(TranslationOrigin.MANUAL); // shipped by hand: nothing to review
+            rows.put(k, row);
+        }
+        return rows;
     }
 
     private Map<Key, ContentTranslation> existing(String locale) {
@@ -847,6 +898,7 @@ public class TranslationAdminService {
 
     private void invalidateNow() {
         translationService.invalidate();
+        botTexts.invalidate();
         for (String name : CATALOG_CACHES) {
             Cache cache = cacheManager.getCache(name);
             if (cache != null) {
@@ -892,7 +944,7 @@ public class TranslationAdminService {
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
             throw new BadRequestException(
-                    "entityType must be one of PRODUCT, VARIANT, CATEGORY, PAYMENT_OPTION, REPLY_TEMPLATE");
+                    "entityType must be one of PRODUCT, VARIANT, CATEGORY, PAYMENT_OPTION, REPLY_TEMPLATE, BOT_TEXT");
         }
         return type;
     }

@@ -41,12 +41,23 @@ public record AdminProductDto(
         List<String> missingRequired,
         List<SpecsValidator.Issue> specIssues,
         /** Created and never published (V53), the «Незавершённые» list. */
-        boolean unfinished) {
+        boolean unfinished,
+        /** Distinct people waiting for the product in any variant (WAITING/HELD), filled in the list only. */
+        int waitingPeople,
+        /** Units they wait for. */
+        int waitingQty) {
+
+    public AdminProductDto withWaiting(int people, int qty) {
+        return new AdminProductDto(id, title, description, priceMinor, currency, stock, active, archived, images,
+                variants, tags, slug, compareAtMinor, seoTitle, seoDescription, brand, sku, categoryId, brandRef,
+                condition, conditionNote, specs, cardStatus, cardConfidence, cardMeta, missingRequired, specIssues,
+                unfinished, people, qty);
+    }
 
     public AdminProductDto withSpecIssues(List<SpecsValidator.Issue> issues) {
         return new AdminProductDto(id, title, description, priceMinor, currency, stock, active, archived, images,
                 variants, tags, slug, compareAtMinor, seoTitle, seoDescription, brand, sku, categoryId, brandRef,
                 condition, conditionNote, specs, cardStatus, cardConfidence, cardMeta, missingRequired, issues,
-                unfinished);
+                unfinished, waitingPeople, waitingQty);
     }
 }

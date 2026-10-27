@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +96,23 @@ public class AdminProductService {
         this.ledger = ledger;
     }
 
+    /** Queues of a product that leaves sale are closed (optional: unit tests build the service without it). */
+    private com.maxsolch.shop.preorder.PreorderQueueService preorders;
+    private com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders,
+                      com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs) {
+        this.preorders = preorders;
+        this.preorderSubs = preorderSubs;
+    }
+
+    private void closeQueues(Product p) {
+        if (preorders != null) {
+            preorders.closeForProduct(p.getId());
+        }
+    }
+
     private void syncLots(Product p) {
         if (ledger != null) {
             productRepository.flush(); // new variants get their ids before the lots refer to them
@@ -104,8 +122,39 @@ public class AdminProductService {
 
     @Transactional(readOnly = true)
     public List<AdminProductDto> list() {
+        return list(null);
+    }
+
+    /**
+     * The catalog for the admin with how many people wait for each product. {@code sort=demand} — the most
+     * wanted first (distinct people, then units), the rest keep the default order.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminProductDto> list(String sort) {
         CatalogSnapshot catalog = catalogDirectory.snapshot();
-        return productRepository.findAllNotArchived().stream().map(p -> toAdminDto(p, catalog)).toList();
+        Map<String, int[]> waiting = waitingByProduct();
+        List<AdminProductDto> out = new ArrayList<>(productRepository.findAllNotArchived().stream()
+                .map(p -> {
+                    int[] w = waiting.get(UuidUtil.toString(p.getId()));
+                    AdminProductDto dto = toAdminDto(p, catalog);
+                    return w == null ? dto : dto.withWaiting(w[0], w[1]);
+                }).toList());
+        if (sort != null && "demand".equalsIgnoreCase(sort.trim())) {
+            out.sort(Comparator.comparingInt(AdminProductDto::waitingPeople).reversed()); // stable: ties keep order
+        }
+        return out;
+    }
+
+    /** product id → [distinct people, units] waiting for it. */
+    private Map<String, int[]> waitingByProduct() {
+        Map<String, int[]> out = new java.util.HashMap<>();
+        if (preorderSubs == null) {
+            return out;
+        }
+        for (Object[] r : preorderSubs.waitingByProduct()) {
+            out.put(UuidUtil.toString((byte[]) r[0]), new int[]{((Number) r[1]).intValue(), ((Number) r[2]).intValue()});
+        }
+        return out;
     }
 
     @Transactional(readOnly = true)
@@ -194,6 +243,9 @@ public class AdminProductService {
             drops.add(new StockDrop(null, null, productDrop));
         }
         recordWriteoffs(p, drops, req);
+        if (wasActive && !p.isActive()) {
+            closeQueues(p);
+        }
         Product stored = productRepository.save(p);
         syncLots(stored);
         AdminProductDto saved = toAdminDto(stored, catalogDirectory.load()).withSpecIssues(issues);
@@ -223,7 +275,11 @@ public class AdminProductService {
         if (active && !p.isActive()) {
             checkPublishable(p, force);
         }
+        boolean wasActive = p.isActive();
         p.setActive(active);
+        if (wasActive && !active) {
+            closeQueues(p);
+        }
         syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
@@ -237,6 +293,9 @@ public class AdminProductService {
     public AdminProductDto setArchived(String id, boolean archived) {
         Product p = load(id);
         p.setArchived(archived);
+        if (archived) {
+            closeQueues(p);
+        }
         syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
@@ -690,6 +749,8 @@ public class AdminProductService {
                 SpecsJson.readMap(p.getCardMetaJson()),
                 catalog.missingRequired(categoryId, specs),
                 null,
-                p.isUnfinished());
+                p.isUnfinished(),
+                0,
+                0);
     }
 }

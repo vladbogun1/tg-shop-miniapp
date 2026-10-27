@@ -558,6 +558,8 @@ export default function CatalogPage() {
         product={notifyFor}
         variant={null}
         mine={notifyFor ? queuedFor(mine, notifyFor.id, null) : undefined}
+        coming={!!notifyFor && !!coming.productEta(notifyFor.id)}
+        holdHours={notifyFor ? coming.holdHoursOf(notifyFor.id) : undefined}
         open={!!notifyFor}
         onClose={() => setNotifyFor(null)}
         onDone={fireToast}

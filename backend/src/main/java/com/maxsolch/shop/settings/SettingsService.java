@@ -274,9 +274,47 @@ public class SettingsService {
                         && !v.isEmpty() && !v.matches("\\d+([,;\\s]+\\d+)*")) {
                     throw invalid(label + ": только числовые коды через запятую, например «1» или «1, 2»");
                 }
+                if (SettingsRegistry.COSTING_ACQUIRING_FEE_PERCENT.equals(def.key())) {
+                    return normalizeFeePercent(label, v);
+                }
                 return v;
             }
+            case SELECT -> {
+                String v = raw instanceof String s ? s.strip() : null;
+                if (v != null) {
+                    for (SettingDefinition.Option o : def.options()) {
+                        if (o.value().equalsIgnoreCase(v)) {
+                            return o.value();
+                        }
+                    }
+                }
+                throw invalid(label + ": выберите одно из значений списка");
+            }
             default -> throw new IllegalStateException("Unhandled type " + def.type());
+        }
+    }
+
+    /** A percent from 0 to 10 with a dot or comma; stored with a dot, without trailing noise. */
+    private static String normalizeFeePercent(String label, String v) {
+        try {
+            java.math.BigDecimal d = new java.math.BigDecimal(v.replace(',', '.'));
+            if (d.signum() < 0 || d.compareTo(java.math.BigDecimal.TEN) > 0) {
+                throw invalid(label + ": допустимо от 0 до 10");
+            }
+            return d.stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException e) {
+            throw invalid(label + ": нужно число, например 1.3");
+        }
+    }
+
+    /** Decimal text setting ({@code 1.3}) with the registry default when unset or not a number. */
+    public java.math.BigDecimal getDecimal(String key) {
+        String raw = get(key, definition(key).defaultValue());
+        try {
+            return new java.math.BigDecimal(raw.trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            log.warn("Setting {} is not a number: '{}' — using default", key, raw);
+            return new java.math.BigDecimal(definition(key).defaultValue());
         }
     }
 
@@ -350,7 +388,8 @@ public class SettingsService {
                 stored != null,
                 d.min(), d.max(), d.maxLength(), d.unit(),
                 stored == null ? null : stored.updatedAt(),
-                stored == null ? null : stored.updatedByName());
+                stored == null ? null : stored.updatedByName(),
+                d.options());
     }
 
     /** Canonical text → JSON-friendly value; an unparsable stored value shows as the default. */
@@ -359,7 +398,7 @@ public class SettingsService {
             return switch (d.type()) {
                 case INT -> Long.parseLong(value.trim());
                 case BOOL -> Boolean.parseBoolean(value.trim());
-                case STRING, TEXT -> value == null ? "" : value;
+                case STRING, TEXT, SELECT -> value == null ? "" : value;
             };
         } catch (RuntimeException e) {
             // Defaults are always valid, so this cannot recurse more than once.
@@ -378,6 +417,10 @@ public class SettingsService {
         }
         if (d.type() == SettingType.BOOL) {
             return Boolean.parseBoolean(value.trim()) ? "вкл" : "выкл";
+        }
+        if (d.type() == SettingType.SELECT && d.options() != null) {
+            return d.options().stream().filter(o -> o.value().equals(value)).findFirst()
+                    .map(o -> "«" + o.label() + "»").orElse(value);
         }
         if (d.type() == SettingType.STRING || d.type() == SettingType.TEXT) {
             if (value.isEmpty()) {

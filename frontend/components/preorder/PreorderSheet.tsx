@@ -16,7 +16,7 @@ import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useI18n } from "@/i18n/context";
 import { ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { useOrderLimits } from "@/lib/order-limits";
-import { preorderApi, preorderKeys, QUEUE_MAX_QTY, type MyPreorder } from "@/lib/preorders";
+import { DEFAULT_HOLD_HOURS, preorderApi, preorderKeys, QUEUE_MAX_QTY, type MyPreorder } from "@/lib/preorders";
 import { backdrop, sheetVariants } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 
@@ -24,6 +24,8 @@ export function PreorderSheet({
   product,
   variant,
   mine,
+  coming = false,
+  holdHours = DEFAULT_HOLD_HOURS,
   open,
   onClose,
   onDone,
@@ -32,6 +34,10 @@ export function PreorderSheet({
   variant: ProductVariant | null;
   /** My existing place in this queue, if any. */
   mine?: MyPreorder;
+  /** A batch is on its way («коли приїде»); false = sold out with nothing coming («коли з'явиться»). */
+  coming?: boolean;
+  /** Hold length once it arrives, hours. */
+  holdHours?: number;
   open: boolean;
   onClose: () => void;
   /** Called with the toast text after a change went through. */
@@ -42,7 +48,7 @@ export function PreorderSheet({
   return createPortal(
     <AnimatePresence>
       {open && product && (
-        <Body key={`${product.id}:${variant?.id ?? ""}`} product={product} variant={variant} mine={mine} onClose={onClose} onDone={onDone} />
+        <Body key={`${product.id}:${variant?.id ?? ""}`} product={product} variant={variant} mine={mine} coming={coming} holdHours={holdHours} onClose={onClose} onDone={onDone} />
       )}
     </AnimatePresence>,
     document.body,
@@ -53,12 +59,16 @@ function Body({
   product,
   variant,
   mine,
+  coming,
+  holdHours,
   onClose,
   onDone,
 }: {
   product: Product;
   variant: ProductVariant | null;
   mine?: MyPreorder;
+  coming: boolean;
+  holdHours: number;
   onClose: () => void;
   onDone?: (message: string) => void;
 }) {
@@ -163,7 +173,7 @@ function Body({
           </div>
 
           <p className="mt-4 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3 text-[13px] leading-snug text-[var(--muted)]">
-            {t("preorder.sheet.bot")}
+            {coming ? t("preorder.sheet.bot", { h: holdHours }) : t("preorder.sheet.botOut")}
           </p>
 
           {error && (

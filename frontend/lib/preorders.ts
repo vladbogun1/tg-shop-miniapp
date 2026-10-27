@@ -40,8 +40,13 @@ export interface MyPreorder {
   eta: PreorderEta | null;
 }
 
+/** How long a hold lasts when the backend does not say (older backend). */
+export const DEFAULT_HOLD_HOURS = 24;
+
 export interface ComingBatch {
   eta: PreorderEta;
+  /** Hold length of the batch, hours (absent on an older backend). */
+  holdHours?: number;
   lines: { productId: string; variantId: string | null }[];
 }
 
@@ -51,6 +56,8 @@ export interface ProductPreorder {
   waitingCount: number | null;
   anyProduct: boolean;
   mine: MyPreorder[];
+  /** Hold length, hours (absent on an older backend). */
+  holdHours?: number;
 }
 
 export const preorderApi = {
@@ -81,6 +88,8 @@ export interface Coming {
   etaOf: (productId: string, variantId: string | null) => PreorderEta | undefined;
   /** Soonest eta of any line of the product. */
   productEta: (productId: string) => PreorderEta | undefined;
+  /** Hold length of the soonest batch that brings the product, hours. */
+  holdHoursOf: (productId: string) => number;
   /** Product ids in the order of their batches (soonest first). */
   productIds: string[];
 }
@@ -96,6 +105,7 @@ export function useComing(): Coming {
   return useMemo(() => {
     const exact = new Map<string, PreorderEta>();
     const byProduct = new Map<string, PreorderEta>();
+    const holds = new Map<string, number>();
     const order: string[] = [];
     for (const b of q.data ?? []) {
       for (const l of b.lines) {
@@ -103,6 +113,7 @@ export function useComing(): Coming {
         if (!exact.has(k)) exact.set(k, b.eta);
         if (!byProduct.has(l.productId)) {
           byProduct.set(l.productId, b.eta);
+          if (b.holdHours && b.holdHours > 0) holds.set(l.productId, b.holdHours);
           order.push(l.productId);
         }
       }
@@ -110,6 +121,7 @@ export function useComing(): Coming {
     return {
       etaOf: (productId: string, variantId: string | null) => exact.get(lineKeyOf(productId, variantId)),
       productEta: (productId: string) => byProduct.get(productId),
+      holdHoursOf: (productId: string) => holds.get(productId) ?? DEFAULT_HOLD_HOURS,
       productIds: order,
     };
   }, [q.data]);

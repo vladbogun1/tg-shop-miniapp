@@ -203,6 +203,22 @@ public class PreorderQueueService {
         }
     }
 
+    /**
+     * The product left sale (archived or hidden): everybody still in its queues is taken off and told after
+     * commit. Runs in the caller's transaction; the product row is already locked or about to be saved.
+     */
+    public int closeForProduct(byte[] productId) {
+        Instant now = clock.instant();
+        int n = 0;
+        for (PreorderSubscription s : subs.findLiveByProduct(productId)) {
+            s.close(Status.CANCELLED, "товар снят с продажи", now);
+            subs.save(s);
+            events.publishEvent(new PreorderEvents.Closed(s.getId(), "PRODUCT_GONE"));
+            n++;
+        }
+        return n;
+    }
+
     /** My queues, live first, then the latest history («Мої очікування»). */
     @Transactional(readOnly = true)
     public List<MyPreorderDto> listMine(long userId) {
@@ -270,8 +286,10 @@ public class PreorderQueueService {
                 }
             }
         }
+        PreorderBatch soonest = lines.values().stream().reduce(PreorderQueueService::sooner).orElse(null);
+        int hold = soonest != null ? soonest.getHoldHours() : settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS);
         return new ProductPreorderDto(UuidUtil.toString(productId), lineDtos, waiting,
-                settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT), mine);
+                settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT), mine, hold);
     }
 
     /** «Скоро в наявності»: open public batches, soonest first, with their lines. */
@@ -290,7 +308,7 @@ public class PreorderQueueService {
         }
         return byBatch.values().stream()
                 .sorted(PreorderQueueService::bySoonest)
-                .map(b -> new ComingDto(eta(b, today), linesOf.get(b.getId())))
+                .map(b -> new ComingDto(eta(b, today), linesOf.get(b.getId()), b.getHoldHours()))
                 .toList();
     }
 
@@ -301,7 +319,12 @@ public class PreorderQueueService {
      * must leave them on the shelf. Read inside the order transaction after the product row is locked.
      */
     public int heldForOthers(byte[] productId, byte[] variantId, Long userId) {
-        return (int) subs.heldForOthers(productId, variantId, userId);
+        // A locking read, not the aggregate: under REPEATABLE READ a plain SELECT shows the snapshot of the
+        // order's first read, which may predate a hold that the expiry job released while we waited for the
+        // product lock. FOR UPDATE reads the latest committed rows.
+        return subs.lockQueue(productId, variantId).stream()
+                .filter(s -> s.statusEnum() == Status.HELD && (userId == null || !userId.equals(s.getUserId())))
+                .mapToInt(PreorderSubscription::getHeldQty).sum();
     }
 
     /** Units on hold per line ({@link #lineKey}) — the catalog subtracts them from the stock it shows. */
@@ -323,7 +346,7 @@ public class PreorderQueueService {
         }
         Instant now = clock.instant();
         for (byte[][] line : lines) {
-            for (PreorderSubscription s : subs.findLive(userId, line[0], line[1])) {
+            for (PreorderSubscription s : subs.lockLive(userId, line[0], line[1])) {
                 boolean partlyUnused = s.statusEnum() == Status.HELD;
                 s.close(Status.BOUGHT, null, now);
                 s.setOrderId(orderId);
@@ -490,9 +513,11 @@ public class PreorderQueueService {
     public int expireHolds() {
         Instant now = clock.instant();
         int done = 0;
-        for (PreorderSubscription candidate : subs.findExpiredHolds(now, PageRequest.of(0, 50))) {
-            Product product = products.findByIdForUpdate(candidate.getProductId()).orElse(null);
-            PreorderSubscription s = subs.findById(candidate.getId()).orElse(null);
+        for (Object[] candidate : subs.findExpiredHoldIds(now, PageRequest.of(0, 50))) {
+            // product lock first (like checkout), then the place itself, read fresh: a buyer who held the
+            // lock before us may have bought the hold meanwhile — then there is nothing to expire
+            Product product = products.findByIdForUpdate((byte[]) candidate[1]).orElse(null);
+            PreorderSubscription s = subs.findForUpdate(((Number) candidate[0]).longValue()).orElse(null);
             if (s == null || !(s.statusEnum() == Status.HELD || s.statusEnum() == Status.NOTIFIED)
                     || s.getHoldUntil() == null || !s.getHoldUntil().isBefore(now)) {
                 continue;

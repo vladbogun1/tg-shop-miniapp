@@ -54,6 +54,7 @@ class TranslationAdminServiceTest {
     TranslationService translationService;
     CacheManager cacheManager;
     TranslationAdminService service;
+    com.maxsolch.shop.i18n.BotTexts botTexts;
 
     @BeforeEach
     void setUp() {
@@ -82,9 +83,10 @@ class TranslationAdminServiceTest {
         when(payments.findAll()).thenReturn(List.of(inactive));
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
+        botTexts = mock(com.maxsolch.shop.i18n.BotTexts.class);
         service = new TranslationAdminService(repo, products, variants, tags, payments, templates,
                 translationService,
-                cacheManager);
+                cacheManager, botTexts);
     }
 
     private static ImportItem item(String field, String hash, String text) {
@@ -377,6 +379,85 @@ class TranslationAdminServiceTest {
         assertThat(r.updated()).isEqualTo(1);
         assertThat(tag.getH1()).isEqualTo("Игровые коврики");
         assertThat(tag.getName()).isEqualTo("Ковры");
+    }
+
+    private static final String BOT_KEY = "bot.preorder.arrived";
+    private static final String BOT_RU = "Приехало: {0}";
+
+    private void shipped(String currentRu) {
+        when(botTexts.sourceRu(BOT_KEY)).thenReturn(currentRu);
+        when(botTexts.builtinRu(BOT_KEY)).thenReturn(BOT_RU);
+        when(botTexts.builtin("uk", BOT_KEY)).thenReturn("Приїхало: {0}");
+        when(botTexts.builtin("en", BOT_KEY)).thenReturn("Arrived: {0}");
+    }
+
+    @Test
+    void shippedBotTextsAreATranslationNotATodo() {
+        shipped(BOT_RU);
+
+        var items = service.export("uk", null, "BOT_TEXT");
+
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).status()).isEqualTo("TRANSLATED");
+        assertThat(items.get(0).text()).isEqualTo("Приїхало: {0}");
+        assertThat(items.get(0).reviewed()).isTrue();
+        assertThat(service.export("en", "missing", "BOT_TEXT")).isEmpty();
+        var counts = service.stats().locales().get("uk").get("BOT_TEXT");
+        assertThat(counts.missing()).isZero();
+        assertThat(counts.translated()).isEqualTo(1);
+        assertThat(counts.unreviewed()).isZero();
+    }
+
+    @Test
+    void shippedBotTextsGoStaleWhenTheRussianSourceIsEdited() {
+        shipped("Уже здесь: {0}");
+
+        var items = service.export("uk", null, "BOT_TEXT");
+
+        assertThat(items).singleElement().satisfies(i -> {
+            assertThat(i.status()).isEqualTo("STALE");
+            assertThat(i.prevSource()).isEqualTo(BOT_RU);
+        });
+        assertThat(service.stats().locales().get("en").get("BOT_TEXT").stale()).isEqualTo(1);
+    }
+
+    private TranslationDtos.SourceFixResult fixBotText(String sourceHash, String newText) {
+        return service.fixSource(new TranslationDtos.SourceFixRequest(
+                List.of(new TranslationDtos.SourceRef("BOT_TEXT",
+                        com.maxsolch.shop.i18n.BotTexts.idStringOf(BOT_KEY), "body", sourceHash)),
+                newText, null), 1L);
+    }
+
+    @Test
+    void sourceFixOfABotTextSavesTheRussianOverride() {
+        when(botTexts.sourceRu(BOT_KEY)).thenReturn(BOT_RU);
+        when(botTexts.saveRu(BOT_KEY, "Уже здесь: {0}")).thenReturn(true);
+
+        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь: {0}");
+
+        assertThat(r.updated()).isEqualTo(1);
+        verify(botTexts).saveRu(BOT_KEY, "Уже здесь: {0}");
+    }
+
+    @Test
+    void sourceFixOfABotTextIsSkippedWhenItChangedMeanwhile() {
+        when(botTexts.sourceRu(BOT_KEY)).thenReturn("Другой текст {0}");
+
+        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь: {0}");
+
+        assertThat(r.skippedStale()).isEqualTo(1);
+        verify(botTexts, never()).saveRu(anyString(), anyString());
+    }
+
+    @Test
+    void sourceFixOfABotTextWithLostPlaceholdersIsInvalid() {
+        when(botTexts.sourceRu(BOT_KEY)).thenReturn(BOT_RU);
+        when(botTexts.saveRu(anyString(), anyString())).thenReturn(false);
+
+        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь");
+
+        assertThat(r.updated()).isZero();
+        assertThat(r.invalid()).isEqualTo(1);
     }
 
     private Product product() {

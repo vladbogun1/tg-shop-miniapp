@@ -53,6 +53,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductModal, type ProductStepKey } from "@/components/products/ProductModal";
 import { WaitBadge } from "@/components/preorders/WaitBadge";
+import { demandOfProduct, useDemand } from "@/lib/preorders";
 
 import { useShopSetting } from "@/lib/settings";
 import { invalidateCards } from "@/lib/cards";
@@ -61,7 +62,7 @@ import { invalidateCards } from "@/lib/cards";
 const STEP_KEYS = new Set<string>(["basics", "photos", "pricing", "category", "specs", "site", "review"]);
 
 type Product = AdminProduct;
-type StatusFilter = "all" | "instock" | "out" | "hidden" | "unfinished";
+type StatusFilter = "all" | "instock" | "out" | "hidden" | "unfinished" | "preorder";
 type CardFilter = "" | CardStatus | "INCOMPLETE";
 
 const NO_CATEGORY = "__none";
@@ -78,7 +79,8 @@ type SortKey =
   | "price_asc"
   | "stock_asc"
   | "stock_desc"
-  | "sold";
+  | "sold"
+  | "demand";
 type ViewMode = "list" | "cards";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -89,6 +91,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "stock_asc", label: "Остаток ↑" },
   { value: "stock_desc", label: "Остаток ↓" },
   { value: "sold", label: "Продажи ↓" },
+  { value: "demand", label: "По спросу" },
 ];
 
 function effStock(p: Product): number {
@@ -127,6 +130,13 @@ export default function ProductsPage() {
     queryKey: ["products", archivedView],
     queryFn: () => (archivedView ? adminApi.productsArchived() : adminApi.products()),
   });
+  // «Чего ждут»: по нему сортировка «По спросу» и фильтр «Предзаказ» (клиентские, список целиком в памяти).
+  const demandQ = useDemand();
+  const waitingOf = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of products) m.set(p.id, demandOfProduct(demandQ.data, p.id)?.people ?? 0);
+    return m;
+  }, [products, demandQ.data]);
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, staleTime: 60_000 });
   const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, staleTime: 60_000 });
   const { data: schema } = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, staleTime: 60_000 });
@@ -228,6 +238,7 @@ export default function ProductsPage() {
         if (status === "out" && !(p.active !== false && effStock(p) === 0)) return false;
         if (status === "hidden" && p.active !== false) return false;
         if (status === "unfinished" && !isUnfinished(p)) return false;
+        if (status === "preorder" && !((waitingOf.get(p.id) ?? 0) > 0)) return false;
       }
       return true;
     });
@@ -246,6 +257,8 @@ export default function ProductsPage() {
           return effStock(b) - effStock(a) || byTitle(a, b);
         case "sold":
           return (b.soldCount ?? 0) - (a.soldCount ?? 0) || byTitle(a, b);
+        case "demand":
+          return (waitingOf.get(b.id) ?? 0) - (waitingOf.get(a.id) ?? 0) || (b.soldCount ?? 0) - (a.soldCount ?? 0) || byTitle(a, b);
         default: // smart
           return (
             smartGroup(a) - smartGroup(b) ||
@@ -256,7 +269,7 @@ export default function ProductsPage() {
       }
     });
     return list;
-  }, [products, search, status, categoryId, categories, brandId, condition, cardFilter, missingOf, sort, archivedView]);
+  }, [products, search, status, categoryId, categories, brandId, condition, cardFilter, missingOf, sort, archivedView, waitingOf]);
 
   const counts = useMemo(() => {
     const active = products.filter((p) => p.active !== false);
@@ -266,8 +279,9 @@ export default function ProductsPage() {
       out: active.filter((p) => effStock(p) === 0).length,
       hidden: products.filter((p) => p.active === false).length,
       unfinished: products.filter(isUnfinished).length,
+      preorder: active.filter((p) => (waitingOf.get(p.id) ?? 0) > 0).length,
     };
-  }, [products]);
+  }, [products, waitingOf]);
 
   // Warehouse summary over active (non-archived) products: units + total retail value.
   const stockSummary = useMemo(() => {
@@ -295,6 +309,9 @@ export default function ProductsPage() {
       { value: "hidden" as StatusFilter, label: "Скрытые", count: counts.hidden },
       ...(counts.unfinished > 0 || status === "unfinished"
         ? [{ value: "unfinished" as StatusFilter, label: "Незавершённые", count: counts.unfinished }]
+        : []),
+      ...(counts.preorder > 0 || status === "preorder"
+        ? [{ value: "preorder" as StatusFilter, label: "Предзаказ", count: counts.preorder }]
         : []),
     ],
     [counts, status]

@@ -4,9 +4,8 @@
  *
  * Isomorphic part: types, the index of open batches, ETA wording (server and client).
  */
-import { LOCALE_TAG, type Locale, type StorefrontProduct } from "@shop/shared";
+import { availabilityOf, LOCALE_TAG, type Locale, type StorefrontProduct } from "@shop/shared";
 import type { TFunction } from "@/i18n";
-import { stockOf } from "./stock";
 
 // ---------------------------------------------------------------- shapes (backend PreorderDtos)
 
@@ -55,7 +54,12 @@ export interface ProductPreorder {
   /** The customer may queue for out-of-stock goods even without a batch. */
   anyProduct: boolean;
   mine: MyPreorder[];
+  /** How long a unit is held once it arrives, hours (absent on an older backend). */
+  holdHours?: number;
 }
+
+/** Used when the backend does not send `holdHours`. */
+export const DEFAULT_HOLD_HOURS = 24;
 
 export const LIVE_STATUSES: PreorderStatus[] = ["WAITING", "HELD", "NOTIFIED"];
 
@@ -98,14 +102,14 @@ export function buildPreorderIndex(batches: ComingBatch[]): PreorderIndex {
  * null otherwise (in stock, or simply out of stock).
  */
 export function preorderOf(p: StorefrontProduct, idx: PreorderIndex | null | undefined): PreorderEta | null {
-  if (!idx || stockOf(p, null) > 0) return null;
-  return idx.any.get(p.id) ?? null;
+  const eta = idx?.any.get(p.id) ?? null;
+  return availabilityOf(p, null, { coming: !!eta }) === "preorder" ? eta : null;
 }
 
 /** 0 = in stock, 1 = pre-order, 2 = out of stock — the order of the lists. */
 export function availabilityRank(p: StorefrontProduct, idx: PreorderIndex | null | undefined): 0 | 1 | 2 {
-  if (stockOf(p, null) > 0) return 0;
-  return idx?.any.has(p.id) ? 1 : 2;
+  const a = availabilityOf(p, null, { coming: !!idx?.any.has(p.id) });
+  return a === "in_stock" ? 0 : a === "preorder" ? 1 : 2;
 }
 
 // ---------------------------------------------------------------- «my hold = my stock» in the cart
@@ -187,9 +191,16 @@ export function groupTitle(eta: PreorderEta, t: TFunction, locale: Locale): stri
   return expectedLine(eta, t, locale) ?? t("preorder.coming.groupHidden");
 }
 
-/** The date schema.org's `availabilityStarts` wants (YYYY-MM-DD); null for a hidden/«soon» date. */
-export function etaStartsOn(eta: PreorderEta): string | null {
-  if (eta.mode === "HIDDEN" || eta.mode === "APPROX" && !eta.approxWeeks) return null;
+/**
+ * The date schema.org's `availabilityStarts` / Google's `availability_date` want (YYYY-MM-DD); null for a
+ * hidden or «soon» (no number of weeks) term. An approximate term counts from `now`.
+ */
+export function etaStartsOn(eta: PreorderEta, now: Date = new Date()): string | null {
+  if (eta.mode === "HIDDEN") return null;
+  if (eta.mode === "APPROX") {
+    if (!eta.approxWeeks || eta.approxWeeks <= 0) return null;
+    return new Date(now.getTime() + eta.approxWeeks * 7 * 86_400_000).toISOString().slice(0, 10);
+  }
   const d = eta.from ?? eta.to;
   return d ? d.slice(0, 10) : null;
 }

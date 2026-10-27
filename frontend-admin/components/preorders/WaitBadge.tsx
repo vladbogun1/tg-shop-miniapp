@@ -3,7 +3,8 @@
 /** Бейдж «ждут N» у товара в списке (из «Чего ждут»); клик — кто ждёт. Один общий запрос на все строки. */
 import { useState } from "react";
 import { BellRing } from "lucide-react";
-import { demandOfProduct, useDemand } from "@/lib/preorders";
+import { demandOfProduct, demandRowsOfProduct, useDemand } from "@/lib/preorders";
+import { ReleaseButton } from "./ReleaseButton";
 import { WaitersModal } from "./WaitersModal";
 
 export function WaitBadge({ productId, title }: { productId: string; title: string }) {
@@ -43,9 +44,12 @@ export function WaitLine({ productId, title }: { productId: string; title: strin
         <span className="text-[var(--text)]">
           Ждут: <b>{d.people} чел / {d.units} шт</b>
         </span>
-        <button type="button" onClick={() => setOpen(true)} className="font-semibold text-[var(--accent-hi)] hover:underline">
-          Показать список
-        </button>
+        <span className="flex flex-wrap items-center gap-3">
+          <ReleaseButton rows={demandRowsOfProduct(q.data, productId)} label={title} />
+          <button type="button" onClick={() => setOpen(true)} className="font-semibold text-[var(--accent-hi)] hover:underline">
+            Показать список
+          </button>
+        </span>
       </div>
       {open && <WaitersModal open={open} onClose={() => setOpen(false)} productId={productId} title={title} />}
     </>

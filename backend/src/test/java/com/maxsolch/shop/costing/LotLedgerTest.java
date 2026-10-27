@@ -90,6 +90,25 @@ class LotLedgerTest {
     }
 
     @Test
+    void aPartialReturnKeepsTheRestOfTheAllocationAndASecondReturnFinishesIt() {
+        StockLot old = lot(1, "OPENING");
+        StockLot fresh = lot(5, "BATCH");
+        OrderItem item = new OrderItem();
+        ledger.take(PAD, null, 4, item); // 1 from old, 3 from fresh
+
+        ledger.give(PAD, null, 1, item); // newest allocation first: back to fresh
+        assertThat(fresh.getQtyLeft()).isEqualTo(3);
+        assertThat(old.getQtyLeft()).isZero();
+        assertThat(item.getLots()).extracting(a -> a.getQty()).containsExactlyInAnyOrder(1, 2);
+
+        ledger.give(PAD, null, 3, item);
+        assertThat(fresh.getQtyLeft()).isEqualTo(5);
+        assertThat(old.getQtyLeft()).isEqualTo(1);
+        assertThat(item.getLots()).isEmpty();
+        assertThat(store.stream().mapToInt(StockLot::getQtyLeft).sum()).isEqualTo(6);
+    }
+
+    @Test
     void unitsTheLotsCannotCoverAreSoldWithoutCostAndComeBackToTheOpeningLot() {
         lot(1, "BATCH");
         OrderItem item = new OrderItem();

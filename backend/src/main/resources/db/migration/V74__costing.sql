@@ -100,3 +100,7 @@ SELECT p.id, NULL, 'OPENING', p.stock, p.stock
 FROM products p
 WHERE p.stock > 0
   AND NOT EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id);
+
+-- Bot phrases of the pre-order queue are editable in «Переводы» (BOT_TEXT, entity_id = MD5 of the message key).
+ALTER TABLE content_translations
+    MODIFY entity_type ENUM('PRODUCT','VARIANT','TAG','PAYMENT_OPTION','REPLY_TEMPLATE','CATEGORY','BRAND','BOT_TEXT') NOT NULL;

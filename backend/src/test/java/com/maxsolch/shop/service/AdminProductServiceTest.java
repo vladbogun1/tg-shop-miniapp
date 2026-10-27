@@ -70,8 +70,39 @@ class AdminProductServiceTest {
         product.setPriceMinor(90_000);
         product.setStock(1); // two units sold while the form was open (it showed 3)
         id = UuidUtil.toString(product.getId());
-        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(product));
+        lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         lenient().when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void sortByDemandPutsTheMostWantedFirstAndKeepsTheRestInOrder() {
+        Product a = named("A");
+        Product b = named("B");
+        Product c = named("C");
+        Product d = named("D");
+        when(productRepository.findAllNotArchived()).thenReturn(List.of(a, b, c, d));
+        var subs = org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class);
+        when(subs.waitingByProduct()).thenReturn(List.of(
+                new Object[]{c.getId(), 5L, 6L}, new Object[]{b.getId(), 2L, 9L}));
+        service.setPreorders(org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderQueueService.class), subs);
+
+        List<AdminProductDto> plain = service.list(null);
+        List<AdminProductDto> byDemand = service.list("demand");
+
+        assertThat(plain).extracting(AdminProductDto::title).containsExactly("A", "B", "C", "D");
+        assertThat(byDemand).extracting(AdminProductDto::title).containsExactly("C", "B", "A", "D");
+        assertThat(byDemand.get(0).waitingPeople()).isEqualTo(5);
+        assertThat(byDemand.get(0).waitingQty()).isEqualTo(6);
+        assertThat(byDemand.get(3).waitingPeople()).isZero();
+    }
+
+    private static Product named(String title) {
+        Product p = new Product();
+        p.setId(UuidUtil.randomBytes());
+        p.setTitle(title);
+        p.setSlug(title.toLowerCase());
+        p.setPriceMinor(100);
+        return p;
     }
 
     private static ProductUpsertRequest req(Integer stock, Integer expected, List<VariantInput> variants) {

@@ -9,7 +9,7 @@
  */
 import { Bell, Check, Clock, Truck } from "lucide-react";
 import { useI18n } from "@/i18n/context";
-import { etaWhen, holdUntilText, type MyPreorder, type PreorderEta } from "@/lib/preorders";
+import { DEFAULT_HOLD_HOURS, etaWhen, holdUntilText, type MyPreorder, type PreorderEta } from "@/lib/preorders";
 
 /** Violet of the pre-order state (same as the «approved» order status). */
 export const PRE_COLOR = "var(--st-approved)";
@@ -18,12 +18,15 @@ export function PreorderBlock({
   eta,
   waitingCount,
   mine,
+  holdHours = DEFAULT_HOLD_HOURS,
   onEdit,
 }: {
   /** The batch of the selected line; undefined = nothing is on its way (only the «notify me» note). */
   eta?: PreorderEta;
   waitingCount: number | null;
   mine?: MyPreorder;
+  /** How long a unit is held once it arrives. */
+  holdHours?: number;
   onEdit: () => void;
 }) {
   const { t, tag } = useI18n();
@@ -90,7 +93,7 @@ export function PreorderBlock({
           </button>
         </p>
       ) : (
-        <p className="mt-3 text-[12px] leading-snug text-[var(--muted)]">{eta ? t("preorder.noPrepay") : t("preorder.outHint")}</p>
+        <p className="mt-3 text-[12px] leading-snug text-[var(--muted)]">{eta ? t("preorder.noPrepay", { h: holdHours }) : t("preorder.outHint")}</p>
       )}
     </div>
   );

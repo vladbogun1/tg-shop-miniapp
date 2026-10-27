@@ -54,6 +54,7 @@ import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { QueryState } from "@/components/ui/QueryState";
 import { TodayStrip } from "@/components/metrics/TodayStrip";
+import { WantedWidget } from "@/components/preorders/WantedWidget";
 import { KanbanColumn } from "@/components/orders/KanbanColumn";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
@@ -350,6 +351,7 @@ export default function BoardPage() {
       ) : (
         <>
           <TodayStrip />
+          <WantedWidget />
           {paidNewOnly && (
             <div className="mb-3 flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[var(--text)]">Показаны только оплаченные новые заказы — подтвердите их</span>

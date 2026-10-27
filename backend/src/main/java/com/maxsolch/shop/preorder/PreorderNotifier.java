@@ -2,6 +2,7 @@ package com.maxsolch.shop.preorder;
 
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.i18n.BotTexts;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.preorder.PreorderDtos.EtaDto;
@@ -44,14 +45,16 @@ public class PreorderNotifier {
     private final ShopBot bot;
     private final AppProperties props;
     private final Messages messages;
+    private final BotTexts texts;
     private final ActivityLog activity;
 
     public PreorderNotifier(PreorderQueueService queue, @Lazy ShopBot bot, AppProperties props, Messages messages,
-                            ActivityLog activity) {
+                            ActivityLog activity, BotTexts texts) {
         this.queue = queue;
         this.bot = bot;
         this.props = props;
         this.messages = messages;
+        this.texts = texts;
         this.activity = activity;
     }
 
@@ -61,8 +64,8 @@ public class PreorderNotifier {
         send("PREORDER_SUBSCRIBED", e.subscriptionId(), (d, l) -> {
             MyPreorderDto p = d.place();
             String text = p.eta() == null
-                    ? messages.get(l, "bot.preorder.subscribedNotify", title(p))
-                    : messages.get(l, "bot.preorder.subscribed", title(p), p.position() == null ? 1 : p.position(),
+                    ? texts.get(l, "bot.preorder.subscribedNotify", title(p))
+                    : texts.get(l, "bot.preorder.subscribed", title(p), p.position() == null ? 1 : p.position(),
                             p.qty(), eta(p.eta(), l));
             return new Msg(text, mineButton(l));
         });
@@ -73,10 +76,10 @@ public class PreorderNotifier {
     public void onHoldGranted(PreorderEvents.HoldGranted e) {
         send("PREORDER_HOLD", e.subscriptionId(), (d, l) -> {
             MyPreorderDto p = d.place();
-            String text = messages.get(l, "bot.preorder.held", title(p), p.heldQty(), at(p.holdUntil(), HOLD),
+            String text = texts.get(l, "bot.preorder.held", title(p), p.heldQty(), at(p.holdUntil(), HOLD),
                     MoneyFormat.amount(d.priceMinor()));
             if (p.heldQty() < p.qty()) {
-                text += messages.get(l, "bot.preorder.heldPartial", p.qty() - p.heldQty());
+                text += texts.get(l, "bot.preorder.heldPartial", p.qty() - p.heldQty());
             }
             return new Msg(text, buyButton(p, l));
         });
@@ -86,14 +89,14 @@ public class PreorderNotifier {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onArrived(PreorderEvents.ArrivedNotice e) {
         send("PREORDER_ARRIVED", e.subscriptionId(),
-                (d, l) -> new Msg(messages.get(l, "bot.preorder.arrived", title(d.place())), buyButton(d.place(), l)));
+                (d, l) -> new Msg(texts.get(l, "bot.preorder.arrived", title(d.place())), buyButton(d.place(), l)));
     }
 
     @TransactionalEventListener(fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onHoldEnding(PreorderEvents.HoldEnding e) {
         send("PREORDER_HOLD_ENDING", e.subscriptionId(), (d, l) -> new Msg(
-                messages.get(l, "bot.preorder.ending", title(d.place()), at(d.place().holdUntil(), TIME)),
+                texts.get(l, "bot.preorder.ending", title(d.place()), at(d.place().holdUntil(), TIME)),
                 buyButton(d.place(), l)));
     }
 
@@ -101,22 +104,33 @@ public class PreorderNotifier {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onHoldExpired(PreorderEvents.HoldExpired e) {
         send("PREORDER_HOLD_EXPIRED", e.subscriptionId(),
-                (d, l) -> new Msg(messages.get(l, "bot.preorder.expired", title(d.place())), mineButton(l)));
+                (d, l) -> new Msg(texts.get(l, "bot.preorder.expired", title(d.place())), mineButton(l)));
     }
 
     @TransactionalEventListener(fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStillWaiting(PreorderEvents.StillWaiting e) {
         send("PREORDER_STILL_WAITING", e.subscriptionId(), (d, l) -> new Msg(
-                messages.get(l, "bot.preorder.stillWaiting", title(d.place()), e.position()), mineButton(l)));
+                texts.get(l, "bot.preorder.stillWaiting", title(d.place()), e.position()), mineButton(l)));
     }
 
     @TransactionalEventListener(fallbackExecution = true)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onClosed(PreorderEvents.Closed e) {
-        String key = "BATCH_CANCELLED".equals(e.reason()) ? "bot.preorder.batchCancelled" : "bot.preorder.removed";
+        String key = switch (e.reason() == null ? "" : e.reason()) {
+            case "BATCH_CANCELLED" -> "bot.preorder.batchCancelled";
+            case "PRODUCT_GONE" -> "bot.preorder.productGone";
+            default -> "bot.preorder.removed";
+        };
         send("PREORDER_CLOSED", e.subscriptionId(),
-                (d, l) -> new Msg(messages.get(l, key, title(d.place())), mineButton(l)));
+                (d, l) -> new Msg(texts.get(l, key, title(d.place())), mineButton(l)));
+    }
+
+    @TransactionalEventListener(fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onBatchCancelledKept(PreorderEvents.BatchCancelledKept e) {
+        send("PREORDER_BATCH_CANCELLED", e.subscriptionId(), (d, l) -> new Msg(
+                texts.get(l, "bot.preorder.batchCancelledKept", title(d.place())), mineButton(l)));
     }
 
     // ----- helpers -----
@@ -180,11 +194,11 @@ public class PreorderNotifier {
             case "DATE" -> eta.from() == null ? null : day(eta.from());
             case "RANGE" -> eta.from() == null || eta.to() == null ? null : day(eta.from()) + " – " + day(eta.to());
             case "APPROX" -> eta.approxWeeks() == null || eta.approxWeeks() <= 0
-                    ? messages.get(l, "bot.preorder.soon")
-                    : messages.get(l, "bot.preorder.approxWeeks", eta.approxWeeks());
+                    ? texts.get(l, "bot.preorder.soon")
+                    : texts.get(l, "bot.preorder.approxWeeks", eta.approxWeeks());
             default -> null;
         };
-        return when == null ? "" : messages.get(l, "bot.preorder.eta", when);
+        return when == null ? "" : texts.get(l, "bot.preorder.eta", when);
     }
 
     private static String day(LocalDate d) {
@@ -215,7 +229,7 @@ public class PreorderNotifier {
             return null;
         }
         InlineKeyboardButton b = InlineKeyboardButton.builder()
-                .text(messages.get(l, label))
+                .text(texts.get(l, label))
                 .webApp(WebAppInfo.builder().url(base + "?startapp=" + startApp).build())
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(b))).build();

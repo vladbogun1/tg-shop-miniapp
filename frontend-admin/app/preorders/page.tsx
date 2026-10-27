@@ -33,6 +33,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { Tabs } from "@/components/ui/Tabs";
 import { BatchFormModal, type SeedLine } from "@/components/preorders/BatchFormModal";
+import { CsvButton } from "@/components/preorders/CsvButton";
+import { ReleaseButton } from "@/components/preorders/ReleaseButton";
 import { SupplierModal } from "@/components/preorders/SupplierModal";
 
 type TabKey = "open" | "arrived" | "cancelled" | "demand" | "suppliers";
@@ -48,7 +50,7 @@ export default function PreordersPage() {
 function PreordersScreen() {
   const router = useRouter();
   const params = useSearchParams();
-  const [tab, setTab] = useState<TabKey>("open");
+  const [tab, setTab] = useState<TabKey>(params.get("tab") === "demand" ? "demand" : "open");
   const [form, setForm] = useState<{ seed: SeedLine[] } | null>(null);
   const [supplierModal, setSupplierModal] = useState(false);
 
@@ -190,6 +192,9 @@ function DemandList({ q, onOrder }: { q: ReturnType<typeof useDemand>; onOrder: 
         <EmptyState icon={Users} title="Пока никто не ждёт" description="Здесь появятся товары, на которые покупатели встали в очередь." />
       ) : (
         <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex justify-end">
+            <CsvButton scope={{}} />
+          </div>
           {rows.map((d) => (
             <div key={`${d.productId}:${d.variantId ?? ""}`} className="card flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3">
               <Image src={d.imageUrl} alt={d.title} size={120} className="h-14 w-14 shrink-0 rounded-[var(--r-md)] border border-[var(--line)]" />
@@ -201,7 +206,9 @@ function DemandList({ q, onOrder }: { q: ReturnType<typeof useDemand>; onOrder: 
               </div>
               <Stat label="Ждут" value={`${d.people} чел / ${d.units} шт`} accent />
               <Stat label="Новых за 7 дней" value={`+${d.newLast7d}`} />
-              <div className="min-w-[11rem]">
+              <div className="flex min-w-[11rem] flex-wrap items-center gap-2">
+                {d.stock > 0 && <ReleaseButton rows={[d]} label={lineTitle(d.title, d.variantName)} />}
+                <CsvButton scope={{ productId: d.productId, variantId: d.variantId }} />
                 {d.openBatchId != null ? (
                   <Link href={`/preorders/${d.openBatchId}`} className="text-[13px] font-semibold text-[var(--accent-hi)] hover:underline">
                     уже едет: {d.openBatchTitle}

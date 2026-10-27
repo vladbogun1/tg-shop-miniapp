@@ -7,6 +7,7 @@
  * no-variant products get an inline AddToCartControl, variant products get a
  * a "choose" button that opens the view.
  */
+import { availabilityOf } from "@shop/shared";
 import { Bell, Check, SlidersHorizontal, Truck } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { CompareCardToggle } from "@/components/compare/CompareBits";
@@ -40,9 +41,7 @@ export function ProductCard({
 }) {
   const { t, tag } = useI18n();
   const hasVariants = (product.variants?.length ?? 0) > 0;
-  const inStock = hasVariants
-    ? (product.variants ?? []).some((v) => v.stock > 0)
-    : (product.stock ?? 0) > 0;
+  const inStock = availabilityOf(product) === "in_stock";
 
   const showPhoto = inStock || (preorder != null && preorder.kind !== "out");
   const etaLine = preorder?.kind === "preorder" ? etaCardLine(preorder.eta, t, tag) : null;

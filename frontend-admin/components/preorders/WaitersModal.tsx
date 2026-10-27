@@ -8,6 +8,7 @@ import { PREORDERS_KEY, preordersApi } from "@/lib/preorders";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { QueryState } from "@/components/ui/QueryState";
+import { CsvButton } from "./CsvButton";
 import { SubscribersList } from "./SubscribersList";
 
 export function WaitersModal({ open, onClose, productId, title }: { open: boolean; onClose: () => void; productId: string; title: string }) {
@@ -24,16 +25,19 @@ export function WaitersModal({ open, onClose, productId, title }: { open: boolea
       size="lg"
       title={`Ждут: ${title}`}
       footer={
-        <Button
-          variant="accent"
-          icon={<Factory className="h-4 w-4" />}
-          onClick={() => {
-            onClose();
-            router.push(`/preorders?newProduct=${encodeURIComponent(productId)}`);
-          }}
-        >
-          Заказать у завода
-        </Button>
+        <>
+          <CsvButton scope={{ productId }} />
+          <Button
+            variant="accent"
+            icon={<Factory className="h-4 w-4" />}
+            onClick={() => {
+              onClose();
+              router.push(`/preorders?newProduct=${encodeURIComponent(productId)}`);
+            }}
+          >
+            Заказать у завода
+          </Button>
+        </>
       }
     >
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch}>

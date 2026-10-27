@@ -217,6 +217,7 @@ export function BuyBox({
           eta={selEta}
           waitingCount={pre?.waitingCount ?? null}
           mine={mineFor(variant)}
+          holdHours={pre?.holdHours}
         />
       )}
 

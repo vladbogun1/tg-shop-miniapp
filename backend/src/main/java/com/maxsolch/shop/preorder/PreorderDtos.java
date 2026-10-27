@@ -39,14 +39,15 @@ public final class PreorderDtos {
     /**
      * Pre-order block of a product page. {@code lines} — variants (or the product, variantId null) in an open
      * batch; {@code waitingCount} null below the «show from» threshold; {@code anyProduct} — the customer
-     * may queue for out-of-stock goods without a batch too.
+     * may queue for out-of-stock goods without a batch too. {@code holdHours} — how long a hold lasts once
+     * the goods arrive (the soonest batch's value, else the shop default).
      */
     public record ProductPreorderDto(String productId, List<LineDto> lines, Integer waitingCount,
-                                     boolean anyProduct, List<MyPreorderDto> mine) {
+                                     boolean anyProduct, List<MyPreorderDto> mine, int holdHours) {
     }
 
-    /** «Скоро в наявності»: open batches and what they bring. */
-    public record ComingDto(EtaDto eta, List<ComingLineDto> lines) {
+    /** «Скоро в наявності»: open batches and what they bring; {@code holdHours} — the batch's hold. */
+    public record ComingDto(EtaDto eta, List<ComingLineDto> lines, int holdHours) {
     }
 
     public record ComingLineDto(String productId, String variantId) {
@@ -118,10 +119,22 @@ public final class PreorderDtos {
                                 String source, Instant createdAt, Instant closedAt, String closeReason) {
     }
 
-    /** «Чего ждут»: one line with its queue. {@code openBatchId} — a batch already brings it. */
+    /**
+     * «Чего ждут»: one line with its queue. {@code openBatchId} — a batch already brings it.
+     * {@code productPeople} — distinct people waiting for ANY variant of the product (one person in two
+     * variants counts once), so the UI can total per product without double counting.
+     */
     public record DemandDto(String productId, String variantId, String title, String variantName, String imageUrl,
                             int stock, long priceMinor, long people, long units, Instant firstAt, long newLast7d,
-                            Long openBatchId, String openBatchTitle) {
+                            Long openBatchId, String openBatchTitle, long productPeople) {
+    }
+
+    /**
+     * Pre-order numbers for a period (Kyiv days, inclusive). Hold figures are in units; what is approximated
+     * is explained at {@code PreorderBatchService#metrics}.
+     */
+    public record MetricsDto(int subscriptions, int people, int holdsGiven, int boughtFromHold, int expired,
+                             double conversionPercent, int arrivedUnits) {
     }
 
     public record ReleaseRequest(String productId, String variantId) {

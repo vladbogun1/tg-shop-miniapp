@@ -103,6 +103,19 @@ public class PreorderBatchService {
 
     /** FIFO stock lots: an arrival becomes a lot priced by the batch (optional in unit tests). */
     private com.maxsolch.shop.costing.LotLedger ledger;
+    private com.maxsolch.shop.site.SiteRevalidator siteRevalidator;
+
+    @Autowired(required = false)
+    void setSiteRevalidator(com.maxsolch.shop.site.SiteRevalidator siteRevalidator) {
+        this.siteRevalidator = siteRevalidator;
+    }
+
+    /** Public pages show «скоро в наличии» and ETAs: rebuild them once the change commits. */
+    private void publicChanged() {
+        if (siteRevalidator != null) {
+            siteRevalidator.allChanged();
+        }
+    }
 
     @Autowired(required = false)
     void setLedger(com.maxsolch.shop.costing.LotLedger ledger) {
@@ -158,6 +171,7 @@ public class PreorderBatchService {
     public BatchDto create(BatchRequest req, String adminName, boolean money) {
         PreorderBatch b = new PreorderBatch();
         b.setHoldHours(settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS));
+        b.setCostAllocation(settings.getString(SettingsRegistry.COSTING_DEFAULT_DISTRIBUTION));
         b.setCreatedBy(adminName);
         apply(b, req, money);
         if (req.items() == null || req.items().isEmpty()) {
@@ -165,6 +179,7 @@ public class PreorderBatchService {
         }
         PreorderBatch saved = batches.save(b);
         saveItems(saved, req.items(), List.of(), money);
+        publicChanged();
         return toDto(saved, money);
     }
 
@@ -182,6 +197,7 @@ public class PreorderBatchService {
             }
             saveItems(b, req.items(), items.findByBatchIdOrderByIdAsc(id), money);
         }
+        publicChanged();
         return toDto(batches.save(b), money);
     }
 
@@ -200,6 +216,7 @@ public class PreorderBatchService {
             b.setInTransitAt(clock.instant());
         }
         b.setStatus(to.name());
+        publicChanged();
         return toDto(batches.save(b), money);
     }
 
@@ -285,8 +302,10 @@ public class PreorderBatchService {
     }
 
     /**
-     * Cancels a batch. {@code closeQueue} — also take the people off the queues of its lines (they are told);
-     * otherwise they keep waiting for the product without a date.
+     * Cancels a batch. Everybody WAITING on its lines is told. {@code closeQueue} (or the shop not taking
+     * waiters without a batch, {@code preorder.anyProduct} off) — they are taken off the queues; otherwise
+     * they stay as «wait for the product» without a date. Holds are not touched: a batch that never
+     * arrived has none.
      */
     @Transactional
     public BatchDto cancel(long id, CancelRequest req, boolean money) {
@@ -301,17 +320,27 @@ public class PreorderBatchService {
             String old = b.getPrivateNote() == null ? "" : b.getPrivateNote() + "\n";
             b.setPrivateNote(old + "Отменена: " + req.note().trim());
         }
-        if (req != null && Boolean.TRUE.equals(req.closeQueue())) {
-            for (PreorderBatchItem i : items.findByBatchIdOrderByIdAsc(id)) {
-                for (PreorderSubscription s : subs.queue(i.getProductId(), i.getVariantId())) {
-                    if (s.statusEnum() == Status.WAITING) {
-                        s.close(Status.CANCELLED, "поставка отменена", now);
-                        subs.save(s);
-                        events.publishEvent(new PreorderEvents.Closed(s.getId(), "BATCH_CANCELLED"));
-                    }
+        boolean close = (req != null && Boolean.TRUE.equals(req.closeQueue()))
+                || !settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT);
+        Set<String> seen = new HashSet<>();
+        for (PreorderBatchItem i : items.findByBatchIdOrderByIdAsc(id)) {
+            if (!seen.add(PreorderQueueService.lineKey(i.getProductId(), i.getVariantId()))) {
+                continue;
+            }
+            for (PreorderSubscription s : subs.queue(i.getProductId(), i.getVariantId())) {
+                if (s.statusEnum() != Status.WAITING) {
+                    continue;
+                }
+                if (close) {
+                    s.close(Status.CANCELLED, "поставка отменена", now);
+                    subs.save(s);
+                    events.publishEvent(new PreorderEvents.Closed(s.getId(), "BATCH_CANCELLED"));
+                } else {
+                    events.publishEvent(new PreorderEvents.BatchCancelledKept(s.getId()));
                 }
             }
         }
+        publicChanged();
         return toDto(batches.save(b), money);
     }
 
@@ -334,7 +363,42 @@ public class PreorderBatchService {
     /** The live queue of a product (all its variants). */
     @Transactional(readOnly = true)
     public List<SubscriberDto> subscribersOfProduct(String productId) {
-        return toSubscribers(subs.findLiveByProduct(PreorderQueueService.bytes(productId)));
+        return subscribersOfProduct(productId, null);
+    }
+
+    /** Same, narrowed to one variant when {@code variantId} is given. */
+    @Transactional(readOnly = true)
+    public List<SubscriberDto> subscribersOfProduct(String productId, String variantId) {
+        List<PreorderSubscription> rows = subs.findLiveByProduct(PreorderQueueService.bytes(productId));
+        if (variantId != null && !variantId.isBlank()) {
+            byte[] v = PreorderQueueService.bytes(variantId);
+            rows = rows.stream().filter(s -> Arrays.equals(s.getVariantId(), v)).toList();
+        }
+        return toSubscribers(rows);
+    }
+
+    /**
+     * Numbers for a period (Kyiv days, inclusive). Approximations, because a place keeps no history of its
+     * hold: {@code holdsGiven} counts units of places whose last hold/notice time ({@code notifiedAt}) is in
+     * the period and that were held, bought or expired (finished places by the quantity they asked for);
+     * {@code boughtFromHold} / {@code expired} are units of places that were notified and closed as
+     * BOUGHT / EXPIRED in the period. So the conversion mixes two cohorts when a hold spans the border —
+     * fine for periods of weeks. {@code arrivedUnits} — qty arrived in batches marked arrived in the period.
+     */
+    @Transactional(readOnly = true)
+    public PreorderDtos.MetricsDto metrics(LocalDate from, LocalDate to) {
+        if (from == null || to == null || to.isBefore(from) || from.plusDays(400).isBefore(to)) {
+            throw new BadRequestException("Период: даты ГГГГ-ММ-ДД, «по» не раньше «с», не больше 400 дней", "BAD_PERIOD");
+        }
+        Instant start = from.atStartOfDay(PreorderQueueService.KYIV).toInstant();
+        Instant end = to.plusDays(1).atStartOfDay(PreorderQueueService.KYIV).toInstant();
+        Object[] joined = subs.joinedBetween(start, end).stream().findFirst().orElse(new Object[]{0L, 0L});
+        int given = (int) subs.holdUnitsGiven(start, end);
+        int bought = (int) subs.closedAfterHold(Status.BOUGHT.name(), start, end);
+        int expired = (int) subs.closedAfterHold(Status.EXPIRED.name(), start, end);
+        double conversion = given > 0 ? Math.round(bought * 1000.0 / given) / 10.0 : 0;
+        return new PreorderDtos.MetricsDto((int) num(joined[0]), (int) num(joined[1]), given, bought, expired,
+                conversion, (int) items.arrivedBetween(start, end));
     }
 
     /** Takes somebody off a queue; their hold, if any, goes to the next person. */
@@ -393,6 +457,10 @@ public class PreorderBatchService {
                         openById.get(i.getBatchId()));
             }
         }
+        Map<String, Long> peopleOfProduct = new HashMap<>();
+        for (Object[] w : subs.waitingByProduct()) {
+            peopleOfProduct.put(UuidUtil.toString((byte[]) w[0]), num(w[1]));
+        }
         List<DemandDto> out = new ArrayList<>();
         for (Object[] r : rows) {
             byte[] productId = (byte[]) r[0];
@@ -406,7 +474,8 @@ public class PreorderBatchService {
             out.add(new DemandDto(UuidUtil.toString(productId), variantId == null ? null : UuidUtil.toString(variantId),
                     p.getTitle(), v == null ? null : v.getName(), PreorderQueueService.imageOf(p),
                     PreorderQueueService.stockOf(p, v), p.getPriceMinor(), num(r[2]), num(r[3]), (Instant) r[4],
-                    num(r[5]), b == null ? null : b.getId(), b == null ? null : b.getTitle()));
+                    num(r[5]), b == null ? null : b.getId(), b == null ? null : b.getTitle(),
+                    peopleOfProduct.getOrDefault(UuidUtil.toString(productId), num(r[2]))));
         }
         return out;
     }

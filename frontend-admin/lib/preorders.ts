@@ -3,7 +3,7 @@
  * Закупочная цена и курс приходят только главному админу (`moneyVisible`); цена закупки — в центах валюты.
  */
 import { useQuery } from "@tanstack/react-query";
-import { apiDelete, apiGet, apiPost, apiPut, isAuthenticated } from "@/lib/api";
+import { apiDelete, apiGet, apiOrigin, apiPost, apiPut, getAccessToken, isAuthenticated } from "@/lib/api";
 
 export type BatchStatus = "ORDERED" | "IN_TRANSIT" | "CUSTOMS" | "ARRIVED" | "CANCELLED";
 export type EtaMode = "DATE" | "RANGE" | "APPROX" | "HIDDEN";
@@ -185,11 +185,31 @@ export interface Demand {
   stock: number;
   priceMinor: number;
   people: number;
+  /** Разных людей, ждущих любой вариант товара (без вариантов = people). Нет у старого бэкенда. */
+  productPeople?: number;
   units: number;
   firstAt: string;
   newLast7d: number;
   openBatchId: number | null;
   openBatchTitle: string | null;
+}
+
+export interface ReleaseResult {
+  heldPeople: number;
+  heldQty: number;
+  shortPeople: number;
+  freeAfter: number;
+}
+
+/** Метрики предзаказов за период (`GET /metrics?from&to`). */
+export interface PreorderMetrics {
+  subscriptions: number;
+  people: number;
+  holdsGiven: number;
+  boughtFromHold: number;
+  expired: number;
+  conversionPercent: number;
+  arrivedUnits: number;
 }
 
 const BASE = "/api/admin/preorders";
@@ -209,6 +229,10 @@ export const preordersApi = {
   productSubscribers: (productId: string) => apiGet<Subscriber[]>(`${BASE}/subscribers?productId=${encodeURIComponent(productId)}`),
   removeSubscriber: (id: number) => apiDelete<void>(`${BASE}/subscriptions/${id}`),
   demand: () => apiGet<Demand[]>(`${BASE}/demand`),
+  /** Раздать брони после ручного пополнения остатка (не через поставку). */
+  release: (productId: string, variantId: string | null) => apiPost<ReleaseResult>(`${BASE}/demand/release`, { productId, variantId }),
+  metrics: (from: string, to: string) =>
+    apiGet<PreorderMetrics>(`${BASE}/metrics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   suppliers: () => apiGet<Supplier[]>(`${BASE}/suppliers`),
   createSupplier: (body: { name: string; note: string | null }) => apiPost<Supplier>(`${BASE}/suppliers`, body),
 };
@@ -226,17 +250,79 @@ export function useDemand(enabled = true) {
   });
 }
 
+/** Строки «Чего ждут» по товару (все варианты). */
+export function demandRowsOfProduct(demand: Demand[] | undefined, productId: string): Demand[] {
+  return (demand ?? []).filter((d) => d.productId === productId);
+}
+
+/** Сколько разных людей ждут эти строки: `productPeople` (без двойного счёта по вариантам) или сумма. */
+export function peopleOfRows(rows: Demand[]): number {
+  let sum = 0;
+  let distinct: number | null = null;
+  for (const d of rows) {
+    sum += d.people;
+    if (d.productPeople != null) distinct = Math.max(distinct ?? 0, d.productPeople);
+  }
+  return distinct ?? sum;
+}
+
 /** Ждущие по товару (все варианты): людей и штук. */
 export function demandOfProduct(demand: Demand[] | undefined, productId: string): { people: number; units: number } | null {
   if (!demand) return null;
-  let people = 0;
-  let units = 0;
-  for (const d of demand) {
-    if (d.productId !== productId) continue;
-    people += d.people;
-    units += d.units;
-  }
+  const rows = demandRowsOfProduct(demand, productId);
+  const units = rows.reduce((n, d) => n + d.units, 0);
+  const people = peopleOfRows(rows);
   return people > 0 ? { people, units } : null;
+}
+
+/** Раздать брони по строкам «Чего ждут» (одна строка — один запрос). Результаты суммируются. */
+export async function releaseDemand(rows: Pick<Demand, "productId" | "variantId">[]): Promise<ReleaseResult> {
+  const sum: ReleaseResult = { heldPeople: 0, heldQty: 0, shortPeople: 0, freeAfter: 0 };
+  for (const r of rows) {
+    const res = await preordersApi.release(r.productId, r.variantId ?? null);
+    sum.heldPeople += res.heldPeople;
+    sum.heldQty += res.heldQty;
+    sum.shortPeople += res.shortPeople;
+    sum.freeAfter += res.freeAfter;
+  }
+  return sum;
+}
+
+/** Сообщение о результате раздачи броней. */
+export function releaseSummary(r: ReleaseResult): string {
+  if (r.heldPeople === 0) return "Бронь никому не ушла: свободных штук нет";
+  return `Бронь получили ${r.heldPeople} чел (${r.heldQty} шт)${r.shortPeople > 0 ? `, не хватило ${r.shortPeople} чел` : ""}`;
+}
+
+/**
+ * Скачать CSV ждущих (по поставке или по товару/варианту). Файл отдаётся только с токеном,
+ * поэтому через fetch + blob, а не ссылкой.
+ */
+export async function downloadSubscribersCsv(scope: { batchId: number } | { productId?: string; variantId?: string | null }): Promise<void> {
+  let path: string;
+  let fallback: string;
+  if ("batchId" in scope) {
+    path = `${BASE}/batches/${scope.batchId}/subscribers.csv`;
+    fallback = `ozhidayut-postavka-${scope.batchId}.csv`;
+  } else {
+    const q = new URLSearchParams();
+    if (scope.productId) q.set("productId", scope.productId);
+    if (scope.variantId) q.set("variantId", scope.variantId);
+    const qs = q.toString();
+    path = `${BASE}/subscribers.csv${qs ? `?${qs}` : ""}`;
+    fallback = "ozhidayut.csv";
+  }
+  const res = await fetch(`${apiOrigin}${path}`, { headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` }, credentials: "include" });
+  if (!res.ok) throw new Error(res.status === 404 ? "Выгрузка пока недоступна на сервере" : res.status === 403 ? "Недостаточно прав" : "Не удалось скачать CSV");
+  const name = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get("Content-Disposition") ?? "")?.[1];
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name ? decodeURIComponent(name) : fallback;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 // ---- helpers ---------------------------------------------------------------------

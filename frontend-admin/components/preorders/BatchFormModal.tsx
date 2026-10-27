@@ -74,7 +74,7 @@ export function BatchFormModal({
   onClose: () => void;
   /** Есть — правка, нет — создание. */
   batch?: Batch | null;
-  /** Позиции для новой поставки («Заказать у завода»). */
+  /** Позиции для новой поставки («Заказать у завода»); при правке — добавляются к существующим. */
   seed?: SeedLine[];
   onSaved?: (b: Batch) => void;
 }) {
@@ -139,6 +139,25 @@ export function BatchFormModal({
           price: fxToInput(i.unitPriceFx),
         }))
       );
+      // «Добавить в открытую поставку»: новые позиции в конец, без повторов.
+      const extra = (seed ?? []).filter((x) => !batch.items.some((i) => i.productId === x.productId && (i.variantId ?? null) === (x.variantId ?? null)));
+      if (extra.length > 0) {
+        setLines((ls) => [
+          ...ls,
+          ...extra.map((x) => ({
+            key: newKey(),
+            id: null,
+            productId: x.productId,
+            variantId: x.variantId,
+            title: x.title,
+            variantName: x.variantName,
+            imageUrl: x.imageUrl,
+            qty: String(x.qty ?? 1),
+            price: "",
+          })),
+        ]);
+        setDirty(true);
+      }
     } else {
       setTitle("");
       setSupplierId("");

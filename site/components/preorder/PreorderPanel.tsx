@@ -24,6 +24,7 @@ import { BOT_URL } from "@/lib/config";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 import { useOrderLimits } from "@/lib/order-limits";
 import {
+  DEFAULT_HOLD_HOURS,
   expectedLine,
   type MyPreorder,
   MY_PREORDERS_KEY,
@@ -86,6 +87,7 @@ export function PreorderPanel({
   eta,
   waitingCount,
   mine,
+  holdHours = DEFAULT_HOLD_HOURS,
 }: {
   productId: string;
   productTitle: string;
@@ -96,6 +98,8 @@ export function PreorderPanel({
   waitingCount: number | null;
   /** My live place in this line's queue. */
   mine: MyPreorder | null;
+  /** How long a unit is held once it arrives, hours. */
+  holdHours?: number;
 }) {
   const { t, locale, href } = useI18n();
   const router = useRouter();
@@ -197,7 +201,7 @@ export function PreorderPanel({
           </>
         )}
         <div className={eta ? "mt-4" : ""}>{action}</div>
-        {!mine && <p className="mt-3 text-[12px] font-medium leading-snug text-[var(--muted)]">{t(eta ? "preorder.noPrepay" : "preorder.noPrepayAny")}</p>}
+        {!mine && <p className="mt-3 text-[12px] font-medium leading-snug text-[var(--muted)]">{eta ? t("preorder.noPrepay", { h: holdHours }) : t("preorder.noPrepayAny")}</p>}
       </div>
 
       <PreorderSheet
@@ -205,6 +209,8 @@ export function PreorderPanel({
         onClose={() => setOpen(false)}
         title={productTitle}
         variantName={variantName ?? null}
+        coming={!!eta}
+        holdHours={holdHours}
         onSubmit={async (qty) => {
           await preorderApi.subscribe(productId, variantId, qty);
           await refresh();
@@ -221,18 +227,22 @@ function PreorderSheet({
   onClose,
   title,
   variantName,
+  coming,
+  holdHours,
   onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   variantName: string | null;
+  coming: boolean;
+  holdHours: number;
   onSubmit: (qty: number) => Promise<void>;
 }) {
   const hydrated = useHydrated();
   if (!hydrated) return null;
   return createPortal(
-    <AnimatePresence>{open && <SheetBody key="sheet" onClose={onClose} title={title} variantName={variantName} onSubmit={onSubmit} />}</AnimatePresence>,
+    <AnimatePresence>{open && <SheetBody key="sheet" onClose={onClose} title={title} variantName={variantName} coming={coming} holdHours={holdHours} onSubmit={onSubmit} />}</AnimatePresence>,
     document.body
   );
 }
@@ -241,11 +251,15 @@ function SheetBody({
   onClose,
   title,
   variantName,
+  coming,
+  holdHours,
   onSubmit,
 }: {
   onClose: () => void;
   title: string;
   variantName: string | null;
+  coming: boolean;
+  holdHours: number;
   onSubmit: (qty: number) => Promise<void>;
 }) {
   const { t } = useI18n();
@@ -323,7 +337,7 @@ function SheetBody({
 
           <p className="mt-4 flex items-start gap-2 text-[13px] font-medium leading-snug text-[var(--muted)]">
             <Send className="mt-0.5 h-4 w-4 shrink-0 text-[var(--pre)]" strokeWidth={2.25} aria-hidden />
-            {t("preorder.sheet.telegram")}
+            {coming ? t("preorder.sheet.telegram", { h: holdHours }) : t("preorder.sheet.telegramAny")}
           </p>
           <p className="mt-2 text-[12px] font-medium leading-snug text-[var(--faint)]">
             {t("preorder.sheet.botHint")}{" "}

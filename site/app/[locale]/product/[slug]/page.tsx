@@ -1,7 +1,7 @@
 import { BadgeInfo, CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
+import { availabilityOf, type Availability, type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
@@ -12,7 +12,6 @@ import { localePath, makeT, type MessageKey } from "@/i18n";
 import { toCardProducts } from "@/lib/card";
 import { cardContext, loadSchema, yesNo } from "@/lib/catalog";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
-import { stockOf } from "@/lib/stock";
 import { localeOf } from "@/lib/route";
 import { getPreorderIndex, getProductBySlug, getProductPreorder, getProductReviews, getProducts, safe } from "@/lib/server-api";
 import { etaStartsOn } from "@/lib/preorder-core";
@@ -37,6 +36,14 @@ type Params = Promise<{ locale: string; slug: string }>;
 export function generateStaticParams() {
   return [];
 }
+
+/** schema.org Offer.availability per state (a unit held for the viewer is, for a crawler, simply in stock). */
+const SCHEMA_AVAILABILITY: Record<Availability, string> = {
+  in_stock: "https://schema.org/InStock",
+  held: "https://schema.org/InStock",
+  preorder: "https://schema.org/PreOrder",
+  out_of_stock: "https://schema.org/OutOfStock",
+};
 
 function sortedImages(p: StorefrontProduct) {
   return (p.images ?? [])
@@ -131,10 +138,10 @@ export default async function ProductPage({ params }: { params: Params }) {
   ];
   const path = `/product/${product.slug}`;
   const images = sortedImages(product);
-  const inStock = stockOf(product, null) > 0;
   // Sold out but a batch brings it: schema.org PreOrder (+ the date it starts being available)
-  const preEta = !inStock ? preorder?.lines[0]?.eta ?? null : null;
-  const preStarts = preEta ? etaStartsOn(preEta) : null;
+  const preEta = preorder?.lines[0]?.eta ?? null;
+  const avail = availabilityOf(product, null, { coming: !!preEta });
+  const preStarts = avail === "preorder" && preEta ? etaStartsOn(preEta) : null;
 
   const brand = productBrandName(product);
   const condition = productCondition(product);
@@ -167,7 +174,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       url: productUrl,
       priceCurrency: product.currency ?? "UAH",
       price: (product.priceMinor / 100).toFixed(2),
-      availability: inStock ? "https://schema.org/InStock" : preEta ? "https://schema.org/PreOrder" : "https://schema.org/OutOfStock",
+      availability: SCHEMA_AVAILABILITY[avail],
       ...(preStarts ? { availabilityStarts: preStarts } : {}),
       // As in the Google feed: markdown/used goods are sold with stated defects, not refurbished.
       itemCondition: markdown ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",

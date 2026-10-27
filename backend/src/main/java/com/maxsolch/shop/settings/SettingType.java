@@ -8,5 +8,7 @@ public enum SettingType {
     INT,
     BOOL,
     STRING,
-    TEXT
+    TEXT,
+    /** One value out of a fixed list ({@link SettingDefinition#options()}), stored as the option value. */
+    SELECT
 }

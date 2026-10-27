@@ -82,7 +82,7 @@ export function staleManual(s: UniqueString, l: TrLocale): FieldRef[] {
 
 // ---- type filter ------------------------------------------------------------
 
-export type TypeFilter = "" | "PRODUCT" | "CATEGORY" | "PAYMENT_OPTION" | "REPLY_TEMPLATE";
+export type TypeFilter = "" | "PRODUCT" | "CATEGORY" | "PAYMENT_OPTION" | "REPLY_TEMPLATE" | "BOT_TEXT";
 
 export const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "", label: "Все тексты" },
@@ -90,6 +90,7 @@ export const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: "CATEGORY", label: "Категории" },
   { value: "PAYMENT_OPTION", label: "Способы оплаты" },
   { value: "REPLY_TEMPLATE", label: "Шаблоны чата" },
+  { value: "BOT_TEXT", label: "Сообщения бота" },
 ];
 
 export function matchesType(s: UniqueString, t: TypeFilter): boolean {
@@ -107,8 +108,13 @@ export function placeOf(f: FieldRef): string {
       return f.productTitle ? `Категория «${f.productTitle}»` : "Категория";
     case "REPLY_TEMPLATE":
       return `Шаблон чата «${f.productTitle ?? ""}»`;
-    default:
+    case "BOT_TEXT":
+      return `Сообщение бота «${f.productTitle ?? ""}»`;
+    case "PAYMENT_OPTION":
       return "Способ оплаты";
+    default:
+      // Новый тип текстов (например, шаблоны бота предзаказов): показываем его имя, а не «Способ оплаты».
+      return f.productTitle ? `${f.entityType} «${f.productTitle}»` : f.entityType;
   }
 }
 

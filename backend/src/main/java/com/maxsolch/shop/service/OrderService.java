@@ -1305,6 +1305,14 @@ public class OrderService {
 
     /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
     void restockProduct(byte[] productId, byte[] variantId, int units) {
+        restockProduct(productId, variantId, units, null);
+    }
+
+    /**
+     * The same for units that belong to an order line ({@code item}, may be null): they go back into the
+     * stock lots they were taken from; units no lot accounts for land in the opening lot.
+     */
+    void restockProduct(byte[] productId, byte[] variantId, int units, OrderItem item) {
         if (units <= 0) {
             return;
         }
@@ -1314,7 +1322,7 @@ public class OrderService {
         if (variantId != null && variant == null) {
             product.setStock(product.getStock() + units);
         } else {
-            releaseStock(product, variant, units, null);
+            releaseStock(product, variant, units, item);
         }
         productRepository.save(product);
     }

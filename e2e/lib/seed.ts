@@ -123,3 +123,10 @@ export const REVIEW_OFF_SHELF = { hidden: 9005, archived: 9006 } as const;
 
 /** «Персональные скидки» (owner 900000201) and «За отзывы» (REVIEW_BONUS) codes; M5 has a manual discount. */
 export const PROMO_OTHER = { personal: "E2EPERSONAL", bonus: "E2EBONUS" } as const;
+
+/** «Поставки» (38-preorders): an out-of-stock mouse and the customer who waits for it (Telegram id as the backend sees it). */
+export const PREORDER = {
+  product: "e2e0d001-0000-4000-8000-000000000009",
+  productTitle: "E2E Мышь Майя",
+  customer: { id: 900000301, name: "Тарас Очікувач", username: "e2e_taras_zhdun" },
+} as const;

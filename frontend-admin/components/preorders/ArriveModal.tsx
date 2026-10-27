@@ -5,9 +5,11 @@
  * «Посчитать» — предпросмотр (dryRun), «Подтвердить» — настоящий приход: остаток, цены, брони, рассылка.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ApiError } from "@/lib/api";
+import { COSTING_KEY, costingApi, useFinanceAccess } from "@/lib/costing";
+import { pct } from "@/components/metrics/format";
 import { money, toMajor, toMinor } from "@/lib/money";
 import {
   DISTRIBUTIONS,
@@ -38,6 +40,14 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
   const [holdHours, setHoldHours] = useState("24");
   const [preview, setPreview] = useState<ArriveResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Себестоимость штуки из этой поставки — только с правом «Финансы»; без права (или 403/404) молча не показываем.
+  const finance = useFinanceAccess();
+  const moneyQ = useQuery({
+    queryKey: [...COSTING_KEY, "batch", batch.id],
+    queryFn: () => costingApi.money(batch.id),
+    enabled: open && finance,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -124,6 +134,9 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
           {batch.items.map((i) => {
             const r = rows[i.id] ?? { qty: String(i.qtyOrdered), price: String(toMajor(i.priceMinor)) };
             const res = preview?.lines.find((l) => l.itemId === i.id);
+            const unitCost = moneyQ.data?.lines.find((l) => l.itemId === i.id)?.costUnitMinor ?? null;
+            const priceNow = toMinor(r.price.replace(",", "."));
+            const marginPct = unitCost != null && priceNow > 0 ? ((priceNow - unitCost) / priceNow) * 100 : null;
             const cost = batch.moneyVisible ? costUahMinor(i.unitPriceFx, batch.fxRate) : null;
             return (
               <div key={i.id} className="card-2 flex min-w-0 flex-col gap-2 p-3">
@@ -140,6 +153,17 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
                   </div>
                   <div className="w-32">
                     <Input label="Цена продажи, ₴" inputMode="decimal" value={r.price} onChange={(e) => edit(i.id, { price: e.target.value }, i)} />
+                    {unitCost != null && (
+                      <div className="tabular mt-1 text-[11.5px] leading-snug text-[var(--text-faint)]">
+                        себестоимость {money(unitCost)}
+                        {marginPct != null && (
+                          <>
+                            {" · маржа "}
+                            <b className={marginPct < 10 ? "text-[var(--danger-ink)]" : "text-[var(--ok)]"}>{pct(marginPct)}</b>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {res && (

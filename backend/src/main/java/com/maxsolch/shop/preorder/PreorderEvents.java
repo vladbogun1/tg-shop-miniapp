@@ -36,4 +36,8 @@ public final class PreorderEvents {
     /** The shop closed the place (batch cancelled, product removed, admin took them off the list). */
     public record Closed(long subscriptionId, String reason) {
     }
+
+    /** The batch that was to bring the goods is cancelled; the customer stays on the list without a date. */
+    public record BatchCancelledKept(long subscriptionId) {
+    }
 }

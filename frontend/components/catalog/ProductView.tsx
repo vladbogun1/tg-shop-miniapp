@@ -14,7 +14,7 @@ import { Toast } from "@/components/ui/Toast";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { CompareViewButton } from "@/components/compare/CompareBits";
-import { compareGroupOf } from "@shop/shared";
+import { availabilityOf, compareGroupOf } from "@shop/shared";
 import { useCompare } from "@/lib/compare";
 import { Gallery } from "@/components/catalog/Gallery";
 import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "@/components/catalog/ProductSpecs";
@@ -92,7 +92,15 @@ function ViewBody({
     : (preQ.data?.lines.find((l) => (l.variantId ?? null) === lineVariantId)?.eta ?? coming.etaOf(product.id, lineVariantId));
   const buyable = stock + (hold?.heldQty ?? 0);
   const canNotify = !!token && preQ.data?.anyProduct !== false;
-  const mode: "pick" | "buy" | "pre" | "out" = needsVariant ? "pick" : buyable > 0 ? "buy" : eta ? "pre" : canNotify ? "pre" : "out";
+  const holdHours = preQ.data?.holdHours ?? coming.holdHoursOf(product.id);
+  const avail = availabilityOf(product, variant, { coming: !!eta, heldQty: hold?.heldQty });
+  const mode: "pick" | "buy" | "pre" | "out" = needsVariant
+    ? "pick"
+    : avail === "in_stock" || avail === "held"
+      ? "buy"
+      : avail === "preorder" || canNotify
+        ? "pre"
+        : "out";
   const buyProduct = hold && !hasVariants ? { ...product, stock: buyable } : product;
   const buyVariant = hold && variant ? { ...variant, stock: buyable } : variant;
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -252,7 +260,7 @@ function ViewBody({
             )}
 
             {mode === "pre" && (
-              <PreorderBlock eta={eta} waitingCount={preQ.data?.waitingCount ?? null} mine={queued} onEdit={() => setSheetOpen(true)} />
+              <PreorderBlock eta={eta} waitingCount={preQ.data?.waitingCount ?? null} mine={queued} holdHours={holdHours} onEdit={() => setSheetOpen(true)} />
             )}
 
             <ProductGiftBanner priceMinor={product.priceMinor} currency={product.currency ?? "UAH"} />
@@ -320,6 +328,8 @@ function ViewBody({
         product={product}
         variant={needsVariant ? null : variant}
         mine={queued}
+        coming={!!eta}
+        holdHours={holdHours}
         open={sheetOpen && mode === "pre"}
         onClose={() => setSheetOpen(false)}
         onDone={fireToast}

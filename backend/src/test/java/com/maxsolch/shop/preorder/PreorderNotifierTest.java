@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
@@ -54,7 +55,10 @@ class PreorderNotifierTest {
         source.setFallbackToSystemLocale(false);
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
-        notifier = new PreorderNotifier(queue, bot, props, new Messages((MessageSource) source, users), activity);
+        Messages msgs = new Messages((MessageSource) source, users);
+        notifier = new PreorderNotifier(queue, bot, props, msgs, activity,
+                new com.maxsolch.shop.i18n.BotTexts(msgs, mock(com.maxsolch.shop.settings.SettingsService.class),
+                        mock(com.maxsolch.shop.translation.TranslationService.class)));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
     }
 

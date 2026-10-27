@@ -27,7 +27,12 @@ public enum TranslationEntityType {
     CATEGORY(List.of(TranslationEntityType.NAME, TranslationEntityType.SEO_TITLE, TranslationEntityType.SEO_DESCRIPTION,
             TranslationEntityType.H1, TranslationEntityType.INTRO_TEXT)),
     /** Reserved (V52): brand names are not translated yet. */
-    BRAND(List.of());
+    BRAND(List.of()),
+    /**
+     * A bot phrase of the pre-order queue (V74): entity_id = MD5 of the message key, see
+     * {@link com.maxsolch.shop.i18n.BotTexts}. Russian source = messages_ru.properties or the owner's fix.
+     */
+    BOT_TEXT(List.of(TranslationEntityType.BODY));
     // PAYMENT_REQUISITES (V29) went with the manual card transfer: rows deleted in V39, the ENUM value
     // itself in V48.
 

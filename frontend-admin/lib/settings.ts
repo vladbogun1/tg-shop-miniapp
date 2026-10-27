@@ -7,7 +7,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGet, apiPost, apiPut } from "@/lib/api";
 
-export type SettingType = "INT" | "BOOL" | "STRING" | "TEXT";
+export type SettingType = "INT" | "BOOL" | "STRING" | "TEXT" | "SELECT";
+export interface SettingOption {
+  value: string;
+  label: string;
+}
 export type SettingValue = number | boolean | string;
 
 export interface SettingItem {
@@ -24,6 +28,8 @@ export interface SettingItem {
   max?: number | null;
   maxLength?: number | null;
   unit?: string | null;
+  /** SELECT only: the allowed values with Russian labels. */
+  options?: SettingOption[] | null;
   updatedAt?: string | null;
   updatedBy?: string | null;
 }

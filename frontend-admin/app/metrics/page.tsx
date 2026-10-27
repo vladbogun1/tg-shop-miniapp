@@ -19,6 +19,7 @@ import { FunnelTab } from "@/components/metrics/tabs/FunnelTab";
 import { OperationsTab } from "@/components/metrics/tabs/OperationsTab";
 import { OverviewTab } from "@/components/metrics/tabs/OverviewTab";
 import { StockTab } from "@/components/metrics/tabs/StockTab";
+import { PreordersTab } from "@/components/metrics/tabs/PreordersTab";
 import { MarginTab } from "@/components/metrics/tabs/MarginTab";
 import { useFinanceAccess } from "@/lib/costing";
 
@@ -28,6 +29,7 @@ const TABS = [
   { value: "customers", label: "Покупатели" },
   { value: "funnel", label: "Воронка" },
   { value: "operations", label: "Операции" },
+  { value: "preorders", label: "Предзаказы" },
   { value: "margin", label: "Маржа" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
@@ -71,6 +73,7 @@ function Metrics() {
       {tab === "customers" && <CustomersTab params={params} />}
       {tab === "funnel" && <FunnelTab params={params} />}
       {tab === "operations" && <OperationsTab params={params} />}
+      {tab === "preorders" && <PreordersTab params={params} />}
       {tab === "margin" && <MarginTab params={params} />}
     </div>
   );

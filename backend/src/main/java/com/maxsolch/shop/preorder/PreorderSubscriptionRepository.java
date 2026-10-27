@@ -36,12 +36,6 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
             + " order by s.createdAt asc, s.id asc")
     List<PreorderSubscription> queue(@Param("productId") byte[] productId, @Param("variantId") byte[] variantId);
 
-    /** Units kept for other people: invisible to this customer's checkout. */
-    @Query("select coalesce(sum(s.heldQty), 0) from PreorderSubscription s where " + SAME_LINE
-            + " and s.status = 'HELD' and (:userId is null or s.userId <> :userId)")
-    long heldForOthers(@Param("productId") byte[] productId, @Param("variantId") byte[] variantId,
-                       @Param("userId") Long userId);
-
     /** People waiting for a product (any variant) — «Чекають N людей». */
     @Query("select count(distinct s.userId) from PreorderSubscription s where s.productId = :productId and "
             + "s.status in ('WAITING', 'HELD')")
@@ -64,10 +58,25 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
 
     List<PreorderSubscription> findByUserIdAndStatusIn(Long userId, Collection<String> statuses);
 
-    /** Holds (and «everybody at once» notices) past their deadline. */
-    @Query("select s from PreorderSubscription s where s.status in ('HELD', 'NOTIFIED') and s.holdUntil < :now "
-            + "order by s.holdUntil")
-    List<PreorderSubscription> findExpiredHolds(@Param("now") Instant now, Pageable pageable);
+    /**
+     * Holds (and «everybody at once» notices) past their deadline, as {@code [id, productId]} — no entities
+     * on purpose: the job locks the product first and then re-reads the row with {@link #findForUpdate}, and a
+     * managed copy loaded here would be served from the persistence context with its stale status.
+     */
+    @Query("select s.id, s.productId from PreorderSubscription s where s.status in ('HELD', 'NOTIFIED') "
+            + "and s.holdUntil < :now order by s.holdUntil")
+    List<Object[]> findExpiredHoldIds(@Param("now") Instant now, Pageable pageable);
+
+    /** One place, row-locked and read from the latest committed data (a buyer or the job may just have closed it). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from PreorderSubscription s where s.id = :id")
+    java.util.Optional<PreorderSubscription> findForUpdate(@Param("id") Long id);
+
+    /** Live places of one customer on a line, row-locked: checkout must see what the expiry job just did. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from PreorderSubscription s where s.userId = :userId and " + SAME_LINE + " and " + LIVE)
+    List<PreorderSubscription> lockLive(@Param("userId") Long userId, @Param("productId") byte[] productId,
+                                        @Param("variantId") byte[] variantId);
 
     /** Holds ending before {@code before} that have not been reminded of yet. */
     @Query("select s from PreorderSubscription s where s.status = 'HELD' and s.remindedAt is null "
@@ -89,4 +98,34 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
     @Query("select s from PreorderSubscription s where s.productId = :productId and " + LIVE
             + " order by s.createdAt asc, s.id asc")
     List<PreorderSubscription> findLiveByProduct(@Param("productId") byte[] productId);
+
+    /** Distinct people waiting per product (any variant): {@code [productId, people, units]}. */
+    @Query("select s.productId, count(distinct s.userId), sum(s.qty) from PreorderSubscription s "
+            + "where s.status in ('WAITING', 'HELD') group by s.productId")
+    List<Object[]> waitingByProduct();
+
+    /** New subscriptions in [from, to): {@code [count, distinct people]}. */
+    @Query("select count(s), count(distinct s.userId) from PreorderSubscription s "
+            + "where s.createdAt >= :from and s.createdAt < :to")
+    List<Object[]> joinedBetween(@Param("from") Instant from, @Param("to") Instant to);
+
+    /**
+     * Units handed out as holds in [from, to): the places whose {@code notifiedAt} falls in it and that
+     * got units (not just a notice). {@code held_qty} is zeroed when a place closes, so a finished place is
+     * counted by what it asked for ({@code qty}) — an approximation for partial holds.
+     */
+    @Query("select coalesce(sum(case when s.status = 'HELD' then s.heldQty else s.qty end), 0) "
+            + "from PreorderSubscription s where s.notifiedAt >= :from and s.notifiedAt < :to "
+            + "and s.status in ('HELD', 'BOUGHT', 'EXPIRED')")
+    long holdUnitsGiven(@Param("from") Instant from, @Param("to") Instant to);
+
+    /** Units of places that were held and then bought / ran out, closed in [from, to). */
+    @Query("select coalesce(sum(s.qty), 0) from PreorderSubscription s where s.status = :status "
+            + "and s.notifiedAt is not null and s.closedAt >= :from and s.closedAt < :to")
+    long closedAfterHold(@Param("status") String status, @Param("from") Instant from, @Param("to") Instant to);
+
+    /** Live places created in [from, to): digest. {@code [productId, count, distinct people]} per product. */
+    @Query("select s.productId, count(s), count(distinct s.userId) from PreorderSubscription s "
+            + "where s.createdAt >= :from and s.createdAt < :to group by s.productId order by count(s) desc")
+    List<Object[]> joinedByProduct(@Param("from") Instant from, @Param("to") Instant to);
 }

@@ -26,4 +26,9 @@ public interface PreorderBatchItemRepository extends JpaRepository<PreorderBatch
             + "and b.preorderOpen = true and b.status in ('ORDERED', 'IN_TRANSIT', 'CUSTOMS') "
             + "and i.productId = :productId")
     List<Object[]> findPublicLines(@Param("productId") byte[] productId);
+
+    /** Units that arrived through batches marked arrived in [from, to). */
+    @Query("select coalesce(sum(i.qtyArrived), 0) from PreorderBatchItem i, PreorderBatch b "
+            + "where b.id = i.batchId and b.status = 'ARRIVED' and b.arrivedAt >= :from and b.arrivedAt < :to")
+    long arrivedBetween(@Param("from") java.time.Instant from, @Param("to") java.time.Instant to);
 }
