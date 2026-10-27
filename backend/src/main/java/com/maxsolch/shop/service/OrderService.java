@@ -1191,6 +1191,12 @@ public class OrderService {
             }
             product.setStock(product.getStock() - qty);
         }
+        if (preorders != null) {
+            // Admin paths (a line added to an order, a cancelled return) may take units that were held for
+            // the queue: the latest holds then go back to waiting. In checkout only the buyer's own hold can be
+            // here, and onOrderPlaced closes it right after.
+            preorders.onStockTaken(product, variant, variant != null ? variant.getStock() : product.getStock());
+        }
     }
 
     /** Returns qty to stock (inverse of reserveStock; product/variant already loaded and locked). */
@@ -1200,6 +1206,10 @@ public class OrderService {
             syncRollup(product);
         } else {
             product.setStock(product.getStock() + qty);
+        }
+        if (preorders != null && qty > 0) {
+            // Back in circulation: people waiting for it get holds in turn, as after an arrival.
+            preorders.onStockReturned(product, variant);
         }
     }
 

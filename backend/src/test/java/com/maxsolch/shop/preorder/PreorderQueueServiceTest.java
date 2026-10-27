@@ -310,4 +310,45 @@ class PreorderQueueServiceTest {
         verify(subs, never()).lockQueue(any(), any());
         verify(products, never()).findByIdForUpdate(any());
     }
+
+    // ---- stock coming back / leaving outside checkout
+
+    @Test
+    void unitsReturnedToTheShelfGoToTheQueue() {
+        product.setStock(1);
+        PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
+        when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(next)));
+
+        service.onStockReturned(product, null);
+
+        assertThat(next.getStatus()).isEqualTo("HELD");
+        assertThat(next.getHoldUntil()).isEqualTo(NOW.plus(Duration.ofHours(24)));
+        verify(events).publishEvent(new PreorderEvents.HoldGranted(2L));
+    }
+
+    @Test
+    void unitsTakenFromTheShelfSendTheLatestHoldsBackToWaiting() {
+        PreorderSubscription first = seat(1, 11, Status.HELD, 1, 1, 300);
+        PreorderSubscription second = seat(2, 12, Status.HELD, 2, 2, 200);
+        second.setHoldUntil(NOW.plus(Duration.ofHours(10)));
+        when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(first, second)));
+
+        service.onStockTaken(product, null, 1);
+
+        assertThat(first.getStatus()).isEqualTo("HELD");
+        assertThat(second.getStatus()).isEqualTo("WAITING");
+        assertThat(second.getHeldQty()).isZero();
+        assertThat(second.getHoldUntil()).isNull();
+    }
+
+    @Test
+    void takingFewerUnitsShrinksTheLatestHold() {
+        PreorderSubscription only = seat(1, 11, Status.HELD, 3, 3, 300);
+        when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(only)));
+
+        service.onStockTaken(product, null, 2);
+
+        assertThat(only.getStatus()).isEqualTo("HELD");
+        assertThat(only.getHeldQty()).isEqualTo(2);
+    }
 }

@@ -274,6 +274,42 @@ public class PreorderQueueService {
         }
     }
 
+    /**
+     * Units came back to the shelf outside a batch (a cancelled order, a return «на склад», a smaller
+     * quantity in an order): the queue gets them as holds, like after an arrival. Product row is locked.
+     */
+    public void onStockReturned(Product product, ProductVariant variant) {
+        handOut(product, variant, null, Distribution.QUEUE_HOLD, holdHours(null), false);
+    }
+
+    /**
+     * Units leave the shelf again outside checkout (a cancelled return takes them back into the order):
+     * if the rest no longer covers the holds, the latest holds go back to waiting — their place in the
+     * queue is kept. Product row is locked; {@code stockAfter} is what stays on the shelf.
+     */
+    public void onStockTaken(Product product, ProductVariant variant, int stockAfter) {
+        List<PreorderSubscription> queue = subs.lockQueue(product.getId(), variant == null ? null : variant.getId());
+        int held = queue.stream().filter(s -> s.statusEnum() == Status.HELD).mapToInt(PreorderSubscription::getHeldQty).sum();
+        int over = held - Math.max(0, stockAfter);
+        for (int i = queue.size() - 1; i >= 0 && over > 0; i--) {
+            PreorderSubscription s = queue.get(i);
+            if (s.statusEnum() != Status.HELD) {
+                continue;
+            }
+            int back = Math.min(over, s.getHeldQty());
+            over -= back;
+            if (back == s.getHeldQty()) {
+                s.setStatus(Status.WAITING.name());
+                s.setHeldQty(0);
+                s.setHoldUntil(null);
+                s.setRemindedAt(null);
+            } else {
+                s.setHeldQty(s.getHeldQty() - back);
+            }
+        }
+        subs.saveAll(queue);
+    }
+
     // ---------------------------------------------------------------- hand-out
 
     /**
