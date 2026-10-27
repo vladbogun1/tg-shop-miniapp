@@ -13,11 +13,20 @@ import com.maxsolch.shop.costing.CostingDtos.OrderProfitDto;
 import com.maxsolch.shop.costing.CostingDtos.ProductCostDto;
 import com.maxsolch.shop.costing.CostingDtos.RateDto;
 import com.maxsolch.shop.costing.CostingDtos.ReconcileDto;
+import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.security.AdminAccess;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.web.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +37,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -52,9 +63,14 @@ public class AdminCostingController {
     private final AdminAccess access;
     private final AdminAuditService audit;
     private final AdminMetricsService metrics;
+    private final ImageStorageService storage;
+    private final UploadValidator uploads;
 
     public AdminCostingController(CostingService costing, MarginService margin, NbuRateClient nbu,
-                                  AdminAccess access, AdminAuditService audit, AdminMetricsService metrics) {
+                                  AdminAccess access, AdminAuditService audit, AdminMetricsService metrics,
+                                  ImageStorageService storage, UploadValidator uploads) {
+        this.storage = storage;
+        this.uploads = uploads;
         this.costing = costing;
         this.margin = margin;
         this.nbu = nbu;
@@ -113,6 +129,52 @@ public class AdminCostingController {
         finance();
         BatchMoneyDto dto = costing.deleteExpense(expenseId);
         audit.record("COSTING_EXPENSE_DELETE", "BATCH_EXPENSE", String.valueOf(expenseId), "удалён");
+        return dto;
+    }
+
+    @PostMapping(value = "/expenses/{expenseId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Attach a document to an expense: a photo or a PDF (invoice, declaration, statement)")
+    public BatchMoneyDto addExpenseFile(@PathVariable long expenseId, @RequestParam("file") MultipartFile file) {
+        finance();
+        uploads.validateAttachment(file);
+        BatchMoneyDto dto = costing.addExpenseFile(expenseId, file, audit.currentAdminName());
+        audit.record("COSTING_EXPENSE_FILE_ADD", "BATCH_EXPENSE", String.valueOf(expenseId),
+                String.valueOf(file.getOriginalFilename()));
+        return dto;
+    }
+
+    @GetMapping("/expense-files/{fileId}")
+    @Operation(summary = "The bytes of an expense document (inline; «Финансы» only)")
+    public ResponseEntity<InputStreamResource> expenseFile(@PathVariable long fileId) {
+        finance();
+        BatchExpenseFile f = costing.expenseFile(fileId);
+        ImageStorageService.StoredObject o = storage.get(f.getObjectKey());
+        if (o == null) {
+            throw new NotFoundException("Файл документа не найден в хранилище");
+        }
+        MediaType type;
+        try {
+            type = MediaType.parseMediaType(o.contentType() != null ? o.contentType() : f.getContentType());
+        } catch (RuntimeException e) {
+            type = MediaType.APPLICATION_OCTET_STREAM;
+        }
+        return ResponseEntity.ok()
+                .contentType(type)
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(f.getFileName(), StandardCharsets.UTF_8).build().toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .body(new InputStreamResource(o.stream()));
+    }
+
+    @DeleteMapping("/expense-files/{fileId}")
+    @Operation(summary = "Remove an expense document")
+    public BatchMoneyDto deleteExpenseFile(@PathVariable long fileId) {
+        finance();
+        BatchExpenseFile f = costing.expenseFile(fileId);
+        BatchMoneyDto dto = costing.deleteExpenseFile(fileId);
+        audit.record("COSTING_EXPENSE_FILE_DELETE", "BATCH_EXPENSE", String.valueOf(f.getExpenseId()),
+                f.getFileName());
         return dto;
     }
 

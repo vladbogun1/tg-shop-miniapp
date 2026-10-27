@@ -110,6 +110,15 @@ public class ImageStorageService {
         return upload(file, key);
     }
 
+    /**
+     * A document of a batch expense (invoice, customs declaration): costing/b{batchId}/{uuid}/{filename}. Private —
+     * imgproxy reads only products/, the admin API hands it out to «Финансы».
+     */
+    public String uploadCostingDocument(MultipartFile file, long batchId) {
+        String key = "costing/b" + batchId + "/" + UUID.randomUUID() + "/" + sanitize(file.getOriginalFilename());
+        return upload(file, key);
+    }
+
     public static String customerChatPrefix(long userId) {
         return "chat/u" + userId + "/";
     }

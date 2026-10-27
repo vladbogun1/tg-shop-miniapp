@@ -3,6 +3,7 @@ package com.maxsolch.shop.costing;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.costing.CostingDtos.BatchMoneyDto;
 import com.maxsolch.shop.costing.CostingDtos.ExpenseDto;
+import com.maxsolch.shop.costing.CostingDtos.ExpenseFileDto;
 import com.maxsolch.shop.costing.CostingDtos.ExpenseRequest;
 import com.maxsolch.shop.costing.CostingDtos.LotDto;
 import com.maxsolch.shop.costing.CostingDtos.MoneyLineDto;
@@ -14,6 +15,7 @@ import com.maxsolch.shop.costing.CostingDtos.ProductCostDto;
 import com.maxsolch.shop.costing.CostingDtos.ReconcileDto;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.preorder.PreorderBatch;
 import com.maxsolch.shop.preorder.PreorderBatchItem;
 import com.maxsolch.shop.preorder.PreorderBatchItemRepository;
@@ -25,6 +27,7 @@ import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -56,10 +59,15 @@ public class CostingService {
     private final ProductRepository products;
     private final PreorderQueueService queue;
     private final LotLedger ledger;
+    private final BatchExpenseFileRepository files;
+    private final ImageStorageService storage;
 
     public CostingService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                           BatchExpenseRepository expenses, StockLotRepository lots, ProductRepository products,
-                          PreorderQueueService queue, LotLedger ledger) {
+                          PreorderQueueService queue, LotLedger ledger, BatchExpenseFileRepository files,
+                          ImageStorageService storage) {
+        this.files = files;
+        this.storage = storage;
         this.batches = batches;
         this.items = items;
         this.expenses = expenses;
@@ -147,7 +155,12 @@ public class CostingService {
                     c == null ? 0 : c.extraLineMinor(), c == null ? 0 : c.extraUnitMinor(), unit, price, margin,
                     margin == null ? null : pct(margin, price)));
         }
-        List<ExpenseDto> exDtos = ex.stream().map(CostingService::toDto).toList();
+        Map<Long, List<ExpenseFileDto>> docs = files.findByExpenseIdInOrderByIdAsc(
+                        ex.stream().map(BatchExpense::getId).toList()).stream()
+                .collect(Collectors.groupingBy(BatchExpenseFile::getExpenseId, Collectors.mapping(
+                        f -> new ExpenseFileDto(f.getId(), f.getFileName(), f.getContentType(), f.getSizeBytes(),
+                                f.getCreatedAt()), Collectors.toList())));
+        List<ExpenseDto> exDtos = ex.stream().map(e -> toDto(e, docs.getOrDefault(e.getId(), List.of()))).toList();
         boolean preliminary = !b.isCostsFinal() || !r.problems().isEmpty();
         return new BatchMoneyDto(b.getId(), b.getTitle(), b.getStatus(), b.getCurrency(), b.getFxRate(),
                 b.getCostAllocation(), b.isCostsFinal(), preliminary, out, exDtos, r.purchaseMinor(),
@@ -224,8 +237,43 @@ public class CostingService {
     @Transactional
     public BatchMoneyDto deleteExpense(long expenseId) {
         BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new NotFoundException("Расход не найден"));
-        expenses.delete(e);
+        List<String> keys = files.findByExpenseId(expenseId).stream().map(BatchExpenseFile::getObjectKey).toList();
+        expenses.delete(e); // the rows of its documents go with it (ON DELETE CASCADE)
+        keys.forEach(storage::deleteQuietly);
         return money(e.getBatchId());
+    }
+
+    // ---------------------------------------------------------------- expense documents
+
+    @Transactional
+    public BatchMoneyDto addExpenseFile(long expenseId, MultipartFile file, String adminName) {
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new NotFoundException("Расход не найден"));
+        BatchExpenseFile f = new BatchExpenseFile();
+        f.setExpenseId(expenseId);
+        f.setObjectKey(storage.uploadCostingDocument(file, e.getBatchId()));
+        String name = file.getOriginalFilename() == null || file.getOriginalFilename().isBlank()
+                ? "документ" : file.getOriginalFilename().trim();
+        f.setFileName(name.length() > 255 ? name.substring(name.length() - 255) : name);
+        f.setContentType(file.getContentType());
+        f.setSizeBytes(file.getSize());
+        f.setCreatedBy(adminName);
+        files.save(f);
+        return money(e.getBatchId());
+    }
+
+    @Transactional(readOnly = true)
+    public BatchExpenseFile expenseFile(long fileId) {
+        return files.findById(fileId).orElseThrow(() -> new NotFoundException("Документ не найден"));
+    }
+
+    @Transactional
+    public BatchMoneyDto deleteExpenseFile(long fileId) {
+        BatchExpenseFile f = expenseFile(fileId);
+        long batchId = expenses.findById(f.getExpenseId()).map(BatchExpense::getBatchId)
+                .orElseThrow(() -> new NotFoundException("Расход не найден"));
+        files.delete(f);
+        storage.deleteQuietly(f.getObjectKey());
+        return money(batchId);
     }
 
     private void applyExpense(BatchExpense e, ExpenseRequest req) {
@@ -430,10 +478,10 @@ public class CostingService {
         return whole == 0 ? null : Math.round(part * 1000.0 / whole) / 10.0;
     }
 
-    private static ExpenseDto toDto(BatchExpense e) {
+    private static ExpenseDto toDto(BatchExpense e, List<ExpenseFileDto> docs) {
         BigDecimal r = BatchCost.rateOf(e.getCurrency(), e.getFxRate());
         long uah = r == null ? 0 : BatchCost.toUah(e.getAmountMinor(), r);
         return new ExpenseDto(e.getId(), e.getBatchItemId(), e.getKind(), e.getAmountMinor(), e.getCurrency(),
-                e.getFxRate(), uah, e.getSpentOn(), e.getNote(), e.getCreatedBy(), e.getCreatedAt());
+                e.getFxRate(), uah, e.getSpentOn(), e.getNote(), e.getCreatedBy(), e.getCreatedAt(), docs);
     }
 }

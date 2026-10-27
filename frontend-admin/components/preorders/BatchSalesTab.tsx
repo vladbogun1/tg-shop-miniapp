@@ -2,7 +2,8 @@
 
 /**
  * Карточка поставки → «Продажи»: сколько потрачено, сколько продано и заработано, что осталось на полке.
- * «Продано» = ушло со склада (включая брони неоплаченных заказов). Только с правом «Финансы».
+ * «Продано» — только в оплаченных заказах (как в «Метриках»); ждущие онлайн-оплаты — отдельно, «в брони».
+ * Только с правом «Финансы».
  */
 import { useQuery } from "@tanstack/react-query";
 import { COSTING_KEY, costingApi, type BatchSales } from "@/lib/costing";
@@ -53,7 +54,15 @@ function SalesBody({ s }: { s: BatchSales }) {
         <Tile
           label="Приехало / продано / осталось"
           value={`${s.arrived} / ${s.sold} / ${s.left}`}
-          sub={s.daysToSellOut != null ? `распродана за ${s.daysToSellOut} дн` : s.arrivedAt ? `приехала ${formatDateTime(s.arrivedAt)}` : undefined}
+          sub={
+            s.reserved > 0
+              ? `ещё ${s.reserved} шт. в брони — ждут оплаты`
+              : s.daysToSellOut != null
+                ? `распродана за ${s.daysToSellOut} дн`
+                : s.arrivedAt
+                  ? `приехала ${formatDateTime(s.arrivedAt)}`
+                  : undefined
+          }
         />
       </div>
 
@@ -69,6 +78,7 @@ function SalesBody({ s }: { s: BatchSales }) {
               <th>Товар</th>
               <th className="r">Приехало</th>
               <th className="r">Продано</th>
+              <th className="r">В брони</th>
               <th className="r">Осталось</th>
               <th className="r">Себестоимость/шт</th>
               <th className="r">Выручка</th>
@@ -82,6 +92,7 @@ function SalesBody({ s }: { s: BatchSales }) {
                 <td className="font-semibold">{lineTitle(l.title, l.variantName)}</td>
                 <td className="r">{l.arrived}</td>
                 <td className="r">{l.sold}</td>
+                <td className="r">{l.reserved || "—"}</td>
                 <td className="r">{l.left}</td>
                 <td className="r">{l.costUnitMinor != null ? money(l.costUnitMinor) : "—"}</td>
                 <td className="r">{money(l.revenueMinor)}</td>
@@ -92,7 +103,10 @@ function SalesBody({ s }: { s: BatchSales }) {
           </tbody>
         </table>
       </div>
-      <p className="text-[12px] text-[var(--text-faint)]">Продано = ушло со склада, включая брони неоплаченных заказов.</p>
+      <p className="text-[12px] text-[var(--text-faint)]">
+        Продано — как в «Метриках»: наложенный платёж сразу, онлайн-оплата и предоплата — после оплаты. «В брони» —
+        заказы, которые ещё ждут онлайн-оплаты: со склада уже ушло, но в выручку и прибыль не входит.
+      </p>
     </div>
   );
 }

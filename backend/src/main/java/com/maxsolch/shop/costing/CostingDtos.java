@@ -22,7 +22,11 @@ public final class CostingDtos {
 
     public record ExpenseDto(long id, Long itemId, String kind, long amountMinor, String currency,
                              BigDecimal fxRate, long amountUahMinor, LocalDate spentOn, String note,
-                             String createdBy, Instant createdAt) {
+                             String createdBy, Instant createdAt, List<ExpenseFileDto> files) {
+    }
+
+    /** A document of an expense; the bytes come from {@code GET /api/admin/costing/expense-files/{id}}. */
+    public record ExpenseFileDto(long id, String name, String contentType, long sizeBytes, Instant createdAt) {
     }
 
     /**
@@ -51,13 +55,14 @@ public final class CostingDtos {
 
     // ----- P&L of a batch (§5А.3)
 
+    /** {@code sold} — in paid (sold) orders only; {@code reserved} — in orders still awaiting online payment. */
     public record BatchSalesLineDto(long itemId, String title, String variantName, int arrived, int sold,
-                                    int left, Long costUnitMinor, long revenueMinor, long costMinor,
+                                    int reserved, int left, Long costUnitMinor, long revenueMinor, long costMinor,
                                     long profitMinor) {
     }
 
     public record BatchSalesDto(long batchId, long spentMinor, long revenueMinor, long costOfSoldMinor,
-                                long profitMinor, Double marginPct, int arrived, int sold, int left,
+                                long profitMinor, Double marginPct, int arrived, int sold, int reserved, int left,
                                 long leftValueMinor, Instant arrivedAt, Instant soldOutAt, Integer daysToSellOut,
                                 boolean preliminary, List<BatchSalesLineDto> lines) {
     }

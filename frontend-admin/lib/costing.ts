@@ -4,7 +4,7 @@
  * без права блоки не рендерятся (useFinanceAccess), а эндпоинты отвечают 403.
  */
 import { useQuery } from "@tanstack/react-query";
-import { apiDelete, apiGet, apiPost, apiPut, isAuthenticated } from "@/lib/api";
+import { apiDelete, apiGet, apiOrigin, apiPost, apiPut, getAccessToken, isAuthenticated, uploadFile } from "@/lib/api";
 
 export type Allocation = "BY_VALUE" | "BY_QTY" | "BY_WEIGHT" | "MANUAL";
 export type ExpenseKind = "FREIGHT" | "CUSTOMS" | "BROKER" | "DOMESTIC" | "BANK" | "OTHER";
@@ -60,6 +60,16 @@ export interface Expense {
   note: string | null;
   createdBy: string | null;
   createdAt: string;
+  files: ExpenseFile[];
+}
+
+/** Документ расхода (инвойс, декларация, выписка): фото или PDF в закрытом хранилище. */
+export interface ExpenseFile {
+  id: number;
+  name: string;
+  contentType: string | null;
+  sizeBytes: number;
+  createdAt: string;
 }
 
 export interface BatchMoney {
@@ -104,7 +114,10 @@ export interface BatchSalesLine {
   title: string;
   variantName: string | null;
   arrived: number;
+  /** В оплаченных заказах. */
   sold: number;
+  /** В заказах, которые ещё ждут онлайн-оплаты: ушло с полки, но пока не продажа. */
+  reserved: number;
   left: number;
   costUnitMinor: number | null;
   revenueMinor: number;
@@ -121,6 +134,7 @@ export interface BatchSales {
   marginPct: number | null;
   arrived: number;
   sold: number;
+  reserved: number;
   left: number;
   leftValueMinor: number;
   arrivedAt: string | null;
@@ -243,6 +257,9 @@ export const costingApi = {
   addExpense: (batchId: number, body: ExpenseRequest) => apiPost<BatchMoney>(`${BASE}/batches/${batchId}/expenses`, body),
   updateExpense: (id: number, body: ExpenseRequest) => apiPut<BatchMoney>(`${BASE}/expenses/${id}`, body),
   deleteExpense: (id: number) => apiDelete<BatchMoney>(`${BASE}/expenses/${id}`),
+  addExpenseFile: (expenseId: number, file: File) =>
+    uploadFile(`${BASE}/expenses/${expenseId}/files`, file) as unknown as Promise<BatchMoney>,
+  deleteExpenseFile: (fileId: number) => apiDelete<BatchMoney>(`${BASE}/expense-files/${fileId}`),
   sales: (batchId: number) => apiGet<BatchSales>(`${BASE}/batches/${batchId}/sales`),
   nbuRate: (currency: string, date?: string) =>
     apiGet<{ currency: string; date: string; rate: number | null }>(
@@ -279,4 +296,26 @@ export function inputToMinor(s: string): number | null {
 /** Копейки → «95.50» для поля ввода; null → пусто. */
 export function minorToInput(v: number | null | undefined): string {
   return v == null ? "" : (v / 100).toFixed(2);
+}
+
+/**
+ * Открыть документ расхода в новой вкладке. Файл отдаётся только с токеном (права «Финансы»), поэтому
+ * не ссылкой, а через blob; вкладку открываем сразу по клику, иначе её заблокирует браузер.
+ */
+export async function openExpenseFile(file: ExpenseFile): Promise<void> {
+  const tab = window.open("", "_blank");
+  try {
+    const res = await fetch(`${apiOrigin}${BASE}/expense-files/${file.id}`, {
+      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(res.status === 403 ? "Нет права «Финансы»" : "Документ не открылся");
+    const url = URL.createObjectURL(await res.blob());
+    if (tab) tab.location.href = url;
+    else window.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (e) {
+    tab?.close();
+    throw e;
+  }
 }

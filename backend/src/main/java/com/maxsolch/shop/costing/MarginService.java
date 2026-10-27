@@ -76,7 +76,17 @@ public class MarginService {
 
     // ---------------------------------------------------------------- raw rows
 
-    record OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status) {
+    record OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status,
+                    boolean online, long prepaymentMinor) {
+        OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status) {
+            this(id, totalMinor, refundedMinor, uncollectedMinor, status, false, 0);
+        }
+
+        /** What the bank is to take the fee from: the prepayment, or the whole order when paid in full online. */
+        long onlineDueMinor() {
+            return !online ? 0 : prepaymentMinor > 0 ? Math.min(prepaymentMinor, totalMinor) : totalMinor;
+        }
+
         long revenue() {
             return Math.max(0, totalMinor - Math.max(0, refundedMinor) - Math.max(0, uncollectedMinor));
         }
@@ -124,9 +134,11 @@ public class MarginService {
         MapSqlParameterSource p = new MapSqlParameterSource("ids",
                 orderIds.stream().map(UuidUtil::toBytes).toList());
         List<OrderRow> orders = jdbc.query("select bin_to_uuid(id) id, total_minor, refunded_minor, "
-                + "uncollected_minor, status from orders where id in (:ids)", p, (rs, i) -> new OrderRow(
+                + "uncollected_minor, status, payment_due_at is not null online, prepayment_minor "
+                + "from orders where id in (:ids)", p, (rs, i) -> new OrderRow(
                 rs.getString("id"), rs.getLong("total_minor"), rs.getLong("refunded_minor"),
-                rs.getLong("uncollected_minor"), rs.getString("status")));
+                rs.getLong("uncollected_minor"), rs.getString("status"), rs.getBoolean("online"),
+                rs.getLong("prepayment_minor")));
         List<ItemRow> items = jdbc.query("select id, bin_to_uuid(order_id) order_id, bin_to_uuid(product_id) pid, "
                 + "bin_to_uuid(variant_id) vid, title_snapshot, variant_name_snapshot, price_minor_snapshot, quantity, "
                 + "returned_qty, restocked_qty, gift from order_items where order_id in (:ids) order by id", p,
@@ -219,6 +231,11 @@ public class MarginService {
                 fee += Math.round(inv.amountMinor() * FEE_PERMILLE / 1000.0);
                 estimated = true;
             }
+        }
+        if (b.invoices().isEmpty() && b.order().onlineDueMinor() > 0) {
+            // not paid yet: the fee monobank will take once it is
+            fee = Math.round(b.order().onlineDueMinor() * FEE_PERMILLE / 1000.0);
+            estimated = true;
         }
         return new OrderMoney(b.order(), lines, revenue, cost, fee, estimated, complete, preliminary);
     }
@@ -384,12 +401,24 @@ public class MarginService {
                     new MapSqlParameterSource("lots", lotById.keySet()), String.class);
             bundles = load(orderIds);
         }
+        Set<String> soldIds = bundles.isEmpty() ? Set.of() : facts.load().orders().stream()
+                .filter(MetricsFacts.OrderFact::sold).map(MetricsFacts.OrderFact::id).collect(Collectors.toSet());
         Map<Long, StockLot> allLots = new HashMap<>(lotsById(bundles.values()));
         CostBook full = bookFor(bundles.values(), batchLots);
 
-        Map<Long, long[]> perLine = new HashMap<>(); // itemId → {sold, revenue, cost}
+        Map<Long, long[]> perLine = new HashMap<>(); // itemId → {sold, revenue, cost, reserved}
         Instant last = null;
         for (Bundle b : bundles.values()) {
+            if (!soldIds.contains(b.order().id())) {
+                // awaiting online payment: off the shelf, but not a sale yet
+                b.allocs().values().forEach(al -> al.forEach(a -> {
+                    StockLot lot = lotById.get(a.lotId());
+                    if (lot != null) {
+                        perLine.computeIfAbsent(lot.getBatchItemId(), k -> new long[4])[3] += a.qty();
+                    }
+                }));
+                continue;
+            }
             OrderMoney m = compute(b, id -> full.of(allLots.get(id)));
             for (LineMoney l : m.lines()) {
                 int out = Math.max(1, l.item().unitsOut());
@@ -399,7 +428,7 @@ public class MarginService {
                         continue;
                     }
                     UnitCost u = book.of(lot);
-                    long[] s = perLine.computeIfAbsent(lot.getBatchItemId(), k -> new long[3]);
+                    long[] s = perLine.computeIfAbsent(lot.getBatchItemId(), k -> new long[4]);
                     s[0] += a.qty();
                     s[1] += l.revenue() * a.qty() / out;
                     s[2] += u.minor() == null ? 0 : u.minor() * a.qty();
@@ -418,6 +447,7 @@ public class MarginService {
         int arrived = 0;
         int sold = 0;
         int left = 0;
+        int reserved = 0;
         boolean preliminary = false;
         for (PreorderBatchItem i : lines) {
             Product p = products.get(UuidUtil.toString(i.getProductId()));
@@ -427,7 +457,7 @@ public class MarginService {
                     .mapToInt(StockLot::getQtyLeft).sum();
             UnitCost u = batchLots.stream().filter(x -> x.getBatchItemId().equals(i.getId())).findFirst()
                     .map(book::of).orElse(new UnitCost(null, false));
-            long[] s = perLine.getOrDefault(i.getId(), new long[3]);
+            long[] s = perLine.getOrDefault(i.getId(), new long[4]);
             long unit = u.minor() == null ? 0 : u.minor();
             spent += unit * in;
             revenue += s[1];
@@ -436,16 +466,18 @@ public class MarginService {
             arrived += in;
             sold += (int) s[0];
             left += l;
+            reserved += (int) s[3];
             preliminary |= u.preliminary() || (u.minor() == null && in > 0);
             out.add(new BatchSalesLineDto(i.getId(), p == null ? "(товар удалён)" : p.getTitle(),
-                    v == null ? null : v.getName(), in, (int) s[0], l, u.minor(), s[1], s[2], s[1] - s[2]));
+                    v == null ? null : v.getName(), in, (int) s[0], (int) s[3], l, u.minor(), s[1], s[2],
+                    s[1] - s[2]));
         }
-        Instant soldOut = arrived > 0 && left == 0 ? last : null;
+        Instant soldOut = arrived > 0 && left == 0 && reserved == 0 ? last : null;
         Integer days = soldOut != null && pb.getArrivedAt() != null
                 ? (int) Math.max(0, Duration.between(pb.getArrivedAt(), soldOut).toDays()) : null;
         long profit = revenue - costSold;
         return new BatchSalesDto(batchId, spent, revenue, costSold, profit,
-                revenue > 0 ? CostingService.pct(profit, revenue) : null, arrived, sold, left, leftValue,
+                revenue > 0 ? CostingService.pct(profit, revenue) : null, arrived, sold, reserved, left, leftValue,
                 pb.getArrivedAt(), soldOut, days, preliminary, out);
     }
 }

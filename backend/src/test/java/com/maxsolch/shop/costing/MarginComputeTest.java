@@ -63,6 +63,23 @@ class MarginComputeTest {
     }
 
     @Test
+    void anUnpaidOnlineOrderExpectsTheFeeOnWhatIsDueOnline() {
+        ItemRow pad = new ItemRow(1, "o", "p", null, "Pad", null, 400000, 1, 0, 0, false);
+        Map<Long, List<Alloc>> allocs = Map.of(1L, List.of(new Alloc(1, 1, 1, null)));
+
+        OrderMoney full = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 0), List.of(pad), allocs, List.of());
+        assertThat(full.fee()).isEqualTo(5200);
+        assertThat(full.feeEstimated()).isTrue();
+
+        OrderMoney prepay = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 10000), List.of(pad), allocs,
+                List.of());
+        assertThat(prepay.fee()).isEqualTo(130);
+
+        OrderMoney cash = money(new OrderRow("o", 400000, 0, 0, "NEW"), List.of(pad), allocs, List.of());
+        assertThat(cash.fee()).isZero();
+    }
+
+    @Test
     void oldStockWithoutCostMakesTheOrderIncomplete() {
         OrderRow o = new OrderRow("o", 99900, 0, 0, "NEW");
         ItemRow pad = new ItemRow(1, "o", "p", null, "Pad", null, 99900, 2, 0, 0, false);

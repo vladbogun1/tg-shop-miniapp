@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CloudDownload, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, CloudDownload, FileText, Image as ImageIcon, Paperclip, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import {
   ALLOCATIONS,
@@ -20,6 +20,8 @@ import {
   type Allocation,
   type BatchMoney,
   type Expense,
+  type ExpenseFile,
+  openExpenseFile,
   type ExpenseKind,
   type MoneyRequest,
 } from "@/lib/costing";
@@ -163,6 +165,46 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
       push("Расход удалён", "ok");
     } catch (err) {
       push(err instanceof ApiError ? err.message : "Не удалось удалить", "error");
+    }
+  }
+
+  const [uploading, setUploading] = useState<number | null>(null);
+
+  async function attach(e: Expense, files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(e.id);
+    try {
+      let last: BatchMoney | null = null;
+      for (const f of Array.from(files)) last = await costingApi.addExpenseFile(e.id, f);
+      if (last) apply(last);
+      push(files.length > 1 ? `Документов прикреплено: ${files.length}` : "Документ прикреплён", "ok");
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Не удалось загрузить документ", "error");
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function detach(f: ExpenseFile) {
+    const ok = await confirm({
+      title: "Удалить документ?",
+      message: `${f.name} удалится из хранилища. Сам расход останется.`,
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      apply(await costingApi.deleteExpenseFile(f.id));
+    } catch (err) {
+      push(err instanceof ApiError ? err.message : "Не удалось удалить документ", "error");
+    }
+  }
+
+  async function open(f: ExpenseFile) {
+    try {
+      await openExpenseFile(f);
+    } catch (err) {
+      push(err instanceof Error ? err.message : "Документ не открылся", "error");
     }
   }
 
@@ -311,6 +353,55 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
                     {e.createdBy ? ` · ${e.createdBy}` : ""}
                   </div>
                   {e.note && <div className="break-words text-[12.5px] text-[var(--text-muted)]">{e.note}</div>}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {e.files.map((f) => (
+                      <span
+                        key={f.id}
+                        className="inline-flex max-w-full items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--surface-2)] pl-2 text-[12px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => open(f)}
+                          title={`${f.name} · ${fileSize(f.sizeBytes)}`}
+                          className="inline-flex min-w-0 items-center gap-1 py-1 text-[var(--text)] hover:text-[var(--accent)]"
+                        >
+                          {f.contentType?.startsWith("image/") ? (
+                            <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                          )}
+                          <span className="max-w-[180px] truncate">{f.name}</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Удалить документ ${f.name}`}
+                          onClick={() => detach(f)}
+                          className="px-1.5 py-1 text-[var(--text-faint)] hover:text-[var(--danger)]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                    <label
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[12px] text-[var(--text-muted)] hover:text-[var(--accent)]",
+                        uploading === e.id && "pointer-events-none opacity-60"
+                      )}
+                    >
+                      <Paperclip className="h-3.5 w-3.5" />
+                      {uploading === e.id ? "Загрузка…" : e.files.length ? "Ещё документ" : "Прикрепить документ"}
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,application/pdf,.pdf"
+                        className="sr-only"
+                        onChange={(ev) => {
+                          void attach(e, ev.target.files);
+                          ev.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="tabular font-display text-[14px] font-bold text-[var(--ink)]">{money(e.amountUahMinor)}</div>
@@ -482,4 +573,10 @@ function ExpenseModal({
       </div>
     </Modal>
   );
+}
+
+function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
 }

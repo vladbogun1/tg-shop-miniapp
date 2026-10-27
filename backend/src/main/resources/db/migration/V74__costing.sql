@@ -34,6 +34,23 @@ CREATE TABLE batch_expenses (
     KEY ix_batch_expenses_batch (batch_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
+-- Documents of an expense (invoice, customs declaration, bank statement): photos or PDFs in the private
+-- costing/ prefix of the bucket (imgproxy serves only products/), handed out by the admin API to «Финансы».
+CREATE TABLE batch_expense_files (
+    id            BIGINT        NOT NULL AUTO_INCREMENT,
+    expense_id    BIGINT        NOT NULL,
+    object_key    VARCHAR(500)  NOT NULL,
+    file_name     VARCHAR(255)  NOT NULL,
+    content_type  VARCHAR(100)  NULL,
+    size_bytes    BIGINT        NOT NULL DEFAULT 0,
+    created_by    VARCHAR(255)  NULL,
+    created_at    TIMESTAMP(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (id),
+    KEY ix_batch_expense_files_expense (expense_id),
+    CONSTRAINT fk_batch_expense_files_expense FOREIGN KEY (expense_id) REFERENCES batch_expenses (id)
+        ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
 -- Lots of stock, for money only (products.stock stays the one number the shop sells from). Units leave
 -- the oldest lot first (FIFO). OPENING = stock that was on the shelf before the ledger (cost unknown
 -- unless the admin types it later), BATCH = an arrival, MANUAL = the admin raised the stock by hand.
