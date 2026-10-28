@@ -16,8 +16,8 @@ final class OrderSearchQueries {
     private OrderSearchQueries() {
     }
 
-    /** Optional lower bound on createdAt. */
-    static final String RANGE = "(:from is null or o.createdAt >= :from) ";
+    /** Optional createdAt window [from, to): either bound may be null (the upper one comes from calendar periods). */
+    static final String RANGE = "(:from is null or o.createdAt >= :from) and (:to is null or o.createdAt < :to) ";
 
     /**
      * Free-text match across the order's own fields and its item titles. {@code q} must already be
