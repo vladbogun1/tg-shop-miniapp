@@ -53,6 +53,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@/components/ui/ConfirmModal";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { useBatchProductTools } from "@/components/preorders/BatchItemProduct";
 import { ReturnBadge } from "./ReturnBadge";
 import { ReturnReceivedModal } from "./ReturnReceivedModal";
 import { ArchiveModal } from "./ArchiveModal";
@@ -132,6 +133,19 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const isSuper = useIsSuperAdmin() === true;
   const [moreOpen, setMoreOpen] = useState(false);
+  // Tap on a line → the supply page's quick view, over this drawer (z-[120]) and under its modals (z-[150]).
+  const productTools = useBatchProductTools({ zClass: "z-[140]" });
+  async function openProduct(productId: string) {
+    try {
+      // the same list (and cache) as «Товары»; an archived product is not in it
+      const all = await qc.fetchQuery({ queryKey: ["products", false], queryFn: () => adminApi.products(), staleTime: 60_000 });
+      const p = all.find((x) => x.id === productId);
+      if (p) productTools.openPreview(p);
+      else push("Товар в архиве — его карточки больше нет", "error");
+    } catch (e) {
+      push(e instanceof ApiError ? e.message : "Не удалось открыть товар", "error");
+    }
+  }
   const [profile, setProfile] = useState<UserCardDto | null>(null);
 
   const close = useBackToClose(!!orderId, onClose, { marker: "orderDrawer", navigatesAway: closeNavigates });
@@ -649,6 +663,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
                       onExchange: canExchange ? () => setExchangeOpen(true) : undefined,
                       onMerge: canMerge ? () => setMergeOpen(true) : undefined,
                       onOpenOrder: setJumped,
+                      onOpenProduct: openProduct,
                       onPaymentChanged: refreshLists,
                       paymentRef,
                     }}
@@ -850,6 +865,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       <UserProfileDrawer user={profile} onClose={() => setProfile(null)} />
 
       {confirmUi}
+      {productTools.ui}
     </>
   );
 }
