@@ -105,8 +105,6 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
                   name={c.name}
                   artKind={c.artKind}
                   count={t("home.categoryCount", { n: c.productCount })}
-                  loadingLabel={t("home.tile.loading")}
-                  readyLabel={t("home.tile.ready")}
                 />
               </li>
             ))}
