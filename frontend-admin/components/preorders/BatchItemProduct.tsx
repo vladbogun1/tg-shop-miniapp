@@ -62,9 +62,10 @@ export function ProductStateChips({ p, loading }: { p: AdminProduct | undefined;
 
 /**
  * Общая логика страницы поставки: показать/скрыть (через «ворота» публикации черновиков),
- * быстрый просмотр, редактор и мастер «Оформить карточку».
+ * быстрый просмотр, редактор и мастер «Оформить карточку». Карточка заказа зовёт то же самое
+ * поверх своей панели — ей нужен `zClass` выше, чем у неё (z-[120]), но ниже модалок (z-[150]).
  */
-export function useBatchProductTools() {
+export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
   const qc = useQueryClient();
   const { push } = useToast();
   const [preview, setPreview] = useState<AdminProduct | null>(null);
@@ -100,6 +101,7 @@ export function useBatchProductTools() {
     <>
       <QuickView
         p={preview}
+        zClass={zClass}
         busy={!!preview && busy === preview.id}
         onClose={() => setPreview(null)}
         onEdit={(p) => {
@@ -136,12 +138,14 @@ export function useBatchProductTools() {
 
 function QuickView({
   p,
+  zClass,
   busy,
   onClose,
   onEdit,
   onActive,
 }: {
   p: AdminProduct | null;
+  zClass?: string;
   busy: boolean;
   onClose: () => void;
   onEdit: (p: AdminProduct) => void;
@@ -152,19 +156,22 @@ function QuickView({
   const stock = p?.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : p?.stock ?? 0;
   return (
     <>
-      <Drawer open={!!p} onClose={onClose} title={p?.title}>
+      <Drawer open={!!p} onClose={onClose} title={p?.title} zClass={zClass}>
         {p && (
           <div className="flex min-w-0 flex-col gap-4 px-4 pb-[calc(16px+var(--safe-bottom,0px))] pt-4 sm:px-5">
             <ProductStateChips p={p} loading={false} />
             {images.length ? (
-              <div className="grid grid-cols-3 gap-2">
+              // Phone: a swipeable strip, so price, stock and the buttons stay on the first screen.
+              // From sm up: the first photo big, the rest in a row under it.
+              <div className="thin-scroll -mx-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
                 {images.map((img, n) => (
                   <button
                     key={img.id ?? n}
                     type="button"
                     onClick={() => setZoom(resolveImageSrc(img.url!, 1600))}
                     className={
-                      "overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] " + (n === 0 ? "col-span-3" : "")
+                      "w-40 shrink-0 snap-start overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] sm:w-auto " +
+                      (n === 0 ? "sm:col-span-3" : "")
                     }
                     aria-label="Увеличить фото"
                   >
@@ -189,7 +196,8 @@ function QuickView({
             {p.description && (
               <p className="line-clamp-6 whitespace-pre-wrap break-words text-[13px] text-[var(--text-muted)]">{p.description}</p>
             )}
-            <div className="flex flex-wrap gap-2">
+            {/* phone: the actions stick to the bottom edge however long the description is */}
+            <div className="sticky bottom-0 -mx-4 -mb-[calc(16px+var(--safe-bottom,0px))] flex flex-wrap gap-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 pb-[calc(12px+var(--safe-bottom,0px))] pt-3 sm:static sm:m-0 sm:border-0 sm:bg-transparent sm:p-0">
               <Button variant="accent" icon={<Pencil className="h-4 w-4" />} onClick={() => onEdit(p)}>
                 Редактировать
               </Button>
