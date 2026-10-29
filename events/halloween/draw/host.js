@@ -8,7 +8,7 @@ const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
 // Two separate draws (server/src/pools.js): the screen plays one of them, picked in the panel.
 const POOL = qs.get("pool") === "orders" ? "orders" : "pumpkins";
-let ROUNDS = 6; // from the server
+let ROUNDS = 10; // from the server
 const API = "/hw/api/admin";
 // Rehearsal: random real customers from the shop database play with made-up tickets; the real list,
 // lock and rounds are not touched (server/src/test-draw.js).
@@ -247,7 +247,6 @@ function setupControls() {
   $("contacts").onclick = () => showContacts().catch(fail);
   $("people").onclick = () =>
     (MOCK || TEST ? Promise.reject(new Error("У тестовому режимі учасники несправжні")) : showPeople({ api, dialog, fail, esc, pool: POOL, onChange: refreshList })).catch(fail);
-  $("codes").onclick = () => showCodes().catch(fail);
   $("proof").onclick = () => downloadProof().catch(fail);
   $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value); };
   $("sound").onchange = (e) => { prefs.sound = e.target.checked; };
@@ -415,45 +414,6 @@ async function showContact(round) {
       el.querySelector("[data-res]").innerHTML = `<span class="warn">${esc(e.message || e)}</span>`;
     }
   };
-}
-
-async function showCodes() {
-  if (MOCK) return fail("У mock-режимі кодів немає");
-  const list = await api("/codes");
-  const rows =
-    list
-      .map(
-        (c) =>
-          `<tr><td><b>${esc(c.code)}</b></td><td>+${c.bonus}</td><td>${c.used} / ${c.maxUses}</td><td>${
-            c.active ? `<button data-off="${esc(c.code)}">Вимкнути</button>` : "вимкнено"
-          }</td></tr>`
-      )
-      .join("") || "<tr><td colspan=4>Поки немає</td></tr>";
-  const el = dialog(
-    "Кодові слова",
-    `<table><tr><th>Код</th><th>Гарбузів</th><th>Використано</th><th></th></tr>${rows}</table>
-    <form class="add"><input name="code" placeholder="СЛОВО" required minlength="3" maxlength="40" />
-      <label>гарбузів <input name="bonus" type="number" min="1" max="50" value="5" style="width:70px" /></label>
-      <label>вводів <input name="maxUses" type="number" min="1" value="50" style="width:90px" /></label>
-      <button>Додати</button></form>
-    <p class="muted">Одна людина вводить слово один раз. Повторне «Додати» з тим самим словом змінює гарбузи й ліміт.</p>`
-  );
-  const byCode = new Map(list.map((c) => [c.code, c]));
-  const save = async (payload) => {
-    try {
-      await api("/codes", { method: "POST", body: JSON.stringify(payload) });
-      await showCodes();
-    } catch (err) { fail(err); }
-  };
-  el.querySelector("form.add").onsubmit = (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    save({ code: f.get("code"), bonus: f.get("bonus"), maxUses: f.get("maxUses") });
-  };
-  el.querySelectorAll("[data-off]").forEach((b) => {
-    const c = byCode.get(b.dataset.off);
-    b.onclick = () => save({ code: c.code, bonus: c.bonus, maxUses: c.maxUses, active: false });
-  });
 }
 
 async function downloadProof() {

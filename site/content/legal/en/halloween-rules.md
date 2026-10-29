@@ -27,7 +27,6 @@ There are **two separate draws**:
 
 - Everyone with at least **1 pumpkin** takes part.
 - **A full set is 15 pumpkins.** A partial set gives 1 ticket per pumpkin (1–14), a full set at least 100 tickets. All partial sets together hold at most 10% of the chance: a full set weighs more when there are many partial ones. So a few pumpkins give a very small chance.
-- **Code words.** During the event (until Nov 1, 18:00) code words may be announced on TikTok and Kick — enter them in the event panel to get extra pumpkins. Each word works a limited number of times, once per person.
 
 **Purchase draw.** Customers whose orders during the event add up to **500 UAH or more**.
 
@@ -38,7 +37,7 @@ The pumpkin draw is free, no purchase needed. Whether you are in is shown in the
 
 ## 4. The draw
 
-- **6 prizes in each draw**, one per round. One person can win only one prize within a draw, but can win in both draws.
+- **10 prizes in each draw**, one per round. One person can win only one prize within a draw, but can win in both draws.
 - A participant's chance is proportional to their number of tickets.
 - Before the stream the list of each draw is frozen and a fingerprint (sha256) of a secret number and the list is shown on screen. That number, not the host, decides the winners. After the draw the number and the list can be checked.
 - The prizes are announced separately before the stream.

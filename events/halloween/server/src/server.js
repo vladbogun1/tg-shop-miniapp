@@ -1,6 +1,6 @@
 // Halloween 2026 event service. Mounted at /hw/ by the shop gateways (site, Mini App, admin).
-//   /hw/api/*        customer API (pumpkins, codes, progress)
-//   /hw/api/admin/*  draw screen and code words (admin JWT, re-checked with the shop backend)
+//   /hw/api/*        customer API (pumpkins, progress)
+//   /hw/api/admin/*  draw screen (admin JWT, re-checked with the shop backend)
 //   /hw/spawner.js, /hw/sprites/*  the widget the site and the Mini App load
 //   /hw/draw/*       the stream draw screen (the admin gateway only)
 import { createServer } from "node:http";
@@ -107,11 +107,6 @@ async function customerApi(req, res, path) {
     const r = game.collect(me.tgId, b.id);
     return send(res, 200, { ...r, me: await game.progress(me.tgId) });
   }
-  if (path === "code" && req.method === "POST") {
-    if (limited(ip, 10)) return send(res, 429, { error: "slow down" }); // guessing codes is expensive
-    const r = game.redeem(me.tgId, b.code);
-    return send(res, 200, { ...r, me: await game.progress(me.tgId) });
-  }
   return send(res, 404, { error: "not found" });
 }
 
@@ -179,8 +174,6 @@ async function adminApi(req, res, path, query) {
         notify: notify.stats(),
       });
     }
-    if (path === "codes" && req.method === "GET") return send(res, 200, game.listCodes());
-    if (path === "codes" && req.method === "POST") return send(res, 200, game.saveCode(b, who.tgId));
     if (path === "people" && req.method === "GET") return send(res, 200, await adminPeople.people(pool));
     if (path === "include" && req.method === "POST") {
       adminPeople.include(pool, b.tgId);

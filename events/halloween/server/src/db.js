@@ -32,24 +32,6 @@ CREATE TABLE IF NOT EXISTS spawns (
 CREATE INDEX IF NOT EXISTS idx_spawns_user ON spawns (tg_id, issued_at);
 CREATE INDEX IF NOT EXISTS idx_spawns_day ON spawns (day, collected_at);
 
--- Stream code words: limited number of uses, each person once.
-CREATE TABLE IF NOT EXISTS codes (
-  code       TEXT PRIMARY KEY,
-  bonus      INTEGER NOT NULL,
-  max_uses   INTEGER NOT NULL,
-  used       INTEGER NOT NULL DEFAULT 0,
-  active     INTEGER NOT NULL DEFAULT 1,
-  created_at INTEGER NOT NULL,
-  created_by TEXT
-);
-CREATE TABLE IF NOT EXISTS code_uses (
-  code  TEXT NOT NULL,
-  tg_id TEXT NOT NULL,
-  bonus INTEGER NOT NULL,
-  at    INTEGER NOT NULL,
-  PRIMARY KEY (code, tg_id)
-);
-
 CREATE TABLE IF NOT EXISTS excluded (
   tg_id TEXT PRIMARY KEY,
   note  TEXT,

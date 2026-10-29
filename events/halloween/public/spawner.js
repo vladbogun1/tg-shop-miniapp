@@ -34,7 +34,7 @@
       missed: "Не встиг — чекай наступного", fullDone: "У тебе повний набір — більше гарбузів не треба",
       closed: "Збір завершено — гарбузи й замовлення більше не зараховуються",
       pOver: (n, g) => `Розіграш за гарбузи: ${n} з ${g} — шанс малий, але ти в списку`,
-      busy: "Забагато спроб — зачекай хвилину", ok: "OK",
+      ok: "OK",
       goal: (g) => `Знайди хоч одного гарбуза — і ти в розіграші. Збери ${g} — і шанс виросте в рази`,
       inDraw: "Ти в розіграші!", tickets: (n) => `${n} ${plural(n, "квиток", "квитки", "квитків")}`,
       pFull: "Розіграш за гарбузи: повний шанс", pPart: (n) => `Розіграш за гарбузи: шанс поки малий — ще ${n}, і він виросте в рази`,
@@ -42,8 +42,6 @@
       howTitle: "Два розіграші", how1: (g) => `🎃 За гарбузи: кожен гарбуз — участь, а повний набір із ${g} дає шанс у рази вищий`,
       how2: (u, m, e) => `🛍 За покупки: оплачені замовлення до ${e} — квиток за кожні ${u} ₴ (до ${m})`,
       how3: "Це два окремі розіграші — можна виграти в обох", how4: (c) => `Не більше ${c} гарбузів на день`,
-      code: "Кодове слово зі стріму", codePh: "Введи слово", codeBtn: "Активувати",
-      codeOk: (b) => `+${b} гарбузів!`, codeErr: { unknown: "Такого слова немає", already: "Ти вже вводив це слово", exhausted: "Слово вже використали всі, хто встиг", "not-live": "Акція не триває" },
       stream: "Розіграш на стрімі", watch: "Дивитися стрім", rules: "Правила",
       login: "Увійди через Telegram, щоб збирати гарбузи", loginBtn: "Увійти через Telegram",
       gotIt: "Гарбуз твій!", got: (n, g) => `${n} з ${g}`,
@@ -61,7 +59,7 @@
       missed: "Не успел — жди следующую", fullDone: "У тебя полный набор — больше тыкв не нужно",
       closed: "Сбор завершён — тыквы и заказы больше не засчитываются",
       pOver: (n, g) => `Розыгрыш за тыквы: ${n} из ${g} — шанс мал, но ты в списке`,
-      busy: "Слишком много попыток — подожди минуту", ok: "OK",
+      ok: "OK",
       goal: (g) => `Найди хоть одну тыкву — и ты в розыгрыше. Собери ${g} — и шанс вырастет в разы`,
       inDraw: "Ты в розыгрыше!", tickets: (n) => `${n} ${plural(n, "билет", "билета", "билетов")}`,
       pFull: "Розыгрыш за тыквы: полный шанс", pPart: (n) => `Розыгрыш за тыквы: шанс пока мал — ещё ${n}, и он вырастет в разы`,
@@ -69,8 +67,6 @@
       howTitle: "Два розыгрыша", how1: (g) => `🎃 За тыквы: каждая тыква — участие, а полный набор из ${g} даёт шанс в разы выше`,
       how2: (u, m, e) => `🛍 За покупки: оплаченные заказы до ${e} — билет за каждые ${u} ₴ (до ${m})`,
       how3: "Это два отдельных розыгрыша — можно выиграть в обоих", how4: (c) => `Не больше ${c} тыкв в день`,
-      code: "Кодовое слово со стрима", codePh: "Введи слово", codeBtn: "Активировать",
-      codeOk: (b) => `+${b} тыкв!`, codeErr: { unknown: "Такого слова нет", already: "Ты уже вводил это слово", exhausted: "Слово уже использовали все, кто успел", "not-live": "Акция не идёт" },
       stream: "Розыгрыш на стриме", watch: "Смотреть стрим", rules: "Правила",
       login: "Войди через Telegram, чтобы собирать тыквы", loginBtn: "Войти через Telegram",
       gotIt: "Тыква твоя!", got: (n, g) => `${n} из ${g}`,
@@ -88,7 +84,7 @@
       missed: "Too slow — wait for the next one", fullDone: "You have the full set — no more pumpkins needed",
       closed: "The hunt is closed — pumpkins and orders no longer count",
       pOver: (n, g) => `Pumpkin draw: ${n} of ${g} — a small chance, but you're in`,
-      busy: "Too many tries — wait a minute", ok: "OK",
+      ok: "OK",
       goal: (g) => `Find even one pumpkin and you're in the draw. Collect ${g} to multiply your chance`,
       inDraw: "You're in the draw!", tickets: (n) => `${n} ${n === 1 ? "ticket" : "tickets"}`,
       pFull: "Pumpkin draw: full chance", pPart: (n) => `Pumpkin draw: small chance for now — ${n} more to multiply it`,
@@ -96,8 +92,6 @@
       howTitle: "Two draws", how1: (g) => `🎃 Pumpkins: every pumpkin gets you in, a full set of ${g} multiplies your chance`,
       how2: (u, m, e) => `🛍 Purchases: paid orders until ${e} — a ticket per ${u} UAH (up to ${m})`,
       how3: "Two separate draws — you can win both", how4: (c) => `Up to ${c} pumpkins a day`,
-      code: "Stream code word", codePh: "Enter the word", codeBtn: "Redeem",
-      codeOk: (b) => `+${b} pumpkins!`, codeErr: { unknown: "No such word", already: "You already used this word", exhausted: "This word has run out", "not-live": "The event is not running" },
       stream: "Giveaway on stream", watch: "Watch the stream", rules: "Rules",
       login: "Sign in with Telegram to collect pumpkins", loginBtn: "Sign in with Telegram",
       gotIt: "Got it!", got: (n, g) => `${n} of ${g}`,
@@ -620,49 +614,16 @@
          ${drawLines(me, tx)}
          ${me.full && st.phase === "live" ? `<p>${tx.fullDone}</p>` : st.capped && st.phase === "live" ? `<p class="cap">🌙 ${capText(tx)}</p>` : ""}`
       : `<p>${tx.login}</p><button class="btn wide" type="button" data-login>${tx.loginBtn}</button>`;
-    const code = me && st.phase === "live"
-      ? `<h3>${tx.code}</h3><form><input name="code" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="${tx.codePh}" /><button class="btn" type="submit">${tx.codeBtn}</button></form><div class="msg"></div>`
-      : "";
     const s = modal(`
       <div class="hero"><div class="big"></div><div><h2>${tx.title}</h2>
         <div class="num">${me ? me.pumpkins : 0}<small> / ${st.goal}</small></div></div></div>
-      ${status}${progress}${code}
+      ${status}${progress}
       <h3>${tx.howTitle}</h3>
       <ul><li>${tx.how1(st.goal)}</li><li>${tx.how2(uah(st.minSpendMinor), st.maxOrderTickets, endsWhen())}</li><li>${tx.how3}</li><li>${tx.how4(st.dailyCap)}</li></ul>
       <h3>${tx.stream}</h3><p>${streamWhen()}${st.streams.map((x) => ` · <a href="${x.url}" target="_blank" rel="noopener">${x.name}</a>`).join("")}</p>
       <p><a href="${cfg.rulesUrl || "/halloween-rules"}" target="_blank" rel="noopener">${tx.rules}</a></p>`);
     s.querySelector(".big").append(pumpkinArt(me && me.full ? 4 : 1));
     s.querySelector("[data-login]")?.addEventListener("click", () => { closeModal(); cfg.login && cfg.login(); });
-    const form = s.querySelector("form");
-    if (form) form.onsubmit = async (e) => {
-      e.preventDefault();
-      const msg = s.querySelector(".msg");
-      const btn = form.querySelector("button");
-      btn.disabled = true;
-      try {
-        const res = await call("/code", { code: form.code.value });
-        st.me = res.me;
-        renderCounters();
-        if (res.ok) {
-          msg.className = "msg good";
-          msg.textContent = tx.codeOk(res.bonus);
-          cfg.haptic && cfg.haptic("success");
-          s.querySelector(".num").innerHTML = `${res.me.pumpkins}<small> / ${st.goal}</small>`;
-          s.querySelector(".bar i").style.width = Math.min(100, (res.me.pumpkins / st.goal) * 100) + "%";
-          form.code.value = "";
-          if (res.me.full && res.me.pumpkins - res.bonus < st.goal) setTimeout(openWin, 800);
-        } else {
-          msg.className = "msg bad";
-          msg.textContent = tx.codeErr[res.reason] || tx.codeErr.unknown;
-          cfg.haptic && cfg.haptic("error");
-        }
-      } catch (err) {
-        msg.className = "msg bad";
-        msg.textContent = err.status === 429 ? tx.busy : tx.codeErr.unknown;
-      } finally {
-        btn.disabled = false;
-      }
-    };
   }
 
   // ---------------- start ----------------

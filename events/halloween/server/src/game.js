@@ -1,4 +1,4 @@
-// Pumpkins and code words. A pumpkin is a one-time ticket the server issues; a tap counts only for
+// Pumpkins. A pumpkin is a one-time ticket the server issues; a tap counts only for
 // the ticket's owner, inside its lifetime and not faster than a finger can react.
 import { randomBytes, randomInt } from "node:crypto";
 import { db, tx } from "./db.js";
@@ -22,21 +22,16 @@ const q = {
   collectedTotal: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE tg_id = ? AND collected_at IS NOT NULL"),
   collectedDay: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE tg_id = ? AND day = ? AND collected_at IS NOT NULL"),
   ipDay: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE ip = ? AND day = ? AND collected_at IS NOT NULL"),
-  bonus: db.prepare("SELECT COALESCE(SUM(bonus), 0) AS n FROM code_uses WHERE tg_id = ?"),
   lastSpawn: db.prepare("SELECT issued_at FROM spawns WHERE tg_id = ? ORDER BY issued_at DESC LIMIT 1"),
   insertSpawn: db.prepare(
     "INSERT INTO spawns (id, tg_id, kind, issued_at, expires_at, day, ip, app) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ),
   spawn: db.prepare("SELECT * FROM spawns WHERE id = ?"),
   collect: db.prepare("UPDATE spawns SET collected_at = ? WHERE id = ? AND collected_at IS NULL"),
-  code: db.prepare("SELECT * FROM codes WHERE code = ?"),
-  codeUse: db.prepare("SELECT 1 FROM code_uses WHERE code = ? AND tg_id = ?"),
-  useCode: db.prepare("UPDATE codes SET used = used + 1 WHERE code = ? AND used < max_uses AND active = 1"),
-  insertUse: db.prepare("INSERT INTO code_uses (code, tg_id, bonus, at) VALUES (?, ?, ?, ?)"),
 };
 
 export function pumpkinsOf(tgId) {
-  return Number(q.collectedTotal.get(tgId).n) + Number(q.bonus.get(tgId).n);
+  return Number(q.collectedTotal.get(tgId).n);
 }
 
 /**
@@ -106,44 +101,6 @@ export function collect(tgId, id) {
   });
 }
 
-export function normalizeCode(raw) {
-  return String(raw || "").trim().toUpperCase().replace(/\s+/g, "").slice(0, 40);
-}
-
-/** A code word said on the stream: limited uses overall, once per person. */
-export function redeem(tgId, raw) {
-  if (phase() !== "live") return { ok: false, reason: "not-live" };
-  const code = normalizeCode(raw);
-  if (!code) return { ok: false, reason: "unknown" };
-  return tx(() => {
-    const c = q.code.get(code);
-    if (!c || !c.active) return { ok: false, reason: "unknown" };
-    if (q.codeUse.get(code, tgId)) return { ok: false, reason: "already" };
-    if (Number(c.used) >= Number(c.max_uses)) return { ok: false, reason: "exhausted" };
-    const r = q.useCode.run(code);
-    if (Number(r.changes) === 0) return { ok: false, reason: "exhausted" };
-    q.insertUse.run(code, tgId, Number(c.bonus), Date.now());
-    return { ok: true, bonus: Number(c.bonus), left: Number(c.max_uses) - Number(c.used) - 1 };
-  });
-}
-
-// ---- admin: codes ----
-export function listCodes() {
-  return db.prepare("SELECT code, bonus, max_uses AS maxUses, used, active, created_at AS createdAt FROM codes ORDER BY created_at DESC").all();
-}
-
-export function saveCode({ code, bonus, maxUses, active }, by) {
-  const c = normalizeCode(code);
-  if (!/^[A-Z0-9А-ЯІЇЄҐЁЪЫЭ_-]{3,40}$/u.test(c)) throw new Error("Код: 3–40 літер/цифр без пробілів");
-  const b = Math.max(1, Math.min(50, Math.floor(Number(bonus) || 0)));
-  const m = Math.max(1, Math.min(100000, Math.floor(Number(maxUses) || 0)));
-  db.prepare(
-    `INSERT INTO codes (code, bonus, max_uses, active, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(code) DO UPDATE SET bonus = excluded.bonus, max_uses = excluded.max_uses, active = excluded.active`,
-  ).run(c, b, m, active === false ? 0 : 1, Date.now(), by);
-  return q.code.get(c);
-}
-
 export function stats() {
   const days = db
     .prepare(
@@ -154,10 +111,7 @@ export function stats() {
   const reached = db
     .prepare(
       `SELECT COUNT(*) AS n FROM (
-         SELECT tg_id, SUM(c) AS t FROM (
-           SELECT tg_id, COUNT(*) AS c FROM spawns WHERE collected_at IS NOT NULL GROUP BY tg_id
-           UNION ALL SELECT tg_id, SUM(bonus) FROM code_uses GROUP BY tg_id
-         ) GROUP BY tg_id HAVING t >= ?)`,
+         SELECT tg_id FROM spawns WHERE collected_at IS NOT NULL GROUP BY tg_id HAVING COUNT(*) >= ?)`,
     )
     .get(config.goal).n;
   return { days, reachedGoal: Number(reached) };

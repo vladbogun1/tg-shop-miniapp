@@ -29,15 +29,12 @@ export function orderTickets(spendMinor) {
   return Math.min(config.maxOrderTickets, Math.floor(spendMinor / config.minSpendMinor));
 }
 
-/** Pumpkins per person: collected ones plus code-word bonuses. */
+/** Pumpkins collected per person. */
 export function pumpkinTotals() {
   const m = new Map();
   for (const r of db
     .prepare(
-      `SELECT tg_id, SUM(c) AS n FROM (
-         SELECT tg_id, COUNT(*) AS c FROM spawns WHERE collected_at IS NOT NULL GROUP BY tg_id
-         UNION ALL SELECT tg_id, SUM(bonus) FROM code_uses GROUP BY tg_id
-       ) GROUP BY tg_id`,
+      "SELECT tg_id, COUNT(*) AS n FROM spawns WHERE collected_at IS NOT NULL GROUP BY tg_id",
     )
     .all())
     m.set(String(r.tg_id), Number(r.n));
