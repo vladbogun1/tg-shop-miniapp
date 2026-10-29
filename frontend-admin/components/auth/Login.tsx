@@ -13,11 +13,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { LogoFull, LogoMark } from "@/components/brand/Logo";
 import { CodeInput } from "@/components/auth/CodeInput";
 import { TwoFactorSecret } from "@/components/auth/TwoFactorSecret";
+import { useDevAutoLogin } from "@/components/auth/useDevAutoLogin";
 import {
   ApiError,
   authAdminLogin,
   confirmTwoFactorSetup,
-  setAccessToken,
   startTwoFactorSetup,
   verifyTwoFactor,
   type AdminLoginResult,
@@ -62,36 +62,7 @@ export function Login({ onSuccess, initial }: { onSuccess: () => void; initial?:
     onSuccess();
   }, [onSuccess, push]);
 
-  // Local stand only (`next dev` + DEV_ADMIN_CREDS, see app/dev-login/route.ts): no password, no code.
-  // In a production build the condition is a constant false and the block is dropped.
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
-    let cancelled = false;
-    // Back on this screen right after an auto sign-in: the remembered token was refused, ask for a new one.
-    let last = 0;
-    try {
-      last = Number(sessionStorage.getItem("devLoginAt")) || 0;
-    } catch {}
-    // Refused twice in a row: stop, the form is there (retrying would only hit the backend rate limit).
-    if (Date.now() - last < 15_000 && last % 2 === 1) return;
-    const fresh = Date.now() - last < 15_000;
-    fetch(fresh ? "/dev-login?fresh=1" : "/dev-login", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((r: { accessToken?: string } | null) => {
-        if (cancelled || !r?.accessToken) return;
-        try {
-          // odd timestamp = this sign-in was already the fresh retry
-          const now = Date.now();
-          sessionStorage.setItem("devLoginAt", String(now - (now % 2) + (fresh ? 1 : 0)));
-        } catch {}
-        setAccessToken(r.accessToken);
-        done();
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [done]);
+  useDevAutoLogin(done);
 
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-8 sm:py-10">
