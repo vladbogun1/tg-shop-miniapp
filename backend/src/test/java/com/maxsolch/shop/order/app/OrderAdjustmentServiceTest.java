@@ -930,4 +930,247 @@ class OrderAdjustmentServiceTest {
         assertThat(it.getReturnedQty()).isZero();
         assertThat(it.getRestockedQty()).isZero();
     }
+
+    // ---------- characterization added before the split into returns.app (step 1c) ----------
+
+    @Test
+    void checkReturnPlan_refusesWhatTheWizardWouldRefuse_andChangesNothing() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        Product p = product(3);
+        OrderItem it = item(o, p, 1L, 2);
+        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o)); // the check reads, it does not lock
+
+        // a good plan passes and touches nothing: no stock, no money, no events
+        service.checkReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 2, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CASH, 10_000, null)),
+                0, 0));
+        assertThat(it.getReturnedQty()).isZero();
+        assertThat(o.getRefundedMinor()).isZero();
+        assertThat(p.getStock()).isEqualTo(3);
+        verify(events, never()).publishEvent(any());
+        verify(orderRepository, never()).save(any(Order.class));
+
+        // more than ordered
+        assertThatThrownBy(() -> service.checkReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 3, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(), 0, 0)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("можно вернуть не больше 2 шт.");
+        // unknown line
+        assertThatThrownBy(() -> service.checkReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(99L, 1, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                List.of(), 0, 0)))
+                .isInstanceOf(com.maxsolch.shop.platform.error.NotFoundException.class);
+        // more money than was received
+        assertThatThrownBy(() -> service.checkReturnPlan(o.getId(), plan(List.of(), List.of(
+                new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CASH, 40_000, null)), 0, 0)))
+                .isInstanceOf(BadRequestException.class);
+        // KEPT (compensation) is not limited by what is left in the order
+        service.checkReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(1L, 5, OrderAdjustmentService.LineOutcome.KEPT)),
+                List.of(), 0, 0));
+    }
+
+    @Test
+    void cancelBlocker_saysWhyTheNewestRecordCannotBeUndone() {
+        com.maxsolch.shop.returns.domain.OrderReturn plain = new com.maxsolch.shop.returns.domain.OrderReturn();
+        com.maxsolch.shop.returns.domain.OrderReturn exchange = new com.maxsolch.shop.returns.domain.OrderReturn();
+        exchange.setKind(com.maxsolch.shop.returns.domain.OrderReturn.Kind.EXCHANGE.name());
+        exchange.setRefundMinor(10_000);
+        com.maxsolch.shop.returns.domain.OrderReturn done = new com.maxsolch.shop.returns.domain.OrderReturn();
+        done.setCancelledAt(java.time.Instant.now());
+
+        assertThat(service.cancelBlocker(null, null)).isEqualTo("уже отменён");
+        assertThat(service.cancelBlocker(done, null)).isEqualTo("уже отменён");
+        assertThat(service.cancelBlocker(plain, order(OrderStatus.DELIVERED))).isNull();
+        assertThat(service.cancelBlocker(exchange, null)).isNull();
+
+        Order shipped = order(OrderStatus.SHIPPED);
+        assertThat(service.cancelBlocker(exchange, shipped)).contains("уже отправили");
+        Order delivered = order(OrderStatus.DELIVERED);
+        assertThat(service.cancelBlocker(exchange, delivered)).contains("уже отправили");
+
+        Order paidMore = order(OrderStatus.NEW);
+        paidMore.setReceivedMinor(30_000);
+        assertThat(service.cancelBlocker(exchange, paidMore)).contains("уже доплатили 200 ₴");
+        Order onlyCredit = order(OrderStatus.NEW);
+        onlyCredit.setReceivedMinor(10_000);
+        assertThat(service.cancelBlocker(exchange, onlyCredit)).isNull();
+    }
+
+    /** An exchange of 1 of 2 mice (paid 200 ₴) for a keyboard of 150 ₴: the credit of 100 ₴ moves to the new order. */
+    private Order deliveredOrderForExchange(Product mouse) {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setPaymentOptionId(UuidUtil.randomBytes());
+        o.setReceivedMinor(20_000);
+        o.setPaid(true);
+        o.setUserId(77L);
+        item(o, mouse, 1L, 2);
+        o.setSubtotalMinor(20_000);
+        o.setTotalMinor(20_000);
+        return o;
+    }
+
+    private void wireExchanges() {
+        com.maxsolch.shop.returns.domain.OrderExchange[] saved = new com.maxsolch.shop.returns.domain.OrderExchange[1];
+        lenient().when(exchangeRepository.save(any())).thenAnswer(inv -> {
+            com.maxsolch.shop.returns.domain.OrderExchange e = inv.getArgument(0);
+            e.setId(5L);
+            saved[0] = e;
+            return e;
+        });
+        lenient().when(exchangeRepository.findById(5L)).thenAnswer(inv -> Optional.ofNullable(saved[0]));
+        service.setExchangeLines(org.mockito.Mockito.mock(com.maxsolch.shop.returns.infra.OrderExchangeLineRepository.class));
+    }
+
+    @Test
+    void exchange_isLinkedToItsReturnRecord_andCancellingItRejectsTheReplacementAndTakesTheCreditBack() {
+        Product mouse = product(5);
+        Product other = product(3);
+        other.setTitle("Клава");
+        other.setPriceMinor(15_000);
+        Order o = deliveredOrderForExchange(mouse);
+        List<Order> all = trackOrders(o);
+        when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
+        wireReturnRecords(recs);
+        wireExchanges();
+
+        OrderAdjustmentService.Result made = service.exchange(o.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
+                OrderStatus.NEW, true, null, "admin");
+        Order child = made.order();
+
+        // the return registered by the exchange is the exchange's own record
+        assertThat(recs).hasSize(1);
+        assertThat(recs.get(0).getKind()).isEqualTo("EXCHANGE");
+        assertThat(recs.get(0).getExchangeId()).isEqualTo(5L);
+        assertThat(recs.get(0).getRefundMinor()).isEqualTo(10_000);
+        assertThat(other.getStock()).isEqualTo(2);
+
+        OrderAdjustmentService.Result r = service.cancelReturn(o.getId(), recs.get(0).getId(), null,
+                "передумал", "owner");
+
+        assertThat(child.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(other.getStock()).isEqualTo(3);                 // the replacement's stock is released
+        assertThat(child.getRefundedMinor()).isEqualTo(10_000);    // the moved credit leaves the new order
+        assertThat(o.getRefundedMinor()).isZero();                 // ... and is not counted as refunded here any more
+        assertThat(o.getItems().get(0).getReturnedQty()).isZero();
+        assertThat(o.getItems().get(0).getReturnPendingQty()).isZero();
+        assertThat(o.getReturnStatus()).isNull();
+        assertThat(o.getReturnedAt()).isNull();
+        assertThat(recs.get(0).getCancelledAt()).isNotNull();
+        assertThat(recs.get(0).getCancelledBy()).isEqualTo("owner");
+        assertThat(all).contains(child);
+        ArgumentCaptor<com.maxsolch.shop.returns.domain.OrderExchange> ex =
+                ArgumentCaptor.forClass(com.maxsolch.shop.returns.domain.OrderExchange.class);
+        verify(exchangeRepository, org.mockito.Mockito.atLeast(2)).save(ex.capture());
+        assertThat(ex.getValue().getCancelledAt()).isNotNull();
+        assertThat(ex.getValue().getCancelledBy()).isEqualTo("owner");
+        assertThat(r.order()).isSameAs(o);
+        assertThat(r.auditDetails()).startsWith("обмен отменён: ").contains("замена #").contains("передумал");
+        verify(ledgerMock).record(eq(child.getId()), eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind.REFUND),
+                eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.EXCHANGE), eq(10_000L), any(), eq("owner"),
+                any(), any());
+        verify(ledgerMock).record(eq(o.getId()), eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind.REFUND),
+                eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.EXCHANGE), eq(-10_000L), any(), eq("owner"),
+                any(), any());
+    }
+
+    @Test
+    void cancelReturn_exchangeWhoseReplacementShipped_isRefusedAndNothingChanges() {
+        Product mouse = product(5);
+        Product other = product(3);
+        other.setPriceMinor(15_000);
+        Order o = deliveredOrderForExchange(mouse);
+        trackOrders(o);
+        when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
+        wireReturnRecords(recs);
+        wireExchanges();
+        Order child = service.exchange(o.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
+                OrderStatus.NEW, true, null, "admin").order();
+        OrderStates.withStatus(child, OrderStatus.SHIPPED);
+
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(), null, "передумал", "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("уже отправили");
+        assertThat(recs.get(0).getCancelledAt()).isNull();
+        assertThat(o.getRefundedMinor()).isEqualTo(10_000);
+        assertThat(child.getStatus()).isEqualTo(OrderStatus.SHIPPED);
+    }
+
+    @Test
+    void cancelReturn_onlyTheNewestRecord_andNotWithoutAReason() {
+        Order o = order(OrderStatus.DELIVERED);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        Product p = product(0);
+        item(o, p, 1L, 2);
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
+        wireReturnRecords(recs);
+        for (int i = 0; i < 2; i++) {
+            service.registerReturnPlan(o.getId(), plan(
+                    List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.RESTOCK)),
+                    List.of(), 0, 0), "owner");
+        }
+        assertThat(recs).hasSize(2);
+
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(0).getId(), null, "передумал", "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("только последний");
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), recs.get(1).getId(), null, "  ", "owner"))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.cancelReturn(o.getId(), 999L, null, "передумал", "owner"))
+                .isInstanceOf(com.maxsolch.shop.platform.error.NotFoundException.class);
+    }
+
+    @Test
+    void restoreWriteoff_withoutAnOrder_putsTheUnitsBackOnTheShelf_andRefusesTooMany() {
+        Product p = product(1);
+        com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
+                org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
+        com.maxsolch.shop.domain.StockWriteoff w = new com.maxsolch.shop.domain.StockWriteoff();
+        w.setId(8L);
+        w.setProductId(p.getId());
+        w.setTitle("Мишка");
+        w.setQuantity(3);
+        when(writeoffs.findById(8L)).thenReturn(Optional.of(w));
+        when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
+        service.setWriteoffs(writeoffs);
+
+        assertThatThrownBy(() -> service.restoreWriteoff(8L, 4, null, "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("от 1 до 3");
+        String summary = service.restoreWriteoff(8L, 2, " целая ", "owner");
+
+        assertThat(p.getStock()).isEqualTo(3);
+        assertThat(w.getUndoneQty()).isEqualTo(2);
+        assertThat(w.getUndoneBy()).isEqualTo("owner");
+        assertThat(w.getUndoneNote()).isEqualTo("целая");
+        assertThat(summary).isEqualTo("из брака на склад: Мишка ×2; целая");
+        assertThatThrownBy(() -> service.restoreWriteoff(404L, 1, null, "owner"))
+                .isInstanceOf(com.maxsolch.shop.platform.error.NotFoundException.class);
+    }
+
+    @Test
+    void channelLabel_hasAWordingForEveryChannel() {
+        for (com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel c
+                : com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.values()) {
+            assertThat(OrderAdjustmentService.channelLabel(c)).isNotBlank();
+        }
+        assertThat(OrderAdjustmentService.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.NP_COD))
+                .isEqualTo("наложка НП");
+        assertThat(OrderAdjustmentService.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.EXCHANGE))
+                .isEqualTo("зачёт в обмен");
+    }
 }
