@@ -81,6 +81,7 @@ export function spawn(tgId, ip, app) {
   const now = Date.now();
   const day = kyivDay(now);
   if (Number(q.collectedDay.get(tgId, day).n) >= config.dailyCap) return { none: "daily-cap" };
+  if (pumpkinsOf(tgId) >= config.goal) return { none: "full" };
   if (ip && Number(q.ipDay.get(ip, day).n) >= config.ipDailyCap) return { none: "daily-cap" };
   const last = q.lastSpawn.get(tgId);
   const gap = config.spawnGapSec * 1000;

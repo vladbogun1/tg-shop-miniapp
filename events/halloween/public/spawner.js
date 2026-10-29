@@ -26,13 +26,21 @@
   const T = {
     uk: {
       title: "Хеллоуїн-полювання", hunt: "Збирай гарбузи", of: "з",
-      today: "Сьогодні", todayCap: "На сьогодні все — нові гарбузи завтра",
+      today: "Сьогодні",
+      capTomorrow: (c) => `Сьогодні ти знайшов усі ${c} — на сьогодні все! Нові гарбузи завтра з 00:00 🎃`,
+      capLast: (c) => `Сьогодні ти знайшов усі ${c}, а це був останній день збору. Чекай розіграш!`,
+      daysLeft: (d, e) => d > 1 ? `Збір триває ще ${d} ${plural(d, "день", "дні", "днів")} — до ${e}` : `Сьогодні останній день збору — до ${e}`,
+      hint: "Гарбуз визирає приблизно раз на хвилину й ховається за 9 секунд — гортай каталог, тримай сторінку відкритою",
+      missed: "Не встиг — чекай наступного", fullDone: "У тебе повний набір — більше гарбузів не треба",
+      closed: "Збір завершено — гарбузи й замовлення більше не зараховуються",
+      pOver: (n, g) => `Розіграш за гарбузи: ${n} з ${g} — шанс малий, але ти в списку`,
+      busy: "Забагато спроб — зачекай хвилину", ok: "OK",
       goal: (g) => `Знайди хоч одного гарбуза — і ти в розіграші. Збери ${g} — і шанс виросте в рази`,
       inDraw: "Ти в розіграші!", tickets: (n) => `${n} ${plural(n, "квиток", "квитки", "квитків")}`,
       pFull: "Розіграш за гарбузи: повний шанс", pPart: (n) => `Розіграш за гарбузи: шанс поки малий — ще ${n}, і він виросте в рази`,
       oIn: (n) => `Розіграш за покупки: ${n} ${plural(n, "квиток", "квитки", "квитків")}`, oLeft: (u) => `До розіграшу за покупки — ще ${u} ₴`, oNone: (u) => `Покупка від ${u} ₴ — окремий розіграш`,
       howTitle: "Два розіграші", how1: (g) => `🎃 За гарбузи: кожен гарбуз — участь, а повний набір із ${g} дає шанс у рази вищий`,
-      how2: (u, m) => `🛍 За покупки: замовлення в дні акції від ${u} ₴ — квиток за кожні ${u} ₴ (до ${m})`,
+      how2: (u, m, e) => `🛍 За покупки: оплачені замовлення до ${e} — квиток за кожні ${u} ₴ (до ${m})`,
       how3: "Це два окремі розіграші — можна виграти в обох", how4: (c) => `Не більше ${c} гарбузів на день`,
       code: "Кодове слово зі стріму", codePh: "Введи слово", codeBtn: "Активувати",
       codeOk: (b) => `+${b} гарбузів!`, codeErr: { unknown: "Такого слова немає", already: "Ти вже вводив це слово", exhausted: "Слово вже використали всі, хто встиг", "not-live": "Акція не триває" },
@@ -45,13 +53,21 @@
     },
     ru: {
       title: "Хэллоуин-охота", hunt: "Собирай тыквы", of: "из",
-      today: "Сегодня", todayCap: "На сегодня всё — новые тыквы завтра",
+      today: "Сегодня",
+      capTomorrow: (c) => `Сегодня ты нашёл все ${c} — на сегодня всё! Новые тыквы завтра с 00:00 🎃`,
+      capLast: (c) => `Сегодня ты нашёл все ${c}, а это был последний день сбора. Жди розыгрыш!`,
+      daysLeft: (d, e) => d > 1 ? `Сбор идёт ещё ${d} ${plural(d, "день", "дня", "дней")} — до ${e}` : `Сегодня последний день сбора — до ${e}`,
+      hint: "Тыква выглядывает примерно раз в минуту и прячется через 9 секунд — листай каталог, держи страницу открытой",
+      missed: "Не успел — жди следующую", fullDone: "У тебя полный набор — больше тыкв не нужно",
+      closed: "Сбор завершён — тыквы и заказы больше не засчитываются",
+      pOver: (n, g) => `Розыгрыш за тыквы: ${n} из ${g} — шанс мал, но ты в списке`,
+      busy: "Слишком много попыток — подожди минуту", ok: "OK",
       goal: (g) => `Найди хоть одну тыкву — и ты в розыгрыше. Собери ${g} — и шанс вырастет в разы`,
       inDraw: "Ты в розыгрыше!", tickets: (n) => `${n} ${plural(n, "билет", "билета", "билетов")}`,
       pFull: "Розыгрыш за тыквы: полный шанс", pPart: (n) => `Розыгрыш за тыквы: шанс пока мал — ещё ${n}, и он вырастет в разы`,
       oIn: (n) => `Розыгрыш за покупки: ${n} ${plural(n, "билет", "билета", "билетов")}`, oLeft: (u) => `До розыгрыша за покупки — ещё ${u} ₴`, oNone: (u) => `Покупка от ${u} ₴ — отдельный розыгрыш`,
       howTitle: "Два розыгрыша", how1: (g) => `🎃 За тыквы: каждая тыква — участие, а полный набор из ${g} даёт шанс в разы выше`,
-      how2: (u, m) => `🛍 За покупки: заказ в дни акции от ${u} ₴ — билет за каждые ${u} ₴ (до ${m})`,
+      how2: (u, m, e) => `🛍 За покупки: оплаченные заказы до ${e} — билет за каждые ${u} ₴ (до ${m})`,
       how3: "Это два отдельных розыгрыша — можно выиграть в обоих", how4: (c) => `Не больше ${c} тыкв в день`,
       code: "Кодовое слово со стрима", codePh: "Введи слово", codeBtn: "Активировать",
       codeOk: (b) => `+${b} тыкв!`, codeErr: { unknown: "Такого слова нет", already: "Ты уже вводил это слово", exhausted: "Слово уже использовали все, кто успел", "not-live": "Акция не идёт" },
@@ -64,13 +80,21 @@
     },
     en: {
       title: "Halloween hunt", hunt: "Collect pumpkins", of: "of",
-      today: "Today", todayCap: "That's all for today — new pumpkins tomorrow",
+      today: "Today",
+      capTomorrow: (c) => `You found all ${c} for today — that's it for now! New pumpkins tomorrow from 00:00 (Kyiv) 🎃`,
+      capLast: (c) => `You found all ${c} today, and that was the last day of the hunt. See you at the draw!`,
+      daysLeft: (d, e) => d > 1 ? `The hunt runs ${d} more days — until ${e}` : `Last day of the hunt — until ${e}`,
+      hint: "A pumpkin peeks out about once a minute and hides after 9 seconds — browse the catalog and keep the page open",
+      missed: "Too slow — wait for the next one", fullDone: "You have the full set — no more pumpkins needed",
+      closed: "The hunt is closed — pumpkins and orders no longer count",
+      pOver: (n, g) => `Pumpkin draw: ${n} of ${g} — a small chance, but you're in`,
+      busy: "Too many tries — wait a minute", ok: "OK",
       goal: (g) => `Find even one pumpkin and you're in the draw. Collect ${g} to multiply your chance`,
       inDraw: "You're in the draw!", tickets: (n) => `${n} ${n === 1 ? "ticket" : "tickets"}`,
       pFull: "Pumpkin draw: full chance", pPart: (n) => `Pumpkin draw: small chance for now — ${n} more to multiply it`,
       oIn: (n) => `Purchase draw: ${n} ${n === 1 ? "ticket" : "tickets"}`, oLeft: (u) => `${u} UAH more to enter the purchase draw`, oNone: (u) => `Orders from ${u} UAH enter a separate draw`,
       howTitle: "Two draws", how1: (g) => `🎃 Pumpkins: every pumpkin gets you in, a full set of ${g} multiplies your chance`,
-      how2: (u, m) => `🛍 Purchases: orders during the event from ${u} UAH — a ticket per ${u} UAH (up to ${m})`,
+      how2: (u, m, e) => `🛍 Purchases: paid orders until ${e} — a ticket per ${u} UAH (up to ${m})`,
       how3: "Two separate draws — you can win both", how4: (c) => `Up to ${c} pumpkins a day`,
       code: "Stream code word", codePh: "Enter the word", codeBtn: "Redeem",
       codeOk: (b) => `+${b} pumpkins!`, codeErr: { unknown: "No such word", already: "You already used this word", exhausted: "This word has run out", "not-live": "The event is not running" },
@@ -95,7 +119,7 @@
   const t = () => T[lang()];
 
   // ---------------- state ----------------
-  const st = { phase: null, goal: 15, dailyCap: 8, streamAt: null, streams: [], minSpendMinor: 50000, maxOrderTickets: 5, me: null, signedIn: false, capped: false };
+  const st = { phase: null, goal: 15, dailyCap: 8, endsAt: null, streamAt: null, streams: [], minSpendMinor: 50000, maxOrderTickets: 5, me: null, signedIn: false, capped: false };
   const counters = new Set();
 
   // ---------------- api ----------------
@@ -121,6 +145,7 @@
     st.phase = s.phase;
     st.goal = s.goal;
     st.dailyCap = s.dailyCap;
+    st.endsAt = s.endsAt;
     st.streamAt = s.streamAt;
     st.streams = s.streams || [];
     st.minSpendMinor = s.minSpendMinor || st.minSpendMinor;
@@ -129,7 +154,36 @@
     st.signedIn = Boolean(s.me);
     st.capped = Boolean(s.me && s.me.today >= s.dailyCap);
     renderCounters();
+    if (st.capped) wakeAtMidnight();
   }
+
+  // ---------------- Kyiv calendar (the daily cap resets at 00:00 Kyiv) ----------------
+  const kyivDate = (ms) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Europe/Kyiv" });
+  /** Hunt days left counting today, by the Kyiv calendar. */
+  function daysLeft() {
+    const end = Date.parse(st.endsAt || "");
+    if (isNaN(end)) return 0;
+    const a = Date.parse(kyivDate(Date.now())), b = Date.parse(kyivDate(end - 1));
+    return Math.max(0, Math.round((b - a) / 86_400_000) + 1);
+  }
+  function endsWhen() {
+    const d = new Date(st.endsAt || "");
+    if (isNaN(d)) return "";
+    const loc = lang() === "en" ? "en-GB" : "uk-UA";
+    return `${d.toLocaleDateString(loc, { day: "2-digit", month: "2-digit", timeZone: "Europe/Kyiv" })}, ${d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Kyiv" })}`;
+  }
+  /** Capped for today: look again just after Kyiv midnight, so an open page starts spawning again by itself. */
+  let midnightTimer;
+  function wakeAtMidnight() {
+    clearTimeout(midnightTimer);
+    if (daysLeft() <= 1) return;
+    const now = Date.now();
+    const [h, m, sec] = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })
+      .format(now).split(":").map(Number);
+    const msToMidnight = (24 * 3600 - (h * 3600 + m * 60 + sec)) * 1000;
+    midnightTimer = setTimeout(() => loadState().then(() => schedule(rand(4, 20))).catch(() => {}), msToMidnight + rand(5, 60));
+  }
+  const capText = (tx) => (daysLeft() > 1 ? tx.capTomorrow : tx.capLast)(st.dailyCap);
 
   // ---------------- art ----------------
   const PUMPKIN_SVG = (face) => `
@@ -214,6 +268,8 @@
     .bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ff6600, #ffb347); box-shadow: 0 0 12px #ff6600; transition: width .6s; }
     .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #9a958c; }
     .ok { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #7cff4f14; border: 1px solid #7cff4f55; color: #b8ff9c; font-weight: 700; }
+    .hint { font-size: 13px; color: #9a958c; }
+    .cap { padding: 10px 12px; border-radius: 12px; background: #ff66001a; border: 1px solid #ff660055; color: #ffcf9e; font-weight: 600; }
     ul { margin: 0; padding-left: 18px; color: #cfcac0; font-size: 14px; line-height: 1.6; }
     form { display: flex; gap: 8px; }
     input { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid #ffffff26; background: #0c0c0e; color: #fff; padding: 0 12px; font-size: 16px; text-transform: uppercase; }
@@ -441,9 +497,12 @@
         if (!wasIn && res.me.full) setTimeout(openWin, 900);
       } else if (res.reason === "daily-cap") {
         st.capped = true;
-        toast(t().todayCap, 3000);
+        wakeAtMidnight();
+        toast(capText(t()), 4000);
+      } else if (res.reason !== "already") {
+        toast(t().missed, 2500);
       }
-    } catch { /* offline: the pumpkin is lost, nothing else breaks */ }
+    } catch { toast(t().missed, 2500); /* offline: the pumpkin is lost, nothing else breaks */ }
     schedule();
   }
 
@@ -477,7 +536,9 @@
         setTimeout(() => { if (!current) schedule(); }, sp.ttlMs + 300);
         return;
       }
-      if (sp.none === "daily-cap") { st.capped = true; return; }
+      if (sp.none === "daily-cap") { st.capped = true; wakeAtMidnight(); return; }
+      if (sp.none === "full") return; // the set is complete, nothing more to collect
+      if (sp.none === "not-live") return void loadState().catch(() => {});
       if (sp.none === "wait") return schedule(sp.waitMs + rand(3, 10));
     } catch (e) {
       if (e.status === 401) { st.signedIn = false; st.me = null; renderCounters(); }
@@ -525,7 +586,7 @@
     cfg.haptic && cfg.haptic("success");
     const s = modal(`<div class="center"><div class="big winner"><img src="${BASE}/sprites/winner.webp" alt="" width="180" height="180" /></div><h2>${t().win}</h2><p>${t().winText}</p>
       <p><b>${t().stream}:</b> ${streamWhen()}</p>
-      <button class="btn wide" type="button" data-close>OK</button></div>`);
+      <button class="btn wide" type="button" data-close>${t().ok}</button></div>`);
     s.querySelector("[data-close]").onclick = closeModal;
     for (let i = 0; i < 4; i++) setTimeout(() => burst(innerWidth * (0.2 + Math.random() * 0.6), innerHeight * (0.25 + Math.random() * 0.4)), i * 220);
   }
@@ -534,10 +595,12 @@
 
   /** Where this person stands in each of the two draws. */
   function drawLines(me, tx) {
+    const open = st.phase !== "over";
     const p = me.full ? `<div class="ok">✓ ${tx.pFull}</div>`
-      : me.pumpkins > 0 ? `<p>🎃 ${tx.pPart(st.goal - me.pumpkins)}</p>`
-      : `<p>${tx.goal(st.goal)}</p>`;
+      : me.pumpkins > 0 ? `<p>🎃 ${open ? tx.pPart(st.goal - me.pumpkins) : tx.pOver(me.pumpkins, st.goal)}</p>`
+      : open ? `<p>${tx.goal(st.goal)}</p>` : "";
     const o = me.orderTickets > 0 ? `<div class="ok">✓ ${tx.oIn(me.orderTickets)}</div>`
+      : !open ? ""
       : me.spendMinor > 0 ? `<p>🛍 ${tx.oLeft(uah(st.minSpendMinor - me.spendMinor))}</p>`
       : `<p>🛍 ${tx.oNone(uah(st.minSpendMinor))}</p>`;
     return p + o;
@@ -549,12 +612,13 @@
     const pct = me ? Math.min(100, (me.pumpkins / st.goal) * 100) : 0;
     const status =
       st.phase === "soon" ? `<p>${tx.soon}</p>` :
-      st.phase === "over" ? `<p>${tx.over}</p>` : "";
+      st.phase === "over" ? `<p><b>${tx.over}.</b> ${tx.closed}</p>` :
+      me && !me.full && !st.capped ? `<p>⏳ ${tx.daysLeft(daysLeft(), endsWhen())}</p><p class="hint">${tx.hint}</p>` : "";
     const progress = me
       ? `<div class="bar"><i style="width:${pct}%"></i></div>
          <div class="row"><span>${tx.today}: ${me.today}/${st.dailyCap}</span></div>
          ${drawLines(me, tx)}
-         ${st.capped ? `<p>${tx.todayCap}</p>` : ""}`
+         ${me.full && st.phase === "live" ? `<p>${tx.fullDone}</p>` : st.capped && st.phase === "live" ? `<p class="cap">🌙 ${capText(tx)}</p>` : ""}`
       : `<p>${tx.login}</p><button class="btn wide" type="button" data-login>${tx.loginBtn}</button>`;
     const code = me && st.phase === "live"
       ? `<h3>${tx.code}</h3><form><input name="code" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="${tx.codePh}" /><button class="btn" type="submit">${tx.codeBtn}</button></form><div class="msg"></div>`
@@ -564,7 +628,7 @@
         <div class="num">${me ? me.pumpkins : 0}<small> / ${st.goal}</small></div></div></div>
       ${status}${progress}${code}
       <h3>${tx.howTitle}</h3>
-      <ul><li>${tx.how1(st.goal)}</li><li>${tx.how2(uah(st.minSpendMinor), st.maxOrderTickets)}</li><li>${tx.how3}</li><li>${tx.how4(st.dailyCap)}</li></ul>
+      <ul><li>${tx.how1(st.goal)}</li><li>${tx.how2(uah(st.minSpendMinor), st.maxOrderTickets, endsWhen())}</li><li>${tx.how3}</li><li>${tx.how4(st.dailyCap)}</li></ul>
       <h3>${tx.stream}</h3><p>${streamWhen()}${st.streams.map((x) => ` · <a href="${x.url}" target="_blank" rel="noopener">${x.name}</a>`).join("")}</p>
       <p><a href="${cfg.rulesUrl || "/halloween-rules"}" target="_blank" rel="noopener">${tx.rules}</a></p>`);
     s.querySelector(".big").append(pumpkinArt(me && me.full ? 4 : 1));
@@ -594,7 +658,7 @@
         }
       } catch (err) {
         msg.className = "msg bad";
-        msg.textContent = err.status === 429 ? "…" : tx.codeErr.unknown;
+        msg.textContent = err.status === 429 ? tx.busy : tx.codeErr.unknown;
       } finally {
         btn.disabled = false;
       }
@@ -613,7 +677,9 @@
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !current) schedule(rand(3, 8));
+    if (document.visibilityState !== "visible" || current) return;
+    if (st.capped) loadState().then(() => schedule(rand(3, 8))).catch(() => {});
+    else schedule(rand(3, 8));
   });
 
   window.HW = {
