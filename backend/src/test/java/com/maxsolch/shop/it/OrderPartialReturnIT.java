@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderLifecycle;
+
 import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
@@ -27,6 +29,8 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     @Autowired
     OrderService orders;
     @Autowired
+    OrderLifecycle lifecycle;
+    @Autowired
     OrderPayments orderPayments;
     @Autowired
     OrderAdjustmentService adjustments;
@@ -38,8 +42,8 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
         Order o = orders.createOrder(checkout(tg, phone, p, 3));
         o = orders.applyDiscount(o.getId(), null, 100L, null, false, false);
         orderPayments.markPaid(o.getId(), 9_899);
-        orders.approve(o.getId());
-        return orders.ship(o.getId(), ttn);
+        lifecycle.approve(o.getId());
+        return lifecycle.ship(o.getId(), ttn);
     }
 
     private Order withItems(byte[] id) {
@@ -61,7 +65,7 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     void refundsOfAnIndivisibleLineInPartsAddUpToWhatWasPaid() {
         Product p = product(3_333, 10);
         Order o = paidAndShipped(p, 9_201, "+380675550001", "IT-TTN-1");
-        orders.deliver(o.getId());
+        lifecycle.deliver(o.getId());
         assertThat(longOf("total_minor", o.getId())).isEqualTo(9_899);
 
         Order loaded = withItems(o.getId());

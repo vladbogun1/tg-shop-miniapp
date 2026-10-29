@@ -377,7 +377,7 @@ class OrderAdjustmentServiceTest {
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
 
-        Order delivered = app.service().deliver(o.getId());
+        Order delivered = app.lifecycle().deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(10_000);
     }
@@ -687,7 +687,7 @@ class OrderAdjustmentServiceTest {
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
-        Order delivered = app.service().deliver(o.getId());
+        Order delivered = app.lifecycle().deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
         assertThat(OrderMoney.codMinor(delivered)).isZero();

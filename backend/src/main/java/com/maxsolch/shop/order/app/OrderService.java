@@ -35,7 +35,6 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import jakarta.persistence.EntityManager;
@@ -77,7 +76,6 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final PromoCodeRepository promoCodeRepository;
     private final PaymentOptionRepository paymentOptionRepository;
-    private final NotificationService notificationService;
     private final ApplicationEventPublisher events;
     private final PromoService promoService;
     private final CartService cartService;
@@ -110,7 +108,6 @@ public class OrderService {
                         ProductRepository productRepository,
                         PromoCodeRepository promoCodeRepository,
                         PaymentOptionRepository paymentOptionRepository,
-                        NotificationService notificationService,
                         ApplicationEventPublisher events,
                         PromoService promoService,
                         CartService cartService,
@@ -126,7 +123,6 @@ public class OrderService {
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
         this.paymentOptionRepository = paymentOptionRepository;
-        this.notificationService = notificationService;
         this.events = events;
         this.promoService = promoService;
         this.cartService = cartService;
@@ -337,135 +333,6 @@ public class OrderService {
                 .orElseThrow(() -> new BadRequestException("нет активного способа оплаты для нового заказа"));
     }
 
-    @Transactional
-    public Order approve(byte[] orderId) {
-        Order order = lock(orderId);
-        order.approve(Instant.now());
-        return afterTransition(order);
-    }
-
-    @Transactional
-    public Order ship(byte[] orderId, String trackingNumber) {
-        return ship(orderId, trackingNumber, false);
-    }
-
-    /**
-     * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or
-     *                    the whole order) has not arrived — e.g. agreed with the customer in the chat
-     */
-    @Transactional
-    public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
-        Order order = lock(orderId);
-        order.ship(trackingNumber, allowUnpaid, Instant.now());
-        return afterTransition(order);
-    }
-
-    @Transactional
-    public Order deliver(byte[] orderId) {
-        Order order = lock(orderId);
-        long receivedBefore = order.getReceivedMinor();
-        order.deliver(Instant.now());
-        ledger(order, OrderMoneyMovement.Kind.PAYMENT,
-                order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
-                        ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
-                order.getReceivedMinor() - receivedBefore, OrderMoneyMovement.Source.AUTO, null,
-                order.getUncollectedMinor() > 0
-                        ? "остаток при получении (частичный выкуп, не выкуплено "
-                                + MoneyFormat.uah(order.getUncollectedMinor()) + ")"
-                        : "остаток при получении (доставлен)", null);
-        return afterTransition(order);
-    }
-
-    /**
-     * Admin reject/cancel. Allowed from ANY status (incl. DELIVERED — e.g. a customer
-     * return at Nova Poshta). {@code restock} controls whether the items go back on the
-     * shelf (skip it when the returned goods are not in sellable condition).
-     */
-    @Transactional
-    public Order reject(byte[] orderId, String reason, boolean restock) {
-        return reject(orderId, reason, null, restock);
-    }
-
-    /**
-     * Admin reject with a reason code from the fixed list ({@link RejectReasonCode}) and an
-     * optional free-text explanation. Blank text is stored as null, so the customer gets the plain
-     * "order rejected" note instead of an empty "Reason:".
-     */
-    @Transactional
-    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock) {
-        return reject(orderId, reason, reasonCode, restock, false);
-    }
-
-    /**
-     * @param returnInTransit only for a SHIPPED order (refused at the post office, sent back): the
-     *                        goods are not on the shelf yet, so nothing is restocked now — the
-     *                        order waits as «посылка едет назад» until it is received
-     *                        ({@link OrderAdjustmentService#receiveReturn}).
-     */
-    @Transactional
-    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock,
-                        boolean returnInTransit) {
-        Order order = lock(orderId);
-        OrderStatus before = order.getStatus();
-        order.requireRejectable();
-        boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
-        if (inTransit) {
-            order.markReturnInTransit(Instant.now());
-        } else if (restock) {
-            stock.restoreAll(order);
-        }
-        long kept = OrderMoney.keptMinor(order);
-        if (before == OrderStatus.SHIPPED && kept > 0 && order.getPrepaymentMinor() > 0
-                && kept <= order.getPrepaymentMinor()) {
-            // Owner's rule (25.10.2026): the prepayment of a refused parcel pays for its delivery
-            // both ways — it stays with the shop and is never refunded automatically.
-            ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
-                    OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
-        }
-        boolean requestWasOpen = order.isCancelRequestPending();
-        if (requestWasOpen) {
-            // Rejected by hand while the customer's request was open: the request is fulfilled
-            // (the refund, if any, stays the admin's call — the inbox keeps reminding).
-            order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
-            order.setCancelRequestResolvedAt(Instant.now());
-        }
-        Order saved = rejectLocked(order, new RejectCause(Instant.now(),
-                reason == null || reason.isBlank() ? null : reason.trim(),
-                reasonCode == null ? null : reasonCode.name(), false));
-        if (requestWasOpen) {
-            // The customer asked to cancel and got what they asked for: answer like approveCancelRequest does.
-            events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
-        }
-        return saved;
-    }
-
-    /** Dispatcher used by the admin board / status PATCH endpoint. */
-    @Transactional
-    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
-                              String reason, boolean restock) {
-        return changeStatus(orderId, target, trackingNumber, reason, null, restock);
-    }
-
-    /** Same, with the structured reject reason. */
-    @Transactional
-    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
-                              String reason, RejectReasonCode reasonCode, boolean restock) {
-        return changeStatus(orderId, target, trackingNumber, reason, reasonCode, restock, false);
-    }
-
-    /** Same, with the admin's «отправить без предоплаты» confirmation for SHIPPED. */
-    @Transactional
-    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
-                              String reason, RejectReasonCode reasonCode, boolean restock, boolean allowUnpaid) {
-        return switch (target) {
-            case APPROVED -> approve(orderId);
-            case SHIPPED -> ship(orderId, trackingNumber, allowUnpaid);
-            case DELIVERED -> deliver(orderId);
-            case REJECTED -> reject(orderId, reason, reasonCode, restock, false);
-            case NEW -> throw new BadRequestException("вернуть заказ в «Новые» нельзя");
-        };
-    }
-
     @Transactional(readOnly = true)
     public Order get(byte[] orderId) {
         return orderRepository.findById(orderId)
@@ -492,54 +359,6 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order not found"));
         entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
         return order;
-    }
-
-    /**
-     * Sync the seller "К ОТПРАВКЕ" topic with the current APPROVED orders. For each order we
-     * reconcile its card with Telegram: missing cards are posted, manually-deleted cards are
-     * re-posted, and existing cards are refreshed in place. Idempotent — pressing the button
-     * repeatedly never creates duplicates. Returns how many cards were (re)posted.
-     *
-     * <p>Deliberately NOT one transaction: that held a database connection (and the transaction)
-     * open across one Bot API round trip per approved order. The orders are read with their items
-     * up front, Telegram is called with no transaction open, and each changed card id is written
-     * back on its own in a short update.
-     */
-    public int broadcastDispatch() {
-        List<Order> approved = orderRepository.findWithItemsByStatus(OrderStatus.APPROVED);
-        int posted = 0;
-        for (Order o : approved) {
-            // Detached: open-in-view keeps these managed, and the card id set by Telegram sync
-            // would then be flushed as a full-row UPDATE of a possibly stale order (undoing, say,
-            // a status change made meanwhile). Only the targeted update below writes it.
-            entityManager.detach(o);
-            Integer before = o.getDispatchMessageId();
-            if (notificationService.syncDispatchCard(o)) {
-                posted++;
-            }
-            if (!Objects.equals(before, o.getDispatchMessageId())) {
-                orderRepository.updateDispatchMessageId(o.getId(), o.getDispatchMessageId());
-            }
-        }
-        return posted;
-    }
-
-    /**
-     * The online payment deadline passed with nothing paid: reject the order (reason
-     * PAYMENT_TIMEOUT) and put the goods back on the shelf. Re-checked under the row lock, so a
-     * payment that landed meanwhile wins. Returns null when the order no longer qualifies.
-     */
-    @Transactional
-    public Order expireUnpaid(byte[] orderId, Instant now) {
-        Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.NEW || order.isPaid() || order.getReceivedMinor() > 0
-                || order.getPaymentDueAt() == null || order.getPaymentDueAt().isAfter(now)) {
-            return null;
-        }
-        stock.restoreAll(order);
-        return rejectLocked(order, new RejectCause(now,
-                CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч",
-                RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
     }
 
     // ----- admin order editing: gifts & discounts -----

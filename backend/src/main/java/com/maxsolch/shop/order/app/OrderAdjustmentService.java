@@ -47,6 +47,7 @@ public class OrderAdjustmentService {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final OrderPayments orderPayments;
+    private final OrderLifecycle lifecycle;
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final OrderExchangeRepository exchangeRepository;
@@ -56,6 +57,7 @@ public class OrderAdjustmentService {
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
                                   OrderPayments orderPayments,
+                                  OrderLifecycle lifecycle,
                                   OrderStock stock,
                                   ApplicationEventPublisher events,
                                   OrderExchangeRepository exchangeRepository,
@@ -63,6 +65,7 @@ public class OrderAdjustmentService {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.orderPayments = orderPayments;
+        this.lifecycle = lifecycle;
         this.stock = stock;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
@@ -1004,7 +1007,7 @@ public class OrderAdjustmentService {
                 }
                 orderRepository.save(child);
                 if (child.getStatus() != OrderStatus.REJECTED) {
-                    orderService.reject(child.getId(), "Обмен отменён", com.maxsolch.shop.order.domain.RejectReasonCode.OTHER, true);
+                    lifecycle.reject(child.getId(), "Обмен отменён", com.maxsolch.shop.order.domain.RejectReasonCode.OTHER, true);
                 }
                 parts.add("замена #" + no + " отменена");
             }

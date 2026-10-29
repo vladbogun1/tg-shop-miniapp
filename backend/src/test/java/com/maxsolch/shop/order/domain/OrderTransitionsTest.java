@@ -161,10 +161,10 @@ class OrderTransitionsTest {
                 String refusal = expectedRefusal(from, to);
                 String pair = from + " -> " + to;
                 if (refusal == null) {
-                    Order r = service.changeStatus(o.getId(), to, null, null, true);
+                    Order r = app.lifecycle().changeStatus(o.getId(), to, null, null, true);
                     assertThat(r.getStatus()).as(pair).isEqualTo(to);
                 } else {
-                    assertThatThrownBy(() -> service.changeStatus(o.getId(), to, null, null, true))
+                    assertThatThrownBy(() -> app.lifecycle().changeStatus(o.getId(), to, null, null, true))
                             .as(pair).isInstanceOf(DomainException.BadRequest.class).hasMessage(refusal);
                     assertThat(o.getStatus()).as(pair).isEqualTo(from);
                 }
@@ -175,14 +175,14 @@ class OrderTransitionsTest {
     @Test
     void changeStatus_errorCodes() {
         // Only the reject of a delivered order carries a code; the other refusals are plain.
-        assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.DELIVERED).getId(),
+        assertThatThrownBy(() -> app.lifecycle().changeStatus(order(OrderStatus.DELIVERED).getId(),
                 OrderStatus.REJECTED, null, null, true))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo("ORDER_DELIVERED_REJECT"));
-        assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.REJECTED).getId(),
+        assertThatThrownBy(() -> app.lifecycle().changeStatus(order(OrderStatus.REJECTED).getId(),
                 OrderStatus.REJECTED, null, null, true))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> assertThat(e.getCode()).isNull());
-        assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.SHIPPED).getId(),
+        assertThatThrownBy(() -> app.lifecycle().changeStatus(order(OrderStatus.SHIPPED).getId(),
                 OrderStatus.APPROVED, null, null, true))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> assertThat(e.getCode()).isNull());
     }
@@ -190,17 +190,17 @@ class OrderTransitionsTest {
     @Test
     void transitions_setTheirTimestampsAndFields() {
         Order a = order(OrderStatus.NEW);
-        service.approve(a.getId());
+        app.lifecycle().approve(a.getId());
         assertThat(a.getApprovedAt()).isNotNull();
 
         Order s = order(OrderStatus.APPROVED);
-        service.ship(s.getId(), "  20450000000001 ");
+        app.lifecycle().ship(s.getId(), "  20450000000001 ");
         assertThat(s.getShippedAt()).isNotNull();
         assertThat(s.getTrackingNumber()).isEqualTo("20450000000001");
 
         Order d = order(OrderStatus.SHIPPED);
         d.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        service.deliver(d.getId());
+        app.lifecycle().deliver(d.getId());
         assertThat(d.getDeliveredAt()).isNotNull();
         assertThat(d.isPaid()).isTrue();
         assertThat(d.getReceivedMinor()).isEqualTo(100_000);
@@ -218,14 +218,14 @@ class OrderTransitionsTest {
     void ship_andApprove_areBothBlockedByAPendingCancelRequest() {
         Order shipIt = order(OrderStatus.NEW);
         shipIt.setCancelRequestStatus("PENDING");
-        assertThatThrownBy(() -> service.ship(shipIt.getId(), null))
+        assertThatThrownBy(() -> app.lifecycle().ship(shipIt.getId(), null))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(shipIt.getStatus()).isEqualTo(OrderStatus.NEW);
 
         // Owner's decision 29.10.2026: approve is blocked the same way as ship.
         Order approveIt = order(OrderStatus.NEW);
         approveIt.setCancelRequestStatus("PENDING");
-        assertThatThrownBy(() -> service.approve(approveIt.getId()))
+        assertThatThrownBy(() -> app.lifecycle().approve(approveIt.getId()))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(approveIt.getStatus()).isEqualTo(OrderStatus.NEW);
         assertThat(approveIt.getApprovedAt()).isNull();
@@ -236,10 +236,10 @@ class OrderTransitionsTest {
     void ship_unpaidOnlineOrderNeedsConfirmation() {
         Order o = order(OrderStatus.APPROVED);
         o.setPaymentDueAt(Instant.now().plusSeconds(3600));
-        assertThatThrownBy(() -> service.ship(o.getId(), null))
+        assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
-        assertThat(service.ship(o.getId(), null, true).getStatus()).isEqualTo(OrderStatus.SHIPPED);
+        assertThat(app.lifecycle().ship(o.getId(), null, true).getStatus()).isEqualTo(OrderStatus.SHIPPED);
     }
 
     // ------------------------------------------------------------------ (б) the four REJECT paths
@@ -370,7 +370,7 @@ class OrderTransitionsTest {
         Order o = order(OrderStatus.APPROVED);
         o.setReturnStatus("X");
 
-        Order r = service.reject(o.getId(), "  нет в наличии ", RejectReasonCode.OUT_OF_STOCK, true);
+        Order r = app.lifecycle().reject(o.getId(), "  нет в наличии ", RejectReasonCode.OUT_OF_STOCK, true);
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectedAt()).isNotNull();
@@ -387,7 +387,7 @@ class OrderTransitionsTest {
     @Test
     void reject_withoutRestock_blankReasonAndNoCode() {
         Order o = order(OrderStatus.NEW);
-        Order r = service.reject(o.getId(), "  ", false);
+        Order r = app.lifecycle().reject(o.getId(), "  ", false);
         assertThat(r.getRejectReason()).isNull();
         assertThat(r.getRejectReasonCode()).isNull();
         assertThat(product.getStock()).isEqualTo(3);
@@ -401,7 +401,7 @@ class OrderTransitionsTest {
         o.setReceivedMinor(100_000);
         o.setCancelRequestStatus("PENDING");
 
-        service.reject(o.getId(), "x", null, true);
+        app.lifecycle().reject(o.getId(), "x", null, true);
 
         assertThat(o.getCancelRequestStatus()).isEqualTo("APPROVED");
         assertThat(o.getCancelRequestResolvedAt()).isNotNull();
@@ -417,7 +417,7 @@ class OrderTransitionsTest {
     @Test
     void reject_shippedInTransit_noRestockNow_marksReturnPending() {
         Order o = order(OrderStatus.SHIPPED);
-        Order r = service.reject(o.getId(), "не забрал", RejectReasonCode.CHANGED_MIND, true, true);
+        Order r = app.lifecycle().reject(o.getId(), "не забрал", RejectReasonCode.CHANGED_MIND, true, true);
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
@@ -430,7 +430,7 @@ class OrderTransitionsTest {
     @Test
     void reject_inTransitFlagIsIgnoredForNonShipped_restockStillApplies() {
         Order o = order(OrderStatus.APPROVED);
-        service.reject(o.getId(), null, null, true, true);
+        app.lifecycle().reject(o.getId(), null, null, true, true);
         assertThat(o.getReturnStatus()).isNull();
         assertThat(product.getStock()).isEqualTo(5);
     }
@@ -442,7 +442,7 @@ class OrderTransitionsTest {
         o.setReceivedMinor(10_000);
         o.setPaid(true);
 
-        service.reject(o.getId(), null, null, true, true);
+        app.lifecycle().reject(o.getId(), null, null, true, true);
 
         verify(ledger).record(eq(o.getId()), eq(OrderMoneyMovement.Kind.RETAINED),
                 eq(OrderMoneyMovement.Channel.OTHER), eq(10_000L), eq(OrderMoneyMovement.Source.AUTO),
@@ -454,11 +454,11 @@ class OrderTransitionsTest {
         Order approved = order(OrderStatus.APPROVED);
         approved.setPrepaymentMinor(10_000);
         approved.setReceivedMinor(10_000);
-        service.reject(approved.getId(), null, null, true);
+        app.lifecycle().reject(approved.getId(), null, null, true);
         Order shipped = order(OrderStatus.SHIPPED);
         shipped.setPrepaymentMinor(10_000);
         shipped.setReceivedMinor(50_000);
-        service.reject(shipped.getId(), null, null, true);
+        app.lifecycle().reject(shipped.getId(), null, null, true);
         verifyNoLedgerEntries();
     }
 
@@ -469,7 +469,7 @@ class OrderTransitionsTest {
         o.setPaymentDueAt(now.minusSeconds(1));
         o.setReturnStatus("X");
 
-        Order r = service.expireUnpaid(o.getId(), now);
+        Order r = app.lifecycle().expireUnpaid(o.getId(), now);
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectedAt()).isEqualTo(now);
@@ -503,7 +503,7 @@ class OrderTransitionsTest {
         skipped.add(order(OrderStatus.NEW)); // no deadline at all
         for (Order o : skipped) {
             OrderStatus before = o.getStatus();
-            assertThat(service.expireUnpaid(o.getId(), now)).isNull();
+            assertThat(app.lifecycle().expireUnpaid(o.getId(), now)).isNull();
             assertThat(o.getStatus()).isEqualTo(before);
         }
         assertThat(product.getStock()).isEqualTo(3);

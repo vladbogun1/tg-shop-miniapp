@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderLifecycle;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.app.OrderService;
@@ -17,6 +19,8 @@ class OrderStockIT extends AbstractMysqlIT {
 
     @Autowired
     OrderService orders;
+    @Autowired
+    OrderLifecycle lifecycle;
 
     @Test
     void checkoutTakesStockFromOldestLotsFirstAndRejectGivesThemBack() {
@@ -35,7 +39,7 @@ class OrderStockIT extends AbstractMysqlIT {
         assertThat(allocations).containsExactly(2, 2);
         assertThat(statusOf(order.getId())).isEqualTo("NEW");
 
-        orders.reject(order.getId(), "тест", true);
+        lifecycle.reject(order.getId(), "тест", true);
 
         assertThat(statusOf(order.getId())).isEqualTo("REJECTED");
         assertThat(stockOf(p)).isEqualTo(5);
@@ -49,7 +53,7 @@ class OrderStockIT extends AbstractMysqlIT {
         Product p = product(10_000, 5);
         Order order = orders.createOrder(checkout(7_002, "+380671110002", p, 2));
 
-        orders.reject(order.getId(), "брак", false);
+        lifecycle.reject(order.getId(), "брак", false);
 
         assertThat(stockOf(p)).isEqualTo(3);
         assertThat(lotsLeftOf(p)).isEqualTo(3);

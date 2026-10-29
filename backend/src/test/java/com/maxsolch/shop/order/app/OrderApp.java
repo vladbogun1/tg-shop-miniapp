@@ -5,6 +5,7 @@ import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftRegistryService;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -33,14 +34,16 @@ public final class OrderApp {
     private final OrderPayments payments;
     private final OrderArchive archive;
     private final CancelRequests cancelRequests;
+    private final OrderLifecycle lifecycle;
     private final OrderService service;
 
     private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, CancelRequests cancelRequests,
-                     OrderService service) {
+                     OrderLifecycle lifecycle, OrderService service) {
         this.ops = ops;
         this.payments = payments;
         this.archive = archive;
         this.cancelRequests = cancelRequests;
+        this.lifecycle = lifecycle;
         this.service = service;
     }
 
@@ -78,9 +81,11 @@ public final class OrderApp {
         OrderPayments payments = new OrderPayments(ops, orders, events);
         OrderArchive archive = new OrderArchive(ops, orders, events, invoices);
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
-        OrderService service = new OrderService(orders, products, promos, options, notifications, events,
+        OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events, em, notifications,
+                new AppProperties());
+        OrderService service = new OrderService(orders, products, promos, options, events,
                 promoService, carts, messages, em, stock, ledger, payments, gift, registry, lowMargin);
-        return new OrderApp(ops, payments, archive, cancelRequests, service);
+        return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, service);
     }
 
     public OrderService service() {
@@ -95,6 +100,10 @@ public final class OrderApp {
         return archive;
     }
 
+    public OrderLifecycle lifecycle() {
+        return lifecycle;
+    }
+
     public CancelRequests cancelRequests() {
         return cancelRequests;
     }
@@ -106,6 +115,6 @@ public final class OrderApp {
     /** The adjustment service over the same scenarios (its own stock / ledger mocks, as the tests pass them). */
     public OrderAdjustmentService adjustment(OrderRepository orders, OrderStock stock, ApplicationEventPublisher events,
                                              OrderExchangeRepository exchanges, MoneyLedger ledger) {
-        return new OrderAdjustmentService(orders, service, payments, stock, events, exchanges, ledger);
+        return new OrderAdjustmentService(orders, service, payments, lifecycle, stock, events, exchanges, ledger);
     }
 }

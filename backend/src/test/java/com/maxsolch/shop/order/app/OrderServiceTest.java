@@ -617,16 +617,16 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order approved = service.approve(o.getId());
+        Order approved = app.lifecycle().approve(o.getId());
         assertThat(approved.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(approved.getApprovedAt()).isNotNull();
 
-        Order shipped = service.ship(o.getId(), "TTN123");
+        Order shipped = app.lifecycle().ship(o.getId(), "TTN123");
         assertThat(shipped.getStatus()).isEqualTo(OrderStatus.SHIPPED);
         assertThat(shipped.getShippedAt()).isNotNull();
         assertThat(shipped.getTrackingNumber()).isEqualTo("TTN123");
 
-        Order delivered = service.deliver(o.getId());
+        Order delivered = app.lifecycle().deliver(o.getId());
         assertThat(delivered.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(delivered.getDeliveredAt()).isNotNull();
 
@@ -638,7 +638,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.SHIPPED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.approve(o.getId()))
+        assertThatThrownBy(() -> app.lifecycle().approve(o.getId()))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("только новый");
     }
@@ -648,7 +648,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.deliver(o.getId()))
+        assertThatThrownBy(() -> app.lifecycle().deliver(o.getId()))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("только отправленный");
     }
@@ -672,7 +672,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
-        Order rejected = service.reject(o.getId(), "out of stock", true);
+        Order rejected = app.lifecycle().reject(o.getId(), "out of stock", true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getRejectedAt()).isNotNull();
@@ -687,7 +687,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
+        assertThatThrownBy(() -> app.lifecycle().reject(o.getId(), "x", true))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("уже отклонён");
     }
@@ -698,7 +698,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.DELIVERED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.reject(o.getId(), "возврат на НП", false))
+        assertThatThrownBy(() -> app.lifecycle().reject(o.getId(), "возврат на НП", false))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("оформите «Возврат»");
         assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
@@ -709,7 +709,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order rejected = service.reject(o.getId(), "  ", com.maxsolch.shop.order.domain.RejectReasonCode.NO_RESPONSE, false);
+        Order rejected = app.lifecycle().reject(o.getId(), "  ", com.maxsolch.shop.order.domain.RejectReasonCode.NO_RESPONSE, false);
 
         assertThat(rejected.getRejectReasonCode()).isEqualTo("NO_RESPONSE");
         // Blank text must not reach the customer as an empty "Причина:".
@@ -731,7 +731,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
-        service.reject(o.getId(), "возврат", true);
+        app.lifecycle().reject(o.getId(), "возврат", true);
 
         assertThat(p.getStock()).isEqualTo(2); // only the 2 units still out
         assertThat(it.getRestockedQty()).isEqualTo(3);
@@ -752,7 +752,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
-        service.reject(o.getId(), "возврат", true);
+        app.lifecycle().reject(o.getId(), "возврат", true);
 
         assertThat(p.getStock()).isEqualTo(2); // only the 2 units never returned
     }
@@ -763,7 +763,7 @@ class OrderServiceTest {
         o.setCancelRequestStatus(com.maxsolch.shop.order.domain.CancelRequestStatus.PENDING.name());
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.ship(o.getId(), null))
+        assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), null))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("запрос отмены");
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
@@ -783,14 +783,14 @@ class OrderServiceTest {
         Order o = approvedPrepaymentNotPaid();
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.ship(o.getId(), "20450000000000"))
+        assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), "20450000000000"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("Предоплата по заказу #")
                 .hasMessageContaining("не пришла")
                 .satisfies(e -> assertThat(((DomainException) e).getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
 
-        Order shipped = service.changeStatus(o.getId(), OrderStatus.SHIPPED, "20450000000000", null, null, true, true);
+        Order shipped = app.lifecycle().changeStatus(o.getId(), OrderStatus.SHIPPED, "20450000000000", null, null, true, true);
         assertThat(shipped.getStatus()).isEqualTo(OrderStatus.SHIPPED);
     }
 
@@ -821,7 +821,7 @@ class OrderServiceTest {
     void changeStatus_toNew_throwsInvalidTransition() {
         Order o = persistedOrder(OrderStatus.NEW);
         // findById not needed: NEW case throws before any lookup
-        assertThatThrownBy(() -> service.changeStatus(o.getId(), OrderStatus.NEW, null, null, true))
+        assertThatThrownBy(() -> app.lifecycle().changeStatus(o.getId(), OrderStatus.NEW, null, null, true))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("«Новые» нельзя");
     }
@@ -831,7 +831,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order result = service.changeStatus(o.getId(), OrderStatus.APPROVED, null, null, true);
+        Order result = app.lifecycle().changeStatus(o.getId(), OrderStatus.APPROVED, null, null, true);
 
         assertThat(result.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(result.getApprovedAt()).isNotNull();
@@ -907,7 +907,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
-        Order expired = service.expireUnpaid(o.getId(), now);
+        Order expired = app.lifecycle().expireUnpaid(o.getId(), now);
 
         assertThat(expired).isNotNull();
         assertThat(expired.getStatus()).isEqualTo(OrderStatus.REJECTED);
@@ -934,7 +934,7 @@ class OrderServiceTest {
         OrderStates.withStatus(approved, OrderStatus.APPROVED);
         for (Order o : List.of(paid, partlyPaid, notDue, legacy, approved)) {
             when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-            assertThat(service.expireUnpaid(o.getId(), now)).isNull();
+            assertThat(app.lifecycle().expireUnpaid(o.getId(), now)).isNull();
         }
 
         assertThat(p.getStock()).isEqualTo(1);
@@ -993,7 +993,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        service.reject(o.getId(), "x", false);
+        app.lifecycle().reject(o.getId(), "x", false);
 
         verify(orderRepository).findByIdForUpdate(o.getId());
         verify(orderRepository, never()).findById(any());
@@ -1017,7 +1017,7 @@ class OrderServiceTest {
             return null;
         }).when(entityManager).refresh(o, LockModeType.PESSIMISTIC_WRITE);
 
-        assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
+        assertThatThrownBy(() -> app.lifecycle().reject(o.getId(), "x", true))
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThat(p.getStock()).isEqualTo(5);
         verify(productRepository, never()).findByIdForUpdate(any());
@@ -1037,7 +1037,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
-        service.reject(o.getId(), "x", true);
+        app.lifecycle().reject(o.getId(), "x", true);
 
         InOrder order = inOrder(productRepository);
         order.verify(productRepository).findByIdForUpdate(low);
@@ -1058,7 +1058,7 @@ class OrderServiceTest {
         });
         when(notificationService.syncDispatchCard(unchanged)).thenReturn(false);
 
-        assertThat(service.broadcastDispatch()).isEqualTo(1);
+        assertThat(app.lifecycle().broadcastDispatch()).isEqualTo(1);
 
         verify(entityManager).detach(posted);
         verify(entityManager).detach(unchanged);
@@ -1147,7 +1147,7 @@ class OrderServiceTest {
         o.getItems().add(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order rejected = service.reject(o.getId(), null, RejectReasonCode.REFUSED_AT_POST, true, true);
+        Order rejected = app.lifecycle().reject(o.getId(), null, RejectReasonCode.REFUSED_AT_POST, true, true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(rejected.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);

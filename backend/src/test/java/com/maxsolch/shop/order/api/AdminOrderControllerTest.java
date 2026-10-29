@@ -13,6 +13,7 @@ import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.returns.app.ReturnWizardService;
@@ -68,6 +69,8 @@ class AdminOrderControllerTest {
     @Mock
     OrderService orderService;
     @Mock
+    OrderLifecycle lifecycle;
+    @Mock
     OrderPayments orderPayments;
     @Mock
     OrderArchive orderArchive;
@@ -99,9 +102,9 @@ class AdminOrderControllerTest {
     AdminOrderController controller() {
         AdminOrderQueries lookup = new AdminOrderQueries(orders, queries);
         return new AdminOrderController(lookup,
-                new AdminOrderStatusService(lookup, orderService, payments, audit),
+                new AdminOrderStatusService(lookup, lifecycle, payments, audit),
                 new ReturnWizardService(lookup, orderService, adjustments, payments, audit),
-                orderService, orderPayments, orderArchive, queries, null, audit, null, null, adjustments, payments);
+                orderService, lifecycle, orderPayments, orderArchive, queries, null, audit, null, null, adjustments, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,
@@ -115,35 +118,35 @@ class AdminOrderControllerTest {
     void status_unknown_isBadRequest_beforeAnyLookup() {
         assertThatThrownBy(() -> controller().updateStatus(id, status(" bogus ", null, null, null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("неизвестный статус:  bogus ");
-        verifyNoInteractions(orders, orderService, audit, payments);
+        verifyNoInteractions(orders, orderService, lifecycle, audit, payments);
     }
 
     @Test
     void status_shippedWithoutTracking_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("SHIPPED", "  ", null, null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("укажите номер ТТН");
-        verifyNoInteractions(orders, orderService, audit);
+        verifyNoInteractions(orders, orderService, lifecycle, audit);
     }
 
     @Test
     void status_rejectedWithoutReason_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("rejected", null, " ", null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("укажите причину отклонения");
-        verifyNoInteractions(orders, orderService, audit);
+        verifyNoInteractions(orders, orderService, lifecycle, audit);
     }
 
     @Test
     void status_reasonOtherWithoutText_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, null, null, "OTHER", null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("для причины «Другое» напишите пояснение");
-        verifyNoInteractions(orders, orderService, audit);
+        verifyNoInteractions(orders, orderService, lifecycle, audit);
     }
 
     @Test
     void status_unknownReasonCode_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, "WAT", null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("неизвестная причина отказа: WAT");
-        verifyNoInteractions(orders, orderService, audit);
+        verifyNoInteractions(orders, orderService, lifecycle, audit);
     }
 
     @Test
@@ -152,7 +155,7 @@ class AdminOrderControllerTest {
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("APPROVED", null, null, null, null, null, null)))
                 .isInstanceOf(NotFoundException.class).hasMessage("заказ не найден");
-        verifyNoInteractions(orderService, audit, payments);
+        verifyNoInteractions(orderService, lifecycle, audit, payments);
     }
 
     @Test
@@ -165,14 +168,14 @@ class AdminOrderControllerTest {
     void status_approve_changesStatus_auditsOnce_returnsDetail() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(eq(order.getId()), eq(OrderStatus.APPROVED), any(), any(), any(),
+        when(lifecycle.changeStatus(eq(order.getId()), eq(OrderStatus.APPROVED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
         when(queries.toDetail(updated)).thenReturn(detail);
 
         OrderDetailDto result = controller().updateStatus(id, status("approved", null, null, null, null, null, null));
 
         assertThat(result).isSameAs(detail);
-        verify(orderService).changeStatus(order.getId(), OrderStatus.APPROVED, null, null, null, true, false);
+        verify(lifecycle).changeStatus(order.getId(), OrderStatus.APPROVED, null, null, null, true, false);
         verify(audit).record("ORDER_STATUS", "ORDER", id, "статус → APPROVED");
         verify(audit, times(1)).record(anyString(), anyString(), any(), anyString());
         verifyNoInteractions(payments);
@@ -182,12 +185,12 @@ class AdminOrderControllerTest {
     void status_ship_passesTrackingAndShipUnpaid_auditsTracking() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("SHIPPED", "5900", null, null, null, true, null));
 
-        verify(orderService).changeStatus(order.getId(), OrderStatus.SHIPPED, "5900", null, null, true, true);
+        verify(lifecycle).changeStatus(order.getId(), OrderStatus.SHIPPED, "5900", null, null, true, true);
         verify(audit).record("ORDER_STATUS", "ORDER", id, "статус → SHIPPED, ТТН 5900");
         verify(audit, never()).record(eq("ORDER_SHIP_UNPAID"), anyString(), any(), anyString());
     }
@@ -198,13 +201,13 @@ class AdminOrderControllerTest {
         order.setReceivedMinor(2_500);
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("SHIPPED", "5900", null, null, null, true, null));
 
-        InOrder in = inOrder(orderService, audit);
-        in.verify(orderService).changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean());
+        InOrder in = inOrder(lifecycle, audit);
+        in.verify(lifecycle).changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean());
         in.verify(audit).record("ORDER_SHIP_UNPAID", "ORDER", id,
                 "отправлен без онлайн-оплаты (не пришло 75 ₴) по решению админа Иван");
         in.verify(audit).record("ORDER_STATUS", "ORDER", id, "статус → SHIPPED, ТТН 5900");
@@ -214,12 +217,12 @@ class AdminOrderControllerTest {
     void status_reject_closesInvoices_andAuditsRestock() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("REJECTED", null, "не вышел на связь", null, "NO_RESPONSE", null, null));
 
-        verify(orderService).changeStatus(order.getId(), OrderStatus.REJECTED, null, "не вышел на связь",
+        verify(lifecycle).changeStatus(order.getId(), OrderStatus.REJECTED, null, "не вышел на связь",
                 RejectReasonCode.NO_RESPONSE, true, false);
         InOrder in = inOrder(payments, audit);
         in.verify(payments).closeOpenInvoices(order.getId());
@@ -231,7 +234,7 @@ class AdminOrderControllerTest {
     void status_rejectWithoutRestock_auditsIt() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("REJECTED", null, "брак", false, null, null, null));
@@ -244,12 +247,12 @@ class AdminOrderControllerTest {
         Order updated = new Order();
         updated.setId(order.getId());
         updated.setReturnStatus(Order.RETURN_IN_TRANSIT);
-        when(orderService.reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean())).thenReturn(updated);
+        when(lifecycle.reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("REJECTED", null, "отказ на почте", null, "REFUSED_AT_POST", null, true));
 
-        verify(orderService).reject(order.getId(), "отказ на почте", RejectReasonCode.REFUSED_AT_POST, true, true);
-        verify(orderService, never()).changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean());
+        verify(lifecycle).reject(order.getId(), "отказ на почте", RejectReasonCode.REFUSED_AT_POST, true, true);
+        verify(lifecycle, never()).changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean());
         verify(payments).closeOpenInvoices(order.getId());
         verify(audit).record("ORDER_STATUS", "ORDER", id,
                 "статус → REJECTED, код причины REFUSED_AT_POST, причина: отказ на почте, "
@@ -260,18 +263,18 @@ class AdminOrderControllerTest {
     void status_returnInTransit_ignoredForNonReject() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), eq(OrderStatus.DELIVERED), any(), any(), any(),
+        when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.DELIVERED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("DELIVERED", null, null, null, null, null, true));
 
-        verify(orderService, never()).reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean());
-        verify(orderService).changeStatus(order.getId(), OrderStatus.DELIVERED, null, null, null, true, false);
+        verify(lifecycle, never()).reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean());
+        verify(lifecycle).changeStatus(order.getId(), OrderStatus.DELIVERED, null, null, null, true, false);
     }
 
     @Test
     void status_serviceFails_noAudit_noInvoiceClosing() {
-        when(orderService.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
+        when(lifecycle.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenThrow(new BadRequestException("нельзя"));
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, null, null, null)))
@@ -283,7 +286,7 @@ class AdminOrderControllerTest {
     void status_invoiceClosingFails_exceptionPropagates_andNothingIsAudited() {
         Order updated = new Order();
         updated.setId(order.getId());
-        when(orderService.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
+        when(lifecycle.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(updated);
         org.mockito.Mockito.doThrow(new IllegalStateException("mono down")).when(payments).closeOpenInvoices(any());
 

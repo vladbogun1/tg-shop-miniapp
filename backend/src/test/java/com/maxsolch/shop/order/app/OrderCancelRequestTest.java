@@ -229,7 +229,7 @@ class OrderCancelRequestTest {
     void adminRejectWhilePending_closesTheRequest() {
         Order o = order(OrderStatus.NEW, 100_000);
         app.cancelRequests().requestCancel(o.getId(), "причина");
-        Order r = service.reject(o.getId(), "нема в наявності", true);
+        Order r = app.lifecycle().reject(o.getId(), "нема в наявності", true);
         assertThat(r.getCancelRequestStatus()).isEqualTo("APPROVED");
         assertThat(r.isCancelledByCustomer()).isFalse();
     }

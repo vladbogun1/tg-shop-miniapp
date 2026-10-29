@@ -70,12 +70,14 @@ class OrderStockTest {
     @Mock LotLedger lots;
     @Mock PreorderQueueService queue;
 
+    OrderApp app;
     OrderService service;
     PaymentOption pay;
 
     @BeforeEach
     void setUp() {
-        service = newService();
+        app = newApp();
+        service = app.service();
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(any(String.class), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
@@ -93,10 +95,10 @@ class OrderStockTest {
         });
     }
 
-    private OrderService newService() {
+    private OrderApp newApp() {
         return OrderApp.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
-                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class)).service();
+                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class));
     }
 
     private Product product(int stock) {
@@ -248,7 +250,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, m, 1, 3);
 
-        service.reject(o.getId(), "нет", true);
+        app.lifecycle().reject(o.getId(), "нет", true);
 
         assertThat(m.getStock()).isEqualTo(4);
         assertThat(p.getStock()).isEqualTo(4);
@@ -264,7 +266,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         line(o, p, null, 1, 3);
 
-        service.reject(o.getId(), "нет", false);
+        app.lifecycle().reject(o.getId(), "нет", false);
 
         assertThat(p.getStock()).isEqualTo(1);
         verifyNoInteractions(lots);
@@ -278,7 +280,7 @@ class OrderStockTest {
         OrderItem it = line(o, p, null, 1, 3);
         it.setVariantId(UuidUtil.randomBytes()); // variant that no longer exists
 
-        service.reject(o.getId(), "нет", true);
+        app.lifecycle().reject(o.getId(), "нет", true);
 
         assertThat(p.getStock()).isEqualTo(5);
         verifyNoInteractions(lots);
@@ -293,7 +295,7 @@ class OrderStockTest {
         line(o, p, null, 1, 3);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.empty());
 
-        service.reject(o.getId(), "нет", true);
+        app.lifecycle().reject(o.getId(), "нет", true);
 
         verifyNoInteractions(lots);
     }
@@ -306,7 +308,7 @@ class OrderStockTest {
         it.setRestockedQty(2);
         it.setReturnedQty(2);
 
-        service.reject(o.getId(), "нет", true);
+        app.lifecycle().reject(o.getId(), "нет", true);
 
         assertThat(p.getStock()).isEqualTo(3);
         verify(lots).give(p.getId(), null, 3, it);
@@ -320,7 +322,7 @@ class OrderStockTest {
         OrderItem it = line(o, p, null, 1, 2);
         it.setReturnedQty(2);
 
-        service.reject(o.getId(), "нет", true);
+        app.lifecycle().reject(o.getId(), "нет", true);
 
         assertThat(p.getStock()).isZero();
         verifyNoInteractions(lots);

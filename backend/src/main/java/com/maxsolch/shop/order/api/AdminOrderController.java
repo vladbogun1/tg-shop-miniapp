@@ -20,6 +20,7 @@ import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.order.domain.OrderWindow;
@@ -58,6 +59,7 @@ public class AdminOrderController {
     private final AdminOrderStatusService statusService;
     private final ReturnWizardService returnWizards;
     private final OrderService orderService;
+    private final OrderLifecycle lifecycle;
     private final OrderPayments orderPayments;
     private final OrderArchive orderArchive;
     private final OrderQueryService orderQueryService;
@@ -92,6 +94,7 @@ public class AdminOrderController {
                                 AdminOrderStatusService statusService,
                                 ReturnWizardService returnWizards,
                                 OrderService orderService,
+                                OrderLifecycle lifecycle,
                                 OrderPayments orderPayments,
                                 OrderArchive orderArchive,
                                 OrderQueryService orderQueryService,
@@ -105,6 +108,7 @@ public class AdminOrderController {
         this.statusService = statusService;
         this.returnWizards = returnWizards;
         this.orderService = orderService;
+        this.lifecycle = lifecycle;
         this.orderPayments = orderPayments;
         this.orderArchive = orderArchive;
         this.orderQueryService = orderQueryService;
@@ -170,7 +174,7 @@ public class AdminOrderController {
     @PostMapping("/dispatch/broadcast")
     @Operation(summary = "Post the dispatch cards of all approved orders to the seller Telegram topic")
     public Map<String, Integer> dispatchBroadcast() {
-        int posted = orderService.broadcastDispatch();
+        int posted = lifecycle.broadcastDispatch();
         audit.record("DISPATCH_BROADCAST", "ORDER", null, "карточек к отправке выложено заново: " + posted);
         return Map.of("posted", posted);
     }

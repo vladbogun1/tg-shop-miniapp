@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  * pages of a rejected one and writes the admin journal.
  *
  * <p><b>Deliberately not {@code @Transactional}.</b> The status change itself is one transaction
- * inside {@link OrderService}; closing the invoices and the audit entries come after it has
+ * inside {@link OrderLifecycle}; closing the invoices and the audit entries come after it has
  * committed, each in its own transaction ({@link AdminAuditService#record} is
  * {@code REQUIRES_NEW} and never throws). Wrapping this in a transaction would write the journal
  * before the commit, so a failed commit would leave an entry for a change that never happened.
@@ -27,14 +27,14 @@ import org.springframework.stereotype.Service;
 public class AdminOrderStatusService {
 
     private final AdminOrderQueries queries;
-    private final OrderService orderService;
+    private final OrderLifecycle lifecycle;
     private final OnlinePaymentService payments;
     private final AdminAuditService audit;
 
-    public AdminOrderStatusService(AdminOrderQueries queries, OrderService orderService,
+    public AdminOrderStatusService(AdminOrderQueries queries, OrderLifecycle lifecycle,
                                    OnlinePaymentService payments, AdminAuditService audit) {
         this.queries = queries;
-        this.orderService = orderService;
+        this.lifecycle = lifecycle;
         this.payments = payments;
         this.audit = audit;
     }
@@ -60,8 +60,8 @@ public class AdminOrderStatusService {
         long missingMinor = unpaidShip ? OrderMoney.amountDueMinor(before) : 0;
         boolean inTransit = target == OrderStatus.REJECTED && Boolean.TRUE.equals(req.returnInTransit());
         Order updated = inTransit
-                ? orderService.reject(before.getId(), req.rejectReason(), reasonCode, restock, true)
-                : orderService.changeStatus(before.getId(), target,
+                ? lifecycle.reject(before.getId(), req.rejectReason(), reasonCode, restock, true)
+                : lifecycle.changeStatus(before.getId(), target,
                         req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
         if (target == OrderStatus.REJECTED) {
             // An approved order stays payable past its deadline — close the open monobank pages, so

@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderLifecycle;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,7 +31,7 @@ public class PaymentJobs {
     private final OnlinePaymentService payments;
     private final PaymentInvoiceRepository invoices;
     private final OrderRepository orders;
-    private final OrderService orderService;
+    private final OrderLifecycle lifecycle;
     private final AtomicBoolean running = new AtomicBoolean();
 
     /** «Журнал → Бот и сайт» (optional). */
@@ -39,11 +39,11 @@ public class PaymentJobs {
     private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public PaymentJobs(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
-                       OrderRepository orders, OrderService orderService) {
+                       OrderRepository orders, OrderLifecycle lifecycle) {
         this.payments = payments;
         this.invoices = invoices;
         this.orders = orders;
-        this.orderService = orderService;
+        this.lifecycle = lifecycle;
     }
 
     @SchedulerLock(name = "PaymentJobs.run", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
@@ -79,7 +79,7 @@ public class PaymentJobs {
                 if (payments.hasPaymentInFlight(orderId)) {
                     continue;
                 }
-                if (orderService.expireUnpaid(orderId, now) != null) {
+                if (lifecycle.expireUnpaid(orderId, now) != null) {
                     payments.closeOpenInvoices(orderId);
                     log.info("order {} rejected: not paid in time", id);
                     if (activity != null) {
