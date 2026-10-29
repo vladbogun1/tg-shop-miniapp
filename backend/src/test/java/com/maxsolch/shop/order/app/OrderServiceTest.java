@@ -1380,4 +1380,174 @@ class OrderServiceTest {
         assertThat(giftLine.getPriceMinorSnapshot()).isZero();
         assertThat(giftLine.getGiftValueMinor()).isEqualTo(3_000_00);
     }
+
+    // ---------- characterization: manual order, exchange option, discount editing, granted case ----------
+
+    @Test
+    void createAdminOrder_withoutPayment_hasNoDeadlineAndNoMoneyMovement() {
+        Product p = simpleProduct(10, 2_500);
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+
+        Order o = service.createAdminOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null),
+                0, com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CASH, "admin", null);
+
+        assertThat(o.getPaymentDueAt()).isNull();
+        assertThat(o.isPaid()).isFalse();
+        assertThat(o.getReceivedMinor()).isZero();
+        verify(moneyLedger, never()).record(any(), any(), any(), org.mockito.ArgumentMatchers.anyLong(), any(), any(),
+                any(), any());
+    }
+
+    @Test
+    void createAdminOrder_withPayment_booksItThroughTheChosenChannelWithTheDefaultNote() {
+        Product p = simpleProduct(10, 2_500);
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        when(orderRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(capturedOrder()));
+
+        Order o = service.createAdminOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 2)), null),
+                3_000, com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CASH, "admin", null);
+
+        assertThat(o.getPaymentDueAt()).isNull();
+        assertThat(o.getReceivedMinor()).isEqualTo(3_000);
+        assertThat(o.isPaid()).isTrue();
+        verify(moneyLedger).record(eq(o.getId()), eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind.PAYMENT),
+                eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CASH), eq(3_000L),
+                eq(com.maxsolch.shop.order.domain.OrderMoneyMovement.Source.ADMIN), eq("admin"),
+                eq("оплата при ручном заказе"), any());
+    }
+
+    /** The order the last save() saw (the "database row" the lock query returns). */
+    private Order capturedOrder() {
+        ArgumentCaptor<Order> c = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository, org.mockito.Mockito.atLeastOnce()).save(c.capture());
+        return c.getValue();
+    }
+
+    @Test
+    void exchangePaymentOptionId_prefersTheOriginalsOptionThenTheFirstActiveOne() {
+        Order original = new Order();
+        original.setPaymentOptionId(fullPayment.getId());
+        assertThat(service.exchangePaymentOptionId(original)).isEqualTo(UuidUtil.toString(fullPayment.getId()));
+
+        Order gone = new Order();
+        gone.setPaymentOptionId(UuidUtil.randomBytes());
+        when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of(fullPayment));
+        assertThat(service.exchangePaymentOptionId(gone)).isEqualTo(UuidUtil.toString(fullPayment.getId()));
+
+        when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of());
+        assertThatThrownBy(() -> service.exchangePaymentOptionId(gone)).isInstanceOf(BadRequestException.class)
+                .hasMessage("нет активного способа оплаты для нового заказа");
+    }
+
+    private Order orderWithOneLine(OrderStatus status, long price, int qty) {
+        Order o = persistedOrder(status);
+        OrderItem item = new OrderItem();
+        item.setOrder(o);
+        item.setProductId(productId);
+        item.setPriceMinorSnapshot(price);
+        item.setQuantity(qty);
+        o.getItems().add(item);
+        o.setSubtotalMinor(price * qty);
+        o.setTotalMinor(price * qty);
+        when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
+        return o;
+    }
+
+    @Test
+    void applyDiscount_manualAmountIsCappedAtTheSubtotal_percentIsCappedAtHundred() {
+        Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 2);
+
+        service.applyDiscount(o.getId(), null, 5_000L, null, false, false);
+        assertThat(o.getDiscountMinor()).isEqualTo(5_000);
+        assertThat(o.getTotalMinor()).isEqualTo(15_000);
+        assertThat(o.getPromoCode()).isEqualTo("Ручная скидка");
+
+        service.applyDiscount(o.getId(), null, 999_999L, null, false, false);
+        assertThat(o.getDiscountMinor()).isEqualTo(20_000);
+        assertThat(o.getTotalMinor()).isZero();
+        assertThat(o.isPaid()).as("a free order counts as paid at once").isTrue();
+
+        Order p = orderWithOneLine(OrderStatus.NEW, 10_000, 2);
+        service.applyDiscount(p.getId(), null, null, 25, false, true);
+        assertThat(p.getDiscountMinor()).isEqualTo(5_000);
+        assertThat(p.getPromoCode()).isEqualTo("Ручная скидка 25%");
+        service.applyDiscount(p.getId(), null, null, 400, false, true);
+        assertThat(p.getDiscountMinor()).isEqualTo(20_000);
+        verify(events, org.mockito.Mockito.atLeastOnce()).publishEvent(any(OrderEvents.Edited.class));
+    }
+
+    @Test
+    void applyDiscount_clearReleasesTheRealPromoUsageAndDropsTheDiscount() {
+        Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
+        o.setPromoCode("SAVE10");
+        o.setDiscountMinor(1_000);
+        o.setTotalMinor(9_000);
+        PromoCode code = new PromoCode();
+        code.setCode("SAVE10");
+        code.setUsesCount(3);
+        when(promoCodeRepository.findByCodeForUpdate("SAVE10")).thenReturn(Optional.of(code));
+
+        service.applyDiscount(o.getId(), null, null, null, true, false);
+
+        assertThat(code.getUsesCount()).isEqualTo(2);
+        assertThat(o.getPromoCode()).isNull();
+        assertThat(o.getDiscountMinor()).isZero();
+        assertThat(o.getTotalMinor()).isEqualTo(10_000);
+    }
+
+    @Test
+    void applyDiscount_realCodeCountsOneUseAndGivesItsDiscount_shippedOrderIsRefused() {
+        Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 1);
+        PromoCode code = new PromoCode();
+        code.setCode("TEN");
+        code.setActive(true);
+        code.setDiscountPercent(10);
+        code.setUsesCount(0);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("TEN")).thenReturn(Optional.of(code));
+
+        service.applyDiscount(o.getId(), "TEN", null, null, false, false);
+
+        assertThat(code.getUsesCount()).isEqualTo(1);
+        assertThat(o.getDiscountMinor()).isEqualTo(1_000);
+        assertThat(o.getPromoCode()).isEqualTo("TEN");
+
+        Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
+        assertThatThrownBy(() -> service.applyDiscount(shipped.getId(), null, 100L, null, false, false))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("заказ можно менять только в статусе «Новый» или «Одобрен»");
+    }
+
+    @Test
+    void grantGiftCase_drawsAPrizeSealsItAndNeedsAnOpenOrderWithoutACase() {
+        var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
+        String prizeUuid = UUID.randomUUID().toString();
+        Product prize = new Product();
+        prize.setId(UuidUtil.toBytes(prizeUuid));
+        prize.setTitle("Prize");
+        prize.setPriceMinor(3_000_00);
+        prize.setStock(5);
+        prize.setActive(true);
+        prize.setVariants(new ArrayList<>());
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(prize));
+        when(gift.tier(tier)).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00,
+                0, 0, 0, List.of(new com.maxsolch.shop.gift.GiftService.CaseEntry(1, tier,
+                com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000)))));
+        Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
+
+        Order granted = service.grantGiftCase(o.getId(), tier, true);
+
+        assertThat(granted.getGiftCaseStatus()).isEqualTo(OrderService.GIFT_CASE_SEALED);
+        assertThat(granted.getGiftTier()).isEqualTo("SILVER");
+        OrderItem line = granted.getItems().stream().filter(OrderItem::isGift).findFirst().orElseThrow();
+        assertThat(line.getPriceMinorSnapshot()).isZero();
+        assertThat(prize.getStock()).isEqualTo(4);
+        verify(gift).saveOrderCase(any());
+        // a second case is refused
+        assertThatThrownBy(() -> service.grantGiftCase(o.getId(), tier, false))
+                .isInstanceOf(BadRequestException.class).hasMessage("У заказа уже есть кейс");
+        // and so is a closed order
+        Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
+        assertThatThrownBy(() -> service.grantGiftCase(shipped.getId(), tier, false))
+                .isInstanceOf(BadRequestException.class);
+    }
 }
