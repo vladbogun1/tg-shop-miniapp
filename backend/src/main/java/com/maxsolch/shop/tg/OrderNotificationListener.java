@@ -1,10 +1,10 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.media.ImageStorageService;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.service.OrderEvents;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderEvents;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

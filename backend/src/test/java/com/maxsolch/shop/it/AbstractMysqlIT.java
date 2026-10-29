@@ -7,7 +7,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.service.CreateOrderCommand;
+import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.tg.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;

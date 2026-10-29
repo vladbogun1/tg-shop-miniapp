@@ -1,8 +1,8 @@
 package com.maxsolch.shop.it;
 
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

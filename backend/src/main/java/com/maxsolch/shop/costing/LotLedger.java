@@ -1,6 +1,6 @@
 package com.maxsolch.shop.costing;
 
-import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderItemLot;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;

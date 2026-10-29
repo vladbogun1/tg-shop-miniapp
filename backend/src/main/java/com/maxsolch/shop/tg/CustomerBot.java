@@ -1,7 +1,7 @@
 package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import lombok.extern.slf4j.Slf4j;

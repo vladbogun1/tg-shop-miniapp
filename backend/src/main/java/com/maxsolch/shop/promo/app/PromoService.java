@@ -1,6 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.platform.i18n.Messages;

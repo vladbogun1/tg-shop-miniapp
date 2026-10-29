@@ -1,18 +1,22 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.order.app.CreateOrderCommand;
+import com.maxsolch.shop.order.app.MoneyLedger;
+import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderServiceFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.preorder.PreorderQueueService;
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;

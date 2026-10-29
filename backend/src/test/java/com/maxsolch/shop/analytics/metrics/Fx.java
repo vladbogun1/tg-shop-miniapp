@@ -5,7 +5,7 @@ import com.maxsolch.shop.analytics.metrics.MetricsFacts.ItemFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ProductFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.VariantFact;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 
 import java.time.Instant;
 import java.time.ZoneId;

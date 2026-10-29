@@ -1,8 +1,8 @@
 package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.payment.ReceiptKind;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class NotificationSnapshotTest {
     @Test
     void onNewOrder() throws Exception {
         Order rich = order(NotifyHarness.TG_UK, OrderStatus.NEW);
-        rich.setSource(com.maxsolch.shop.domain.OrderSource.WEB);
+        rich.setSource(com.maxsolch.shop.order.domain.OrderSource.WEB);
         h.scene("NEW rich web order", rich, () -> h.service.onNewOrder(rich));
         Order pickup = pickupOrder(null, OrderStatus.NEW);
         h.scene("NEW pickup order, no telegram", pickup, () -> h.service.onNewOrder(pickup));

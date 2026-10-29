@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;

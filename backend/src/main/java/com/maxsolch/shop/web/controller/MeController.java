@@ -4,30 +4,30 @@ import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.payment.CustomerPaymentRefresh;
 import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.service.CustomerOrders;
+import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.service.CustomerProfileService;
-import com.maxsolch.shop.service.MessageService;
-import com.maxsolch.shop.service.OrderQueryService;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.MessageService;
+import com.maxsolch.shop.order.app.OrderQueryService;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.web.SecurityUtil;
-import com.maxsolch.shop.web.dto.CancelOrderRequest;
+import com.maxsolch.shop.order.api.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
-import com.maxsolch.shop.web.dto.MessageDto;
+import com.maxsolch.shop.order.api.MessageDto;
 import com.maxsolch.shop.translation.ContentLocale;
-import com.maxsolch.shop.web.dto.OrderDetailDto;
-import com.maxsolch.shop.web.dto.OrderSummaryDto;
+import com.maxsolch.shop.order.api.OrderDetailDto;
+import com.maxsolch.shop.order.api.OrderSummaryDto;
 import com.maxsolch.shop.web.dto.PaymentStartResponse;
 import com.maxsolch.shop.web.dto.StartPaymentRequest;
 import com.maxsolch.shop.promo.api.PromoPreviewDto;
-import com.maxsolch.shop.web.dto.SendMessageRequest;
+import com.maxsolch.shop.order.api.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -67,7 +67,7 @@ public class MeController {
     private final OnlinePaymentService onlinePayments;
     private final CustomerPaymentRefresh paymentRefresh;
     @org.springframework.beans.factory.annotation.Autowired
-    private com.maxsolch.shop.payment.CancelRequestService cancelRequests;
+    private com.maxsolch.shop.order.app.CancelRequestService cancelRequests;
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.payment.ReceiptService receipts;
     /** «Журнал → Бот и сайт»: what the customer did here (optional — tests build the controller bare). */
@@ -191,7 +191,7 @@ public class MeController {
 
     @GetMapping("/conversations")
     @Operation(summary = "My orders with unread admin messages (notifications inbox)")
-    public List<com.maxsolch.shop.web.dto.ConversationDto> conversations() {
+    public List<com.maxsolch.shop.order.api.ConversationDto> conversations() {
         return messageService.customerConversations(SecurityUtil.currentUserId());
     }
 

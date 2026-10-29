@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.gift.GiftDtos.GiftRegistryDto;
 import com.maxsolch.shop.gift.GiftDtos.GiftRegistryRowDto;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;

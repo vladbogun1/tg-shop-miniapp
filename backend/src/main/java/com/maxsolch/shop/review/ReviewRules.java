@@ -1,8 +1,8 @@
 package com.maxsolch.shop.review;
 
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderStatus;
 
 import java.security.SecureRandom;
 import java.time.Duration;

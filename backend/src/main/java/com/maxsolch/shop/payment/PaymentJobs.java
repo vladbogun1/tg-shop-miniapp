@@ -1,8 +1,8 @@
 package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;

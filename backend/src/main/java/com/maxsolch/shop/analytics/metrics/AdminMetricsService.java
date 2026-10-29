@@ -9,7 +9,7 @@ import com.maxsolch.shop.analytics.metrics.MetricsDtos.ErrorRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Reorder;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;

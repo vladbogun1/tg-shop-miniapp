@@ -1,15 +1,15 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.service.OrderAdjustmentService;
-import com.maxsolch.shop.service.OrderQueryService;
+import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.returns.domain.OrderReturn;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.web.dto.OrderDetailDto;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.api.OrderDetailDto;
 
 import java.util.ArrayList;
 import java.util.HashMap;

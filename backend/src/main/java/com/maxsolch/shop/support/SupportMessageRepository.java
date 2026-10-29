@@ -1,6 +1,6 @@
 package com.maxsolch.shop.support;
 
-import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.order.domain.SenderType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

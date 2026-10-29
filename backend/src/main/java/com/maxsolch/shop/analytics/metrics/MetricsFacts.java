@@ -1,7 +1,7 @@
 package com.maxsolch.shop.analytics.metrics;
 
-import com.maxsolch.shop.domain.OrderMoney;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderStatus;
 
 import java.time.Instant;
 import java.util.HashMap;

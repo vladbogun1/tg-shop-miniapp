@@ -8,7 +8,7 @@ import com.maxsolch.shop.support.SupportDtos.CountDto;
 import com.maxsolch.shop.support.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.SupportDtos.ThreadDto;
 import com.maxsolch.shop.platform.web.SecurityUtil;
-import com.maxsolch.shop.web.dto.SendMessageRequest;
+import com.maxsolch.shop.order.api.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -1,0 +1,127 @@
+package com.maxsolch.shop.order.app;
+
+/**
+ * Domain events published by {@link OrderService} instead of calling Telegram inline.
+ *
+ * <p>Notifications used to be sent from the middle of the write transaction, so a slow or
+ * rate-limited Telegram API held a database connection (and the row locks taken for stock) open for
+ * the whole round trip. These events are consumed after the transaction commits — see
+ * {@code OrderNotificationListener} — which also means a customer never gets a message about an
+ * order that then failed to save.
+ *
+ * <p>Ids are carried instead of entities: the listener runs in its own transaction and re-reads a
+ * fresh, managed instance, so any message ids the Telegram calls write back are persisted properly.
+ */
+public final class OrderEvents {
+
+    private OrderEvents() {
+    }
+
+    /** A new order was placed: channel card + DM to the customer. */
+    public record Created(byte[] orderId) {
+    }
+
+    /** Status moved: move the channel card, DM the customer, add/remove the dispatch card. */
+    public record StatusChanged(byte[] orderId) {
+    }
+
+    /**
+     * An admin exchanged goods in a paid order and sent it back to NEW / APPROVED: move the channel
+     * card, sync the dispatch card and (optionally) tell the customer what goes out instead.
+     */
+    public record Exchanged(byte[] orderId, boolean notifyCustomer, String givenSummary) {
+    }
+
+    /**
+     * Two orders became one (V71): both channel cards move, the seller's dispatch card follows the
+     * order that stays, and (optionally) the customer is told what is left to pay.
+     */
+    public record Merged(byte[] targetId, byte[] sourceId, boolean notifyCustomer) {
+    }
+
+    /**
+     * The customer opened a gift case and a discount dropped: its personal promo code was issued just
+     * now (once — the case opens once). The bot sends the code itself, not only the shop page.
+     */
+    public record GiftCasePromo(byte[] orderId, String code, int percent, long amountMinor,
+                                java.time.Instant expiresAt) {
+    }
+
+    /** Money arrived online (a monobank invoice succeeded) and was credited to the order. */
+    /** A return was registered in the wizard (V68): DM the customer what was accepted and refunded. */
+    public record Returned(byte[] orderId, boolean notifyCustomer, String itemsSummary, long refundMinor) {
+    }
+
+    public record PaymentReceived(byte[] orderId, long amountMinor) {
+    }
+
+    /** What changed in an order an admin edited, for the customer-facing message. */
+    public enum EditKind {
+        /** Composition/price changed. */
+        COMPOSITION,
+        /** A discount was applied. */
+        DISCOUNT,
+        /** A free gift was added. */
+        GIFT,
+        /** An admin gave a gift case (the prize stays a secret until the customer opens it). */
+        GIFT_CASE,
+        /** The tracking number was corrected after shipping: tell the customer the new one. */
+        TRACKING,
+        /** Recipient / delivery address corrected: refresh the seller's cards, nothing for the customer. */
+        DETAILS,
+        /** Nothing to tell the customer — only refresh the seller's dispatch card. */
+        SILENT
+    }
+
+    /**
+     * An admin edited the order.
+     *
+     * @param notifyCustomer whether the customer should be messaged at all
+     */
+    public record Edited(byte[] orderId,
+                         EditKind kind,
+                         boolean notifyCustomer,
+                         String productTitle,
+                         String variantName,
+                         int quantity) {
+
+        public static Edited silent(byte[] orderId) {
+            return new Edited(orderId, EditKind.SILENT, false, null, null, 0);
+        }
+
+        public static Edited of(byte[] orderId, EditKind kind, boolean notifyCustomer) {
+            return new Edited(orderId, kind, notifyCustomer, null, null, 0);
+        }
+    }
+
+    /**
+     * An admin deleted the order for good. The row is gone, so everything the after-commit cleanup
+     * needs travels with the event: the seller's dispatch card to take down and the private chat
+     * attachments ({@code chat/...} object keys) to remove from storage.
+     */
+    public record Deleted(byte[] orderId, Integer dispatchMessageId, java.util.List<String> attachmentKeys) {
+    }
+
+    /** The customer asked to cancel a paid order: Telegram topic + push to the admins. */
+    public record CancelRequested(byte[] orderId) {
+    }
+
+    /** An admin approved (rejected + refund) or declined the customer's cancellation request: DM the customer. */
+    public record CancelRequestResolved(byte[] orderId, boolean approved) {
+    }
+
+    /**
+     * A chat message was posted. Admin messages DM the customer; customer messages ping admins.
+     *
+     * @param kind          TEXT / PHOTO / FILE
+     * @param text          the message text or photo caption (null when there is none)
+     * @param attachmentKey private object key of the photo or file (null for text)
+     */
+    public record ChatMessage(byte[] orderId, boolean fromAdmin, String preview,
+                              String kind, String text, String attachmentKey, String fileName) {
+
+        public ChatMessage(byte[] orderId, boolean fromAdmin, String preview) {
+            this(orderId, fromAdmin, preview, "TEXT", preview, null, null);
+        }
+    }
+}

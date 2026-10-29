@@ -1,8 +1,8 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderStatus;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -5,7 +5,7 @@ import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
-import com.maxsolch.shop.service.OrderEvents;
+import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.site.SiteRevalidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

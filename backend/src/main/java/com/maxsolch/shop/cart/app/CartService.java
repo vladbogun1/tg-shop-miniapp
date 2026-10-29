@@ -1,7 +1,7 @@
 package com.maxsolch.shop.cart.app;
 
 import com.maxsolch.shop.cart.domain.CartRules;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.cart.domain.Cart;
 import com.maxsolch.shop.cart.domain.CartItem;

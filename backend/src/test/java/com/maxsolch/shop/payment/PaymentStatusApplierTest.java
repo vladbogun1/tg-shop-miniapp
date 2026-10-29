@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

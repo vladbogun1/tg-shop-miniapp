@@ -70,7 +70,7 @@ public class ReviewReminderJob {
         List<ReviewStore.ReminderCandidate> candidates = store.reminderCandidates(deliveredFrom, deliveredTo, BATCH);
         int sent = 0;
         for (ReviewStore.ReminderCandidate c : candidates) {
-            if (!ReviewRules.reminderDue(com.maxsolch.shop.domain.OrderStatus.DELIVERED, c.deliveredAt(), null,
+            if (!ReviewRules.reminderDue(com.maxsolch.shop.order.domain.OrderStatus.DELIVERED, c.deliveredAt(), null,
                     c.tgUserId(), c.hasPendingLines(), now, days)) {
                 continue;
             }

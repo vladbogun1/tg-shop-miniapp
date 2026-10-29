@@ -1,11 +1,11 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.DeliveryMethod;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.translation.ContentTranslation;
 import com.maxsolch.shop.translation.ContentTranslationId;

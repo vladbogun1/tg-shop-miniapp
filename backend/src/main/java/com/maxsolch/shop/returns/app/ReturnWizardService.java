@@ -1,16 +1,16 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.service.AdminOrderQueries;
-import com.maxsolch.shop.service.MoneyLedger;
-import com.maxsolch.shop.service.OrderAdjustmentService;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.AdminOrderQueries;
+import com.maxsolch.shop.order.app.MoneyLedger;
+import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.OrderAdjustmentDtos;
+import com.maxsolch.shop.order.api.OrderAdjustmentDtos;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

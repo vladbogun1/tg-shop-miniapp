@@ -1,5 +1,6 @@
 package com.maxsolch.shop.domain;
 
+import com.maxsolch.shop.order.domain.OrderItem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

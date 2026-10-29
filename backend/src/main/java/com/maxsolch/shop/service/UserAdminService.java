@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.order.domain.TimeRange;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.web.dto.UserCardDto;
 import com.maxsolch.shop.web.dto.UserMetricsDto;

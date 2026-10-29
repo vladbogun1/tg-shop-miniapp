@@ -1,6 +1,6 @@
 package com.maxsolch.shop.costing;
 
-import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

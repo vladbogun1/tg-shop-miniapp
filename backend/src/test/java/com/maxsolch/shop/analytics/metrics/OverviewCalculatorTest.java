@@ -3,7 +3,7 @@ package com.maxsolch.shop.analytics.metrics;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.CategoryRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Overview;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

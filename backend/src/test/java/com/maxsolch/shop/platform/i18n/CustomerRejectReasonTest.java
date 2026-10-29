@@ -57,7 +57,7 @@ class CustomerRejectReasonTest {
 
     @Test
     void mergedIntoAnotherOrder() {
-        String stored = com.maxsolch.shop.service.OrderMergeService.MERGED_PREFIX + "803d9cb6";
+        String stored = com.maxsolch.shop.order.app.OrderMergeService.MERGED_PREFIX + "803d9cb6";
         assertThat(reasons.localize(stored, UK)).isEqualTo("Обʼєднано із замовленням #803d9cb6");
         assertThat(reasons.localize(stored, EN)).isEqualTo("Merged into order #803d9cb6");
     }

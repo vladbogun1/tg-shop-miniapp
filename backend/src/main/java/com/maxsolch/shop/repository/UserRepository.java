@@ -23,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 u.languageCode, u.premium, u.botBlocked,
                 (SELECT COUNT(o) FROM Order o WHERE o.tgUserId = u.telegramUserId),
                 (SELECT COALESCE(SUM(o2.totalMinor), 0) FROM Order o2
-                    WHERE o2.tgUserId = u.telegramUserId AND o2.status <> com.maxsolch.shop.domain.OrderStatus.REJECTED),
+                    WHERE o2.tgUserId = u.telegramUserId AND o2.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED),
                 u.createdAt, u.lastSeenAt, u.locale)
             FROM User u
             WHERE (:like IS NULL
@@ -79,7 +79,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             SELECT o.tgUserId, MAX(o.customerName), COUNT(o), COALESCE(SUM(o.totalMinor), 0)
             FROM Order o
             WHERE o.tgUserId IS NOT NULL AND o.tgUserId > 0
-              AND o.status <> com.maxsolch.shop.domain.OrderStatus.REJECTED
+              AND o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED
             GROUP BY o.tgUserId
             ORDER BY SUM(o.totalMinor) DESC
             """)

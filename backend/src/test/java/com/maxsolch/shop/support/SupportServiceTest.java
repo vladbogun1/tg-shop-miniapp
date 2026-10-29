@@ -2,7 +2,7 @@ package com.maxsolch.shop.support;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxDtos.Item;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -16,7 +16,7 @@ import com.maxsolch.shop.support.SupportDtos.ThreadDto;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.web.dto.SendMessageRequest;
+import com.maxsolch.shop.order.api.SendMessageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

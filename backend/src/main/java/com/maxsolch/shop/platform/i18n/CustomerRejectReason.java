@@ -34,7 +34,7 @@ public class CustomerRejectReason {
 
     /** Written by {@code OrderMergeService.merge}: "Объединён с заказом #1a2b3c4d". */
     private static final Pattern MERGED = Pattern.compile("^" + Pattern.quote(
-            com.maxsolch.shop.service.OrderMergeService.MERGED_PREFIX) + "([0-9a-f]{8})$");
+            com.maxsolch.shop.order.app.OrderMergeService.MERGED_PREFIX) + "([0-9a-f]{8})$");
 
     private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(UNPAID_PREFIX) + "(\\d+) ч$");
 

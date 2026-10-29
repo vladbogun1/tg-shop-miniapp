@@ -90,7 +90,7 @@ public class MarginService {
 
         /** What the bank is to take the fee from: the prepayment, or the whole order when paid in full online. */
         long onlineDueMinor() {
-            return !online ? 0 : com.maxsolch.shop.domain.OrderMoney.dueOnlineMinor(totalMinor, prepaymentMinor);
+            return !online ? 0 : com.maxsolch.shop.order.domain.OrderMoney.dueOnlineMinor(totalMinor, prepaymentMinor);
         }
 
         long revenue() {

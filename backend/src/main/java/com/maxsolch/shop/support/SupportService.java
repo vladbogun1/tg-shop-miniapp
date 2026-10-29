@@ -1,10 +1,10 @@
 package com.maxsolch.shop.support;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.MessageType;
+import com.maxsolch.shop.order.domain.MessageType;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
-import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -21,7 +21,7 @@ import com.maxsolch.shop.support.SupportDtos.ThreadDto;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.web.dto.SendMessageRequest;
+import com.maxsolch.shop.order.api.SendMessageRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;

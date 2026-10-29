@@ -1,11 +1,11 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.domain.DeliveryMethod;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderMoney;
-import com.maxsolch.shop.domain.OrderSource;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderSource;
+import com.maxsolch.shop.order.domain.OrderStatus;
 
 import static com.maxsolch.shop.platform.util.Texts.escHtml;
 import static com.maxsolch.shop.tg.TgFormat.money;

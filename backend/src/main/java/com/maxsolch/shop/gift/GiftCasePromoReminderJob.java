@@ -1,6 +1,6 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.tg.NotificationService;

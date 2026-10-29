@@ -1,7 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.service.TimeRange;
+import com.maxsolch.shop.order.domain.TimeRange;
 import com.maxsolch.shop.service.UserAdminService;
 import com.maxsolch.shop.web.dto.UserCardDto;
 import com.maxsolch.shop.web.dto.UserMetricsDto;

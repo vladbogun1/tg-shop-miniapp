@@ -1,0 +1,266 @@
+package com.maxsolch.shop.order.app;
+
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.order.domain.MessageType;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderMessage;
+import com.maxsolch.shop.order.domain.SenderType;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.media.MediaSigner;
+import com.maxsolch.shop.order.infra.OrderMessageRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.api.ConversationDto;
+import com.maxsolch.shop.order.api.MessageDto;
+import com.maxsolch.shop.order.api.SendMessageRequest;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Order-chat persistence + realtime broadcast.
+ *
+ * <p>Both side effects (STOMP fan-out and the Telegram ping) are deferred until the transaction
+ * commits, so subscribers never see a message that was rolled back. Customer messages notify the
+ * admins' topic; admin messages DM the customer.
+ */
+@Service
+public class MessageService {
+
+    private final OrderMessageRepository messageRepository;
+    private final OrderRepository orderRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher events;
+    private final MediaSigner mediaSigner;
+    private final Messages messages;
+
+    public MessageService(OrderMessageRepository messageRepository,
+                          OrderRepository orderRepository,
+                          SimpMessagingTemplate messagingTemplate,
+                          ApplicationEventPublisher events,
+                          MediaSigner mediaSigner,
+                          Messages messages) {
+        this.messageRepository = messageRepository;
+        this.orderRepository = orderRepository;
+        this.messagingTemplate = messagingTemplate;
+        this.events = events;
+        this.mediaSigner = mediaSigner;
+        this.messages = messages;
+    }
+
+    /** Default page size for the chat — roughly two screens of history. */
+    public static final int DEFAULT_PAGE = 50;
+    private static final int MAX_PAGE = 200;
+
+    /**
+     * A page of chat history, oldest-first for rendering.
+     *
+     * @param beforeId load messages older than this id (for "показать более ранние"); null = newest
+     */
+    @Transactional(readOnly = true)
+    public List<MessageDto> list(byte[] orderId, Long beforeId, Integer limit) {
+        int size = Math.min(Math.max(1, limit == null ? DEFAULT_PAGE : limit), MAX_PAGE);
+        List<OrderMessage> page =
+                messageRepository.findPage(orderId, beforeId, PageRequest.of(0, size));
+        List<MessageDto> dtos = new java.util.ArrayList<>(page.size());
+        // findPage returns newest-first so the database can stop early; the UI wants oldest-first.
+        for (int i = page.size() - 1; i >= 0; i--) {
+            dtos.add(toDto(page.get(i)));
+        }
+        return dtos;
+    }
+
+    @Transactional
+    public MessageDto postCustomerMessage(byte[] orderId, Long senderId, String senderName,
+                                          SendMessageRequest req) {
+        Order order = order(orderId);
+        OrderMessage saved = persist(order, SenderType.CUSTOMER, senderId, senderName, req);
+        MessageDto dto = toDto(saved);
+        // Both the WebSocket fan-out and the Telegram ping happen after this transaction commits:
+        // broadcasting earlier could push a message that a rollback then erases, and the customer
+        // is the sender here so only the admins get notified.
+        afterCommit(orderId, dto, false, saved);
+        return dto;
+    }
+
+    @Transactional
+    public MessageDto postAdminMessage(byte[] orderId, Long senderId, String senderName,
+                                       SendMessageRequest req) {
+        Order order = order(orderId);
+        OrderMessage saved = persist(order, SenderType.ADMIN, senderId, senderName, req);
+        MessageDto dto = toDto(saved);
+        afterCommit(orderId, dto, true, saved);
+        return dto;
+    }
+
+    /**
+     * Fans the message out once the transaction has committed: WebSocket subscribers first, then
+     * the Telegram side (a DM to the customer for admin messages, a ping in the admins' topic for
+     * customer messages) via {@link OrderEvents.ChatMessage}.
+     */
+    private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, OrderMessage saved) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    broadcast(orderId, dto);
+                }
+            });
+        } else {
+            broadcast(orderId, dto);
+        }
+        events.publishEvent(new OrderEvents.ChatMessage(orderId, fromAdmin, previewOf(saved),
+                saved.getType().name(), saved.getText(), saved.getAttachmentUrl(), saved.getFileName()));
+    }
+
+    /** Short preview of a message for notifications. */
+    private String previewOf(OrderMessage m) {
+        if (m.getText() != null && !m.getText().isBlank()) {
+            return m.getText();
+        }
+        return switch (m.getType()) {
+            case PHOTO -> ChatPreview.PHOTO;
+            case FILE -> ChatPreview.FILE;
+            default -> "";
+        };
+    }
+
+    /** Mark messages from the opposite side as read. */
+    @Transactional
+    public void markRead(byte[] orderId, SenderType readSenderType) {
+        // readSenderType = the side whose messages are now considered read by the viewer.
+        messageRepository.markRead(orderId, readSenderType, Instant.now());
+    }
+
+    /** Total unread ADMIN messages across a customer's orders (customer bell). */
+    @Transactional(readOnly = true)
+    public long totalUnreadForCustomer(long userId) {
+        return messageRepository.countUnreadForUser(userId, SenderType.ADMIN);
+    }
+
+    /** Total unread CUSTOMER messages across all orders (admin bell). */
+    @Transactional(readOnly = true)
+    public long totalUnreadForAdmin() {
+        return messageRepository.countUnreadBySenderType(SenderType.CUSTOMER);
+    }
+
+    // ----- conversations inbox (notifications modal) -----
+
+    /** A customer's orders with unread ADMIN messages, newest first (customer inbox). */
+    @Transactional(readOnly = true)
+    public List<ConversationDto> customerConversations(long userId) {
+        return messageRepository.orderIdsWithUnreadForUser(userId, SenderType.ADMIN).stream()
+                .map(this::buildCustomerConversation)
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(ConversationDto::lastAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed())
+                .limit(100)
+                .toList();
+    }
+
+    /** One inbox row; the preview of a photo/file is in the request's language (see ChatPreview). */
+    private ConversationDto buildCustomerConversation(byte[] orderId) {
+        Order o = orderRepository.findById(orderId).orElse(null);
+        if (o == null) {
+            return null;
+        }
+        OrderMessage last = messageRepository.findFirstByOrderIdOrderByCreatedAtDescIdDesc(orderId);
+        long unread = messageRepository.countByOrderIdAndSenderTypeAndReadAtIsNull(orderId, SenderType.ADMIN);
+        String shortId = UuidUtil.toString(orderId);
+        if (shortId != null && shortId.length() >= 8) {
+            shortId = shortId.substring(0, 8);
+        }
+        return new ConversationDto(
+                UuidUtil.toString(orderId),
+                shortId,
+                o.getCustomerName(),
+                o.getStatus() == null ? null : o.getStatus().name(),
+                last == null ? "" : stripHtml(ChatPreview.current(previewOf(last), messages)),
+                last == null ? null : last.getSenderType().name(),
+                last == null ? o.getCreatedAt() : last.getCreatedAt(),
+                unread);
+    }
+
+    /** Mark ALL unread customer messages read (admin "read all"). Returns count marked. */
+    @Transactional
+    public int markAllReadForAdmin() {
+        return messageRepository.markAllRead(SenderType.CUSTOMER, Instant.now());
+    }
+
+    /** Strip HTML tags + collapse whitespace for short text previews (SYSTEM cards carry HTML). */
+    private static String stripHtml(String s) {
+        if (s == null || s.isBlank()) {
+            return "";
+        }
+        return s.replaceAll("<[^>]+>", "").replace("&amp;", "&").replace("&lt;", "<")
+                .replace("&gt;", ">").replaceAll("\\s+", " ").trim();
+    }
+
+    private OrderMessage persist(Order order, SenderType senderType, Long senderId, String senderName,
+                                 SendMessageRequest req) {
+        MessageType type = parseType(req.type());
+        if ((req.text() == null || req.text().isBlank())
+                && (req.attachmentUrl() == null || req.attachmentUrl().isBlank())) {
+            throw new BadRequestException(messages.current("api.chat.needsContent"));
+        }
+        OrderMessage m = new OrderMessage();
+        m.setOrder(order);
+        m.setSenderType(senderType);
+        m.setSenderId(senderId);
+        m.setSenderName(senderName);
+        m.setType(type);
+        m.setText(req.text());
+        m.setAttachmentUrl(req.attachmentUrl());
+        m.setFileName(req.fileName());
+        m.setMimeType(req.mimeType());
+        m.setReplyToMessageId(req.replyToMessageId());
+        return messageRepository.saveAndFlush(m);
+    }
+
+    private void broadcast(byte[] orderId, MessageDto dto) {
+        messagingTemplate.convertAndSend("/topic/orders/" + UuidUtil.toString(orderId) + "/chat", dto);
+    }
+
+    private MessageType parseType(String type) {
+        if (type == null || type.isBlank()) {
+            return MessageType.TEXT;
+        }
+        try {
+            return MessageType.valueOf(type.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("unknown message type: " + type);
+        }
+    }
+
+    private Order order(byte[] orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
+    }
+
+    private MessageDto toDto(OrderMessage m) {
+        return new MessageDto(
+                m.getId(),
+                UuidUtil.toString(m.getOrder().getId()),
+                m.getSenderType().name(),
+                m.getSenderName(),
+                m.getType().name(),
+                m.getText(),
+                // Attachments live in a private bucket; the client gets a short-lived signed link
+                // rather than a raw object key it could never fetch (and that anyone else could).
+                mediaSigner.signedUrl(m.getAttachmentUrl()),
+                m.getFileName(),
+                m.getMimeType(),
+                m.getReplyToMessageId(),
+                m.getCreatedAt(),
+                m.getReadAt());
+    }
+}

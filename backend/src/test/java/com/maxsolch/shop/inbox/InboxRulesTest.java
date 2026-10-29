@@ -1,7 +1,7 @@
 package com.maxsolch.shop.inbox;
 
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.inbox.InboxDtos.Group;
 import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxDtos.Item;

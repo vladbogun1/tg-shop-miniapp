@@ -6,7 +6,7 @@ import com.maxsolch.shop.analytics.metrics.MetricsDtos.Stock;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.ItemFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.VariantFact;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

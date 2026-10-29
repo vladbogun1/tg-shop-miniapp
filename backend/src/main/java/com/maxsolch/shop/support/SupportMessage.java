@@ -1,7 +1,7 @@
 package com.maxsolch.shop.support;
 
-import com.maxsolch.shop.domain.MessageType;
-import com.maxsolch.shop.domain.SenderType;
+import com.maxsolch.shop.order.domain.MessageType;
+import com.maxsolch.shop.order.domain.SenderType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

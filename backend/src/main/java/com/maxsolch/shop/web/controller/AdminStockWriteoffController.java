@@ -2,13 +2,13 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.service.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.service.StockWriteoffReportService;
-import com.maxsolch.shop.service.TimeRange;
+import com.maxsolch.shop.order.domain.TimeRange;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import com.maxsolch.shop.web.dto.OrderAdjustmentDtos;
+import com.maxsolch.shop.order.api.OrderAdjustmentDtos;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

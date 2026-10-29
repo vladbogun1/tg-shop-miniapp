@@ -1,0 +1,1634 @@
+package com.maxsolch.shop.order.app;
+
+import com.maxsolch.shop.order.domain.OrderTransitions;
+import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.cart.app.CartService;
+import com.maxsolch.shop.cart.domain.CartRules;
+import com.maxsolch.shop.promo.app.PromoService;
+import com.maxsolch.shop.gift.CaseLowMargin;
+import com.maxsolch.shop.gift.GiftCaseTier;
+import com.maxsolch.shop.gift.GiftRegistryService;
+import com.maxsolch.shop.gift.GiftService;
+import com.maxsolch.shop.gift.OrderGiftCase;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.order.domain.CancelRequestStatus;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderMoneyMovement;
+import com.maxsolch.shop.order.domain.OrderSource;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderMessage;
+import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.promo.domain.PromoCode;
+import com.maxsolch.shop.order.domain.RejectReasonCode;
+import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.payment.PaymentInvoice;
+import com.maxsolch.shop.payment.PaymentInvoiceRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
+import com.maxsolch.shop.tg.NotificationService;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * Order lifecycle and business rules: stock, promo, delivery/payment snapshots, status transitions.
+ *
+ * <p>Telegram notifications are not sent from here: the service publishes {@link OrderEvents} and
+ * {@code OrderNotificationListener} delivers them after the transaction commits, so no database
+ * connection or stock row lock is ever held across a network call to Telegram.
+ */
+@Slf4j
+@Service
+public class OrderService {
+
+    /**
+     * Error code for "this promo code cannot be used". The cart validates codes before checkout, so
+     * reaching this means the last use was taken in the meantime — the app drops the code and lets
+     * the customer place the order at the price it then shows, instead of dead-ending them.
+     */
+    public static final String PROMO_REJECTED = "PROMO_REJECTED";
+
+    private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
+    private final PromoCodeRepository promoCodeRepository;
+    private final PaymentOptionRepository paymentOptionRepository;
+    private final NotificationService notificationService;
+    private final ApplicationEventPublisher events;
+    private final PromoService promoService;
+    private final CartService cartService;
+    private final Messages messages;
+    private final EntityManager entityManager;
+    private final OrderStock stock;
+    /** The order money journal: every movement of money on an order is recorded here. */
+    private final MoneyLedger moneyLedger;
+    /** monobank invoices of an order — guards {@link #delete}. */
+    private final PaymentInvoiceRepository paymentInvoices;
+    /** The gift for the order sum / the gift case. */
+    private final GiftService giftService;
+    /** Gifts already given to a person this month. */
+    private final GiftRegistryService giftRegistry;
+    /** Low-margin products of the gift case. */
+    private final CaseLowMargin caseLowMargin;
+
+    /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
+    @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
+    private int paymentDueHours = 24;
+
+    private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
+                        OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
+        if (amountMinor != 0) {
+            moneyLedger.record(order.getId(), kind, channel, amountMinor, source, adminName, note, invoiceExtId);
+        }
+    }
+
+    public OrderService(OrderRepository orderRepository,
+                        ProductRepository productRepository,
+                        PromoCodeRepository promoCodeRepository,
+                        PaymentOptionRepository paymentOptionRepository,
+                        NotificationService notificationService,
+                        ApplicationEventPublisher events,
+                        PromoService promoService,
+                        CartService cartService,
+                        Messages messages,
+                        EntityManager entityManager,
+                        OrderStock stock,
+                        MoneyLedger moneyLedger,
+                        PaymentInvoiceRepository paymentInvoices,
+                        GiftService giftService,
+                        GiftRegistryService giftRegistry,
+                        CaseLowMargin caseLowMargin) {
+        this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
+        this.promoCodeRepository = promoCodeRepository;
+        this.paymentOptionRepository = paymentOptionRepository;
+        this.notificationService = notificationService;
+        this.events = events;
+        this.promoService = promoService;
+        this.cartService = cartService;
+        this.messages = messages;
+        this.entityManager = entityManager;
+        this.stock = stock;
+        this.moneyLedger = moneyLedger;
+        this.paymentInvoices = paymentInvoices;
+        this.giftService = giftService;
+        this.giftRegistry = giftRegistry;
+        this.caseLowMargin = caseLowMargin;
+    }
+
+    /**
+     * Validate availability + variants, resolve/apply promo (fixed beats percent), decrement
+     * stock (variant + product rollup), snapshot delivery & payment, persist with status NEW,
+     * then notify (channel card + optional customer DM).
+     */
+    @Transactional
+    public Order createOrder(CreateOrderCommand cmd) {
+        if (cmd.items() == null || cmd.items().isEmpty()) {
+            throw new BadRequestException(messages.current("api.order.noItems"));
+        }
+
+        DeliveryMethod deliveryMethod = parseDelivery(cmd.deliveryMethod());
+
+        // Accumulate duplicate (productId, variantId) lines into a single requested quantity.
+        Map<String, AccLine> acc = new LinkedHashMap<>();
+        for (CreateOrderCommand.Line line : cmd.items()) {
+            if (line.quantity() <= 0) {
+                throw new BadRequestException(messages.current("api.order.quantityPositive"));
+            }
+            String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
+            acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
+                    .quantity += line.quantity();
+        }
+
+        Order order = new Order();
+        order.setCurrency("UAH");
+        order.setStatus(OrderStatus.NEW);
+        order.setCustomerName(required(cmd.customerName(), "customerName"));
+        order.setPhone(required(cmd.phone(), "phone"));
+        order.setComment(cmd.comment());
+        order.setUserId(cmd.userId());
+        order.setTgUserId(cmd.tgUserId());
+        order.setTgUsername(cmd.tgUsername());
+        order.setSource(cmd.source() == null ? OrderSource.MINIAPP : cmd.source());
+
+        order.setDeliveryMethod(deliveryMethod);
+        if (deliveryMethod == DeliveryMethod.NOVA_POSHTA) {
+            order.setNpCityRef(cmd.npCityRef());
+            order.setNpCityName(cmd.npCityName());
+            order.setNpWarehouseRef(cmd.npWarehouseRef());
+            order.setNpWarehouseName(cmd.npWarehouseName());
+        }
+
+        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
+        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
+        if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
+            throw new BadRequestException(messages.current("api.order.paymentRequired"));
+        }
+        PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
+                .filter(PaymentOption::isActive)
+                .orElseThrow(() -> new BadRequestException(messages.current("api.order.paymentUnknown")));
+        order.setPaymentOptionId(po.getId());
+        order.setPaymentOptionTitle(po.getTitle());
+        order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        order.setPaymentDueAt(Instant.now().plus(java.time.Duration.ofHours(Math.max(1, paymentDueHours))));
+
+        long subtotal = 0;
+        List<Product> toSave = new ArrayList<>();
+        // Lock products in a deterministic order (by id): two concurrent orders touching the same
+        // pair of products would otherwise be able to deadlock against each other.
+        List<AccLine> lines = new ArrayList<>(acc.values());
+        lines.sort(Comparator.comparing(l -> l.productId));
+        // The gift for the order sum is locked in the same id order, up front: taking its row after
+        // the cart's could deadlock with an order that has the gift product in its cart.
+        // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
+        Optional<GiftService.GiftConfig> giftCfg = GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
+                ? Optional.empty() : giftService.giftConfig();
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
+        lines.forEach(l -> lockIds.add(l.productId));
+        giftCfg.ifPresent(g -> lockIds.addAll(g.productIds()));
+        for (String id : lockIds) {
+            // FOR UPDATE: the stock check and the decrement below must not interleave with another
+            // checkout, or both orders pass "one left in stock" and the shop oversells.
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        for (AccLine line : lines) {
+            Product product = locked.get(line.productId)
+                    .orElseThrow(() -> new BadRequestException(messages.current("api.order.productUnknown")));
+            if (!product.isActive() || product.isArchived()) {
+                throw new BadRequestException(messages.current("api.order.unavailable", product.getTitle()));
+            }
+
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProductId(product.getId());
+            item.setTitleSnapshot(product.getTitle());
+            item.setPriceMinorSnapshot(product.getPriceMinor());
+            item.setQuantity(line.quantity);
+
+            boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+            ProductVariant variant = null;
+            if (line.variantId != null && !line.variantId.isBlank()) {
+                variant = findVariant(product, line.variantId);
+                if (variant == null) {
+                    throw new BadRequestException(messages.current("api.order.variantMismatch", product.getTitle()));
+                }
+                item.setVariantId(variant.getId());
+                item.setVariantNameSnapshot(variant.getName());
+            } else if (hasVariants) {
+                throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
+            }
+            stock.requireAvailable(product, variant, line.quantity, cmd.userId());
+            stock.reserve(product, variant, line.quantity, item);
+
+            subtotal += product.getPriceMinor() * (long) line.quantity;
+            order.getItems().add(item);
+            toSave.add(product);
+        }
+
+        // Promo: fixed amount takes priority over percent.
+        long discount = 0;
+        PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
+        long lowMarginMinor = lowMarginMinor(order);
+        if (promo != null) {
+            discount = discountFor(promo, subtotal, promoExcluded(promo, lowMarginMinor, subtotal));
+            order.setPromoCode(promo.getCode());
+            promo.setUsesCount(promo.getUsesCount() + 1);
+            promoCodeRepository.save(promo);
+            if (cmd.tgUserId() != null) {
+                // The use is counted on the code now; leaving the hold in place would block one
+                // more use for the rest of the half hour.
+                promoService.consume(promo.getId(), cmd.tgUserId());
+            }
+        }
+
+        order.setSubtotalMinor(subtotal);
+        order.setDiscountMinor(discount);
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, discount));
+
+        // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
+        // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
+        boolean lowMargin = lowMarginMinor > 0;
+        OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
+                .orElse(null);
+
+        settleFreeOrder(order);
+
+        productRepository.saveAll(toSave);
+        Order saved = orderRepository.save(order);
+        stock.onOrderPlaced(cmd.userId(), saved);
+        if (drawn != null) {
+            drawn.setOrderId(saved.getId());
+            giftService.saveOrderCase(drawn);
+        }
+
+        // The ordered lines leave the customer's server cart in the same transaction, so every
+        // device sees them gone at once — and a failed order leaves the cart untouched.
+        if (cmd.userId() != null) {
+            cartService.removeOrdered(cmd.userId(), saved.getItems().stream()
+                    .map(i -> CartRules.LineKey.of(i.getProductId(), i.getVariantId()))
+                    .toList());
+        }
+
+        // Telegram is contacted only after this transaction commits (see
+        // OrderNotificationListener): otherwise the DB connection and the stock row locks stay
+        // held for the whole API round trip, and a customer could be told about an order that
+        // then failed to save.
+        events.publishEvent(new OrderEvents.Created(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * A sale the admin types in (V68): the checkout rules, source ADMIN, no payment deadline (the
+     * admin agreed on the payment with the buyer), and what was already received goes to the money
+     * journal with its channel.
+     */
+    @Transactional
+    public Order createAdminOrder(CreateOrderCommand cmd, long paidMinor, OrderMoneyMovement.Channel channel,
+                                  String adminName, String note) {
+        Order order = createOrder(cmd);
+        order.setPaymentDueAt(null);
+        orderRepository.save(order);
+        if (paidMinor > 0) {
+            return markPaid(order.getId(), paidMinor, channel, adminName,
+                    note == null || note.isBlank() ? "оплата при ручном заказе" : note);
+        }
+        return order;
+    }
+
+    /**
+     * Payment option of an exchange replacement: the original order's while it is still offered,
+     * otherwise the first active one (the rest of a dearer replacement is collected through it).
+     */
+    public String exchangePaymentOptionId(Order original) {
+        if (original.getPaymentOptionId() != null) {
+            Optional<PaymentOption> po = paymentOptionRepository.findById(original.getPaymentOptionId())
+                    .filter(PaymentOption::isActive);
+            if (po.isPresent()) {
+                return UuidUtil.toString(po.get().getId());
+            }
+        }
+        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
+                .findFirst()
+                .map(po -> UuidUtil.toString(po.getId()))
+                .orElseThrow(() -> new BadRequestException("нет активного способа оплаты для нового заказа"));
+    }
+
+    @Transactional
+    public Order approve(byte[] orderId) {
+        Order order = lock(orderId);
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.APPROVED)) {
+            throw new BadRequestException("одобрить можно только новый заказ");
+        }
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Same as ship: approving would leave the customer's open request hanging.
+            throw new BadRequestException(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+        }
+        order.setStatus(OrderStatus.APPROVED);
+        order.setApprovedAt(Instant.now());
+        // The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit.
+        return afterTransition(order);
+    }
+
+    @Transactional
+    public Order ship(byte[] orderId, String trackingNumber) {
+        return ship(orderId, trackingNumber, false);
+    }
+
+    /** {@link OrderService#ship} refuses an order whose online payment is missing unless the admin confirmed. */
+    public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
+
+    /**
+     * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or
+     *                    the whole order) has not arrived — e.g. agreed with the customer in the chat
+     */
+    @Transactional
+    public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
+        Order order = lock(orderId);
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.SHIPPED)) {
+            throw new BadRequestException("отправить можно только новый или одобренный заказ");
+        }
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Shipping would leave the customer's open request hanging forever (the inbox only
+            // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
+            throw new BadRequestException(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+        }
+        if (!allowUnpaid && OrderMoney.onlinePaymentMissing(order)) {
+            throw new BadRequestException((order.getPrepaymentMinor() > 0 ? "Предоплата" : "Онлайн-оплата")
+                    + " по заказу #" + shortId(order) + " не пришла (не хватает "
+                    + MoneyFormat.uah(OrderMoney.amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
+                    SHIP_UNPAID_CODE);
+        }
+        order.setStatus(OrderStatus.SHIPPED);
+        order.setShippedAt(Instant.now());
+        if (trackingNumber != null && !trackingNumber.isBlank()) {
+            order.setTrackingNumber(trackingNumber.trim());
+        }
+        return afterTransition(order);
+    }
+
+    @Transactional
+    public Order deliver(byte[] orderId) {
+        Order order = lock(orderId);
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.DELIVERED)) {
+            throw new BadRequestException("доставленным можно отметить только отправленный заказ");
+        }
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(Instant.now());
+        // Delivered ⇒ fully settled (COD collected on delivery + any prepayment). Record the
+        // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
+        // lowered: after an exchange for something cheaper the customer paid more than the new
+        // total, and the metrics read that overpayment to tell a refunded difference from a return.
+        // Units refused at the branch (partial pickup) were never paid for: left out.
+        long receivedBefore = order.getReceivedMinor();
+        order.setReceivedMinor(Math.max(order.getReceivedMinor(), OrderMoney.collectableMinor(order)));
+        ledger(order, OrderMoneyMovement.Kind.PAYMENT,
+                order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
+                        ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
+                order.getReceivedMinor() - receivedBefore, OrderMoneyMovement.Source.AUTO, null,
+                order.getUncollectedMinor() > 0
+                        ? "остаток при получении (частичный выкуп, не выкуплено "
+                                + MoneyFormat.uah(order.getUncollectedMinor()) + ")"
+                        : "остаток при получении (доставлен)", null);
+        if (!order.isPaid()) {
+            order.setPaid(true);
+            order.setPaidAt(Instant.now());
+        }
+        return afterTransition(order);
+    }
+
+    /**
+     * Customer-initiated cancellation — allowed only while the order is NOT paid and still
+     * NEW/APPROVED (e.g. a card problem). Restores stock and moves the order to REJECTED
+     * with a customer reason.
+     */
+    @Transactional
+    public Order cancelByCustomer(byte[] orderId, String reason) {
+        Order order = lock(orderId);
+        if (order.isPaid() || order.getReceivedMinor() > 0) {
+            // Paid orders go through a cancellation request (requestCancel) instead.
+            throw new BadRequestException(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
+        }
+        if (!OrderTransitions.isOpen(order)) {
+            throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
+        }
+        stock.restoreAll(order);
+        String r = reason == null ? "" : reason.trim();
+        if (r.length() > 500) {
+            r = r.substring(0, 500);
+        }
+        return rejectLocked(order, new RejectCause(Instant.now(),
+                r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r,
+                RejectReasonCode.CHANGED_MIND.name(), true));
+    }
+
+    /** Error code: the order is paid — the customer has to file a cancellation request. */
+    public static final String PAID_NEEDS_REQUEST = "PAID_NEEDS_REQUEST";
+    /** Error code: the order is past the point where the customer may cancel it (shipped, closed). */
+    public static final String CANNOT_CANCEL = "CANNOT_CANCEL";
+    /** Error code: a cancellation request already exists for this order (pending or resolved). */
+    public static final String CANCEL_REQUEST_EXISTS = "CANCEL_REQUEST_EXISTS";
+    /** Error code: the order is not paid — cancel it directly instead of requesting. */
+    public static final String CANCEL_REQUEST_UNPAID = "CANCEL_REQUEST_UNPAID";
+    /** Error code: the admin action needs a PENDING request. */
+    public static final String NO_PENDING_REQUEST = "NO_PENDING_REQUEST";
+
+    /**
+     * The customer asks to cancel a PAID order that has not shipped yet. Nothing changes in the
+     * order itself until an admin decides (approve = reject + restock + refund, decline = comment).
+     * One request per order: a declined one cannot be filed again.
+     */
+    @Transactional
+    public Order requestCancel(byte[] orderId, String reason) {
+        Order order = lock(orderId);
+        String r = reason == null ? "" : reason.trim();
+        if (r.isEmpty()) {
+            throw new BadRequestException(messages.current("api.cancelRequest.reasonRequired"));
+        }
+        if (r.length() > 500) {
+            throw new BadRequestException(messages.current("api.cancelRequest.reasonTooLong", 500));
+        }
+        if (order.getCancelRequestStatus() != null) {
+            throw new BadRequestException(messages.current(
+                    CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus())
+                            ? "api.cancelRequest.declinedBefore" : "api.cancelRequest.exists"),
+                    CANCEL_REQUEST_EXISTS);
+        }
+        if (!OrderTransitions.isOpen(order)) {
+            throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
+        }
+        if (!order.isPaid() && order.getReceivedMinor() <= 0) {
+            throw new BadRequestException(messages.current("api.cancelRequest.unpaid"), CANCEL_REQUEST_UNPAID);
+        }
+        order.setCancelRequestStatus(CancelRequestStatus.PENDING.name());
+        order.setCancelRequestReason(r);
+        order.setCancelRequestedAt(Instant.now());
+        order.setCancelRequestResolvedAt(null);
+        order.setCancelRequestAdminComment(null);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.CancelRequested(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * Admin approves a pending cancellation request: the order is rejected (CHANGED_MIND), the
+     * goods go back to stock and the request is closed. The refund itself is made by the caller
+     * after this transaction commits (monobank is never called inside a transaction).
+     */
+    @Transactional
+    public Order approveCancelRequest(byte[] orderId, String comment) {
+        Order order = lock(orderId);
+        requirePendingRequest(order);
+        if (!OrderTransitions.isOpen(order)) {
+            throw new BadRequestException("заказ уже " + order.getStatus() + " — отмена по запросу невозможна",
+                    CANNOT_CANCEL);
+        }
+        Instant now = Instant.now();
+        stock.restoreAll(order);
+        order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
+        order.setCancelRequestResolvedAt(now);
+        order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
+        Order saved = rejectLocked(order, new RejectCause(now,
+                byRequestReason(order.getCancelRequestReason()),
+                RejectReasonCode.CHANGED_MIND.name(), true));
+        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        return saved;
+    }
+
+    /** Admin declines a pending request; the comment (required) is shown to the customer. */
+    @Transactional
+    public Order declineCancelRequest(byte[] orderId, String comment) {
+        Order order = lock(orderId);
+        requirePendingRequest(order);
+        String c = comment == null ? "" : comment.trim();
+        if (c.isEmpty()) {
+            throw new BadRequestException("напишите покупателю, почему отмена невозможна");
+        }
+        if (c.length() > 1000) {
+            throw new BadRequestException("комментарий длиннее 1000 символов");
+        }
+        order.setCancelRequestStatus(CancelRequestStatus.DECLINED.name());
+        order.setCancelRequestResolvedAt(Instant.now());
+        order.setCancelRequestAdminComment(c);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), false));
+        return saved;
+    }
+
+    private static void requirePendingRequest(Order order) {
+        if (!CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            throw new BadRequestException("нет активного запроса отмены", NO_PENDING_REQUEST);
+        }
+    }
+
+    /** «Отменён по запросу покупателя: причина», без висящего двоеточия при пустой причине. */
+    private static String byRequestReason(String requestReason) {
+        return nz(requestReason).isBlank()
+                ? CustomerRejectReason.BY_REQUEST
+                : CustomerRejectReason.BY_REQUEST + ": " + requestReason;
+    }
+
+    private static String nz(String s) {
+        return s == null ? "" : s;
+    }
+
+    /**
+     * Admin reject/cancel. Allowed from ANY status (incl. DELIVERED — e.g. a customer
+     * return at Nova Poshta). {@code restock} controls whether the items go back on the
+     * shelf (skip it when the returned goods are not in sellable condition).
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, boolean restock) {
+        return reject(orderId, reason, null, restock);
+    }
+
+    /**
+     * Admin reject with a reason code from the fixed list ({@link RejectReasonCode}) and an
+     * optional free-text explanation. Blank text is stored as null, so the customer gets the plain
+     * "order rejected" note instead of an empty "Reason:".
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock) {
+        return reject(orderId, reason, reasonCode, restock, false);
+    }
+
+    /** Shown when someone tries to reject an order the customer already received. */
+    public static final String REJECT_DELIVERED =
+            "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
+
+    /**
+     * @param returnInTransit only for a SHIPPED order (refused at the post office, sent back): the
+     *                        goods are not on the shelf yet, so nothing is restocked now — the
+     *                        order waits as «посылка едет назад» until it is received
+     *                        ({@link OrderAdjustmentService#receiveReturn}).
+     */
+    @Transactional
+    public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock,
+                        boolean returnInTransit) {
+        Order order = lock(orderId);
+        OrderStatus before = order.getStatus();
+        if (!OrderTransitions.allowed(before, OrderStatus.REJECTED)) {
+            if (before == OrderStatus.REJECTED) {
+                throw new BadRequestException("заказ уже отклонён");
+            }
+            // Rejecting a delivered order used to keep its «получено» (the automatic full amount
+            // set on delivery) — metrics then showed money that never was. A return records it right.
+            throw new BadRequestException(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
+        }
+        boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
+        if (inTransit) {
+            order.setReturnStatus(RETURN_IN_TRANSIT);
+            order.setReturnSentAt(Instant.now());
+            for (OrderItem item : order.getItems()) {
+                item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
+            }
+        } else if (restock) {
+            stock.restoreAll(order);
+        }
+        long kept = OrderMoney.keptMinor(order);
+        if (before == OrderStatus.SHIPPED && kept > 0 && order.getPrepaymentMinor() > 0
+                && kept <= order.getPrepaymentMinor()) {
+            // Owner's rule (25.10.2026): the prepayment of a refused parcel pays for its delivery
+            // both ways — it stays with the shop and is never refunded automatically.
+            ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
+                    OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
+        }
+        boolean requestWasOpen = CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus());
+        if (requestWasOpen) {
+            // Rejected by hand while the customer's request was open: the request is fulfilled
+            // (the refund, if any, stays the admin's call — the inbox keeps reminding).
+            order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
+            order.setCancelRequestResolvedAt(Instant.now());
+        }
+        Order saved = rejectLocked(order, new RejectCause(Instant.now(),
+                reason == null || reason.isBlank() ? null : reason.trim(),
+                reasonCode == null ? null : reasonCode.name(), false));
+        if (requestWasOpen) {
+            // The customer asked to cancel and got what they asked for: answer like approveCancelRequest does.
+            events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        }
+        return saved;
+    }
+
+    /** Dispatcher used by the admin board / status PATCH endpoint. */
+    @Transactional
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, boolean restock) {
+        return changeStatus(orderId, target, trackingNumber, reason, null, restock);
+    }
+
+    /** Same, with the structured reject reason. */
+    @Transactional
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, RejectReasonCode reasonCode, boolean restock) {
+        return changeStatus(orderId, target, trackingNumber, reason, reasonCode, restock, false);
+    }
+
+    /** Same, with the admin's «отправить без предоплаты» confirmation for SHIPPED. */
+    @Transactional
+    public Order changeStatus(byte[] orderId, OrderStatus target, String trackingNumber,
+                              String reason, RejectReasonCode reasonCode, boolean restock, boolean allowUnpaid) {
+        return switch (target) {
+            case APPROVED -> approve(orderId);
+            case SHIPPED -> ship(orderId, trackingNumber, allowUnpaid);
+            case DELIVERED -> deliver(orderId);
+            case REJECTED -> reject(orderId, reason, reasonCode, restock, false);
+            case NEW -> throw new BadRequestException("вернуть заказ в «Новые» нельзя");
+        };
+    }
+
+    @Transactional(readOnly = true)
+    public Order get(byte[] orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("order not found"));
+    }
+
+    /**
+     * The order, row-locked ({@code SELECT ... FOR UPDATE}) for the rest of the transaction, with
+     * its state as of AFTER the lock was granted.
+     *
+     * <p>The refresh matters: with open-in-view the request's persistence context usually already
+     * holds this order (the controller loaded it to check access/existence), and a locking query
+     * then hands back that cached instance untouched. Two concurrent rejects would both still see
+     * {@code NEW} after waiting for each other's lock — and both return the stock. Refreshing with
+     * the lock re-reads the committed row.
+     */
+    /**
+     * Loads the order under a row lock (SELECT … FOR UPDATE) and refreshes it, so concurrent
+     * admin / customer actions on one order run one after another. Package-private: also used by
+     * {@link OrderAdjustmentService}.
+     */
+    Order lock(byte[] orderId) {
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new NotFoundException("order not found"));
+        entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
+        return order;
+    }
+
+    /**
+     * Sync the seller "К ОТПРАВКЕ" topic with the current APPROVED orders. For each order we
+     * reconcile its card with Telegram: missing cards are posted, manually-deleted cards are
+     * re-posted, and existing cards are refreshed in place. Idempotent — pressing the button
+     * repeatedly never creates duplicates. Returns how many cards were (re)posted.
+     *
+     * <p>Deliberately NOT one transaction: that held a database connection (and the transaction)
+     * open across one Bot API round trip per approved order. The orders are read with their items
+     * up front, Telegram is called with no transaction open, and each changed card id is written
+     * back on its own in a short update.
+     */
+    public int broadcastDispatch() {
+        List<Order> approved = orderRepository.findWithItemsByStatus(OrderStatus.APPROVED);
+        int posted = 0;
+        for (Order o : approved) {
+            // Detached: open-in-view keeps these managed, and the card id set by Telegram sync
+            // would then be flushed as a full-row UPDATE of a possibly stale order (undoing, say,
+            // a status change made meanwhile). Only the targeted update below writes it.
+            entityManager.detach(o);
+            Integer before = o.getDispatchMessageId();
+            if (notificationService.syncDispatchCard(o)) {
+                posted++;
+            }
+            if (!Objects.equals(before, o.getDispatchMessageId())) {
+                orderRepository.updateDispatchMessageId(o.getId(), o.getDispatchMessageId());
+            }
+        }
+        return posted;
+    }
+
+    /**
+     * Sets the amount actually received (admin-only: the payment dialog, or an automatic
+     * settlement on delivery). {@code 0} clears the payment.
+     */
+    @Transactional
+    public Order markPaid(byte[] orderId, long receivedMinor) {
+        return markPaid(orderId, receivedMinor, OrderMoneyMovement.Channel.OTHER, null, null);
+    }
+
+    /**
+     * Same, naming how the money came ({@code channel}, the admin, a note) for the money journal:
+     * a raise is a PAYMENT through that channel, a cut a negative CORRECTION.
+     */
+    @Transactional
+    public Order markPaid(byte[] orderId, long receivedMinor, OrderMoneyMovement.Channel channel,
+                          String adminName, String note) {
+        Order order = lock(orderId);
+        if (receivedMinor < 0) {
+            throw new BadRequestException("сумма не может быть отрицательной");
+        }
+        if (receivedMinor > order.getTotalMinor()) {
+            // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" without
+            // the admin noticing the amount they typed was never what got saved.
+            throw new BadRequestException("получено больше суммы заказа ("
+                    + MoneyFormat.uah(order.getTotalMinor()) + ")");
+        }
+        long received = receivedMinor;
+        long diff = received - order.getReceivedMinor();
+        ledger(order, diff > 0 ? OrderMoneyMovement.Kind.PAYMENT : OrderMoneyMovement.Kind.CORRECTION,
+                channel == null ? OrderMoneyMovement.Channel.OTHER : channel, diff,
+                OrderMoneyMovement.Source.ADMIN, adminName,
+                note == null || note.isBlank() ? (diff > 0 ? "отмечено получено" : "исправлено «получено»") : note,
+                null);
+        order.setReceivedMinor(received);
+        boolean paid = received > 0 || order.getTotalMinor() == 0; // a free order stays paid (settleFreeOrder)
+        // Correcting the amount of an order that is already paid keeps the original payment date:
+        // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
+        boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
+        order.setPaid(paid);
+        order.setPaidAt(!paid ? null : wasPaid ? order.getPaidAt() : Instant.now());
+        Order saved = orderRepository.save(order);
+        // COD on the seller's card changes with the received amount — keep it in sync.
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    private static String shortId(Order order) {
+        String id = order.getId() == null ? "" : UuidUtil.toString(order.getId());
+        return id == null || id.length() < 8 ? String.valueOf(id) : id.substring(0, 8);
+    }
+
+    /**
+     * Money arrived online (a monobank invoice succeeded). Adds it to the received amount — which
+     * drives наложка — and marks the order paid. The status is NOT moved: an admin still confirms
+     * the order by hand (if the goods turn out unavailable, the money is refunded).
+     */
+    @Transactional
+    public Order recordOnlinePayment(byte[] orderId, long amountMinor) {
+        return recordOnlinePayment(orderId, amountMinor, null);
+    }
+
+    @Transactional
+    public Order recordOnlinePayment(byte[] orderId, long amountMinor, String invoiceExtId) {
+        Order order = lock(orderId);
+        long before = Math.max(0, order.getReceivedMinor());
+        long received = Math.min(order.getTotalMinor(), before + amountMinor);
+        // The journal books what the order counts (received is capped at the total), so it always
+        // matches received − refunded; the bank's full amount stays in the note.
+        long counted = Math.max(0, received - before);
+        ledger(order, OrderMoneyMovement.Kind.PAYMENT, OrderMoneyMovement.Channel.MONO, counted,
+                OrderMoneyMovement.Source.AUTO, null,
+                counted == amountMinor ? "оплата monobank"
+                        : "оплата monobank " + MoneyFormat.uah(amountMinor) + ", зачтено в пределах суммы заказа",
+                invoiceExtId);
+        order.setReceivedMinor(received);
+        if (received > 0 && !order.isPaid()) {
+            order.setPaid(true);
+            order.setPaidAt(Instant.now());
+        }
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
+        return saved;
+    }
+
+    /** A refund went through at monobank: book it as money given back to the customer. */
+    @Transactional
+    public Order recordOnlineRefund(byte[] orderId, long amountMinor) {
+        return recordOnlineRefund(orderId, amountMinor, null);
+    }
+
+    @Transactional
+    public Order recordOnlineRefund(byte[] orderId, long amountMinor, String invoiceExtId) {
+        Order order = lock(orderId);
+        ledger(order, OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.MONO, amountMinor,
+                OrderMoneyMovement.Source.AUTO, null, "возврат на карту (monobank)", invoiceExtId);
+        order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /**
+     * The online payment deadline passed with nothing paid: reject the order (reason
+     * PAYMENT_TIMEOUT) and put the goods back on the shelf. Re-checked under the row lock, so a
+     * payment that landed meanwhile wins. Returns null when the order no longer qualifies.
+     */
+    @Transactional
+    public Order expireUnpaid(byte[] orderId, Instant now) {
+        Order order = lock(orderId);
+        if (order.getStatus() != OrderStatus.NEW || order.isPaid() || order.getReceivedMinor() > 0
+                || order.getPaymentDueAt() == null || order.getPaymentDueAt().isAfter(now)) {
+            return null;
+        }
+        stock.restoreAll(order);
+        return rejectLocked(order, new RejectCause(now,
+                CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч",
+                RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
+    }
+
+    // ----- admin order editing: gifts & discounts -----
+
+    /** Admin adds a FREE gift product to an order: stock is decremented (unit is reserved),
+     *  the item is added at price 0 (so total/наложка don't change), gifts merge by product+variant. */
+    @Transactional
+    public Order addItem(byte[] orderId, String productId, String variantId, int qty,
+                         boolean gift, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (qty < 1) {
+            throw new BadRequestException("quantity must be >= 1");
+        }
+        // Locked: this path mutates stock too (an admin adding a gift reserves real units).
+        Product product = productRepository.findByIdForUpdate(toBytes(productId, "productId"))
+                .orElseThrow(() -> new BadRequestException("unknown product: " + productId));
+        if (product.isArchived()) {
+            throw new BadRequestException("product is archived: " + product.getTitle());
+        }
+        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        ProductVariant variant = null;
+        if (hasVariants) {
+            if (variantId == null || variantId.isBlank()) {
+                throw new BadRequestException("variant is required for product: " + product.getTitle());
+            }
+            variant = findVariant(product, variantId);
+            if (variant == null) {
+                throw new BadRequestException("variant does not belong to product: " + variantId);
+            }
+        }
+        byte[] vId = variant == null ? null : variant.getId();
+        OrderItem existing = order.getItems().stream()
+                .filter(i -> i.isGift() == gift)
+                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
+                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
+                .findFirst().orElse(null);
+        OrderItem item = existing != null ? existing : new OrderItem();
+        stock.reserve(product, variant, qty, item);
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + qty);
+        } else {
+            item.setOrder(order);
+            item.setProductId(product.getId());
+            item.setTitleSnapshot(product.getTitle());
+            item.setPriceMinorSnapshot(gift ? 0 : product.getPriceMinor());
+            item.setQuantity(qty);
+            item.setGift(gift);
+            item.setGiftValueMinor(gift ? product.getPriceMinor() : 0);
+            if (variant != null) {
+                item.setVariantId(variant.getId());
+                item.setVariantNameSnapshot(variant.getName());
+            }
+            order.getItems().add(item);
+        }
+        productRepository.save(product);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.Edited(
+                saved.getId(),
+                gift ? OrderEvents.EditKind.GIFT : OrderEvents.EditKind.COMPOSITION,
+                notifyCustomer,
+                product.getTitle(),
+                variant == null ? null : variant.getName(),
+                qty));
+        return saved;
+    }
+
+    /** Admin removes an order item (a gift or a line), restoring its stock and recomputing totals. */
+    @Transactional
+    public Order removeItem(byte[] orderId, long itemId) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        OrderItem item = order.getItems().stream()
+                .filter(i -> i.getId() != null && i.getId() == itemId)
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("order item not found"));
+        stock.restoreLine(item);
+        order.getItems().remove(item);
+        if (item.isAutoGift() && item.getCaseRarity() != null) {
+            // The case prize is gone: no case left to open.
+            order.setGiftCaseStatus(null);
+            order.setGiftCaseOpenedAt(null);
+            if (order.getGiftDiscountMinor() <= 0) {
+                order.setGiftTier(null);
+            }
+            giftService.deleteOrderCase(order.getId());
+        }
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /** Admin changes an item's quantity, reserving/releasing stock by the delta. */
+    @Transactional
+    public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (newQty < 1) {
+            throw new BadRequestException("quantity must be >= 1 (use remove to delete)");
+        }
+        OrderItem item = order.getItems().stream()
+                .filter(i -> i.getId() != null && i.getId() == itemId)
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("order item not found"));
+        int delta = newQty - item.getQuantity();
+        if (delta != 0) {
+            stock.resizeLine(item, delta);
+        }
+        item.setQuantity(newQty);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.of(
+                saved.getId(), OrderEvents.EditKind.COMPOSITION, notifyCustomer));
+        return saved;
+    }
+
+    /** Admin applies / updates / removes a discount: an existing promo code, or a manual amount/percent. */
+    @Transactional
+    public Order applyDiscount(byte[] orderId, String promoCode, Long amountMinor,
+                               Integer percent, boolean clear, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        long subtotal = order.getItems().stream()
+                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
+
+        // Release any previous REAL promo usage before re-applying.
+        releasePromoUsage(order.getPromoCode());
+
+        long discount = 0;
+        if (clear) {
+            order.setPromoCode(null);
+        } else if (promoCode != null && !promoCode.isBlank()) {
+            // An admin applying a code by hand is a deliberate decision, so customers' half-hour
+            // holds do not stand in their way — only the code's own usage limit does.
+            // The order's customer is passed for the owner check of personal codes (V44).
+            PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
+            discount = discountFor(p, subtotal, promoExcluded(p, lowMarginMinor(order), subtotal));
+            p.setUsesCount(p.getUsesCount() + 1);
+            promoCodeRepository.save(p);
+            order.setPromoCode(p.getCode());
+        } else if (amountMinor != null && amountMinor > 0) {
+            discount = Math.min(amountMinor, subtotal);
+            order.setPromoCode("Ручная скидка");
+        } else if (percent != null && percent > 0) {
+            int pc = Math.min(percent, 100);
+            discount = subtotal * pc / 100;
+            order.setPromoCode("Ручная скидка " + pc + "%");
+        } else {
+            order.setPromoCode(null);
+        }
+
+        order.setSubtotalMinor(subtotal);
+        // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
+        order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
+        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
+        settleFreeOrder(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.of(
+                saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
+        return saved;
+    }
+
+    // ----- archive (orders are never deleted) -----
+
+    /** {@link Order#getReturnStatus()}: the refused parcel is on its way back / has arrived. */
+    public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
+    public static final String RETURN_RECEIVED = "RECEIVED";
+
+    /**
+     * Archives a closed order (DELIVERED / REJECTED): it leaves the board, the lists and the
+     * customer's history, and keeps everything — items, chat, payments, receipts, money journal.
+     * Replaces the hard delete (25.10.2026: 49 orders were deleted for good, payment records went
+     * with them). Stock and promo usage are not touched: archiving changes visibility, not history.
+     * The main admin only (checked by the controller).
+     */
+    @Transactional
+    public Order archive(byte[] orderId, String reason, String adminName) {
+        Order order = lock(orderId);
+        if (order.getArchivedAt() != null) {
+            throw new BadRequestException("заказ уже в архиве");
+        }
+        if (RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+            throw new BadRequestException("посылка ещё едет назад — сначала отметьте «Посылка вернулась»");
+        }
+        OrderStatus status = order.getStatus();
+        if (status != OrderStatus.DELIVERED && status != OrderStatus.REJECTED) {
+            throw new BadRequestException(
+                    "в архив можно убрать только доставленный или отклонённый заказ — сначала отклоните его");
+        }
+        String why = reason == null ? "" : reason.trim();
+        if (why.length() < 3) {
+            throw new BadRequestException("напишите, почему заказ убирается в архив");
+        }
+        if (why.length() > 500) {
+            throw new BadRequestException("причина длиннее 500 символов");
+        }
+        requireNoOnlineMoneyInFlight(orderId);
+        order.setArchivedAt(Instant.now());
+        order.setArchivedBy(adminName);
+        order.setArchiveReason(why);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /** Back from the archive, as it was. */
+    @Transactional
+    public Order unarchive(byte[] orderId) {
+        Order order = lock(orderId);
+        if (order.getArchivedAt() == null) {
+            throw new BadRequestException("заказ не в архиве");
+        }
+        order.setArchivedAt(null);
+        order.setArchivedBy(null);
+        order.setArchiveReason(null);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    public static final String ARCHIVE_ONLINE_IN_FLIGHT =
+            "По заказу есть онлайн-платёж, который банк ещё обрабатывает — дождитесь итога в блоке «Онлайн-оплата»";
+
+    /**
+     * A payment the bank is still processing must land on a visible order: an archived one would
+     * hide the money from everybody who looks at the board.
+     */
+    private void requireNoOnlineMoneyInFlight(byte[] orderId) {
+        List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
+        if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
+                || PaymentInvoice.HOLD.equals(i.getStatus()))) {
+            throw new BadRequestException(ARCHIVE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
+        }
+    }
+
+    /** Paid (credited to the order) and not everything has gone back to the card yet. */
+    static boolean keepsOnlineMoney(PaymentInvoice inv) {
+        return inv.getAppliedAt() != null && inv.getRefundedMinor() < inv.getAmountMinor();
+    }
+
+    // ----- helpers -----
+
+    /** Order composition/discount may only be edited before dispatch. */
+    private void requireEditable(Order order) {
+        OrderStatus s = order.getStatus();
+        if (!OrderTransitions.isOpen(s)) {
+            throw new BadRequestException("заказ можно менять только в статусе «Новый» или «Одобрен»");
+        }
+    }
+
+    /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
+    void recomputeOrderTotals(Order order) {
+        recomputeTotals(order);
+    }
+
+    /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
+    private void recomputeTotals(Order order) {
+        OrderMoney.reprice(order);
+        settleFreeOrder(order);
+    }
+
+    /**
+     * Nothing to pay: a discount (a case prize, a manual one) covers the whole order. It counts as paid at
+     * once and has no payment deadline — otherwise it hung as «не оплачен» with a timer, and a NEW one was
+     * auto-cancelled for non-payment. If an item is added later, the paid order asks for a top-up as usual.
+     */
+    static void settleFreeOrder(Order order) {
+        if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
+                || !OrderTransitions.isOpen(order)) {
+            return;
+        }
+        order.setPaid(true);
+        order.setPaidAt(Instant.now());
+        order.setPaymentDueAt(null);
+    }
+
+    /**
+     * The gift for the order sum (settings «Подарок за сумму (кейсы)»): one unit at price 0, the
+     * variant with the most stock. Out of stock or hidden — the order simply goes without it.
+     */
+    private boolean addThresholdGift(Order order, Product product, List<Product> toSave, String caseRarity) {
+        if (!giftable(product)) {
+            return false;
+        }
+        ProductVariant variant = null;
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            variant = product.getVariants().stream()
+                    .filter(v -> v.getStock() > 0)
+                    .max(Comparator.comparingInt(ProductVariant::getStock))
+                    .orElseThrow();
+        }
+        OrderItem item = new OrderItem();
+        stock.reserve(product, variant, 1, item);
+        item.setOrder(order);
+        item.setProductId(product.getId());
+        item.setTitleSnapshot(product.getTitle());
+        item.setPriceMinorSnapshot(0);
+        item.setQuantity(1);
+        item.setGift(true);
+        item.setGiftValueMinor(product.getPriceMinor());
+        item.setAutoGift(true);
+        item.setCaseRarity(caseRarity);
+        if (variant != null) {
+            item.setVariantId(variant.getId());
+            item.setVariantNameSnapshot(variant.getName());
+            // A case prize with a choice of sizes: the fullest one is held until the customer picks theirs.
+            ProductVariant held = variant;
+            item.setVariantPending(caseRarity != null
+                    && product.getVariants().stream().anyMatch(v -> v != held && v.getStock() > 0));
+        }
+        order.getItems().add(item);
+        toSave.add(product);
+        return true;
+    }
+
+    /** Can be given away now: visible, and a unit (of some variant) in stock. */
+    private static boolean giftable(Product product) {
+        if (!product.isActive() || product.isArchived()) {
+            return false;
+        }
+        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+            return product.getVariants().stream().anyMatch(v -> v.getStock() > 0);
+        }
+        return product.getStock() > 0;
+    }
+
+    private static final java.security.SecureRandom CASE_RANDOM = new java.security.SecureRandom();
+
+    /**
+     * The gift of a new order: walks the tiers its total reaches, dearest first. The customer took the
+     * guaranteed discount ({@code choice} DISCOUNT, the tier offers one) — it comes off this order and
+     * there is no case. Otherwise a prize of the tier is drawn among those that can drop (a cheaper
+     * tier when none can). Without a case the single gift product is the fallback.
+     *
+     * @return the prize record to save once the order has its id; null = no case
+     */
+    private OrderGiftCase applyThresholdGift(Order order, GiftService.GiftConfig g, String choice,
+                                             Map<String, Optional<Product>> locked, List<Product> toSave,
+                                             boolean lowMargin) {
+        long total = order.getTotalMinor();
+        List<GiftService.TierConfig> reached = g.reached(total);
+        if (!reached.isEmpty() && GiftService.CHOICE_DISCOUNT.equalsIgnoreCase(String.valueOf(choice))) {
+            GiftService.TierConfig top = reached.get(0);
+            long d = top.guaranteedDiscountMinor(total);
+            if (d > 0) {
+                order.setGiftTier(top.tier().name());
+                order.setGiftDiscountMinor(d);
+                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
+                order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
+                return null;
+            }
+        }
+        long left = giftLimitLeft(order);
+        java.util.function.Predicate<String> giftable = giftableWithin(locked, left);
+        for (GiftService.TierConfig tier : reached) {
+            // An order with a low-margin product: product prizes drop rarer, discounts on the next order more often.
+            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftable, CASE_RANDOM,
+                    tier.productPercent(lowMargin));
+            if (prize.isPresent()) {
+                OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
+                if (rec != null) {
+                    rec.setLowMargin(lowMargin && tier.lowMarginProductPercent() < 100);
+                    return rec;
+                }
+            }
+        }
+        if (g.productId() != null && total >= g.thresholdMinor()) {
+            locked.getOrDefault(g.productId(), Optional.empty())
+                    .filter(p -> p.getPriceMinor() <= left)
+                    .ifPresent(p -> addThresholdGift(order, p, toSave, null));
+        }
+        return null;
+    }
+
+    private static java.util.function.Predicate<String> giftableIn(Map<String, Optional<Product>> locked) {
+        return id -> id != null && locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent();
+    }
+
+    /**
+     * What is left of the monthly gift limit of the order's person (docs/GIFT-CASE.md, «Реестр подарков
+     * и месячный лимит»), kopecks; {@link Long#MAX_VALUE} without a limit.
+     */
+    private long giftLimitLeft(Order order) {
+        return giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
+    }
+
+    /**
+     * A product can be given: giftable and no dearer than {@code left} — a product prize over the limit
+     * does not drop, the draw picks among the rest (discounts always can).
+     */
+    private static java.util.function.Predicate<String> giftableWithin(Map<String, Optional<Product>> locked, long left) {
+        return giftableIn(locked).and(id -> locked.get(id).map(p -> p.getPriceMinor() <= left).orElse(false));
+    }
+
+    /** Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening. */
+    private OrderGiftCase placeCasePrize(Order order, GiftCaseTier.Tier tier, GiftService.CaseEntry prize,
+                                         Map<String, Optional<Product>> locked, List<Product> toSave) {
+        String title = null;
+        if (!prize.isDiscount()) {
+            Product p = locked.getOrDefault(prize.productId(), Optional.empty()).orElse(null);
+            if (p == null || !addThresholdGift(order, p, toSave, prize.rarity())) {
+                return null;
+            }
+            title = p.getTitle();
+        }
+        order.setGiftTier(tier.name());
+        order.setGiftCaseStatus(GIFT_CASE_SEALED);
+        order.setGiftCaseOpenedAt(null);
+        return GiftService.record(order.getId(), prize, title);
+    }
+
+    /**
+     * Customer opens the gift case of their order: SEALED → OPENED, exactly once. Only a paid order
+     * (the online part arrived) — otherwise a customer could order, peek and cancel. The prize was
+     * drawn by the server before (checkout / admin), opening only reveals it.
+     */
+    @Transactional
+    public Order openGiftCase(byte[] orderId) {
+        Order order = lock(orderId);
+        if (order.getGiftCaseStatus() == null) {
+            throw new BadRequestException(messages.current("api.giftCase.none"), GIFT_CASE_NONE);
+        }
+        if (GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
+            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GIFT_CASE_ALREADY_OPENED);
+        }
+        if (!giftCaseOpenable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GIFT_CASE_UNPAID);
+        }
+        order.setGiftCaseStatus(GIFT_CASE_OPENED);
+        order.setGiftCaseOpenedAt(Instant.now());
+        return orderRepository.save(order);
+    }
+
+    /** A sealed case can be opened: the order is paid (online part arrived) and not rejected. */
+    public static boolean giftCaseOpenable(Order order) {
+        if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
+            return false;
+        }
+        return order.isPaid() || (order.getReceivedMinor() > 0 && OrderMoney.amountDueMinor(order) == 0);
+    }
+
+    /** The prize line of the order's case (a product prize that is still in the order). */
+    public static Optional<OrderItem> casePrizeLine(Order order) {
+        return order.getItems().stream().filter(i -> i.isAutoGift() && i.getCaseRarity() != null).findFirst();
+    }
+
+    /** Swapping the case prize is possible while the order is still being put together. */
+    public static boolean giftCaseSwappable(Order order) {
+        return GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())
+                && OrderTransitions.isOpen(order)
+                && casePrizeLine(order).isPresent();
+    }
+
+    /**
+     * The customer swaps the opened case's product prize for a code (GiftCaseService decides whether
+     * it is similar and what it is worth): the line leaves the order and its unit goes back to stock.
+     */
+    @Transactional
+    public Order removeCasePrizeForSwap(byte[] orderId) {
+        Order order = lock(orderId);
+        if (!giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GIFT_CASE_SWAP_UNAVAILABLE);
+        }
+        OrderItem item = casePrizeLine(order).orElseThrow();
+        stock.restoreLine(item);
+        order.getItems().remove(item);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /** A size the customer may pick for the case prize: in stock, or the one held for them now. */
+    public record PrizeSize(String variantId, String name, boolean current) {
+    }
+
+    /**
+     * Sizes of the case prize line to choose from (empty when the prize has none): the one held now and
+     * every other one in stock, in the product's order.
+     */
+    @Transactional(readOnly = true)
+    public List<PrizeSize> casePrizeSizes(Order order) {
+        OrderItem line = casePrizeLine(order).orElse(null);
+        if (line == null || line.getVariantId() == null) {
+            return List.of();
+        }
+        Product product = productRepository.findById(line.getProductId()).orElse(null);
+        if (product == null || product.getVariants() == null) {
+            return List.of();
+        }
+        return product.getVariants().stream()
+                .sorted(Comparator.comparingInt(ProductVariant::getSortOrder))
+                .filter(v -> v.getStock() > 0 || java.util.Arrays.equals(v.getId(), line.getVariantId()))
+                .map(v -> new PrizeSize(UuidUtil.toString(v.getId()), v.getName(),
+                        java.util.Arrays.equals(v.getId(), line.getVariantId())))
+                .toList();
+    }
+
+    /**
+     * The customer picks the size of the opened case's product prize while the order is still being put
+     * together: the held unit goes back to stock and one of the chosen size is reserved instead. Picking
+     * the held size just confirms it. 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone.
+     */
+    @Transactional
+    public Order chooseCasePrizeSize(byte[] orderId, String variantId) {
+        Order order = lock(orderId);
+        if (!giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+        }
+        OrderItem item = casePrizeLine(order).orElseThrow();
+        Product product = productRepository.findByIdForUpdate(item.getProductId()).orElse(null);
+        ProductVariant target = product == null || variantId == null ? null : findVariant(product, variantId);
+        if (target == null || item.getVariantId() == null) {
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+        }
+        if (!java.util.Arrays.equals(target.getId(), item.getVariantId())) {
+            if (target.getStock() < item.getQuantity()) {
+                throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+            }
+            stock.moveLine(product, target, item);
+            item.setVariantId(target.getId());
+            item.setVariantNameSnapshot(target.getName());
+        }
+        item.setVariantPending(false);
+        Order saved = orderRepository.save(order);
+        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        return saved;
+    }
+
+    /** The order locked for an update (the gift case reads and changes it in one transaction). */
+    @Transactional
+    public Order lockForGiftCase(byte[] orderId) {
+        return lock(orderId);
+    }
+
+    /**
+     * Admin gives a gift case of a tier to an order (any sum): the prize is drawn now among the tier's
+     * prizes (products in stock, discounts) and sealed into the order; the customer opens it once the
+     * order is paid.
+     */
+    @Transactional
+    public Order grantGiftCase(byte[] orderId, GiftCaseTier.Tier tier, boolean notifyCustomer) {
+        Order order = lock(orderId);
+        requireEditable(order);
+        if (order.getGiftCaseStatus() != null) {
+            throw new BadRequestException("У заказа уже есть кейс");
+        }
+        GiftService.TierConfig cfg = giftService.tier(tier)
+                .orElseThrow(() -> new BadRequestException("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
+        // Prize rows locked in id order, like the checkout.
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        for (String id : new java.util.TreeSet<>(cfg.prizes().stream().map(GiftService.CaseEntry::productId)
+                .filter(java.util.Objects::nonNull).toList())) {
+            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+        }
+        boolean lowMargin = hasLowMargin(order);
+        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableWithin(locked, giftLimitLeft(order)),
+                        CASE_RANDOM, cfg.productPercent(lowMargin))
+                .orElseThrow(() -> new BadRequestException(
+                        "Ни одного приза этого кейса нет в наличии или в пределах месячного лимита подарков покупателя"));
+        List<Product> toSave = new ArrayList<>();
+        OrderGiftCase rec = placeCasePrize(order, tier, prize, locked, toSave);
+        if (rec == null) {
+            throw new BadRequestException("Приз закончился — попробуйте ещё раз");
+        }
+        rec.setLowMargin(lowMargin && cfg.lowMarginProductPercent() < 100);
+        productRepository.saveAll(toSave);
+        recomputeTotals(order);
+        Order saved = orderRepository.save(order);
+        rec.setOrderId(saved.getId());
+        giftService.saveOrderCase(rec);
+        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
+                null, null, 1));
+        return saved;
+    }
+
+    public static final String GIFT_CASE_SEALED = "SEALED";
+    public static final String GIFT_CASE_OPENED = "OPENED";
+    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
+    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
+    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
+    public static final String GIFT_CASE_SWAP_UNAVAILABLE = "GIFT_CASE_SWAP_UNAVAILABLE";
+    public static final String GIFT_CASE_SIZE_UNAVAILABLE = "GIFT_CASE_SIZE_UNAVAILABLE";
+
+    /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
+    private void releasePromoUsage(String code) {
+        if (code == null || code.isBlank()) {
+            return;
+        }
+        // Locked like the checkout's increment, or the two could overwrite each other's count.
+        promoCodeRepository.findByCodeForUpdate(code).ifPresent(p -> {
+            if (p.getUsesCount() > 0) {
+                p.setUsesCount(p.getUsesCount() - 1);
+                promoCodeRepository.save(p);
+            }
+        });
+    }
+
+    /**
+     * Why and when an order is rejected: what the four paths to REJECTED (customer cancel, approved
+     * cancel request, admin reject, payment timeout) write on the order. The paths differ in what
+     * they do BEFORE this (stock, money, the cancel request), not in this part.
+     *
+     * @param cancelledByCustomer set the flag; {@code false} leaves it as it is (never true before a reject)
+     */
+    private record RejectCause(Instant at, String reason, String reasonCode, boolean cancelledByCustomer) {
+    }
+
+    /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
+    private Order rejectLocked(Order order, RejectCause cause) {
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(cause.at());
+        order.setRejectReason(cause.reason());
+        order.setRejectReasonCode(cause.reasonCode());
+        if (cause.cancelledByCustomer()) {
+            order.setCancelledByCustomer(true);
+        }
+        return afterTransition(order);
+    }
+
+    /**
+     * Persists a status transition and hands the Telegram side to the after-commit listener: it
+     * moves the channel card, DMs the customer, and adds or removes the seller's dispatch card
+     * depending on whether the order still awaits shipment.
+     */
+    private Order afterTransition(Order order) {
+        if (order.getStatus() == OrderStatus.REJECTED) {
+            // An unused code from the case (a discount prize, a swap) goes with the order.
+            giftService.revokeCasePromo(order.getId());
+        }
+        Order saved = orderRepository.save(order);
+        events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
+        return saved;
+    }
+
+    private ProductVariant findVariant(Product product, String variantId) {
+        return OrderStock.variantOf(product, toBytes(variantId, "variantId"));
+    }
+
+    /**
+     * Resolves an active promo code and takes a row lock on it, so the "usage limit reached" check
+     * and the {@code usesCount++} that follows in the caller are atomic with respect to other
+     * checkouts. Without the lock a code limited to one use could be redeemed by several
+     * simultaneous orders.
+     */
+    private PromoCode resolvePromo(String code, Long tgUserId, boolean respectHolds) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        Optional<PromoCode> opt = promoCodeRepository.findByCodeAndActiveTrueForUpdate(code.trim());
+        if (opt.isEmpty()) {
+            // Russian, and tagged: this text is shown to the customer, and the app clears the
+            // dead code from the cart instead of leaving them stuck on the last step.
+            throw new BadRequestException(messages.current("api.promo.rejected"), PROMO_REJECTED);
+        }
+        PromoCode promo = opt.get();
+        // Personal codes (review bonus, V44): only the owner, and only until they expire.
+        String personal = PromoService.personalRejection(promo, tgUserId, Instant.now());
+        if (personal != null) {
+            throw new BadRequestException(messages.current(personal), PROMO_REJECTED);
+        }
+        // Remaining uses minus other customers' live holds: a code someone reserved from their cart
+        // must not be taken by a checkout that merely submitted first.
+        long left = respectHolds
+                ? promoService.remainingUses(promo, tgUserId)
+                : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
+        if (left <= 0) {
+            throw new BadRequestException(messages.current("api.promo.taken"), PROMO_REJECTED);
+        }
+        return promo;
+    }
+
+    /**
+     * Discount for a promo code against a subtotal. Fixed amount wins over percent, and both are
+     * capped at the subtotal so a misconfigured code (say 150%) can never produce a negative total
+     * or a stored discount larger than the order itself.
+     */
+    public static long discountFor(PromoCode promo, long subtotal) {
+        return discountFor(promo, subtotal, 0);
+    }
+
+    /**
+     * The same against the subtotal without {@code excludedMinor} (the low-margin products no promo code
+     * applies to, {@link #promoExcluded}); capped at what is left. Order: the excluded products come off
+     * first, then the percent (or amount), then the code's own ceiling ({@code max_discount_minor}, V63).
+     */
+    public static long discountFor(PromoCode promo, long subtotal, long excludedMinor) {
+        long base = Math.max(0, subtotal - Math.max(0, excludedMinor));
+        long discount = discountOn(promo, base);
+        return Math.min(discount, base);
+    }
+
+    /**
+     * What of the subtotal a code does not touch: the low-margin products («Упор на скидки») — no promo
+     * code applies to them, a case code or any other. A code on a cart of only such products is refused,
+     * so the use is not wasted.
+     */
+    private long promoExcluded(PromoCode promo, long lowMarginMinor, long subtotal) {
+        if (promo == null || lowMarginMinor <= 0) {
+            return 0;
+        }
+        if (subtotal - lowMarginMinor <= 0) {
+            throw new BadRequestException(messages.current("api.promo.caseExcluded"), PROMO_REJECTED);
+        }
+        return lowMarginMinor;
+    }
+
+    public static boolean isCasePromo(PromoCode promo) {
+        return promo != null && GiftService.PROMO_SOURCE.equals(promo.getSource());
+    }
+
+    /** Price × quantity of the order's own lines (not gifts) whose product is low-margin. */
+    private long lowMarginMinor(Order order) {
+        java.util.Set<String> ids = lowMarginIds();
+        return ids.isEmpty() ? 0 : order.getItems().stream()
+                .filter(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())))
+                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity())
+                .sum();
+    }
+
+    /** The order has a low-margin product of its own (not a gift): its case leans to discounts. */
+    private boolean hasLowMargin(Order order) {
+        java.util.Set<String> ids = lowMarginIds();
+        return !ids.isEmpty() && order.getItems().stream()
+                .anyMatch(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())));
+    }
+
+    private java.util.Set<String> lowMarginIds() {
+        return caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
+    }
+
+    private static long discountOn(PromoCode promo, long subtotal) {
+        long discount;
+        if (promo.getDiscountAmountMinor() > 0) {
+            discount = promo.getDiscountAmountMinor();
+        } else if (promo.getDiscountPercent() > 0) {
+            int percent = Math.min(100, promo.getDiscountPercent());
+            discount = subtotal * percent / 100;
+        } else {
+            discount = 0;
+        }
+        if (promo.getMaxDiscountMinor() > 0) {
+            discount = Math.min(discount, promo.getMaxDiscountMinor());
+        }
+        return Math.min(Math.max(0, discount), subtotal);
+    }
+
+    private DeliveryMethod parseDelivery(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException(messages.current("api.order.deliveryRequired"));
+        }
+        try {
+            return DeliveryMethod.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(messages.current("api.order.deliveryUnknown", value));
+        }
+    }
+
+    private byte[] toBytes(String uuid, String field) {
+        try {
+            return UuidUtil.toBytes(uuid);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException(messages.current("api.order.fieldInvalid", fieldLabel(field)));
+        }
+    }
+
+    /** The customer-facing name of a checkout field ("phone" → "телефон"); ids stay as they are. */
+    private String fieldLabel(String field) {
+        return switch (field) {
+            case "customerName", "phone" -> messages.current("api.order.field." + field);
+            default -> field;
+        };
+    }
+
+    private String required(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new BadRequestException(messages.current("api.order.fieldRequired", fieldLabel(field)));
+        }
+        return value.trim();
+    }
+
+    private static final class AccLine {
+        final String productId;
+        final String variantId;
+        int quantity;
+
+        AccLine(String productId, String variantId) {
+            this.productId = productId;
+            this.variantId = variantId;
+        }
+    }
+}

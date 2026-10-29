@@ -1,9 +1,10 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -29,14 +30,14 @@ import java.util.List;
  * already ({@link ProductRepository#findByIdForUpdate}); the others lock it themselves.
  */
 @Component
-class OrderStock {
+public class OrderStock {
 
     private final ProductRepository productRepository;
     private final Messages messages;
     private final LotLedger lots;
     private final PreorderQueueService queue;
 
-    OrderStock(ProductRepository productRepository, Messages messages, LotLedger lots, PreorderQueueService queue) {
+    public OrderStock(ProductRepository productRepository, Messages messages, LotLedger lots, PreorderQueueService queue) {
         this.productRepository = productRepository;
         this.messages = messages;
         this.lots = lots;
@@ -44,7 +45,7 @@ class OrderStock {
     }
 
     /** The variant of a product by id, or null (also when the product has no variants). */
-    static ProductVariant variantOf(Product product, byte[] variantId) {
+    public static ProductVariant variantOf(Product product, byte[] variantId) {
         if (product.getVariants() == null) {
             return null;
         }
@@ -60,7 +61,7 @@ class OrderStock {
      * Units on hold for other people in a pre-order queue are not for sale: the customer sees
      * {@code stock − held for others}. Their own hold counts as available to them.
      */
-    void requireAvailable(Product product, ProductVariant variant, int qty, Long userId) {
+    public void requireAvailable(Product product, ProductVariant variant, int qty, Long userId) {
         int held = queue.heldForOthers(product.getId(), variant == null ? null : variant.getId(), userId);
         if (held <= 0) {
             return;
@@ -83,7 +84,7 @@ class OrderStock {
      * units on an oversell — {@code Math.max(0, ...)} silently swallowed the difference — and then
      * handed the full quantity back on a cancellation, inventing goods that do not exist.
      */
-    void reserve(Product product, ProductVariant variant, int qty, OrderItem item) {
+    public void reserve(Product product, ProductVariant variant, int qty, OrderItem item) {
         if (variant != null) {
             if (variant.getStock() < qty) {
                 throw new BadRequestException(messages.current("api.order.outOfStock",
@@ -109,7 +110,7 @@ class OrderStock {
      * Returns qty to the shelf (inverse of {@link #reserve}; product already locked). With the order line
      * the units go back to the lots they came from; {@code item} null = a write-off restocked.
      */
-    void release(Product product, ProductVariant variant, int qty, OrderItem item) {
+    public void release(Product product, ProductVariant variant, int qty, OrderItem item) {
         if (variant != null) {
             variant.setStock(variant.getStock() + qty);
             syncRollup(product);
@@ -138,7 +139,7 @@ class OrderStock {
      * The buyer's places in the queues of what they just bought are done (a hold is used up). Call after
      * the order is saved; no-op for a guest.
      */
-    void onOrderPlaced(Long userId, Order saved) {
+    public void onOrderPlaced(Long userId, Order saved) {
         if (userId == null) {
             return;
         }
@@ -151,7 +152,7 @@ class OrderStock {
      * Returns every line of a cancelled order to stock. Product rows are locked in id order — the same order
      * checkout uses — so a cancellation and a checkout touching the same two products cannot deadlock.
      */
-    void restoreAll(Order order) {
+    public void restoreAll(Order order) {
         List<OrderItem> items = new ArrayList<>(order.getItems());
         items.sort(Comparator.comparing(i -> UuidUtil.toString(i.getProductId())));
         for (OrderItem item : items) {
@@ -163,7 +164,7 @@ class OrderStock {
      * Returns one line to stock — only the units not already put back by an earlier return
      * ({@link OrderItem#getRestockedQty()}), so nothing is restocked twice.
      */
-    void restoreLine(OrderItem item) {
+    public void restoreLine(OrderItem item) {
         // Units returned without «на склад» were written off (damaged etc.) — they never go back.
         restockUnits(item, item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty()));
     }
@@ -172,7 +173,7 @@ class OrderStock {
      * Puts {@code units} of one order line back on the shelf and records them on the line (partial returns
      * of {@link OrderAdjustmentService} too).
      */
-    void restockUnits(OrderItem item, int units) {
+    public void restockUnits(OrderItem item, int units) {
         if (units <= 0) {
             return;
         }
@@ -202,7 +203,7 @@ class OrderStock {
      * Inverse of {@link #restockUnits}: a cancelled return takes the units it put on the shelf back
      * into the order. Refused when they were sold meanwhile (not enough stock).
      */
-    void takeBackUnits(OrderItem item, int units) {
+    public void takeBackUnits(OrderItem item, int units) {
         if (units <= 0) {
             return;
         }
@@ -227,7 +228,7 @@ class OrderStock {
      * Admin changed a line's quantity by {@code delta} (not 0): takes or gives back the difference, product
      * locked here.
      */
-    void resizeLine(OrderItem item, int delta) {
+    public void resizeLine(OrderItem item, int delta) {
         Product product = productRepository.findByIdForUpdate(item.getProductId())
                 .orElseThrow(() -> new BadRequestException("product not found"));
         ProductVariant variant = item.getVariantId() == null ? null : variantOf(product, item.getVariantId());
@@ -243,7 +244,7 @@ class OrderStock {
      * Moves a line's units from the variant it holds to {@code target} (product already locked by the
      * caller; the caller checked the target has enough). The line's own variant fields stay the caller's.
      */
-    void moveLine(Product product, ProductVariant target, OrderItem item) {
+    public void moveLine(Product product, ProductVariant target, OrderItem item) {
         ProductVariant held = variantOf(product, item.getVariantId());
         if (held != null) {
             release(product, held, item.getQuantity(), item);
@@ -255,7 +256,7 @@ class OrderStock {
     // ------------------------------------------------------------------ units without a line
 
     /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
-    void restockProduct(byte[] productId, byte[] variantId, int units) {
+    public void restockProduct(byte[] productId, byte[] variantId, int units) {
         restockProduct(productId, variantId, units, null);
     }
 
@@ -263,7 +264,7 @@ class OrderStock {
      * The same for units that belong to an order line ({@code item}, may be null): they go back into the
      * stock lots they were taken from; units no lot accounts for land in the opening lot.
      */
-    void restockProduct(byte[] productId, byte[] variantId, int units, OrderItem item) {
+    public void restockProduct(byte[] productId, byte[] variantId, int units, OrderItem item) {
         if (units <= 0) {
             return;
         }

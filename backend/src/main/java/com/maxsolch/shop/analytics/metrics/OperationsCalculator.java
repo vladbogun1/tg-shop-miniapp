@@ -7,7 +7,7 @@ import com.maxsolch.shop.analytics.metrics.MetricsDtos.RejectStats;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.SpeedRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Violation;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts.OrderFact;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderStatus;
 
 import java.time.Duration;
 import java.time.Instant;

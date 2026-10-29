@@ -1,9 +1,9 @@
 package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;

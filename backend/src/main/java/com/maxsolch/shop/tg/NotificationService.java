@@ -2,14 +2,14 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderMoney;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.ReceiptKind;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;

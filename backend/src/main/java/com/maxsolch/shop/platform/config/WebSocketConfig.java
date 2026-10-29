@@ -1,8 +1,8 @@
 package com.maxsolch.shop.platform.config;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.JwtService;

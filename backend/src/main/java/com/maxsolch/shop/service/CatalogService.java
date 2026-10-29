@@ -6,7 +6,7 @@ import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.catalog.ProductCatalogFields;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.repository.OrderItemRepository;
+import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationService;

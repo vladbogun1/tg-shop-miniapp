@@ -1,17 +1,17 @@
 package com.maxsolch.shop.it;
 
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderMoney;
-import com.maxsolch.shop.domain.OrderMoneyMovement;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.service.OrderAdjustmentService;
-import com.maxsolch.shop.service.OrderAdjustmentService.LineOutcome;
-import com.maxsolch.shop.service.OrderAdjustmentService.ManualRefund;
-import com.maxsolch.shop.service.OrderAdjustmentService.ReturnPlan;
-import com.maxsolch.shop.service.OrderAdjustmentService.WizardLine;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderAdjustmentService.LineOutcome;
+import com.maxsolch.shop.order.app.OrderAdjustmentService.ManualRefund;
+import com.maxsolch.shop.order.app.OrderAdjustmentService.ReturnPlan;
+import com.maxsolch.shop.order.app.OrderAdjustmentService.WizardLine;
+import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

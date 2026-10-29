@@ -2,7 +2,7 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.order.domain.Order;
 
 /** Small formatting and config helpers shared by the Telegram notification classes. */
 final class TgFormat {

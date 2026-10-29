@@ -2,11 +2,11 @@ package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.DeliveryMethod;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderSource;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderSource;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;

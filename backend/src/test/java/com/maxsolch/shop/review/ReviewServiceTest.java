@@ -1,12 +1,12 @@
 package com.maxsolch.shop.review;
 
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.repository.OrderItemRepository;
-import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.order.infra.OrderItemRepository;
+import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.review.ReviewDtos.SubmitRequest;

@@ -1,16 +1,16 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderMoney;
 
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ConflictException;
 import lombok.extern.slf4j.Slf4j;

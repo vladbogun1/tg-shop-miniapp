@@ -10,8 +10,6 @@ import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.promo.app.PromoAdminService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.promo.api.PromoCodeDto;
-import com.maxsolch.shop.promo.api.PromoCodeUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

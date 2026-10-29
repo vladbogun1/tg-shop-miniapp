@@ -47,7 +47,7 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
      * here rather than in OrderRepository: it is a promo question, and JPQL can read any entity.
      */
     @Query("select o from Order o where o.promoCode = :code order by o.createdAt desc")
-    List<com.maxsolch.shop.domain.Order> ordersWithCode(@Param("code") String code,
+    List<com.maxsolch.shop.order.domain.Order> ordersWithCode(@Param("code") String code,
                                                        org.springframework.data.domain.Pageable pageable);
 
     /** How many orders carry this code (deleting a code that any order used is refused). */
@@ -60,6 +60,6 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
      */
     @Query("select o from Order o where o.promoCode like concat(:prefix, '%') and o.discountMinor > 0 "
             + "order by o.createdAt desc")
-    List<com.maxsolch.shop.domain.Order> ordersWithManualDiscount(@Param("prefix") String prefix,
+    List<com.maxsolch.shop.order.domain.Order> ordersWithManualDiscount(@Param("prefix") String prefix,
                                                                  org.springframework.data.domain.Pageable pageable);
 }
