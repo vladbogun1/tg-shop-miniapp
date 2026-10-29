@@ -44,7 +44,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | `cart` | корзина |
 | `promo` | промокоды, резервы, **один** генератор кода (сейчас 3 копии: подарки, отзывы, админка) |
 | `order` | оформление, жизненный цикл, деньги заказа, правки, слияние, антибот, запросы отмены, чат заказа, админская доска |
-| `returns` | возвраты, обмены, частичный выкуп, «едет назад» (из `OrderAdjustmentService`) |
+| `returns` | возвраты, обмены, частичный выкуп, «едет назад» (из `OrderAdjustmentService`, разобран на шаге 1в: `returns.app` — `Returns`, `ReturnReceiving`, `Exchanges`, `ReturnCancellation`, `DefectWriteoffs`, `AdminReturns`) |
 | `payment` | monobank, счета, чеки, возвраты денег |
 | `delivery` | Нова пошта (справочники; дальше — ТТН из ветки `np-integration`) |
 | `gift` | подарок за сумму, кейсы, реестр подарков |

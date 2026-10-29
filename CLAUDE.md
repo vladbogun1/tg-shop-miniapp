@@ -22,6 +22,6 @@
   настройки — `@ConfigurationProperties` (не `@Value`); фоновая задача — `@Scheduled` + `@SchedulerLock`;
   внешний HTTP — через `platform.http` (таймауты обязательны, ретрай только идемпотентных).
 - Статус заказа — только методами `Order`; деньги — minor-единицы, формулы в `OrderMoney`.
-- Не дописывать в `OrderAdjustmentService`, `NotificationService`, `AdminOrderController`:
+- Не дописывать в `NotificationService`, `AdminOrderController`:
   новая логика — отдельный класс в модуле. Контроллеры тонкие.
 - Число нарушений в `v2-baseline.txt` только уменьшается. Упала проверка — чинить код, не baseline.

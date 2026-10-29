@@ -382,7 +382,7 @@ preorder_subscriptions
 - `costing/LotLedger` — FIFO-списание партий. Вызывается из **всех мест, где сейчас меняется остаток**:
   создание заказа, отмена/отклонение (возврат), добавление/удаление/кол-во строки, подарки и призы кейсов,
   обмен, возврат на склад, списание/брак, ручная правка остатка в товаре. Список точек — по
-  `grep "setStock\|stock"` в `service/`, `gift/`, `OrderAdjustmentService`, `StockWriteoff*`.
+  `grep "setStock\|stock"` в `service/`, `gift/`, модуль `returns` (бывший `OrderAdjustmentService`), `StockWriteoff*`.
   Если партий не хватает (остаток был до учёта) — строка заказа без себестоимости, а не ошибка.
   Расхождение «stock ≠ сумма qty_left» видно в отчёте и выравнивается кнопкой.
 - `costing/MarginReportService` — отчёты §5А.3; `NbuRateClient` — курс НБУ (кэш на день, ошибка → ручной ввод).
