@@ -297,7 +297,7 @@ public class OrderService {
 
         order.setSubtotalMinor(subtotal);
         order.setDiscountMinor(discount);
-        order.setTotalMinor(Math.max(0, subtotal - discount));
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, discount));
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
@@ -1032,7 +1032,7 @@ public class OrderService {
         // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
-        order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
         settleFreeOrder(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
@@ -1411,7 +1411,7 @@ public class OrderService {
                 order.setGiftTier(top.tier().name());
                 order.setGiftDiscountMinor(d);
                 order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
-                order.setTotalMinor(Math.max(0, order.getSubtotalMinor() - order.getDiscountMinor()));
+                order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
                 return null;
             }
         }
