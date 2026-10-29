@@ -135,7 +135,6 @@ async function adminApi(req, res, path, query) {
       return send(res, 200, { seedHash: l.commitment, lockedAt: l.locked_at });
     }
     if ((path === "draw" || path === "reroll") && req.method === "POST") {
-      const b = await body(req);
       const r = await draw.drawRound(pool, who.tgId, path === "reroll", b.round);
       return send(res, 200, { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets });
     }

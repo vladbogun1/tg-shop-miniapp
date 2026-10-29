@@ -23,7 +23,8 @@ export async function lock(pool, by) {
   if (existing) return existing;
   // A lock is final: taken while pumpkins and orders still count, it would leave everyone after it out.
   if (Date.now() < config.endsAt.getTime()) {
-    throw new Error(`Збір ще триває до ${config.endsAt.toISOString().slice(0, 16).replace("T", " ")} UTC — фіксувати список зарано`);
+    const kyiv = new Date(config.endsAt.getTime() + config.tzOffsetMinutes * 60_000).toISOString().slice(0, 16).replace("T", " ");
+    throw new Error(`Збір ще триває до ${kyiv} (Київ) — фіксувати список зарано`);
   }
   // Staff and orders must come from the shop database right now, not from an empty fallback after an error.
   await freshFacts();
