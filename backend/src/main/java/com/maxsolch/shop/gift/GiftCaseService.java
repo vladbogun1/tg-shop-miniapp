@@ -12,7 +12,7 @@ import com.maxsolch.shop.gift.GiftDtos.SizeDto;
 import com.maxsolch.shop.gift.GiftDtos.SizeOption;
 import com.maxsolch.shop.gift.GiftDtos.SwapDto;
 import com.maxsolch.shop.service.CatalogService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.order.app.OrderEvents;
@@ -27,22 +27,22 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The gift case of an order (docs/GIFT-CASE.md). The prize was drawn at checkout (OrderService) and
+ * The gift case of an order (docs/GIFT-CASE.md). The prize was drawn at checkout (OrderGiftPrizes) and
  * already sits in the order; opening reveals it (a discount prize gets its personal code now), and a
  * product prize similar to what the customer bought may be swapped for a code.
  */
 @Service
 public class GiftCaseService {
 
-    private final OrderService orderService;
+    private final OrderGiftCases giftCases;
     private final GiftService giftService;
     private final CatalogService catalogService;
     private final JdbcTemplate jdbc;
     private final ApplicationEventPublisher events;
 
-    public GiftCaseService(OrderService orderService, GiftService giftService, CatalogService catalogService,
+    public GiftCaseService(OrderGiftCases giftCases, GiftService giftService, CatalogService catalogService,
                            JdbcTemplate jdbc, ApplicationEventPublisher events) {
-        this.orderService = orderService;
+        this.giftCases = giftCases;
         this.giftService = giftService;
         this.catalogService = catalogService;
         this.jdbc = jdbc;
@@ -52,7 +52,7 @@ public class GiftCaseService {
     /** POST …/gift-case/open: SEALED → OPENED once, only paid; a discount prize gets its code. */
     @Transactional
     public CaseOpenDto open(byte[] orderId, String lang) {
-        Order order = orderService.openGiftCase(orderId);
+        Order order = giftCases.openGiftCase(orderId);
         OrderGiftCase rec = giftService.orderCase(orderId).orElse(null);
         if (rec != null && rec.isDiscount() && rec.getPromoCode() == null) {
             PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getTier(), rec.getDiscountPercent(),
@@ -72,13 +72,13 @@ public class GiftCaseService {
      */
     @Transactional
     public CaseOpenDto swap(byte[] orderId, String lang) {
-        Order order = orderService.lockForGiftCase(orderId);
+        Order order = giftCases.lockForGiftCase(orderId);
         OrderGiftCase rec = giftService.orderCase(orderId).orElseThrow(GiftCaseService::swapUnavailable);
         SwapDto offer = swapOffer(order, rec);
         if (!offer.available()) {
             throw swapUnavailable();
         }
-        Order saved = orderService.removeCasePrizeForSwap(orderId);
+        Order saved = giftCases.removeCasePrizeForSwap(orderId);
         PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getTier(), 0, offer.amountMinor());
         rec.setPromoCode(promo.getCode());
         rec.setSwappedAt(Instant.now());
@@ -111,7 +111,7 @@ public class GiftCaseService {
     /** POST …/gift-case/size: the customer picks the size of the product prize (the hold moves to it). */
     @Transactional
     public SizeDto chooseSize(byte[] orderId, String variantId) {
-        return sizeDto(orderService.chooseCasePrizeSize(orderId, variantId));
+        return sizeDto(giftCases.chooseCasePrizeSize(orderId, variantId));
     }
 
     /** The size block of the case prize line; null when the prize has no sizes or has left the order. */
@@ -120,7 +120,7 @@ public class GiftCaseService {
         if (line == null || line.getVariantId() == null) {
             return null;
         }
-        List<OrderService.PrizeSize> sizes = orderService.casePrizeSizes(order);
+        List<OrderGiftCases.PrizeSize> sizes = giftCases.casePrizeSizes(order);
         if (sizes.isEmpty()) {
             return null;
         }

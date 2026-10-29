@@ -4,7 +4,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.order.app.OrderEvents;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderGiftCases;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class GiftCasePromoNotifyTest {
 
-    @Mock OrderService orderService;
+    @Mock OrderGiftCases orderService;
     @Mock GiftService giftService;
     @Mock CatalogService catalogService;
     @Mock JdbcTemplate jdbc;

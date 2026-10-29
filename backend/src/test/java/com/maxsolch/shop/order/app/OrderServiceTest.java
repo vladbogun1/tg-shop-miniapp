@@ -1309,14 +1309,14 @@ class OrderServiceTest {
     @Test
     void casePrizeSizesAreTheHeldOneAndThoseInStock() {
         SizedPrize s = sizedPrize(OrderStatus.NEW);
-        assertThat(service.casePrizeSizes(s.order())).extracting(OrderService.PrizeSize::name).containsExactly("M", "L");
-        assertThat(service.casePrizeSizes(s.order()).get(0).current()).isTrue();
+        assertThat(app.giftCases().casePrizeSizes(s.order())).extracting(OrderGiftCases.PrizeSize::name).containsExactly("M", "L");
+        assertThat(app.giftCases().casePrizeSizes(s.order()).get(0).current()).isTrue();
     }
 
     @Test
     void choosingAnotherSizeMovesTheHold() {
         SizedPrize s = sizedPrize(OrderStatus.APPROVED);
-        service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.l().getId()));
+        app.giftCases().chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.l().getId()));
         assertThat(s.m().getStock()).isEqualTo(4);
         assertThat(s.l().getStock()).isZero();
         assertThat(s.product().getStock()).isEqualTo(4); // rollup
@@ -1328,7 +1328,7 @@ class OrderServiceTest {
     @Test
     void choosingTheHeldSizeOnlyConfirmsIt() {
         SizedPrize s = sizedPrize(OrderStatus.NEW);
-        service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.m().getId()));
+        app.giftCases().chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.m().getId()));
         assertThat(s.m().getStock()).isEqualTo(3);
         assertThat(s.line().isVariantPending()).isFalse();
     }
@@ -1336,11 +1336,11 @@ class OrderServiceTest {
     @Test
     void aSizeOutOfStockOrAShippedOrderIsRefused() {
         SizedPrize s = sizedPrize(OrderStatus.NEW);
-        assertThatThrownBy(() -> service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.xl().getId())))
+        assertThatThrownBy(() -> app.giftCases().chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.xl().getId())))
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThat(s.line().isVariantPending()).isTrue();
         SizedPrize shipped = sizedPrize(OrderStatus.SHIPPED);
-        assertThatThrownBy(() -> service.chooseCasePrizeSize(shipped.order().getId(), UuidUtil.toString(shipped.l().getId())))
+        assertThatThrownBy(() -> app.giftCases().chooseCasePrizeSize(shipped.order().getId(), UuidUtil.toString(shipped.l().getId())))
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThat(shipped.l().getStock()).isEqualTo(1);
     }
@@ -1543,7 +1543,7 @@ class OrderServiceTest {
                 com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000)))));
         Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
 
-        Order granted = service.grantGiftCase(o.getId(), tier, true);
+        Order granted = app.giftCases().grantGiftCase(o.getId(), tier, true);
 
         assertThat(granted.getGiftCaseStatus()).isEqualTo(GiftCaseRules.GIFT_CASE_SEALED);
         assertThat(granted.getGiftTier()).isEqualTo("SILVER");
@@ -1552,11 +1552,11 @@ class OrderServiceTest {
         assertThat(prize.getStock()).isEqualTo(4);
         verify(gift).saveOrderCase(any());
         // a second case is refused
-        assertThatThrownBy(() -> service.grantGiftCase(o.getId(), tier, false))
+        assertThatThrownBy(() -> app.giftCases().grantGiftCase(o.getId(), tier, false))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("У заказа уже есть кейс");
         // and so is a closed order
         Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
-        assertThatThrownBy(() -> service.grantGiftCase(shipped.getId(), tier, false))
+        assertThatThrownBy(() -> app.giftCases().grantGiftCase(shipped.getId(), tier, false))
                 .isInstanceOf(DomainException.BadRequest.class);
     }
 }

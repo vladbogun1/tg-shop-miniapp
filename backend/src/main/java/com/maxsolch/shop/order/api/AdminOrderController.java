@@ -21,6 +21,7 @@ import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
 import com.maxsolch.shop.order.app.OrderEditing;
+import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
@@ -64,6 +65,7 @@ public class AdminOrderController {
     private final OrderLifecycle lifecycle;
     private final OrderPayments orderPayments;
     private final OrderArchive orderArchive;
+    private final OrderGiftCases giftCases;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
     private final AdminAuditService audit;
@@ -100,6 +102,7 @@ public class AdminOrderController {
                                 OrderLifecycle lifecycle,
                                 OrderPayments orderPayments,
                                 OrderArchive orderArchive,
+                                OrderGiftCases giftCases,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
                                 AdminAuditService audit,
@@ -115,6 +118,7 @@ public class AdminOrderController {
         this.lifecycle = lifecycle;
         this.orderPayments = orderPayments;
         this.orderArchive = orderArchive;
+        this.giftCases = giftCases;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.audit = audit;
@@ -355,7 +359,7 @@ public class AdminOrderController {
         com.maxsolch.shop.gift.GiftCaseTier.Tier tier = com.maxsolch.shop.gift.GiftService
                 .parseTier(body == null ? null : String.valueOf(body.get("tier")))
                 .orElse(com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER);
-        Order updated = orderService.grantGiftCase(load(id).getId(), tier, notify);
+        Order updated = giftCases.grantGiftCase(load(id).getId(), tier, notify);
         String prize = updated.getItems().stream()
                 .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
                 .map(i -> i.getTitleSnapshot() + " (" + i.getCaseRarity() + ")")

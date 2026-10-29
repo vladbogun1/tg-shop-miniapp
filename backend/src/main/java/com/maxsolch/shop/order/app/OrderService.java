@@ -1,41 +1,28 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.PromoDiscount;
-import com.maxsolch.shop.order.domain.GiftCaseRules;
-import com.maxsolch.shop.order.domain.OrderTransitions;
-import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
-import com.maxsolch.shop.gift.GiftCaseTier;
-import com.maxsolch.shop.gift.GiftRegistryService;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.gift.OrderGiftCase;
-import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.order.domain.CancelRequestStatus;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.order.domain.OrderMessage;
-import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.order.domain.RejectReasonCode;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -48,7 +35,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -69,27 +55,18 @@ public class OrderService {
     private final OrderPromos promos;
     private final CartService cartService;
     private final Messages messages;
-    private final EntityManager entityManager;
     private final OrderStock stock;
-    /** The order money journal: every movement of money on an order is recorded here. */
-    private final MoneyLedger moneyLedger;
     /** Money received on an order: a manual order may be created already paid. */
     private final OrderPayments payments;
     /** The gift for the order sum / the gift case. */
     private final GiftService giftService;
-    /** Gifts already given to a person this month. */
-    private final GiftRegistryService giftRegistry;
+    private final OrderOps ops;
+    /** Drawing and placing the gift of the order sum. */
+    private final OrderGiftPrizes giftPrizes;
 
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
     private int paymentDueHours = 24;
-
-    private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
-                        OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
-        if (amountMinor != 0) {
-            moneyLedger.record(order.getId(), kind, channel, amountMinor, source, adminName, note, invoiceExtId);
-        }
-    }
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
@@ -98,12 +75,11 @@ public class OrderService {
                         OrderPromos promos,
                         CartService cartService,
                         Messages messages,
-                        EntityManager entityManager,
                         OrderStock stock,
-                        MoneyLedger moneyLedger,
                         OrderPayments payments,
                         GiftService giftService,
-                        GiftRegistryService giftRegistry) {
+                        OrderOps ops,
+                        OrderGiftPrizes giftPrizes) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.paymentOptionRepository = paymentOptionRepository;
@@ -111,12 +87,11 @@ public class OrderService {
         this.promos = promos;
         this.cartService = cartService;
         this.messages = messages;
-        this.entityManager = entityManager;
         this.stock = stock;
-        this.moneyLedger = moneyLedger;
         this.payments = payments;
         this.giftService = giftService;
-        this.giftRegistry = giftRegistry;
+        this.ops = ops;
+        this.giftPrizes = giftPrizes;
     }
 
     /**
@@ -211,7 +186,7 @@ public class OrderService {
             boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
             ProductVariant variant = null;
             if (line.variantId != null && !line.variantId.isBlank()) {
-                variant = findVariant(product, line.variantId);
+                variant = ops.findVariant(product, line.variantId);
                 if (variant == null) {
                     throw new BadRequestException(messages.current("api.order.variantMismatch", product.getTitle()));
                 }
@@ -248,7 +223,7 @@ public class OrderService {
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
         boolean lowMargin = lowMarginMinor > 0;
-        OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
+        OrderGiftCase drawn = giftCfg.map(g -> giftPrizes.applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
         order.settleIfFree(Instant.now());
@@ -335,328 +310,14 @@ public class OrderService {
      * {@link OrderAdjustmentService}.
      */
     Order lock(byte[] orderId) {
-        Order order = orderRepository.findByIdForUpdate(orderId)
-                .orElseThrow(() -> new NotFoundException("order not found"));
-        entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
-        return order;
+        return ops.lock(orderId);
     }
 
     // ----- helpers -----
 
-    /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
+    /** For {@link OrderAdjustmentService}. */
     void recomputeOrderTotals(Order order) {
-        recomputeTotals(order);
-    }
-
-    /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
-    private void recomputeTotals(Order order) {
-        OrderMoney.reprice(order);
-        order.settleIfFree(Instant.now());
-    }
-
-    /**
-     * The gift for the order sum (settings «Подарок за сумму (кейсы)»): one unit at price 0, the
-     * variant with the most stock. Out of stock or hidden — the order simply goes without it.
-     */
-    private boolean addThresholdGift(Order order, Product product, List<Product> toSave, String caseRarity) {
-        if (!giftable(product)) {
-            return false;
-        }
-        ProductVariant variant = null;
-        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
-            variant = product.getVariants().stream()
-                    .filter(v -> v.getStock() > 0)
-                    .max(Comparator.comparingInt(ProductVariant::getStock))
-                    .orElseThrow();
-        }
-        OrderItem item = new OrderItem();
-        stock.reserve(product, variant, 1, item);
-        item.setOrder(order);
-        item.setProductId(product.getId());
-        item.setTitleSnapshot(product.getTitle());
-        item.setPriceMinorSnapshot(0);
-        item.setQuantity(1);
-        item.setGift(true);
-        item.setGiftValueMinor(product.getPriceMinor());
-        item.setAutoGift(true);
-        item.setCaseRarity(caseRarity);
-        if (variant != null) {
-            item.setVariantId(variant.getId());
-            item.setVariantNameSnapshot(variant.getName());
-            // A case prize with a choice of sizes: the fullest one is held until the customer picks theirs.
-            ProductVariant held = variant;
-            item.setVariantPending(caseRarity != null
-                    && product.getVariants().stream().anyMatch(v -> v != held && v.getStock() > 0));
-        }
-        order.getItems().add(item);
-        toSave.add(product);
-        return true;
-    }
-
-    /** Can be given away now: visible, and a unit (of some variant) in stock. */
-    private static boolean giftable(Product product) {
-        if (!product.isActive() || product.isArchived()) {
-            return false;
-        }
-        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
-            return product.getVariants().stream().anyMatch(v -> v.getStock() > 0);
-        }
-        return product.getStock() > 0;
-    }
-
-    private static final java.security.SecureRandom CASE_RANDOM = new java.security.SecureRandom();
-
-    /**
-     * The gift of a new order: walks the tiers its total reaches, dearest first. The customer took the
-     * guaranteed discount ({@code choice} DISCOUNT, the tier offers one) — it comes off this order and
-     * there is no case. Otherwise a prize of the tier is drawn among those that can drop (a cheaper
-     * tier when none can). Without a case the single gift product is the fallback.
-     *
-     * @return the prize record to save once the order has its id; null = no case
-     */
-    private OrderGiftCase applyThresholdGift(Order order, GiftService.GiftConfig g, String choice,
-                                             Map<String, Optional<Product>> locked, List<Product> toSave,
-                                             boolean lowMargin) {
-        long total = order.getTotalMinor();
-        List<GiftService.TierConfig> reached = g.reached(total);
-        if (!reached.isEmpty() && GiftService.CHOICE_DISCOUNT.equalsIgnoreCase(String.valueOf(choice))) {
-            GiftService.TierConfig top = reached.get(0);
-            long d = top.guaranteedDiscountMinor(total);
-            if (d > 0) {
-                order.setGiftTier(top.tier().name());
-                order.setGiftDiscountMinor(d);
-                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
-                order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
-                return null;
-            }
-        }
-        long left = giftLimitLeft(order);
-        java.util.function.Predicate<String> giftable = giftableWithin(locked, left);
-        for (GiftService.TierConfig tier : reached) {
-            // An order with a low-margin product: product prizes drop rarer, discounts on the next order more often.
-            Optional<GiftService.CaseEntry> prize = GiftService.draw(tier.prizes(), giftable, CASE_RANDOM,
-                    tier.productPercent(lowMargin));
-            if (prize.isPresent()) {
-                OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
-                if (rec != null) {
-                    rec.setLowMargin(lowMargin && tier.lowMarginProductPercent() < 100);
-                    return rec;
-                }
-            }
-        }
-        if (g.productId() != null && total >= g.thresholdMinor()) {
-            locked.getOrDefault(g.productId(), Optional.empty())
-                    .filter(p -> p.getPriceMinor() <= left)
-                    .ifPresent(p -> addThresholdGift(order, p, toSave, null));
-        }
-        return null;
-    }
-
-    private static java.util.function.Predicate<String> giftableIn(Map<String, Optional<Product>> locked) {
-        return id -> id != null && locked.getOrDefault(id, Optional.empty()).filter(OrderService::giftable).isPresent();
-    }
-
-    /**
-     * What is left of the monthly gift limit of the order's person (docs/GIFT-CASE.md, «Реестр подарков
-     * и месячный лимит»), kopecks; {@link Long#MAX_VALUE} without a limit.
-     */
-    private long giftLimitLeft(Order order) {
-        return giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
-    }
-
-    /**
-     * A product can be given: giftable and no dearer than {@code left} — a product prize over the limit
-     * does not drop, the draw picks among the rest (discounts always can).
-     */
-    private static java.util.function.Predicate<String> giftableWithin(Map<String, Optional<Product>> locked, long left) {
-        return giftableIn(locked).and(id -> locked.get(id).map(p -> p.getPriceMinor() <= left).orElse(false));
-    }
-
-    /** Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening. */
-    private OrderGiftCase placeCasePrize(Order order, GiftCaseTier.Tier tier, GiftService.CaseEntry prize,
-                                         Map<String, Optional<Product>> locked, List<Product> toSave) {
-        String title = null;
-        if (!prize.isDiscount()) {
-            Product p = locked.getOrDefault(prize.productId(), Optional.empty()).orElse(null);
-            if (p == null || !addThresholdGift(order, p, toSave, prize.rarity())) {
-                return null;
-            }
-            title = p.getTitle();
-        }
-        order.setGiftTier(tier.name());
-        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
-        order.setGiftCaseOpenedAt(null);
-        return GiftService.record(order.getId(), prize, title);
-    }
-
-    /**
-     * Customer opens the gift case of their order: SEALED → OPENED, exactly once. Only a paid order
-     * (the online part arrived) — otherwise a customer could order, peek and cancel. The prize was
-     * drawn by the server before (checkout / admin), opening only reveals it.
-     */
-    @Transactional
-    public Order openGiftCase(byte[] orderId) {
-        Order order = lock(orderId);
-        if (order.getGiftCaseStatus() == null) {
-            throw new BadRequestException(messages.current("api.giftCase.none"), GiftCaseRules.GIFT_CASE_NONE);
-        }
-        if (GiftCaseRules.GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
-            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GiftCaseRules.GIFT_CASE_ALREADY_OPENED);
-        }
-        if (!GiftCaseRules.giftCaseOpenable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GiftCaseRules.GIFT_CASE_UNPAID);
-        }
-        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
-        order.setGiftCaseOpenedAt(Instant.now());
-        return orderRepository.save(order);
-    }
-
-    /**
-     * The customer swaps the opened case's product prize for a code (GiftCaseService decides whether
-     * it is similar and what it is worth): the line leaves the order and its unit goes back to stock.
-     */
-    @Transactional
-    public Order removeCasePrizeForSwap(byte[] orderId) {
-        Order order = lock(orderId);
-        if (!GiftCaseRules.giftCaseSwappable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE);
-        }
-        OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
-        stock.restoreLine(item);
-        order.getItems().remove(item);
-        recomputeTotals(order);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    /** A size the customer may pick for the case prize: in stock, or the one held for them now. */
-    public record PrizeSize(String variantId, String name, boolean current) {
-    }
-
-    /**
-     * Sizes of the case prize line to choose from (empty when the prize has none): the one held now and
-     * every other one in stock, in the product's order.
-     */
-    @Transactional(readOnly = true)
-    public List<PrizeSize> casePrizeSizes(Order order) {
-        OrderItem line = GiftCaseRules.casePrizeLine(order).orElse(null);
-        if (line == null || line.getVariantId() == null) {
-            return List.of();
-        }
-        Product product = productRepository.findById(line.getProductId()).orElse(null);
-        if (product == null || product.getVariants() == null) {
-            return List.of();
-        }
-        return product.getVariants().stream()
-                .sorted(Comparator.comparingInt(ProductVariant::getSortOrder))
-                .filter(v -> v.getStock() > 0 || java.util.Arrays.equals(v.getId(), line.getVariantId()))
-                .map(v -> new PrizeSize(UuidUtil.toString(v.getId()), v.getName(),
-                        java.util.Arrays.equals(v.getId(), line.getVariantId())))
-                .toList();
-    }
-
-    /**
-     * The customer picks the size of the opened case's product prize while the order is still being put
-     * together: the held unit goes back to stock and one of the chosen size is reserved instead. Picking
-     * the held size just confirms it. 400 GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE when that size is gone.
-     */
-    @Transactional
-    public Order chooseCasePrizeSize(byte[] orderId, String variantId) {
-        Order order = lock(orderId);
-        if (!GiftCaseRules.giftCaseSwappable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
-        }
-        OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
-        Product product = productRepository.findByIdForUpdate(item.getProductId()).orElse(null);
-        ProductVariant target = product == null || variantId == null ? null : findVariant(product, variantId);
-        if (target == null || item.getVariantId() == null) {
-            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
-        }
-        if (!java.util.Arrays.equals(target.getId(), item.getVariantId())) {
-            if (target.getStock() < item.getQuantity()) {
-                throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
-            }
-            stock.moveLine(product, target, item);
-            item.setVariantId(target.getId());
-            item.setVariantNameSnapshot(target.getName());
-        }
-        item.setVariantPending(false);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    /** The order locked for an update (the gift case reads and changes it in one transaction). */
-    @Transactional
-    public Order lockForGiftCase(byte[] orderId) {
-        return lock(orderId);
-    }
-
-    /**
-     * Admin gives a gift case of a tier to an order (any sum): the prize is drawn now among the tier's
-     * prizes (products in stock, discounts) and sealed into the order; the customer opens it once the
-     * order is paid.
-     */
-    @Transactional
-    public Order grantGiftCase(byte[] orderId, GiftCaseTier.Tier tier, boolean notifyCustomer) {
-        Order order = lock(orderId);
-        order.requireEditable();
-        if (order.getGiftCaseStatus() != null) {
-            throw new BadRequestException("У заказа уже есть кейс");
-        }
-        GiftService.TierConfig cfg = giftService.tier(tier)
-                .orElseThrow(() -> new BadRequestException("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
-        // Prize rows locked in id order, like the checkout.
-        Map<String, Optional<Product>> locked = new HashMap<>();
-        for (String id : new java.util.TreeSet<>(cfg.prizes().stream().map(GiftService.CaseEntry::productId)
-                .filter(java.util.Objects::nonNull).toList())) {
-            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
-        }
-        boolean lowMargin = promos.hasLowMargin(order);
-        GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableWithin(locked, giftLimitLeft(order)),
-                        CASE_RANDOM, cfg.productPercent(lowMargin))
-                .orElseThrow(() -> new BadRequestException(
-                        "Ни одного приза этого кейса нет в наличии или в пределах месячного лимита подарков покупателя"));
-        List<Product> toSave = new ArrayList<>();
-        OrderGiftCase rec = placeCasePrize(order, tier, prize, locked, toSave);
-        if (rec == null) {
-            throw new BadRequestException("Приз закончился — попробуйте ещё раз");
-        }
-        rec.setLowMargin(lowMargin && cfg.lowMarginProductPercent() < 100);
-        productRepository.saveAll(toSave);
-        recomputeTotals(order);
-        Order saved = orderRepository.save(order);
-        rec.setOrderId(saved.getId());
-        giftService.saveOrderCase(rec);
-        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
-                null, null, 1));
-        return saved;
-    }
-
-    /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
-    private Order rejectLocked(Order order, RejectCause cause) {
-        order.reject(cause);
-        return afterTransition(order);
-    }
-
-    /**
-     * Persists a status transition and hands the Telegram side to the after-commit listener: it
-     * moves the channel card, DMs the customer, and adds or removes the seller's dispatch card
-     * depending on whether the order still awaits shipment.
-     */
-    private Order afterTransition(Order order) {
-        if (order.getStatus() == OrderStatus.REJECTED) {
-            // An unused code from the case (a discount prize, a swap) goes with the order.
-            giftService.revokeCasePromo(order.getId());
-        }
-        Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
-        return saved;
-    }
-
-    private ProductVariant findVariant(Product product, String variantId) {
-        return OrderStock.variantOf(product, toBytes(variantId, "variantId"));
+        ops.recomputeTotals(order);
     }
 
     private DeliveryMethod parseDelivery(String value) {

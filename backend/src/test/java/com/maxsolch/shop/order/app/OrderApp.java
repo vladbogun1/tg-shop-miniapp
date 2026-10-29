@@ -37,11 +37,12 @@ public final class OrderApp {
     private final OrderLifecycle lifecycle;
     private final OrderEditing editing;
     private final OrderPromos promos;
+    private final OrderGiftCases giftCases;
     private final OrderService service;
 
     private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, CancelRequests cancelRequests,
                      OrderLifecycle lifecycle, OrderEditing editing, OrderPromos promos,
-                     OrderService service) {
+                     OrderGiftCases giftCases, OrderService service) {
         this.ops = ops;
         this.payments = payments;
         this.archive = archive;
@@ -49,6 +50,7 @@ public final class OrderApp {
         this.lifecycle = lifecycle;
         this.editing = editing;
         this.promos = promos;
+        this.giftCases = giftCases;
         this.service = service;
     }
 
@@ -90,9 +92,17 @@ public final class OrderApp {
                 new AppProperties());
         OrderPromos orderPromos = new OrderPromos(ops, promos, promoService, messages, lowMargin);
         OrderEditing editing = new OrderEditing(ops, orders, products, stock, events, gift, orderPromos);
-        OrderService service = new OrderService(orders, products, options, events, orderPromos, carts, messages, em,
-                stock, ledger, payments, gift, registry);
-        return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, service);
+        OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, stock);
+        OrderGiftCases giftCases = new OrderGiftCases(ops, orders, products, stock, events, messages, gift, orderPromos,
+                prizes);
+        OrderService service = new OrderService(orders, products, options, events, orderPromos, carts, messages,
+                stock, payments, gift, ops, prizes);
+        return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
+                service);
+    }
+
+    public OrderGiftCases giftCases() {
+        return giftCases;
     }
 
     public OrderService service() {

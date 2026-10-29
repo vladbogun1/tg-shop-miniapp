@@ -463,7 +463,7 @@ class OrderStockTest {
         it.setAutoGift(true);
         it.setCaseRarity("RARE");
 
-        service.removeCasePrizeForSwap(o.getId());
+        app.giftCases().removeCasePrizeForSwap(o.getId());
 
         assertThat(m.getStock()).isEqualTo(4);
         assertThat(o.getItems()).isEmpty();
@@ -483,7 +483,7 @@ class OrderStockTest {
         it.setCaseRarity("RARE");
         it.setVariantPending(true);
 
-        service.chooseCasePrizeSize(o.getId(), UuidUtil.toString(l.getId()));
+        app.giftCases().chooseCasePrizeSize(o.getId(), UuidUtil.toString(l.getId()));
 
         assertThat(m.getStock()).isEqualTo(4);
         assertThat(l.getStock()).isZero();

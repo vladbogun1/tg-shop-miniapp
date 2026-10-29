@@ -13,6 +13,7 @@ import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
@@ -78,6 +79,8 @@ class AdminOrderControllerTest {
     @Mock
     OrderArchive orderArchive;
     @Mock
+    OrderGiftCases giftCases;
+    @Mock
     OrderQueryService queries;
     @Mock
     AdminAuditService audit;
@@ -107,7 +110,7 @@ class AdminOrderControllerTest {
         return new AdminOrderController(lookup,
                 new AdminOrderStatusService(lookup, lifecycle, payments, audit),
                 new ReturnWizardService(lookup, orderService, adjustments, payments, audit),
-                orderService, editing, lifecycle, orderPayments, orderArchive, queries, null, audit, null, null, adjustments, payments);
+                orderService, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, null, audit, null, null, adjustments, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,
