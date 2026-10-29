@@ -14,15 +14,11 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.service.OrderStock;
-import com.maxsolch.shop.tg.NotificationService;
-import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * How an order moves through its statuses: approve, ship, deliver, reject (with or without putting the goods
@@ -37,18 +33,14 @@ public class OrderLifecycle {
     private final OrderRepository orderRepository;
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
-    private final EntityManager entityManager;
-    private final NotificationService notificationService;
     private final AppProperties props;
 
     OrderLifecycle(OrderOps ops, OrderRepository orderRepository, OrderStock stock, ApplicationEventPublisher events,
-                   EntityManager entityManager, NotificationService notificationService, AppProperties props) {
+                   AppProperties props) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.stock = stock;
         this.events = events;
-        this.entityManager = entityManager;
-        this.notificationService = notificationService;
         this.props = props;
     }
 
@@ -198,35 +190,5 @@ public class OrderLifecycle {
         return ops.reject(order, new RejectCause(now,
                 CustomerRejectReason.UNPAID_PREFIX + Math.max(1, props.getPayment().getDueHours()) + " ч",
                 RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
-    }
-
-    /**
-     * Sync the seller "К ОТПРАВКЕ" topic with the current APPROVED orders. For each order we
-     * reconcile its card with Telegram: missing cards are posted, manually-deleted cards are
-     * re-posted, and existing cards are refreshed in place. Idempotent: pressing the button
-     * repeatedly never creates duplicates. Returns how many cards were (re)posted.
-     *
-     * <p>Deliberately NOT one transaction: that held a database connection (and the transaction)
-     * open across one Bot API round trip per approved order. The orders are read with their items
-     * up front, Telegram is called with no transaction open, and each changed card id is written
-     * back on its own in a short update.
-     */
-    public int broadcastDispatch() {
-        List<Order> approved = orderRepository.findWithItemsByStatus(OrderStatus.APPROVED);
-        int posted = 0;
-        for (Order o : approved) {
-            // Detached: open-in-view keeps these managed, and the card id set by Telegram sync
-            // would then be flushed as a full-row UPDATE of a possibly stale order (undoing, say,
-            // a status change made meanwhile). Only the targeted update below writes it.
-            entityManager.detach(o);
-            Integer before = o.getDispatchMessageId();
-            if (notificationService.syncDispatchCard(o)) {
-                posted++;
-            }
-            if (!Objects.equals(before, o.getDispatchMessageId())) {
-                orderRepository.updateDispatchMessageId(o.getId(), o.getDispatchMessageId());
-            }
-        }
-        return posted;
     }
 }

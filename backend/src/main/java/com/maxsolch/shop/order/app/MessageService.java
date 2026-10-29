@@ -7,6 +7,7 @@ import com.maxsolch.shop.order.domain.OrderMessage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
@@ -14,13 +15,9 @@ import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.app.ConversationDto;
 import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.app.SendMessageRequest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -39,22 +36,19 @@ public class MessageService {
 
     private final OrderMessageRepository messageRepository;
     private final OrderRepository orderRepository;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final MediaSigner mediaSigner;
     private final Messages messages;
     private final Clock clock;
 
     public MessageService(OrderMessageRepository messageRepository,
                           OrderRepository orderRepository,
-                          SimpMessagingTemplate messagingTemplate,
-                          ApplicationEventPublisher events,
+                          DomainEvents events,
                           MediaSigner mediaSigner,
                           Messages messages,
                           Clock clock) {
         this.messageRepository = messageRepository;
         this.orderRepository = orderRepository;
-        this.messagingTemplate = messagingTemplate;
         this.events = events;
         this.mediaSigner = mediaSigner;
         this.messages = messages;
@@ -112,17 +106,8 @@ public class MessageService {
      * customer messages) via {@link OrderEvents.ChatMessage}.
      */
     private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, OrderMessage saved) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    broadcast(orderId, dto);
-                }
-            });
-        } else {
-            broadcast(orderId, dto);
-        }
-        events.publishEvent(new OrderEvents.ChatMessage(orderId, fromAdmin, previewOf(saved),
+        events.publish(new OrderChatBroadcaster.ChatPosted(orderId, dto));
+        events.publish(new OrderEvents.ChatMessage(orderId, fromAdmin, previewOf(saved),
                 saved.getType().name(), saved.getText(), saved.getAttachmentUrl(), saved.getFileName()));
     }
 
@@ -230,10 +215,6 @@ public class MessageService {
         m.setMimeType(req.mimeType());
         m.setReplyToMessageId(req.replyToMessageId());
         return messageRepository.saveAndFlush(m);
-    }
-
-    private void broadcast(byte[] orderId, MessageDto dto) {
-        messagingTemplate.convertAndSend("/topic/orders/" + UuidUtil.toString(orderId) + "/chat", dto);
     }
 
     private MessageType parseType(String type) {

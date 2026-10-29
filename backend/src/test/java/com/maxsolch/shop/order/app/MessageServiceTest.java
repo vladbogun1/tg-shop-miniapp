@@ -8,9 +8,10 @@ import com.maxsolch.shop.order.domain.OrderMessage;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Clock;
@@ -33,8 +34,7 @@ class MessageServiceTest {
 
     private final OrderMessageRepository messageRepository = mock(OrderMessageRepository.class);
     private final OrderRepository orderRepository = mock(OrderRepository.class);
-    private final SimpMessagingTemplate template = mock(SimpMessagingTemplate.class);
-    private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+    private final DomainEvents events = mock(DomainEvents.class);
     private final MediaSigner signer = mock(MediaSigner.class);
     private MessageService service;
     private final byte[] orderId = new byte[16];
@@ -45,7 +45,7 @@ class MessageServiceTest {
         order.setId(orderId);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(messageRepository.saveAndFlush(any(OrderMessage.class))).thenAnswer(inv -> inv.getArgument(0));
-        service = new MessageService(messageRepository, orderRepository, template, events, signer,
+        service = new MessageService(messageRepository, orderRepository, events, signer,
                 mock(Messages.class), Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -58,11 +58,25 @@ class MessageServiceTest {
     }
 
     @Test
-    void postedMessageIsPushedToTheOrderTopic() {
-        service.postCustomerMessage(orderId, 7L, "Покупатель",
+    void postedMessageIsAnnouncedForTheBroadcastAfterCommit() {
+        MessageDto dto = service.postCustomerMessage(orderId, 7L, "Покупатель",
                 new SendMessageRequest("привет", "TEXT", null, null, null, null));
 
-        verify(template).convertAndSend(startsWith("/topic/orders/"), any(MessageDto.class));
+        ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
+        verify(events, org.mockito.Mockito.atLeastOnce()).publish(published.capture());
+        assertThat(published.getAllValues()).anySatisfy(e -> assertThat(e)
+                .isEqualTo(new OrderChatBroadcaster.ChatPosted(orderId, dto)));
+    }
+
+    @Test
+    void broadcasterSendsTheMessageToTheOrderTopic() {
+        SimpMessagingTemplate template = mock(SimpMessagingTemplate.class);
+        MessageDto dto = service.postCustomerMessage(orderId, 7L, "Покупатель",
+                new SendMessageRequest("привет", "TEXT", null, null, null, null));
+
+        new OrderChatBroadcaster(template).on(new OrderChatBroadcaster.ChatPosted(orderId, dto));
+
+        verify(template).convertAndSend(startsWith("/topic/orders/"), eq(dto));
     }
 
     @Test

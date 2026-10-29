@@ -7,15 +7,8 @@ import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.app.OrderBoardDto;
 import com.maxsolch.shop.order.app.OrderCardDto;
 import com.maxsolch.shop.order.app.OrderDetailDto;
-import com.maxsolch.shop.analytics.AnalyticsZone;
-import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
@@ -23,21 +16,13 @@ import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
-import com.maxsolch.shop.order.app.MoneyLedger;
-import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderDeliveryEditing;
-import com.maxsolch.shop.order.app.OrderMerge;
+import com.maxsolch.shop.order.app.AdminOrders;
+import com.maxsolch.shop.order.app.CreateOrderCommand;
+import com.maxsolch.shop.order.app.OrderDeliveryEditing;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.order.app.OrderArchive;
-import com.maxsolch.shop.order.app.OrderEditing;
-import com.maxsolch.shop.order.app.OrderGiftCases;
-import com.maxsolch.shop.order.app.OrderLifecycle;
-import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.order.app.OrderPayments;
-import com.maxsolch.shop.order.app.Checkout;
+import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderWindow;
-import com.maxsolch.shop.order.domain.OrderErrors;
-import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -55,7 +40,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -68,73 +52,30 @@ public class AdminOrderController {
 
     private final AdminOrderQueries queries;
     private final AdminOrderStatusService statusService;
-    private final Checkout checkout;
-    private final OrderEditing editing;
-    private final OrderLifecycle lifecycle;
-    private final OrderPayments orderPayments;
-    private final OrderArchive orderArchive;
-    private final OrderGiftCases giftCases;
+    private final AdminOrders orders;
     private final OrderQueryService orderQueryService;
-    private final OrderLookup orderLookup;
     private final MessageService messageService;
-    private final AdminAuditService audit;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
-    private final OrderDeliveryEditing deliveryEditing;
-    private final OnlinePaymentService payments;
-
-    /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
-    private AppProperties props;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setProps(AppProperties props) {
-        this.props = props;
-    }
-
-    private OrderWindow window(String range, String from, String to) {
-        return OrderWindow.parse(range, from, to, AnalyticsZone.of(props), Instant.now());
-    }
-
-    /** Merging orders (V71). */
-    private OrderMerge merges;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    void setMerges(OrderMerge merges) {
-        this.merges = merges;
-    }
 
     public AdminOrderController(AdminOrderQueries queries,
                                 AdminOrderStatusService statusService,
-                                Checkout checkout,
-                                OrderEditing editing,
-                                OrderLifecycle lifecycle,
-                                OrderPayments orderPayments,
-                                OrderArchive orderArchive,
-                                OrderGiftCases giftCases,
+                                AdminOrders orders,
                                 OrderQueryService orderQueryService,
-                                OrderLookup orderLookup,
                                 MessageService messageService,
-                                AdminAuditService audit,
                                 ImageStorageService imageStorageService,
-                                UploadValidator uploadValidator,
-                                OrderDeliveryEditing deliveryEditing,
-                                OnlinePaymentService payments) {
+                                UploadValidator uploadValidator) {
         this.queries = queries;
         this.statusService = statusService;
-        this.checkout = checkout;
-        this.editing = editing;
-        this.lifecycle = lifecycle;
-        this.orderPayments = orderPayments;
-        this.orderArchive = orderArchive;
-        this.giftCases = giftCases;
+        this.orders = orders;
         this.orderQueryService = orderQueryService;
-        this.orderLookup = orderLookup;
         this.messageService = messageService;
-        this.audit = audit;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
-        this.deliveryEditing = deliveryEditing;
-        this.payments = payments;
+    }
+
+    private OrderWindow window(String range, String from, String to) {
+        return queries.window(range, from, to);
     }
 
     @GetMapping("/unread-count")
@@ -191,9 +132,7 @@ public class AdminOrderController {
     @PostMapping("/dispatch/broadcast")
     @Operation(summary = "Post the dispatch cards of all approved orders to the seller Telegram topic")
     public Map<String, Integer> dispatchBroadcast() {
-        int posted = lifecycle.broadcastDispatch();
-        audit.record("DISPATCH_BROADCAST", "ORDER", null, "карточек к отправке выложено заново: " + posted);
-        return Map.of("posted", posted);
+        return Map.of("posted", orders.broadcastDispatch());
     }
 
     @GetMapping("/{id}")
@@ -213,93 +152,52 @@ public class AdminOrderController {
     @Operation(summary = "Correct the tracking number (ТТН) of a shipped / delivered order; the customer is told")
     public OrderDetailDto updateTracking(@PathVariable String id,
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateTrackingRequest req) {
-        OrderChange r = deliveryEditing.updateTracking(load(id).getId(), req.trackingNumber());
-        audit.record("ORDER_TRACKING", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
+        return orderQueryService.toDetail(orders.updateTracking(id, req.trackingNumber()));
     }
 
     @PatchMapping("/{id}/delivery")
     @Operation(summary = "Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged)")
     public OrderDetailDto updateDelivery(@PathVariable String id,
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateDeliveryRequest req) {
-        OrderChange r = deliveryEditing.updateDelivery(load(id).getId(),
+        return orderQueryService.toDetail(orders.updateDelivery(id,
                 new OrderDeliveryEditing.DeliveryPatch(req.customerName(), req.phone(),
-                        req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName()));
-        audit.record("ORDER_DELIVERY", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
+                        req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName())));
     }
 
     @GetMapping("/{id}/merge-candidates")
     @Operation(summary = "Other open (not shipped) orders of the same customer, each with what the merged order would be")
     public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(@PathVariable String id) {
-        return orderQueryService.mergeCandidates(merges.candidates(load(id).getId()));
+        return orderQueryService.mergeCandidates(orders.mergeCandidates(id));
     }
 
     @PostMapping("/{id}/merge")
     @Operation(summary = "Merge another open order of the same customer into this one: its lines, discount and "
             + "received money move here, it is closed as REJECTED (MERGED); returns this order")
     public OrderDetailDto merge(@PathVariable String id, @Valid @RequestBody OrderAdjustmentDtos.MergeRequest req) {
-        Order target = load(id);
-        Order source = load(req.sourceId());
-        if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
-            throw OrderErrors.badRequest("по одному из заказов банк ещё проводит оплату — подождите пару минут");
-        }
-        OrderMerge.Result r = merges.merge(target.getId(), source.getId(),
+        return orderQueryService.toDetail(orders.merge(id, req.sourceId(),
                 Boolean.TRUE.equals(req.useSourceDelivery()), req.notifyCustomer() == null || req.notifyCustomer(),
-                req.note(), audit.currentAdminName());
-        // The merged order will not be paid any more; the open pages of this one are for the old amount.
-        payments.closeOpenInvoices(source.getId());
-        payments.closeOpenInvoices(target.getId());
-        audit.record("ORDER_MERGE", "ORDER", id, r.auditDetails());
-        audit.record("ORDER_MERGED_INTO", "ORDER", UuidUtil.toString(source.getId()),
-                "объединён в заказ #" + OrderMerge.shortId(target.getId()));
-        return orderQueryService.toDetail(orderLookup.get(r.target().getId()));
+                req.note()));
     }
 
     @PostMapping
     @Operation(summary = "Create an order by hand (a sale by phone / in person): source ADMIN, no payment deadline")
     public OrderDetailDto create(@Valid @RequestBody com.maxsolch.shop.order.api.AdminCreateOrderRequest req) {
-        com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel channel =
-                req.paidChannel() == null || req.paidChannel().isBlank()
-                        ? com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.OTHER
-                        : com.maxsolch.shop.order.app.MoneyLedger.parseChannel(req.paidChannel());
-        com.maxsolch.shop.order.app.CreateOrderCommand cmd = new com.maxsolch.shop.order.app.CreateOrderCommand(
+        CreateOrderCommand cmd = new CreateOrderCommand(
                 null, req.tgUserId(), null,
                 req.items().stream()
-                        .map(l -> new com.maxsolch.shop.order.app.CreateOrderCommand.Line(l.productId(), l.variantId(),
-                                l.quantity()))
+                        .map(l -> new CreateOrderCommand.Line(l.productId(), l.variantId(), l.quantity()))
                         .toList(),
                 req.customerName(), req.phone(), req.comment(), req.promoCode(), req.deliveryMethod(),
                 req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
-                req.paymentOptionId(), com.maxsolch.shop.order.domain.OrderSource.ADMIN);
-        Order created = checkout.createAdminOrder(cmd, req.paidMinor(), channel, audit.currentAdminName(),
-                req.note());
-        audit.record("ORDER_CREATE_ADMIN", "ORDER", com.maxsolch.shop.platform.util.UuidUtil.toString(created.getId()),
-                "ручной заказ на " + MoneyFormat.uah(created.getTotalMinor())
-                        + (req.paidMinor() > 0
-                                ? ", получено " + MoneyFormat.uah(req.paidMinor()) + " ("
-                                        + MoneyLedger.channelLabel(channel) + ")"
-                                : ""));
-        return orderQueryService.toDetail(created);
+                req.paymentOptionId(), OrderSource.ADMIN);
+        return orderQueryService.toDetail(orders.createByHand(cmd, req.paidMinor(), req.paidChannel(), req.note()));
     }
 
     @PatchMapping("/{id}/paid")
     @Operation(summary = "Set the order's paid flag")
     public OrderDetailDto setPaid(@PathVariable String id,
                                   @Valid @RequestBody com.maxsolch.shop.order.api.SetPaidRequest req) {
-        com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel channel =
-                req.channel() == null || req.channel().isBlank()
-                        ? com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.OTHER
-                        : com.maxsolch.shop.order.app.MoneyLedger.parseChannel(req.channel());
-        Order updated = orderPayments.markPaid(load(id).getId(), req.receivedMinor(), channel,
-                audit.currentAdminName(), req.note());
-        audit.record("ORDER_PAID", "ORDER", id,
-                (req.receivedMinor() > 0
-                        ? "подтверждено получено: " + MoneyFormat.uah(req.receivedMinor())
-                        : "оплата снята")
-                        + " (" + MoneyLedger.channelLabel(channel) + ")"
-                        + (req.note() == null || req.note().isBlank() ? "" : "; " + req.note().trim()));
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.setPaid(id, req.receivedMinor(), req.channel(), req.note()));
     }
 
     @PostMapping("/{id}/items")
@@ -307,12 +205,8 @@ public class AdminOrderController {
     public OrderDetailDto addItem(@PathVariable String id,
                                   @Valid @RequestBody com.maxsolch.shop.order.api.AddItemRequest req) {
         int qty = req.quantity() == null ? 1 : req.quantity();
-        boolean gift = Boolean.TRUE.equals(req.gift());
-        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = editing.addItem(load(id).getId(), req.productId(), req.variantId(), qty, gift, notify);
-        audit.record("ORDER_ITEM_ADD", "ORDER", id,
-                (gift ? "подарок " : "позиция ") + req.productId() + " x" + qty);
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.addItem(id, req.productId(), req.variantId(), qty,
+                Boolean.TRUE.equals(req.gift()), req.notifyCustomer() == null || req.notifyCustomer()));
     }
 
     @PostMapping("/{id}/gift-case")
@@ -321,16 +215,8 @@ public class AdminOrderController {
     public OrderDetailDto grantGiftCase(@PathVariable String id,
                                         @RequestBody(required = false) java.util.Map<String, Object> body) {
         boolean notify = body == null || !Boolean.FALSE.equals(body.get("notifyCustomer"));
-        com.maxsolch.shop.gift.GiftCaseTier.Tier tier = com.maxsolch.shop.gift.GiftService
-                .parseTier(body == null ? null : String.valueOf(body.get("tier")))
-                .orElse(com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER);
-        Order updated = giftCases.grantGiftCase(load(id).getId(), tier, notify);
-        String prize = updated.getItems().stream()
-                .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
-                .map(i -> i.getTitleSnapshot() + " (" + i.getCaseRarity() + ")")
-                .findFirst().orElse("скидка");
-        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс " + tier + ", приз: " + prize);
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.grantGiftCase(id,
+                body == null ? null : String.valueOf(body.get("tier")), notify));
     }
 
     @PatchMapping("/{id}/items/{itemId}")
@@ -338,33 +224,22 @@ public class AdminOrderController {
     public OrderDetailDto changeItemQty(@PathVariable String id, @PathVariable long itemId,
                                         @Valid @RequestBody com.maxsolch.shop.order.api.ChangeItemQtyRequest req) {
         int qty = req.quantity() == null ? 1 : req.quantity();
-        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = editing.changeItemQuantity(load(id).getId(), itemId, qty, notify);
-        audit.record("ORDER_ITEM_QTY", "ORDER", id, "позиция #" + itemId + " → x" + qty);
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.changeItemQuantity(id, itemId, qty,
+                req.notifyCustomer() == null || req.notifyCustomer()));
     }
 
     @DeleteMapping("/{id}/items/{itemId}")
     @Operation(summary = "Remove an order item (gift/line) and restore its stock")
     public OrderDetailDto removeItem(@PathVariable String id, @PathVariable long itemId) {
-        Order updated = editing.removeItem(load(id).getId(), itemId);
-        audit.record("ORDER_ITEM_REMOVE", "ORDER", id, "удалена позиция #" + itemId);
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.removeItem(id, itemId));
     }
 
     @PostMapping("/{id}/discount")
     @Operation(summary = "Apply/update/remove a discount (promo code or manual amount/percent)")
     public OrderDetailDto discount(@PathVariable String id,
                                    @Valid @RequestBody com.maxsolch.shop.order.api.ApplyDiscountRequest req) {
-        boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = editing.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
-                req.percent(), Boolean.TRUE.equals(req.clear()), notify);
-        audit.record("ORDER_DISCOUNT", "ORDER", id,
-                Boolean.TRUE.equals(req.clear()) ? "скидка снята"
-                        : "скидка: " + (req.promoCode() != null ? "промокод " + req.promoCode()
-                                : req.amountMinor() != null ? MoneyFormat.uah(req.amountMinor())
-                                : req.percent() + "%"));
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(orders.applyDiscount(id, req.promoCode(), req.amountMinor(),
+                req.percent(), Boolean.TRUE.equals(req.clear()), req.notifyCustomer() == null || req.notifyCustomer()));
     }
 
     /**
@@ -377,20 +252,14 @@ public class AdminOrderController {
     @Operation(summary = "Archive a DELIVERED/REJECTED order (main admin only; reason required)")
     public OrderDetailDto archive(@PathVariable String id,
                                   @Valid @RequestBody OrderAdjustmentDtos.ArchiveRequest req) {
-        Order archived = orderArchive.archive(load(id).getId(), req.reason(), audit.currentAdminName());
-        audit.record("ORDER_ARCHIVE", "ORDER", id,
-                "в архив: " + archived.getCustomerName() + ", " + MoneyFormat.uah(archived.getTotalMinor())
-                        + ", статус " + archived.getStatus() + "; причина: " + archived.getArchiveReason());
-        return orderQueryService.toDetail(archived);
+        return orderQueryService.toDetail(orders.archive(id, req.reason()));
     }
 
     @PostMapping("/{id}/unarchive")
     @RequiredSuperAdmin
     @Operation(summary = "Bring an order back from the archive (main admin only)")
     public OrderDetailDto unarchive(@PathVariable String id) {
-        Order back = orderArchive.unarchive(load(id).getId());
-        audit.record("ORDER_UNARCHIVE", "ORDER", id, "возвращён из архива");
-        return orderQueryService.toDetail(back);
+        return orderQueryService.toDetail(orders.unarchive(id));
     }
 
     @DeleteMapping("/{id}")
@@ -424,16 +293,13 @@ public class AdminOrderController {
     @PostMapping("/{id}/messages")
     @Operation(summary = "Send a chat message (admin) — pings the customer")
     public MessageDto sendMessage(@PathVariable String id, @RequestBody SendMessageRequest req) {
-        Order order = load(id);
-        long adminId = SecurityUtil.currentUserId();
-        // Sign with the actual admin instead of a hardcoded "Менеджер".
-        return messageService.postAdminMessage(order.getId(), adminId, audit.currentAdminName(), req);
+        return orders.sendMessage(id, req);
     }
 
     @PostMapping("/{id}/messages/read")
     @Operation(summary = "Mark customer messages as read")
     public ResponseEntity<Void> markRead(@PathVariable String id) {
-        messageService.markRead(load(id).getId(), SenderType.CUSTOMER);
+        orders.markCustomerMessagesRead(id);
         return ResponseEntity.noContent().build();
     }
 

@@ -87,7 +87,7 @@ public final class OrderApp {
         OrderPayments payments = new OrderPayments(ops, orders, events);
         OrderArchive archive = new OrderArchive(ops, orders, events, invoices);
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
-        OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events, em, notifications,
+        OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
                 new AppProperties());
         OrderPromos orderPromos = new OrderPromos(ops, promos, promoService, messages, lowMargin);
         OrderEditing editing = new OrderEditing(ops, orders, products, stock, events, gift, orderPromos);

@@ -110,10 +110,11 @@ class AdminOrderControllerTest {
     }
 
     AdminOrderController controller() {
-        AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries);
+        AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries, java.time.Clock.systemUTC(),
+                com.maxsolch.shop.platform.time.ShopZone.of(null));
         return new AdminOrderController(adminQueries,
                 new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
-                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, deliveryEditing, payments);
+                null, queries, null, null, null);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,

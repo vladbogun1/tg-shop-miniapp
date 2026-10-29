@@ -1,11 +1,10 @@
 package com.maxsolch.shop.order.app;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
-
-import java.time.Duration;
 
 /**
  * Stops one checkout from becoming two orders.
@@ -16,7 +15,7 @@ import java.time.Duration;
  * resulting order id under that key and every retry with the same key gets that same id back
  * instead of creating a new order.
  *
- * <p>Kept in memory for {@value #TTL_MINUTES} minutes, which comfortably covers retries of a single
+ * <p>Kept in memory for 30 minutes, which comfortably covers retries of a single
  * checkout. That is scoped to one instance — fine here, since the bot is long-polling and the
  * deployment is a single container anyway.
  */
@@ -24,18 +23,18 @@ import java.time.Duration;
 @Service
 public class OrderIdempotencyService {
 
-    private static final int TTL_MINUTES = 30;
+    /** "<userId>:<key>" → created order id (UUID string); limits in {@link CacheConfig}. */
+    private final Cache seen;
 
-    /** "<userId>:<key>" → created order id (UUID string). */
-    private final Cache<String, String> seen = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(TTL_MINUTES))
-            .build();
+    public OrderIdempotencyService(CacheManager cacheManager) {
+        this.seen = java.util.Objects.requireNonNull(cacheManager.getCache(CacheConfig.ORDER_IDEMPOTENCY),
+                "cache " + CacheConfig.ORDER_IDEMPOTENCY);
+    }
 
     /** @return the order id created earlier under this key, or null if this is a fresh request */
     public String previousOrderId(long userId, String idempotencyKey) {
         String cacheKey = keyOf(userId, idempotencyKey);
-        return cacheKey == null ? null : seen.getIfPresent(cacheKey);
+        return cacheKey == null ? null : seen.get(cacheKey, String.class);
     }
 
     public void remember(long userId, String idempotencyKey, String orderId) {

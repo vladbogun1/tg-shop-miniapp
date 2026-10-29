@@ -81,7 +81,7 @@ class AdminReturnControllerTest {
     }
 
     AdminReturnController controller() {
-        AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries);
+        AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries, java.time.Clock.systemUTC(), com.maxsolch.shop.platform.time.ShopZone.of(null));
         AdminReturns adminReturns = new AdminReturns(adminQueries, lookup, returns, null, null, null, payments, audit);
         return new AdminReturnController(adminReturns, queries);
     }

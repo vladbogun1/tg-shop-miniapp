@@ -10,11 +10,13 @@ import com.maxsolch.shop.order.infra.OrderSearchTerm;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.app.OrderBoardDto;
 import com.maxsolch.shop.order.app.OrderCardDto;
+import com.maxsolch.shop.platform.time.ShopZone;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,10 +48,20 @@ public class AdminOrderQueries {
 
     private final OrderRepository orderRepository;
     private final OrderQueryService orderQueryService;
+    private final Clock clock;
+    private final ShopZone shopZone;
 
-    public AdminOrderQueries(OrderRepository orderRepository, OrderQueryService orderQueryService) {
+    public AdminOrderQueries(OrderRepository orderRepository, OrderQueryService orderQueryService, Clock clock,
+                             ShopZone shopZone) {
         this.orderRepository = orderRepository;
         this.orderQueryService = orderQueryService;
+        this.clock = clock;
+        this.shopZone = shopZone;
+    }
+
+    /** The period of the request cut in the shop's timezone: calendar periods («Этот месяц», «Свой») start at its midnight. */
+    public OrderWindow window(String range, String from, String to) {
+        return OrderWindow.parse(range, from, to, shopZone.zone(), clock.instant());
     }
 
     /** The order of the {@code /api/admin/orders/{id}} URL; 404 for a malformed or unknown id. */

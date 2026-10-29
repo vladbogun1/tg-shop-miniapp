@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -61,8 +60,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             + "and o.paymentDueAt is not null and o.paymentDueAt < :now")
     List<byte[]> findOverdueUnpaidIds(@Param("now") java.time.Instant now);
 
-    /** Writes back the dispatch card's message id in its own short transaction. */
-    @Transactional
+    /** Writes back the dispatch card's message id; the caller opens the (short) transaction. */
     @Modifying
     @Query("update Order o set o.dispatchMessageId = :messageId where o.id = :id")
     int updateDispatchMessageId(@Param("id") byte[] id, @Param("messageId") Integer messageId);
