@@ -189,6 +189,30 @@ class OrderQueryServiceGoldenTest {
         mapper = ref.get();
     }
 
+    /** «Объединить» (V71): the window rows, one mergeable order and one with a blocker. */
+    @Test
+    void mergeCandidates() throws IOException {
+        Order free = baseOrder(4, OrderStatus.NEW);
+        free.setPaid(true);
+        free.setReceivedMinor(50000);
+        free.setPrepaymentMinor(20000);
+        free.setTotalMinor(50000);
+        free.setTrackingNumber("20450000555666");
+        free.setGiftCaseStatus("SEALED");
+        free.setPaymentOptionTitle("Оплата картой онлайн");
+        item(free, 41, "Мышь Lamzu Atlantis", "Чёрная", 50000, 1);
+        Order blocked = baseOrder(5, OrderStatus.APPROVED);
+        blocked.setReceivedMinor(-5);
+        blocked.setTotalMinor(30000);
+        OrderItem gift = item(blocked, 51, "Коврик", null, 0, 2);
+        gift.setGift(true);
+        List<OrderMergeService.Candidate> found = List.of(
+                new OrderMergeService.Candidate(free, null, 80000, 50000, 10000, 20000),
+                new OrderMergeService.Candidate(blocked, "Заказ уже отправлен", 30000, 0, 0, 30000));
+
+        compareWithGolden("merge-candidates", service.mergeCandidates(found));
+    }
+
     @Test
     void paidShippedOrder() throws IOException {
         Order o = baseOrder(1, OrderStatus.SHIPPED);
@@ -362,7 +386,10 @@ class OrderQueryServiceGoldenTest {
         all.put("card", service.toCard(o, ctx));
         all.put("summary", service.toSummary(o, ctx));
         all.put("dispatch", service.toDispatch(o));
+        compareWithGolden(name, all);
+    }
 
+    private void compareWithGolden(String name, Object all) throws IOException {
         DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
         DefaultIndenter indenter = new DefaultIndenter("  ", "\n");
         printer.indentObjectsWith(indenter);
