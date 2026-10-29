@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.CancelRequests;
+
 import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
@@ -26,6 +28,8 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
     @Autowired
     OrderService orders;
     @Autowired
+    CancelRequests cancelRequests;
+    @Autowired
     OrderPayments orderPayments;
 
     private Order placed(long tg, String phone, Product p, int qty) {
@@ -41,7 +45,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
         Order o = placed(9_001, "+380673330001", p, 2);
 
         tx.executeWithoutResult(s -> {
-            orders.cancelByCustomer(o.getId(), "передумал");
+            cancelRequests.cancelByCustomer(o.getId(), "передумал");
             verifyNoInteractions(notificationService); // still inside the transaction
         });
 
@@ -57,7 +61,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
         Order o = placed(9_002, "+380673330002", p, 2);
 
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> {
-            orders.cancelByCustomer(o.getId(), "передумал");
+            cancelRequests.cancelByCustomer(o.getId(), "передумал");
             throw new IllegalStateException("boom");
         })).isInstanceOf(IllegalStateException.class);
 
@@ -72,11 +76,11 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
         Product p = product(5_000, 3);
         Order o = placed(9_003, "+380673330003", p, 1);
         orderPayments.markPaid(o.getId(), 5_000);
-        orders.requestCancel(o.getId(), "не нужен");
+        cancelRequests.requestCancel(o.getId(), "не нужен");
         Mockito.reset(notificationService);
 
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> {
-            orders.approveCancelRequest(o.getId(), "ок");
+            cancelRequests.approveCancelRequest(o.getId(), "ок");
             throw new IllegalStateException("boom");
         })).isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(notificationService);
@@ -84,7 +88,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
         assertThat(stockOf(p)).isEqualTo(2);
 
         tx.executeWithoutResult(s -> {
-            orders.approveCancelRequest(o.getId(), "ок");
+            cancelRequests.approveCancelRequest(o.getId(), "ок");
             verify(notificationService, never()).notifyCustomerCancelRequest(any(), eq(true));
         });
         verify(notificationService).notifyCustomerCancelRequest(any(), eq(true));

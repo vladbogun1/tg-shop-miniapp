@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
@@ -14,7 +15,6 @@ import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,7 +100,7 @@ class OrderCancelRequestTest {
     }
 
     private static String code(Throwable e) {
-        return ((BadRequestException) e).getCode();
+        return ((DomainException) e).getCode();
     }
 
     // ---------------------------------------------------------------- immediate cancel
@@ -108,7 +108,7 @@ class OrderCancelRequestTest {
     @Test
     void unpaid_cancelsAtOnce_restocks_andCountsAsSelfCancel() {
         Order o = order(OrderStatus.NEW, 0);
-        Order r = service.cancelByCustomer(o.getId(), "передумав");
+        Order r = app.cancelRequests().cancelByCustomer(o.getId(), "передумав");
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectReasonCode()).isEqualTo("CHANGED_MIND");
         assertThat(r.isCancelledByCustomer()).isTrue();
@@ -118,17 +118,17 @@ class OrderCancelRequestTest {
     @Test
     void paid_cannotBeCancelledAtOnce_needsRequest() {
         Order o = order(OrderStatus.NEW, 10_000);
-        assertThatThrownBy(() -> service.cancelByCustomer(o.getId(), null))
-                .isInstanceOf(BadRequestException.class)
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.PAID_NEEDS_REQUEST));
+        assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(o.getId(), null))
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
         assertThat(o.getStatus()).isEqualTo(OrderStatus.NEW);
     }
 
     @Test
     void shipped_cannotBeCancelled() {
         Order o = order(OrderStatus.SHIPPED, 0);
-        assertThatThrownBy(() -> service.cancelByCustomer(o.getId(), null))
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.CANNOT_CANCEL));
+        assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(o.getId(), null))
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.CANNOT_CANCEL));
     }
 
     // ---------------------------------------------------------------- request
@@ -136,7 +136,7 @@ class OrderCancelRequestTest {
     @Test
     void request_onPaidOrder_isPending_orderUntouched() {
         Order o = order(OrderStatus.APPROVED, 100_000);
-        Order r = service.requestCancel(o.getId(), "  замовив не той розмір ");
+        Order r = app.cancelRequests().requestCancel(o.getId(), "  замовив не той розмір ");
         assertThat(r.getCancelRequestStatus()).isEqualTo("PENDING");
         assertThat(r.getCancelRequestReason()).isEqualTo("замовив не той розмір");
         assertThat(r.getCancelRequestedAt()).isNotNull();
@@ -148,36 +148,36 @@ class OrderCancelRequestTest {
     @Test
     void request_needsReason_upTo500() {
         Order o = order(OrderStatus.NEW, 100_000);
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "  "))
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "  "))
                 .hasMessage("api.cancelRequest.reasonRequired");
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "x".repeat(501)))
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "x".repeat(501)))
                 .hasMessage("api.cancelRequest.reasonTooLong");
     }
 
     @Test
     void request_onUnpaidOrder_isRefused() {
         Order o = order(OrderStatus.NEW, 0);
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "причина"))
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.CANCEL_REQUEST_UNPAID));
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "причина"))
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.CANCEL_REQUEST_UNPAID));
     }
 
     @Test
     void request_onShippedOrder_isRefused() {
         Order o = order(OrderStatus.SHIPPED, 100_000);
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "причина"))
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.CANNOT_CANCEL));
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "причина"))
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.CANNOT_CANCEL));
     }
 
     @Test
     void secondRequest_isRefused_alsoAfterDecline() {
         Order o = order(OrderStatus.NEW, 100_000);
-        service.requestCancel(o.getId(), "причина");
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "ще раз"))
+        app.cancelRequests().requestCancel(o.getId(), "причина");
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "ще раз"))
                 .hasMessage("api.cancelRequest.exists")
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.CANCEL_REQUEST_EXISTS));
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.CANCEL_REQUEST_EXISTS));
 
-        service.declineCancelRequest(o.getId(), "Вже відправляємо");
-        assertThatThrownBy(() -> service.requestCancel(o.getId(), "ще раз"))
+        app.cancelRequests().declineCancelRequest(o.getId(), "Вже відправляємо");
+        assertThatThrownBy(() -> app.cancelRequests().requestCancel(o.getId(), "ще раз"))
                 .hasMessage("api.cancelRequest.declinedBefore");
     }
 
@@ -186,9 +186,9 @@ class OrderCancelRequestTest {
     @Test
     void approve_rejectsWithChangedMind_restocks_closesRequest() {
         Order o = order(OrderStatus.NEW, 100_000);
-        service.requestCancel(o.getId(), "причина");
+        app.cancelRequests().requestCancel(o.getId(), "причина");
 
-        Order r = service.approveCancelRequest(o.getId(), null);
+        Order r = app.cancelRequests().approveCancelRequest(o.getId(), null);
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectReasonCode()).isEqualTo("CHANGED_MIND");
@@ -203,11 +203,11 @@ class OrderCancelRequestTest {
     @Test
     void decline_needsComment_keepsOrder() {
         Order o = order(OrderStatus.APPROVED, 100_000);
-        service.requestCancel(o.getId(), "причина");
-        assertThatThrownBy(() -> service.declineCancelRequest(o.getId(), " "))
-                .isInstanceOf(BadRequestException.class);
+        app.cancelRequests().requestCancel(o.getId(), "причина");
+        assertThatThrownBy(() -> app.cancelRequests().declineCancelRequest(o.getId(), " "))
+                .isInstanceOf(DomainException.BadRequest.class);
 
-        Order r = service.declineCancelRequest(o.getId(), "Посилка вже в дорозі");
+        Order r = app.cancelRequests().declineCancelRequest(o.getId(), "Посилка вже в дорозі");
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(r.getCancelRequestStatus()).isEqualTo("DECLINED");
@@ -218,17 +218,17 @@ class OrderCancelRequestTest {
     @Test
     void approveOrDecline_withoutPendingRequest_isRefused() {
         Order o = order(OrderStatus.NEW, 100_000);
-        assertThatThrownBy(() -> service.approveCancelRequest(o.getId(), null))
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.NO_PENDING_REQUEST));
-        assertThatThrownBy(() -> service.declineCancelRequest(o.getId(), "x"))
-                .satisfies(e -> assertThat(code(e)).isEqualTo(OrderService.NO_PENDING_REQUEST));
+        assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(o.getId(), null))
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
+        assertThatThrownBy(() -> app.cancelRequests().declineCancelRequest(o.getId(), "x"))
+                .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
         verify(events, never()).publishEvent(any(OrderEvents.CancelRequestResolved.class));
     }
 
     @Test
     void adminRejectWhilePending_closesTheRequest() {
         Order o = order(OrderStatus.NEW, 100_000);
-        service.requestCancel(o.getId(), "причина");
+        app.cancelRequests().requestCancel(o.getId(), "причина");
         Order r = service.reject(o.getId(), "нема в наявності", true);
         assertThat(r.getCancelRequestStatus()).isEqualTo("APPROVED");
         assertThat(r.isCancelledByCustomer()).isFalse();

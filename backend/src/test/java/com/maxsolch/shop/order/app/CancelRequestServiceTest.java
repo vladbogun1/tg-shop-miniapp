@@ -38,6 +38,8 @@ class CancelRequestServiceTest {
     @Mock
     OrderService orderService;
     @Mock
+    CancelRequests cancelRequests;
+    @Mock
     OnlinePaymentService payments;
     @Mock
     PaymentInvoiceRepository invoices;
@@ -49,7 +51,7 @@ class CancelRequestServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CancelRequestService(orderService, payments, invoices, messages);
+        service = new CancelRequestService(orderService, cancelRequests, payments, invoices, messages);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -79,13 +81,13 @@ class CancelRequestServiceTest {
         failed.setStatus(PaymentInvoice.FAILURE);
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
                 .thenReturn(List.of(paid("inv-1", 10_000, 0), failed, paid("inv-2", 90_000, 0)));
-        when(orderService.approveCancelRequest(orderId, null)).thenReturn(rejected(100_000));
+        when(cancelRequests.approveCancelRequest(orderId, null)).thenReturn(rejected(100_000));
         when(orderService.get(orderId)).thenReturn(rejected(100_000));
 
         CancelRequestService.ApproveResult r = service.approve(orderId, null);
 
-        InOrder order = inOrder(orderService, payments);
-        order.verify(orderService).approveCancelRequest(orderId, null);
+        InOrder order = inOrder(cancelRequests, payments);
+        order.verify(cancelRequests).approveCancelRequest(orderId, null);
         order.verify(payments).refund(eq(orderId), eq("inv-1"), isNull());
         verify(payments).refund(eq(orderId), eq("inv-2"), isNull());
         verify(payments, never()).refund(any(), eq("inv-failed"), any());
@@ -99,7 +101,7 @@ class CancelRequestServiceTest {
     void approve_reportsRefundFailures_andHandRecordedMoney() {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(paid("inv-1", 10_000, 0)));
         doThrow(new BadRequestException("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
-        when(orderService.approveCancelRequest(orderId, "ok")).thenReturn(rejected(30_000));
+        when(cancelRequests.approveCancelRequest(orderId, "ok")).thenReturn(rejected(30_000));
         when(orderService.get(orderId)).thenReturn(rejected(30_000));
 
         CancelRequestService.ApproveResult r = service.approve(orderId, "ok");
@@ -117,20 +119,20 @@ class CancelRequestServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .satisfies(e -> assertThat(((BadRequestException) e).getCode())
                         .isEqualTo(CancelRequestService.PAYMENT_IN_PROGRESS));
-        verify(orderService, never()).approveCancelRequest(any(), any());
+        verify(cancelRequests, never()).approveCancelRequest(any(), any());
         verify(payments, never()).refund(any(), any(), any());
     }
 
     @Test
     void decline_doesNotTouchMoney() {
         service.decline(orderId, "вже відправили");
-        verify(orderService).declineCancelRequest(orderId, "вже відправили");
+        verify(cancelRequests).declineCancelRequest(orderId, "вже відправили");
         verify(payments, never()).refund(any(), any(), any());
     }
 
     @Test
     void cancelUnpaid_closesPaymentPages() {
-        when(orderService.cancelByCustomer(orderId, null)).thenReturn(rejected(0));
+        when(cancelRequests.cancelByCustomer(orderId, null)).thenReturn(rejected(0));
         service.cancelUnpaid(orderId, null);
         verify(payments).refreshOrder(orderId);
         verify(payments).closeOpenInvoices(orderId);
@@ -141,6 +143,6 @@ class CancelRequestServiceTest {
         when(payments.hasPaymentInFlight(orderId)).thenReturn(true);
         assertThatThrownBy(() -> service.request(orderId, "причина"))
                 .hasMessage("api.payment.inProgress");
-        verify(orderService, never()).requestCancel(any(), any());
+        verify(cancelRequests, never()).requestCancel(any(), any());
     }
 }

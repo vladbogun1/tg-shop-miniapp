@@ -810,7 +810,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order cancelled = service.cancelByCustomer(o.getId(), "передумал");
+        Order cancelled = app.cancelRequests().cancelByCustomer(o.getId(), "передумал");
 
         assertThat(cancelled.getRejectReasonCode()).isEqualTo("CHANGED_MIND");
     }

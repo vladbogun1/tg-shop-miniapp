@@ -6,6 +6,7 @@ import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.CancelRequests;
 import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
@@ -248,7 +249,7 @@ class OrderTransitionsTest {
         Order o = order(OrderStatus.APPROVED);
         o.setReturnStatus("X");
 
-        Order r = service.cancelByCustomer(o.getId(), "  передумав  ");
+        Order r = app.cancelRequests().cancelByCustomer(o.getId(), "  передумав  ");
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectedAt()).isNotNull();
@@ -267,14 +268,14 @@ class OrderTransitionsTest {
     @Test
     void cancelByCustomer_reasonIsTrimmedCutTo500_blankGivesTheBarePrefix() {
         Order longReason = order(OrderStatus.NEW);
-        service.cancelByCustomer(longReason.getId(), "я".repeat(600));
+        app.cancelRequests().cancelByCustomer(longReason.getId(), "я".repeat(600));
         assertThat(longReason.getRejectReason()).isEqualTo("Отменён покупателем: " + "я".repeat(500));
 
         Order blank = order(OrderStatus.NEW);
-        service.cancelByCustomer(blank.getId(), "   ");
+        app.cancelRequests().cancelByCustomer(blank.getId(), "   ");
         assertThat(blank.getRejectReason()).isEqualTo("Отменён покупателем");
         Order none = order(OrderStatus.NEW);
-        service.cancelByCustomer(none.getId(), null);
+        app.cancelRequests().cancelByCustomer(none.getId(), null);
         assertThat(none.getRejectReason()).isEqualTo("Отменён покупателем");
     }
 
@@ -283,7 +284,7 @@ class OrderTransitionsTest {
         // Unreachable through the API (a pending request needs a paid order), pinned as is.
         Order o = order(OrderStatus.NEW);
         o.setCancelRequestStatus("PENDING");
-        service.cancelByCustomer(o.getId(), "x");
+        app.cancelRequests().cancelByCustomer(o.getId(), "x");
         assertThat(o.getCancelRequestStatus()).isEqualTo("PENDING");
         assertThat(o.getCancelRequestResolvedAt()).isNull();
     }
@@ -292,19 +293,19 @@ class OrderTransitionsTest {
     void cancelByCustomer_refusals() {
         Order paid = order(OrderStatus.NEW);
         paid.setPaid(true);
-        assertThatThrownBy(() -> service.cancelByCustomer(paid.getId(), "x"))
+        assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(paid.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(OrderService.PAID_NEEDS_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
         Order received = order(OrderStatus.NEW);
         received.setReceivedMinor(1);
-        assertThatThrownBy(() -> service.cancelByCustomer(received.getId(), "x"))
+        assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(received.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(OrderService.PAID_NEEDS_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
         for (OrderStatus s : List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.REJECTED)) {
             Order o = order(s);
-            assertThatThrownBy(() -> service.cancelByCustomer(o.getId(), "x"))
+            assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(o.getId(), "x"))
                     .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                            e -> assertThat(e.getCode()).isEqualTo(OrderService.CANNOT_CANCEL));
+                            e -> assertThat(e.getCode()).isEqualTo(CancelRequests.CANNOT_CANCEL));
         }
         assertThat(product.getStock()).isEqualTo(3);
         verifyNoInteractions(giftService);
@@ -319,7 +320,7 @@ class OrderTransitionsTest {
         o.setCancelRequestStatus("PENDING");
         o.setCancelRequestReason("передумала");
 
-        Order r = service.approveCancelRequest(o.getId(), "  ок  ");
+        Order r = app.cancelRequests().approveCancelRequest(o.getId(), "  ок  ");
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.getRejectedAt()).isNotNull().isEqualTo(r.getCancelRequestResolvedAt());
@@ -345,21 +346,21 @@ class OrderTransitionsTest {
     void approveCancelRequest_blankCommentIsNull_noRequest_wrongStatus() {
         Order o = order(OrderStatus.NEW);
         o.setCancelRequestStatus("PENDING");
-        service.approveCancelRequest(o.getId(), "  ");
+        app.cancelRequests().approveCancelRequest(o.getId(), "  ");
         assertThat(o.getCancelRequestAdminComment()).isNull();
         // Empty request reason: no dangling colon.
         assertThat(o.getRejectReason()).isEqualTo("Отменён по запросу покупателя");
 
         Order none = order(OrderStatus.NEW);
-        assertThatThrownBy(() -> service.approveCancelRequest(none.getId(), null))
+        assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(none.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(OrderService.NO_PENDING_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
 
         Order shipped = order(OrderStatus.SHIPPED);
         shipped.setCancelRequestStatus("PENDING");
-        assertThatThrownBy(() -> service.approveCancelRequest(shipped.getId(), null))
+        assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(shipped.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> {
-                    assertThat(e.getCode()).isEqualTo(OrderService.CANNOT_CANCEL);
+                    assertThat(e.getCode()).isEqualTo(CancelRequests.CANNOT_CANCEL);
                     assertThat(e.getMessage()).isEqualTo("заказ уже SHIPPED — отмена по запросу невозможна");
                 });
     }

@@ -22,7 +22,7 @@ import java.util.List;
  *   <li>paid → {@link #request}: a request an admin {@link #approve approves} (reject + restock +
  *       full refund of every paid monobank invoice) or {@link #decline declines}.</li>
  * </ul>
- * Never inside a database transaction itself: the order changes run in {@link OrderService}'s
+ * Never inside a database transaction itself: the order changes run in {@link CancelRequests}'
  * transactions, monobank is called before / after them.
  */
 @Slf4j
@@ -33,13 +33,15 @@ public class CancelRequestService {
     public static final String PAYMENT_IN_PROGRESS = "PAYMENT_IN_PROGRESS";
 
     private final OrderService orderService;
+    private final CancelRequests cancelRequests;
     private final OnlinePaymentService payments;
     private final PaymentInvoiceRepository invoices;
     private final Messages messages;
 
-    public CancelRequestService(OrderService orderService, OnlinePaymentService payments,
+    public CancelRequestService(OrderService orderService, CancelRequests cancelRequests, OnlinePaymentService payments,
                                 PaymentInvoiceRepository invoices, Messages messages) {
         this.orderService = orderService;
+        this.cancelRequests = cancelRequests;
         this.payments = payments;
         this.invoices = invoices;
         this.messages = messages;
@@ -53,7 +55,7 @@ public class CancelRequestService {
     /** Immediate cancel of an unpaid order by its customer. */
     public Order cancelUnpaid(byte[] orderId, String reason) {
         requireNoPaymentInFlight(orderId);
-        Order cancelled = orderService.cancelByCustomer(orderId, reason);
+        Order cancelled = cancelRequests.cancelByCustomer(orderId, reason);
         payments.closeOpenInvoices(orderId);
         return cancelled;
     }
@@ -61,7 +63,7 @@ public class CancelRequestService {
     /** The customer files a cancellation request for a paid order. */
     public Order request(byte[] orderId, String reason) {
         requireNoPaymentInFlight(orderId);
-        return orderService.requestCancel(orderId, reason);
+        return cancelRequests.requestCancel(orderId, reason);
     }
 
     /**
@@ -74,7 +76,7 @@ public class CancelRequestService {
         if (payments.hasPaymentInFlight(orderId)) {
             throw new BadRequestException("банк ещё обрабатывает платёж по заказу — подождите минуту", PAYMENT_IN_PROGRESS);
         }
-        Order order = orderService.approveCancelRequest(orderId, comment);
+        Order order = cancelRequests.approveCancelRequest(orderId, comment);
         payments.closeOpenInvoices(orderId);
 
         long requested = 0;
@@ -107,7 +109,7 @@ public class CancelRequestService {
 
     /** Admin declines with a comment for the customer. */
     public Order decline(byte[] orderId, String comment) {
-        return orderService.declineCancelRequest(orderId, comment);
+        return cancelRequests.declineCancelRequest(orderId, comment);
     }
 
     private void requireNoPaymentInFlight(byte[] orderId) {

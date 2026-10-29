@@ -32,12 +32,15 @@ public final class OrderApp {
     private final OrderOps ops;
     private final OrderPayments payments;
     private final OrderArchive archive;
+    private final CancelRequests cancelRequests;
     private final OrderService service;
 
-    private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, OrderService service) {
+    private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, CancelRequests cancelRequests,
+                     OrderService service) {
         this.ops = ops;
         this.payments = payments;
         this.archive = archive;
+        this.cancelRequests = cancelRequests;
         this.service = service;
     }
 
@@ -74,9 +77,10 @@ public final class OrderApp {
         OrderOps ops = new OrderOps(orders, em, ledger, gift, events, messages, Clock.systemUTC());
         OrderPayments payments = new OrderPayments(ops, orders, events);
         OrderArchive archive = new OrderArchive(ops, orders, events, invoices);
+        CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
         OrderService service = new OrderService(orders, products, promos, options, notifications, events,
                 promoService, carts, messages, em, stock, ledger, payments, gift, registry, lowMargin);
-        return new OrderApp(ops, payments, archive, service);
+        return new OrderApp(ops, payments, archive, cancelRequests, service);
     }
 
     public OrderService service() {
@@ -89,6 +93,10 @@ public final class OrderApp {
 
     public OrderArchive archive() {
         return archive;
+    }
+
+    public CancelRequests cancelRequests() {
+        return cancelRequests;
     }
 
     OrderOps ops() {

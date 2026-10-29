@@ -8,6 +8,7 @@ import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -89,6 +90,12 @@ class OrderOps {
         Order saved = orderRepository.save(order);
         events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
         return saved;
+    }
+
+    /** The common tail of every reject, under the order lock: the status moves, then {@link #afterTransition}. */
+    Order reject(Order order, RejectCause cause) {
+        order.reject(cause);
+        return afterTransition(order);
     }
 
     /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
