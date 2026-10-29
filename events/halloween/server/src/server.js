@@ -4,6 +4,7 @@
 //   /hw/spawner.js, /hw/sprites/*  the widget the site and the Mini App load
 //   /hw/draw/*       the stream draw screen (the admin gateway only)
 import { createServer } from "node:http";
+import { ipOf } from "./clientip.js";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,10 +54,6 @@ async function body(req) {
   }
 }
 
-function ipOf(req) {
-  return String(req.headers["x-real-ip"] || req.socket.remoteAddress || "").slice(0, 64);
-}
-
 // Per-IP budget for the customer API: a person tapping pumpkins needs a few requests a minute.
 const buckets = new Map();
 function limited(ip, cost = 1) {
@@ -66,7 +63,7 @@ function limited(ip, cost = 1) {
   b.n += cost;
   buckets.set(ip, b);
   if (buckets.size > 20000) buckets.clear();
-  return b.n > 120;
+  return b.n > 300; // a mobile carrier's NAT puts many people behind one address
 }
 
 async function serveStatic(req, res, prefix, dir) {
@@ -138,7 +135,8 @@ async function adminApi(req, res, path, query) {
       return send(res, 200, { seedHash: l.commitment, lockedAt: l.locked_at });
     }
     if ((path === "draw" || path === "reroll") && req.method === "POST") {
-      const r = await draw.drawRound(pool, who.tgId, path === "reroll");
+      const b = await body(req);
+      const r = await draw.drawRound(pool, who.tgId, path === "reroll", b.round);
       return send(res, 200, { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets });
     }
     if (path === "winners" && req.method === "GET") {

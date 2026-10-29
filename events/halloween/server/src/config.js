@@ -48,7 +48,7 @@ export const config = {
   /** A tap earlier than this after the pumpkin was issued is a script, not a finger. */
   minReactMs: num("HW_MIN_REACT_MS", 350),
   /** Pumpkins one IP may collect per day across all accounts (shared Wi-Fi is fine at this level). */
-  ipDailyCap: num("HW_IP_DAILY_CAP", 90),
+  ipDailyCap: num("HW_IP_DAILY_CAP", 400), // mobile CGNAT: hundreds of people per address
   /** Telegram ids never in the draw besides admin_users (comma list): test/tech accounts. */
   excludeIds: (env.HW_EXCLUDE_IDS || "9000000000000001").split(",").map((s) => s.trim()).filter(Boolean),
   /** Bot DMs "you got a ticket": the shop bot token (send only, no polling — no 409 with the backend). */
