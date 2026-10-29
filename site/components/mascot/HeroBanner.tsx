@@ -79,7 +79,8 @@ export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
       const list: Slide[] = categories
         .filter((c) => c.productCount > 0)
         .map((c) => ({ slug: c.slug, name: c.name, kind: artKindOf(c.artKind, c.slug, c.name) }));
-      return isHuntOn() && list.length ? [{ slug: "", name: "", kind: list[0].kind, hw: true }, ...list] : list;
+      // While the hunt runs the banner is the hunt alone: the owner asked to keep it on screen.
+      return isHuntOn() && list.length ? [{ slug: "", name: "", kind: list[0].kind, hw: true }] : list;
     },
     [categories]
   );

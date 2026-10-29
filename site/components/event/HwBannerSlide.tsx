@@ -10,21 +10,21 @@ import { useI18n } from "@/i18n/context";
 
 const TEXT = {
   uk: {
-    tag: "26–30.10 · Хелловін",
+    tag: "30.10–01.11 · Хелловін",
     title: "Полювання на гарбузи",
-    sub: "Збирай гарбузи на сайті — 50 штук дають квиток у розіграш на стрімі 30.10",
+    sub: "Шукай гарбузи на сайті: кожен — участь у розіграші, 15 — повний шанс. Покупки від 500 ₴ — окремий розіграш. Наживо 01.11 о 19:00 у TikTok і Kick",
     go: "Як узяти участь",
   },
   ru: {
-    tag: "26–30.10 · Хэллоуин",
+    tag: "30.10–01.11 · Хэллоуин",
     title: "Охота на тыквы",
-    sub: "Собирай тыквы на сайте — 50 штук дают билет в розыгрыш на стриме 30.10",
+    sub: "Ищи тыквы на сайте: каждая — участие в розыгрыше, 15 — полный шанс. Покупки от 500 ₴ — отдельный розыгрыш. Вживую 01.11 в 19:00 в TikTok и Kick",
     go: "Как участвовать",
   },
   en: {
-    tag: "26–30.10 · Halloween",
+    tag: "30.10–01.11 · Halloween",
     title: "Pumpkin hunt",
-    sub: "Collect pumpkins on the site — 50 of them get you a ticket to the stream draw on 30.10",
+    sub: "Find pumpkins on the site: each one gets you in, 15 give the full chance. Orders from 500 UAH — a separate draw. Live on 01.11 at 19:00 on TikTok and Kick",
     go: "How to join",
   },
 } as const;

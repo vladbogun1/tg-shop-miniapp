@@ -66,34 +66,40 @@ export function HalloweenCounter() {
 
 const BANNER = {
   uk: {
-    soon: "Завтра стартує",
+    soon: "Скоро стартує",
     live: "Полювання на гарбузи",
+    wait: "Скоро розіграш",
     stream: "Розіграш іде зараз",
-    soonSub: (at: string) => `Збирай гарбузи з 26.10 — розіграш на стрімі ${at}`,
-    liveSub: (at: string) => `50 гарбузів = квиток, кожне замовлення +1. Розіграш на стрімі ${at}`,
-    streamSub: "Обираємо 5 переможців у прямому ефірі",
+    soonSub: (at: string) => `Збирай гарбузи з 30.10 — розіграш наживо ${at}`,
+    liveSub: (at: string) => `Кожен гарбуз — участь, 15 — повний шанс. Покупки від 500 ₴ — окремий розіграш. Наживо ${at}`,
+    waitSub: (at: string) => `Наживо ${at} у TikTok і Kick`,
+    streamSub: "Обираємо переможців у TikTok і Kick",
     go: "Як узяти участь",
     watch: "Дивитися стрім",
     at: "о",
   },
   ru: {
-    soon: "Завтра старт",
+    soon: "Скоро старт",
     live: "Охота на тыквы",
+    wait: "Скоро розыгрыш",
     stream: "Розыгрыш идёт сейчас",
-    soonSub: (at: string) => `Собирай тыквы с 26.10 — розыгрыш на стриме ${at}`,
-    liveSub: (at: string) => `50 тыкв = билет, каждый заказ +1. Розыгрыш на стриме ${at}`,
-    streamSub: "Выбираем 5 победителей в прямом эфире",
+    soonSub: (at: string) => `Собирай тыквы с 30.10 — розыгрыш вживую ${at}`,
+    liveSub: (at: string) => `Каждая тыква — участие, 15 — полный шанс. Покупки от 500 ₴ — отдельный розыгрыш. Вживую ${at}`,
+    waitSub: (at: string) => `Вживую ${at} в TikTok и Kick`,
+    streamSub: "Выбираем победителей в TikTok и Kick",
     go: "Как участвовать",
     watch: "Смотреть стрим",
     at: "в",
   },
   en: {
-    soon: "Starts tomorrow",
+    soon: "Starting soon",
     live: "Pumpkin hunt",
+    wait: "The draw is coming",
     stream: "The draw is live",
-    soonSub: (at: string) => `Collect pumpkins from 26.10 — the stream draw is ${at}`,
-    liveSub: (at: string) => `50 pumpkins = a ticket, every order +1. Stream draw ${at}`,
-    streamSub: "Picking 5 winners live on stream",
+    soonSub: (at: string) => `Collect pumpkins from 30.10 — live draw ${at}`,
+    liveSub: (at: string) => `Every pumpkin gets you in, 15 give the full chance. Orders from 500 UAH — a separate draw. Live ${at}`,
+    waitSub: (at: string) => `Live ${at} on TikTok and Kick`,
+    streamSub: "Picking the winners on TikTok and Kick",
     go: "How to join",
     watch: "Watch the stream",
     at: "at",
@@ -103,7 +109,7 @@ const BANNER = {
 /** How long after the start of the stream the banner keeps saying «the draw is live». */
 const STREAM_HOURS = 3;
 
-type HwState = { phase: "soon" | "live" | "over"; streamAt: string; streamUrl: string };
+type HwState = { phase: "soon" | "live" | "over"; streamAt: string; streams?: { name: string; url: string }[] };
 
 /**
  * The hunt card under the home screen header: «starts tomorrow» → «the hunt» → «the draw is live» on the
@@ -127,14 +133,17 @@ export function HalloweenBanner() {
       clearInterval(t);
     };
   }, []);
-  if (!s || s.phase === "over") return null;
+  if (!s) return null;
   const x = BANNER[locale as keyof typeof BANNER] ?? BANNER.uk;
   const streamAt = Date.parse(s.streamAt);
   if (now > streamAt + STREAM_HOURS * 3_600_000) return null;
   const onAir = now >= streamAt;
   const kyiv = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("uk-UA", { timeZone: "Europe/Kyiv", ...o }).format(streamAt);
   const at = `${kyiv({ day: "2-digit", month: "2-digit" })} ${x.at} ${kyiv({ hour: "2-digit", minute: "2-digit" })}`;
-  const state = onAir ? "stream" : s.phase;
+  // "over" = the hunt is closed but the stream is still ahead (or on air)
+  const state = onAir ? "stream" : s.phase === "over" ? "wait" : s.phase;
+  const streamUrl = s.streams?.[0]?.url;
+  const sub = { stream: x.streamSub, soon: x.soonSub(at), live: x.liveSub(at), wait: x.waitSub(at) }[state];
   return (
     <button
       type="button"
@@ -142,7 +151,7 @@ export function HalloweenBanner() {
       data-state={state}
       onClick={() => {
         haptic();
-        if (onAir && s.streamUrl) openExternalLink(s.streamUrl);
+        if (onAir && streamUrl) openExternalLink(streamUrl);
         else window.HW?.open();
       }}
     >
@@ -151,8 +160,8 @@ export function HalloweenBanner() {
           {onAir && <span className="hw-banner-dot" aria-hidden />}
           {x[state]}
         </span>
-        <span className="hw-banner-sub">{onAir ? x.streamSub : state === "soon" ? x.soonSub(at) : x.liveSub(at)}</span>
-        <span className="hw-banner-go">{onAir && s.streamUrl ? x.watch : x.go} →</span>
+        <span className="hw-banner-sub">{sub}</span>
+        <span className="hw-banner-go">{onAir && streamUrl ? x.watch : x.go} →</span>
       </span>
       <img className="hw-banner-art" src="/hw/sprites/hero-app.webp" alt="" width={204} height={240} decoding="async" />
     </button>
