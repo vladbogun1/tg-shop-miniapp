@@ -341,7 +341,8 @@ class OrderTransitionsTest {
         o.setCancelRequestStatus("PENDING");
         service.approveCancelRequest(o.getId(), "  ");
         assertThat(o.getCancelRequestAdminComment()).isNull();
-        assertThat(o.getRejectReason()).isEqualTo("Отменён по запросу покупателя: ");
+        // Empty request reason: no dangling colon.
+        assertThat(o.getRejectReason()).isEqualTo("Отменён по запросу покупателя");
 
         Order none = order(OrderStatus.NEW);
         assertThatThrownBy(() -> service.approveCancelRequest(none.getId(), null))
@@ -387,7 +388,7 @@ class OrderTransitionsTest {
     }
 
     @Test
-    void reject_whileACancelRequestIsPending_closesItAsApproved_withoutEvent() {
+    void reject_whileACancelRequestIsPending_closesItAsApproved_andAnswersTheCustomer() {
         Order o = order(OrderStatus.NEW);
         o.setPaid(true);
         o.setReceivedMinor(100_000);
@@ -398,8 +399,12 @@ class OrderTransitionsTest {
         assertThat(o.getCancelRequestStatus()).isEqualTo("APPROVED");
         assertThat(o.getCancelRequestResolvedAt()).isNotNull();
         assertThat(o.getCancelRequestAdminComment()).isNull();
-        // No CancelRequestResolved here (only approveCancelRequest sends it) - just the status event.
-        assertThat(published()).hasSize(1).first().isInstanceOf(OrderEvents.StatusChanged.class);
+        // Owner's decision 29.10.2026: the customer gets the same answer as on «Одобрить и вернуть».
+        List<Object> ev = published();
+        assertThat(ev).hasSize(2);
+        assertThat(ev.get(0)).isInstanceOf(OrderEvents.StatusChanged.class);
+        assertThat(ev.get(1)).isInstanceOfSatisfying(OrderEvents.CancelRequestResolved.class,
+                e -> assertThat(e.approved()).isTrue());
     }
 
     @Test

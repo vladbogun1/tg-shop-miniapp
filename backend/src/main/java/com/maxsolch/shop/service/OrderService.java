@@ -549,7 +549,7 @@ public class OrderService {
         order.setCancelRequestResolvedAt(now);
         order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
         Order saved = rejectLocked(order, new RejectCause(now,
-                CustomerRejectReason.BY_REQUEST + ": " + nz(order.getCancelRequestReason()),
+                byRequestReason(order.getCancelRequestReason()),
                 RejectReasonCode.CHANGED_MIND.name(), true));
         events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
         return saved;
@@ -579,6 +579,13 @@ public class OrderService {
         if (!CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
             throw new BadRequestException("нет активного запроса отмены", NO_PENDING_REQUEST);
         }
+    }
+
+    /** «Отменён по запросу покупателя: причина», без висящего двоеточия при пустой причине. */
+    private static String byRequestReason(String requestReason) {
+        return nz(requestReason).isBlank()
+                ? CustomerRejectReason.BY_REQUEST
+                : CustomerRejectReason.BY_REQUEST + ": " + requestReason;
     }
 
     private static String nz(String s) {
@@ -646,15 +653,21 @@ public class OrderService {
             ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
                     OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
         }
-        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+        boolean requestWasOpen = CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus());
+        if (requestWasOpen) {
             // Rejected by hand while the customer's request was open: the request is fulfilled
             // (the refund, if any, stays the admin's call — the inbox keeps reminding).
             order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
             order.setCancelRequestResolvedAt(Instant.now());
         }
-        return rejectLocked(order, new RejectCause(Instant.now(),
+        Order saved = rejectLocked(order, new RejectCause(Instant.now(),
                 reason == null || reason.isBlank() ? null : reason.trim(),
                 reasonCode == null ? null : reasonCode.name(), false));
+        if (requestWasOpen) {
+            // The customer asked to cancel and got what they asked for: answer like approveCancelRequest does.
+            events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        }
+        return saved;
     }
 
     /** Dispatcher used by the admin board / status PATCH endpoint. */
