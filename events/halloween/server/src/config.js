@@ -41,7 +41,7 @@ export const config = {
   minSpendMinor: Math.round(num("HW_MIN_SPEND_UAH", 500) * 100),
   maxOrderTickets: num("HW_MAX_ORDER_TICKETS", 5),
   /** Rounds of each draw (= prizes). */
-  rounds: { pumpkins: num("HW_ROUNDS_PUMPKINS", 3), orders: num("HW_ROUNDS_ORDERS", 3) },
+  rounds: { pumpkins: num("HW_ROUNDS_PUMPKINS", 6), orders: num("HW_ROUNDS_ORDERS", 6) },
   /** Minimal pause between two pumpkins for one person (server side; the client waits longer). */
   spawnGapSec: num("HW_SPAWN_GAP_SEC", 35),
   spawnTtlSec: num("HW_SPAWN_TTL_SEC", 9),

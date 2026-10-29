@@ -8,7 +8,7 @@ const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
 // Two separate draws (server/src/pools.js): the screen plays one of them, picked in the panel.
 const POOL = qs.get("pool") === "orders" ? "orders" : "pumpkins";
-let ROUNDS = 3; // from the server
+let ROUNDS = 6; // from the server
 const API = "/hw/api/admin";
 // Rehearsal: random real customers from the shop database play with made-up tickets; the real list,
 // lock and rounds are not touched (server/src/test-draw.js).

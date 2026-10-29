@@ -38,7 +38,7 @@ The pumpkin draw is free, no purchase needed. Whether you are in is shown in the
 
 ## 4. The draw
 
-- **3 prizes in each draw**, one per round. One person can win only one prize within a draw, but can win in both draws.
+- **6 prizes in each draw**, one per round. One person can win only one prize within a draw, but can win in both draws.
 - A participant's chance is proportional to their number of tickets.
 - Before the stream the list of each draw is frozen and a fingerprint (sha256) of a secret number and the list is shown on screen. That number, not the host, decides the winners. After the draw the number and the list can be checked.
 - The prizes are announced separately before the stream.
