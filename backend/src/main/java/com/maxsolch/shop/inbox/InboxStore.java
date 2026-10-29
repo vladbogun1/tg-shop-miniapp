@@ -31,7 +31,9 @@ public class InboxStore {
     /**
      * Orders that may produce a row. The WHERE only narrows the scan (the board's
      * {@code idx_orders_status_created} and the unread index serve it); {@link InboxRules}
-     * re-checks every condition.
+     * re-checks every condition. The money predicates are coarse supersets of the Java ones:
+     * {@code received_minor < total_minor} ⊇ {@link com.maxsolch.shop.domain.OrderMoney#amountDueMinor(long, long, long)} > 0,
+     * {@code received_minor > refunded_minor} ⊇ {@link com.maxsolch.shop.domain.OrderMoney#refundableMinor} > 0.
      */
     public List<OrderRow> candidateOrders(Instant newCutoff, Instant approvedCutoff, Instant returnsSince) {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.customer_name, o.total_minor, o.received_minor, "

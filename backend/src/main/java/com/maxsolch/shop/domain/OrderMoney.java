@@ -43,18 +43,32 @@ public final class OrderMoney {
 
     /** Что покупатель платит за заказ в итоге: итог без единиц, не выкупленных на почте. */
     public static long collectableMinor(Order order) {
-        return Math.max(0, order.getTotalMinor() - Math.max(0, order.getUncollectedMinor()));
+        return collectableMinor(order.getTotalMinor(), order.getUncollectedMinor());
+    }
+
+    /** То же по числам — для read-моделей (метрики, ящик), у которых нет сущности {@link Order}. */
+    public static long collectableMinor(long totalMinor, long uncollectedMinor) {
+        return Math.max(0, totalMinor - Math.max(0, uncollectedMinor));
     }
 
     /** Что покупатель платит онлайн: предоплата (не больше итога) или весь итог. */
     public static long dueOnlineMinor(Order order) {
-        long total = order.getTotalMinor();
-        return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
+        return dueOnlineMinor(order.getTotalMinor(), order.getPrepaymentMinor());
+    }
+
+    /** То же по числам. */
+    public static long dueOnlineMinor(long totalMinor, long prepaymentMinor) {
+        return prepaymentMinor > 0 ? Math.min(prepaymentMinor, totalMinor) : totalMinor;
     }
 
     /** Сколько ещё доплатить онлайн прямо сейчас (0, когда онлайн-часть закрыта). */
     public static long amountDueMinor(Order order) {
-        return Math.max(0, dueOnlineMinor(order) - Math.max(0, order.getReceivedMinor()));
+        return amountDueMinor(order.getTotalMinor(), order.getPrepaymentMinor(), order.getReceivedMinor());
+    }
+
+    /** То же по числам. */
+    public static long amountDueMinor(long totalMinor, long prepaymentMinor, long receivedMinor) {
+        return Math.max(0, dueOnlineMinor(totalMinor, prepaymentMinor) - Math.max(0, receivedMinor));
     }
 
     /** Онлайн-заказ (у него есть срок оплаты), у которого онлайн-часть ещё не пришла. */
@@ -69,7 +83,13 @@ public final class OrderMoney {
 
     /** Наложка на Новой почте: что осталось собрать после полученного. */
     public static long codMinor(Order order) {
-        return Math.max(0, collectableMinor(order) - receivedMinor(order));
+        return codMinor(order.getTotalMinor(), order.getUncollectedMinor(), order.getReceivedMinor());
+    }
+
+    /** То же по числам. */
+    public static long codMinor(long totalMinor, long uncollectedMinor, long receivedMinor) {
+        return Math.max(0, collectableMinor(totalMinor, uncollectedMinor)
+                - Math.min(Math.max(0, receivedMinor), totalMinor));
     }
 
     // ----- возвраты -----
@@ -79,7 +99,12 @@ public final class OrderMoney {
      * отрицательным). Основа проверки переплаты.
      */
     public static long netReceivedMinor(Order order) {
-        return order.getReceivedMinor() - Math.max(0, order.getRefundedMinor());
+        return netReceivedMinor(order.getReceivedMinor(), order.getRefundedMinor());
+    }
+
+    /** То же по числам. */
+    public static long netReceivedMinor(long receivedMinor, long refundedMinor) {
+        return receivedMinor - Math.max(0, refundedMinor);
     }
 
     /** Переплата сверх итога после возвратов (netReceived минус итог; отрицательная = недоплата). */

@@ -376,7 +376,7 @@ public class NotificationService {
         sellerChannel.pingChatTopicUnlessZero("onCancelRequested", "ADMIN_CANCEL_REQUEST", order,
                 "Запрос отмены заказа #" + shortId(order), () -> {
                     String cur = nz(order.getCurrency());
-                    long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+                    long received = OrderMoney.receivedMinor(order);
                     return "🛑 <b>Запрос отмены</b>\n"
                             + "Заказ <b>#" + shortId(order) + "</b> · " + escHtml(nz(order.getCustomerName())) + "\n"
                             + "Оплачено: <b>" + money(received) + " " + cur + "</b>\n"
@@ -389,7 +389,7 @@ public class NotificationService {
     public void notifyCustomerCancelRequest(Order order, boolean approved) {
         String journalType = approved ? "CANCEL_REQUEST_APPROVED" : "CANCEL_REQUEST_DECLINED";
         customerBot.send("notifyCustomerCancelRequest", journalType, order, locale -> {
-            long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
+            long received = OrderMoney.receivedMinor(order);
             String text = approved
                     ? messages.get(locale, "bot.cancelRequest.approved", shortId(order),
                             money(received) + " " + nz(order.getCurrency()))

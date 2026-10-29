@@ -1,5 +1,6 @@
 package com.maxsolch.shop.analytics.metrics;
 
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderStatus;
 
 import java.time.Instant;
@@ -228,7 +229,7 @@ public record MetricsFacts(List<OrderFact> orders,
             if (!sold()) {
                 return 0;
             }
-            long total = Math.max(0, totalMinor - Math.max(0, uncollectedMinor));
+            long total = OrderMoney.collectableMinor(totalMinor, uncollectedMinor);
             long overpaid = Math.max(0, Math.max(receivedMinor, onlinePaidMinor) - total);
             long returned = Math.max(0, refundedMinor - overpaid);
             return Math.max(0, total - Math.min(total, returned));
@@ -236,7 +237,7 @@ public record MetricsFacts(List<OrderFact> orders,
 
         /** Наложка still to collect: the total without the units refused at the branch, minus what arrived. */
         public long codMinor() {
-            return Math.max(0, totalMinor - Math.max(0, uncollectedMinor) - Math.max(0, receivedMinor));
+            return OrderMoney.codMinor(totalMinor, uncollectedMinor, receivedMinor);
         }
 
         /** Share of the order's item prices that stays sold: promo discount and refunds applied. */
