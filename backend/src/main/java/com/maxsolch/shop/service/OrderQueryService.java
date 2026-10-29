@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * Read-side mapping for orders (summaries / detail / board cards).
@@ -255,7 +256,7 @@ public class OrderQueryService {
     /** Admin view: line titles are the Russian snapshots. */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o) {
-        return detail(o, ContentLocale.RU, false);
+        return adminView(o);
     }
 
     /**
@@ -266,10 +267,52 @@ public class OrderQueryService {
      */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o, String lang) {
-        return detail(o, lang, true);
+        return customerView(o, lang);
     }
 
-    private OrderDetailDto detail(Order o, String lang, boolean customer) {
+    private OrderDetailDto customerView(Order o, String lang) {
+        // A sealed gift case keeps its prize a surprise: the customer sees the line after opening.
+        boolean sealed = OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
+        // The payment method is a Russian snapshot; the customer gets its translation while the
+        // option still has the same title (content_translations, PAYMENT_OPTION/title).
+        String paymentTitle = o.getPaymentOptionTitle();
+        if (o.getPaymentOptionId() != null && ContentLocale.isTranslated(lang)) {
+            paymentTitle = translationService.overlay(lang).text(TranslationEntityType.PAYMENT_OPTION,
+                    UuidUtil.toString(o.getPaymentOptionId()), TranslationEntityType.TITLE, paymentTitle);
+        }
+        return detailCore(o, lang, it -> !(sealed && it.isAutoGift() && it.getCaseRarity() != null))
+                .paymentOptionTitle(paymentTitle)
+                .rejectReason(customerRejectReason.current(o.getRejectReason()))
+                .receivedMinor(OrderPaymentState.of(o).receivedMinor())
+                .exchanges(List.of())
+                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, lang, true))
+                .admin(null)
+                .build();
+    }
+
+    private OrderDetailDto adminView(Order o) {
+        return detailCore(o, ContentLocale.RU, it -> true)
+                .paymentOptionTitle(o.getPaymentOptionTitle())
+                .rejectReason(o.getRejectReason())
+                // The admin sees what really arrived (an exchange for something cheaper leaves it
+                // above the total — that overpayment is to be refunded); the customer, the capped.
+                .receivedMinor(Math.max(0, o.getReceivedMinor()))
+                .exchanges(exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
+                        .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
+                                e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
+                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName(),
+                                e.getNewOrderId() == null ? null : UuidUtil.toString(e.getNewOrderId())))
+                        .toList())
+                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, ContentLocale.RU, false))
+                .admin(adminExtras(o))
+                .build();
+    }
+
+    /**
+     * What the customer and the admin views share. The fields they word or fill differently
+     * (payment title, reject reason, received, exchanges, gift, admin block) are left for the caller.
+     */
+    private OrderDetailDto.OrderDetailDtoBuilder detailCore(Order o, String lang, Predicate<OrderItem> visible) {
         List<OrderItem> orderItems = o.getItems();
         Map<String, String> thumbnails = thumbnailsFor(orderItems);
         TranslationService.ItemNames names = ContentLocale.isTranslated(lang)
@@ -278,10 +321,8 @@ public class OrderQueryService {
                         orderItems.stream().map(OrderItem::getVariantId).filter(java.util.Objects::nonNull).toList(),
                         lang)
                 : TranslationService.ItemNames.EMPTY;
-        // A sealed gift case keeps its prize a surprise: the customer sees the line after opening.
-        boolean sealed = customer && OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
         List<OrderItemDto> items = orderItems.stream()
-                .filter(it -> !(sealed && it.isAutoGift() && it.getCaseRarity() != null))
+                .filter(visible)
                 .map(it -> toItemDto(o, it, thumbnails, names))
                 .toList();
         OnlinePaymentDto payment = onlinePayment(o);
@@ -289,13 +330,6 @@ public class OrderQueryService {
         // The language the customer chose in the shop (users.locale): the admin answers in it.
         Long customerId = o.getUserId() != null ? o.getUserId() : o.getTgUserId();
         String customerLocale = customerId == null ? null : userRepository.localeOf(customerId).orElse(null);
-        // The payment method is a Russian snapshot; the customer gets its translation while the
-        // option still has the same title (content_translations, PAYMENT_OPTION/title).
-        String paymentTitle = o.getPaymentOptionTitle();
-        if (customer && o.getPaymentOptionId() != null && ContentLocale.isTranslated(lang)) {
-            paymentTitle = translationService.overlay(lang).text(TranslationEntityType.PAYMENT_OPTION,
-                    UuidUtil.toString(o.getPaymentOptionId()), TranslationEntityType.TITLE, paymentTitle);
-        }
         return OrderDetailDto.builder()
                 .id(UuidUtil.toString(o.getId()))
                 .status(o.getStatus().name())
@@ -310,9 +344,7 @@ public class OrderQueryService {
                 .deliveryMethod(o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name())
                 .npCityName(o.getNpCityName())
                 .npWarehouseName(o.getNpWarehouseName())
-                .paymentOptionTitle(paymentTitle)
                 .trackingNumber(o.getTrackingNumber())
-                .rejectReason(customer ? customerRejectReason.current(o.getRejectReason()) : o.getRejectReason())
                 .items(items)
                 .payment(payment)
                 .tgUserId(o.getTgUserId())
@@ -325,9 +357,6 @@ public class OrderQueryService {
                 .paid(pay.paid())
                 .paidAt(o.getPaidAt())
                 .prepaymentMinor(o.getPrepaymentMinor())
-                // The admin sees what really arrived (an exchange for something cheaper leaves it
-                // above the total — that overpayment is to be refunded); the customer, the capped.
-                .receivedMinor(customer ? pay.receivedMinor() : Math.max(0, o.getReceivedMinor()))
                 .paymentDueAt(pay.paymentDueAt())
                 .amountDueMinor(pay.amountDueMinor())
                 .source(sourceOf(o))
@@ -342,21 +371,12 @@ public class OrderQueryService {
                 .cancelRequestedAt(o.getCancelRequestedAt())
                 .cancelRequestResolvedAt(o.getCancelRequestResolvedAt())
                 .cancelRequestAdminComment(o.getCancelRequestAdminComment())
-                .exchanges(customer ? List.of() : exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
-                        .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
-                                e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
-                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName(),
-                                e.getNewOrderId() == null ? null : UuidUtil.toString(e.getNewOrderId())))
-                        .toList())
                 .giftCaseStatus(o.getGiftCaseStatus())
                 .giftCaseOpenedAt(o.getGiftCaseOpenedAt())
                 .giftCaseOpenable(OrderService.giftCaseOpenable(o))
-                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer))
                 .giftDiscountMinor(o.getGiftDiscountMinor())
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
-                .uncollectedMinor(pay.uncollectedMinor())
-                .admin(customer ? null : adminExtras(o))
-                .build();
+                .uncollectedMinor(pay.uncollectedMinor());
     }
 
     /** Money journal and write-offs (optional: unit tests build the service without them). */
@@ -431,51 +451,8 @@ public class OrderQueryService {
 
     /** The order's return records for the drawer, with what each did and whether it can be undone. */
     private List<OrderDetailDto.ReturnRecordDto> returnRecords(Order o) {
-        if (adjustments == null) {
-            return List.of();
-        }
-        List<com.maxsolch.shop.domain.OrderReturn> recs = adjustments.returnRecordsOf(o.getId());
-        if (recs.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, List<com.maxsolch.shop.domain.OrderReturnLine>> byRecord = new java.util.HashMap<>();
-        adjustments.returnLinesOf(recs.stream().map(com.maxsolch.shop.domain.OrderReturn::getId).toList())
-                .forEach(l -> byRecord.computeIfAbsent(l.getReturnId(), k -> new ArrayList<>()).add(l));
-        Map<Long, OrderItem> items = new java.util.HashMap<>();
-        o.getItems().forEach(i -> { if (i.getId() != null) items.put(i.getId(), i); });
-        Map<String, String> images = thumbnailsFor(o.getItems());
-        com.maxsolch.shop.domain.OrderReturn newest = recs.stream().filter(r -> r.getCancelledAt() == null)
-                .reduce((a, b) -> b).orElse(null);
-        List<OrderDetailDto.ReturnRecordDto> out = new ArrayList<>();
-        for (com.maxsolch.shop.domain.OrderReturn r : recs) {
-            String newOrderId = null;
-            Order replacement = null;
-            if (r.getExchangeId() != null) {
-                var ex = exchangeRepository.findById(r.getExchangeId()).orElse(null);
-                if (ex != null && ex.getNewOrderId() != null) {
-                    newOrderId = UuidUtil.toString(ex.getNewOrderId());
-                    replacement = orderRepository.findById(ex.getNewOrderId()).orElse(null);
-                }
-            }
-            List<OrderDetailDto.ReturnRecordLineDto> lines = byRecord.getOrDefault(r.getId(), List.of()).stream()
-                    .map(l -> {
-                        OrderItem it = items.get(l.getItemId());
-                        String title = it == null ? "—" : it.getTitleSnapshot()
-                                + (it.getVariantNameSnapshot() == null ? "" : " (" + it.getVariantNameSnapshot() + ")");
-                        String img = it == null || it.getProductId() == null ? null
-                                : images.get(UuidUtil.toString(it.getProductId()));
-                        return new OrderDetailDto.ReturnRecordLineDto(l.getItemId(), title, img, l.getQuantity(),
-                                l.getOutcome(), l.getRestockedQty(), l.getDefectQty(), l.pendingQty());
-                    })
-                    .toList();
-            boolean isNewest = r == newest;
-            String blocker = isNewest ? adjustments.cancelBlocker(r, replacement) : null;
-            out.add(new OrderDetailDto.ReturnRecordDto(r.getId(), r.getKind(), r.getCreatedAt(), r.getAdminName(),
-                    r.getNote(), lines, r.getRefundMinor(), r.getRefundChannel(), r.getMonoRefundMinor(), newOrderId,
-                    r.getCancelledAt(), r.getCancelledBy(), r.getCancelNote(), r.getDebtMinor(), r.getDebtPaidAt(),
-                    isNewest && blocker == null, blocker));
-        }
-        return out;
+        return OrderReturnRecordsAssembler.assemble(o, adjustments, exchangeRepository, orderRepository,
+                this::thumbnailsFor);
     }
 
     /** All APPROVED orders mapped to dispatch rows (newest first). */
