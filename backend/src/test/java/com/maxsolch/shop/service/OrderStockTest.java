@@ -88,7 +88,7 @@ class OrderStockTest {
     private OrderService newService() {
         return new OrderService(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
-                new OrderStock(productRepository, messages, lots, queue));
+                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class));
     }
 
     private Product product(int stock) {

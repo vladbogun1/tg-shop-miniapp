@@ -78,6 +78,8 @@ public class OrderService {
     private final Messages messages;
     private final EntityManager entityManager;
     private final OrderStock stock;
+    /** The order money journal: every movement of money on an order is recorded here. */
+    private final MoneyLedger moneyLedger;
 
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
@@ -115,17 +117,9 @@ public class OrderService {
         this.caseLowMargin = caseLowMargin;
     }
 
-    /** Order money journal (optional: unit tests build the service without it). */
-    private MoneyLedger moneyLedger;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
-        this.moneyLedger = moneyLedger;
-    }
-
     private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
                         OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
-        if (moneyLedger != null && amountMinor != 0) {
+        if (amountMinor != 0) {
             moneyLedger.record(order.getId(), kind, channel, amountMinor, source, adminName, note, invoiceExtId);
         }
     }
@@ -140,7 +134,8 @@ public class OrderService {
                         CartService cartService,
                         Messages messages,
                         EntityManager entityManager,
-                        OrderStock stock) {
+                        OrderStock stock,
+                        MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -152,6 +147,7 @@ public class OrderService {
         this.messages = messages;
         this.entityManager = entityManager;
         this.stock = stock;
+        this.moneyLedger = moneyLedger;
     }
 
     /**

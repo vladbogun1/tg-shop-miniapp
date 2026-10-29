@@ -13,7 +13,7 @@ com/maxsolch/shop/review/ReviewService.java 591
 com/maxsolch/shop/service/AdminProductService.java 756
 com/maxsolch/shop/service/OrderAdjustmentService.java 1231
 com/maxsolch/shop/service/OrderQueryService.java 585
-com/maxsolch/shop/service/OrderService.java 1863
+com/maxsolch/shop/service/OrderService.java 1653
 com/maxsolch/shop/service/WebAuthService.java 569
 com/maxsolch/shop/support/SupportService.java 650
 com/maxsolch/shop/translation/TranslationAdminService.java 955

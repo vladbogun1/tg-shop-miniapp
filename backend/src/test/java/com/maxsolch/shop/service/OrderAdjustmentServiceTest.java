@@ -70,7 +70,7 @@ class OrderAdjustmentServiceTest {
         OrderStock stock = StockFixtures.stock(productRepository, messages);
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager, stock);
+                promoService, cartService, messages, entityManager, stock, org.mockito.Mockito.mock(MoneyLedger.class));
         service = new OrderAdjustmentService(orderRepository, orderService, stock, events, exchangeRepository);
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -367,7 +367,7 @@ class OrderAdjustmentServiceTest {
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
-                StockFixtures.stock(productRepository, messages));
+                StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
 
         Order delivered = orderService.deliver(o.getId());
 
@@ -680,7 +680,7 @@ class OrderAdjustmentServiceTest {
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
-                StockFixtures.stock(productRepository, messages));
+                StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
         Order delivered = orderService.deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);

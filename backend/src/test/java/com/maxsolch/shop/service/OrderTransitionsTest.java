@@ -89,9 +89,8 @@ class OrderTransitionsTest {
         service = new OrderService(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
-                StockFixtures.stock(productRepository, messages));
+                StockFixtures.stock(productRepository, messages), ledger);
         service.setGiftService(giftService);
-        service.setMoneyLedger(ledger);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));

@@ -50,6 +50,8 @@ import static org.mockito.Mockito.when;
 class OrderServiceTest {
 
     @Mock
+    MoneyLedger moneyLedger;
+    @Mock
     OrderRepository orderRepository;
     @Mock
     ProductRepository productRepository;
@@ -82,7 +84,7 @@ class OrderServiceTest {
         service = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
-                StockFixtures.stock(productRepository, messages));
+                StockFixtures.stock(productRepository, messages), moneyLedger);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -1116,8 +1118,6 @@ class OrderServiceTest {
 
     @Test
     void rejectShipped_withReturnInTransit_doesNotRestock_andRetainsPrepayment() {
-        MoneyLedger ledger = org.mockito.Mockito.mock(MoneyLedger.class);
-        service.setMoneyLedger(ledger);
         Order o = persistedOrder(OrderStatus.SHIPPED);
         o.setPrepaymentMinor(10_000);
         o.setReceivedMinor(10_000);
@@ -1134,7 +1134,7 @@ class OrderServiceTest {
         assertThat(rejected.getReturnSentAt()).isNotNull();
         assertThat(it.getReturnPendingQty()).isEqualTo(1);
         verify(productRepository, never()).findByIdForUpdate(any());
-        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
+        verify(moneyLedger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
                 any(), eq(10_000L), any(), any(), any(), any());
     }
 
