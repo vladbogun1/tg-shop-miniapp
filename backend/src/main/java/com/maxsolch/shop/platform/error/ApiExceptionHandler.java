@@ -47,39 +47,21 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
-        return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
-    }
-
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(NotFoundException ex) {
-        return error(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException ex) {
-        return error(HttpStatus.BAD_REQUEST, ex.getMessage(), ex.getCode());
-    }
-
-    /** Business limits (anti-bot): 429 with a code and Retry-After. */
-    @ExceptionHandler(TooManyRequestsException.class)
-    public ResponseEntity<Map<String, Object>> handleTooMany(TooManyRequestsException ex) {
-        ResponseEntity<Map<String, Object>> body = error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), ex.getCode());
-        if (ex.getRetryAfterSeconds() > 0) {
-            body.getBody().put("retryAfterSec", ex.getRetryAfterSeconds());
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
-                    .body(body.getBody());
+    /** Every business "no": the HTTP status comes from the exception kind, the text from the message or the i18n catalog. */
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<Map<String, Object>> handleDomain(DomainException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.kind().httpStatus());
+        String text = ex.isFromCatalog() ? messages.current(ex.getMessage(), ex.args()) : ex.getMessage();
+        ResponseEntity<Map<String, Object>> res = error(status, text, ex.getCode());
+        Map<String, Object> body = res.getBody();
+        if (ex instanceof DomainException.Conflict c && !c.getDetails().isEmpty()) {
+            c.getDetails().forEach(body::putIfAbsent);
         }
-        return body;
-    }
-
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
-        ResponseEntity<Map<String, Object>> res = error(HttpStatus.CONFLICT, ex.getMessage(), ex.getCode());
-        if (!ex.getDetails().isEmpty() && res.getBody() != null) {
-            ex.getDetails().forEach(res.getBody()::putIfAbsent);
+        if (ex instanceof DomainException.TooManyRequests t && t.getRetryAfterSeconds() > 0) {
+            body.put("retryAfterSec", t.getRetryAfterSeconds());
+            return ResponseEntity.status(status)
+                    .header("Retry-After", String.valueOf(t.getRetryAfterSeconds()))
+                    .body(body);
         }
         return res;
     }
@@ -100,11 +82,6 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleLockFailure(Exception ex) {
         log.info("Lock conflict: {}", ex.getMessage());
         return error(HttpStatus.CONFLICT, messages.current("api.error.conflict"), ConflictException.CONFLICT);
-    }
-
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
-        return error(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
     /** Thrown by @PreAuthorize / @RequiredAdmin when the role does not match. */

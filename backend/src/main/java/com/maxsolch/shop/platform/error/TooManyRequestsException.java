@@ -1,26 +1,15 @@
 package com.maxsolch.shop.platform.error;
 
 /**
- * Maps to HTTP 429 with a stable {@code code} (e.g. {@code ORDER_COOLDOWN}) and, when known, a
- * {@code Retry-After} header — a business limit (anti-bot), not the per-IP filter.
+ * Maps to HTTP 429 with a stable code (e.g. ORDER_COOLDOWN) and, when known, a Retry-After header:
+ * a business limit (anti-bot), not the per-IP filter.
+ *
+ * @deprecated use {@link DomainException.TooManyRequests} with an {@link ErrorCode}.
  */
-public class TooManyRequestsException extends RuntimeException {
-
-    private final String code;
-    private final long retryAfterSeconds;
+@Deprecated(forRemoval = true)
+public class TooManyRequestsException extends DomainException.TooManyRequests {
 
     public TooManyRequestsException(String message, String code, long retryAfterSeconds) {
-        super(message);
-        this.code = code;
-        this.retryAfterSeconds = retryAfterSeconds;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    /** Seconds until the limit lets the next request through; 0 = unknown. */
-    public long getRetryAfterSeconds() {
-        return retryAfterSeconds;
+        super(message, code == null ? null : ErrorCode.of(code), retryAfterSeconds);
     }
 }

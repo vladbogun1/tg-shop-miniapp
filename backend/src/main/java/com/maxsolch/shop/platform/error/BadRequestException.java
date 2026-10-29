@@ -1,27 +1,18 @@
 package com.maxsolch.shop.platform.error;
 
 /**
- * Maps to HTTP 400.
+ * Maps to HTTP 400, optionally with a stable code the apps can branch on.
  *
- * <p>Optionally carries a stable {@code code} that the apps can branch on. Matching on the message
- * text would be the alternative, and it breaks the moment the wording is improved or translated —
- * which matters here because these messages are shown to customers in Russian.
+ * @deprecated use {@link DomainException.BadRequest} with an {@link ErrorCode}; kept so old code keeps compiling.
  */
-public class BadRequestException extends RuntimeException {
-
-    private final String code;
+@Deprecated(forRemoval = true)
+public class BadRequestException extends DomainException.BadRequest {
 
     public BadRequestException(String message) {
         this(message, null);
     }
 
     public BadRequestException(String message, String code) {
-        super(message);
-        this.code = code;
-    }
-
-    /** Stable identifier of the reason, or null when the message is the whole story. */
-    public String getCode() {
-        return code;
+        super(message, code == null ? null : ErrorCode.of(code));
     }
 }
