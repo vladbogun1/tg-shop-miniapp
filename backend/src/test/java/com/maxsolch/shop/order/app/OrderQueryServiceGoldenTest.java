@@ -98,6 +98,7 @@ class OrderQueryServiceGoldenTest {
         MonobankGateway mono = mock(MonobankGateway.class);
         ProductImageRepository images = mock(ProductImageRepository.class);
         TranslationService translation = mock(TranslationService.class);
+        com.maxsolch.shop.catalog.app.CatalogNames catalogNames = mock(com.maxsolch.shop.catalog.app.CatalogNames.class);
         UserRepository users = mock(UserRepository.class);
         CustomerRejectReason rejectReason = mock(CustomerRejectReason.class);
         OrderExchangeRepository exchangeRepo = mock(OrderExchangeRepository.class);
@@ -141,12 +142,12 @@ class OrderQueryServiceGoldenTest {
             return out;
         });
         // uk/en: the line titles and the payment title are «translated», the rest stays as is.
-        when(translation.orderItemNames(any(), any(), anyString())).thenAnswer(inv -> {
+        when(catalogNames.orderItemNames(any(), any(), anyString())).thenAnswer(inv -> {
             Map<String, String> titles = new HashMap<>();
             for (byte[] pid : inv.<java.util.Collection<byte[]>>getArgument(0)) {
                 titles.put(UuidUtil.toString(pid), "Translated title " + UuidUtil.toString(pid).substring(30));
             }
-            return new TranslationService.ItemNames(titles, Map.of());
+            return new com.maxsolch.shop.catalog.app.CatalogNames.ItemNames(titles, Map.of());
         });
         TranslationService.Overlay overlay = mock(TranslationService.Overlay.class);
         when(overlay.text(any(), any(), any(), any())).thenAnswer(inv -> "[tr] " + inv.getArgument(3));
@@ -186,7 +187,7 @@ class OrderQueryServiceGoldenTest {
                 new com.maxsolch.shop.payment.app.OrderPaymentsAdapter(
                         mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class), invoiceRepo, mono,
                         java.time.Clock.systemUTC()),
-                images, translation, users,
+                images, translation, catalogNames, users,
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
                 movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), giftProvider);

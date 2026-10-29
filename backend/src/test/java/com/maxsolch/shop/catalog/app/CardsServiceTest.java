@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CardStatus;
 import com.maxsolch.shop.catalog.domain.Category;
@@ -192,7 +193,7 @@ class CardsServiceTest {
         ContentTranslation desc = db.translations.stream()
                 .filter(t -> t.getId().getField().equals("description") && t.getId().getLocale().equals("uk"))
                 .findFirst().orElseThrow();
-        assertThat(desc.getSourceHash()).isEqualTo(TranslationService.sha256Hex("Новое описание"));
+        assertThat(desc.getSourceHash()).isEqualTo(SourceHash.sha256Hex("Новое описание"));
         assertThat(manual.getText()).isEqualTo("Hand-made");
     }
 

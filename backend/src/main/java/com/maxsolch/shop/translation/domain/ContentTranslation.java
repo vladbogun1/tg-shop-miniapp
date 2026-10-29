@@ -1,6 +1,5 @@
 package com.maxsolch.shop.translation.domain;
 
-import com.maxsolch.shop.translation.app.TranslationService;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -69,7 +68,7 @@ public class ContentTranslation implements Persistable<ContentTranslationId> {
 
     /** Binds the text to the Russian {@code source} it was made from (hash + snapshot). */
     public void setSource(String source) {
-        this.sourceHash = TranslationService.sha256Hex(source);
+        this.sourceHash = SourceHash.sha256Hex(source);
         this.sourceText = source;
     }
 

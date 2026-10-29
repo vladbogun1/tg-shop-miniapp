@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.review.ReviewDtos.ReviewFeed;
 import com.maxsolch.shop.review.ReviewDtos.Summary;
 import com.maxsolch.shop.review.ReviewStore.FeedRow;
@@ -78,7 +79,7 @@ class ReviewFeedServiceTest {
         String source = "Мышка";
         when(translations.overlay("uk")).thenReturn(new TranslationService.Overlay(Map.of(
                 new TranslationService.Key(TranslationEntityType.PRODUCT, PID, TranslationEntityType.TITLE),
-                new TranslationService.Entry("Мишка", TranslationService.sha256Hex(source), TranslationOrigin.values()[0]))));
+                new TranslationService.Entry("Мишка", SourceHash.sha256Hex(source), TranslationOrigin.values()[0]))));
         when(store.latestFeed(ReviewFeedService.MAX_SIZE)).thenReturn(List.of(row(source)));
         when(store.shopSummary()).thenReturn(new Summary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -19,12 +20,10 @@ import com.maxsolch.shop.translation.app.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.app.TranslationDtos.ImportItem;
 import com.maxsolch.shop.translation.app.TranslationDtos.ImportRequest;
 import com.maxsolch.shop.translation.app.TranslationDtos.ImportResult;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +47,7 @@ class TranslationAdminServiceTest {
     private static final String TAG = "33333333-3333-3333-3333-333333333333";
     private static final String VARIANT = "44444444-4444-4444-4444-444444444444";
     private static final String TITLE = "Ковер";
-    private static final String HASH = TranslationService.sha256Hex(TITLE);
+    private static final String HASH = SourceHash.sha256Hex(TITLE);
 
     ContentTranslationRepository repo;
     ProductRepository products;
@@ -57,7 +56,7 @@ class TranslationAdminServiceTest {
     PaymentOptionRepository payments;
     ReplyTemplateRepository templates;
     TranslationService translationService;
-    CacheManager cacheManager;
+    com.maxsolch.shop.platform.tx.DomainEvents events;
     TranslationAdminService service;
     com.maxsolch.shop.translation.app.BotTexts botTexts;
 
@@ -70,7 +69,7 @@ class TranslationAdminServiceTest {
         payments = mock(PaymentOptionRepository.class);
         templates = mock(ReplyTemplateRepository.class);
         translationService = mock(TranslationService.class);
-        cacheManager = new ConcurrentMapCacheManager("products", "productById", "catalogSchema");
+        events = mock(com.maxsolch.shop.platform.tx.DomainEvents.class);
 
         List<Object[]> productRows = new ArrayList<>();
         productRows.add(new Object[]{UuidUtil.toBytes(PRODUCT), TITLE, "Описание", null, "", true, false});
@@ -89,9 +88,11 @@ class TranslationAdminServiceTest {
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
         botTexts = mock(com.maxsolch.shop.translation.app.BotTexts.class);
-        service = new TranslationAdminService(repo, products, variants, tags, payments, templates,
-                translationService,
-                cacheManager, botTexts);
+        service = new TranslationAdminService(repo, translationService, botTexts, events, java.time.Clock.systemUTC(),
+                List.of(new com.maxsolch.shop.catalog.app.CatalogTranslatableSource(products, variants, tags),
+                        new com.maxsolch.shop.payment.app.PaymentTranslatableSource(payments),
+                        new com.maxsolch.shop.service.ReplyTemplateTranslatableSource(templates),
+                        new BotTextSource(botTexts)));
     }
 
     private static ImportItem item(String field, String hash, String text) {
@@ -129,13 +130,13 @@ class TranslationAdminServiceTest {
         assertThat(row.getUpdatedBy()).isEqualTo(42L);
         assertThat(row.isNew()).isTrue();
         assertThat(row.getId().getLocale()).isEqualTo("uk");
-        verify(translationService).invalidate();
+        verify(events).publish(any(com.maxsolch.shop.translation.domain.TranslationsChanged.class));
     }
 
     @Test
     void staleHashIsRejected() {
         ImportResult r = service.importTranslations(new ImportRequest("uk", null, null,
-                List.of(item("title", TranslationService.sha256Hex("Ковёр"), "Килимок"))), 1L);
+                List.of(item("title", SourceHash.sha256Hex("Ковёр"), "Килимок"))), 1L);
 
         assertThat(r.applied()).isZero();
         assertThat(r.skippedStale()).isEqualTo(1);
@@ -208,17 +209,17 @@ class TranslationAdminServiceTest {
     @Test
     void localeMustBeUkOrEn() {
         assertThatThrownBy(() -> service.importTranslations(new ImportRequest("ru", null, null, List.of()), 1L))
-                .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> service.export("de", "all", null)).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> service.delete(null, null, null)).isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> service.export("de", "all", null)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> service.delete(null, null, null)).isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.importTranslations(new ImportRequest("uk", "ROBOT", null, List.of()), 1L))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
     void exportCoversLiveEntitiesWithStatus() {
         ContentTranslation staleRow = existing(TranslationOrigin.MANUAL);
-        staleRow.setSourceHash(TranslationService.sha256Hex("Было"));
+        staleRow.setSourceHash(SourceHash.sha256Hex("Было"));
         when(repo.findByLocale("uk")).thenReturn(List.of(staleRow));
 
         List<ExportItem> all = service.export("uk", "all", null);
@@ -301,9 +302,9 @@ class TranslationAdminServiceTest {
 
         TranslationDtos.AcceptResult r = service.accept(new TranslationDtos.AcceptRequest(List.of(
                 new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "title", "uk",
-                        TranslationService.sha256Hex("Было")),
+                        SourceHash.sha256Hex("Было")),
                 new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "description", "uk",
-                        TranslationService.sha256Hex("Описание")),
+                        SourceHash.sha256Hex("Описание")),
                 new TranslationDtos.AcceptItem("PRODUCT", PRODUCT, "title", "de", HASH))), 7L);
 
         assertThat(r).isEqualTo(new TranslationDtos.AcceptResult(0, 0, 1, 1, 1));
@@ -313,18 +314,18 @@ class TranslationAdminServiceTest {
 
     @Test
     void deleteNeedsEntityTypeForEntityId() {
-        assertThatThrownBy(() -> service.delete("uk", null, PRODUCT)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.delete("uk", null, PRODUCT)).isInstanceOf(DomainException.BadRequest.class);
         when(repo.deleteByLocaleAndEntity(any(), any(), any())).thenReturn(2);
         assertThat(service.delete("uk", "product", PRODUCT)).isEqualTo(2);
-        verify(translationService).invalidate();
+        verify(events).publish(any(com.maxsolch.shop.translation.domain.TranslationsChanged.class));
     }
 
     @Test
     void deleteSingleFieldNeedsEntityAndTranslatableField() {
         assertThatThrownBy(() -> service.delete("uk", "product", null, "title"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.delete("uk", "product", PRODUCT, "slug"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         when(repo.deleteByLocaleAndEntityAndField(any(), any(), any(), any())).thenReturn(1);
         assertThat(service.delete("uk", "product", PRODUCT, "title")).isEqualTo(1);
         verify(repo, never()).deleteByLocaleAndEntity(any(), any(), any());
@@ -363,8 +364,8 @@ class TranslationAdminServiceTest {
         assertThat(tagItems.get(1).productId()).isNull();
 
         ImportResult r = service.importTranslations(new ImportRequest("uk", null, false, List.of(
-                new ImportItem("CATEGORY", TAG, "intro_text", TranslationService.sha256Hex("Длинный текст"), "Довгий текст"),
-                new ImportItem("CATEGORY", TAG, "h1", TranslationService.sha256Hex("x"), "y"))), 1L);
+                new ImportItem("CATEGORY", TAG, "intro_text", SourceHash.sha256Hex("Длинный текст"), "Довгий текст"),
+                new ImportItem("CATEGORY", TAG, "h1", SourceHash.sha256Hex("x"), "y"))), 1L);
         assertThat(r.applied()).isEqualTo(1);
         assertThat(r.notFound()).isEqualTo(1); // h1 is empty: NO_SOURCE
     }
@@ -378,7 +379,7 @@ class TranslationAdminServiceTest {
         when(tags.findById(any())).thenReturn(Optional.of(tag));
 
         TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
-                List.of(new TranslationDtos.SourceRef("CATEGORY", TAG, "h1", TranslationService.sha256Hex("Игровые ковирки"))),
+                List.of(new TranslationDtos.SourceRef("CATEGORY", TAG, "h1", SourceHash.sha256Hex("Игровые ковирки"))),
                 "Игровые коврики", null), 1L);
 
         assertThat(r.updated()).isEqualTo(1);
@@ -438,7 +439,7 @@ class TranslationAdminServiceTest {
         when(botTexts.sourceRu(BOT_KEY)).thenReturn(BOT_RU);
         when(botTexts.saveRu(BOT_KEY, "Уже здесь: {0}")).thenReturn(true);
 
-        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь: {0}");
+        TranslationDtos.SourceFixResult r = fixBotText(SourceHash.sha256Hex(BOT_RU), "Уже здесь: {0}");
 
         assertThat(r.updated()).isEqualTo(1);
         verify(botTexts).saveRu(BOT_KEY, "Уже здесь: {0}");
@@ -448,7 +449,7 @@ class TranslationAdminServiceTest {
     void sourceFixOfABotTextIsSkippedWhenItChangedMeanwhile() {
         when(botTexts.sourceRu(BOT_KEY)).thenReturn("Другой текст {0}");
 
-        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь: {0}");
+        TranslationDtos.SourceFixResult r = fixBotText(SourceHash.sha256Hex(BOT_RU), "Уже здесь: {0}");
 
         assertThat(r.skippedStale()).isEqualTo(1);
         verify(botTexts, never()).saveRu(anyString(), anyString());
@@ -459,7 +460,7 @@ class TranslationAdminServiceTest {
         when(botTexts.sourceRu(BOT_KEY)).thenReturn(BOT_RU);
         when(botTexts.saveRu(anyString(), anyString())).thenReturn(false);
 
-        TranslationDtos.SourceFixResult r = fixBotText(TranslationService.sha256Hex(BOT_RU), "Уже здесь");
+        TranslationDtos.SourceFixResult r = fixBotText(SourceHash.sha256Hex(BOT_RU), "Уже здесь");
 
         assertThat(r.updated()).isZero();
         assertThat(r.invalid()).isEqualTo(1);
@@ -478,7 +479,7 @@ class TranslationAdminServiceTest {
         Product p = product();
         when(products.findById(any())).thenReturn(Optional.of(p));
         when(repo.findByLocale("uk")).thenReturn(List.of(existing(TranslationOrigin.MANUAL)));
-        String oldHash = TranslationService.sha256Hex("Ковер черрный");
+        String oldHash = SourceHash.sha256Hex("Ковер черрный");
 
         TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", oldHash)),
@@ -486,7 +487,7 @@ class TranslationAdminServiceTest {
 
         assertThat(r.updated()).isEqualTo(1);
         assertThat(r.translationsApplied()).isEqualTo(2);
-        String newHash = TranslationService.sha256Hex("Ковер черный");
+        String newHash = SourceHash.sha256Hex("Ковер черный");
         assertThat(r.sourceHash()).isEqualTo(newHash);
         assertThat(p.getTitle()).isEqualTo("Ковер черный");
         List<ContentTranslation> rows = saved();
@@ -497,7 +498,7 @@ class TranslationAdminServiceTest {
         });
         assertThat(rows).extracting(ContentTranslation::getText)
                 .containsExactlyInAnyOrder("Килимок чорний", "Mouse Pad, Black");
-        verify(translationService).invalidate();
+        verify(events).publish(any(com.maxsolch.shop.translation.domain.TranslationsChanged.class));
     }
 
     @Test
@@ -507,7 +508,7 @@ class TranslationAdminServiceTest {
 
         TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title",
-                        TranslationService.sha256Hex("что-то другое"))),
+                        SourceHash.sha256Hex("что-то другое"))),
                 "Ковер черный", Map.of("uk", "Килимок чорний")), 5L);
 
         assertThat(r.updated()).isZero();
@@ -519,14 +520,14 @@ class TranslationAdminServiceTest {
     @Test
     void sourceFixValidatesInput() {
         assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(List.of(), "x", null), 1L))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), " ", null), 1L))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), "x",
                 Map.of("ru", "x")), 1L))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         TranslationDtos.SourceFixResult r = service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("PRODUCT", PRODUCT, "title", HASH)), "я".repeat(256), null), 1L);
         assertThat(r.invalid()).isEqualTo(1);
@@ -552,13 +553,13 @@ class TranslationAdminServiceTest {
         assertThat(items.get(0).productId()).isNull();
 
         ImportResult r = service.importTranslations(new ImportRequest("uk", null, false, List.of(
-                new ImportItem("REPLY_TEMPLATE", key, "body", TranslationService.sha256Hex(t.getBodyRu()),
+                new ImportItem("REPLY_TEMPLATE", key, "body", SourceHash.sha256Hex(t.getBodyRu()),
                         "{name}, замовлення #{orderNo} відправлено."))), 1L);
         assertThat(r.applied()).isEqualTo(1);
 
         TranslationDtos.SourceFixResult fix = service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("REPLY_TEMPLATE", key, "body",
-                        TranslationService.sha256Hex(t.getBodyRu()))),
+                        SourceHash.sha256Hex(t.getBodyRu()))),
                 "{name}, ваш заказ #{orderNo} отправлен.", Map.of()), 1L);
         assertThat(fix.updated()).isEqualTo(1);
         assertThat(t.getBodyRu()).isEqualTo("{name}, ваш заказ #{orderNo} отправлен.");

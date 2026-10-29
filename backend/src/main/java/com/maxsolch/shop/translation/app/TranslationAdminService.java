@@ -1,23 +1,13 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
-import com.maxsolch.shop.catalog.domain.Category;
-import com.maxsolch.shop.catalog.app.CatalogDtos.CategoryUpsertRequest;
-import com.maxsolch.shop.catalog.infra.CategoryRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.payment.domain.PaymentOption;
-import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.domain.ReplyTemplate;
-import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.catalog.infra.ProductVariantRepository;
-import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.translation.app.TranslationDtos.AcceptItem;
 import com.maxsolch.shop.translation.app.TranslationDtos.AcceptRequest;
 import com.maxsolch.shop.translation.app.TranslationDtos.AcceptResult;
@@ -33,25 +23,24 @@ import com.maxsolch.shop.translation.app.TranslationDtos.SourceRef;
 import com.maxsolch.shop.translation.app.TranslationDtos.Stats;
 import com.maxsolch.shop.translation.app.TranslationDtos.Status;
 import com.maxsolch.shop.translation.app.TranslationDtos.TextCounts;
+import com.maxsolch.shop.translation.app.TranslatableSource.Field;
+import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.ReplyTemplateDtos;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.translation.domain.TranslationErrors;
+import com.maxsolch.shop.translation.domain.TranslationsChanged;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.EnumMap;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.event.EventListener;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -78,64 +67,33 @@ public class TranslationAdminService {
     static final int MAX_REJECTED_LISTED = 2_000;
 
     private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
-    private static final List<String> CATALOG_CACHES = List.of("products", "productById", "catalogSchema");
-
-    /**
-     * The Russian source of one field; {@code inScope} = part of the export (live entity);
-     * {@code productId}/{@code productTitle} = owning product of PRODUCT/VARIANT fields, else null.
-     */
-    record Source(String text, boolean inScope, String productId, String productTitle) {
-        Source(String text, boolean inScope) {
-            this(text, inScope, null, null);
-        }
-    }
-
-    /** Column sizes of the Russian sources ({@code entityType:field} -> max chars). */
-    private static final Map<String, Integer> SOURCE_MAX_CHARS = Map.ofEntries(
-            Map.entry("PRODUCT:title", 255),
-            Map.entry("PRODUCT:description", MAX_TEXT_CHARS),
-            Map.entry("PRODUCT:seo_title", 255),
-            Map.entry("PRODUCT:seo_description", 512),
-            Map.entry("PRODUCT:condition_note", 255),
-            Map.entry("VARIANT:name", 128),
-            Map.entry("CATEGORY:name", 128),
-            Map.entry("CATEGORY:seo_title", 255),
-            Map.entry("CATEGORY:seo_description", 512),
-            Map.entry("CATEGORY:h1", 255),
-            Map.entry("CATEGORY:intro_text", CategoryUpsertRequest.INTRO_MAX_CHARS),
-            Map.entry("PAYMENT_OPTION:title", 255),
-            Map.entry("PAYMENT_OPTION:description", 1024),
-            Map.entry("REPLY_TEMPLATE:body", ReplyTemplateDtos.BODY_MAX_CHARS),
-            Map.entry("BOT_TEXT:body", BotTexts.MAX_CHARS));
 
     private final ContentTranslationRepository repository;
-    private final ProductRepository productRepository;
-    private final ProductVariantRepository variantRepository;
-    private final CategoryRepository categoryRepository;
-    private final PaymentOptionRepository paymentOptionRepository;
-    private final ReplyTemplateRepository replyTemplateRepository;
     private final TranslationService translationService;
-    private final CacheManager cacheManager;
     private final BotTexts botTexts;
+    private final DomainEvents events;
+    private final Clock clock;
+    private final List<TranslatableSource> sourceList;
+    /** Which source owns which entity type. */
+    private final Map<TranslationEntityType, TranslatableSource> owners = new EnumMap<>(TranslationEntityType.class);
 
     public TranslationAdminService(ContentTranslationRepository repository,
-                                   ProductRepository productRepository,
-                                   ProductVariantRepository variantRepository,
-                                   CategoryRepository categoryRepository,
-                                   PaymentOptionRepository paymentOptionRepository,
-                                   ReplyTemplateRepository replyTemplateRepository,
                                    TranslationService translationService,
-                                   CacheManager cacheManager,
-                                   BotTexts botTexts) {
+                                   BotTexts botTexts,
+                                   DomainEvents events,
+                                   Clock clock,
+                                   List<TranslatableSource> sources) {
         this.repository = repository;
-        this.productRepository = productRepository;
-        this.variantRepository = variantRepository;
-        this.categoryRepository = categoryRepository;
-        this.paymentOptionRepository = paymentOptionRepository;
-        this.replyTemplateRepository = replyTemplateRepository;
         this.translationService = translationService;
-        this.cacheManager = cacheManager;
         this.botTexts = botTexts;
+        this.events = events;
+        this.clock = clock;
+        this.sourceList = sources;
+        for (TranslatableSource s : sources) {
+            for (TranslationEntityType type : s.types()) {
+                owners.put(type, s);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ export / stats
@@ -148,13 +106,13 @@ public class TranslationAdminService {
         Map<Key, ContentTranslation> rows = withBuiltinBotTexts(existing(l), l);
 
         List<ExportItem> out = new ArrayList<>();
-        for (Map.Entry<Key, Source> e : sources().entrySet()) {
+        for (Map.Entry<Key, Field> e : sources().entrySet()) {
             Key key = e.getKey();
-            Source src = e.getValue();
+            Field src = e.getValue();
             if (!src.inScope() || isBlank(src.text()) || (type != null && key.type() != type)) {
                 continue;
             }
-            String hash = TranslationService.sha256Hex(src.text());
+            String hash = SourceHash.sha256Hex(src.text());
             ContentTranslation row = rows.get(key);
             Status st = statusOf(row, hash);
             if (wanted != null && wanted != st) {
@@ -163,7 +121,7 @@ public class TranslationAdminService {
             out.add(new ExportItem(key.type().name(), key.entityId(), key.field(), src.text(), hash, st.name(),
                     row == null ? null : row.getText(),
                     row == null ? null : row.getOrigin().name(),
-                    src.productId(), src.productTitle(),
+                    src.ownerId(), src.ownerTitle(),
                     st == Status.STALE ? row.getSourceText() : null,
                     row != null && isReviewed(row)));
         }
@@ -178,7 +136,7 @@ public class TranslationAdminService {
 
     @Transactional(readOnly = true)
     public Stats stats() {
-        Map<Key, Source> sources = sources();
+        Map<Key, Field> sources = sources();
         Map<String, Map<String, Counts>> locales = new LinkedHashMap<>();
         // Bucket of every unique source text: 0 missing, 1 stale, 2 review, 3 done (lowest wins).
         Map<String, Integer> textBucket = new HashMap<>();
@@ -192,12 +150,12 @@ public class TranslationAdminService {
                 }
             }
             acc.put("ALL", new int[4]);
-            for (Map.Entry<Key, Source> e : sources.entrySet()) {
-                Source src = e.getValue();
+            for (Map.Entry<Key, Field> e : sources.entrySet()) {
+                Field src = e.getValue();
                 if (!src.inScope() || isBlank(src.text())) {
                     continue;
                 }
-                String hash = hashes.computeIfAbsent(src.text(), TranslationService::sha256Hex);
+                String hash = hashes.computeIfAbsent(src.text(), SourceHash::sha256Hex);
                 ContentTranslation row = rows.get(e.getKey());
                 Status st = statusOf(row, hash);
                 boolean unreviewed = st == Status.TRANSLATED && !isReviewed(row);
@@ -244,17 +202,17 @@ public class TranslationAdminService {
     @Transactional
     public ImportResult importTranslations(ImportRequest req, Long adminId) {
         if (req == null) {
-            throw new BadRequestException("empty body");
+            throw TranslationErrors.badRequest("empty body");
         }
         String locale = requireLocale(req.locale());
         TranslationOrigin origin = parseOrigin(req.origin());
         boolean force = Boolean.TRUE.equals(req.force());
         List<ImportItem> items = req.items() == null ? List.of() : req.items();
         if (items.size() > MAX_ITEMS) {
-            throw new BadRequestException("too many items (max " + MAX_ITEMS + ")");
+            throw TranslationErrors.badRequest("too many items (max " + MAX_ITEMS + ")");
         }
 
-        Map<Key, Source> sources = sources();
+        Map<Key, Field> sources = sources();
         Map<Key, ContentTranslation> rows = existing(locale);
         Map<String, String> hashCache = new HashMap<>();
         Map<Key, ContentTranslation> toSave = new LinkedHashMap<>();
@@ -281,7 +239,7 @@ public class TranslationAdminService {
             byte[] entityId = UuidUtil.toBytes(item.entityId().trim());
             Key key = new Key(type, UuidUtil.toString(entityId), item.field());
 
-            Source src = sources.get(key);
+            Field src = sources.get(key);
             if (src == null) {
                 notFound++;
                 reject(rejected, item, "NOT_FOUND");
@@ -292,7 +250,7 @@ public class TranslationAdminService {
                 reject(rejected, item, "NO_SOURCE");
                 continue;
             }
-            String currentHash = hashCache.computeIfAbsent(src.text(), TranslationService::sha256Hex);
+            String currentHash = hashCache.computeIfAbsent(src.text(), SourceHash::sha256Hex);
             if (!currentHash.equals(item.sourceHash().trim().toLowerCase(Locale.ROOT))) {
                 stale++;
                 reject(rejected, item, "STALE");
@@ -313,7 +271,7 @@ public class TranslationAdminService {
             row.setSourceText(src.text());
             row.setOrigin(origin);
             // The admin's own text is checked by definition; AI output waits in «Проверить ИИ».
-            row.setReviewedAt(origin == TranslationOrigin.MANUAL ? Instant.now() : null);
+            row.setReviewedAt(origin == TranslationOrigin.MANUAL ? clock.instant() : null);
             row.setUpdatedBy(adminId);
             toSave.put(key, row);
             applied++;
@@ -379,14 +337,14 @@ public class TranslationAdminService {
     @Transactional
     public SourceFixResult fixSource(SourceFixRequest req, Long adminId) {
         if (req == null || req.items() == null || req.items().isEmpty()) {
-            throw new BadRequestException("items required");
+            throw TranslationErrors.badRequest("items required");
         }
         if (req.items().size() > MAX_FIX_ITEMS) {
-            throw new BadRequestException("too many items (max " + MAX_FIX_ITEMS + ")");
+            throw TranslationErrors.badRequest("too many items (max " + MAX_FIX_ITEMS + ")");
         }
         String newSource = req.source();
         if (isBlank(newSource)) {
-            throw new BadRequestException("source must not be blank");
+            throw TranslationErrors.badRequest("source must not be blank");
         }
         Map<String, String> translations = new LinkedHashMap<>();
         if (req.translations() != null) {
@@ -398,12 +356,12 @@ public class TranslationAdminService {
                 }
                 if (text.length() > MAX_TEXT_CHARS
                         || text.getBytes(StandardCharsets.UTF_8).length > MAX_TEXT_BYTES) {
-                    throw new BadRequestException("translation " + l + " is too long");
+                    throw TranslationErrors.badRequest("translation " + l + " is too long");
                 }
                 translations.put(l, text);
             }
         }
-        String newHash = TranslationService.sha256Hex(newSource);
+        String newHash = SourceHash.sha256Hex(newSource);
 
         List<Rejected> rejected = new ArrayList<>();
         List<Key> updatedKeys = new ArrayList<>();
@@ -416,7 +374,8 @@ public class TranslationAdminService {
             String problem = asItem == null ? "INVALID_ITEM" : validate(asItem);
             TranslationEntityType type = asItem == null ? null : TranslationEntityType.parse(ref.entityType());
             if (problem == null) {
-                Integer max = SOURCE_MAX_CHARS.get(type.name() + ":" + ref.field());
+                TranslatableSource owner = owners.get(type);
+                Integer max = owner == null ? null : owner.maxSourceChars(type, ref.field());
                 if (max != null && newSource.length() > max) {
                     problem = "INVALID_SOURCE_TOO_LONG";
                 }
@@ -475,142 +434,14 @@ public class TranslationAdminService {
         return new SourceFixResult(updatedKeys.size(), stale, notFound, invalid, written, newHash, rejected);
     }
 
-    /** OK | STALE | NOT_FOUND | INVALID_* - sets one source field when its hash still matches. */
+    /** OK | STALE | NOT_FOUND | INVALID_* - sets one source field (the owner checks that its hash still matches). */
     private String applySource(TranslationEntityType type, byte[] id, String field, String wantedHash,
                                String newSource, String newHash) {
-        switch (type) {
-            case PRODUCT -> {
-                Product p = productRepository.findById(id).orElse(null);
-                if (p == null) {
-                    return "NOT_FOUND";
-                }
-                String current = switch (field) {
-                    case TranslationEntityType.TITLE -> p.getTitle();
-                    case TranslationEntityType.DESCRIPTION -> p.getDescription();
-                    case TranslationEntityType.SEO_TITLE -> p.getSeoTitle();
-                    case TranslationEntityType.CONDITION_NOTE -> p.getConditionNote();
-                    default -> p.getSeoDescription();
-                };
-                if (!matches(current, wantedHash, newHash)) {
-                    return "STALE";
-                }
-                switch (field) {
-                    case TranslationEntityType.TITLE -> p.setTitle(newSource);
-                    case TranslationEntityType.DESCRIPTION -> p.setDescription(newSource);
-                    case TranslationEntityType.SEO_TITLE -> p.setSeoTitle(newSource);
-                    case TranslationEntityType.CONDITION_NOTE -> p.setConditionNote(newSource);
-                    default -> p.setSeoDescription(newSource);
-                }
-                return "OK";
-            }
-            case VARIANT -> {
-                ProductVariant v = variantRepository.findById(id).orElse(null);
-                if (v == null) {
-                    return "NOT_FOUND";
-                }
-                if (!matches(v.getName(), wantedHash, newHash)) {
-                    return "STALE";
-                }
-                v.setName(newSource);
-                return "OK";
-            }
-            case CATEGORY -> {
-                Category t = categoryRepository.findById(id).orElse(null);
-                if (t == null) {
-                    return "NOT_FOUND";
-                }
-                if (!TranslationEntityType.NAME.equals(field)) {
-                    if (!matches(categorySeoField(t, field), wantedHash, newHash)) {
-                        return "STALE";
-                    }
-                    setCategorySeoField(t, field, newSource);
-                    return "OK";
-                }
-                if (!matches(t.getName(), wantedHash, newHash)) {
-                    return "STALE";
-                }
-                boolean clash = categoryRepository.findAll().stream()
-                        .anyMatch(c -> !Arrays.equals(c.getId(), id) && Arrays.equals(c.getParentId(), t.getParentId())
-                                && c.getName().equalsIgnoreCase(newSource.trim()));
-                if (clash) {
-                    return "INVALID_CATEGORY_NAME_TAKEN";
-                }
-                t.setName(newSource);
-                return "OK";
-            }
-            case PAYMENT_OPTION -> {
-                PaymentOption o = paymentOptionRepository.findById(id).orElse(null);
-                if (o == null) {
-                    return "NOT_FOUND";
-                }
-                boolean title = TranslationEntityType.TITLE.equals(field);
-                if (!matches(title ? o.getTitle() : o.getDescription(), wantedHash, newHash)) {
-                    return "STALE";
-                }
-                if (title) {
-                    o.setTitle(newSource);
-                } else {
-                    o.setDescription(newSource);
-                }
-                return "OK";
-            }
-            case REPLY_TEMPLATE -> {
-                Long templateId = ReplyTemplate.idOfTranslationId(id);
-                ReplyTemplate t = templateId == null ? null : replyTemplateRepository.findById(templateId).orElse(null);
-                if (t == null) {
-                    return "NOT_FOUND";
-                }
-                if (!matches(t.getBodyRu(), wantedHash, newHash)) {
-                    return "STALE";
-                }
-                t.setBodyRu(newSource);
-                return "OK";
-            }
-            case BOT_TEXT -> {
-                String key = BotTexts.keyOfId(id);
-                String current = key == null ? null : botTexts.sourceRu(key);
-                if (current == null) {
-                    return "NOT_FOUND";
-                }
-                if (!matches(current, wantedHash, newHash)) {
-                    return "STALE";
-                }
-                return botTexts.saveRu(key, newSource) ? "OK" : "INVALID_PLACEHOLDERS";
-            }
-            default -> {
-                return "INVALID_ENTITY_TYPE";
-            }
+        TranslatableSource owner = owners.get(type);
+        if (owner == null) {
+            return "INVALID_ENTITY_TYPE";
         }
-    }
-
-    /** The SEO source fields of a category (everything translatable but the name). */
-    static String categorySeoField(Category t, String field) {
-        return switch (field) {
-            case TranslationEntityType.SEO_TITLE -> t.getSeoTitle();
-            case TranslationEntityType.SEO_DESCRIPTION -> t.getSeoDescription();
-            case TranslationEntityType.H1 -> t.getH1();
-            case TranslationEntityType.INTRO_TEXT -> t.getIntroText();
-            default -> throw new IllegalArgumentException("not a category SEO field: " + field);
-        };
-    }
-
-    private static void setCategorySeoField(Category t, String field, String value) {
-        switch (field) {
-            case TranslationEntityType.SEO_TITLE -> t.setSeoTitle(value);
-            case TranslationEntityType.SEO_DESCRIPTION -> t.setSeoDescription(value);
-            case TranslationEntityType.H1 -> t.setH1(value);
-            case TranslationEntityType.INTRO_TEXT -> t.setIntroText(value);
-            default -> throw new IllegalArgumentException("not a category SEO field: " + field);
-        }
-    }
-
-    /** The field still holds what the admin saw - or already holds the fix (a repeated click). */
-    private static boolean matches(String current, String wantedHash, String newHash) {
-        if (current == null) {
-            return false;
-        }
-        String h = TranslationService.sha256Hex(current);
-        return h.equals(wantedHash) || h.equals(newHash);
+        return owner.applySource(new SourceChange(type, id, field, wantedHash, newSource, newHash));
     }
 
     // ------------------------------------------------------------------ accept (review)
@@ -625,12 +456,12 @@ public class TranslationAdminService {
     public AcceptResult accept(AcceptRequest req, Long adminId) {
         List<AcceptItem> items = req == null || req.items() == null ? List.of() : req.items();
         if (items.size() > MAX_ITEMS) {
-            throw new BadRequestException("too many items (max " + MAX_ITEMS + ")");
+            throw TranslationErrors.badRequest("too many items (max " + MAX_ITEMS + ")");
         }
-        Map<Key, Source> sources = sources();
+        Map<Key, Field> sources = sources();
         Map<String, Map<Key, ContentTranslation>> rowsByLocale = new HashMap<>();
         List<ContentTranslation> toSave = new ArrayList<>();
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         int rebased = 0;
         int stale = 0;
         int notFound = 0;
@@ -645,13 +476,13 @@ public class TranslationAdminService {
             }
             TranslationEntityType type = TranslationEntityType.parse(item.entityType());
             Key key = new Key(type, UuidUtil.toString(UuidUtil.toBytes(item.entityId().trim())), item.field());
-            Source src = sources.get(key);
+            Field src = sources.get(key);
             ContentTranslation row = rowsByLocale.computeIfAbsent(locale, this::existing).get(key);
             if (src == null || isBlank(src.text()) || row == null) {
                 notFound++;
                 continue;
             }
-            String currentHash = TranslationService.sha256Hex(src.text());
+            String currentHash = SourceHash.sha256Hex(src.text());
             if (!currentHash.equals(item.sourceHash().trim().toLowerCase(Locale.ROOT))) {
                 stale++;
                 continue;
@@ -686,15 +517,15 @@ public class TranslationAdminService {
     @Transactional
     public void backfillSourceTexts() {
         try {
-            Map<Key, Source> sources = sources();
+            Map<Key, Field> sources = sources();
             Map<String, String> hashes = new HashMap<>();
             int filled = 0;
             for (String l : ContentLocale.TRANSLATED) {
                 for (Map.Entry<Key, ContentTranslation> e : existing(l).entrySet()) {
                     ContentTranslation row = e.getValue();
-                    Source src = sources.get(e.getKey());
+                    Field src = sources.get(e.getKey());
                     if (row.getSourceText() != null || src == null || isBlank(src.text())
-                            || !hashes.computeIfAbsent(src.text(), TranslationService::sha256Hex)
+                            || !hashes.computeIfAbsent(src.text(), SourceHash::sha256Hex)
                             .equals(row.getSourceHash())) {
                         continue;
                     }
@@ -728,23 +559,23 @@ public class TranslationAdminService {
         String l = requireLocale(locale);
         boolean oneField = field != null && !field.isBlank();
         if (oneField && (entityId == null || entityId.isBlank())) {
-            throw new BadRequestException("field requires entityType and entityId");
+            throw TranslationErrors.badRequest("field requires entityType and entityId");
         }
         TranslationEntityType type = parseTypeOrNull(entityType);
         int deleted;
         if (entityId != null && !entityId.isBlank()) {
             if (type == null) {
-                throw new BadRequestException("entityId requires entityType");
+                throw TranslationErrors.badRequest("entityId requires entityType");
             }
             byte[] id;
             try {
                 id = UuidUtil.toBytes(entityId.trim());
             } catch (IllegalArgumentException e) {
-                throw new BadRequestException("invalid entityId");
+                throw TranslationErrors.badRequest("invalid entityId");
             }
             if (oneField) {
                 if (!type.allows(field.trim())) {
-                    throw new BadRequestException("field is not translatable for " + type.name());
+                    throw TranslationErrors.badRequest("field is not translatable for " + type.name());
                 }
                 deleted = repository.deleteByLocaleAndEntityAndField(l, type, id, field.trim());
             } else {
@@ -761,9 +592,7 @@ public class TranslationAdminService {
         return deleted;
     }
 
-    /** Rows whose entity no longer exists (no FKs on the shared table). Daily. */
-    @SchedulerLock(name = "TranslationAdminService.cleanupOrphans", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.translations.orphan-cleanup-cron:0 50 4 * * *}")
+    /** Rows whose entity no longer exists (no FKs on the shared table); called daily by {@link TranslationJobs}. */
     @Transactional
     public int cleanupOrphans() {
         int removed = repository.deleteOrphanProducts()
@@ -782,72 +611,12 @@ public class TranslationAdminService {
     // ------------------------------------------------------------------ internals
 
     /** Every translatable field of every existing entity, with its current Russian source. */
-    Map<Key, Source> sources() {
-        Map<Key, Source> out = new HashMap<>();
-        for (Object[] r : productRepository.translationSources()) {
-            String id = UuidUtil.toString((byte[]) r[0]);
-            boolean live = Boolean.TRUE.equals(r[5]) && !Boolean.TRUE.equals(r[6]);
-            String title = (String) r[1];
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.TITLE, title, live, id, title);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.DESCRIPTION, (String) r[2], live,
-                    id, title);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_TITLE, (String) r[3], live,
-                    id, title);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.SEO_DESCRIPTION, (String) r[4], live,
-                    id, title);
-            put(out, TranslationEntityType.PRODUCT, id, TranslationEntityType.CONDITION_NOTE,
-                    r.length > 7 ? (String) r[7] : null, live, id, title);
-        }
-        for (Object[] r : variantRepository.translationSources()) {
-            boolean live = Boolean.TRUE.equals(r[2]) && !Boolean.TRUE.equals(r[3]);
-            String productId = r.length > 4 && r[4] != null ? UuidUtil.toString((byte[]) r[4]) : null;
-            String productTitle = r.length > 5 ? (String) r[5] : null;
-            put(out, TranslationEntityType.VARIANT, UuidUtil.toString((byte[]) r[0]), TranslationEntityType.NAME,
-                    (String) r[1], live, productId, productTitle);
-        }
-        for (Category t : categoryRepository.findAll()) {
-            String id = UuidUtil.toString(t.getId());
-            put(out, TranslationEntityType.CATEGORY, id, TranslationEntityType.NAME, t.getName(), true);
-            // SEO fields carry the category name as context (productTitle; productId stays null),
-            // so the «Переводы» screen and the AI prompt can tell whose page the text belongs to.
-            for (String field : TranslationEntityType.CATEGORY.fields()) {
-                if (!TranslationEntityType.NAME.equals(field)) {
-                    put(out, TranslationEntityType.CATEGORY, id, field, categorySeoField(t, field), true, null,
-                            t.getName());
-                }
-            }
-        }
-        // Chat reply templates: admin-only texts, always in scope; the template's title is the
-        // context (productTitle) the «Переводы» screen and the AI prompt show next to the text.
-        for (ReplyTemplate t : replyTemplateRepository.findAll()) {
-            put(out, TranslationEntityType.REPLY_TEMPLATE, ReplyTemplate.translationKey(t.getId()),
-                    TranslationEntityType.BODY, t.getBodyRu(), true, null, t.getTitle());
-        }
-        // Bot phrases of the pre-order queue: the key is the context, the source is the Russian text.
-        for (String key : BotTexts.KEYS) {
-            String ru = botTexts.sourceRu(key);
-            if (ru != null) {
-                put(out, TranslationEntityType.BOT_TEXT, BotTexts.idStringOf(key), TranslationEntityType.BODY, ru,
-                        true, null, key);
-            }
-        }
-        for (PaymentOption p : paymentOptionRepository.findAll()) {
-            String id = UuidUtil.toString(p.getId());
-            put(out, TranslationEntityType.PAYMENT_OPTION, id, TranslationEntityType.TITLE, p.getTitle(), p.isActive());
-            put(out, TranslationEntityType.PAYMENT_OPTION, id, TranslationEntityType.DESCRIPTION, p.getDescription(),
-                    p.isActive());
+    Map<Key, Field> sources() {
+        Map<Key, Field> out = new HashMap<>();
+        for (TranslatableSource s : sourceList) {
+            out.putAll(s.fields());
         }
         return out;
-    }
-
-    private static void put(Map<Key, Source> out, TranslationEntityType type, String id, String field,
-                            String text, boolean inScope) {
-        out.put(new Key(type, id, field), new Source(text, inScope));
-    }
-
-    private static void put(Map<Key, Source> out, TranslationEntityType type, String id, String field,
-                            String text, boolean inScope, String productId, String productTitle) {
-        out.put(new Key(type, id, field), new Source(text, inScope, productId, productTitle));
     }
 
     /**
@@ -886,38 +655,15 @@ public class TranslationAdminService {
         return rows;
     }
 
-    /**
-     * The catalog caches embed translated text, so they go together with the snapshot — after the
-     * commit, otherwise a request racing the transaction could re-cache the old rows for two minutes.
-     */
+    /** Whoever keeps translated text in memory (snapshots, bot phrases, catalog caches) drops it after the commit. */
     private void invalidateAfterCommit() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    invalidateNow();
-                }
-            });
-        } else {
-            invalidateNow();
-        }
-    }
-
-    private void invalidateNow() {
-        translationService.invalidate();
-        botTexts.invalidate();
-        for (String name : CATALOG_CACHES) {
-            Cache cache = cacheManager.getCache(name);
-            if (cache != null) {
-                cache.clear();
-            }
-        }
+        events.publish(new TranslationsChanged());
     }
 
     static String requireLocale(String locale) {
         String l = locale == null ? "" : locale.trim().toLowerCase(Locale.ROOT);
         if (!ContentLocale.TRANSLATED.contains(l)) {
-            throw new BadRequestException("locale must be one of " + ContentLocale.TRANSLATED);
+            throw TranslationErrors.badRequest("locale must be one of " + ContentLocale.TRANSLATED);
         }
         return l;
     }
@@ -929,7 +675,7 @@ public class TranslationAdminService {
         try {
             return TranslationOrigin.valueOf(origin.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("origin must be AI or MANUAL");
+            throw TranslationErrors.badRequest("origin must be AI or MANUAL");
         }
     }
 
@@ -940,7 +686,7 @@ public class TranslationAdminService {
         try {
             return Status.valueOf(status.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("status must be missing|stale|translated|all");
+            throw TranslationErrors.badRequest("status must be missing|stale|translated|all");
         }
     }
 
@@ -950,7 +696,7 @@ public class TranslationAdminService {
         }
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
-            throw new BadRequestException(
+            throw TranslationErrors.badRequest(
                     "entityType must be one of PRODUCT, VARIANT, CATEGORY, PAYMENT_OPTION, REPLY_TEMPLATE, BOT_TEXT");
         }
         return type;

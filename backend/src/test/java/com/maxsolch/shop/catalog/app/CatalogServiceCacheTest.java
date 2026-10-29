@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
@@ -70,7 +71,7 @@ class CatalogServiceCacheTest {
 
         @Bean
         TranslationService translationService(ContentTranslationRepository repo, ProductRepository products) {
-            return new TranslationService(repo, products, mock(ProductVariantRepository.class));
+            return new TranslationService(repo, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         }
 
         @Bean
@@ -110,7 +111,7 @@ class CatalogServiceCacheTest {
         ContentTranslation uk = new ContentTranslation(new ContentTranslationId(
                 TranslationEntityType.PRODUCT, UuidUtil.toBytes(ID), TranslationEntityType.TITLE, "uk"));
         uk.setText("Килимок");
-        uk.setSourceHash(TranslationService.sha256Hex("Ковер"));
+        uk.setSourceHash(SourceHash.sha256Hex("Ковер"));
         when(translationRepository.findByLocale("uk")).thenReturn(List.of(uk));
         when(translationRepository.findByLocale("en")).thenReturn(List.of());
         translationService.invalidate(); // snapshots of an earlier test must not leak into this one

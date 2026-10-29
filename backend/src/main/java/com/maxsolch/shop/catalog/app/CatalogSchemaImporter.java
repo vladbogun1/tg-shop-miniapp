@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
@@ -434,7 +435,7 @@ public class CatalogSchemaImporter {
         if (source == null) {
             return;
         }
-        String hash = TranslationService.sha256Hex(source);
+        String hash = SourceHash.sha256Hex(source);
         for (String locale : ContentLocale.TRANSLATED) {
             String text = text(c, "name_" + locale);
             if (text == null) {

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -54,7 +55,7 @@ class BotTextsTest {
 
     private void translate(String text, String sourceRu) {
         uk.put(new Key(TranslationEntityType.BOT_TEXT, BotTexts.idStringOf(KEY), TranslationEntityType.BODY),
-                new Entry(text, TranslationService.sha256Hex(sourceRu), TranslationOrigin.MANUAL));
+                new Entry(text, SourceHash.sha256Hex(sourceRu), TranslationOrigin.MANUAL));
     }
 
     @Test

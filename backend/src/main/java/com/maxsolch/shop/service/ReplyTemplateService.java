@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -172,7 +173,7 @@ public class ReplyTemplateService {
     }
 
     private static TemplateDto toDto(ReplyTemplate t, Map<String, ContentTranslation> rows) {
-        String hash = TranslationService.sha256Hex(t.getBodyRu());
+        String hash = SourceHash.sha256Hex(t.getBodyRu());
         ContentTranslation uk = rows.get(t.getId() + ":uk");
         ContentTranslation en = rows.get(t.getId() + ":en");
         return new TemplateDto(t.getId(), t.getTitle(), t.getBodyRu(),
@@ -197,7 +198,7 @@ public class ReplyTemplateService {
         Map<String, ContentTranslation> rows = translations();
         List<RenderedTemplateDto> out = new ArrayList<>();
         for (ReplyTemplate t : repository.findAllByOrderBySortAscIdAsc()) {
-            String hash = TranslationService.sha256Hex(t.getBodyRu());
+            String hash = SourceHash.sha256Hex(t.getBodyRu());
             Picked picked = pick(t.getBodyRu(), current(rows.get(t.getId() + ":uk"), hash),
                     current(rows.get(t.getId() + ":en"), hash), locale.getLanguage());
             out.add(new RenderedTemplateDto(t.getId(), t.getTitle(), fill(picked.body(), vars), picked.lang()));

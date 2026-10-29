@@ -61,7 +61,7 @@ public class CatalogService {
         List<ProductDto> original = productRepository.findAllActive().stream()
                 .map(p -> toDto(p, sold, held))
                 .toList();
-        return translationService.overlay(lang).products(original);
+        return CatalogOverlay.products(translationService.overlay(lang), original);
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +76,7 @@ public class CatalogService {
         return productRepository.findByIdWithDetails(key)
                 .filter(p -> p.isActive() && !p.isArchived())
                 .map(p -> toDto(p, soldCounts(), held()))
-                .map(translationService.overlay(lang)::product);
+                .map(dto -> CatalogOverlay.product(translationService.overlay(lang), dto));
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
@@ -96,7 +97,7 @@ class CatalogSchemaImporterTest {
                         && Arrays.equals(t.getId().getEntityId(), kovriki.getId()) && "uk".equals(t.getId().getLocale()))
                 .findFirst().orElseThrow();
         assertThat(uk.getText()).isEqualTo("Килимки");
-        assertThat(uk.getSourceHash()).isEqualTo(TranslationService.sha256Hex("Коврики"));
+        assertThat(uk.getSourceHash()).isEqualTo(SourceHash.sha256Hex("Коврики"));
 
         CatalogSnapshot s = db.directory.load();
         CatalogSnapshot.Attr thickness = s.attributesFor(UuidUtilHelper.id(tkan)).stream()

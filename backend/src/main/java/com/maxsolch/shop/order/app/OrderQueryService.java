@@ -17,6 +17,7 @@ import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.catalog.infra.ProductImageRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
+import com.maxsolch.shop.catalog.app.CatalogNames;
 import com.maxsolch.shop.translation.app.TranslationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ public class OrderQueryService {
     private final OrderOnlinePayments onlinePayments;
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
+    private final CatalogNames catalogNames;
     private final UserRepository userRepository;
     private final CustomerRejectReason customerRejectReason;
     private final OrderReturnsView returnsView;
@@ -59,6 +61,7 @@ public class OrderQueryService {
                              OrderOnlinePayments onlinePayments,
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
+                             CatalogNames catalogNames,
                              UserRepository userRepository,
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
@@ -71,6 +74,7 @@ public class OrderQueryService {
         this.onlinePayments = onlinePayments;
         this.productImageRepository = productImageRepository;
         this.translationService = translationService;
+        this.catalogNames = catalogNames;
         this.userRepository = userRepository;
         this.customerRejectReason = customerRejectReason;
         this.returnsView = returnsView;
@@ -304,12 +308,12 @@ public class OrderQueryService {
     private OrderDetailDto.OrderDetailDtoBuilder detailCore(Order o, String lang, Predicate<OrderItem> visible) {
         List<OrderItem> orderItems = o.getItems();
         Map<String, String> thumbnails = thumbnailsFor(orderItems);
-        TranslationService.ItemNames names = ContentLocale.isTranslated(lang)
-                ? translationService.orderItemNames(
+        CatalogNames.ItemNames names = ContentLocale.isTranslated(lang)
+                ? catalogNames.orderItemNames(
                         orderItems.stream().map(OrderItem::getProductId).filter(java.util.Objects::nonNull).toList(),
                         orderItems.stream().map(OrderItem::getVariantId).filter(java.util.Objects::nonNull).toList(),
                         lang)
-                : TranslationService.ItemNames.EMPTY;
+                : CatalogNames.ItemNames.EMPTY;
         List<OrderItemDto> items = orderItems.stream()
                 .filter(visible)
                 .map(it -> toItemDto(o, it, thumbnails, names))
@@ -529,7 +533,7 @@ public class OrderQueryService {
     }
 
     private OrderItemDto toItemDto(Order o, OrderItem it, Map<String, String> thumbnails,
-                                   TranslationService.ItemNames names) {
+                                   CatalogNames.ItemNames names) {
         String productId = it.getProductId() == null ? null : UuidUtil.toString(it.getProductId());
         String variantId = it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId());
         return new OrderItemDto(

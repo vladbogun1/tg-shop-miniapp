@@ -29,9 +29,13 @@ public class CacheConfig {
     /** Invoices whose receipts are all sent: skipped by the delivery job for 15 min. */
     public static final String RECEIPT_DELIVERY_QUIET = "receiptDeliveryQuiet";
 
+    /** All stored translations of one language (translation module): 3 languages at most, a minute. */
+    public static final String TRANSLATION_SNAPSHOTS = "translationSnapshots";
+
     @Bean
     CacheManagerCustomizer<CaffeineCacheManager> perCacheLimits() {
         return manager -> {
+            manager.registerCustomCache(TRANSLATION_SNAPSHOTS, expiring(8, Duration.ofSeconds(60)));
             manager.registerCustomCache(ORDER_IDEMPOTENCY, expiring(10_000, Duration.ofMinutes(30)));
             manager.registerCustomCache(RECEIPT_CHECKS_OPEN, expiring(5_000, Duration.ofSeconds(45)));
             manager.registerCustomCache(RECEIPT_CHECKS_FINAL, expiring(5_000, Duration.ofMinutes(10)));

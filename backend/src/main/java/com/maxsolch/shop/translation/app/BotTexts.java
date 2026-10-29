@@ -1,5 +1,8 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.tx.OnCommitted;
+import com.maxsolch.shop.translation.domain.SourceHash;
+import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -155,6 +158,11 @@ public class BotTexts {
         translations.invalidate();
     }
 
+    @OnCommitted
+    void onTranslationsChanged(TranslationsChanged event) {
+        ruOverrides = null;
+    }
+
     private Map<String, String> overrides() {
         Map<String, String> m = ruOverrides;
         if (m == null) {
@@ -188,7 +196,7 @@ public class BotTexts {
         }
         var entry = translations.snapshot(lang).get(
                 new TranslationService.Key(TranslationEntityType.BOT_TEXT, idStringOf(key), TranslationEntityType.BODY));
-        if (entry == null || !entry.sourceHash().equals(TranslationService.sha256Hex(source))
+        if (entry == null || !entry.sourceHash().equals(SourceHash.sha256Hex(source))
                 || !placeholders(entry.text()).equals(placeholders(source))) {
             return null;
         }

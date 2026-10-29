@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
@@ -65,7 +66,7 @@ class ReplyTemplateServiceTest {
         ContentTranslation row = new ContentTranslation(new ContentTranslationId(TranslationEntityType.REPLY_TEMPLATE,
                 ReplyTemplate.translationId(1L), TranslationEntityType.BODY, locale));
         row.setText(text);
-        row.setSourceHash(TranslationService.sha256Hex(forSource));
+        row.setSourceHash(SourceHash.sha256Hex(forSource));
         row.setOrigin(TranslationOrigin.AI);
         return row;
     }
@@ -183,7 +184,7 @@ class ReplyTemplateServiceTest {
         service().update(1L, new TemplateUpsertRequest("T", "Новый", "Старий", " ", null));
 
         assertThat(saved).isEmpty();
-        assertThat(uk.getSourceHash()).isEqualTo(TranslationService.sha256Hex("Старый"));
+        assertThat(uk.getSourceHash()).isEqualTo(SourceHash.sha256Hex("Старый"));
         verify(translations).delete(en);
 
         // uk retyped by the admin → MANUAL, made for the current Russian text
@@ -192,7 +193,7 @@ class ReplyTemplateServiceTest {
         assertThat(saved).hasSize(1);
         assertThat(saved.get(0).getText()).isEqualTo("Новий");
         assertThat(saved.get(0).getOrigin()).isEqualTo(TranslationOrigin.MANUAL);
-        assertThat(saved.get(0).getSourceHash()).isEqualTo(TranslationService.sha256Hex("Новый"));
+        assertThat(saved.get(0).getSourceHash()).isEqualTo(SourceHash.sha256Hex("Новый"));
         verify(translations, never()).delete(uk);
     }
 }

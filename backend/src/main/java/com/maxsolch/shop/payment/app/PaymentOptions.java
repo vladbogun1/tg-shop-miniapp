@@ -6,6 +6,8 @@ import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.site.app.SiteRevalidator;
+import com.maxsolch.shop.translation.app.TranslationService;
+import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,19 +31,19 @@ public class PaymentOptions {
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
     private final Validator validator;
+    private final TranslationService translations;
 
     public PaymentOptions(PaymentOptionRepository repository, AdminAuditService audit,
-                          SiteRevalidator siteRevalidator, Validator validator) {
+                          SiteRevalidator siteRevalidator, Validator validator,
+                          TranslationService translations) {
         this.repository = repository;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
         this.validator = validator;
+        this.translations = translations;
     }
 
-    /**
-     * Active options in checkout order as the customer sees them (untranslated: the public endpoint overlays the
-     * uk/en texts, which keeps this module free of the translation package until that one is migrated).
-     */
+    /** Active options in checkout order, in the Russian source texts. */
     public List<PaymentOptionDto> active() {
         return repository.findByActiveTrueOrderBySortOrderAsc().stream()
                 .map(p -> new PaymentOptionDto(
@@ -51,6 +53,22 @@ public class PaymentOptions {
                         p.isRequiresPrepayment(),
                         p.getPrepaymentMinor()))
                 .toList();
+    }
+
+    /** Active options as the customer sees them: title and description in {@code lang} (uk/en overlay, fallback ru). */
+    public List<PaymentOptionDto> activeLocalized(String lang) {
+        TranslationService.Overlay overlay = translations.overlay(lang);
+        return active().stream().map(p -> localize(overlay, p)).toList();
+    }
+
+    private static PaymentOptionDto localize(TranslationService.Overlay overlay, PaymentOptionDto p) {
+        if (!overlay.active()) {
+            return p;
+        }
+        return new PaymentOptionDto(p.id(),
+                overlay.text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.TITLE, p.title()),
+                overlay.text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.DESCRIPTION, p.description()),
+                p.requiresPrepayment(), p.prepaymentMinor());
     }
 
     /**

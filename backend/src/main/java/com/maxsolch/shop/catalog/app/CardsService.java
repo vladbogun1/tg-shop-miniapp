@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CardStatus;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
@@ -611,7 +612,7 @@ public class CardsService {
                     .findById(new ContentTranslationId(TranslationEntityType.PRODUCT, p.getId(), field, locale))
                     .ifPresent(row -> texts.put(textKey(field), new CardTextState(row.getText(),
                             row.getOrigin().name(),
-                            source == null || !TranslationService.sha256Hex(source).equals(row.getSourceHash())))));
+                            source == null || !SourceHash.sha256Hex(source).equals(row.getSourceHash())))));
             translations.put(locale, texts);
         }
         return new CardReview(item, last, str(meta.get("importedAt")), str(meta.get("reviewedAt")), reviewedBy,
