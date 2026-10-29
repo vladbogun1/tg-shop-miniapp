@@ -1,8 +1,9 @@
 // The two draws of the event and who is in each of them. Everything about "how much one person
 // weighs" lives here, so the draw, the progress panel and the bot notifications agree.
 //
-//   pumpkins — everyone who found at least one pumpkin. A full set (config.goal) weighs
-//              config.fullWeight; a partial set weighs one per pumpkin, so 1 of 15 is a long shot.
+//   pumpkins — everyone who found at least one pumpkin. A partial set weighs one per pumpkin; a full
+//              set (config.goal) weighs config.fullWeight or more: partial sets together never get
+//              more than config.partialShare of the chance, however many of them there are.
 //   orders   — orders inside the window that add up to config.minSpendMinor: one ticket per
 //              minSpend, at most config.maxOrderTickets.
 import { db } from "./db.js";
@@ -43,6 +44,21 @@ export function pumpkinTotals() {
   return m;
 }
 
+/**
+ * Many people drop by for a pumpkin or two; together they could outweigh the few full sets. Raise the
+ * weight of a full set until partial sets hold at most `partialShare` of all tickets (integers only:
+ * the draw picks by ticket number).
+ */
+export function capPartialShare(entries, share = config.partialShare) {
+  const full = entries.filter((e) => e.pumpkins >= config.goal);
+  if (!full.length || !(share > 0 && share < 1)) return entries;
+  const partial = entries.reduce((s, e) => s + (e.pumpkins >= config.goal ? 0 : e.tickets), 0);
+  const need = Math.ceil((partial * (1 - share)) / (share * full.length));
+  const w = Math.max(config.fullWeight, need);
+  for (const e of full) e.tickets = w;
+  return entries;
+}
+
 /** Staff, tech accounts and people excluded by hand never take part. */
 export async function excludedIds() {
   const facts = await shopFacts();
@@ -63,6 +79,7 @@ export async function liveEntries(pool) {
       const tickets = pumpkinWeight(n);
       if (tickets > 0 && !excluded.has(tgId)) out.push({ tgId, tickets, pumpkins: n, orders: 0, spendMinor: 0 });
     }
+    capPartialShare(out);
   } else {
     for (const [tgId, o] of facts.orders) {
       const tickets = orderTickets(o.spendMinor);

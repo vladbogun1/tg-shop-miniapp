@@ -26,7 +26,7 @@ There are **two separate draws**:
 **Pumpkin draw (free).** Pumpkins pop up on the pages of the site and the Mini App from time to time — tap one to collect it. Up to 8 pumpkins a day.
 
 - Everyone with at least **1 pumpkin** takes part.
-- **A full set is 15 pumpkins** and weighs 100 tickets. A partial set gives 1 ticket per pumpkin (1–14), so a few pumpkins give a very small chance.
+- **A full set is 15 pumpkins.** A partial set gives 1 ticket per pumpkin (1–14), a full set at least 100 tickets. All partial sets together hold at most 10% of the chance: a full set weighs more when there are many partial ones. So a few pumpkins give a very small chance.
 - **Code words.** Code words may be announced on stream — enter them in the event panel to get extra pumpkins. Each word works a limited number of times, once per person.
 
 **Purchase draw.** Customers whose orders during the event add up to **500 UAH or more**.
