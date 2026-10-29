@@ -181,22 +181,23 @@ public class OrderQueryService {
     @Transactional(readOnly = true)
     public OrderSummaryDto toSummary(Order o, CardContext ctx) {
         String id = UuidUtil.toString(o.getId());
-        return new OrderSummaryDto(
-                id,
-                o.getStatus().name(),
-                o.getTotalMinor(),
-                o.getCurrency(),
-                o.getCreatedAt(),
-                ctx.itemsFor(id),
-                ctx.unreadFor(id),
-                o.isPaid(),
-                OrderMoney.receivedMinor(o),
-                o.getPaymentDueAt(),
-                OrderMoney.amountDueMinor(o),
-                o.getCancelRequestStatus(),
-                o.getGiftCaseStatus(),
-                OrderService.giftCaseOpenable(o),
-                Math.max(0, o.getUncollectedMinor()));
+        return OrderSummaryDto.builder()
+                .id(id)
+                .status(o.getStatus().name())
+                .totalMinor(o.getTotalMinor())
+                .currency(o.getCurrency())
+                .createdAt(o.getCreatedAt())
+                .itemsCount(ctx.itemsFor(id))
+                .unreadCount(ctx.unreadFor(id))
+                .paid(o.isPaid())
+                .receivedMinor(OrderMoney.receivedMinor(o))
+                .paymentDueAt(o.getPaymentDueAt())
+                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .cancelRequestStatus(o.getCancelRequestStatus())
+                .giftCaseStatus(o.getGiftCaseStatus())
+                .giftCaseOpenable(OrderService.giftCaseOpenable(o))
+                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .build();
     }
 
     @Transactional(readOnly = true)
