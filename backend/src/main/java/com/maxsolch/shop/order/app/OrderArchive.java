@@ -4,13 +4,10 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 
 /**
  * Orders are never deleted: the main admin archives a closed one (DELIVERED / REJECTED) and brings it back.
@@ -27,14 +24,14 @@ public class OrderArchive {
     private final OrderOps ops;
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher events;
-    private final PaymentInvoiceRepository paymentInvoices;
+    private final OrderOnlinePayments payments;
 
     OrderArchive(OrderOps ops, OrderRepository orderRepository, ApplicationEventPublisher events,
-                 PaymentInvoiceRepository paymentInvoices) {
+                 OrderOnlinePayments payments) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.events = events;
-        this.paymentInvoices = paymentInvoices;
+        this.payments = payments;
     }
 
     /** The main admin only (checked by the controller). */
@@ -88,9 +85,7 @@ public class OrderArchive {
      * hide the money from everybody who looks at the board.
      */
     private void requireNoOnlineMoneyInFlight(byte[] orderId) {
-        List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
-        if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
-                || PaymentInvoice.HOLD.equals(i.getStatus()))) {
+        if (payments.hasPaymentInFlight(orderId)) {
             throw OrderErrors.badRequest(ARCHIVE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
         }
     }

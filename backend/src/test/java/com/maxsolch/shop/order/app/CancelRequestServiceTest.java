@@ -1,9 +1,6 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.OrderStates;
-import com.maxsolch.shop.payment.app.OnlinePaymentService;
-import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -16,16 +13,12 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -40,9 +33,7 @@ class CancelRequestServiceTest {
     @Mock
     CancelRequests cancelRequests;
     @Mock
-    OnlinePaymentService payments;
-    @Mock
-    PaymentInvoiceRepository invoices;
+    OrderOnlinePayments payments;
     @Mock
     Messages messages;
 
@@ -51,18 +42,8 @@ class CancelRequestServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CancelRequestService(orderQueries, cancelRequests, payments, invoices, messages);
+        service = new CancelRequestService(orderQueries, cancelRequests, payments, messages);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
-    }
-
-    private static PaymentInvoice paid(String id, long amount, long refunded) {
-        PaymentInvoice i = new PaymentInvoice();
-        i.setExternalId(id);
-        i.setAmountMinor(amount);
-        i.setRefundedMinor(refunded);
-        i.setStatus(PaymentInvoice.SUCCESS);
-        i.setAppliedAt(Instant.now());
-        return i;
     }
 
     private Order rejected(long received) {
@@ -75,12 +56,9 @@ class CancelRequestServiceTest {
     }
 
     @Test
-    void approve_rejectsFirst_thenRefundsEveryPaidInvoiceInFull() {
-        PaymentInvoice failed = new PaymentInvoice();
-        failed.setExternalId("inv-failed");
-        failed.setStatus(PaymentInvoice.FAILURE);
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
-                .thenReturn(List.of(paid("inv-1", 10_000, 0), failed, paid("inv-2", 90_000, 0)));
+    void approve_rejectsFirst_thenRefundsThroughPayments() {
+        when(payments.refundAll(orderId))
+                .thenReturn(new OrderOnlinePayments.RefundAll(100_000, 100_000, 2, List.of()));
         when(cancelRequests.approveCancelRequest(orderId, null)).thenReturn(rejected(100_000));
         when(orderQueries.get(orderId)).thenReturn(rejected(100_000));
 
@@ -88,9 +66,8 @@ class CancelRequestServiceTest {
 
         InOrder order = inOrder(cancelRequests, payments);
         order.verify(cancelRequests).approveCancelRequest(orderId, null);
-        order.verify(payments).refund(eq(orderId), eq("inv-1"), isNull());
-        verify(payments).refund(eq(orderId), eq("inv-2"), isNull());
-        verify(payments, never()).refund(any(), eq("inv-failed"), any());
+        order.verify(payments).closeOpenInvoices(orderId);
+        order.verify(payments).refundAll(orderId);
         assertThat(r.refundRequestedMinor()).isEqualTo(100_000);
         assertThat(r.refundedInvoices()).isEqualTo(2);
         assertThat(r.refundErrors()).isEmpty();
@@ -99,8 +76,8 @@ class CancelRequestServiceTest {
 
     @Test
     void approve_reportsRefundFailures_andHandRecordedMoney() {
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(paid("inv-1", 10_000, 0)));
-        doThrow(new DomainException.BadRequest("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
+        when(payments.refundAll(orderId))
+                .thenReturn(new OrderOnlinePayments.RefundAll(10_000, 0, 0, List.of("inv-1: monobank отклонил возврат")));
         when(cancelRequests.approveCancelRequest(orderId, "ok")).thenReturn(rejected(30_000));
         when(orderQueries.get(orderId)).thenReturn(rejected(30_000));
 
@@ -120,21 +97,21 @@ class CancelRequestServiceTest {
                 .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode())
                         .isEqualTo(CancelRequestService.PAYMENT_IN_PROGRESS));
         verify(cancelRequests, never()).approveCancelRequest(any(), any());
-        verify(payments, never()).refund(any(), any(), any());
+        verify(payments, never()).refundAll(any());
     }
 
     @Test
     void decline_doesNotTouchMoney() {
         service.decline(orderId, "вже відправили");
         verify(cancelRequests).declineCancelRequest(orderId, "вже відправили");
-        verify(payments, never()).refund(any(), any(), any());
+        verify(payments, never()).refundAll(any());
     }
 
     @Test
     void cancelUnpaid_closesPaymentPages() {
         when(cancelRequests.cancelByCustomer(orderId, null)).thenReturn(rejected(0));
         service.cancelUnpaid(orderId, null);
-        verify(payments).refreshOrder(orderId);
+        verify(payments).refresh(orderId);
         verify(payments).closeOpenInvoices(orderId);
     }
 

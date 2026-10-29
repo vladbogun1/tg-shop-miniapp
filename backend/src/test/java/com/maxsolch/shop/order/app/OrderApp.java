@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
@@ -84,8 +85,19 @@ public final class OrderApp {
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,
                                   CaseLowMargin lowMargin) {
         OrderOps ops = new OrderOps(orders, em, ledger, gift, events, messages, Clock.systemUTC());
+        com.maxsolch.shop.payment.app.OnlinePaymentService paymentService =
+                mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class);
+        // The real rule (PROCESSING / HOLD invoice) over the stubbed repository, so archive tests keep their meaning.
+        if (invoices != null) {
+            lenient().when(paymentService.hasPaymentInFlight(any())).thenAnswer(inv ->
+                    invoices.findByOrderIdOrderByCreatedAtDesc(inv.getArgument(0)).stream().anyMatch(i ->
+                            com.maxsolch.shop.payment.domain.PaymentInvoice.PROCESSING.equals(i.getStatus())
+                                    || com.maxsolch.shop.payment.domain.PaymentInvoice.HOLD.equals(i.getStatus())));
+        }
+        OrderOnlinePayments onlinePayments = new com.maxsolch.shop.payment.app.OrderPaymentsAdapter(
+                paymentService, invoices, mock(com.maxsolch.shop.payment.domain.MonobankGateway.class), Clock.systemUTC());
         OrderPayments payments = new OrderPayments(ops, orders, events);
-        OrderArchive archive = new OrderArchive(ops, orders, events, invoices);
+        OrderArchive archive = new OrderArchive(ops, orders, events, onlinePayments);
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
                 new AppProperties());
@@ -94,7 +106,7 @@ public final class OrderApp {
         OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, stock);
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, products, stock, events, messages, gift, orderPromos,
                 prizes);
-        Checkout checkout = new Checkout(orders, products, options, events, orderPromos, carts, messages,
+        Checkout checkout = new Checkout(orders, products, new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
                 stock, payments, gift, ops, prizes, new AppProperties());
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);

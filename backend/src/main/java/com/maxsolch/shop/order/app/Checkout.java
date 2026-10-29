@@ -13,13 +13,11 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -49,7 +47,7 @@ public class Checkout {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    private final PaymentOptionRepository paymentOptionRepository;
+    private final OrderPaymentOptions paymentOptions;
     private final ApplicationEventPublisher events;
     private final OrderPromos promos;
     private final CartService cartService;
@@ -66,7 +64,7 @@ public class Checkout {
 
     Checkout(OrderRepository orderRepository,
                         ProductRepository productRepository,
-                        PaymentOptionRepository paymentOptionRepository,
+                        OrderPaymentOptions paymentOptions,
                         ApplicationEventPublisher events,
                         OrderPromos promos,
                         CartService cartService,
@@ -79,7 +77,7 @@ public class Checkout {
                         AppProperties props) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
-        this.paymentOptionRepository = paymentOptionRepository;
+        this.paymentOptions = paymentOptions;
         this.events = events;
         this.promos = promos;
         this.cartService = cartService;
@@ -139,12 +137,11 @@ public class Checkout {
         if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
             throw OrderErrors.badRequest(messages.current("api.order.paymentRequired"));
         }
-        PaymentOption po = paymentOptionRepository.findById(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
-                .filter(PaymentOption::isActive)
+        OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
                 .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.paymentUnknown")));
-        order.setPaymentOptionId(po.getId());
-        order.setPaymentOptionTitle(po.getTitle());
-        order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
+        order.setPaymentOptionId(po.id());
+        order.setPaymentOptionTitle(po.title());
+        order.setPrepaymentMinor(po.requiresPrepayment() ? po.prepaymentMinor() : 0);
         order.setPaymentDueAt(ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
 
         long subtotal = 0;
@@ -290,15 +287,13 @@ public class Checkout {
      */
     public String exchangePaymentOptionId(Order original) {
         if (original.getPaymentOptionId() != null) {
-            Optional<PaymentOption> po = paymentOptionRepository.findById(original.getPaymentOptionId())
-                    .filter(PaymentOption::isActive);
+            Optional<OrderPaymentOptions.Option> po = paymentOptions.findActive(original.getPaymentOptionId());
             if (po.isPresent()) {
-                return UuidUtil.toString(po.get().getId());
+                return UuidUtil.toString(po.get().id());
             }
         }
-        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
-                .findFirst()
-                .map(po -> UuidUtil.toString(po.getId()))
+        return paymentOptions.firstActive()
+                .map(po -> UuidUtil.toString(po.id()))
                 .orElseThrow(() -> OrderErrors.badRequest("нет активного способа оплаты для нового заказа"));
     }
 

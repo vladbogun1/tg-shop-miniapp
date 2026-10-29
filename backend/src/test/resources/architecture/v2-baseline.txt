@@ -22,9 +22,7 @@ L2 legacy 34
 L3 legacy 18
 L4 legacy 10
 M1 legacy 12
-M1 order 4
 M1 platform 1
-M2 order 12
 N1 legacy 48
 N1 platform 7
 P1 platform 26

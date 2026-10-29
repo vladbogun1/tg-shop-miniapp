@@ -6,7 +6,6 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
-import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.app.UpdateOrderStatusRequest;
 import org.springframework.stereotype.Service;
@@ -28,11 +27,11 @@ public class AdminOrderStatusService {
 
     private final AdminOrderQueries queries;
     private final OrderLifecycle lifecycle;
-    private final OnlinePaymentService payments;
+    private final OrderOnlinePayments payments;
     private final AdminAuditService audit;
 
     public AdminOrderStatusService(AdminOrderQueries queries, OrderLifecycle lifecycle,
-                                   OnlinePaymentService payments, AdminAuditService audit) {
+                                   OrderOnlinePayments payments, AdminAuditService audit) {
         this.queries = queries;
         this.lifecycle = lifecycle;
         this.payments = payments;

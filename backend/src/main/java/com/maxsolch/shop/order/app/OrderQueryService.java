@@ -13,9 +13,6 @@ import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.payment.domain.MonobankGateway;
-import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.translation.ContentLocale;
@@ -28,7 +25,6 @@ import com.maxsolch.shop.order.app.OnlinePaymentDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,14 +44,12 @@ public class OrderQueryService {
     private final OrderRepository orderRepository;
     private final OrderMessageRepository messageRepository;
     private final OrderItemRepository orderItemRepository;
-    private final PaymentInvoiceRepository invoiceRepository;
-    private final MonobankGateway monobank;
+    private final OrderOnlinePayments onlinePayments;
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
     private final UserRepository userRepository;
     private final CustomerRejectReason customerRejectReason;
     private final OrderReturnsView returnsView;
-    private final Clock clock;
 
     /** The gift block of the order page (docs/GIFT-CASE.md); resolved on first use, the gift module depends on the order one. */
     private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases;
@@ -66,28 +60,24 @@ public class OrderQueryService {
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
-                             PaymentInvoiceRepository invoiceRepository,
-                             MonobankGateway monobank,
+                             OrderOnlinePayments onlinePayments,
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
                              UserRepository userRepository,
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
-                             Clock clock,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
                              com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository,
                              org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
-        this.invoiceRepository = invoiceRepository;
-        this.monobank = monobank;
+        this.onlinePayments = onlinePayments;
         this.productImageRepository = productImageRepository;
         this.translationService = translationService;
         this.userRepository = userRepository;
         this.customerRejectReason = customerRejectReason;
         this.returnsView = returnsView;
-        this.clock = clock;
         this.movementRepository = movementRepository;
         this.writeoffRepository = writeoffRepository;
         this.giftCases = giftCases;
@@ -395,10 +385,7 @@ public class OrderQueryService {
                         .toList();
         long retained = movements.stream().filter(m -> "RETAINED".equals(m.kind()))
                 .mapToLong(OrderDetailDto.MovementDto::amountMinor).sum();
-        long monoLeft = invoiceRepository.findByOrderIdOrderByCreatedAtDesc(o.getId()).stream()
-                .filter(i -> i.getAppliedAt() != null)
-                .mapToLong(i -> Math.max(0, i.getAmountMinor() - i.getRefundedMinor()))
-                .sum();
+        long monoLeft = onlinePayments.refundableMinor(o.getId());
         List<OrderDetailDto.WriteoffDto> writeoffs = writeoffRepository == null ? List.of()
                 : writeoffRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
                         .map(w -> new OrderDetailDto.WriteoffDto(w.getId() == null ? 0 : w.getId(), w.getTitle(),
@@ -569,20 +556,7 @@ public class OrderQueryService {
 
     /** Latest monobank invoice of the order, as the customer apps need it. */
     public OnlinePaymentDto onlinePayment(Order o) {
-        List<PaymentInvoice> list = invoiceRepository.findByOrderIdOrderByCreatedAtDesc(o.getId());
-        if (list.isEmpty()) {
-            return new OnlinePaymentDto(monobank.isEnabled(), "none", null, null, 0, null, null, null);
-        }
-        // A paid invoice wins over a newer abandoned one (the card/method is what the customer wants to see) —
-        // unless money is still due on a paid order (an item was added: a top-up), then the latest attempt
-        // is what the customer is paying right now.
-        PaymentInvoice inv = OrderMoney.amountDueMinor(o) > 0
-                ? list.get(0)
-                : list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
-        boolean live = inv.isPayable(clock.instant());
-        return new OnlinePaymentDto(monobank.isEnabled(), inv.getStatus(), live ? inv.getPageUrl() : null,
-                inv.getExpiresAt(), inv.getAmountMinor(), inv.getMaskedPan(), inv.getPaymentMethod(),
-                inv.getFailureReason());
+        return onlinePayments.summary(o.getId(), OrderMoney.amountDueMinor(o));
     }
 
     // expose for board grouping convenience

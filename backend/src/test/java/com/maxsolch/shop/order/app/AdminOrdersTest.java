@@ -2,7 +2,6 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
-import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -31,7 +30,7 @@ class AdminOrdersTest {
     private final OrderPayments orderPayments = mock(OrderPayments.class);
     private final OrderArchive archive = mock(OrderArchive.class);
     private final OrderMerge merges = mock(OrderMerge.class);
-    private final OnlinePaymentService payments = mock(OnlinePaymentService.class);
+    private final OrderOnlinePayments payments = mock(OrderOnlinePayments.class);
     private final OrderDispatchNotifier dispatch = mock(OrderDispatchNotifier.class);
     private final MessageService messages = mock(MessageService.class);
     private final AdminAuditService audit = mock(AdminAuditService.class);

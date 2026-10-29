@@ -6,7 +6,6 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.SenderType;
-import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -36,7 +35,7 @@ public class AdminOrders {
     private final OrderGiftCases giftCases;
     private final OrderDeliveryEditing deliveryEditing;
     private final OrderMerge merges;
-    private final OnlinePaymentService payments;
+    private final OrderOnlinePayments payments;
     private final OrderDispatchNotifier dispatchNotifier;
     private final MessageService messageService;
     private final AdminAuditService audit;
@@ -44,7 +43,7 @@ public class AdminOrders {
 
     public AdminOrders(AdminOrderQueries queries, OrderLookup orderLookup, Checkout checkout, OrderEditing editing,
                        OrderPayments orderPayments, OrderArchive orderArchive, OrderGiftCases giftCases,
-                       OrderDeliveryEditing deliveryEditing, OrderMerge merges, OnlinePaymentService payments,
+                       OrderDeliveryEditing deliveryEditing, OrderMerge merges, OrderOnlinePayments payments,
                        OrderDispatchNotifier dispatchNotifier, MessageService messageService,
                        AdminAuditService audit, CurrentActor actor) {
         this.queries = queries;

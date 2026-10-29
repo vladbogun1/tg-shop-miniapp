@@ -6,7 +6,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.payment.app.OnlinePaymentService;
+import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.MoneyFormat;
@@ -38,14 +38,14 @@ public class AdminReturns {
     private final ReturnReceiving receiving;
     private final Exchanges exchanges;
     private final ReturnCancellation cancellation;
-    private final OnlinePaymentService payments;
+    private final OrderOnlinePayments payments;
     private final AdminAuditService audit;
 
     /** Orders whose return wizard is running right now (one backend instance): no double submit. */
     private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
 
     public AdminReturns(AdminOrderQueries queries, OrderLookup orders, Returns returns, ReturnReceiving receiving,
-                        Exchanges exchanges, ReturnCancellation cancellation, OnlinePaymentService payments,
+                        Exchanges exchanges, ReturnCancellation cancellation, OrderOnlinePayments payments,
                         AdminAuditService audit) {
         this.queries = queries;
         this.orders = orders;
