@@ -24,6 +24,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <minio.version>8.5.17</minio.version>
         <geoip2.version>4.3.0</geoip2.version>
+        <archunit.version>1.4.1</archunit.version>
     </properties>
 
     <dependencies>
@@ -141,6 +142,13 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Architecture checks, see docs/ARCHITECTURE-CHECKS.md -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
