@@ -376,56 +376,28 @@ public class NotificationService {
 
     /** The tracking number was corrected after shipping → DM the customer the new one. */
     public void notifyCustomerTracking(Order order) {
-        if (!enabled()) {
+        if (order.getTrackingNumber() == null) {
             return;
         }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0 || order.getTrackingNumber() == null) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerTracking", "ORDER_TRACKING", order, locale -> {
             String text = messages.get(locale, "bot.tracking.changed",
                     shortId(order), escHtml(order.getTrackingNumber()));
-            dm("ORDER_TRACKING", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerTracking failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
+        });
     }
 
     /** Admin posted a chat message → DM the customer with a deep-link to the order chat. */
     public void onAdminChatMessage(Order order, String preview) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
+        customerBot.send("onAdminChatMessage", "CHAT_REPLY", order, locale -> {
             StringBuilder t = new StringBuilder();
-            Locale locale = messages.localeOf(tgUserId);
             t.append(messages.get(locale, "bot.newMessage", shortId(order))).append('\n');
             if (preview != null && !preview.isBlank()) {
                 t.append("<blockquote>").append(escHtml(trim(ChatPreview.localize(preview, locale, messages), 160)))
                         .append("</blockquote>\n");
             }
             t.append(messages.get(locale, "bot.newMessage.cta"));
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(t.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build();
-            dm("CHAT_REPLY", order, msg);
-        } catch (Exception e) {
-            log.warn("onAdminChatMessage failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(t.toString(), customerBot.chatButton(order, locale));
+        });
     }
 
     /** Customer posted a chat message → notify admins in the "chat messages" topic with an open button. */
@@ -494,24 +466,12 @@ public class NotificationService {
                 log.warn("onPaymentReceived (admins) failed for order {}: {}", idStr(order), e.getMessage());
             }
         }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("onPaymentReceived (customer)", "PAYMENT_RECEIVED", order, locale -> {
             String text = messages.get(locale, "bot.paid.title") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.paid.body", money(amountMinor) + " " + cur);
-            dm("PAYMENT_RECEIVED", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(orderButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("onPaymentReceived (customer) failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.orderButton(order, locale));
+        });
     }
 
     /** How sending a receipt to the customer went. */
@@ -519,7 +479,7 @@ public class NotificationService {
 
     /** A bot token is configured: worth preparing anything for the customer's DMs at all. */
     public boolean isBotEnabled() {
-        return enabled();
+        return customerBot.enabled();
     }
 
     /**
@@ -528,28 +488,27 @@ public class NotificationService {
      * methods this one reports the outcome, so the caller can record it exactly once.
      */
     public Delivery sendReceipt(Order order, byte[] pdf, ReceiptKind kind, String taxUrl) {
-        Long tgUserId = order.getTgUserId();
-        if (!enabled() || tgUserId == null || tgUserId <= 0 || pdf == null || pdf.length == 0) {
+        if (!customerBot.canReach(order) || pdf == null || pdf.length == 0) {
             return Delivery.FAILED;
         }
         try {
-            Locale locale = messages.localeOf(tgUserId);
+            Locale locale = customerBot.localeOf(order);
             StringBuilder caption = new StringBuilder(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)));
             if (taxUrl != null && isHttps(taxUrl)) {
                 caption.append('\n').append("<a href=\"").append(escHtml(taxUrl).replace("\"", "&quot;")).append("\">")
                         .append(messages.get(locale, "bot.receipt.taxLink")).append("</a>");
             }
             SendDocument doc = SendDocument.builder()
-                    .chatId(String.valueOf(tgUserId))
+                    .chatId(String.valueOf(order.getTgUserId()))
                     .document(new InputFile(new java.io.ByteArrayInputStream(pdf), kind.fileName(shortId(order))))
                     .caption(caption.toString())
                     .parseMode("HTML")
-                    .replyMarkup(orderButton(order, locale))
+                    .replyMarkup(customerBot.orderButton(order, locale))
                     .build();
-            activity.bot(ActivityLog.Entry.bot("RECEIPT").toCustomer(tgUserId).order(order.getId())
+            customerBot.sendDocument(doc, customerBot.journal("RECEIPT", order)
                     .text(messages.get(locale, "bot.receipt." + kind.name(), shortId(order)))
                     .detail("kind", kind.name())
-                    .detail("file", kind.fileName(shortId(order))), () -> bot.sendDocument(doc));
+                    .detail("file", kind.fileName(shortId(order))));
             return Delivery.SENT;
         } catch (Exception e) {
             String m = e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT);
@@ -597,30 +556,17 @@ public class NotificationService {
 
     /** The admin answered the customer's cancellation request → DM the customer in their language. */
     public void notifyCustomerCancelRequest(Order order, boolean approved) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        String journalType = approved ? "CANCEL_REQUEST_APPROVED" : "CANCEL_REQUEST_DECLINED";
+        customerBot.send("notifyCustomerCancelRequest", journalType, order, locale -> {
             long received = Math.min(Math.max(0, order.getReceivedMinor()), order.getTotalMinor());
             String text = approved
                     ? messages.get(locale, "bot.cancelRequest.approved", shortId(order),
                             money(received) + " " + nz(order.getCurrency()))
                     : messages.get(locale, "bot.cancelRequest.declined", shortId(order),
                             escHtml(nz(order.getCancelRequestAdminComment())));
-            dm(approved ? "CANCEL_REQUEST_APPROVED" : "CANCEL_REQUEST_DECLINED", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(approved ? orderButton(order, locale) : chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerCancelRequest failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, approved
+                    ? customerBot.orderButton(order, locale) : customerBot.chatButton(order, locale));
+        });
     }
 
     /**
