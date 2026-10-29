@@ -190,9 +190,9 @@ public class OrderQueryService {
                 ctx.itemsFor(id),
                 ctx.unreadFor(id),
                 o.isPaid(),
-                receivedMinor(o),
+                OrderMoney.receivedMinor(o),
                 o.getPaymentDueAt(),
-                OrderService.amountDueMinor(o),
+                OrderMoney.amountDueMinor(o),
                 o.getCancelRequestStatus(),
                 o.getGiftCaseStatus(),
                 OrderService.giftCaseOpenable(o),
@@ -214,9 +214,9 @@ public class OrderQueryService {
                 o.getCreatedAt(),
                 o.getStatus().name(),
                 o.isPaid(),
-                receivedMinor(o),
+                OrderMoney.receivedMinor(o),
                 o.getPaymentDueAt(),
-                OrderService.amountDueMinor(o),
+                OrderMoney.amountDueMinor(o),
                 sourceOf(o),
                 o.getCancelRequestStatus(),
                 o.getArchivedAt() != null,
@@ -321,9 +321,9 @@ public class OrderQueryService {
                 o.getPrepaymentMinor(),
                 // The admin sees what really arrived (an exchange for something cheaper leaves it
                 // above the total — that overpayment is to be refunded); the customer, the capped.
-                customer ? receivedMinor(o) : Math.max(0, o.getReceivedMinor()),
+                customer ? OrderMoney.receivedMinor(o) : Math.max(0, o.getReceivedMinor()),
                 o.getPaymentDueAt(),
-                OrderService.amountDueMinor(o),
+                OrderMoney.amountDueMinor(o),
                 sourceOf(o),
                 customerLocale,
                 o.getRejectReasonCode(),
@@ -462,16 +462,6 @@ public class OrderQueryService {
         return out;
     }
 
-    /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
-    public static long receivedMinor(Order o) {
-        return OrderMoney.receivedMinor(o);
-    }
-
-    /** Cash-on-delivery (наложка) to collect at Nova Poshta; units refused at the branch are not paid for. */
-    public static long codMinor(Order o) {
-        return OrderMoney.codMinor(o);
-    }
-
     /** All APPROVED orders mapped to dispatch rows (newest first). */
     @Transactional(readOnly = true)
     public List<DispatchOrderDto> dispatchList() {
@@ -500,8 +490,8 @@ public class OrderQueryService {
     }
 
     private DispatchOrderDto toDispatch(Order o, Map<String, String> thumbnails) {
-        long received = receivedMinor(o);
-        long cod = codMinor(o);
+        long received = OrderMoney.receivedMinor(o);
+        long cod = OrderMoney.codMinor(o);
         List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
                 .map(it -> new DispatchOrderDto.DispatchItem(
                         it.getTitleSnapshot(), it.getVariantNameSnapshot(),
@@ -533,7 +523,7 @@ public class OrderQueryService {
                 o.getApprovedAt(),
                 o.getStatus().name(),
                 o.getPaymentDueAt(),
-                OrderService.amountDueMinor(o));
+                OrderMoney.amountDueMinor(o));
     }
 
     /** One query for all the line thumbnails instead of one per line. */
@@ -586,7 +576,7 @@ public class OrderQueryService {
         // A paid invoice wins over a newer abandoned one (the card/method is what the customer wants to see) —
         // unless money is still due on a paid order (an item was added: a top-up), then the latest attempt
         // is what the customer is paying right now.
-        PaymentInvoice inv = OrderService.amountDueMinor(o) > 0
+        PaymentInvoice inv = OrderMoney.amountDueMinor(o) > 0
                 ? list.get(0)
                 : list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
         boolean live = inv.isPayable(java.time.Instant.now());

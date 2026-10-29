@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
@@ -79,7 +81,7 @@ public class OrderMergeService {
                     String why = own != null ? own : blocker(o, false);
                     Order preview = preview(order, o);
                     return new Candidate(o, why, preview.getTotalMinor(), preview.getReceivedMinor(),
-                            OrderService.amountDueMinor(preview), OrderQueryService.codMinor(preview));
+                            OrderMoney.amountDueMinor(preview), OrderMoney.codMinor(preview));
                 })
                 .toList();
     }
@@ -170,7 +172,7 @@ public class OrderMergeService {
         orderService.recomputeOrderTotals(target);
 
         // 3. Money: what the merged order received moves over (no real money moves).
-        long money = Math.max(0, source.getReceivedMinor() - Math.max(0, source.getRefundedMinor()));
+        long money = OrderMoney.refundableMinor(source);
         if (money > 0) {
             ledger(source, OrderMoneyMovement.Kind.REFUND, money, adminName, "перенесено в заказ #" + targetShort);
             source.setRefundedMinor(Math.max(0, source.getRefundedMinor()) + money);
@@ -182,7 +184,7 @@ public class OrderMergeService {
             target.setPaidAt(source.getPaidAt() != null ? source.getPaidAt() : Instant.now());
         }
         target.setPaid(paid);
-        if (paid && OrderService.amountDueMinor(target) == 0) {
+        if (paid && OrderMoney.amountDueMinor(target) == 0) {
             target.setPaymentDueAt(null);
         }
 
@@ -261,7 +263,7 @@ public class OrderMergeService {
         p.setTotalMinor(target.getTotalMinor() + source.getTotalMinor());
         p.setPrepaymentMinor(target.getPrepaymentMinor());
         p.setReceivedMinor(Math.max(0, target.getReceivedMinor())
-                + Math.max(0, source.getReceivedMinor() - Math.max(0, source.getRefundedMinor())));
+                + OrderMoney.refundableMinor(source));
         return p;
     }
 

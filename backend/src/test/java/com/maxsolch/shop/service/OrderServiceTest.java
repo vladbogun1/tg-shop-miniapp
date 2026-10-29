@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -184,7 +186,7 @@ class OrderServiceTest {
         assertThat(order.getPrepaymentMinor()).isZero();
         assertThat(order.getPaymentDueAt()).isBetween(Instant.now().plus(java.time.Duration.ofHours(23)),
                 Instant.now().plus(java.time.Duration.ofHours(25)));
-        assertThat(OrderService.amountDueMinor(order)).isEqualTo(5_000);
+        assertThat(OrderMoney.amountDueMinor(order)).isEqualTo(5_000);
     }
 
     @Test
@@ -217,8 +219,8 @@ class OrderServiceTest {
                 UuidUtil.toString(prepay.getId())));
 
         assertThat(order.getPrepaymentMinor()).isEqualTo(10_000);
-        assertThat(OrderService.dueOnlineMinor(order)).isEqualTo(10_000);
-        assertThat(OrderService.amountDueMinor(order)).isEqualTo(10_000);
+        assertThat(OrderMoney.dueOnlineMinor(order)).isEqualTo(10_000);
+        assertThat(OrderMoney.amountDueMinor(order)).isEqualTo(10_000);
     }
 
     @Test
@@ -414,7 +416,7 @@ class OrderServiceTest {
         assertThat(order.isPaid()).isTrue();
         assertThat(order.getPaidAt()).isNotNull();
         assertThat(order.getPaymentDueAt()).isNull();
-        assertThat(OrderService.onlinePaymentMissing(order)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(order)).isFalse();
     }
 
     // ---------- a case promo code and low-margin products (docs/GIFT-CASE.md) ----------
@@ -769,12 +771,12 @@ class OrderServiceTest {
     @Test
     void onlinePaymentMissing_onlyForOnlineOrdersWithMoneyStillDue() {
         Order o = approvedPrepaymentNotPaid();
-        assertThat(OrderService.onlinePaymentMissing(o)).isTrue();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isTrue();
         o.setReceivedMinor(10_000); // the prepayment arrived; the rest is наложка
-        assertThat(OrderService.onlinePaymentMissing(o)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse();
         Order legacy = persistedOrder(OrderStatus.APPROVED);
         legacy.setTotalMinor(50_000); // before online payments: no deadline, nothing "missing"
-        assertThat(OrderService.onlinePaymentMissing(legacy)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(legacy)).isFalse();
     }
 
     @Test
@@ -824,8 +826,8 @@ class OrderServiceTest {
         assertThat(paid.isPaid()).isTrue();
         assertThat(paid.getPaidAt()).isNotNull();
         assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
-        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
-        assertThat(OrderService.amountDueMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isEqualTo(40_000);
+        assertThat(OrderMoney.amountDueMinor(paid)).isZero();
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
         verify(events).publishEvent(event.capture());
         assertThat(event.getValue()).isInstanceOf(OrderEvents.PaymentReceived.class);
@@ -847,7 +849,7 @@ class OrderServiceTest {
 
         assertThat(paid.getReceivedMinor()).isEqualTo(30_000);
         assertThat(paid.getPaidAt()).isEqualTo(paidAt); // the first payment time is kept
-        assertThat(OrderQueryService.codMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isZero();
     }
 
     @Test
@@ -926,7 +928,7 @@ class OrderServiceTest {
 
         assertThat(paid.isPaid()).isTrue();
         assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
-        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
+        assertThat(OrderMoney.codMinor(paid)).isEqualTo(40_000);
     }
 
     @Test
@@ -952,7 +954,7 @@ class OrderServiceTest {
         Order paid = service.markPaid(o.getId(), 50_000);
 
         assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
-        assertThat(OrderQueryService.codMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isZero();
     }
 
     // ---------- row locking ----------

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -107,8 +109,8 @@ class OrderMergeServiceTest {
         assertThat(t.getTotalMinor()).isEqualTo(280_000);
         assertThat(t.getPromoCode()).isEqualTo("CASE9TSRK7");
         assertThat(t.getReceivedMinor()).isEqualTo(10_000);
-        assertThat(OrderService.amountDueMinor(t)).isZero();
-        assertThat(OrderQueryService.codMinor(t)).isEqualTo(270_000);
+        assertThat(OrderMoney.amountDueMinor(t)).isZero();
+        assertThat(OrderMoney.codMinor(t)).isEqualTo(270_000);
 
         Order s = r.source();
         assertThat(s.getStatus()).isEqualTo(OrderStatus.REJECTED);
@@ -135,7 +137,7 @@ class OrderMergeServiceTest {
         assertThat(r.target().getReceivedMinor()).isEqualTo(80_000);
         assertThat(r.target().isPaid()).isTrue();
         // Paid half of the full-online order: the rest is a top-up, no auto-cancel.
-        assertThat(OrderService.amountDueMinor(r.target())).isEqualTo(80_000);
+        assertThat(OrderMoney.amountDueMinor(r.target())).isEqualTo(80_000);
         assertThat(r.source().getRefundedMinor()).isEqualTo(80_000);
         verify(ledger).record(eq(second.getId()), eq(OrderMoneyMovement.Kind.REFUND), eq(OrderMoneyMovement.Channel.MERGE),
                 eq(80_000L), any(), eq("admin"), anyString(), isNull());

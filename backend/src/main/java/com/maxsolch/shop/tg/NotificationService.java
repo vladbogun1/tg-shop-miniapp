@@ -1,5 +1,7 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.config.AppProperties;
@@ -417,10 +419,10 @@ public class NotificationService {
                         com.maxsolch.shop.common.UuidUtil.toString(order.getExchangeOfOrderId()).substring(0, 8))).append('\n');
             }
             t.append(messages.get(locale, "bot.exchange.body", escHtml(nz(givenSummary)))).append('\n');
-            long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
+            long cod = OrderMoney.codMinor(order);
             // A replacement order: the difference is paid online in the order or наложкой — their choice.
             boolean payChoice = order.getExchangeOfOrderId() != null
-                    && com.maxsolch.shop.service.OrderService.amountDueMinor(order) > 0;
+                    && OrderMoney.amountDueMinor(order) > 0;
             if (payChoice) {
                 t.append(messages.get(locale, "bot.exchange.payChoice", money(cod) + " " + cur)).append('\n');
             } else if (cod > 0) {
@@ -453,8 +455,8 @@ public class NotificationService {
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.merge.title")).append('\n');
             t.append(messages.get(locale, "bot.merge.body", mergedShortId, shortId(order))).append('\n');
-            long due = com.maxsolch.shop.service.OrderService.amountDueMinor(order);
-            long cod = com.maxsolch.shop.service.OrderQueryService.codMinor(order);
+            long due = OrderMoney.amountDueMinor(order);
+            long cod = OrderMoney.codMinor(order);
             if (order.isPaid() && due > 0) {
                 t.append(messages.get(locale, "bot.merge.payChoice", money(due) + " " + cur));
             } else if (due > 0) {
@@ -862,8 +864,8 @@ public class NotificationService {
     /** Seller-facing dispatch card: address, items, and the exact COD (наложка) to set. */
     private String buildDispatchCard(Order order) {
         String cur = nz(order.getCurrency());
-        long received = OrderQueryService.receivedMinor(order);
-        long cod = OrderQueryService.codMinor(order);
+        long received = OrderMoney.receivedMinor(order);
+        long cod = OrderMoney.codMinor(order);
         StringBuilder sb = new StringBuilder();
         sb.append("📦 <b>К ОТПРАВКЕ</b> · #").append(shortId(order)).append('\n');
         sb.append("➖➖➖➖➖➖➖➖➖➖\n");

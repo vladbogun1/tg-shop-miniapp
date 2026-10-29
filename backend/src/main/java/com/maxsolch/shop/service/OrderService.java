@@ -408,10 +408,10 @@ public class OrderService {
             throw new BadRequestException(
                     "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
         }
-        if (!allowUnpaid && onlinePaymentMissing(order)) {
+        if (!allowUnpaid && OrderMoney.onlinePaymentMissing(order)) {
             throw new BadRequestException((order.getPrepaymentMinor() > 0 ? "Предоплата" : "Онлайн-оплата")
                     + " по заказу #" + shortId(order) + " не пришла (не хватает "
-                    + MoneyFormat.uah(amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
+                    + MoneyFormat.uah(OrderMoney.amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
                     SHIP_UNPAID_CODE);
         }
         order.setStatus(OrderStatus.SHIPPED);
@@ -436,7 +436,7 @@ public class OrderService {
         // total, and the metrics read that overpayment to tell a refunded difference from a return.
         // Units refused at the branch (partial pickup) were never paid for: left out.
         long receivedBefore = order.getReceivedMinor();
-        order.setReceivedMinor(Math.max(order.getReceivedMinor(), collectableMinor(order)));
+        order.setReceivedMinor(Math.max(order.getReceivedMinor(), OrderMoney.collectableMinor(order)));
         ledger(order, OrderMoneyMovement.Kind.PAYMENT,
                 order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
                         ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
@@ -639,7 +639,7 @@ public class OrderService {
         } else if (restock) {
             restoreStock(order);
         }
-        long kept = Math.max(0, order.getReceivedMinor()) - Math.max(0, order.getRefundedMinor());
+        long kept = OrderMoney.keptMinor(order);
         if (before == OrderStatus.SHIPPED && kept > 0 && order.getPrepaymentMinor() > 0
                 && kept <= order.getPrepaymentMinor()) {
             // Owner's rule (25.10.2026): the prepayment of a refused parcel pays for its delivery
@@ -791,32 +791,9 @@ public class OrderService {
         return saved;
     }
 
-    /** What the customer pays for the order in the end: the total without the units refused at the branch. */
-    public static long collectableMinor(Order order) {
-        return OrderMoney.collectableMinor(order);
-    }
-
-    /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */
-    public static long dueOnlineMinor(Order order) {
-        return OrderMoney.dueOnlineMinor(order);
-    }
-
-    /**
-     * An online-payment order (it got a deadline at checkout; older orders have none) whose online
-     * part — the prepayment, or the whole order — has not arrived.
-     */
-    public static boolean onlinePaymentMissing(Order order) {
-        return OrderMoney.onlinePaymentMissing(order);
-    }
-
     private static String shortId(Order order) {
         String id = order.getId() == null ? "" : UuidUtil.toString(order.getId());
         return id == null || id.length() < 8 ? String.valueOf(id) : id.substring(0, 8);
-    }
-
-    /** Still to pay online right now (0 once the online part is covered). */
-    public static long amountDueMinor(Order order) {
-        return OrderMoney.amountDueMinor(order);
     }
 
     /**
@@ -1525,7 +1502,7 @@ public class OrderService {
         if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
             return false;
         }
-        return order.isPaid() || (order.getReceivedMinor() > 0 && amountDueMinor(order) == 0);
+        return order.isPaid() || (order.getReceivedMinor() > 0 && OrderMoney.amountDueMinor(order) == 0);
     }
 
     /** The prize line of the order's case (a product prize that is still in the order). */

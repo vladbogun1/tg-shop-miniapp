@@ -221,7 +221,7 @@ public class OrderAdjustmentService {
         Order order = load(orderId);
         OrderStatus s = order.getStatus();
         boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
-                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+                && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
         }
@@ -231,15 +231,14 @@ public class OrderAdjustmentService {
                     ? "по отклонённому заказу можно оформить только возврат денег"
                     : "заказ ещё не отправлен — можно вернуть только переплату");
         }
-        if (overpaidInWork && refundMinor > order.getReceivedMinor() - Math.max(0, order.getRefundedMinor())
-                - order.getTotalMinor()) {
+        if (overpaidInWork && refundMinor > OrderMoney.overpaidMinor(order)) {
             throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(
-                    order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor()));
+                    OrderMoney.overpaidMinor(order)));
         }
         if (refundMinor < 0) {
             throw new BadRequestException("сумма возврата не может быть отрицательной");
         }
-        long refundable = refundableMinor(order);
+        long refundable = OrderMoney.refundableMinor(order);
         if (refundMinor > refundable) {
             throw new BadRequestException("вернуть можно не больше, чем получено: " + MoneyFormat.uah(refundable));
         }
@@ -438,7 +437,7 @@ public class OrderAdjustmentService {
             if (refused > 0) {
                 order.setUncollectedMinor(Math.max(0, order.getUncollectedMinor()) + refused);
                 parts.add("не выкуплено на почте " + MoneyFormat.uah(refused) + ", наложка теперь "
-                        + MoneyFormat.uah(OrderQueryService.codMinor(order)));
+                        + MoneyFormat.uah(OrderMoney.codMinor(order)));
             }
         }
         for (ManualRefund r : refunds) {
@@ -487,7 +486,7 @@ public class OrderAdjustmentService {
     private void validatePlan(Order order, ReturnPlan plan, boolean monoSent) {
         OrderStatus s = order.getStatus();
         boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
-                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+                && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
         }
@@ -521,7 +520,7 @@ public class OrderAdjustmentService {
             throw new BadRequestException("сумма не может быть отрицательной");
         }
         long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
-        long refundable = Math.max(0, refundableMinor(order) - retainedBefore);
+        long refundable = Math.max(0, OrderMoney.refundableMinor(order) - retainedBefore);
         long mono = monoSent ? 0 : plan.monoRefundMinor();
         if (manual + mono + plan.retainMinor() > refundable) {
             throw new BadRequestException("вернуть и удержать вместе можно не больше, чем получено и ещё не возвращено"
@@ -529,7 +528,7 @@ public class OrderAdjustmentService {
                     + ": " + MoneyFormat.uah(refundable));
         }
         if (overpaidInWork) {
-            long over = order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor();
+            long over = OrderMoney.overpaidMinor(order);
             if (manual + mono > over) {
                 throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(over));
             }
@@ -537,8 +536,8 @@ public class OrderAdjustmentService {
         if (s == OrderStatus.SHIPPED && manual + mono > 0) {
             // Partial pickup: the refused units come off наложка; only money paid above what the
             // customer owes for the rest goes back.
-            long over = Math.max(0, order.getReceivedMinor() - Math.max(0, order.getRefundedMinor())
-                    - (OrderService.collectableMinor(order) - pickupValue));
+            long over = Math.max(0, OrderMoney.netReceivedMinor(order)
+                    - (OrderMoney.collectableMinor(order) - pickupValue));
             if (manual + mono > over) {
                 throw new BadRequestException(over == 0
                         ? "посылка ещё на почте — за невыкупленное покупатель просто не платит наложку, вернуть нечего"
@@ -834,7 +833,7 @@ public class OrderAdjustmentService {
                 com.maxsolch.shop.gift.GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
         String childShort = shortId(child.getId());
         long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
-        long moved = Math.max(0, Math.min(Math.min(credit, refundableMinor(order) - retainedBefore),
+        long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
                 child.getTotalMinor()));
         if (moved > 0) {
             child = orderService.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
@@ -941,7 +940,7 @@ public class OrderAdjustmentService {
         if (st == OrderStatus.SHIPPED || st == OrderStatus.DELIVERED) {
             return "замену #" + no + " уже отправили — оформите «Возврат» в заказе #" + no;
         }
-        long kept = Math.max(0, replacement.getReceivedMinor()) - Math.max(0, replacement.getRefundedMinor());
+        long kept = OrderMoney.keptMinor(replacement);
         if (kept > rec.getRefundMinor()) {
             return "по замене #" + no + " уже доплатили " + MoneyFormat.uah(kept - rec.getRefundMinor())
                     + " — отклоните заказ #" + no + " и верните эти деньги «Возвратом», потом отмените обмен";
@@ -997,7 +996,7 @@ public class OrderAdjustmentService {
             }
             if (child != null) {
                 String no = shortId(child.getId());
-                long kept = Math.max(0, child.getReceivedMinor()) - Math.max(0, child.getRefundedMinor());
+                long kept = OrderMoney.keptMinor(child);
                 creditBack = Math.max(0, Math.min(rec.getRefundMinor(), kept));
                 if (creditBack > 0) {
                     child.setRefundedMinor(Math.max(0, child.getRefundedMinor()) + creditBack);
@@ -1215,15 +1214,6 @@ public class OrderAdjustmentService {
 
     private static String cut(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
-    }
-
-    /**
-     * Money that can still be refunded: what was received minus what was already given back. The
-     * raw received amount, not capped at the total: after an exchange for something cheaper the
-     * overpayment is exactly what has to go back.
-     */
-    public static long refundableMinor(Order order) {
-        return OrderMoney.refundableMinor(order);
     }
 
     /** Same row lock as every other order change (OrderService), so edits cannot interleave. */

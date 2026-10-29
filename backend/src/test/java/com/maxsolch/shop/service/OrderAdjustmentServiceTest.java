@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
@@ -241,7 +243,7 @@ class OrderAdjustmentServiceTest {
         assertThat(child.getPaymentDueAt()).isNull();
         // The difference can be paid online in full (or наложкой): no prepayment cap.
         assertThat(child.getPrepaymentMinor()).isZero();
-        assertThat(OrderService.amountDueMinor(child)).isEqualTo(5_000);
+        assertThat(OrderMoney.amountDueMinor(child)).isEqualTo(5_000);
         assertThat(other.getStock()).isEqualTo(2);                // reserved for the new parcel
         assertThat(r.auditDetails()).contains("Клава").contains("зачтено 100 ₴").contains("доплата 50 ₴");
 
@@ -656,7 +658,7 @@ class OrderAdjustmentServiceTest {
         assertThat(refused.getReturnPendingQty()).isEqualTo(1);
         assertThat(keyboard.getReturnedQty()).isZero();
         assertThat(mouse.getStock()).isZero(); // on its way, not on the shelf yet
-        assertThat(OrderQueryService.codMinor(r.order())).isEqualTo(19_900);
+        assertThat(OrderMoney.codMinor(r.order())).isEqualTo(19_900);
         assertThat(r.auditDetails()).contains("не выкуплено на почте 100 ₴").contains("наложка теперь 199 ₴");
 
         OrderService orderService = new OrderService(orderRepository, productRepository,
@@ -665,7 +667,7 @@ class OrderAdjustmentServiceTest {
         Order delivered = orderService.deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
-        assertThat(OrderQueryService.codMinor(delivered)).isZero();
+        assertThat(OrderMoney.codMinor(delivered)).isZero();
     }
 
     @Test
@@ -692,7 +694,7 @@ class OrderAdjustmentServiceTest {
 
         assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
         assertThat(r.order().getRefundedMinor()).isEqualTo(10_000);
-        assertThat(OrderQueryService.codMinor(r.order())).isZero();
+        assertThat(OrderMoney.codMinor(r.order())).isZero();
     }
 
     @Test

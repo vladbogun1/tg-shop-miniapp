@@ -1,5 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderSource;
@@ -59,7 +61,7 @@ public class OrderController {
         String existingOrderId = idempotency.previousOrderId(userId, idempotencyKey);
         if (existingOrderId != null) {
             return new CreateOrderResponse(existingOrderId,
-                    OrderService.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
+                    OrderMoney.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
         }
 
         Order order;
@@ -87,7 +89,7 @@ public class OrderController {
                 .detail("payment", order.getPaymentOptionTitle())
                 .detail("delivery", order.getDeliveryMethod()));
         // Next step for the app: POST /api/me/orders/{id}/payment → monobank payment page.
-        return new CreateOrderResponse(orderId, OrderService.amountDueMinor(order));
+        return new CreateOrderResponse(orderId, OrderMoney.amountDueMinor(order));
     }
 
     private Order place(CreateOrderRequest req, long userId) {

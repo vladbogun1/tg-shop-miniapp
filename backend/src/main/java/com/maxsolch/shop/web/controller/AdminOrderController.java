@@ -1,5 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.config.AppProperties;
@@ -297,8 +299,8 @@ public class AdminOrderController {
         }
         Order before = load(id);
         // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
-        boolean unpaidShip = target == OrderStatus.SHIPPED && OrderService.onlinePaymentMissing(before);
-        long missingMinor = unpaidShip ? OrderService.amountDueMinor(before) : 0;
+        boolean unpaidShip = target == OrderStatus.SHIPPED && OrderMoney.onlinePaymentMissing(before);
+        long missingMinor = unpaidShip ? OrderMoney.amountDueMinor(before) : 0;
         boolean inTransit = target == OrderStatus.REJECTED && Boolean.TRUE.equals(req.returnInTransit());
         Order updated = inTransit
                 ? orderService.reject(before.getId(), req.rejectReason(), reasonCode, restock, true)

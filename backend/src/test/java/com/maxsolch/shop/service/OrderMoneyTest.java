@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import org.junit.jupiter.api.Disabled;
@@ -88,70 +90,70 @@ class OrderMoneyTest {
     @Test
     void dueOnline_isTotalWithoutPrepayment_orThePrepaymentCappedAtTotal() {
         Order o = order(100_000, 0);
-        assertThat(OrderService.dueOnlineMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(100_000);
         o.setPrepaymentMinor(20_000);
-        assertThat(OrderService.dueOnlineMinor(o)).isEqualTo(20_000);
+        assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(20_000);
         o.setPrepaymentMinor(500_000);
-        assertThat(OrderService.dueOnlineMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(100_000);
     }
 
     @Test
     void amountDue_isDueOnlineMinusReceived_neverNegative() {
         Order o = order(100_000, 30_000);
-        assertThat(OrderService.amountDueMinor(o)).isEqualTo(70_000);
+        assertThat(OrderMoney.amountDueMinor(o)).isEqualTo(70_000);
         o.setReceivedMinor(100_000);
-        assertThat(OrderService.amountDueMinor(o)).isZero();
+        assertThat(OrderMoney.amountDueMinor(o)).isZero();
         o.setReceivedMinor(150_000);
-        assertThat(OrderService.amountDueMinor(o)).isZero();
+        assertThat(OrderMoney.amountDueMinor(o)).isZero();
         o.setReceivedMinor(-5);
-        assertThat(OrderService.amountDueMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.amountDueMinor(o)).isEqualTo(100_000);
         Order pre = order(100_000, 5_000);
         pre.setPrepaymentMinor(20_000);
-        assertThat(OrderService.amountDueMinor(pre)).isEqualTo(15_000);
+        assertThat(OrderMoney.amountDueMinor(pre)).isEqualTo(15_000);
         pre.setReceivedMinor(20_000);
-        assertThat(OrderService.amountDueMinor(pre)).isZero();
+        assertThat(OrderMoney.amountDueMinor(pre)).isZero();
     }
 
     @Test
     void collectable_isTotalMinusUncollected_neverNegative() {
         Order o = order(100_000, 0);
-        assertThat(OrderService.collectableMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.collectableMinor(o)).isEqualTo(100_000);
         o.setUncollectedMinor(30_000);
-        assertThat(OrderService.collectableMinor(o)).isEqualTo(70_000);
+        assertThat(OrderMoney.collectableMinor(o)).isEqualTo(70_000);
         o.setUncollectedMinor(900_000);
-        assertThat(OrderService.collectableMinor(o)).isZero();
+        assertThat(OrderMoney.collectableMinor(o)).isZero();
         o.setUncollectedMinor(-10);
-        assertThat(OrderService.collectableMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.collectableMinor(o)).isEqualTo(100_000);
     }
 
     @Test
     void onlinePaymentMissing_needsDeadline_andSomethingStillDue() {
         Order o = order(100_000, 0);
-        assertThat(OrderService.onlinePaymentMissing(o)).isFalse(); // older order: no deadline
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse(); // older order: no deadline
         o.setPaymentDueAt(Instant.now());
-        assertThat(OrderService.onlinePaymentMissing(o)).isTrue();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isTrue();
         o.setReceivedMinor(100_000);
-        assertThat(OrderService.onlinePaymentMissing(o)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse();
         Order pre = order(100_000, 20_000);
         pre.setPrepaymentMinor(20_000);
         pre.setPaymentDueAt(Instant.now());
-        assertThat(OrderService.onlinePaymentMissing(pre)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(pre)).isFalse();
     }
 
     @Test
     void received_isCappedAtTotal_andNeverNegative_codIsTheRest() {
         Order o = order(100_000, 30_000);
-        assertThat(OrderQueryService.receivedMinor(o)).isEqualTo(30_000);
-        assertThat(OrderQueryService.codMinor(o)).isEqualTo(70_000);
+        assertThat(OrderMoney.receivedMinor(o)).isEqualTo(30_000);
+        assertThat(OrderMoney.codMinor(o)).isEqualTo(70_000);
         o.setReceivedMinor(250_000);
-        assertThat(OrderQueryService.receivedMinor(o)).isEqualTo(100_000);
-        assertThat(OrderQueryService.codMinor(o)).isZero();
+        assertThat(OrderMoney.receivedMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.codMinor(o)).isZero();
         o.setReceivedMinor(-7);
-        assertThat(OrderQueryService.receivedMinor(o)).isZero();
-        assertThat(OrderQueryService.codMinor(o)).isEqualTo(100_000);
+        assertThat(OrderMoney.receivedMinor(o)).isZero();
+        assertThat(OrderMoney.codMinor(o)).isEqualTo(100_000);
         Order part = order(100_000, 20_000);
         part.setUncollectedMinor(30_000);
-        assertThat(OrderQueryService.codMinor(part)).isEqualTo(50_000);
+        assertThat(OrderMoney.codMinor(part)).isEqualTo(50_000);
     }
 
     // ----- refundable = received - max(0, refunded) -----
@@ -160,14 +162,14 @@ class OrderMoneyTest {
     void refundable_isRawReceivedMinusRefunded_notCappedAtTotal() {
         Order o = order(100_000, 130_000);
         o.setRefundedMinor(10_000);
-        assertThat(OrderAdjustmentService.refundableMinor(o)).isEqualTo(120_000);
+        assertThat(OrderMoney.refundableMinor(o)).isEqualTo(120_000);
         o.setRefundedMinor(-5);
-        assertThat(OrderAdjustmentService.refundableMinor(o)).isEqualTo(130_000);
+        assertThat(OrderMoney.refundableMinor(o)).isEqualTo(130_000);
         o.setRefundedMinor(900_000);
-        assertThat(OrderAdjustmentService.refundableMinor(o)).isZero();
+        assertThat(OrderMoney.refundableMinor(o)).isZero();
         o.setReceivedMinor(-1);
         o.setRefundedMinor(0);
-        assertThat(OrderAdjustmentService.refundableMinor(o)).isZero();
+        assertThat(OrderMoney.refundableMinor(o)).isZero();
     }
 
     // ----- unitPaidMinor: ТЕКУЩИЕ значения (double + округление на единицу) -----
