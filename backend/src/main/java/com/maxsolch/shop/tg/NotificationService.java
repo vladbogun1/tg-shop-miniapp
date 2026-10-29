@@ -283,15 +283,7 @@ public class NotificationService {
 
     /** DM the customer that an admin applied a discount to their order. */
     public void notifyCustomerDiscount(Order order) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerDiscount", "ORDER_DISCOUNT", order, locale -> {
             String cur = nz(order.getCurrency());
             String text = messages.get(locale, "bot.discount.title") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
@@ -299,55 +291,25 @@ public class NotificationService {
                             money(order.getDiscountMinor()) + " " + cur) + "\n"
                     + messages.get(locale, "bot.discount.newTotal",
                             money(order.getTotalMinor()) + " " + cur);
-            dm("ORDER_DISCOUNT", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerDiscount failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
+        });
     }
 
     /** DM the customer that an admin edited their order composition (new total). */
     public void notifyCustomerOrderChanged(Order order) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerOrderChanged", "ORDER_CHANGED", order, locale -> {
             String cur = nz(order.getCurrency());
             String text = messages.get(locale, "bot.changed.title") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.changed.newTotal",
                             money(order.getTotalMinor()) + " " + cur);
-            dm("ORDER_CHANGED", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerOrderChanged failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
+        });
     }
 
     /** An admin exchanged goods in the order → DM the customer what goes out instead. */
     public void notifyCustomerExchange(Order order, String givenSummary) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerExchange", "ORDER_EXCHANGE", order, locale -> {
             String cur = nz(order.getCurrency());
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.exchange.title")).append('\n');
@@ -367,28 +329,14 @@ public class NotificationService {
                 t.append(messages.get(locale, "bot.exchange.toPay", money(cod) + " " + cur)).append('\n');
             }
             t.append(messages.get(locale, "bot.exchange.ttn"));
-            dm("ORDER_EXCHANGE", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(t.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(payChoice ? orderButton(order, locale) : chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerExchange failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(t.toString(), payChoice
+                    ? customerBot.orderButton(order, locale) : customerBot.chatButton(order, locale));
+        });
     }
 
     /** Two orders of the customer became one (V71) → DM what goes in the parcel and what is left to pay. */
     public void notifyCustomerMerged(Order order, String mergedShortId) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerMerged", "ORDER_MERGE", order, locale -> {
             String cur = nz(order.getCurrency());
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.merge.title")).append('\n');
@@ -404,28 +352,13 @@ public class NotificationService {
             } else {
                 t.append(messages.get(locale, "bot.merge.paid"));
             }
-            dm("ORDER_MERGE", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(t.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(orderButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerMerged failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(t.toString(), customerBot.orderButton(order, locale));
+        });
     }
 
     /** A return was registered (V68) → DM the customer what came back and what is refunded. */
     public void notifyCustomerReturn(Order order, String itemsSummary, long refundMinor) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerReturn", "ORDER_RETURN", order, locale -> {
             String cur = nz(order.getCurrency());
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.return.title")).append('\n');
@@ -437,15 +370,8 @@ public class NotificationService {
                 t.append(messages.get(locale, "bot.return.refund", money(refundMinor) + " " + cur)).append('\n');
             }
             t.append(messages.get(locale, "bot.return.questions"));
-            dm("ORDER_RETURN", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(t.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerReturn failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(t.toString(), customerBot.chatButton(order, locale));
+        });
     }
 
     /** The tracking number was corrected after shipping → DM the customer the new one. */
