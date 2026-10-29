@@ -1,8 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.delivery.app.NovaPoshtaSyncService;
-import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
+import com.maxsolch.shop.delivery.app.NovaPoshtaSyncStatus;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsUpdateRequest;
@@ -20,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
 
 /**
  * The «Настройки» page: business settings that are safe to change at runtime (see
@@ -37,16 +34,16 @@ public class AdminSettingsController {
 
     private final SettingsService settings;
     private final AppProperties props;
-    private final NovaPoshtaWarehouseRepository warehouseRepository;
+    private final NovaPoshtaSyncStatus npSyncStatus;
     private final ObjectProvider<BuildProperties> buildProperties;
 
     public AdminSettingsController(SettingsService settings,
                                    AppProperties props,
-                                   NovaPoshtaWarehouseRepository warehouseRepository,
+                                   NovaPoshtaSyncStatus npSyncStatus,
                                    ObjectProvider<BuildProperties> buildProperties) {
         this.settings = settings;
         this.props = props;
-        this.warehouseRepository = warehouseRepository;
+        this.npSyncStatus = npSyncStatus;
         this.buildProperties = buildProperties;
     }
 
@@ -71,32 +68,16 @@ public class AdminSettingsController {
         if (version == null || version.isBlank()) {
             version = build == null ? null : build.getVersion();
         }
-        Long warehouses;
-        try {
-            warehouses = warehouseRepository.count();
-        } catch (Exception e) {
-            warehouses = null;
-        }
+        NovaPoshtaSyncStatus.Snapshot np = npSyncStatus.snapshot();
         return new SystemInfoDto(
                 version,
                 build == null ? null : build.getTime(),
                 props.getTimezone(),
-                instant(settings.system(NovaPoshtaSyncService.SYSTEM_LAST_SYNC_AT).orElse(null)),
-                settings.system(NovaPoshtaSyncService.SYSTEM_LAST_SYNC_SUMMARY).orElse(null),
-                instant(settings.system(NovaPoshtaSyncService.SYSTEM_LAST_ERROR_AT).orElse(null)),
-                settings.system(NovaPoshtaSyncService.SYSTEM_LAST_ERROR).orElse(null),
-                warehouses,
-                settings.getBool(SettingsRegistry.NOVAPOSHTA_AUTO_SYNC));
-    }
-
-    private static Instant instant(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return Instant.parse(raw.trim());
-        } catch (DateTimeParseException e) {
-            return null;
-        }
+                np.lastSyncAt(),
+                np.lastSyncSummary(),
+                np.lastErrorAt(),
+                np.lastError(),
+                np.warehouses(),
+                np.autoSync());
     }
 }

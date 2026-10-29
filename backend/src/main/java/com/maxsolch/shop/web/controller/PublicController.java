@@ -1,13 +1,10 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.delivery.app.NovaPoshtaService;
 import com.maxsolch.shop.payment.app.PaymentOptionDto;
 import com.maxsolch.shop.payment.app.PaymentOptions;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.delivery.app.NpCityDto;
-import com.maxsolch.shop.delivery.app.NpWarehouseDto;
 import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,19 +18,17 @@ import java.util.Locale;
 
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Public", description = "Public payment options and Nova Poshta directory")
+@Tag(name = "Public", description = "Public payment options and promo preview")
 public class PublicController {
 
     private final PaymentOptions paymentOptions;
-    private final NovaPoshtaService novaPoshtaService;
     private final PromoService promoService;
     private final TranslationService translationService;
 
-    public PublicController(PaymentOptions paymentOptions, NovaPoshtaService novaPoshtaService,
+    public PublicController(PaymentOptions paymentOptions,
                             PromoService promoService, TranslationService translationService) {
         this.paymentOptions = paymentOptions;
         this.translationService = translationService;
-        this.novaPoshtaService = novaPoshtaService;
         this.promoService = promoService;
     }
 
@@ -62,30 +57,5 @@ public class PublicController {
     public List<PaymentOptionDto> paymentOptions(Locale locale) {
         TranslationService.Overlay overlay = translationService.overlay(ContentLocale.normalize(locale));
         return paymentOptions.active().stream().map(overlay::paymentOption).toList();
-    }
-
-    @GetMapping("/np/cities")
-    @Operation(summary = "Search Nova Poshta cities")
-    public List<NpCityDto> cities(@RequestParam(required = false) String q) {
-        return novaPoshtaService.searchCities(q);
-    }
-
-    @GetMapping("/np/warehouses")
-    @Operation(summary = "Search Nova Poshta warehouses for a city")
-    public List<NpWarehouseDto> warehouses(@RequestParam String cityRef,
-                                           @RequestParam(required = false) String q) {
-        return novaPoshtaService.searchWarehouses(cityRef, q);
-    }
-
-    @GetMapping("/np/warehouses/bbox")
-    @Operation(summary = "Nova Poshta warehouses inside a map viewport (bounding box) for the map picker")
-    public List<NpWarehouseDto> warehousesBbox(@RequestParam double minLat,
-                                               @RequestParam double maxLat,
-                                               @RequestParam double minLng,
-                                               @RequestParam double maxLng,
-                                               @RequestParam(required = false, defaultValue = "all") String category,
-                                               @RequestParam(required = false) String q,
-                                               @RequestParam(required = false, defaultValue = "1200") int limit) {
-        return novaPoshtaService.warehousesInBox(minLat, maxLat, minLng, maxLng, category, q, limit);
     }
 }

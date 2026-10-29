@@ -2,6 +2,7 @@ package com.maxsolch.shop.delivery.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -104,7 +105,7 @@ class NovaPoshtaSyncTest {
         assertThat(cityList).hasSize(1);
         assertThat(cityList.get(0).getName()).isEqualTo("Kyiv");
         assertThat(cityList.get(0).getArea()).isEqualTo("Kyivska");
-        verify(settings).putSystem(eq(NovaPoshtaSyncService.SYSTEM_LAST_SYNC_SUMMARY), eq("отделений: 2, городов: 1"));
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_SUMMARY), eq("отделений: 2, городов: 1"));
     }
 
     @Test
@@ -115,8 +116,8 @@ class NovaPoshtaSyncTest {
         sync.sync();
 
         verify(warehouses, never()).saveAll(any());
-        verify(settings).putSystem(eq(NovaPoshtaSyncService.SYSTEM_LAST_ERROR), anyString());
-        verify(settings, never()).putSystem(eq(NovaPoshtaSyncService.SYSTEM_LAST_SYNC_AT), anyString());
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_ERROR), anyString());
+        verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_AT), anyString());
     }
 
     @Test
@@ -130,10 +131,9 @@ class NovaPoshtaSyncTest {
 
     @Test
     void swappedCoordinatesAreStoredTheRightWayRound() {
-        NovaPoshtaSyncService.NovaPoshtaUpsertService upsert =
-                new NovaPoshtaSyncService.NovaPoshtaUpsertService(cities, warehouses);
-        JsonNode swapped = JSON.createObjectNode().put("Ref", "w9").put("CityRef", "c9")
-                .put("Latitude", "36.37").put("Longitude", "49.95");
+        NovaPoshtaUpsertService upsert = new NovaPoshtaUpsertService(cities, warehouses);
+        NovaPoshtaApi.ApiWarehouse swapped = new NovaPoshtaApi.ApiWarehouse("w9", "c9", null, null, null, null,
+                "36.37", "49.95", null);
 
         Map<String, NovaPoshtaCity> seen = new LinkedHashMap<>();
         upsert.upsertPage(List.of(swapped), seen);
@@ -145,5 +145,65 @@ class NovaPoshtaSyncTest {
         assertThat(saved.getValue().get(0).getLng()).isEqualTo(36.37);
         assertThat(seen).containsKey("c9");
         assertThat(seen.get("c9").getName()).isEqualTo("c9");
+    }
+
+    @Test
+    void aGatewayHiccupIsRetriedAndTheSyncStillSucceeds() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        server.removeContext("/");
+        server.createContext("/", ex -> {
+            bodies.add(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            boolean first = calls.getAndIncrement() == 0;
+            byte[] out = (first ? "busy" : "{\"data\":[{\"Ref\":\"w1\",\"CityRef\":\"c1\"}]}").getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(first ? 503 : 200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+
+        sync.sync();
+
+        assertThat(bodies).hasSize(2); // the same read asked twice
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_SUMMARY), eq("отделений: 1, городов: 1"));
+    }
+
+    @Test
+    void successIsStampedWithTheInjectedClock() throws Exception {
+        java.time.Instant at = java.time.Instant.parse("2026-10-30T03:30:00Z");
+        NovaPoshtaSyncService fixed = TestSync.create(propsFor(server), warehouses, cities, settings,
+                java.time.Clock.fixed(at, java.time.ZoneOffset.UTC));
+        answer = "{\"data\":[{\"Ref\":\"w1\",\"CityRef\":\"c1\"}]}";
+
+        fixed.sync();
+
+        verify(settings).putSystem(NovaPoshtaSyncStatus.LAST_SYNC_AT, at.toString());
+    }
+
+    @Test
+    void theNightlyTriggerHonoursTheSwitchInSettings() throws Exception {
+        when(settings.getBool(com.maxsolch.shop.platform.settings.SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)).thenReturn(false);
+
+        new NovaPoshtaJobs(sync).nightlySync();
+        Thread.sleep(300);
+
+        assertThat(bodies).isEmpty();
+    }
+
+    @Test
+    void theNightlyTriggerSyncsWhenSwitchedOn() throws Exception {
+        when(settings.getBool(com.maxsolch.shop.platform.settings.SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)).thenReturn(true);
+
+        new NovaPoshtaJobs(sync).nightlySync();
+        long until = System.currentTimeMillis() + 5_000;
+        while (bodies.isEmpty() && System.currentTimeMillis() < until) {
+            Thread.sleep(50);
+        }
+
+        assertThat(bodies).isNotEmpty();
+    }
+
+    private static AppProperties propsFor(HttpServer server) {
+        AppProperties props = new AppProperties();
+        props.getNovaposhta().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/");
+        return props;
     }
 }
