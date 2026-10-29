@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.MaybeInaccessibleMessage;
@@ -56,24 +55,22 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     private static final DateTimeFormatter DAY_TIME = DateTimeFormatter.ofPattern("dd.MM HH:mm");
 
     private final ShopBot bot;
-    private final AppProperties props;
+    private final SellerChannel seller;
     private final AdminSessions sessions;
     private final AdminUserRepository adminUserRepository;
     private final AdminAuditService audit;
     private final ZoneId zone;
-    private final ActivityLog activity;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "admin-security-alerts");
         t.setDaemon(true);
         return t;
     });
 
-    public AdminSecurityNotifier(@Lazy ShopBot bot, AppProperties props, @Lazy AdminSessions sessions,
-                                 AdminUserRepository adminUserRepository, AdminAuditService audit,
-                                 ActivityLog activity) {
-        this.activity = activity;
+    public AdminSecurityNotifier(@Lazy ShopBot bot, SellerChannel seller, AppProperties props,
+                                 @Lazy AdminSessions sessions, AdminUserRepository adminUserRepository,
+                                 AdminAuditService audit) {
         this.bot = bot;
-        this.props = props;
+        this.seller = seller;
         this.sessions = sessions;
         this.adminUserRepository = adminUserRepository;
         this.audit = audit;
@@ -113,7 +110,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     @Override
     public boolean sendInvite(long telegramUserId, String link, AdminInvite.Kind kind, String roleLabel,
                               String inviterName, Instant expiresAt) {
-        if (!enabled() || telegramUserId <= 0 || link == null) {
+        if (!seller.canDmAdmin(telegramUserId) || link == null) {
             return false;
         }
         String what = switch (kind) {
@@ -129,66 +126,40 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         };
         String text = what + "\n\nСсылка одноразовая, действует до " + DAY_TIME.format(expiresAt.atZone(zone))
                 + ". Никому её не пересылайте.";
-        try {
-            // The link is a one-time credential: the journal gets only what kind of invite it was.
-            activity.bot(ActivityLog.Entry.bot("ADMIN_INVITE").toAdmins(String.valueOf(telegramUserId))
-                    .text("Приглашение в админку: " + kind + ", роль " + roleLabel), () -> bot.execute(SendMessage.builder()
-                    .chatId(String.valueOf(telegramUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(InlineKeyboardMarkup.builder()
-                            .keyboard(List.of(List.of(InlineKeyboardButton.builder()
-                                    .text(kind == AdminInvite.Kind.PASSWORD_RESET ? "Задать новый пароль" : "Открыть приглашение")
-                                    .url(link)
-                                    .build())))
-                            .build())
-                    .build()));
-            return true;
-        } catch (Exception e) {
-            log.info("Admin invite to {} not delivered: {}", telegramUserId, e.getMessage());
-            return false;
-        }
+        // The link is a one-time credential: the journal gets only what kind of invite it was.
+        ActivityLog.Entry entry = ActivityLog.Entry.bot("ADMIN_INVITE")
+                .text("Приглашение в админку: " + kind + ", роль " + roleLabel);
+        InlineKeyboardMarkup button = InlineKeyboardMarkup.builder()
+                .keyboard(List.of(List.of(InlineKeyboardButton.builder()
+                        .text(kind == AdminInvite.Kind.PASSWORD_RESET ? "Задать новый пароль" : "Открыть приглашение")
+                        .url(link)
+                        .build())))
+                .build();
+        return seller.dmAdmin("Admin invite to " + telegramUserId + " not delivered", telegramUserId, entry, text, button);
     }
 
     @Override
     public void accountNotice(long adminId, String html) {
-        if (!enabled() || adminId <= 0) {
+        if (!seller.canDmAdmin(adminId)) {
             return;
         }
-        executor.execute(() -> {
-            try {
-                activity.bot(ActivityLog.Entry.bot("ADMIN_NOTICE").toAdmins(String.valueOf(adminId)).text(firstLine(html)),
-                        () -> bot.execute(SendMessage.builder().chatId(String.valueOf(adminId)).text(html)
-                                .parseMode("HTML").build()));
-            } catch (Exception e) {
-                log.info("Admin account notice to {} not delivered: {}", adminId, e.getMessage());
-            }
-        });
+        executor.execute(() -> seller.dmAdmin("Admin account notice to " + adminId + " not delivered", adminId,
+                ActivityLog.Entry.bot("ADMIN_NOTICE").text(firstLine(html)), html, null));
     }
 
     private void send(long adminId, String text) {
-        if (!enabled() || adminId <= 0) {
+        if (!seller.canDmAdmin(adminId)) {
             return;
         }
-        executor.execute(() -> {
-            try {
-                activity.bot(ActivityLog.Entry.bot("ADMIN_SECURITY_ALERT").toAdmins(String.valueOf(adminId))
-                        .text(firstLine(text)), () -> bot.execute(SendMessage.builder()
-                        .chatId(String.valueOf(adminId))
-                        .text(text)
-                        .parseMode("HTML")
-                        .replyMarkup(InlineKeyboardMarkup.builder()
-                                .keyboard(List.of(List.of(InlineKeyboardButton.builder()
-                                        .text("🚫 Заблокировать")
-                                        .callbackData(BLOCK_PREFIX + adminId)
-                                        .build())))
-                                .build())
-                        .build()));
-            } catch (Exception e) {
-                // Typically: the admin never pressed /start in the bot. Nothing to do about it here.
-                log.info("Admin security alert to {} not delivered: {}", adminId, e.getMessage());
-            }
-        });
+        InlineKeyboardMarkup block = InlineKeyboardMarkup.builder()
+                .keyboard(List.of(List.of(InlineKeyboardButton.builder()
+                        .text("🚫 Заблокировать")
+                        .callbackData(BLOCK_PREFIX + adminId)
+                        .build())))
+                .build();
+        // Typically undelivered when the admin never pressed /start in the bot: nothing to do about it here.
+        executor.execute(() -> seller.dmAdmin("Admin security alert to " + adminId + " not delivered", adminId,
+                ActivityLog.Entry.bot("ADMIN_SECURITY_ALERT").text(firstLine(text)), text, block));
     }
 
     /** [Заблокировать] pressed. */
@@ -234,11 +205,6 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         } catch (Exception e) {
             log.debug("answerCallbackQuery failed: {}", e.getMessage());
         }
-    }
-
-    private boolean enabled() {
-        String token = props.getTelegram().getBotToken();
-        return token != null && !token.isBlank();
     }
 
     private String time(Instant at) {

@@ -76,7 +76,7 @@ class NotifiersSnapshotTest {
             h.record("Push " + inv.getArgument(0));
             return null;
         }).when(push).notifyAdmins(any());
-        return new SupportNotifier(h.bot, h.props, h.messages, push, inbox, threads, h.activity);
+        return new SupportNotifier(customerBot(), sellerChannel(), h.messages, push, inbox, threads);
     }
 
     private ReviewNotifier review() {
@@ -84,16 +84,24 @@ class NotifiersSnapshotTest {
             h.record("Push " + inv.getArgument(0));
             return null;
         }).when(push).notifyAdmins(any());
-        return new ReviewNotifier(h.bot, h.props, h.messages, push, h.activity);
+        return new ReviewNotifier(customerBot(), h.messages, push);
     }
 
     private PreorderNotifier preorder() {
         BotTexts texts = new BotTexts(h.messages, Mockito.mock(SettingsService.class), Mockito.mock(TranslationService.class));
-        return new PreorderNotifier(queue, h.bot, h.props, h.messages, h.activity, texts);
+        return new PreorderNotifier(queue, customerBot(), texts);
     }
 
     private AdminSecurityNotifier adminSecurity() {
-        return new AdminSecurityNotifier(h.bot, h.props, sessions, adminUsers, audit, h.activity);
+        return new AdminSecurityNotifier(h.bot, sellerChannel(), h.props, sessions, adminUsers, audit);
+    }
+
+    private CustomerBot customerBot() {
+        return new CustomerBot(h.bot, h.props, h.messages, h.activity);
+    }
+
+    private SellerChannel sellerChannel() {
+        return new SellerChannel(h.bot, h.props, h.activity);
     }
 
     // ---------------- support ----------------

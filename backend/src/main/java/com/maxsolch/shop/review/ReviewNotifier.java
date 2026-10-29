@@ -1,23 +1,16 @@
 package com.maxsolch.shop.review;
 
 import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.tg.CustomerBot;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Locale;
 
 import static com.maxsolch.shop.common.Texts.ellipsize;
@@ -36,25 +29,19 @@ public class ReviewNotifier {
     private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-    private final ShopBot bot;
-    private final AppProperties props;
+    private final CustomerBot customer;
     private final Messages messages;
     private final AdminPushService push;
-    private final ActivityLog activity;
 
-    public ReviewNotifier(@Lazy ShopBot bot, AppProperties props, Messages messages, AdminPushService push,
-                          ActivityLog activity) {
-        this.bot = bot;
-        this.props = props;
+    public ReviewNotifier(CustomerBot customer, Messages messages, AdminPushService push) {
+        this.customer = customer;
         this.messages = messages;
         this.push = push;
-        this.activity = activity;
     }
 
     /** Is there a bot to write with at all? */
     public boolean enabled() {
-        String token = props.getTelegram().getBotToken();
-        return token != null && !token.isBlank();
+        return customer.enabled();
     }
 
     /** "5%" or, with a ceiling, "5% (до 100 ₴)" in the customer's language. */
@@ -66,28 +53,18 @@ public class ReviewNotifier {
 
     /** "Thanks for the review — here is your personal code". */
     public void bonusIssued(Long tgUserId, String code, int percent, long maxMinor, Instant expiresAt) {
-        if (!enabled() || tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customer.sendTo("Review bonus DM failed for " + tgUserId, tgUserId,
+                ActivityLog.Entry.bot("REVIEW_BONUS").toCustomer(tgUserId)
+                        .detail("percent", percent).detail("maxDiscountMinor", maxMinor), locale -> {
             String text = messages.get(locale, "bot.review.bonus.title") + "\n"
                     + messages.get(locale, "bot.review.bonus.body", "<code>" + escHtml(code) + "</code>",
                             discount(locale, percent, maxMinor), DATE.format(expiresAt.atZone(KYIV)));
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(button(messages.get(locale, "bot.review.bonus.open"), null))
-                    .build();
             // The code itself is the customer's personal discount — the journal keeps only its size.
-            activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS").toCustomer(tgUserId)
-                    .text("Бонус за отзыв: персональный промокод −" + ReviewRules.discountRu(percent, maxMinor)
-                            + " до " + DATE.format(expiresAt.atZone(KYIV)))
-                    .detail("percent", percent).detail("maxDiscountMinor", maxMinor), () -> bot.execute(msg));
-        } catch (Exception e) {
-            log.warn("Review bonus DM failed for {}: {}", tgUserId, e.getMessage());
-        }
+            String journal = "Бонус за отзыв: персональный промокод −" + ReviewRules.discountRu(percent, maxMinor)
+                    + " до " + DATE.format(expiresAt.atZone(KYIV));
+            return new CustomerBot.Dm(text, customer.miniAppButton(messages.get(locale, "bot.review.bonus.open"), null),
+                    journal);
+        });
     }
 
     /**
@@ -99,29 +76,17 @@ public class ReviewNotifier {
      * @return whether the message went out
      */
     public boolean reminder(Long tgUserId, byte[] orderId, int bonusPercent, long bonusMaxMinor) {
-        if (!enabled() || tgUserId == null || tgUserId <= 0) {
-            return false;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        return customer.sendTo("Review reminder DM failed for " + tgUserId, tgUserId,
+                ActivityLog.Entry.bot("REVIEW_REMINDER").toCustomer(tgUserId).order(orderId)
+                        .detail("bonusPercent", bonusPercent), locale -> {
             String id = UuidUtil.toString(orderId);
             String text = messages.get(locale, "bot.review.reminder.title", id.substring(0, 8)) + "\n"
                     + (bonusPercent > 0
                     ? messages.get(locale, "bot.review.reminder.bodyBonus", discount(locale, bonusPercent, bonusMaxMinor))
                     : messages.get(locale, "bot.review.reminder.body"));
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(button(messages.get(locale, "bot.review.reminder.button"), "view_" + id))
-                    .build();
-            activity.bot(ActivityLog.Entry.bot("REVIEW_REMINDER").toCustomer(tgUserId).order(orderId)
-                    .text(text).detail("bonusPercent", bonusPercent), () -> bot.execute(msg));
-            return true;
-        } catch (Exception e) {
-            log.warn("Review reminder DM failed for {}: {}", tgUserId, e.getMessage());
-            return false;
-        }
+            return new CustomerBot.Dm(text,
+                    customer.miniAppButton(messages.get(locale, "bot.review.reminder.button"), "view_" + id));
+        });
     }
 
     /**
@@ -131,29 +96,16 @@ public class ReviewNotifier {
      * @return whether the message went out
      */
     public boolean bonusExpiring(Long tgUserId, String code, int percent, long maxMinor, Instant expiresAt) {
-        if (!enabled() || tgUserId == null || tgUserId <= 0) {
-            return false;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        return customer.sendTo("Bonus expiry DM failed for " + tgUserId, tgUserId,
+                ActivityLog.Entry.bot("REVIEW_BONUS_EXPIRING").toCustomer(tgUserId).detail("percent", percent), locale -> {
             String date = DATE.format(expiresAt.atZone(KYIV));
             String text = messages.get(locale, "bot.review.bonusExpiring.title", discount(locale, percent, maxMinor)) + "\n"
                     + messages.get(locale, "bot.review.bonusExpiring.body", "<code>" + escHtml(code) + "</code>", date);
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(button(messages.get(locale, "bot.review.bonus.open"), null))
-                    .build();
             // As with the bonus itself, the journal keeps the size and the date, not the code.
-            activity.bot(ActivityLog.Entry.bot("REVIEW_BONUS_EXPIRING").toCustomer(tgUserId)
-                    .text("Бонус −" + ReviewRules.discountRu(percent, maxMinor) + " сгорает " + date)
-                    .detail("percent", percent), () -> bot.execute(msg));
-            return true;
-        } catch (Exception e) {
-            log.warn("Bonus expiry DM failed for {}: {}", tgUserId, e.getMessage());
-            return false;
-        }
+            String journal = "Бонус −" + ReviewRules.discountRu(percent, maxMinor) + " сгорает " + date;
+            return new CustomerBot.Dm(text, customer.miniAppButton(messages.get(locale, "bot.review.bonus.open"), null),
+                    journal);
+        });
     }
 
     /** Push to the admins' devices: a review waits for moderation. */
@@ -166,18 +118,5 @@ public class ReviewNotifier {
         } catch (RuntimeException e) {
             log.warn("Review push failed: {}", e.toString());
         }
-    }
-
-    private InlineKeyboardMarkup button(String label, String startapp) {
-        String webapp = props.getWebappBaseUrl();
-        if (webapp == null || !webapp.startsWith("https://")) {
-            return null;
-        }
-        String url = startapp == null ? webapp : webapp + "?startapp=" + startapp;
-        InlineKeyboardButton btn = InlineKeyboardButton.builder()
-                .text(label)
-                .webApp(WebAppInfo.builder().url(url).build())
-                .build();
-        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }
 }

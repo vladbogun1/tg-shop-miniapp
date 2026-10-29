@@ -1,28 +1,21 @@
 package com.maxsolch.shop.preorder;
 
 import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.BotTexts;
-import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.preorder.PreorderDtos.EtaDto;
 import com.maxsolch.shop.preorder.PreorderDtos.MyPreorderDto;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.tg.CustomerBot;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Locale;
 
 import static com.maxsolch.shop.common.Texts.escHtml;
@@ -42,20 +35,13 @@ public class PreorderNotifier {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM");
 
     private final PreorderQueueService queue;
-    private final ShopBot bot;
-    private final AppProperties props;
-    private final Messages messages;
+    private final CustomerBot customer;
     private final BotTexts texts;
-    private final ActivityLog activity;
 
-    public PreorderNotifier(PreorderQueueService queue, @Lazy ShopBot bot, AppProperties props, Messages messages,
-                            ActivityLog activity, BotTexts texts) {
+    public PreorderNotifier(PreorderQueueService queue, CustomerBot customer, BotTexts texts) {
         this.queue = queue;
-        this.bot = bot;
-        this.props = props;
-        this.messages = messages;
+        this.customer = customer;
         this.texts = texts;
-        this.activity = activity;
     }
 
     @TransactionalEventListener(fallbackExecution = true)
@@ -143,38 +129,22 @@ public class PreorderNotifier {
     }
 
     private void send(String type, long subscriptionId, Builder builder) {
-        if (!enabled()) {
+        if (!customer.enabled()) {
             return;
         }
         try {
             Long userId = queue.ownerOf(subscriptionId);
-            if (userId == null || userId <= 0) {
-                return;
-            }
-            Locale locale = messages.localeOf(userId);
-            queue.describe(subscriptionId, locale).ifPresent(d -> {
-                Msg m = builder.build(d, locale);
-                SendMessage msg = SendMessage.builder()
-                        .chatId(String.valueOf(d.userId()))
-                        .text(m.text())
-                        .parseMode("HTML")
-                        .replyMarkup(m.buttons())
-                        .build();
-                try {
-                    activity.bot(ActivityLog.Entry.bot(type).toCustomer(d.userId()).text(m.text()),
-                            () -> bot.execute(msg));
-                } catch (Exception ex) {
-                    log.warn("{} not delivered for place {}: {}", type, subscriptionId, ex.getMessage());
-                }
-            });
+            customer.sendTo(type + " not delivered for place " + subscriptionId, userId,
+                    ActivityLog.Entry.bot(type).toCustomer(userId),
+                    locale -> queue.describe(subscriptionId, locale)
+                            .map(d -> {
+                                Msg m = builder.build(d, locale);
+                                return new CustomerBot.Dm(m.text(), m.buttons());
+                            })
+                            .orElse(null));
         } catch (RuntimeException ex) {
             log.warn("{} failed for place {}: {}", type, subscriptionId, ex.toString());
         }
-    }
-
-    private boolean enabled() {
-        String token = props.getTelegram().getBotToken();
-        return token != null && !token.isBlank();
     }
 
     private static String title(MyPreorderDto p) {
@@ -209,12 +179,6 @@ public class PreorderNotifier {
         return t == null ? "" : t.atZone(PreorderQueueService.KYIV).format(f);
     }
 
-    /** Telegram only takes HTTPS web-app buttons (local http://localhost is rejected). */
-    private String webapp() {
-        String url = props.getWebappBaseUrl();
-        return url != null && url.startsWith("https://") ? url : null;
-    }
-
     private InlineKeyboardMarkup buyButton(MyPreorderDto p, Locale l) {
         return button(l, "bot.preorder.btnBuy", "pp_" + p.productId());
     }
@@ -224,14 +188,6 @@ public class PreorderNotifier {
     }
 
     private InlineKeyboardMarkup button(Locale l, String label, String startApp) {
-        String base = webapp();
-        if (base == null) {
-            return null;
-        }
-        InlineKeyboardButton b = InlineKeyboardButton.builder()
-                .text(texts.get(l, label))
-                .webApp(WebAppInfo.builder().url(base + "?startapp=" + startApp).build())
-                .build();
-        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(b))).build();
+        return customer.miniAppButton(texts.get(l, label), startApp);
     }
 }
