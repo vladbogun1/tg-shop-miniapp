@@ -2,6 +2,7 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.service.BroadcastPhotoStore;
 import com.maxsolch.shop.service.BroadcastService;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
@@ -13,7 +14,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,11 +36,23 @@ public class AdminBroadcastController {
 
     private final BroadcastService broadcastService;
     private final AdminAuditService audit;
+    private final BroadcastPhotoStore photos;
 
     public AdminBroadcastController(BroadcastService broadcastService,
-                                    AdminAuditService audit) {
+                                    AdminAuditService audit, BroadcastPhotoStore photos) {
         this.broadcastService = broadcastService;
         this.audit = audit;
+        this.photos = photos;
+    }
+
+    @PostMapping(value = "/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload the broadcast picture (jpg/png/webp, up to 5 MB); returns photoId for /test and start")
+    public Map<String, String> uploadPhoto(@RequestParam("file") MultipartFile file) throws IOException {
+        return Map.of("photoId", photos.put(file.getBytes()));
+    }
+
+    private static boolean hasPhoto(String photoId) {
+        return photoId != null && !photoId.isBlank();
     }
 
     @GetMapping("/audiences")
@@ -61,9 +77,11 @@ public class AdminBroadcastController {
     @Operation(summary = "Send one test message (telegramUserId null = to yourself)")
     public BroadcastResult test(@Valid @RequestBody BroadcastTestRequest req) {
         long to = req.telegramUserId() != null ? req.telegramUserId() : SecurityUtil.currentUserId();
-        BroadcastResult result = broadcastService.test(req.text(), to, req.withButton(), req.buttonText());
+        BroadcastResult result = broadcastService.test(req.text(), to, req.withButton(), req.buttonText(),
+                req.photoId());
         audit.record("BROADCAST_TEST", "BROADCAST", null,
                 "тест → " + (req.telegramUserId() == null ? "себе" : String.valueOf(to))
+                        + (hasPhoto(req.photoId()) ? ", с картинкой" : "")
                         + (result.ok() ? "" : " (" + result.detail() + ")"));
         return result;
     }
@@ -81,6 +99,7 @@ public class AdminBroadcastController {
                 "аудитория " + (req.audience() == null ? "all" : req.audience())
                         + (req.lang() == null || req.lang().isBlank() ? "" : ", язык " + req.lang())
                         + ", получателей " + started.recipients()
+                        + (hasPhoto(req.photoId()) ? ", с картинкой" : "")
                         + (langs.isEmpty() ? "" : ", версии:" + langs));
         return started.status();
     }

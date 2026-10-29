@@ -44,6 +44,7 @@ import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { PhotoField, CAPTION_LIMIT, type BroadcastPhoto } from "@/components/broadcasts/PhotoField";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer, riseItem, spring } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
@@ -126,6 +127,7 @@ export default function BroadcastsPage() {
   const [testing, setTesting] = useState<"me" | "user" | null>(null);
   const [starting, setStarting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [photo, setPhoto] = useState<BroadcastPhoto | null>(null);
   const [restored, setRestored] = useState(false);
 
   // Restore the draft once, then mirror every change into it.
@@ -236,6 +238,7 @@ export default function BroadcastsPage() {
         telegramUserId: id,
         withButton,
         buttonText: buttonText.trim() || undefined,
+        photoId: photo?.photoId,
       });
       push(r.detail, r.ok ? "ok" : "error");
     } catch (e) {
@@ -264,9 +267,11 @@ export default function BroadcastsPage() {
         lang,
         withButton,
         buttonText: buttonText.trim() || undefined,
+        photoId: photo?.photoId,
       });
       push("Рассылка запущена", "ok");
       setTexts(EMPTY_TEXTS);
+      setPhoto(null);
       setEditing("main");
       qc.invalidateQueries({ queryKey: ["broadcast-status"] });
       qc.invalidateQueries({ queryKey: ["broadcast-history"] });
@@ -379,9 +384,16 @@ export default function BroadcastsPage() {
                 text.length > MAX_LEN ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
               )}
             >
-              {text.length} / {MAX_LEN}
+              {text.length} / {photo ? CAPTION_LIMIT : MAX_LEN}
             </span>
           </div>
+          {photo && text.length > CAPTION_LIMIT && (
+            <p className="text-[11.5px] font-semibold text-[var(--text-muted)]">
+              Длиннее {CAPTION_LIMIT} символов — текст уйдёт отдельным сообщением после картинки (кнопка будет под ним).
+            </p>
+          )}
+
+          <PhotoField value={photo} onChange={setPhoto} />
 
           {problems.length > 0 && Object.values(texts).some((t) => t.trim()) && (
             <ul className="flex flex-col gap-1 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2">
@@ -421,6 +433,9 @@ export default function BroadcastsPage() {
           </div>
           <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[#0e1621] p-4">
             <div className="max-w-[85%] rounded-[14px] rounded-tl-[4px] bg-[#17212b] p-3 shadow-[var(--shadow-2)]">
+              {photo && (
+                <img src={photo.previewUrl} alt="" className="mb-2 max-h-[260px] w-full rounded-[8px] object-cover" />
+              )}
               {previewSource.trim() ? (
                 <div
                   className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"

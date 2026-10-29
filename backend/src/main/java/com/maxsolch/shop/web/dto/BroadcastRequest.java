@@ -20,5 +20,7 @@ public record BroadcastRequest(
         @Pattern(regexp = "^(|uk|ru|en)$") String lang,
         @Size(max = 4096) String textUk,
         @Size(max = 4096) String textRu,
-        @Size(max = 4096) String textEn) {
+        @Size(max = 4096) String textEn,
+        /** Id from {@code POST /api/admin/broadcast/photo}; blank = text only. */
+        @Size(max = 64) String photoId) {
 }

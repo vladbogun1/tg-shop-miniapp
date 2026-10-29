@@ -8,6 +8,7 @@ import {
   apiGet,
   apiPost,
   apiPut,
+  uploadFile,
   type AuditEntry,
   type BroadcastAudience,
   type BroadcastStatus,
@@ -104,6 +105,8 @@ export interface BroadcastStart {
   textUk?: string;
   textRu?: string;
   textEn?: string;
+  /** From `broadcastPhoto`; omitted = text only. */
+  photoId?: string;
 }
 
 // ---- audit ------------------------------------------------------------------------
@@ -151,8 +154,15 @@ export const extApi = {
     apiGet<BroadcastHistoryItem[]>(`/api/admin/broadcast/history?limit=${limit}`),
   broadcast: (body: BroadcastStart) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
   /** telegramUserId omitted = to the admin who sends it («себе»). */
-  broadcastTest: (body: { text: string; telegramUserId?: number; withButton: boolean; buttonText?: string }) =>
-    apiPost<{ ok: boolean; detail: string }>("/api/admin/broadcast/test", body),
+  broadcastTest: (body: {
+    text: string;
+    telegramUserId?: number;
+    withButton: boolean;
+    buttonText?: string;
+    photoId?: string;
+  }) => apiPost<{ ok: boolean; detail: string }>("/api/admin/broadcast/test", body),
+  /** Uploads the broadcast picture (jpg/png/webp, ≤ 5 MB); the id goes to broadcast / broadcastTest. */
+  broadcastPhoto: (file: File) => uploadFile<{ photoId: string }>("/api/admin/broadcast/photo", file),
 
   // audit
   audit: (filter: AuditFilter, page = 0, size = 50) =>

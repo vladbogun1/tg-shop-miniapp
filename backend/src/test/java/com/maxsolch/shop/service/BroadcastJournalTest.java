@@ -38,7 +38,8 @@ class BroadcastJournalTest {
         when(activity.bot(any(), any())).thenCallRealMethod();
         AppProperties props = new AppProperties();
         props.getTelegram().setBotToken("123:test");
-        service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity);
+        service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,
+                new BroadcastPhotoStore());
     }
 
     @Test

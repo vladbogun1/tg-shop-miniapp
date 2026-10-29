@@ -546,8 +546,8 @@ export const apiPut = http.put;
 export const apiDelete = http.del;
 
 /** Multipart upload -> { key } (POST /api/admin/uploads). */
-export function uploadFile(path: string, file: File): Promise<{ key: string }> {
-  return http.upload<{ key: string }>(path, file);
+export function uploadFile<T = { key: string }>(path: string, file: File): Promise<T> {
+  return http.upload<T>(path, file);
 }
 
 // ---- admin auth ------------------------------------------------------------

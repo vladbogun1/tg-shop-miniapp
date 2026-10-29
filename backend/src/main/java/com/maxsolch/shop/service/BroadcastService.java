@@ -74,8 +74,12 @@ public class BroadcastService {
     });
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
+    private final BroadcastPhotoStore photos;
+
     public BroadcastService(@Lazy ShopBot bot, AppProperties props, UserRepository userRepository,
-                            BroadcastRepository broadcastRepository, ActivityLog activity) {
+                            BroadcastRepository broadcastRepository, ActivityLog activity,
+                            BroadcastPhotoStore photos) {
+        this.photos = photos;
         this.bot = bot;
         this.props = props;
         this.userRepository = userRepository;
@@ -143,6 +147,8 @@ public class BroadcastService {
         String audience = req.audience() == null || req.audience().isBlank()
                 ? "all" : req.audience().trim().toLowerCase(Locale.ROOT);
         String lang = normLang(req.lang());
+        BroadcastPhotoStore.Photo photo = photos.require(req.photoId());
+        BroadcastPhotoDelivery delivery = photo == null ? null : new BroadcastPhotoDelivery(bot, photo);
         List<Recipient> recipients = recipients(resolveAudience(audience), languages(), lang);
 
         Broadcast row = new Broadcast();
@@ -162,7 +168,7 @@ public class BroadcastService {
 
         BroadcastStatus start = new BroadcastStatus(true, recipients.size(), 0, 0, 0, saved.getStartedAt(), null);
         status.set(start);
-        exec.submit(() -> run(saved, recipients, req.withButton(), req.buttonText()));
+        exec.submit(() -> run(saved, recipients, req.withButton(), req.buttonText(), delivery));
         return new Started(start, saved.getId(), recipients.size());
     }
 
@@ -190,7 +196,8 @@ public class BroadcastService {
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }
 
-    private void run(Broadcast row, List<Recipient> recipients, boolean withButton, String buttonText) {
+    private void run(Broadcast row, List<Recipient> recipients, boolean withButton, String buttonText,
+                     BroadcastPhotoDelivery photo) {
         int sent = 0, failed = 0, blocked = 0;
         Map<String, InlineKeyboardMarkup> buttons = new HashMap<>();
         try {
@@ -200,7 +207,7 @@ public class BroadcastService {
                 InlineKeyboardMarkup markup = buttons.computeIfAbsent(String.valueOf(r.lang()),
                         k -> shopButton(withButton, buttonText, r.lang()));
                 Outcome o = sendOne(r.id(), html, markup, ActivityLog.Entry.bot("BROADCAST")
-                        .group(ActivityLog.broadcastGroup(row.getId())).detail("lang", r.lang()));
+                        .group(ActivityLog.broadcastGroup(row.getId())).detail("lang", r.lang()), photo);
                 switch (o) {
                     case OK -> sent++;
                     case BLOCKED -> blocked++;
@@ -238,11 +245,19 @@ public class BroadcastService {
 
     /** Send one test message to a specific user. */
     public BroadcastResult test(String text, long telegramUserId, boolean withButton, String buttonText) {
+        return test(text, telegramUserId, withButton, buttonText, null);
+    }
+
+    /** Test send, optionally with the uploaded picture ({@code photoId} from {@link BroadcastPhotoStore}). */
+    public BroadcastResult test(String text, long telegramUserId, boolean withButton, String buttonText,
+                                String photoId) {
         if (!enabled()) {
             return new BroadcastResult(false, "Бот не настроен");
         }
+        BroadcastPhotoStore.Photo photo = photos.require(photoId);
         Outcome o = sendOne(telegramUserId, text, shopButton(withButton, buttonText, null),
-                ActivityLog.Entry.bot("BROADCAST_TEST"));
+                ActivityLog.Entry.bot("BROADCAST_TEST"),
+                photo == null ? null : new BroadcastPhotoDelivery(bot, photo));
         return switch (o) {
             case OK -> new BroadcastResult(true, "Отправлено");
             case BLOCKED -> new BroadcastResult(false, "Получатель заблокировал бота или ещё не писал ему");
@@ -255,13 +270,24 @@ public class BroadcastService {
      * the outcome and is written to the «Бот и сайт» journal — per recipient, so the admin can see
      * exactly who did not get the broadcast and why.
      */
-    private Outcome sendOne(long id, String html, InlineKeyboardMarkup markup, ActivityLog.Entry journal) {
+    private Outcome sendOne(long id, String html, InlineKeyboardMarkup markup, ActivityLog.Entry journal,
+                            BroadcastPhotoDelivery photo) {
         journal.toCustomer(id).text(html);
+        if (photo != null) {
+            journal.detail("photo", BroadcastPhotoDelivery.fitsCaption(html) ? "подпись" : "отдельным сообщением");
+        }
         if (id <= 0) {
             activity.record(journal.failed("BAD_RECIPIENT", "некорректный Telegram id"));
             return Outcome.FAILED;
         }
         try {
+            if (photo != null) {
+                activity.bot(journal, () -> {
+                    photo.send(id, html, markup);
+                    return null;
+                });
+                return Outcome.OK;
+            }
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(id))
                     .text(html)

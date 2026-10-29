@@ -44,6 +44,13 @@ public class ShopBot extends TelegramLongPollingBot {
         return execute(document);
     }
 
+    /** Same reason as {@link #sendDocument}: {@code execute(SendPhoto)} is final, so go through a proxied method. */
+    public org.telegram.telegrambots.meta.api.objects.Message sendPhoto(
+            org.telegram.telegrambots.meta.api.methods.send.SendPhoto photo)
+            throws org.telegram.telegrambots.meta.exceptions.TelegramApiException {
+        return execute(photo);
+    }
+
 
     private final AppProperties props;
     private final AuthService authService;
