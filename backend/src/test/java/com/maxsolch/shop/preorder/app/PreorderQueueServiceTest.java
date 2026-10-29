@@ -62,6 +62,8 @@ class PreorderQueueServiceTest {
     ApplicationEventPublisher events;
     @Mock
     Messages messages;
+    @Mock
+    com.maxsolch.shop.translation.TranslationService translations;
 
     PreorderQueueService service;
     Product product;
@@ -69,7 +71,7 @@ class PreorderQueueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PreorderQueueService(subs, batches, products, settings, events, messages,
+        service = new PreorderQueueService(subs, batches, products, settings, events, messages, translations,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         product = new Product();
         product.setId(UuidUtil.toBytes(UUID.randomUUID()));

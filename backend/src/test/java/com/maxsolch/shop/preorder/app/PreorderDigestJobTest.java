@@ -4,9 +4,8 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.procurement.app.LineProducts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,10 +31,9 @@ class PreorderDigestJobTest {
 
     static final Instant NOW = Instant.parse("2026-10-27T07:00:00Z"); // 10:00 in Kyiv
     final PreorderSubscriptionRepository subs = mock(PreorderSubscriptionRepository.class);
-    final PreorderQueueService queue = mock(PreorderQueueService.class);
+    final LineProducts queue = mock(LineProducts.class);
     final SettingsService settings = mock(SettingsService.class);
-    final ShopBot bot = mock(ShopBot.class);
-    final ActivityLog activity = mock(ActivityLog.class);
+    final PreorderDigestNotifier seller = mock(PreorderDigestNotifier.class);
     final AppProperties props = new AppProperties();
     PreorderDigestJob job;
     final byte[][] ids = {UuidUtil.randomBytes(), UuidUtil.randomBytes(), UuidUtil.randomBytes(), UuidUtil.randomBytes()};
@@ -43,7 +42,7 @@ class PreorderDigestJobTest {
     void setUp() {
         props.getTelegram().setBotToken("token");
         props.getTelegram().setNotifyChatId("-100500");
-        job = new PreorderDigestJob(subs, queue, settings, props, bot, activity, Clock.fixed(NOW, ZoneOffset.UTC));
+        job = new PreorderDigestJob(subs, queue, settings, props, seller, Clock.fixed(NOW, ZoneOffset.UTC));
         when(settings.system(PreorderDigestJob.DAY_KEY)).thenReturn(Optional.empty());
         when(subs.joinedBetween(any(), any())).thenReturn(List.<Object[]>of(new Object[]{7L, 5L}));
         when(subs.joinedByProduct(any(), any())).thenReturn(List.of(
@@ -66,7 +65,7 @@ class PreorderDigestJobTest {
         assertThat(job.send()).isTrue();
 
         verify(settings).putSystem(PreorderDigestJob.DAY_KEY, "2026-10-27");
-        verify(activity).bot(any(), any());
+        verify(seller).deliver(eq("-100500"), any());
         String text = job.text(NOW.minusSeconds(86400), NOW);
         assertThat(text).contains("+7 подписок").contains("5 чел.")
                 .contains("<b>Lamzu &lt;Maya&gt;</b> (+3)").contains("Razer").contains("Logitech")
@@ -80,7 +79,7 @@ class PreorderDigestJobTest {
         assertThat(job.send()).isFalse();
 
         verify(settings, never()).putSystem(anyString(), anyString());
-        verify(activity, never()).bot(any(), any());
+        verify(seller, never()).deliver(any(), any());
     }
 
     @Test
@@ -93,7 +92,7 @@ class PreorderDigestJobTest {
         props.getTelegram().setNotifyChatId(null);
         assertThat(job.send()).isFalse();
 
-        verify(activity, never()).bot(any(), any());
+        verify(seller, never()).deliver(any(), any());
     }
 
     @Test
@@ -102,7 +101,7 @@ class PreorderDigestJobTest {
 
         assertThat(job.send()).isFalse();
 
-        verify(activity, never()).bot(any(), any());
+        verify(seller, never()).deliver(any(), any());
     }
 
     @Test

@@ -73,7 +73,7 @@ public class AdminProductService {
     private final LotLedger ledger;
     /** Queues of a product that leaves sale are closed. */
     private final com.maxsolch.shop.preorder.app.PreorderQueueService preorders;
-    private final com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository preorderSubs;
+    private final com.maxsolch.shop.preorder.app.WaitingCounts waiting;
 
     public AdminProductService(ProductRepository productRepository,
                                ImageStorageService imageStorageService,
@@ -85,7 +85,7 @@ public class AdminProductService {
                                AdminAuditService audit,
                                LotLedger ledger,
                                com.maxsolch.shop.preorder.app.PreorderQueueService preorders,
-                               com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository preorderSubs) {
+                               com.maxsolch.shop.preorder.app.WaitingCounts waiting) {
         this.productRepository = productRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;
@@ -96,7 +96,7 @@ public class AdminProductService {
         this.audit = audit;
         this.ledger = ledger;
         this.preorders = preorders;
-        this.preorderSubs = preorderSubs;
+        this.waiting = waiting;
     }
 
     private void closeQueues(Product p) {
@@ -120,24 +120,15 @@ public class AdminProductService {
     @Transactional(readOnly = true)
     public List<AdminProductDto> list(String sort) {
         CatalogSnapshot catalog = catalogDirectory.snapshot();
-        Map<String, int[]> waiting = waitingByProduct();
+        Map<String, int[]> waitingBy = waiting.byProduct();
         List<AdminProductDto> out = new ArrayList<>(productRepository.findAllNotArchived().stream()
                 .map(p -> {
-                    int[] w = waiting.get(UuidUtil.toString(p.getId()));
+                    int[] w = waitingBy.get(UuidUtil.toString(p.getId()));
                     AdminProductDto dto = toAdminDto(p, catalog);
                     return w == null ? dto : dto.withWaiting(w[0], w[1]);
                 }).toList());
         if (sort != null && "demand".equalsIgnoreCase(sort.trim())) {
             out.sort(Comparator.comparingInt(AdminProductDto::waitingPeople).reversed()); // stable: ties keep order
-        }
-        return out;
-    }
-
-    /** product id → [distinct people, units] waiting for it. */
-    private Map<String, int[]> waitingByProduct() {
-        Map<String, int[]> out = new java.util.HashMap<>();
-        for (Object[] r : preorderSubs.waitingByProduct()) {
-            out.put(UuidUtil.toString((byte[]) r[0]), new int[]{((Number) r[1]).intValue(), ((Number) r[2]).intValue()});
         }
         return out;
     }

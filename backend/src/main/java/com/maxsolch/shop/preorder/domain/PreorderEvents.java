@@ -40,4 +40,8 @@ public final class PreorderEvents {
     /** The batch that was to bring the goods is cancelled; the customer stays on the list without a date. */
     public record BatchCancelledKept(long subscriptionId) {
     }
+
+    /** Holds of a product changed (given or released): the catalog shows stock minus holds. */
+    public record HoldsChanged(String productSlug) {
+    }
 }

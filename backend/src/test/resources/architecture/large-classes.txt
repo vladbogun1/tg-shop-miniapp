@@ -7,10 +7,10 @@ com/maxsolch/shop/finance/app/MarginService.java 503
 com/maxsolch/shop/gift/CaseAutofill.java 618
 com/maxsolch/shop/gift/GiftService.java 553
 com/maxsolch/shop/platform/journal/ActivityLog.java 522
-com/maxsolch/shop/procurement/app/PreorderBatchService.java 734
-com/maxsolch/shop/preorder/app/PreorderQueueService.java 724
+com/maxsolch/shop/procurement/app/PreorderBatchService.java 520
+com/maxsolch/shop/preorder/app/PreorderQueueService.java 607
 com/maxsolch/shop/review/ReviewService.java 591
-com/maxsolch/shop/service/AdminProductService.java 741
+com/maxsolch/shop/service/AdminProductService.java 726
 com/maxsolch/shop/order/app/OrderQueryService.java 585
 com/maxsolch/shop/service/WebAuthService.java 569
 com/maxsolch/shop/support/SupportService.java 650

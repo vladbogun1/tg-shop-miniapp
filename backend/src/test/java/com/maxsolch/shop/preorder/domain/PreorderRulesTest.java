@@ -5,7 +5,6 @@ import com.maxsolch.shop.preorder.domain.PreorderRules.Seat;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,16 +58,5 @@ class PreorderRulesTest {
 
         assertThat(PreorderRules.free(5, queue)).isEqualTo(3);
         assertThat(PreorderRules.free(1, queue)).isZero();
-    }
-
-    @Test
-    void approxWeeksRoundsUpAndBecomesZeroOnTheDay() {
-        LocalDate today = LocalDate.of(2026, 10, 27);
-        assertThat(PreorderRules.approxWeeks(today.plusDays(1), today)).isEqualTo(1);
-        assertThat(PreorderRules.approxWeeks(today.plusDays(7), today)).isEqualTo(1);
-        assertThat(PreorderRules.approxWeeks(today.plusDays(8), today)).isEqualTo(2);
-        assertThat(PreorderRules.approxWeeks(today, today)).isZero();
-        assertThat(PreorderRules.approxWeeks(today.minusDays(3), today)).isZero();
-        assertThat(PreorderRules.approxWeeks(null, today)).isZero();
     }
 }

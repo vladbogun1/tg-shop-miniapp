@@ -1,15 +1,12 @@
 package com.maxsolch.shop.preorder.api;
 
-import com.maxsolch.shop.preorder.app.PreorderQueueService;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.preorder.app.MyPreorders;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
-import com.maxsolch.shop.platform.web.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,51 +27,34 @@ import java.util.List;
 @PreAuthorize("hasRole('CUSTOMER')")
 public class PreorderController {
 
-    private final PreorderQueueService queue;
+    private final MyPreorders preorders;
 
-    /** «Журнал → Бот и сайт»: joining a queue. */
-    @Autowired(required = false)
-    private ActivityLog activity;
-
-    public PreorderController(PreorderQueueService queue) {
-        this.queue = queue;
+    public PreorderController(MyPreorders preorders) {
+        this.preorders = preorders;
     }
 
     @GetMapping
     @Operation(summary = "My places in queues: live first, then recent history")
     public List<MyPreorderDto> list() {
-        return queue.listMine(SecurityUtil.currentUserId());
+        return preorders.list();
     }
 
     @GetMapping("/product/{productId}")
     @Operation(summary = "Pre-order block of a product page, with my places in its queues")
     public ProductPreorderDto forProduct(@PathVariable String productId) {
-        return queue.forProduct(productId, SecurityUtil.currentUserId());
+        return preorders.forProduct(productId);
     }
 
     @PostMapping
     @Operation(summary = "Join the queue for an out-of-stock product/variant (again = change the quantity)")
     public MyPreorderDto subscribe(@RequestBody SubscribeRequest req) {
-        String source = SecurityUtil.currentPrincipal().isWeb()
-                ? PreorderQueueService.SOURCE_WEB : PreorderQueueService.SOURCE_MINIAPP;
-        MyPreorderDto dto = queue.subscribe(SecurityUtil.currentUserId(), source, req);
-        if (activity != null) {
-            try {
-                activity.record(ActivityLog.fromRequest("PREORDER_JOIN")
-                        .text("Встал в очередь на «" + dto.productTitle() + "»"
-                                + (dto.variantName() == null ? "" : " (" + dto.variantName() + ")")
-                                + ", " + dto.qty() + " шт."));
-            } catch (RuntimeException ignored) {
-                // the journal never breaks the request
-            }
-        }
-        return dto;
+        return preorders.join(req);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Leave a queue (a held unit goes to the next person)")
     public ResponseEntity<Void> unsubscribe(@PathVariable long id) {
-        queue.unsubscribe(SecurityUtil.currentUserId(), id);
+        preorders.leave(id);
         return ResponseEntity.noContent().build();
     }
 }

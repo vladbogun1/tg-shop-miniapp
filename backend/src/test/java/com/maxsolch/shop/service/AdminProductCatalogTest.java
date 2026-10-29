@@ -47,7 +47,7 @@ class AdminProductCatalogTest {
                 mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
                 mock(com.maxsolch.shop.inventory.app.LotLedger.class),
                 mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),
-                mock(com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository.class));
+                mock(com.maxsolch.shop.preorder.app.WaitingCounts.class));
         when(directory.load()).thenReturn(CatalogFixtures.snapshot());
         when(directory.snapshot()).thenReturn(CatalogFixtures.snapshot());
         when(products.save(any())).thenAnswer(i -> i.getArgument(0));

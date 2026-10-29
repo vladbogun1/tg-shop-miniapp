@@ -2,7 +2,6 @@ package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.inventory.domain.StockLot;
-import com.maxsolch.shop.inventory.infra.StockLotRepository;
 import com.maxsolch.shop.procurement.domain.BatchCost;
 import com.maxsolch.shop.procurement.domain.BatchExpense;
 import com.maxsolch.shop.procurement.domain.BatchExpenseFile;
@@ -31,9 +30,8 @@ import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import com.maxsolch.shop.procurement.app.PreorderBatchService;
 import com.maxsolch.shop.procurement.app.LineProducts;
 import com.maxsolch.shop.procurement.domain.Lines;
+import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,7 +62,6 @@ public class CostingService {
     private final PreorderBatchRepository batches;
     private final PreorderBatchItemRepository items;
     private final BatchExpenseRepository expenses;
-    private final StockLotRepository lots;
     private final ProductRepository products;
     private final LineProducts queue;
     private final LotLedger ledger;
@@ -72,7 +69,7 @@ public class CostingService {
     private final ImageStorageService storage;
 
     public CostingService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
-                          BatchExpenseRepository expenses, StockLotRepository lots, ProductRepository products,
+                          BatchExpenseRepository expenses, ProductRepository products,
                           LineProducts queue, LotLedger ledger, BatchExpenseFileRepository files,
                           ImageStorageService storage) {
         this.files = files;
@@ -80,7 +77,6 @@ public class CostingService {
         this.batches = batches;
         this.items = items;
         this.expenses = expenses;
-        this.lots = lots;
         this.products = products;
         this.queue = queue;
         this.ledger = ledger;
@@ -181,12 +177,12 @@ public class CostingService {
     public BatchMoneyDto saveMoney(long batchId, MoneyRequest req) {
         PreorderBatch b = batch(batchId);
         if (req == null) {
-            throw new BadRequestException("Пустой запрос");
+            throw ProcurementErrors.badRequest("Пустой запрос");
         }
         if (req.currency() != null) {
             String c = req.currency().trim().toUpperCase(Locale.ROOT);
             if (!PreorderBatchService.CURRENCIES.contains(c)) {
-                throw new BadRequestException("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
+                throw ProcurementErrors.badRequest("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
                         "BAD_CURRENCY");
             }
             b.setCurrency(c);
@@ -207,13 +203,13 @@ public class CostingService {
             for (MoneyLineRequest l : req.lines()) {
                 PreorderBatchItem i = byId.get(l.itemId());
                 if (i == null) {
-                    throw new BadRequestException("Позиция " + l.itemId() + " не из этой поставки", "BAD_ITEM");
+                    throw ProcurementErrors.badRequest("Позиция " + l.itemId() + " не из этой поставки", "BAD_ITEM");
                 }
                 if (l.unitPriceFx() != null && l.unitPriceFx() < 0) {
-                    throw new BadRequestException("Закупочная цена не может быть отрицательной", "BAD_PRICE");
+                    throw ProcurementErrors.badRequest("Закупочная цена не может быть отрицательной", "BAD_PRICE");
                 }
                 if (l.weightG() != null && l.weightG() < 0) {
-                    throw new BadRequestException("Вес не может быть отрицательным", "BAD_WEIGHT");
+                    throw ProcurementErrors.badRequest("Вес не может быть отрицательным", "BAD_WEIGHT");
                 }
                 i.setUnitPriceFx(l.unitPriceFx());
                 i.setWeightG(l.weightG());
@@ -237,7 +233,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto updateExpense(long expenseId, ExpenseRequest req) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new NotFoundException("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
         applyExpense(e, req);
         expenses.save(e);
         return money(e.getBatchId());
@@ -245,7 +241,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto deleteExpense(long expenseId) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new NotFoundException("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
         List<String> keys = files.findByExpenseId(expenseId).stream().map(BatchExpenseFile::getObjectKey).toList();
         expenses.delete(e); // the rows of its documents go with it (ON DELETE CASCADE)
         keys.forEach(storage::deleteQuietly);
@@ -256,7 +252,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto addExpenseFile(long expenseId, MultipartFile file, String adminName) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new NotFoundException("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
         BatchExpenseFile f = new BatchExpenseFile();
         f.setExpenseId(expenseId);
         f.setObjectKey(storage.uploadCostingDocument(file, e.getBatchId()));
@@ -272,14 +268,14 @@ public class CostingService {
 
     @Transactional(readOnly = true)
     public BatchExpenseFile expenseFile(long fileId) {
-        return files.findById(fileId).orElseThrow(() -> new NotFoundException("Документ не найден"));
+        return files.findById(fileId).orElseThrow(() -> ProcurementErrors.notFound("Документ не найден"));
     }
 
     @Transactional
     public BatchMoneyDto deleteExpenseFile(long fileId) {
         BatchExpenseFile f = expenseFile(fileId);
         long batchId = expenses.findById(f.getExpenseId()).map(BatchExpense::getBatchId)
-                .orElseThrow(() -> new NotFoundException("Расход не найден"));
+                .orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
         files.delete(f);
         storage.deleteQuietly(f.getObjectKey());
         return money(batchId);
@@ -287,22 +283,22 @@ public class CostingService {
 
     private void applyExpense(BatchExpense e, ExpenseRequest req) {
         if (req == null || req.amountMinor() == null || req.amountMinor() == 0) {
-            throw new BadRequestException("Укажите сумму расхода (компенсация — с минусом)", "BAD_AMOUNT");
+            throw ProcurementErrors.badRequest("Укажите сумму расхода (компенсация — с минусом)", "BAD_AMOUNT");
         }
         String kind = req.kind() == null ? "OTHER" : req.kind().trim().toUpperCase(Locale.ROOT);
         try {
             BatchExpense.Kind.valueOf(kind);
         } catch (IllegalArgumentException ex) {
-            throw new BadRequestException("Тип расхода: FREIGHT, CUSTOMS, BROKER, DOMESTIC, BANK, OTHER", "BAD_KIND");
+            throw ProcurementErrors.badRequest("Тип расхода: FREIGHT, CUSTOMS, BROKER, DOMESTIC, BANK, OTHER", "BAD_KIND");
         }
         String currency = req.currency() == null ? "UAH" : req.currency().trim().toUpperCase(Locale.ROOT);
         if (!PreorderBatchService.CURRENCIES.contains(currency)) {
-            throw new BadRequestException("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
+            throw ProcurementErrors.badRequest("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
                     "BAD_CURRENCY");
         }
         if (req.itemId() != null && items.findById(req.itemId())
                 .filter(i -> i.getBatchId().equals(e.getBatchId())).isEmpty()) {
-            throw new BadRequestException("Позиция не из этой поставки", "BAD_ITEM");
+            throw ProcurementErrors.badRequest("Позиция не из этой поставки", "BAD_ITEM");
         }
         e.setBatchItemId(req.itemId());
         e.setKind(kind);
@@ -336,8 +332,8 @@ public class CostingService {
     @Transactional(readOnly = true)
     public ProductCostDto product(String productId) {
         Product p = products.findById(UuidUtil.toBytes(productId))
-                .orElseThrow(() -> new NotFoundException("Товар не найден"));
-        List<StockLot> all = lots.findByProductIdOrderByIdAsc(p.getId());
+                .orElseThrow(() -> ProcurementErrors.notFound("Товар не найден"));
+        List<StockLot> all = ledger.lotsOfProduct(p.getId());
         CostBook book = book(all);
         List<LotDto> out = new ArrayList<>();
         StockLot next = null;
@@ -371,7 +367,7 @@ public class CostingService {
         Map<String, int[]> units = new LinkedHashMap<>();
         Map<String, Long> cost = new HashMap<>();
         Map<String, StockLot> sample = new HashMap<>();
-        for (StockLot l : lots.findByQtyLeftGreaterThan(0)) {
+        for (StockLot l : ledger.lotsOnShelf()) {
             if (l.batch()) {
                 continue;
             }
@@ -405,26 +401,26 @@ public class CostingService {
     @Transactional
     public void setOpening(OpeningRequest req) {
         if (req == null || req.productId() == null) {
-            throw new BadRequestException("Не указан товар");
+            throw ProcurementErrors.badRequest("Не указан товар");
         }
         if (req.unitCostMinor() != null && req.unitCostMinor() < 0) {
-            throw new BadRequestException("Себестоимость не может быть отрицательной", "BAD_COST");
+            throw ProcurementErrors.badRequest("Себестоимость не может быть отрицательной", "BAD_COST");
         }
         byte[] pid = UuidUtil.toBytes(req.productId());
         byte[] vid = req.variantId() == null || req.variantId().isBlank() ? null : UuidUtil.toBytes(req.variantId());
-        List<StockLot> key = lots.findKey(pid, vid).stream().filter(l -> !l.batch()).toList();
+        List<StockLot> key = ledger.lotsOfLine(pid, vid).stream().filter(l -> !l.batch()).toList();
         if (key.isEmpty()) {
-            throw new NotFoundException("У товара нет старого остатка");
+            throw ProcurementErrors.notFound("У товара нет старого остатка");
         }
         key.forEach(l -> l.setUnitCostMinor(req.unitCostMinor()));
-        lots.saveAll(key);
+        ledger.saveLots(key);
     }
 
     /** «Выровнять»: every product's lots match its stock again (drift from before the ledger, SQL fixes). */
     @Transactional
     public ReconcileDto reconcile() {
         Map<String, Integer> onLots = new HashMap<>();
-        for (StockLot l : lots.findAll()) {
+        for (StockLot l : ledger.allLots()) {
             onLots.merge(Lines.key(l.getProductId(), l.getVariantId()), l.getQtyLeft(),
                     Integer::sum);
         }
@@ -464,7 +460,7 @@ public class CostingService {
     // ---------------------------------------------------------------- helpers
 
     private PreorderBatch batch(long id) {
-        return batches.findById(id).orElseThrow(() -> new NotFoundException("Поставка не найдена"));
+        return batches.findById(id).orElseThrow(() -> ProcurementErrors.notFound("Поставка не найдена"));
     }
 
     static BatchCost.Allocation allocation(String s) {
@@ -472,13 +468,13 @@ public class CostingService {
             return s == null ? BatchCost.Allocation.BY_VALUE
                     : BatchCost.Allocation.valueOf(s.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Распределение: BY_VALUE, BY_QTY, BY_WEIGHT, MANUAL", "BAD_ALLOCATION");
+            throw ProcurementErrors.badRequest("Распределение: BY_VALUE, BY_QTY, BY_WEIGHT, MANUAL", "BAD_ALLOCATION");
         }
     }
 
     private static BigDecimal rate(BigDecimal r) {
         if (r.signum() <= 0 || r.compareTo(BigDecimal.valueOf(100000)) > 0) {
-            throw new BadRequestException("Курс: больше нуля", "BAD_RATE");
+            throw ProcurementErrors.badRequest("Курс: больше нуля", "BAD_RATE");
         }
         return r;
     }

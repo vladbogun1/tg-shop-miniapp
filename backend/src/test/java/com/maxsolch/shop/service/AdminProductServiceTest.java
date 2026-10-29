@@ -63,7 +63,8 @@ class AdminProductServiceTest {
         service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
                 catalogDirectory, brandService, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepository, java.time.Clock.systemUTC()), audit,
                 org.mockito.Mockito.mock(com.maxsolch.shop.inventory.app.LotLedger.class),
-                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class), preorderSubs);
+                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),
+                new com.maxsolch.shop.preorder.app.WaitingCounts(preorderSubs));
         lenient().when(audit.currentAdminName()).thenReturn("Влад");
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);

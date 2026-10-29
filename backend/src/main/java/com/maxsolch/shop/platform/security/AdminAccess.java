@@ -45,15 +45,30 @@ public class AdminAccess {
                 || p.role() != Role.ADMIN) {
             return false;
         }
-        return adminUserRepository.findByTelegramUserIdAndActiveTrue(p.telegramUserId())
+        return canSeeFinance(p.telegramUserId());
+    }
+
+    /** The same by the admin's id, for a use case that reads the actor from {@code CurrentActor}. */
+    public boolean canSeeFinance(long adminId) {
+        return adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
                 .map(a -> a.isSuperAdmin() || a.isFinance())
                 .orElse(false);
     }
 
     public void requireFinance(Authentication authentication) {
         if (!canSeeFinance(authentication)) {
-            throw new ForbiddenException("Закупка и маржа — только главному админу и тем, у кого есть «Финансы»");
+            throw financeForbidden();
         }
+    }
+
+    public void requireFinance(long adminId) {
+        if (!canSeeFinance(adminId)) {
+            throw financeForbidden();
+        }
+    }
+
+    private static ForbiddenException financeForbidden() {
+        return new ForbiddenException("Закупка и маржа — только главному админу и тем, у кого есть «Финансы»");
     }
 
     public boolean isSuperAdmin(long adminId) {

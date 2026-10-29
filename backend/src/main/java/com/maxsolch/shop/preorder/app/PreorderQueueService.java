@@ -29,20 +29,14 @@ import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.preorder.domain.PreorderErrors;
-import com.maxsolch.shop.site.SiteRevalidator;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -86,39 +80,20 @@ public class PreorderQueueService {
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
     private final Messages messages;
+    private final TranslationService translations;
     private final Clock clock;
 
     public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, ProductRepository products,
                                 SettingsService settings, ApplicationEventPublisher events, Messages messages,
-                                Clock clock) {
+                                TranslationService translations, Clock clock) {
         this.subs = subs;
         this.batches = batches;
         this.products = products;
         this.settings = settings;
         this.events = events;
         this.messages = messages;
-        this.clock = clock;
-    }
-
-    /** The catalog caches stock: a hold that appears or goes away changes what the shop shows as available. */
-    private CacheManager cacheManager;
-    private SiteRevalidator siteRevalidator;
-
-    @Autowired(required = false)
-    void setCacheManager(CacheManager cacheManager) {
-        this.cacheManager = cacheManager;
-    }
-
-    private TranslationService translations;
-
-    @Autowired(required = false)
-    void setTranslations(TranslationService translations) {
         this.translations = translations;
-    }
-
-    @Autowired(required = false)
-    void setSiteRevalidator(SiteRevalidator siteRevalidator) {
-        this.siteRevalidator = siteRevalidator;
+        this.clock = clock;
     }
 
     // ---------------------------------------------------------------- customer
@@ -456,34 +431,11 @@ public class PreorderQueueService {
     }
 
     /**
-     * Holds of a product changed: drop the cached catalog and rebuild its site pages once the
-     * transaction commits (before that another request would cache the old numbers again).
+     * Holds of a product changed: the catalog shows stock minus holds, so its cache and the site pages are
+     * rebuilt once the transaction commits ({@link HoldsCacheFlush}).
      */
     private void holdsChanged(Product product) {
-        String slug = product.getSlug();
-        Runnable flush = () -> {
-            if (cacheManager != null) {
-                for (String name : List.of("products", "productById")) {
-                    Cache c = cacheManager.getCache(name);
-                    if (c != null) {
-                        c.clear();
-                    }
-                }
-            }
-            if (siteRevalidator != null) {
-                siteRevalidator.productChanged(slug, null, null);
-            }
-        };
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    flush.run();
-                }
-            });
-        } else {
-            flush.run();
-        }
+        events.publishEvent(new PreorderEvents.HoldsChanged(product.getSlug()));
     }
 
     /** The same hand-out without touching anything — the «Приехала» preview. */
@@ -598,7 +550,7 @@ public class PreorderQueueService {
         ProductVariant v = Lines.variantById(p, s.getVariantId());
         String productId = UuidUtil.toString(s.getProductId());
         String variantId = s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId());
-        TranslationService.Overlay overlay = translations == null ? null : translations.overlay(lang);
+        TranslationService.Overlay overlay = translations.overlay(lang);
         String title = overlay == null ? p.getTitle()
                 : overlay.text(TranslationEntityType.PRODUCT, productId, TranslationEntityType.TITLE, p.getTitle());
         String variantName = v == null ? null : overlay == null ? v.getName()

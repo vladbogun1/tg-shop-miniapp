@@ -1,7 +1,7 @@
 package com.maxsolch.shop.finance.app;
 
 import com.maxsolch.shop.inventory.domain.StockLot;
-import com.maxsolch.shop.inventory.infra.StockLotRepository;
+import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.procurement.app.CostingService;
 import com.maxsolch.shop.procurement.domain.BatchCost;
 import com.maxsolch.shop.analytics.metrics.MetricsFacts;
@@ -18,8 +18,7 @@ import com.maxsolch.shop.procurement.app.CostingService.CostBook;
 import com.maxsolch.shop.procurement.app.CostingService.UnitCost;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
-import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
-import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
+import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.procurement.app.LineProducts;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.domain.Product;
@@ -65,22 +64,20 @@ public class MarginService {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final CostingService costing;
-    private final StockLotRepository lots;
-    private final PreorderBatchRepository batches;
-    private final PreorderBatchItemRepository batchItems;
+    private final LotLedger ledger;
+    private final BatchCatalog batches;
     private final LineProducts queue;
     private final MetricsFactsLoader facts;
     private final SettingsService settings;
 
-    public MarginService(NamedParameterJdbcTemplate jdbc, CostingService costing, StockLotRepository lots,
-                         PreorderBatchRepository batches, PreorderBatchItemRepository batchItems,
-                         LineProducts queue, MetricsFactsLoader facts, SettingsService settings) {
+    public MarginService(NamedParameterJdbcTemplate jdbc, CostingService costing, LotLedger ledger,
+                         BatchCatalog batches, LineProducts queue, MetricsFactsLoader facts,
+                         SettingsService settings) {
         this.settings = settings;
         this.jdbc = jdbc;
         this.costing = costing;
-        this.lots = lots;
+        this.ledger = ledger;
         this.batches = batches;
-        this.batchItems = batchItems;
         this.queue = queue;
         this.facts = facts;
     }
@@ -190,7 +187,7 @@ public class MarginService {
     private CostBook bookFor(Collection<Bundle> bundles, Collection<StockLot> extra) {
         Set<Long> ids = new HashSet<>();
         bundles.forEach(b -> b.allocs().values().forEach(l -> l.forEach(a -> ids.add(a.lotId()))));
-        List<StockLot> all = new ArrayList<>(lots.findAllById(ids));
+        List<StockLot> all = new ArrayList<>(ledger.lotsByIds(ids));
         all.addAll(extra);
         return costing.book(all);
     }
@@ -287,7 +284,7 @@ public class MarginService {
     private Map<Long, StockLot> lotsById(Collection<Bundle> bundles) {
         Set<Long> ids = new HashSet<>();
         bundles.forEach(b -> b.allocs().values().forEach(l -> l.forEach(a -> ids.add(a.lotId()))));
-        return lots.findAllById(ids).stream().collect(Collectors.toMap(StockLot::getId, Function.identity()));
+        return ledger.lotsByIds(ids).stream().collect(Collectors.toMap(StockLot::getId, Function.identity()));
     }
 
     // ---------------------------------------------------------------- report
@@ -300,7 +297,7 @@ public class MarginService {
                 .map(MetricsFacts.OrderFact::id)
                 .toList();
         Map<String, Bundle> bundles = load(ids);
-        List<StockLot> shelf = lots.findByQtyLeftGreaterThan(0);
+        List<StockLot> shelf = ledger.lotsOnShelf();
         Map<Long, StockLot> lotById = new HashMap<>(lotsById(bundles.values()));
         shelf.forEach(l -> lotById.put(l.getId(), l));
         CostBook book = bookFor(bundles.values(), shelf);
@@ -412,9 +409,9 @@ public class MarginService {
 
     @Transactional(readOnly = true)
     public BatchSalesDto batch(long batchId) {
-        PreorderBatch pb = batches.findById(batchId).orElseThrow(() -> new NotFoundException("Поставка не найдена"));
-        List<PreorderBatchItem> lines = batchItems.findByBatchIdOrderByIdAsc(batchId);
-        List<StockLot> batchLots = lots.findByBatchItemIdIn(lines.stream().map(PreorderBatchItem::getId).toList());
+        PreorderBatch pb = batches.find(batchId).orElseThrow(() -> new NotFoundException("Поставка не найдена"));
+        List<PreorderBatchItem> lines = batches.linesOf(batchId);
+        List<StockLot> batchLots = ledger.lotsOfBatchItems(lines.stream().map(PreorderBatchItem::getId).toList());
         CostBook book = costing.book(batchLots);
         Map<Long, StockLot> lotById = batchLots.stream().collect(Collectors.toMap(StockLot::getId, Function.identity()));
 

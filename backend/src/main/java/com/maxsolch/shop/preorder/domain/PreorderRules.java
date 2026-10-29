@@ -1,7 +1,5 @@
 package com.maxsolch.shop.preorder.domain;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,17 +59,5 @@ public final class PreorderRules {
                 .filter(s -> s.status() == PreorderSubscription.Status.HELD)
                 .mapToInt(Seat::heldQty).sum();
         return Math.max(0, stock - held);
-    }
-
-    /**
-     * «~N тижнів» for an approximate ETA: whole weeks from {@code today} to {@code target}, rounded up;
-     * 0 once the date has come («найближчим часом»).
-     */
-    public static int approxWeeks(LocalDate target, LocalDate today) {
-        if (target == null) {
-            return 0;
-        }
-        long days = ChronoUnit.DAYS.between(today, target);
-        return days <= 0 ? 0 : (int) ((days + 6) / 7);
     }
 }

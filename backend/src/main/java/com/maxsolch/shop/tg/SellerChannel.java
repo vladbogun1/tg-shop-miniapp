@@ -215,6 +215,23 @@ public class SellerChannel {
         }
     }
 
+    /**
+     * A plain HTML note into the chat topic with no button and no order (the daily pre-order digest) to the given
+     * chat. Best-effort: a Telegram failure is logged with {@code failure} and swallowed.
+     */
+    public void postChatTopicNote(String failure, ActivityLog.Entry entry, String chatId, String text) {
+        try {
+            SendMessage msg = SendMessage.builder().chatId(chatId).text(text).parseMode("HTML").build();
+            int topic = props.getTelegram().getNotifyTopicChat();
+            if (topic > 0) {
+                msg.setMessageThreadId(topic);
+            }
+            toAdmins(entry, msg);
+        } catch (Exception e) {
+            log.warn("{}: {}", failure, e.getMessage());
+        }
+    }
+
     // ----- a personal DM to one admin -----
 
     /** The bot is on and this is a real Telegram user (id > 0): an admin's own chat can be written to. */

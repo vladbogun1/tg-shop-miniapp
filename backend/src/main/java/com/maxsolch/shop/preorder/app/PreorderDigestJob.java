@@ -4,16 +4,14 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.procurement.app.LineProducts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -39,27 +37,19 @@ public class PreorderDigestJob {
     static final int TOP = 3;
 
     private final PreorderSubscriptionRepository subs;
-    private final PreorderQueueService queue;
+    private final LineProducts lineProducts;
     private final SettingsService settings;
     private final AppProperties props;
-    private final ShopBot bot;
-    private final ActivityLog activity;
+    private final PreorderDigestNotifier notifier;
     private final Clock clock;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public PreorderDigestJob(PreorderSubscriptionRepository subs, PreorderQueueService queue,
-                             SettingsService settings, AppProperties props, @Lazy ShopBot bot, ActivityLog activity) {
-        this(subs, queue, settings, props, bot, activity, Clock.systemUTC());
-    }
-
-    PreorderDigestJob(PreorderSubscriptionRepository subs, PreorderQueueService queue, SettingsService settings,
-                      AppProperties props, ShopBot bot, ActivityLog activity, Clock clock) {
+    public PreorderDigestJob(PreorderSubscriptionRepository subs, LineProducts lineProducts, SettingsService settings,
+                             AppProperties props, PreorderDigestNotifier notifier, Clock clock) {
         this.subs = subs;
-        this.queue = queue;
+        this.lineProducts = lineProducts;
         this.settings = settings;
         this.props = props;
-        this.bot = bot;
-        this.activity = activity;
+        this.notifier = notifier;
         this.clock = clock;
     }
 
@@ -80,7 +70,7 @@ public class PreorderDigestJob {
         if (token == null || token.isBlank() || chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
             return false;
         }
-        LocalDate today = LocalDate.now(clock.withZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT));
+        LocalDate today = ShopZone.of(null).today(clock);
         if (settings.system(DAY_KEY).map(today.toString()::equals).orElse(false)) {
             return false;
         }
@@ -90,17 +80,7 @@ public class PreorderDigestJob {
             return false;
         }
         settings.putSystem(DAY_KEY, today.toString());
-        SendMessage msg = SendMessage.builder().chatId(chatId).text(text).parseMode("HTML").build();
-        int topic = props.getTelegram().getNotifyTopicChat();
-        if (topic > 0) {
-            msg.setMessageThreadId(topic);
-        }
-        try {
-            activity.bot(ActivityLog.Entry.bot("ADMIN_PREORDER_DIGEST").toAdmins(chatId).text(text),
-                    () -> bot.execute(msg));
-        } catch (Exception e) {
-            log.warn("Preorder digest not delivered: {}", e.getMessage());
-        }
+        notifier.deliver(chatId, text);
         return true;
     }
 
@@ -117,7 +97,7 @@ public class PreorderDigestJob {
         for (Object[] r : rows.subList(0, Math.min(TOP, rows.size()))) {
             top.add((byte[]) r[0]);
         }
-        Map<String, Product> byId = queue.productsOf(top);
+        Map<String, Product> byId = lineProducts.productsOf(top);
         List<String> parts = new ArrayList<>();
         for (int i = 0; i < top.size(); i++) {
             Product p = byId.get(UuidUtil.toString(top.get(i)));
