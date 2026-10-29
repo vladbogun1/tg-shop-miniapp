@@ -2,31 +2,24 @@
 # Format: <rule> <module> <count>. Numbers only go DOWN: regenerate with
 #   mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true
 # after fixing violations; a raised number means the code got worse and the change must be redone.
-A1 cart 1
 A1 legacy 14
 A1 platform 3
 A2 legacy 14
-A2 promo 1
 A3 legacy 3
 C1 legacy 71
-C1 promo 1
 CA legacy 7
 E1 legacy 78
 E1 platform 6
 H1 legacy 6
 J1 legacy 9
 J1 platform 2
-J1 promo 1
 K1 legacy 2
 L1 legacy 7
-L1 promo 2
 L2 legacy 38
 L3 legacy 18
 L4 legacy 11
 M1 legacy 13
-M1 order 1
 M1 platform 1
-M2 promo 4
 N1 legacy 49
 N1 platform 7
 P1 platform 26
@@ -37,4 +30,3 @@ T1 platform 4
 T2 legacy 4
 W1 legacy 39
 W1 platform 2
-W1 promo 2

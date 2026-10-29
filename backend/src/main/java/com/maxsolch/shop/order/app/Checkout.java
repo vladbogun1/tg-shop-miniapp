@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;

@@ -52,7 +52,7 @@ class PromoServiceTest {
     @BeforeEach
     void setUp() {
         service = new PromoService(promoCodeRepository, reservationRepository, messages, settings,
-                java.time.Clock.systemUTC());
+                java.time.Clock.systemUTC(), null);
         // No stored setting: the default hold applies, as on a fresh deployment.
         lenient().when(settings.get(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         // The wording is the message catalogue's job (MessageBundlesTest); here only the decision

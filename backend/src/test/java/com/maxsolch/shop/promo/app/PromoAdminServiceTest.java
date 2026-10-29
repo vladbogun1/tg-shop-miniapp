@@ -28,6 +28,8 @@ class PromoAdminServiceTest {
 
     @Mock
     PromoCodeRepository repository;
+    @Mock
+    PromoUsage usage;
 
     PromoAdminService service;
     PromoCode existing;
@@ -35,7 +37,7 @@ class PromoAdminServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PromoAdminService(repository);
+        service = new PromoAdminService(repository, usage);
         existing = new PromoCode();
         existing.setId(UuidUtil.randomBytes());
         existing.setCode("SALE");
@@ -72,7 +74,7 @@ class PromoAdminServiceTest {
     @Test
     void codeReferencedByAnOrder_cannotBeDeletedEvenWithZeroUses() {
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
-        when(repository.countOrdersWithCode("SALE")).thenReturn(1L);
+        when(usage.usedInOrders("SALE")).thenReturn(true);
 
         assertThatThrownBy(() -> service.delete(id))
                 .isInstanceOf(DomainException.BadRequest.class)

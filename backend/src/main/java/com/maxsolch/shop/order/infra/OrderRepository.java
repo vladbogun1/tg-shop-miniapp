@@ -118,4 +118,20 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                  @Param("idHi") byte[] idHi,
                                  @Param("from") Instant from,
                                  @Param("to") Instant to);
+
+    /** Orders placed with a promo code, newest first (the «Промокоды» page shows where a code went). */
+    @Query("select o from Order o where o.promoCode = :code order by o.createdAt desc")
+    List<Order> ordersWithPromoCode(@Param("code") String code, Pageable pageable);
+
+    /** How many orders carry this promo code (deleting a code that any order used is refused). */
+    @Query("select count(o) from Order o where o.promoCode = :code")
+    long countOrdersWithPromoCode(@Param("code") String code);
+
+    /**
+     * Orders with an admin's manual amount/percent discount ({@code promo_code} starts with {@code prefix}),
+     * newest first.
+     */
+    @Query("select o from Order o where o.promoCode like concat(:prefix, '%') and o.discountMinor > 0 "
+            + "order by o.createdAt desc")
+    List<Order> ordersWithManualDiscount(@Param("prefix") String prefix, Pageable pageable);
 }

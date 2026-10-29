@@ -1,6 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
-import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -11,8 +11,6 @@ import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,24 +48,20 @@ public class PromoService {
     private final Messages messages;
     private final SettingsService settings;
     private final Clock clock;
+    /** Low-margin products a case promo code does not apply to. */
+    private final CaseLowMargin caseLowMargin;
 
     public PromoService(PromoCodeRepository promoCodeRepository,
                         PromoReservationRepository reservationRepository,
                         Messages messages,
                         SettingsService settings,
-                        Clock clock) {
+                        Clock clock,
+                        CaseLowMargin caseLowMargin) {
         this.promoCodeRepository = promoCodeRepository;
         this.reservationRepository = reservationRepository;
         this.messages = messages;
         this.settings = settings;
         this.clock = clock;
-    }
-
-    /** Low-margin products a case promo code does not apply to (optional: unit tests build without it). */
-    private CaseLowMargin caseLowMargin;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setCaseLowMargin(CaseLowMargin caseLowMargin) {
         this.caseLowMargin = caseLowMargin;
     }
 
@@ -230,12 +224,7 @@ public class PromoService {
         return null;
     }
 
-    /**
-     * Expired holds are already ignored by every query; this only keeps the table from growing
-     * forever.
-     */
-    @SchedulerLock(name = "PromoService.sweepExpired", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
-    @Scheduled(fixedDelayString = "${app.promo.reservation-sweep-ms:600000}", initialDelay = 60_000)
+    /** Deletes expired holds (scheduled by {@link PromoJobs}). */
     @Transactional
     public void sweepExpired() {
         int removed = reservationRepository.deleteExpired(clock.instant());

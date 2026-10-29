@@ -25,27 +25,4 @@ public record PromoCodeDto(
         String source,
         /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} — see {@link com.maxsolch.shop.promo.domain.PromoOrigin}. */
         String origin) {
-
-    /** An order placed with the code (the «Заказы с кодом» list). */
-    public record PromoOrderDto(
-            String id,
-            String status,
-            String customerName,
-            long totalMinor,
-            long discountMinor,
-            Instant createdAt) {
-    }
-
-    /** An order with a manual amount/percent discount (the «Персональные скидки» tab). */
-    public record ManualDiscountDto(
-            String id,
-            String status,
-            String customerName,
-            Long tgUserId,
-            /** The label as stored: «Ручная скидка» or «Ручная скидка 10%». */
-            String label,
-            long totalMinor,
-            long discountMinor,
-            Instant createdAt) {
-    }
 }

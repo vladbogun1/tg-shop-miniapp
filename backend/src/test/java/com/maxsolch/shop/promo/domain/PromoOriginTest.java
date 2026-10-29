@@ -48,8 +48,8 @@ class PromoOriginTest {
                 code("SUMMER", null, null),
                 code("THANKS-AAA", PromoCode.SOURCE_REVIEW_BONUS, 7L),
                 code("VIP-7", null, 7L)));
-        AdminPromoController controller = new AdminPromoController(service, mock(PromoCodeRepository.class),
-                reservations, mock(AdminAuditService.class));
+        AdminPromoController controller = new AdminPromoController(new com.maxsolch.shop.promo.app.AdminPromos(service, reservations,
+                mock(AdminAuditService.class), java.time.Clock.systemUTC()));
 
         assertThat(controller.list(null)).extracting(PromoCodeDto::origin)
                 .containsExactly("OURS", "REVIEW", "PERSONAL");

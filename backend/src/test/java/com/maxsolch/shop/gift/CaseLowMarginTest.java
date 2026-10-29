@@ -1,6 +1,6 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.order.app.OrderPromos;
 import org.junit.jupiter.api.Test;

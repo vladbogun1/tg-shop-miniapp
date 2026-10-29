@@ -1,6 +1,5 @@
-package com.maxsolch.shop.order.domain;
+package com.maxsolch.shop.promo.domain;
 
-import com.maxsolch.shop.promo.domain.PromoCode;
 
 /** What a promo code takes off an order subtotal. */
 public final class PromoDiscount {

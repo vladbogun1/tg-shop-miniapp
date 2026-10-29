@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.promo.infra.PromoCodeRepository;
+import com.maxsolch.shop.promo.app.PromoUses;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -30,15 +30,15 @@ public class OrderPromos {
     public static final String PROMO_REJECTED = "PROMO_REJECTED";
 
     private final OrderOps ops;
-    private final PromoCodeRepository promoCodeRepository;
+    private final PromoUses promoUses;
     private final PromoService promoService;
     private final Messages messages;
     private final CaseLowMargin caseLowMargin;
 
-    OrderPromos(OrderOps ops, PromoCodeRepository promoCodeRepository, PromoService promoService, Messages messages,
+    OrderPromos(OrderOps ops, PromoUses promoUses, PromoService promoService, Messages messages,
                 CaseLowMargin caseLowMargin) {
         this.ops = ops;
-        this.promoCodeRepository = promoCodeRepository;
+        this.promoUses = promoUses;
         this.promoService = promoService;
         this.messages = messages;
         this.caseLowMargin = caseLowMargin;
@@ -54,7 +54,7 @@ public class OrderPromos {
         if (code == null || code.isBlank()) {
             return null;
         }
-        Optional<PromoCode> opt = promoCodeRepository.findByCodeAndActiveTrueForUpdate(code.trim());
+        Optional<PromoCode> opt = promoUses.lockActive(code.trim());
         if (opt.isEmpty()) {
             // Russian, and tagged: this text is shown to the customer, and the app clears the
             // dead code from the cart instead of leaving them stuck on the last step.
@@ -79,8 +79,7 @@ public class OrderPromos {
 
     /** One more use of a code that {@link #resolve} locked. */
     void countUse(PromoCode promo) {
-        promo.setUsesCount(promo.getUsesCount() + 1);
-        promoCodeRepository.save(promo);
+        promoUses.countUse(promo);
     }
 
     /**
@@ -96,13 +95,7 @@ public class OrderPromos {
         if (code == null || code.isBlank()) {
             return;
         }
-        // Locked like the checkout increment, or the two could overwrite each other count.
-        promoCodeRepository.findByCodeForUpdate(code).ifPresent(p -> {
-            if (p.getUsesCount() > 0) {
-                p.setUsesCount(p.getUsesCount() - 1);
-                promoCodeRepository.save(p);
-            }
-        });
+        promoUses.release(code);
     }
 
     /**

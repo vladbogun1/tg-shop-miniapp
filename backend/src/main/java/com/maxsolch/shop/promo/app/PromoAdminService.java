@@ -24,9 +24,18 @@ public class PromoAdminService {
     public static final String PROMO_USED = "PROMO_USED";
 
     private final PromoCodeRepository promoCodeRepository;
+    private final PromoUsage usage;
 
-    public PromoAdminService(PromoCodeRepository promoCodeRepository) {
+    public PromoAdminService(PromoCodeRepository promoCodeRepository, PromoUsage usage) {
         this.promoCodeRepository = promoCodeRepository;
+        this.usage = usage;
+    }
+
+    /** The code of the URL: 400 for a malformed id, 404 for an unknown one. */
+    @Transactional(readOnly = true)
+    public PromoCode get(String id) {
+        return promoCodeRepository.findById(toBytes(id))
+                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +89,7 @@ public class PromoAdminService {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
                 .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
         // A used code is history (orders keep it as text, reports and refunds look it up): only switch it off.
-        if (p.getUsesCount() > 0 || promoCodeRepository.countOrdersWithCode(p.getCode()) > 0) {
+        if (p.getUsesCount() > 0 || usage.usedInOrders(p.getCode())) {
             throw new DomainException.BadRequest("Промокод уже использовали — его можно только выключить", ErrorCode.of(PROMO_USED));
         }
         promoCodeRepository.delete(p);

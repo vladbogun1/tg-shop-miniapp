@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
-import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.repository.ProductRepository;

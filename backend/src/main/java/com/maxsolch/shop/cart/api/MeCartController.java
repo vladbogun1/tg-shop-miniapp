@@ -3,7 +3,7 @@ package com.maxsolch.shop.cart.api;
 import com.maxsolch.shop.cart.app.CartDtos;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.translation.ContentLocale;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.cart.app.CartDtos.CartDto;
 import com.maxsolch.shop.cart.app.CartDtos.CartWriteRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,26 +33,28 @@ import java.util.Locale;
 public class MeCartController {
 
     private final CartService cartService;
+    private final CurrentActor actor;
 
-    public MeCartController(CartService cartService) {
+    public MeCartController(CartService cartService, CurrentActor actor) {
+        this.actor = actor;
         this.cartService = cartService;
     }
 
     @GetMapping
     @Operation(summary = "My cart with current prices, stock and availability")
     public CartDto get(Locale locale) {
-        return cartService.get(SecurityUtil.currentUserId(), ContentLocale.normalize(locale));
+        return cartService.get(actor.userId(), ContentLocale.normalize(locale));
     }
 
     @PutMapping
     @Operation(summary = "Replace the whole cart (last write wins)")
     public CartDto replace(@Valid @RequestBody CartWriteRequest req, Locale locale) {
-        return cartService.replace(SecurityUtil.currentUserId(), req.lines(), ContentLocale.normalize(locale));
+        return cartService.replace(actor.userId(), req.lines(), ContentLocale.normalize(locale));
     }
 
     @PostMapping("/merge")
     @Operation(summary = "Merge a guest cart into mine (same line: the larger quantity)")
     public CartDto merge(@Valid @RequestBody CartWriteRequest req, Locale locale) {
-        return cartService.merge(SecurityUtil.currentUserId(), req.lines(), ContentLocale.normalize(locale));
+        return cartService.merge(actor.userId(), req.lines(), ContentLocale.normalize(locale));
     }
 }

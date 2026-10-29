@@ -89,7 +89,7 @@ public final class OrderApp {
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
                 new AppProperties());
-        OrderPromos orderPromos = new OrderPromos(ops, promos, promoService, messages, lowMargin);
+        OrderPromos orderPromos = new OrderPromos(ops, new com.maxsolch.shop.promo.app.PromoUses(promos), promoService, messages, lowMargin);
         OrderEditing editing = new OrderEditing(ops, orders, products, stock, events, gift, orderPromos);
         OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, stock);
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, products, stock, events, messages, gift, orderPromos,

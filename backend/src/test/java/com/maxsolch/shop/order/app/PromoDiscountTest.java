@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
