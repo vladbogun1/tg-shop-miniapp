@@ -10,7 +10,6 @@ import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.ReceiptKind;
-import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,7 @@ import static com.maxsolch.shop.tg.TgFormat.shortId;
 import static com.maxsolch.shop.tg.TgFormat.trim;
 
 /**
- * Every Telegram notification of an order, as one facade for OrderService, the jobs and the order event
+ * Every Telegram notification of an order, as one facade for the order scenarios, the jobs and the order event
  * listener. It decides WHAT is said (the customer's texts come from the bundle, the seller's are Russian
  * strings); the sending is {@link CustomerBot} (DMs to the buyer) and {@link SellerChannel} (the admins'
  * group). Every method is best-effort: a Telegram failure is logged and swallowed, so the order/chat

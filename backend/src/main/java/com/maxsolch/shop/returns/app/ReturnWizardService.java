@@ -3,7 +3,7 @@ package com.maxsolch.shop.returns.app;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReturnWizardService {
 
     private final AdminOrderQueries queries;
-    private final OrderService orderService;
+    private final OrderLookup orderQueries;
     private final OrderAdjustmentService adjustments;
     private final OnlinePaymentService payments;
     private final AdminAuditService audit;
@@ -39,11 +39,11 @@ public class ReturnWizardService {
     /** Orders whose return wizard is running right now (one backend instance): no double submit. */
     private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
 
-    public ReturnWizardService(AdminOrderQueries queries, OrderService orderService,
+    public ReturnWizardService(AdminOrderQueries queries, OrderLookup orderQueries,
                                OrderAdjustmentService adjustments, OnlinePaymentService payments,
                                AdminAuditService audit) {
         this.queries = queries;
-        this.orderService = orderService;
+        this.orderQueries = orderQueries;
         this.adjustments = adjustments;
         this.payments = payments;
         this.audit = audit;
@@ -91,7 +91,7 @@ public class ReturnWizardService {
         } finally {
             inFlight.remove(key);
         }
-        return orderService.get(order.getId());
+        return orderQueries.get(order.getId());
     }
 
     /** The state of a returned line from the request; empty means «на склад». */

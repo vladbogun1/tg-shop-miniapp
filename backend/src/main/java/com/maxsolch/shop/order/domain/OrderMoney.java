@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * Денежная арифметика заказа в одном месте: всё в минорных единицах (копейки), без Spring и без
- * состояния. Формулы перенесены из OrderService / OrderQueryService / OrderAdjustmentService без
+ * состояния. Формулы перенесены из старого OrderService / OrderQueryService / OrderAdjustmentService без
  * изменений — у каждой ниже записано, чем она отличается от соседней (кап received, знак и т.п.).
  */
 public final class OrderMoney {

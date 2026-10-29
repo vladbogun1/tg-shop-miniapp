@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 class CancelRequestServiceTest {
 
     @Mock
-    OrderService orderService;
+    OrderLookup orderQueries;
     @Mock
     CancelRequests cancelRequests;
     @Mock
@@ -51,7 +51,7 @@ class CancelRequestServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CancelRequestService(orderService, cancelRequests, payments, invoices, messages);
+        service = new CancelRequestService(orderQueries, cancelRequests, payments, invoices, messages);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -82,7 +82,7 @@ class CancelRequestServiceTest {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
                 .thenReturn(List.of(paid("inv-1", 10_000, 0), failed, paid("inv-2", 90_000, 0)));
         when(cancelRequests.approveCancelRequest(orderId, null)).thenReturn(rejected(100_000));
-        when(orderService.get(orderId)).thenReturn(rejected(100_000));
+        when(orderQueries.get(orderId)).thenReturn(rejected(100_000));
 
         CancelRequestService.ApproveResult r = service.approve(orderId, null);
 
@@ -102,7 +102,7 @@ class CancelRequestServiceTest {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(paid("inv-1", 10_000, 0)));
         doThrow(new BadRequestException("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
         when(cancelRequests.approveCancelRequest(orderId, "ok")).thenReturn(rejected(30_000));
-        when(orderService.get(orderId)).thenReturn(rejected(30_000));
+        when(orderQueries.get(orderId)).thenReturn(rejected(30_000));
 
         CancelRequestService.ApproveResult r = service.approve(orderId, "ok");
 

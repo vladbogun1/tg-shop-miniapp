@@ -9,7 +9,8 @@ import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.OrderIdempotencyService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.web.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,7 +31,8 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @SecurityRequirement(name = "bearer-jwt")
 public class OrderController {
 
-    private final OrderService orderService;
+    private final Checkout checkout;
+    private final OrderLookup orderLookup;
     private final UserRepository userRepository;
     private final OrderIdempotencyService idempotency;
     @org.springframework.beans.factory.annotation.Autowired
@@ -39,9 +41,10 @@ public class OrderController {
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
-    public OrderController(OrderService orderService, UserRepository userRepository,
+    public OrderController(Checkout checkout, OrderLookup orderLookup, UserRepository userRepository,
                            OrderIdempotencyService idempotency) {
-        this.orderService = orderService;
+        this.checkout = checkout;
+        this.orderLookup = orderLookup;
         this.userRepository = userRepository;
         this.idempotency = idempotency;
     }
@@ -59,7 +62,7 @@ public class OrderController {
         String existingOrderId = idempotency.previousOrderId(userId, idempotencyKey);
         if (existingOrderId != null) {
             return new CreateOrderResponse(existingOrderId,
-                    OrderMoney.amountDueMinor(orderService.get(UuidUtil.toBytes(existingOrderId))));
+                    OrderMoney.amountDueMinor(orderLookup.get(UuidUtil.toBytes(existingOrderId))));
         }
 
         Order order;
@@ -119,7 +122,7 @@ public class OrderController {
                 // A site token (cookie, chn=web) marks the order as placed on the website.
                 SecurityUtil.currentPrincipal().isWeb() ? OrderSource.WEB : OrderSource.MINIAPP,
                 req.giftChoice());
-        return orderService.createOrder(cmd);
+        return checkout.createOrder(cmd);
     }
 
     private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {

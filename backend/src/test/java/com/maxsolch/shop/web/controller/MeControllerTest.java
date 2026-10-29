@@ -17,7 +17,7 @@ import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.MeProfileDto;
@@ -68,9 +68,9 @@ class MeControllerTest {
     @Mock
     OrderQueryService queries;
     @Mock
-    MessageService chat;
+    OrderLookup lookup;
     @Mock
-    OrderService orderService;
+    MessageService chat;
     @Mock
     Messages messages;
     @Mock
@@ -99,7 +99,7 @@ class MeControllerTest {
 
     MeController controller() {
         MeController c = new MeController(new CustomerProfileService(users, admins),
-                new CustomerOrders(orders, messages), queries, chat, orderService, null, null, null,
+                new CustomerOrders(orders, messages), queries, lookup, chat, null, null, null,
                 null, messages, payments, new CustomerPaymentRefresh(payments));
         ReflectionTestUtils.setField(c, "activity", activity);
         return c;
@@ -169,7 +169,7 @@ class MeControllerTest {
     @Test
     void refreshPayment_asksBankOnce_perFiveSeconds_perOrder_butAlwaysReturnsFreshOrder() {
         OrderDetailDto dto = mock(OrderDetailDto.class);
-        when(orderService.get(order.getId())).thenReturn(order);
+        when(lookup.get(order.getId())).thenReturn(order);
         when(queries.toDetail(order, "uk")).thenReturn(dto);
         MeController c = controller();
 
@@ -177,13 +177,13 @@ class MeControllerTest {
         assertThat(c.refreshPayment(id, Locale.forLanguageTag("uk"))).isSameAs(dto);
 
         verify(payments, times(1)).refreshOrder(order.getId());
-        verify(orderService, times(2)).get(order.getId());
+        verify(lookup, times(2)).get(order.getId());
 
         Order second = new Order();
         second.setId(UuidUtil.randomBytes());
         second.setUserId(100L);
         when(orders.findById(second.getId())).thenReturn(Optional.of(second));
-        when(orderService.get(second.getId())).thenReturn(second);
+        when(lookup.get(second.getId())).thenReturn(second);
         c.refreshPayment(UuidUtil.toString(second.getId()), Locale.forLanguageTag("uk"));
         verify(payments).refreshOrder(second.getId());
     }

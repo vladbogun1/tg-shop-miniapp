@@ -12,12 +12,13 @@ import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderQueryService;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderArchive;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
@@ -69,7 +70,7 @@ class AdminOrderControllerTest {
     @Mock
     OrderRepository orders;
     @Mock
-    OrderService orderService;
+    Checkout checkout;
     @Mock
     OrderEditing editing;
     @Mock
@@ -82,6 +83,8 @@ class AdminOrderControllerTest {
     OrderGiftCases giftCases;
     @Mock
     OrderQueryService queries;
+    @Mock
+    OrderLookup lookup;
     @Mock
     AdminAuditService audit;
     @Mock
@@ -106,11 +109,11 @@ class AdminOrderControllerTest {
     }
 
     AdminOrderController controller() {
-        AdminOrderQueries lookup = new AdminOrderQueries(orders, queries);
-        return new AdminOrderController(lookup,
-                new AdminOrderStatusService(lookup, lifecycle, payments, audit),
-                new ReturnWizardService(lookup, orderService, adjustments, payments, audit),
-                orderService, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, null, audit, null, null, adjustments, payments);
+        AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries);
+        return new AdminOrderController(adminQueries,
+                new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
+                new ReturnWizardService(adminQueries, lookup, adjustments, payments, audit),
+                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, adjustments, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,
@@ -124,35 +127,35 @@ class AdminOrderControllerTest {
     void status_unknown_isBadRequest_beforeAnyLookup() {
         assertThatThrownBy(() -> controller().updateStatus(id, status(" bogus ", null, null, null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("неизвестный статус:  bogus ");
-        verifyNoInteractions(orders, orderService, lifecycle, audit, payments);
+        verifyNoInteractions(orders, checkout, lifecycle, audit, payments);
     }
 
     @Test
     void status_shippedWithoutTracking_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("SHIPPED", "  ", null, null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("укажите номер ТТН");
-        verifyNoInteractions(orders, orderService, lifecycle, audit);
+        verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_rejectedWithoutReason_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("rejected", null, " ", null, null, null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("укажите причину отклонения");
-        verifyNoInteractions(orders, orderService, lifecycle, audit);
+        verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_reasonOtherWithoutText_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, null, null, "OTHER", null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("для причины «Другое» напишите пояснение");
-        verifyNoInteractions(orders, orderService, lifecycle, audit);
+        verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_unknownReasonCode_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, "WAT", null, null)))
                 .isInstanceOf(BadRequestException.class).hasMessage("неизвестная причина отказа: WAT");
-        verifyNoInteractions(orders, orderService, lifecycle, audit);
+        verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
@@ -161,7 +164,7 @@ class AdminOrderControllerTest {
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("APPROVED", null, null, null, null, null, null)))
                 .isInstanceOf(NotFoundException.class).hasMessage("заказ не найден");
-        verifyNoInteractions(orderService, lifecycle, audit, payments);
+        verifyNoInteractions(checkout, lifecycle, audit, payments);
     }
 
     @Test
@@ -470,7 +473,7 @@ class AdminOrderControllerTest {
         fresh.setId(order.getId());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderAdjustmentService.Result(order, "возврат: 1"));
-        when(orderService.get(order.getId())).thenReturn(fresh);
+        when(lookup.get(order.getId())).thenReturn(fresh);
         when(queries.toDetail(fresh)).thenReturn(detail);
 
         OrderDetailDto result = controller().returnWizard(id, req);
@@ -497,7 +500,7 @@ class AdminOrderControllerTest {
         when(payments.refundableInvoice(order.getId(), 2_500)).thenReturn("inv-1");
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderAdjustmentService.Result(order, "d"));
-        when(orderService.get(order.getId())).thenReturn(order);
+        when(lookup.get(order.getId())).thenReturn(order);
 
         controller().returnWizard(id, req);
 
@@ -543,7 +546,7 @@ class AdminOrderControllerTest {
         when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv");
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
-        when(orderService.get(any(byte[].class))).thenReturn(order);
+        when(lookup.get(any(byte[].class))).thenReturn(order);
         c.returnWizard(id, req);
         verify(adjustments).registerReturnPlan(any(byte[].class), any(), any(), eq(true));
     }
@@ -560,7 +563,7 @@ class AdminOrderControllerTest {
         }).when(adjustments).checkReturnPlan(any(byte[].class), any());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
-        when(orderService.get(any(byte[].class))).thenReturn(order);
+        when(lookup.get(any(byte[].class))).thenReturn(order);
 
         c.returnWizard(id, req);
 
@@ -585,7 +588,7 @@ class AdminOrderControllerTest {
         }).when(adjustments).checkReturnPlan(any(byte[].class), any());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
-        when(orderService.get(any(byte[].class))).thenReturn(order);
+        when(lookup.get(any(byte[].class))).thenReturn(order);
 
         c.returnWizard(id, req);
 

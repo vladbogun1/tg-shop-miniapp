@@ -1,7 +1,6 @@
 package com.maxsolch.shop.cart.app;
 
 import com.maxsolch.shop.cart.domain.CartRules;
-import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.cart.domain.Cart;
 import com.maxsolch.shop.cart.domain.CartItem;
@@ -105,7 +104,7 @@ public class CartService {
     }
 
     /**
-     * Drops the lines that were just ordered. Called by {@link OrderService#createOrder} inside the
+     * Drops the lines that were just ordered. Called by {@link com.maxsolch.shop.order.app.Checkout#createOrder} inside the
      * order's transaction: the order and the emptied cart commit (or roll back) together. The whole
      * line goes, whatever its quantity — the checkout sends the cart's lines as they are.
      */

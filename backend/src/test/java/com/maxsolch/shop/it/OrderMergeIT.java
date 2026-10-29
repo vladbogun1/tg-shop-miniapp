@@ -4,8 +4,8 @@ import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.order.app.OrderMergeService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderMerge;
+import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,11 +21,11 @@ import static org.mockito.Mockito.verify;
 class OrderMergeIT extends AbstractMysqlIT {
 
     @Autowired
-    OrderService orders;
+    Checkout orders;
     @Autowired
     OrderPayments orderPayments;
     @Autowired
-    OrderMergeService merge;
+    OrderMerge merge;
 
     @Test
     void mergeSumsLinesMovesMoneyAndLotsAndClosesTheSource() {
@@ -36,7 +36,7 @@ class OrderMergeIT extends AbstractMysqlIT {
         int stockA = stockOf(a);
         Mockito.reset(notificationService);
 
-        OrderMergeService.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "it");
+        OrderMerge.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "it");
 
         // The same product at the same price adds up on the target.
         List<Integer> qty = jdbc.queryForList("SELECT quantity FROM order_items WHERE order_id = ?", Integer.class, target.getId());

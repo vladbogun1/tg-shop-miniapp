@@ -34,7 +34,7 @@ import java.util.random.RandomGenerator;
 /**
  * The gift for the order sum (docs/GIFT-CASE.md): one product, or a gift case of one of three tiers
  * (bronze / silver / gold, {@code gift_case_tiers}) whose prize — a product or a discount — the
- * server draws at checkout ({@code OrderService.createOrder}). Settings — group {@code gift}
+ * server draws at checkout ({@code Checkout.createOrder}). Settings — group {@code gift}
  * (gift.*), prizes — table {@code gift_case_items} (V57).
  */
 @Service

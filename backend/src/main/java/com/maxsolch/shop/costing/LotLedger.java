@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * FIFO stock lots (docs/PREORDERS-PLAN.md §5А.2). Called wherever {@code stock} moves, inside the same
  * transaction and under the same product lock ({@code findByIdForUpdate}), so the lots of one product never
- * interleave. It never refuses anything: the stock rules stay in {@code OrderService}; a unit the lots do not
+ * interleave. It never refuses anything: the stock rules stay in {@code OrderStock}; a unit the lots do not
  * cover (stock that drifted before the ledger) is simply sold «без данных».
  */
 @Component

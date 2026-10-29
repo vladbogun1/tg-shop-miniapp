@@ -14,7 +14,7 @@ import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.web.SecurityUtil;
@@ -57,8 +57,8 @@ public class MeController {
     private final CustomerProfileService profiles;
     private final CustomerOrders customerOrders;
     private final OrderQueryService orderQueryService;
+    private final OrderLookup orderLookup;
     private final MessageService messageService;
-    private final OrderService orderService;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
     private final PromoService promoService;
@@ -85,8 +85,8 @@ public class MeController {
     public MeController(CustomerProfileService profiles,
                         CustomerOrders customerOrders,
                         OrderQueryService orderQueryService,
+                        OrderLookup orderLookup,
                         MessageService messageService,
-                        OrderService orderService,
                         ImageStorageService imageStorageService,
                         UploadValidator uploadValidator,
                         PromoService promoService,
@@ -97,8 +97,8 @@ public class MeController {
         this.profiles = profiles;
         this.customerOrders = customerOrders;
         this.orderQueryService = orderQueryService;
+        this.orderLookup = orderLookup;
         this.messageService = messageService;
-        this.orderService = orderService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
         this.promoService = promoService;
@@ -326,7 +326,7 @@ public class MeController {
     public OrderDetailDto refreshPayment(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
         paymentRefresh.refreshIfDue(id, order.getId());
-        return orderQueryService.toDetail(orderService.get(order.getId()), ContentLocale.normalize(locale));
+        return orderQueryService.toDetail(orderLookup.get(order.getId()), ContentLocale.normalize(locale));
     }
 
     @PostMapping("/orders/{id}/cancel")

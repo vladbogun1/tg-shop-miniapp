@@ -25,16 +25,16 @@ import java.util.regex.Pattern;
 @Component
 public class CustomerRejectReason {
 
-    /** Written by {@code OrderService.cancelByCustomer}. */
+    /** Written by {@code CancelRequests.cancelByCustomer}. */
     public static final String BY_CUSTOMER = "Отменён покупателем";
-    /** Written by {@code OrderService.approveCancelRequest}. */
+    /** Written by {@code CancelRequests.approveCancelRequest}. */
     public static final String BY_REQUEST = "Отменён по запросу покупателя";
-    /** Written by {@code OrderService.expireUnpaid}: "Не оплачен в течение 24 ч". */
+    /** Written by {@code OrderLifecycle.expireUnpaid}: "Не оплачен в течение 24 ч". */
     public static final String UNPAID_PREFIX = "Не оплачен в течение ";
 
-    /** Written by {@code OrderMergeService.merge}: "Объединён с заказом #1a2b3c4d". */
+    /** Written by {@code OrderMerge.merge}: "Объединён с заказом #1a2b3c4d". */
     private static final Pattern MERGED = Pattern.compile("^" + Pattern.quote(
-            com.maxsolch.shop.order.app.OrderMergeService.MERGED_PREFIX) + "([0-9a-f]{8})$");
+            com.maxsolch.shop.order.app.OrderMerge.MERGED_PREFIX) + "([0-9a-f]{8})$");
 
     private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(UNPAID_PREFIX) + "(\\d+) ч$");
 

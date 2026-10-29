@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 /**
- * Domain events published by {@link OrderService} instead of calling Telegram inline.
+ * Domain events published by the order scenarios instead of calling Telegram inline.
  *
  * <p>Notifications used to be sent from the middle of the write transaction, so a slow or
  * rate-limited Telegram API held a database connection (and the row locks taken for stock) open for

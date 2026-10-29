@@ -17,14 +17,15 @@ import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
-import com.maxsolch.shop.order.app.OrderMergeService;
+import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
 import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.order.app.OrderLifecycle;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderPayments;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.domain.OrderWindow;
 import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
@@ -60,13 +61,14 @@ public class AdminOrderController {
     private final AdminOrderQueries queries;
     private final AdminOrderStatusService statusService;
     private final ReturnWizardService returnWizards;
-    private final OrderService orderService;
+    private final Checkout checkout;
     private final OrderEditing editing;
     private final OrderLifecycle lifecycle;
     private final OrderPayments orderPayments;
     private final OrderArchive orderArchive;
     private final OrderGiftCases giftCases;
     private final OrderQueryService orderQueryService;
+    private final OrderLookup orderLookup;
     private final MessageService messageService;
     private final AdminAuditService audit;
     private final ImageStorageService imageStorageService;
@@ -87,23 +89,24 @@ public class AdminOrderController {
     }
 
     /** Merging orders (V71). */
-    private OrderMergeService merges;
+    private OrderMerge merges;
 
     @org.springframework.beans.factory.annotation.Autowired
-    void setMerges(OrderMergeService merges) {
+    void setMerges(OrderMerge merges) {
         this.merges = merges;
     }
 
     public AdminOrderController(AdminOrderQueries queries,
                                 AdminOrderStatusService statusService,
                                 ReturnWizardService returnWizards,
-                                OrderService orderService,
+                                Checkout checkout,
                                 OrderEditing editing,
                                 OrderLifecycle lifecycle,
                                 OrderPayments orderPayments,
                                 OrderArchive orderArchive,
                                 OrderGiftCases giftCases,
                                 OrderQueryService orderQueryService,
+                                OrderLookup orderLookup,
                                 MessageService messageService,
                                 AdminAuditService audit,
                                 ImageStorageService imageStorageService,
@@ -113,13 +116,14 @@ public class AdminOrderController {
         this.queries = queries;
         this.statusService = statusService;
         this.returnWizards = returnWizards;
-        this.orderService = orderService;
+        this.checkout = checkout;
         this.editing = editing;
         this.lifecycle = lifecycle;
         this.orderPayments = orderPayments;
         this.orderArchive = orderArchive;
         this.giftCases = giftCases;
         this.orderQueryService = orderQueryService;
+        this.orderLookup = orderLookup;
         this.messageService = messageService;
         this.audit = audit;
         this.imageStorageService = imageStorageService;
@@ -279,7 +283,7 @@ public class AdminOrderController {
         if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
             throw new BadRequestException("по одному из заказов банк ещё проводит оплату — подождите пару минут");
         }
-        OrderMergeService.Result r = merges.merge(target.getId(), source.getId(),
+        OrderMerge.Result r = merges.merge(target.getId(), source.getId(),
                 Boolean.TRUE.equals(req.useSourceDelivery()), req.notifyCustomer() == null || req.notifyCustomer(),
                 req.note(), audit.currentAdminName());
         // The merged order will not be paid any more; the open pages of this one are for the old amount.
@@ -287,8 +291,8 @@ public class AdminOrderController {
         payments.closeOpenInvoices(target.getId());
         audit.record("ORDER_MERGE", "ORDER", id, r.auditDetails());
         audit.record("ORDER_MERGED_INTO", "ORDER", UuidUtil.toString(source.getId()),
-                "объединён в заказ #" + OrderMergeService.shortId(target.getId()));
-        return orderQueryService.toDetail(orderService.get(r.target().getId()));
+                "объединён в заказ #" + OrderMerge.shortId(target.getId()));
+        return orderQueryService.toDetail(orderLookup.get(r.target().getId()));
     }
 
     @PostMapping
@@ -307,7 +311,7 @@ public class AdminOrderController {
                 req.customerName(), req.phone(), req.comment(), req.promoCode(), req.deliveryMethod(),
                 req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
                 req.paymentOptionId(), com.maxsolch.shop.order.domain.OrderSource.ADMIN);
-        Order created = orderService.createAdminOrder(cmd, req.paidMinor(), channel, audit.currentAdminName(),
+        Order created = checkout.createAdminOrder(cmd, req.paidMinor(), channel, audit.currentAdminName(),
                 req.note());
         audit.record("ORDER_CREATE_ADMIN", "ORDER", com.maxsolch.shop.platform.util.UuidUtil.toString(created.getId()),
                 "ручной заказ на " + MoneyFormat.uah(created.getTotalMinor())
@@ -473,7 +477,7 @@ public class AdminOrderController {
         OrderAdjustmentService.Result r = adjustments.cancelReturn(load(id).getId(), returnId, money, req.note(),
                 audit.currentAdminName());
         audit.record("ORDER_RETURN_CANCEL", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(orderService.get(r.order().getId()));
+        return orderQueryService.toDetail(orderLookup.get(r.order().getId()));
     }
 
     @PostMapping("/{id}/returns/{returnId}/debt-paid")

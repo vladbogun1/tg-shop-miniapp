@@ -17,7 +17,7 @@ import com.maxsolch.shop.order.app.OrderAdjustmentService.LineOutcome;
 import com.maxsolch.shop.order.app.OrderAdjustmentService.ManualRefund;
 import com.maxsolch.shop.order.app.OrderAdjustmentService.ReturnPlan;
 import com.maxsolch.shop.order.app.OrderAdjustmentService.WizardLine;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderPartialReturnIT extends AbstractMysqlIT {
 
     @Autowired
-    OrderService orders;
+    Checkout orders;
     @Autowired
     OrderEditing editing;
     @Autowired

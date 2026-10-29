@@ -4,7 +4,7 @@ import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MoneyLedger;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -71,13 +71,13 @@ class OrderStockTest {
     @Mock PreorderQueueService queue;
 
     OrderApp app;
-    OrderService service;
+    Checkout service;
     PaymentOption pay;
 
     @BeforeEach
     void setUp() {
         app = newApp();
-        service = app.service();
+        service = app.checkout();
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(any(String.class), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));

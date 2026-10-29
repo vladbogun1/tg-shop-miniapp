@@ -4,8 +4,8 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderEvents;
-import com.maxsolch.shop.order.app.OrderMergeService;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderMerge;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CancelRequests;
 import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.service.StockFixtures;
@@ -86,7 +86,7 @@ class OrderTransitionsTest {
     OrderExchangeRepository exchangeRepository;
 
     OrderApp app;
-    OrderService service;
+    Checkout service;
     Product product;
 
     @BeforeEach
@@ -97,7 +97,7 @@ class OrderTransitionsTest {
                 StockFixtures.stock(productRepository, messages), ledger,
                 org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class), giftService,
                 OrderApp.unlimitedRegistry(), OrderApp.noLowMargin());
-        service = app.service();
+        service = app.checkout();
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -526,12 +526,12 @@ class OrderTransitionsTest {
     @Test
     void merge_closesTheSourceWithoutStatusChangedAndWithoutRevokingTheCasePromo() {
         ApplicationEventPublisher mergeEvents = org.mockito.Mockito.mock(ApplicationEventPublisher.class);
-        OrderMergeService merge = new OrderMergeService(orderRepository, service, mergeEvents, ledger);
+        OrderMerge merge = app.merge(orderRepository, mergeEvents, ledger);
         Order target = mergeable(OrderStatus.APPROVED, 42);
         Order source = mergeable(OrderStatus.NEW, 42);
         source.setPromoCode("CASE9TSRK7");
 
-        OrderMergeService.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "admin");
+        OrderMerge.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "admin");
 
         assertThat(r.source().getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(r.source().getRejectReasonCode()).isEqualTo("MERGED");

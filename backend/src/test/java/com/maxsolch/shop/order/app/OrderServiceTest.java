@@ -88,7 +88,7 @@ class OrderServiceTest {
     com.maxsolch.shop.payment.PaymentInvoiceRepository paymentInvoices;
 
     OrderApp app;
-    OrderService service;
+    Checkout service;
     OrderPayments payments;
     OrderArchive archive;
 
@@ -104,7 +104,7 @@ class OrderServiceTest {
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), moneyLedger,
                 paymentInvoices, gift, giftRegistry, caseLowMargin);
-        service = app.service();
+        service = app.checkout();
         payments = app.payments();
         archive = app.archive();
         // No gift configured, no monthly limit, no low-margin products — unless a test says otherwise.

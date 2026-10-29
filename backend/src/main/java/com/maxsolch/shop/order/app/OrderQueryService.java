@@ -445,7 +445,7 @@ public class OrderQueryService {
     }
 
     /** Rows of the «Объединить» window (V71). */
-    public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(List<OrderMergeService.Candidate> found) {
+    public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(List<OrderMerge.Candidate> found) {
         return found.stream().map(c -> {
             Order o = c.order();
             return OrderDetailDto.MergeCandidateDto.builder()

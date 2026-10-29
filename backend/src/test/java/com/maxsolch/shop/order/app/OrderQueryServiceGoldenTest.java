@@ -208,9 +208,9 @@ class OrderQueryServiceGoldenTest {
         blocked.setTotalMinor(30000);
         OrderItem gift = item(blocked, 51, "Коврик", null, 0, 2);
         gift.setGift(true);
-        List<OrderMergeService.Candidate> found = List.of(
-                new OrderMergeService.Candidate(free, null, 80000, 50000, 10000, 20000),
-                new OrderMergeService.Candidate(blocked, "Заказ уже отправлен", 30000, 0, 0, 30000));
+        List<OrderMerge.Candidate> found = List.of(
+                new OrderMerge.Candidate(free, null, 80000, 50000, 10000, 20000),
+                new OrderMerge.Candidate(blocked, "Заказ уже отправлен", 30000, 0, 0, 30000));
 
         compareWithGolden("merge-candidates", service.mergeCandidates(found));
     }

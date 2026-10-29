@@ -38,11 +38,11 @@ public final class OrderApp {
     private final OrderEditing editing;
     private final OrderPromos promos;
     private final OrderGiftCases giftCases;
-    private final OrderService service;
+    private final Checkout checkout;
 
     private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, CancelRequests cancelRequests,
                      OrderLifecycle lifecycle, OrderEditing editing, OrderPromos promos,
-                     OrderGiftCases giftCases, OrderService service) {
+                     OrderGiftCases giftCases, Checkout checkout) {
         this.ops = ops;
         this.payments = payments;
         this.archive = archive;
@@ -51,7 +51,7 @@ public final class OrderApp {
         this.editing = editing;
         this.promos = promos;
         this.giftCases = giftCases;
-        this.service = service;
+        this.checkout = checkout;
     }
 
     public static GiftRegistryService unlimitedRegistry() {
@@ -95,18 +95,18 @@ public final class OrderApp {
         OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, stock);
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, products, stock, events, messages, gift, orderPromos,
                 prizes);
-        OrderService service = new OrderService(orders, products, options, events, orderPromos, carts, messages,
-                stock, payments, gift, ops, prizes);
+        Checkout checkout = new Checkout(orders, products, options, events, orderPromos, carts, messages,
+                stock, payments, gift, ops, prizes, new AppProperties());
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
-                service);
+                checkout);
     }
 
     public OrderGiftCases giftCases() {
         return giftCases;
     }
 
-    public OrderService service() {
-        return service;
+    public Checkout checkout() {
+        return checkout;
     }
 
     public OrderPayments payments() {
@@ -133,6 +133,11 @@ public final class OrderApp {
         return cancelRequests;
     }
 
+    /** The merge scenario over the same ops, with its own repository / events / ledger mocks. */
+    public OrderMerge merge(OrderRepository orders, ApplicationEventPublisher events, MoneyLedger ledger) {
+        return new OrderMerge(orders, ops, events, ledger);
+    }
+
     OrderOps ops() {
         return ops;
     }
@@ -140,6 +145,6 @@ public final class OrderApp {
     /** The adjustment service over the same scenarios (its own stock / ledger mocks, as the tests pass them). */
     public OrderAdjustmentService adjustment(OrderRepository orders, OrderStock stock, ApplicationEventPublisher events,
                                              OrderExchangeRepository exchanges, MoneyLedger ledger) {
-        return new OrderAdjustmentService(orders, service, payments, lifecycle, stock, events, exchanges, ledger);
+        return new OrderAdjustmentService(orders, checkout, ops, payments, lifecycle, stock, events, exchanges, ledger);
     }
 }

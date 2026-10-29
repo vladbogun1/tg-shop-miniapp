@@ -30,19 +30,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class OrderMergeServiceTest {
+class OrderMergeTest {
 
     private OrderRepository orders;
-    private OrderService orderService;
+    private OrderOps ops;
     private MoneyLedger ledger;
-    private OrderMergeService service;
+    private OrderMerge service;
 
     @BeforeEach
     void setUp() {
         orders = mock(OrderRepository.class);
-        orderService = mock(OrderService.class);
+        ops = mock(OrderOps.class);
+        when(ops.now()).thenAnswer(inv -> Instant.now());
         ledger = mock(MoneyLedger.class);
-        service = new OrderMergeService(orders, orderService, mock(ApplicationEventPublisher.class), ledger);
+        service = new OrderMerge(orders, ops, mock(ApplicationEventPublisher.class), ledger);
         when(orders.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         // The real recompute: subtotal from the lines, the absolute discount capped at it.
         doAnswer(inv -> {
@@ -52,7 +53,7 @@ class OrderMergeServiceTest {
             o.setDiscountMinor(Math.min(o.getDiscountMinor(), sub));
             o.setTotalMinor(sub - o.getDiscountMinor());
             return null;
-        }).when(orderService).recomputeOrderTotals(any());
+        }).when(ops).recomputeTotals(any());
     }
 
     private Order order(OrderStatus status, long tgUserId, OrderItem... items) {
@@ -70,7 +71,7 @@ class OrderMergeServiceTest {
         }
         o.setSubtotalMinor(sub);
         o.setTotalMinor(sub);
-        when(orderService.lock(argThat(o.getId()))).thenReturn(o);
+        when(ops.lock(argThat(o.getId()))).thenReturn(o);
         return o;
     }
 
@@ -101,7 +102,7 @@ class OrderMergeServiceTest {
         glides.setPromoCode("CASE9TSRK7");
         glides.setPaid(true);
 
-        OrderMergeService.Result r = service.merge(mouse.getId(), glides.getId(), false, true, null, "admin");
+        OrderMerge.Result r = service.merge(mouse.getId(), glides.getId(), false, true, null, "admin");
 
         Order t = r.target();
         assertThat(t.getItems()).hasSize(2);
@@ -131,7 +132,7 @@ class OrderMergeServiceTest {
         second.setReceivedMinor(80_000);
         second.setPaid(true);
 
-        OrderMergeService.Result r = service.merge(first.getId(), second.getId(), false, false, null, "admin");
+        OrderMerge.Result r = service.merge(first.getId(), second.getId(), false, false, null, "admin");
 
         assertThat(r.target().getItems()).hasSize(1);
         assertThat(r.target().getItems().get(0).getQuantity()).isEqualTo(2);
@@ -172,8 +173,8 @@ class OrderMergeServiceTest {
         a.setPhone("+38 (067) 123-45-67");
         Order b = new Order();
         b.setPhone("0671234567");
-        assertThat(OrderMergeService.sameCustomer(a, b)).isTrue();
+        assertThat(OrderMerge.sameCustomer(a, b)).isTrue();
         b.setPhone("0671234568");
-        assertThat(OrderMergeService.sameCustomer(a, b)).isFalse();
+        assertThat(OrderMerge.sameCustomer(a, b)).isFalse();
     }
 }

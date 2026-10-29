@@ -6,7 +6,7 @@ import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class OrderCancelEventsIT extends AbstractMysqlIT {
 
     @Autowired
-    OrderService orders;
+    Checkout orders;
     @Autowired
     CancelRequests cancelRequests;
     @Autowired

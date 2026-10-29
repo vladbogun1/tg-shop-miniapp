@@ -608,7 +608,7 @@ public class AdminProductService {
                 .toList();
         p.getVariants().removeIf(v -> !keep.contains(v));
 
-        // Product stock is the rollup of variant stock whenever variants exist (OrderService
+        // Product stock is the rollup of variant stock whenever variants exist (OrderStock
         // relies on the same invariant when reserving/releasing units).
         if (!p.getVariants().isEmpty()) {
             p.setStock(rollup);

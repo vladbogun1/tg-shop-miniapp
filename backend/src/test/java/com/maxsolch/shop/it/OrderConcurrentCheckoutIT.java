@@ -1,7 +1,7 @@
 package com.maxsolch.shop.it;
 
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderConcurrentCheckoutIT extends AbstractMysqlIT {
 
     @Autowired
-    OrderService orders;
+    Checkout orders;
 
     @Test
     void ofSeveralParallelCheckoutsOfTheLastUnitExactlyOnePasses() throws Exception {

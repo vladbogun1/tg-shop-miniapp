@@ -21,14 +21,13 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
-import lombok.extern.slf4j.Slf4j;
+import com.maxsolch.shop.order.domain.OrderErrors;
+import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,15 +37,15 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Order lifecycle and business rules: stock, promo, delivery/payment snapshots, status transitions.
+ * Placing an order: availability and variants, promo, stock reservation, delivery and payment snapshots, the
+ * gift for the sum, the cart cleared. An admin may also type a sale in (already paid, no deadline).
  *
- * <p>Telegram notifications are not sent from here: the service publishes {@link OrderEvents} and
+ * <p>Telegram notifications are not sent from here: the scenario publishes {@link OrderEvents} and
  * {@code OrderNotificationListener} delivers them after the transaction commits, so no database
  * connection or stock row lock is ever held across a network call to Telegram.
  */
-@Slf4j
 @Service
-public class OrderService {
+public class Checkout {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -63,12 +62,9 @@ public class OrderService {
     private final OrderOps ops;
     /** Drawing and placing the gift of the order sum. */
     private final OrderGiftPrizes giftPrizes;
+    private final AppProperties props;
 
-    /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
-    @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
-    private int paymentDueHours = 24;
-
-    public OrderService(OrderRepository orderRepository,
+    Checkout(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         PaymentOptionRepository paymentOptionRepository,
                         ApplicationEventPublisher events,
@@ -79,7 +75,8 @@ public class OrderService {
                         OrderPayments payments,
                         GiftService giftService,
                         OrderOps ops,
-                        OrderGiftPrizes giftPrizes) {
+                        OrderGiftPrizes giftPrizes,
+                        AppProperties props) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.paymentOptionRepository = paymentOptionRepository;
@@ -92,6 +89,7 @@ public class OrderService {
         this.giftService = giftService;
         this.ops = ops;
         this.giftPrizes = giftPrizes;
+        this.props = props;
     }
 
     /**
@@ -102,7 +100,7 @@ public class OrderService {
     @Transactional
     public Order createOrder(CreateOrderCommand cmd) {
         if (cmd.items() == null || cmd.items().isEmpty()) {
-            throw new BadRequestException(messages.current("api.order.noItems"));
+            throw OrderErrors.badRequest(messages.current("api.order.noItems"));
         }
 
         DeliveryMethod deliveryMethod = parseDelivery(cmd.deliveryMethod());
@@ -111,7 +109,7 @@ public class OrderService {
         Map<String, AccLine> acc = new LinkedHashMap<>();
         for (CreateOrderCommand.Line line : cmd.items()) {
             if (line.quantity() <= 0) {
-                throw new BadRequestException(messages.current("api.order.quantityPositive"));
+                throw OrderErrors.badRequest(messages.current("api.order.quantityPositive"));
             }
             String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
             acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
@@ -139,15 +137,15 @@ public class OrderService {
         // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
         // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
         if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
-            throw new BadRequestException(messages.current("api.order.paymentRequired"));
+            throw OrderErrors.badRequest(messages.current("api.order.paymentRequired"));
         }
-        PaymentOption po = paymentOptionRepository.findById(toBytes(cmd.paymentOptionId(), "paymentOptionId"))
+        PaymentOption po = paymentOptionRepository.findById(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
                 .filter(PaymentOption::isActive)
-                .orElseThrow(() -> new BadRequestException(messages.current("api.order.paymentUnknown")));
+                .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.paymentUnknown")));
         order.setPaymentOptionId(po.getId());
         order.setPaymentOptionTitle(po.getTitle());
         order.setPrepaymentMinor(po.isRequiresPrepayment() ? po.getPrepaymentMinor() : 0);
-        order.setPaymentDueAt(Instant.now().plus(java.time.Duration.ofHours(Math.max(1, paymentDueHours))));
+        order.setPaymentDueAt(ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
 
         long subtotal = 0;
         List<Product> toSave = new ArrayList<>();
@@ -167,13 +165,13 @@ public class OrderService {
         for (String id : lockIds) {
             // FOR UPDATE: the stock check and the decrement below must not interleave with another
             // checkout, or both orders pass "one left in stock" and the shop oversells.
-            locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
+            locked.put(id, productRepository.findByIdForUpdate(ops.toBytes(id, "productId")));
         }
         for (AccLine line : lines) {
             Product product = locked.get(line.productId)
-                    .orElseThrow(() -> new BadRequestException(messages.current("api.order.productUnknown")));
+                    .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.productUnknown")));
             if (!product.isActive() || product.isArchived()) {
-                throw new BadRequestException(messages.current("api.order.unavailable", product.getTitle()));
+                throw OrderErrors.badRequest(messages.current("api.order.unavailable", product.getTitle()));
             }
 
             OrderItem item = new OrderItem();
@@ -188,12 +186,12 @@ public class OrderService {
             if (line.variantId != null && !line.variantId.isBlank()) {
                 variant = ops.findVariant(product, line.variantId);
                 if (variant == null) {
-                    throw new BadRequestException(messages.current("api.order.variantMismatch", product.getTitle()));
+                    throw OrderErrors.badRequest(messages.current("api.order.variantMismatch", product.getTitle()));
                 }
                 item.setVariantId(variant.getId());
                 item.setVariantNameSnapshot(variant.getName());
             } else if (hasVariants) {
-                throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
+                throw OrderErrors.badRequest(messages.current("api.order.variantRequired", product.getTitle()));
             }
             stock.requireAvailable(product, variant, line.quantity, cmd.userId());
             stock.reserve(product, variant, line.quantity, item);
@@ -226,7 +224,7 @@ public class OrderService {
         OrderGiftCase drawn = giftCfg.map(g -> giftPrizes.applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
-        order.settleIfFree(Instant.now());
+        order.settleIfFree(ops.now());
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
@@ -285,71 +283,23 @@ public class OrderService {
         return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
                 .findFirst()
                 .map(po -> UuidUtil.toString(po.getId()))
-                .orElseThrow(() -> new BadRequestException("нет активного способа оплаты для нового заказа"));
-    }
-
-    @Transactional(readOnly = true)
-    public Order get(byte[] orderId) {
-        return orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("order not found"));
-    }
-
-    /**
-     * The order, row-locked ({@code SELECT ... FOR UPDATE}) for the rest of the transaction, with
-     * its state as of AFTER the lock was granted.
-     *
-     * <p>The refresh matters: with open-in-view the request's persistence context usually already
-     * holds this order (the controller loaded it to check access/existence), and a locking query
-     * then hands back that cached instance untouched. Two concurrent rejects would both still see
-     * {@code NEW} after waiting for each other's lock — and both return the stock. Refreshing with
-     * the lock re-reads the committed row.
-     */
-    /**
-     * Loads the order under a row lock (SELECT … FOR UPDATE) and refreshes it, so concurrent
-     * admin / customer actions on one order run one after another. Package-private: also used by
-     * {@link OrderAdjustmentService}.
-     */
-    Order lock(byte[] orderId) {
-        return ops.lock(orderId);
-    }
-
-    // ----- helpers -----
-
-    /** For {@link OrderAdjustmentService}. */
-    void recomputeOrderTotals(Order order) {
-        ops.recomputeTotals(order);
+                .orElseThrow(() -> OrderErrors.badRequest("нет активного способа оплаты для нового заказа"));
     }
 
     private DeliveryMethod parseDelivery(String value) {
         if (value == null || value.isBlank()) {
-            throw new BadRequestException(messages.current("api.order.deliveryRequired"));
+            throw OrderErrors.badRequest(messages.current("api.order.deliveryRequired"));
         }
         try {
             return DeliveryMethod.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException(messages.current("api.order.deliveryUnknown", value));
+            throw OrderErrors.badRequest(messages.current("api.order.deliveryUnknown", value));
         }
-    }
-
-    private byte[] toBytes(String uuid, String field) {
-        try {
-            return UuidUtil.toBytes(uuid);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException(messages.current("api.order.fieldInvalid", fieldLabel(field)));
-        }
-    }
-
-    /** The customer-facing name of a checkout field ("phone" → "телефон"); ids stay as they are. */
-    private String fieldLabel(String field) {
-        return switch (field) {
-            case "customerName", "phone" -> messages.current("api.order.field." + field);
-            default -> field;
-        };
     }
 
     private String required(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw new BadRequestException(messages.current("api.order.fieldRequired", fieldLabel(field)));
+            throw OrderErrors.badRequest(messages.current("api.order.fieldRequired", ops.fieldLabel(field)));
         }
         return value.trim();
     }

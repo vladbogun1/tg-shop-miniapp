@@ -8,7 +8,6 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,8 +42,6 @@ class OnlinePaymentServiceTest {
     @Mock
     OrderRepository orders;
     @Mock
-    OrderService orderService;
-    @Mock
     Messages messages;
     @Mock
     TransactionTemplate tx;
@@ -59,7 +56,7 @@ class OnlinePaymentServiceTest {
         props = new AppProperties();
         props.getSite().setBaseUrl("https://chisetup.com.ua");
         props.setWebappBaseUrl("https://app.chisetup.com.ua");
-        service = new OnlinePaymentService(mono, invoices, orders, orderService, props, messages, tx, applier);
+        service = new OnlinePaymentService(mono, invoices, orders, props, messages, tx, applier);
         lenient().when(mono.isEnabled()).thenReturn(true);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }

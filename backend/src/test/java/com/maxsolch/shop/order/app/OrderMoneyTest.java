@@ -46,7 +46,7 @@ class OrderMoneyTest {
         }
         o.setDiscountMinor(discount);
         o.setGiftDiscountMinor(giftDiscount);
-        OrderApp.create(null, null, null, null, null, null, null, null, null, null, null, null).service().recomputeOrderTotals(o);
+        OrderApp.create(null, null, null, null, null, null, null, null, null, null, null, null).ops().recomputeTotals(o);
         return o;
     }
 

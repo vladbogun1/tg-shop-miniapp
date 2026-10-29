@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * Anti-bot / anti-hoarding limits on placing an order (group «Защита от ботов и спама» in the admin
- * settings, every limit: 0 = off). Checked by {@code OrderController} before {@link OrderService#createOrder}.
+ * settings, every limit: 0 = off). Checked by {@code OrderController} before {@link com.maxsolch.shop.order.app.Checkout#createOrder}.
  *
  * <p>Error codes (stable, the apps branch on them):
  * <ul>

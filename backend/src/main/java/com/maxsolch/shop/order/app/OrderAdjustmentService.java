@@ -1,6 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.OrderTransitions;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -45,7 +46,8 @@ import java.util.Objects;
 public class OrderAdjustmentService {
 
     private final OrderRepository orderRepository;
-    private final OrderService orderService;
+    private final Checkout checkout;
+    private final OrderOps ops;
     private final OrderPayments orderPayments;
     private final OrderLifecycle lifecycle;
     private final OrderStock stock;
@@ -55,7 +57,8 @@ public class OrderAdjustmentService {
     private final MoneyLedger moneyLedger;
 
     public OrderAdjustmentService(OrderRepository orderRepository,
-                                  OrderService orderService,
+                                  Checkout checkout,
+                                  OrderOps ops,
                                   OrderPayments orderPayments,
                                   OrderLifecycle lifecycle,
                                   OrderStock stock,
@@ -63,7 +66,8 @@ public class OrderAdjustmentService {
                                   OrderExchangeRepository exchangeRepository,
                                   MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
-        this.orderService = orderService;
+        this.checkout = checkout;
+        this.ops = ops;
         this.orderPayments = orderPayments;
         this.lifecycle = lifecycle;
         this.stock = stock;
@@ -347,7 +351,8 @@ public class OrderAdjustmentService {
      */
     @Transactional(readOnly = true)
     public void checkReturnPlan(byte[] orderId, ReturnPlan plan) {
-        Order order = orderService.get(orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> OrderErrors.notFound("order not found"));
         validatePlan(order, plan, false);
         List<WizardLine> lines = plan.lines() == null ? List.of()
                 : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
@@ -825,13 +830,13 @@ public class OrderAdjustmentService {
 
         // 2. The replacement: a new order of the same customer and address, no gift, no deadline.
         String shortId = shortId(order.getId());
-        Order child = orderService.createAdminOrder(new CreateOrderCommand(
+        Order child = checkout.createAdminOrder(new CreateOrderCommand(
                 null, order.getTgUserId(), order.getTgUsername(),
                 out.stream().map(l -> new CreateOrderCommand.Line(l.productId(), l.variantId(), l.quantity())).toList(),
                 order.getCustomerName(), order.getPhone(), null, null,
                 order.getDeliveryMethod() == null ? null : order.getDeliveryMethod().name(),
                 order.getNpCityRef(), order.getNpCityName(), order.getNpWarehouseRef(), order.getNpWarehouseName(),
-                orderService.exchangePaymentOptionId(order), com.maxsolch.shop.order.domain.OrderSource.ADMIN,
+                checkout.exchangePaymentOptionId(order), com.maxsolch.shop.order.domain.OrderSource.ADMIN,
                 com.maxsolch.shop.gift.GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
         String childShort = shortId(child.getId());
         long retainedBefore = moneyLedger.retainedMinor(order.getId());
@@ -990,7 +995,7 @@ public class OrderAdjustmentService {
         long creditBack = 0;
         if (exchange) {
             OrderExchange ex = rec.getExchangeId() == null ? null : exchangeRepository.findById(rec.getExchangeId()).orElse(null);
-            Order child = ex == null || ex.getNewOrderId() == null ? null : orderService.lock(ex.getNewOrderId());
+            Order child = ex == null || ex.getNewOrderId() == null ? null : ops.lock(ex.getNewOrderId());
             String blocker = cancelBlocker(rec, child);
             if (blocker != null) {
                 throw new BadRequestException(blocker);
@@ -1214,9 +1219,9 @@ public class OrderAdjustmentService {
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
-    /** Same row lock as every other order change (OrderService), so edits cannot interleave. */
+    /** Same row lock as every other order change (OrderOps.lock), so edits cannot interleave. */
     private Order load(byte[] orderId) {
-        return orderService.lock(orderId);
+        return ops.lock(orderId);
     }
 
     private static boolean isBlank(String s) {

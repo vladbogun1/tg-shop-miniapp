@@ -32,15 +32,15 @@ public class CancelRequestService {
     /** Error code: the bank is processing a payment of this order right now. */
     public static final String PAYMENT_IN_PROGRESS = "PAYMENT_IN_PROGRESS";
 
-    private final OrderService orderService;
+    private final OrderLookup orderQueries;
     private final CancelRequests cancelRequests;
     private final OnlinePaymentService payments;
     private final PaymentInvoiceRepository invoices;
     private final Messages messages;
 
-    public CancelRequestService(OrderService orderService, CancelRequests cancelRequests, OnlinePaymentService payments,
+    public CancelRequestService(OrderLookup orderQueries, CancelRequests cancelRequests, OnlinePaymentService payments,
                                 PaymentInvoiceRepository invoices, Messages messages) {
-        this.orderService = orderService;
+        this.orderQueries = orderQueries;
         this.cancelRequests = cancelRequests;
         this.payments = payments;
         this.invoices = invoices;
@@ -104,7 +104,7 @@ public class CancelRequestService {
         }
         // Money the admin recorded by hand (not through monobank) has to go back by hand too.
         long manual = Math.max(0, OrderMoney.receivedMinor(order) - onlineReceived);
-        return new ApproveResult(orderService.get(orderId), requested, refunded, errors, manual);
+        return new ApproveResult(orderQueries.get(orderId), requested, refunded, errors, manual);
     }
 
     /** Admin declines with a comment for the customer. */

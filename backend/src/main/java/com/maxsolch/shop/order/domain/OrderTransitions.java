@@ -14,7 +14,7 @@ package com.maxsolch.shop.order.domain;
  * </pre>
  *
  * Only the status itself is checked here; the extra rules of a transition (unpaid shipment,
- * pending cancel request, …) stay with the code that performs it. {@code OrderMergeService.merge}
+ * pending cancel request, …) stay with the code that performs it. {@code OrderMerge.merge}
  * and {@code OrderAdjustmentService.exchange} also write a status (REJECTED for the merged order,
  * NEW/APPROVED for the replacement) outside this matrix, on purpose: they are not admin transitions.
  */

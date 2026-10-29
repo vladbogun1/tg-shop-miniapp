@@ -61,7 +61,7 @@ class OrderCancelRequestTest {
     EntityManager entityManager;
 
     OrderApp app;
-    OrderService service;
+    Checkout service;
     Product product;
 
     @BeforeEach
@@ -70,7 +70,7 @@ class OrderCancelRequestTest {
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
-        service = app.service();
+        service = app.checkout();
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));

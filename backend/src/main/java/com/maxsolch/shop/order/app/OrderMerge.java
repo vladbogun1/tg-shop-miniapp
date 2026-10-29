@@ -36,20 +36,20 @@ import java.util.Objects;
  * at the target. Stock does not move — the units simply belong to the target now.
  */
 @Service
-public class OrderMergeService {
+public class OrderMerge {
 
     /** Written into {@code orders.reject_reason}; the customer reads it via CustomerRejectReason. */
     public static final String MERGED_PREFIX = "Объединён с заказом #";
 
     private final OrderRepository orderRepository;
-    private final OrderService orderService;
+    private final OrderOps ops;
     private final ApplicationEventPublisher events;
     private final MoneyLedger moneyLedger;
 
-    public OrderMergeService(OrderRepository orderRepository, OrderService orderService,
+    public OrderMerge(OrderRepository orderRepository, OrderOps ops,
                              ApplicationEventPublisher events, MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
-        this.orderService = orderService;
+        this.ops = ops;
         this.events = events;
         this.moneyLedger = moneyLedger;
     }
@@ -104,8 +104,8 @@ public class OrderMergeService {
         }
         // Rows are locked in id order, so two admins merging the same pair cannot deadlock.
         boolean targetFirst = Arrays.compareUnsigned(targetId, sourceId) < 0;
-        Order first = orderService.lock(targetFirst ? targetId : sourceId);
-        Order second = orderService.lock(targetFirst ? sourceId : targetId);
+        Order first = ops.lock(targetFirst ? targetId : sourceId);
+        Order second = ops.lock(targetFirst ? sourceId : targetId);
         Order target = targetFirst ? first : second;
         Order source = targetFirst ? second : first;
         if (!sameCustomer(target, source)) {
@@ -165,7 +165,7 @@ public class OrderMergeService {
             target.setNpWarehouseRef(source.getNpWarehouseRef());
             target.setNpWarehouseName(source.getNpWarehouseName());
         }
-        orderService.recomputeOrderTotals(target);
+        ops.recomputeTotals(target);
 
         // 3. Money: what the merged order received moves over (no real money moves).
         long money = OrderMoney.refundableMinor(source);
@@ -177,7 +177,7 @@ public class OrderMergeService {
         }
         boolean paid = target.getReceivedMinor() > 0 || target.getTotalMinor() == 0;
         if (paid && !target.isPaid()) {
-            target.setPaidAt(source.getPaidAt() != null ? source.getPaidAt() : Instant.now());
+            target.setPaidAt(source.getPaidAt() != null ? source.getPaidAt() : ops.now());
         }
         target.setPaid(paid);
         if (paid && OrderMoney.amountDueMinor(target) == 0) {
@@ -185,7 +185,7 @@ public class OrderMergeService {
         }
 
         // 4. The merged order is closed, keeping its lines and money history.
-        source.markMerged(Instant.now(), MERGED_PREFIX + targetShort, target.getId());
+        source.markMerged(ops.now(), MERGED_PREFIX + targetShort, target.getId());
 
         Order savedTarget = orderRepository.save(target);
         Order savedSource = orderRepository.save(source);

@@ -10,7 +10,6 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ConflictException;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +52,6 @@ public class OnlinePaymentService {
     private final MonobankClient mono;
     private final PaymentInvoiceRepository invoices;
     private final OrderRepository orders;
-    private final OrderService orderService;
     private final AppProperties props;
     private final Messages messages;
     private final TransactionTemplate tx;
@@ -62,12 +60,11 @@ public class OnlinePaymentService {
     private final Map<String, Object> startLocks = new ConcurrentHashMap<>();
 
     public OnlinePaymentService(MonobankClient mono, PaymentInvoiceRepository invoices, OrderRepository orders,
-                                OrderService orderService, AppProperties props, Messages messages,
+                                AppProperties props, Messages messages,
                                 TransactionTemplate tx, PaymentStatusApplier applier) {
         this.mono = mono;
         this.invoices = invoices;
         this.orders = orders;
-        this.orderService = orderService;
         this.props = props;
         this.messages = messages;
         this.tx = tx;

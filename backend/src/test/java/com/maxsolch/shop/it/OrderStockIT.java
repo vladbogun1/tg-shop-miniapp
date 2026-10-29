@@ -4,7 +4,7 @@ import com.maxsolch.shop.order.app.OrderLifecycle;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OrderStockIT extends AbstractMysqlIT {
 
     @Autowired
-    OrderService orders;
+    Checkout orders;
     @Autowired
     OrderLifecycle lifecycle;
 
