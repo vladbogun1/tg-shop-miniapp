@@ -5,7 +5,9 @@ import { mockParticipants, mockDraw } from "./mock.js";
 
 const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
-const ROUNDS = 5;
+// Two separate draws (server/src/pools.js): the screen plays one of them, picked in the panel.
+const POOL = qs.get("pool") === "orders" ? "orders" : "pumpkins";
+let ROUNDS = 3; // from the server
 const API = "/hw/api/admin";
 // Rehearsal: random real customers from the shop database play with made-up tickets; the real list,
 // lock and rounds are not touched (server/src/test-draw.js).
@@ -44,7 +46,7 @@ function sound(name) {
 // ---------- server ----------
 async function api(path, init = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
-  const res = await fetch(API + path, {
+  const res = await fetch(API + path + (path.includes("?") ? "&" : "?") + "pool=" + POOL, {
     ...init,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
   });
@@ -65,6 +67,7 @@ async function load() {
   state.winners = data.winners; // [{round, participantId}], live (not voided) draws only
   state.seedHash = data.seedHash;
   state.locked = data.locked;
+  if (data.rounds) ROUNDS = data.rounds;
 }
 
 async function draw(reroll) {
@@ -129,9 +132,8 @@ function renderPrize() {
 function renderStats() {
   const pool = state.participants.filter((p) => !p.won);
   const tickets = pool.reduce((s, p) => s + p.tickets, 0);
-  const byP = state.participants.filter((p) => p.via.includes("pumpkins")).length;
-  const byO = state.participants.filter((p) => p.via.includes("orders")).length;
-  $("stats").textContent = `Учасники: ${state.participants.length} · квитки: ${tickets} · 🎃 ${byP} · 🛒 ${byO}`;
+  const extra = POOL === "pumpkins" ? ` · повний набір: ${state.participants.filter((p) => p.pumpkins >= 15).length}` : "";
+  $("stats").textContent = `Учасники: ${state.participants.length} · квитки: ${tickets}${extra}`;
   $("seed").textContent = state.seedHash ? `🔒 sha256: ${state.seedHash}` : "список не зафіксовано";
   $("seed").classList.toggle("locked", Boolean(state.seedHash));
   $("lock").disabled = state.rolling || state.locked || Boolean(MOCK);
@@ -216,6 +218,11 @@ function setupControls() {
     qs.set("visual", sel.value);
     history.replaceState(null, "", "?" + qs);
     mountVisual(sel.value).catch((e) => ($("msg").textContent = String(e)));
+  };
+  $("pool").value = POOL;
+  $("pool").onchange = (e) => {
+    qs.set("pool", e.target.value);
+    location.search = "?" + qs;
   };
   $("test").checked = TEST;
   $("test").disabled = Boolean(MOCK);

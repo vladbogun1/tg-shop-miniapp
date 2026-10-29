@@ -27,49 +27,58 @@
     uk: {
       title: "Хеллоуїн-полювання", hunt: "Збирай гарбузи", of: "з",
       today: "Сьогодні", todayCap: "На сьогодні все — нові гарбузи завтра",
-      goal: (g) => `Збери ${g} гарбузів — і ти в розіграші на стрімі`,
+      goal: (g) => `Знайди хоч одного гарбуза — і ти в розіграші. Збери ${g} — і шанс виросте в рази`,
       inDraw: "Ти в розіграші!", tickets: (n) => `${n} ${plural(n, "квиток", "квитки", "квитків")}`,
-      howTitle: "Як потрапити в розіграш", how1: (g) => `${g} гарбузів = 1 квиток`, how2: "Кожне замовлення цього тижня = +1 квиток",
-      how3: "Квитки сумуються: більше квитків — більше шансів", how4: (c) => `Не більше ${c} гарбузів на день`,
+      pFull: "Розіграш за гарбузи: повний шанс", pPart: (n) => `Розіграш за гарбузи: шанс поки малий — ще ${n}, і він виросте в рази`,
+      oIn: (n) => `Розіграш за покупки: ${n} ${plural(n, "квиток", "квитки", "квитків")}`, oLeft: (u) => `До розіграшу за покупки — ще ${u} ₴`, oNone: (u) => `Покупка від ${u} ₴ — окремий розіграш`,
+      howTitle: "Два розіграші", how1: (g) => `🎃 За гарбузи: кожен гарбуз — участь, а повний набір із ${g} дає шанс у рази вищий`,
+      how2: (u, m) => `🛍 За покупки: замовлення в дні акції від ${u} ₴ — квиток за кожні ${u} ₴ (до ${m})`,
+      how3: "Це два окремі розіграші — можна виграти в обох", how4: (c) => `Не більше ${c} гарбузів на день`,
       code: "Кодове слово зі стріму", codePh: "Введи слово", codeBtn: "Активувати",
       codeOk: (b) => `+${b} гарбузів!`, codeErr: { unknown: "Такого слова немає", already: "Ти вже вводив це слово", exhausted: "Слово вже використали всі, хто встиг", "not-live": "Акція не триває" },
       stream: "Розіграш на стрімі", watch: "Дивитися стрім", rules: "Правила",
       login: "Увійди через Telegram, щоб збирати гарбузи", loginBtn: "Увійти через Telegram",
       gotIt: "Гарбуз твій!", got: (n, g) => `${n} з ${g}`,
-      win: "Ти в розіграші!", winText: "Гарбузи зібрано. Чекаємо тебе на стрімі — переможця оберуть наживо.",
-      soon: "Полювання почнеться в понеділок", over: "Полювання завершено", close: "Закрити",
+      win: "Повний набір!", winText: "Усі гарбузи зібрано — у тебе повний шанс. Переможця оберуть наживо на стрімі.",
+      soon: "Полювання почнеться 30 жовтня", over: "Полювання завершено", close: "Закрити",
       weekdays: ["нд", "пн", "вт", "ср", "чт", "пт", "сб"],
     },
     ru: {
       title: "Хэллоуин-охота", hunt: "Собирай тыквы", of: "из",
       today: "Сегодня", todayCap: "На сегодня всё — новые тыквы завтра",
-      goal: (g) => `Собери ${g} тыкв — и ты в розыгрыше на стриме`,
+      goal: (g) => `Найди хоть одну тыкву — и ты в розыгрыше. Собери ${g} — и шанс вырастет в разы`,
       inDraw: "Ты в розыгрыше!", tickets: (n) => `${n} ${plural(n, "билет", "билета", "билетов")}`,
-      howTitle: "Как попасть в розыгрыш", how1: (g) => `${g} тыкв = 1 билет`, how2: "Каждый заказ на этой неделе = +1 билет",
-      how3: "Билеты суммируются: больше билетов — больше шансов", how4: (c) => `Не больше ${c} тыкв в день`,
+      pFull: "Розыгрыш за тыквы: полный шанс", pPart: (n) => `Розыгрыш за тыквы: шанс пока мал — ещё ${n}, и он вырастет в разы`,
+      oIn: (n) => `Розыгрыш за покупки: ${n} ${plural(n, "билет", "билета", "билетов")}`, oLeft: (u) => `До розыгрыша за покупки — ещё ${u} ₴`, oNone: (u) => `Покупка от ${u} ₴ — отдельный розыгрыш`,
+      howTitle: "Два розыгрыша", how1: (g) => `🎃 За тыквы: каждая тыква — участие, а полный набор из ${g} даёт шанс в разы выше`,
+      how2: (u, m) => `🛍 За покупки: заказ в дни акции от ${u} ₴ — билет за каждые ${u} ₴ (до ${m})`,
+      how3: "Это два отдельных розыгрыша — можно выиграть в обоих", how4: (c) => `Не больше ${c} тыкв в день`,
       code: "Кодовое слово со стрима", codePh: "Введи слово", codeBtn: "Активировать",
       codeOk: (b) => `+${b} тыкв!`, codeErr: { unknown: "Такого слова нет", already: "Ты уже вводил это слово", exhausted: "Слово уже использовали все, кто успел", "not-live": "Акция не идёт" },
       stream: "Розыгрыш на стриме", watch: "Смотреть стрим", rules: "Правила",
       login: "Войди через Telegram, чтобы собирать тыквы", loginBtn: "Войти через Telegram",
       gotIt: "Тыква твоя!", got: (n, g) => `${n} из ${g}`,
-      win: "Ты в розыгрыше!", winText: "Тыквы собраны. Ждём тебя на стриме — победителя выберут вживую.",
-      soon: "Охота начнётся в понедельник", over: "Охота завершена", close: "Закрыть",
+      win: "Полный набор!", winText: "Все тыквы собраны — у тебя полный шанс. Победителя выберут вживую на стриме.",
+      soon: "Охота начнётся 30 октября", over: "Охота завершена", close: "Закрыть",
       weekdays: ["вс", "пн", "вт", "ср", "чт", "пт", "сб"],
     },
     en: {
       title: "Halloween hunt", hunt: "Collect pumpkins", of: "of",
       today: "Today", todayCap: "That's all for today — new pumpkins tomorrow",
-      goal: (g) => `Collect ${g} pumpkins to enter the stream giveaway`,
+      goal: (g) => `Find even one pumpkin and you're in the draw. Collect ${g} to multiply your chance`,
       inDraw: "You're in the draw!", tickets: (n) => `${n} ${n === 1 ? "ticket" : "tickets"}`,
-      howTitle: "How to enter", how1: (g) => `${g} pumpkins = 1 ticket`, how2: "Every order this week = +1 ticket",
-      how3: "Tickets add up: more tickets, better odds", how4: (c) => `Up to ${c} pumpkins a day`,
+      pFull: "Pumpkin draw: full chance", pPart: (n) => `Pumpkin draw: small chance for now — ${n} more to multiply it`,
+      oIn: (n) => `Purchase draw: ${n} ${n === 1 ? "ticket" : "tickets"}`, oLeft: (u) => `${u} UAH more to enter the purchase draw`, oNone: (u) => `Orders from ${u} UAH enter a separate draw`,
+      howTitle: "Two draws", how1: (g) => `🎃 Pumpkins: every pumpkin gets you in, a full set of ${g} multiplies your chance`,
+      how2: (u, m) => `🛍 Purchases: orders during the event from ${u} UAH — a ticket per ${u} UAH (up to ${m})`,
+      how3: "Two separate draws — you can win both", how4: (c) => `Up to ${c} pumpkins a day`,
       code: "Stream code word", codePh: "Enter the word", codeBtn: "Redeem",
       codeOk: (b) => `+${b} pumpkins!`, codeErr: { unknown: "No such word", already: "You already used this word", exhausted: "This word has run out", "not-live": "The event is not running" },
       stream: "Giveaway on stream", watch: "Watch the stream", rules: "Rules",
       login: "Sign in with Telegram to collect pumpkins", loginBtn: "Sign in with Telegram",
       gotIt: "Got it!", got: (n, g) => `${n} of ${g}`,
-      win: "You're in the draw!", winText: "Pumpkins collected. See you on stream — the winner is picked live.",
-      soon: "The hunt starts on Monday", over: "The hunt is over", close: "Close",
+      win: "Full set!", winText: "All pumpkins collected — you have the full chance. Winners are picked live on stream.",
+      soon: "The hunt starts on October 30", over: "The hunt is over", close: "Close",
       weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     },
   };
@@ -86,7 +95,7 @@
   const t = () => T[lang()];
 
   // ---------------- state ----------------
-  const st = { phase: null, goal: 50, dailyCap: 15, streamAt: null, streamUrl: "", me: null, signedIn: false, capped: false };
+  const st = { phase: null, goal: 15, dailyCap: 8, streamAt: null, streams: [], minSpendMinor: 50000, maxOrderTickets: 5, me: null, signedIn: false, capped: false };
   const counters = new Set();
 
   // ---------------- api ----------------
@@ -113,7 +122,9 @@
     st.goal = s.goal;
     st.dailyCap = s.dailyCap;
     st.streamAt = s.streamAt;
-    st.streamUrl = s.streamUrl;
+    st.streams = s.streams || [];
+    st.minSpendMinor = s.minSpendMinor || st.minSpendMinor;
+    st.maxOrderTickets = s.maxOrderTickets || st.maxOrderTickets;
     st.me = s.me;
     st.signedIn = Boolean(s.me);
     st.capped = Boolean(s.me && s.me.today >= s.dailyCap);
@@ -270,10 +281,11 @@
     for (const c of counters) {
       if (!c.shadowRoot) continue;
       const show = st.phase === "live" || (st.phase === "over" && st.me && st.me.inDraw);
+      // ✓ = a full set (the real chance); fewer pumpkins still count, the counter shows how far
       c.hidden = !show;
       const n = c.shadowRoot.querySelector(".n");
       if (!st.me) n.innerHTML = `<span class="of">🎃</span>`;
-      else if (st.me.inDraw) n.innerHTML = `${Math.min(st.me.pumpkins, 999)}<span class="ok" title="${t().inDraw}">✓</span>`;
+      else if (st.me.full) n.innerHTML = `${Math.min(st.me.pumpkins, 999)}<span class="ok" title="${t().inDraw}">✓</span>`;
       else n.innerHTML = `${st.me.pumpkins}<span class="of">/${st.goal}</span>`;
     }
   }
@@ -420,13 +432,13 @@
     cfg.haptic && cfg.haptic("success");
     flyToCounter(el);
     try {
-      const wasIn = st.me && st.me.inDraw;
+      const wasIn = st.me && st.me.full;
       const res = await call("/collect", { id: sp.id });
       st.me = res.me;
       renderCounters();
       if (res.ok) {
         toast(`🎃 ${t().gotIt} <b>${t().got(Math.min(res.me.pumpkins, st.goal), st.goal)}</b>`);
-        if (!wasIn && res.me.pumpkins >= st.goal) setTimeout(openWin, 900);
+        if (!wasIn && res.me.full) setTimeout(openWin, 900);
       } else if (res.reason === "daily-cap") {
         st.capped = true;
         toast(t().todayCap, 3000);
@@ -518,6 +530,19 @@
     for (let i = 0; i < 4; i++) setTimeout(() => burst(innerWidth * (0.2 + Math.random() * 0.6), innerHeight * (0.25 + Math.random() * 0.4)), i * 220);
   }
 
+  const uah = (minor) => Math.round(minor / 100);
+
+  /** Where this person stands in each of the two draws. */
+  function drawLines(me, tx) {
+    const p = me.full ? `<div class="ok">✓ ${tx.pFull}</div>`
+      : me.pumpkins > 0 ? `<p>🎃 ${tx.pPart(st.goal - me.pumpkins)}</p>`
+      : `<p>${tx.goal(st.goal)}</p>`;
+    const o = me.orderTickets > 0 ? `<div class="ok">✓ ${tx.oIn(me.orderTickets)}</div>`
+      : me.spendMinor > 0 ? `<p>🛍 ${tx.oLeft(uah(st.minSpendMinor - me.spendMinor))}</p>`
+      : `<p>🛍 ${tx.oNone(uah(st.minSpendMinor))}</p>`;
+    return p + o;
+  }
+
   function openPanel() {
     const tx = t();
     const me = st.me;
@@ -527,8 +552,8 @@
       st.phase === "over" ? `<p>${tx.over}</p>` : "";
     const progress = me
       ? `<div class="bar"><i style="width:${pct}%"></i></div>
-         <div class="row"><span>${tx.today}: ${me.today}/${st.dailyCap}</span><span>${me.orders ? "🛒 " + me.orders : ""}</span></div>
-         ${me.inDraw ? `<div class="ok">✓ ${tx.inDraw} · ${tx.tickets(me.tickets)}</div>` : `<p>${tx.goal(st.goal)}</p>`}
+         <div class="row"><span>${tx.today}: ${me.today}/${st.dailyCap}</span></div>
+         ${drawLines(me, tx)}
          ${st.capped ? `<p>${tx.todayCap}</p>` : ""}`
       : `<p>${tx.login}</p><button class="btn wide" type="button" data-login>${tx.loginBtn}</button>`;
     const code = me && st.phase === "live"
@@ -539,10 +564,10 @@
         <div class="num">${me ? me.pumpkins : 0}<small> / ${st.goal}</small></div></div></div>
       ${status}${progress}${code}
       <h3>${tx.howTitle}</h3>
-      <ul><li>${tx.how1(st.goal)}</li><li>${tx.how2}</li><li>${tx.how3}</li><li>${tx.how4(st.dailyCap)}</li></ul>
-      <h3>${tx.stream}</h3><p>${streamWhen()}${st.streamUrl ? ` · <a href="${st.streamUrl}" target="_blank" rel="noopener">${tx.watch}</a>` : ""}</p>
+      <ul><li>${tx.how1(st.goal)}</li><li>${tx.how2(uah(st.minSpendMinor), st.maxOrderTickets)}</li><li>${tx.how3}</li><li>${tx.how4(st.dailyCap)}</li></ul>
+      <h3>${tx.stream}</h3><p>${streamWhen()}${st.streams.map((x) => ` · <a href="${x.url}" target="_blank" rel="noopener">${x.name}</a>`).join("")}</p>
       <p><a href="${cfg.rulesUrl || "/halloween-rules"}" target="_blank" rel="noopener">${tx.rules}</a></p>`);
-    s.querySelector(".big").append(pumpkinArt(me && me.inDraw ? 4 : 1));
+    s.querySelector(".big").append(pumpkinArt(me && me.full ? 4 : 1));
     s.querySelector("[data-login]")?.addEventListener("click", () => { closeModal(); cfg.login && cfg.login(); });
     const form = s.querySelector("form");
     if (form) form.onsubmit = async (e) => {
@@ -561,7 +586,7 @@
           s.querySelector(".num").innerHTML = `${res.me.pumpkins}<small> / ${st.goal}</small>`;
           s.querySelector(".bar i").style.width = Math.min(100, (res.me.pumpkins / st.goal) * 100) + "%";
           form.code.value = "";
-          if (res.me.inDraw && res.me.pumpkins - res.bonus < st.goal) setTimeout(openWin, 800);
+          if (res.me.full && res.me.pumpkins - res.bonus < st.goal) setTimeout(openWin, 800);
         } else {
           msg.className = "msg bad";
           msg.textContent = tx.codeErr[res.reason] || tx.codeErr.unknown;
