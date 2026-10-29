@@ -258,6 +258,32 @@ class OrderAdjustmentServiceTest {
     }
 
     @Test
+    void exchange_creditFollowsTheExactPaidAmountOfTheLine() {
+        // 3333 x 3 with 10 ₴ off, paid 89.99: exchanging all three moves exactly 89.99 over, not 90.00.
+        Order o = order(OrderStatus.DELIVERED);
+        o.setPaymentOptionId(UuidUtil.randomBytes());
+        o.setReceivedMinor(8_999);
+        o.setPaid(true);
+        o.setUserId(77L);
+        Product other = product(3);
+        other.setPriceMinor(20_000);
+        OrderItem line = item(o, product(5), 1L, 3);
+        line.setPriceMinorSnapshot(3_333);
+        o.setSubtotalMinor(9_999);
+        o.setDiscountMinor(1_000);
+        o.setTotalMinor(8_999);
+        trackOrders(o);
+        when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
+
+        service.exchange(o.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 3, null)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
+                OrderStatus.NEW, true, null, "admin");
+
+        assertThat(o.getRefundedMinor()).isEqualTo(8_999);
+    }
+
+    @Test
     void exchange_alreadyAtTheShop_writeOff_cheaperReplacementLeavesTheRestRefundable() {
         Order o = order(OrderStatus.DELIVERED);
         Product mouse = product(5);
@@ -553,18 +579,6 @@ class OrderAdjustmentServiceTest {
     }
 
     @Test
-    void unitPaidMinor_spreadsTheOrderDiscount_andGiftsCostNothing() {
-        Order o = new Order();
-        o.setItems(new ArrayList<>());
-        o.setSubtotalMinor(40_000);
-        o.setDiscountMinor(10_000);
-        OrderItem it = item(o, product(1), 1L, 1);
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isEqualTo(7_500);
-        it.setGift(true);
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isZero();
-    }
-
-    @Test
     void wizard_prepaymentAlreadyRetainedOnRefusal_cannotBeKeptOrRefundedAgain() {
         Order o = order(OrderStatus.REJECTED);
         o.setReceivedMinor(20_000);
@@ -668,6 +682,26 @@ class OrderAdjustmentServiceTest {
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
         assertThat(OrderMoney.codMinor(delivered)).isZero();
+    }
+
+    @Test
+    void wizard_partialPickupWithADiscount_refusingALineInStepsNeverExceedsItsPaidAmount() {
+        // 3333 x 3 with 10 ₴ off: the line cost 89.99 (total), not 90.00.
+        Order o = order(OrderStatus.SHIPPED);
+        o.setSubtotalMinor(9_999);
+        o.setDiscountMinor(1_000);
+        o.setTotalMinor(8_999);
+        OrderItem line = item(o, product(0), 1L, 3);
+        line.setPriceMinorSnapshot(3_333);
+        List<OrderAdjustmentService.WizardLine> one =
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT));
+
+        assertThat(service.registerReturnPlan(o.getId(), plan(one, List.of(), 0, 0), "owner")
+                .order().getUncollectedMinor()).isEqualTo(2_999);
+        assertThat(service.registerReturnPlan(o.getId(), plan(one, List.of(), 0, 0), "owner")
+                .order().getUncollectedMinor()).isEqualTo(5_999);   // 2999 + 3000 = floor(8999 * 2 / 3)
+        assertThat(line.getReturnedQty()).isEqualTo(2);
+        assertThat(OrderMoney.codMinor(o)).isEqualTo(3_000);        // the last unit: 8999 - 5999
     }
 
     @Test

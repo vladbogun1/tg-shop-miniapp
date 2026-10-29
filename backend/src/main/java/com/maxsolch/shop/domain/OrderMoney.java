@@ -1,5 +1,7 @@
 package com.maxsolch.shop.domain;
 
+import java.util.List;
+
 /**
  * Денежная арифметика заказа в одном месте: всё в минорных единицах (копейки), без Spring и без
  * состояния. Формулы перенесены из OrderService / OrderQueryService / OrderAdjustmentService без
@@ -100,5 +102,89 @@ public final class OrderMoney {
     public static long refundableMinor(Order order) {
         long received = Math.max(0, order.getReceivedMinor());
         return Math.max(0, received - Math.max(0, order.getRefundedMinor()));
+    }
+
+    // ----- сколько покупатель реально заплатил за строку (целочисленно) -----
+
+    /** Вес строки в скидке: цена x количество; подарки и бесплатные строки не весят ничего. */
+    private static long lineWeightMinor(OrderItem item) {
+        if (item.isGift() || item.getPriceMinorSnapshot() <= 0 || item.getQuantity() <= 0) {
+            return 0;
+        }
+        return item.getPriceMinorSnapshot() * (long) item.getQuantity();
+    }
+
+    /**
+     * Сколько покупатель заплатил за всю строку: её сумма минус доля скидки заказа. Скидка
+     * делится по строкам пропорционально весу методом наибольшего остатка, поэтому сумма по всем
+     * строкам заказа ровно равна {@code подитог − скидка}. Подарочные строки — 0.
+     */
+    public static long linePaidMinor(Order order, OrderItem item) {
+        long weight = lineWeightMinor(item);
+        if (weight == 0) {
+            return 0;
+        }
+        List<OrderItem> items = order.getItems();
+        long subtotal = 0;
+        for (OrderItem i : items) {
+            subtotal += lineWeightMinor(i);
+        }
+        if (subtotal <= 0) {
+            return weight;
+        }
+        long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
+        if (discount == 0) {
+            return weight;
+        }
+        int n = items.size();
+        long[] share = new long[n];
+        long[] rem = new long[n];
+        long given = 0;
+        int mine = -1;
+        for (int k = 0; k < n; k++) {
+            OrderItem i = items.get(k);
+            if (i == item) {
+                mine = k;
+            }
+            long w = lineWeightMinor(i);
+            share[k] = discount * w / subtotal;
+            rem[k] = discount * w % subtotal;
+            given += share[k];
+        }
+        if (mine < 0) {
+            // строка не из этого заказа (в тестах): доля без распределения остатка
+            return weight - discount * weight / subtotal;
+        }
+        // остаток (< числа строк) раздаём по одной копейке строкам с наибольшим остатком; при равенстве — по порядку
+        long left = discount - given;
+        int ahead = 0;
+        for (int k = 0; k < n; k++) {
+            if (k != mine && (rem[k] > rem[mine] || (rem[k] == rem[mine] && k < mine))) {
+                ahead++;
+            }
+        }
+        long extra = ahead < left ? 1 : 0;
+        return weight - share[mine] - extra;
+    }
+
+    /** Цена одной штуки для показа: целая часть от {@code linePaid / количество}. */
+    public static long unitPaidMinor(Order order, OrderItem item) {
+        return item.getQuantity() <= 0 ? 0 : linePaidMinor(order, item) / item.getQuantity();
+    }
+
+    /**
+     * Сколько стоят {@code units} единиц строки, если {@code alreadyReturnedUnits} уже возвращены:
+     * {@code floor(L·(r+u)/n) − floor(L·r/n)}. Любая последовательность возвратов одной строки
+     * в сумме даёт ровно {@link #linePaidMinor}, без лишней копейки.
+     */
+    public static long paidForUnitsMinor(Order order, OrderItem item, int alreadyReturnedUnits, int units) {
+        int n = item.getQuantity();
+        if (n <= 0 || units <= 0) {
+            return 0;
+        }
+        long line = linePaidMinor(order, item);
+        long r = Math.max(0, Math.min(alreadyReturnedUnits, n));
+        long upTo = Math.min(n, r + units);
+        return line * upTo / n - line * r / n;
     }
 }

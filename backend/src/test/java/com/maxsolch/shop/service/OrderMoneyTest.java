@@ -4,7 +4,6 @@ import com.maxsolch.shop.domain.OrderMoney;
 
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -172,32 +171,46 @@ class OrderMoneyTest {
         assertThat(OrderMoney.refundableMinor(o)).isZero();
     }
 
-    // ----- unitPaidMinor: ТЕКУЩИЕ значения (double + округление на единицу) -----
+    // ----- сколько заплачено за строку: целочисленно, сумма по строкам == подитог − скидка -----
 
-    /** Принимает строки {цена, количество}; возвращает unitPaid по каждой строке. */
-    private static long[] unitPaid(long discount, long[][] priceQty) {
+    private static Order orderOf(long discount, long[][] priceQty) {
         Order o = new Order();
         o.setItems(new ArrayList<>());
-        List<OrderItem> its = new ArrayList<>();
         long sub = 0;
         for (long[] pq : priceQty) {
-            its.add(line(o, pq[0], (int) pq[1], false));
+            line(o, pq[0], (int) pq[1], false);
             sub += pq[0] * pq[1];
         }
         o.setSubtotalMinor(sub);
         o.setDiscountMinor(discount);
         o.setTotalMinor(Math.max(0, sub - discount));
-        long[] out = new long[its.size()];
+        return o;
+    }
+
+    /** unitPaid по каждой строке (цена за штуку для показа). */
+    private static long[] unitPaid(long discount, long[][] priceQty) {
+        Order o = orderOf(discount, priceQty);
+        long[] out = new long[priceQty.length];
         for (int i = 0; i < out.length; i++) {
-            out[i] = OrderAdjustmentService.unitPaidMinor(o, its.get(i));
+            out[i] = OrderMoney.unitPaidMinor(o, o.getItems().get(i));
         }
         return out;
     }
 
-    private static long sumByLines(long[] unit, long[][] priceQty) {
+    /** linePaid по каждой строке. */
+    private static long[] linePaid(long discount, long[][] priceQty) {
+        Order o = orderOf(discount, priceQty);
+        long[] out = new long[priceQty.length];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = OrderMoney.linePaidMinor(o, o.getItems().get(i));
+        }
+        return out;
+    }
+
+    private static long sum(long[] a) {
         long s = 0;
-        for (int i = 0; i < unit.length; i++) {
-            s += unit[i] * priceQty[i][1];
+        for (long v : a) {
+            s += v;
         }
         return s;
     }
@@ -208,59 +221,50 @@ class OrderMoneyTest {
     }
 
     @Test
-    void unitPaid_exampleA_discountSpreadProportionally() {
+    void linePaid_exampleA_discountSpreadProportionally() {
         long[][] l = {{10_000, 1}, {15_000, 2}};
-        long[] u = unitPaid(10_000, l);
-        assertThat(u).containsExactly(7_500, 11_250);
-        assertThat(sumByLines(u, l)).isEqualTo(30_000); // total 30000: сходится
+        assertThat(linePaid(10_000, l)).containsExactly(7_500, 22_500);
+        assertThat(unitPaid(10_000, l)).containsExactly(7_500, 11_250);
     }
 
     @Test
-    void unitPaid_exampleB_qtyThree_oddSum() {
+    void linePaid_exampleB_qtyThree_noExtraKopeck() {
         long[][] l = {{3_333, 3}};
-        long[] u = unitPaid(1_000, l);
-        assertThat(u).containsExactly(3_000);
-        assertThat(sumByLines(u, l)).isEqualTo(9_000); // total 8999
+        assertThat(linePaid(1_000, l)).containsExactly(8_999); // total 8999
+        assertThat(unitPaid(1_000, l)).containsExactly(2_999);
     }
 
     @Test
-    void unitPaid_exampleC_threeEqualLines() {
+    void linePaid_exampleC_threeEqualLines_remainderGoesToTheFirst() {
         long[][] l = {{999, 1}, {999, 1}, {999, 1}};
-        long[] u = unitPaid(100, l);
-        assertThat(u).containsExactly(966, 966, 966);
-        assertThat(sumByLines(u, l)).isEqualTo(2_898); // total 2897
+        assertThat(linePaid(100, l)).containsExactly(965, 966, 966); // total 2897
     }
 
     @Test
-    void unitPaid_exampleD_tinyDiscount() {
+    void linePaid_exampleD_tinyDiscount() {
         long[][] l = {{10_001, 1}, {2, 5}};
-        long[] u = unitPaid(7, l);
-        assertThat(u).containsExactly(9_994, 2);
-        assertThat(sumByLines(u, l)).isEqualTo(10_004);
+        assertThat(linePaid(7, l)).containsExactly(9_994, 10);
+        assertThat(unitPaid(7, l)).containsExactly(9_994, 2);
     }
 
     @Test
-    void unitPaid_exampleE_cheapLineRoundsToZero() {
+    void linePaid_exampleE_cheapLineRoundsToZero() {
         long[][] l = {{5_000, 2}, {1, 1}};
-        long[] u = unitPaid(5_001, l);
-        assertThat(u).containsExactly(2_500, 0);
-        assertThat(sumByLines(u, l)).isEqualTo(5_000);
+        assertThat(linePaid(5_001, l)).containsExactly(5_000, 0);
+        assertThat(unitPaid(5_001, l)).containsExactly(2_500, 0);
     }
 
     @Test
-    void unitPaid_exampleF_threeDifferentLines() {
+    void linePaid_exampleF_threeDifferentLines_largestRemainder() {
         long[][] l = {{1_999, 1}, {2_999, 1}, {3_999, 1}};
-        long[] u = unitPaid(1_500, l);
-        assertThat(u).containsExactly(1_666, 2_499, 3_332);
-        assertThat(sumByLines(u, l)).isEqualTo(7_497);
+        assertThat(linePaid(1_500, l)).containsExactly(1_666, 2_499, 3_332);
     }
 
     @Test
-    void unitPaid_exampleG_qtyThree_fullDiscountThird() {
+    void linePaid_exampleG_qtyThree_fullDiscountThird() {
         long[][] l = {{100, 3}};
-        long[] u = unitPaid(100, l);
-        assertThat(u).containsExactly(67);
-        assertThat(sumByLines(u, l)).isEqualTo(201); // total 200
+        assertThat(linePaid(100, l)).containsExactly(200); // total 200
+        assertThat(unitPaid(100, l)).containsExactly(66);
     }
 
     @Test
@@ -270,34 +274,67 @@ class OrderMoneyTest {
         o.setDiscountMinor(1_000);
         OrderItem gift = line(o, 5_000, 1, true);
         OrderItem free = line(o, 0, 1, false);
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, gift)).isZero();
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, free)).isZero();
+        assertThat(OrderMoney.linePaidMinor(o, gift)).isZero();
+        assertThat(OrderMoney.linePaidMinor(o, free)).isZero();
+        assertThat(OrderMoney.unitPaidMinor(o, gift)).isZero();
+        assertThat(OrderMoney.unitPaidMinor(o, free)).isZero();
     }
 
+    /** Раньше (double, округление на единицу) тут выходило +1 копейка: 9000 при итоге 8999 и т.п. */
     @Test
-    void unitPaid_sumOverLinesEqualsTotal_onEvenOrders() {
-        long[][] a = {{10_000, 1}, {15_000, 2}};
-        assertThat(sumByLines(unitPaid(10_000, a), a)).isEqualTo(30_000);
-        long[][] f = {{1_999, 1}, {2_999, 1}, {3_999, 1}};
-        assertThat(sumByLines(unitPaid(1_500, f), f)).isEqualTo(7_497);
-    }
-
-    /**
-     * Сумма unitPaid x qty по строкам против total: на «ровных» заказах сходится, на нечётных
-     * расходится на копейки. Если решат раскладывать остаток на последнюю строку, тест включают.
-     */
-    @Disabled("расхождение копеек, решает владелец: B 9000 vs 8999 (+1), C 2898 vs 2897 (+1), G 201 vs 200 (+1)")
-    @Test
-    void unitPaid_sumOverLinesEqualsTotal_onOddOrders() {
-        long[][][] orders = {{{3_333, 3}}, {{999, 1}, {999, 1}, {999, 1}}, {{100, 3}}};
-        long[] discounts = {1_000, 100, 100};
+    void linePaid_sumOverLinesEqualsTotal_onOddOrders() {
+        long[][][] orders = {{{3_333, 3}}, {{999, 1}, {999, 1}, {999, 1}}, {{100, 3}},
+                {{10_000, 1}, {15_000, 2}}, {{10_001, 1}, {2, 5}}, {{5_000, 2}, {1, 1}},
+                {{1_999, 1}, {2_999, 1}, {3_999, 1}}, {{7, 1}, {7, 1}, {7, 1}, {7, 1}, {7, 1}, {7, 1}, {7, 1}}};
+        long[] discounts = {1_000, 100, 100, 10_000, 7, 5_001, 1_500, 5};
         for (int i = 0; i < orders.length; i++) {
             long sub = 0;
             for (long[] pq : orders[i]) {
                 sub += pq[0] * pq[1];
             }
-            assertThat(sumByLines(unitPaid(discounts[i], orders[i]), orders[i]))
+            assertThat(sum(linePaid(discounts[i], orders[i]))).as("order #%d", i)
                     .isEqualTo(Math.max(0, sub - discounts[i]));
         }
+    }
+
+    @Test
+    void linePaid_discountEqualToSubtotal_everythingIsFree() {
+        long[][] l = {{999, 1}, {1_001, 2}};
+        assertThat(linePaid(3_001, l)).containsExactly(0, 0);
+    }
+
+    @Test
+    void linePaid_giftLinesTakeNoShareOfTheDiscount() {
+        Order o = order(9_000, 0);
+        OrderItem a = line(o, 5_000, 1, false);
+        OrderItem gift = line(o, 0, 1, true);
+        OrderItem b = line(o, 5_000, 1, false);
+        o.setDiscountMinor(1_001);
+        assertThat(OrderMoney.linePaidMinor(o, gift)).isZero();
+        assertThat(OrderMoney.linePaidMinor(o, a) + OrderMoney.linePaidMinor(o, b)).isEqualTo(8_999);
+    }
+
+    @Test
+    void paidForUnits_anySequenceOfReturnsAddsUpToTheLine() {
+        Order o = orderOf(1_000, new long[][]{{3_333, 3}});
+        OrderItem it = o.getItems().get(0);
+        // line = 8999: по одной штуке — 2999 + 3000 + 3000
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 0, 1)).isEqualTo(2_999);
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 1, 1)).isEqualTo(3_000);
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 2, 1)).isEqualTo(3_000);
+        // сразу всё и по частям — одно и то же
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 0, 3)).isEqualTo(8_999);
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 0, 2) + OrderMoney.paidForUnitsMinor(o, it, 2, 1))
+                .isEqualTo(8_999);
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 1, 2)).isEqualTo(6_000);
+    }
+
+    @Test
+    void paidForUnits_guards() {
+        Order o = orderOf(0, new long[][]{{1_000, 2}});
+        OrderItem it = o.getItems().get(0);
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 0, 0)).isZero();
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 2, 1)).isZero(); // всё уже возвращено
+        assertThat(OrderMoney.paidForUnitsMinor(o, it, 1, 5)).isEqualTo(1_000); // не больше остатка строки
     }
 }

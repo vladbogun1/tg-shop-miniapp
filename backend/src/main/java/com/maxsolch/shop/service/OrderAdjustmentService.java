@@ -27,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -406,7 +408,7 @@ public class OrderAdjustmentService {
                 }
                 case DEFECT -> {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
-                    StockWriteoff w = writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(),
+                    StockWriteoff w = writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item), order.getId(),
                             cleanNote, adminName);
                     rl.setDefectQty(line.quantity());
                     rl.setWriteoffId(w == null ? null : w.getId());
@@ -433,7 +435,7 @@ public class OrderAdjustmentService {
         }
         if (s == OrderStatus.SHIPPED) {
             // Partial pickup: what the customer refused at the branch is never paid for.
-            long refused = refusedValueMinor(order, lines);
+            long refused = refusedValueMinor(order, lines, true);
             if (refused > 0) {
                 order.setUncollectedMinor(Math.max(0, order.getUncollectedMinor()) + refused);
                 parts.add("не выкуплено на почте " + MoneyFormat.uah(refused) + ", наложка теперь "
@@ -495,7 +497,7 @@ public class OrderAdjustmentService {
         if (s == OrderStatus.SHIPPED && !lines.isEmpty() && nothingPickedUp(order, lines)) {
             throw new BadRequestException("покупатель не забрал ничего — отклоните заказ с «Посылка едет назад»");
         }
-        long pickupValue = s == OrderStatus.SHIPPED ? refusedValueMinor(order, lines) : 0;
+        long pickupValue = s == OrderStatus.SHIPPED ? refusedValueMinor(order, lines, false) : 0;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
             throw new BadRequestException(s == OrderStatus.REJECTED
                     ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
@@ -568,19 +570,28 @@ public class OrderAdjustmentService {
     /**
      * Paid value of the units of a shipped order the customer refused at the branch (partial
      * pickup): every line that comes back, wherever it is now; a compensation (KEPT) is not one.
+     * The value of an item's units follows {@link OrderMoney#paidForUnitsMinor}, so refusing the
+     * same line in several steps adds up to its exact paid amount.
+     *
+     * @param applied the lines are already counted in {@code returnedQty} (called after the wizard
+     *                booked them); otherwise they are not yet
      */
-    static long refusedValueMinor(Order order, List<WizardLine> lines) {
-        long sum = 0;
+    static long refusedValueMinor(Order order, List<WizardLine> lines, boolean applied) {
+        Map<OrderItem, Integer> units = new IdentityHashMap<>();
         for (WizardLine l : lines) {
             if (l.outcome() == LineOutcome.KEPT || l.quantity() <= 0) {
                 continue;
             }
-            OrderItem item = order.getItems().stream()
+            order.getItems().stream()
                     .filter(i -> i.getId() != null && i.getId() == l.itemId())
-                    .findFirst().orElse(null);
-            if (item != null) {
-                sum += unitPaidMinor(order, item) * l.quantity();
-            }
+                    .findFirst()
+                    .ifPresent(item -> units.merge(item, l.quantity(), Integer::sum));
+        }
+        long sum = 0;
+        for (Map.Entry<OrderItem, Integer> e : units.entrySet()) {
+            OrderItem item = e.getKey();
+            int already = applied ? item.getReturnedQty() - e.getValue() : item.getReturnedQty();
+            sum += OrderMoney.paidForUnitsMinor(order, item, already, e.getValue());
         }
         return sum;
     }
@@ -634,7 +645,7 @@ public class OrderAdjustmentService {
                     // A delivered order's returned units were counted when the return was registered.
                     item.setReturnedQty(item.getReturnedQty() + defect);
                 }
-                w = writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                w = writeOff(item, defect, OrderMoney.unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
                 parts.add(title + " ×" + defect + " (брак, списан)");
             }
             settleInTransit(order, item, restocked, defect, w);
@@ -645,23 +656,6 @@ public class OrderAdjustmentService {
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return new Result(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
                 + (cleanNote == null ? "" : "; " + cleanNote));
-    }
-
-    /**
-     * What one unit of a line actually cost the customer: its price with the order discount spread
-     * over the paid lines in proportion (gifts cost nothing). The wizard's suggested refund.
-     */
-    public static long unitPaidMinor(Order order, OrderItem item) {
-        if (item.isGift() || item.getPriceMinorSnapshot() <= 0) {
-            return 0;
-        }
-        long subtotal = order.getSubtotalMinor();
-        long discount = Math.max(0, order.getDiscountMinor());
-        if (subtotal <= 0 || discount == 0) {
-            return item.getPriceMinorSnapshot();
-        }
-        double share = Math.min(1.0, (double) discount / subtotal);
-        return Math.round(item.getPriceMinorSnapshot() * (1.0 - share));
     }
 
     private StockWriteoff writeOff(OrderItem item, int quantity, long unitValueMinor, byte[] orderId, String note,
@@ -788,6 +782,7 @@ public class OrderAdjustmentService {
         long credit = 0;
         List<String> backParts = new ArrayList<>();
         List<OrderExchangeLine> backLines = new ArrayList<>();
+        Map<OrderItem, Integer> exchangeBackUnits = new IdentityHashMap<>();
         for (WizardLine line : back) {
             LineOutcome outcome = line.outcome();
             if (outcome == LineOutcome.KEPT) {
@@ -802,8 +797,12 @@ public class OrderAdjustmentService {
                 throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
                         + "» можно обменять не больше " + left + " шт.");
             }
-            long unit = unitPaidMinor(order, item);
-            credit += unit * line.quantity();
+            // units of the same item listed twice follow each other, so they don't share the same range
+            int alreadyBack = item.getReturnedQty() + exchangeBackUnits.merge(item, 0, Integer::sum);
+            long unit = OrderMoney.unitPaidMinor(order, item);
+            long lineValue = OrderMoney.paidForUnitsMinor(order, item, alreadyBack, line.quantity());
+            exchangeBackUnits.merge(item, line.quantity(), Integer::sum);
+            credit += lineValue;
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
             backParts.add(title + " ×" + line.quantity() + switch (outcome) {
@@ -1039,7 +1038,8 @@ public class OrderAdjustmentService {
                 continue;
             }
             if (pickup && !LineOutcome.KEPT.name().equals(l.getOutcome())) {
-                refusedBack += unitPaidMinor(order, item) * l.getQuantity();
+                // the record is the last one: before it the item had returnedQty - quantity units returned
+                refusedBack += OrderMoney.paidForUnitsMinor(order, item, item.getReturnedQty() - l.getQuantity(), l.getQuantity());
             }
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");

@@ -163,6 +163,16 @@ public class OrderQueryService {
         return out;
     }
 
+    /**
+     * Paid value of the units sent back and still on their way (the pending ones are the latest returned
+     * units of the line). Skips the order's item list entirely when nothing is on the way.
+     */
+    private static long pendingReturnValueMinor(OrderItem it) {
+        int pending = it.getReturnPendingQty();
+        return pending <= 0 ? 0
+                : OrderMoney.paidForUnitsMinor(it.getOrder(), it, it.getReturnedQty() - pending, pending);
+    }
+
     /** The picture strip of the admin cards: every line with its first photo, two queries per page. */
     private Map<String, List<OrderCardDto.CardLine>> cardLines(List<byte[]> orderIds) {
         List<OrderItem> items = orderItemRepository.findByOrderIds(orderIds);
@@ -175,7 +185,7 @@ public class OrderQueryService {
                             it.getTitleSnapshot()
                                     + (it.getVariantNameSnapshot() == null ? "" : " · " + it.getVariantNameSnapshot()),
                             it.getQuantity(), it.getReturnPendingQty(), it.getReturnedQty(), it.isGift(),
-                            OrderAdjustmentService.unitPaidMinor(it.getOrder(), it) * it.getReturnPendingQty()));
+                            pendingReturnValueMinor(it)));
         }
         return out;
     }
@@ -556,7 +566,7 @@ public class OrderQueryService {
                 it.isAutoGift(),
                 it.getCaseRarity(),
                 it.isVariantPending(),
-                OrderAdjustmentService.unitPaidMinor(o, it),
+                OrderMoney.unitPaidMinor(o, it),
                 it.getReturnPendingQty());
     }
 
