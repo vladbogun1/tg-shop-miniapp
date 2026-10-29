@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;
 import com.maxsolch.shop.gift.GiftRegistryService;
@@ -19,7 +20,7 @@ import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -28,7 +29,7 @@ import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;

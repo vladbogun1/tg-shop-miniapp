@@ -1,4 +1,4 @@
-package com.maxsolch.shop.web.dto;
+package com.maxsolch.shop.promo.api;
 
 import java.time.Instant;
 
@@ -23,7 +23,7 @@ public record PromoCodeDto(
         Instant expiresAt,
         /** {@code REVIEW_BONUS} for a review bonus; null = made by an admin. */
         String source,
-        /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} — see {@link com.maxsolch.shop.domain.PromoOrigin}. */
+        /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} — see {@link com.maxsolch.shop.promo.domain.PromoOrigin}. */
         String origin) {
 
     /** An order placed with the code (the «Заказы с кодом» list). */

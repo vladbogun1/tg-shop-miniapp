@@ -1,4 +1,4 @@
-package com.maxsolch.shop.domain;
+package com.maxsolch.shop.promo.domain;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.Column;

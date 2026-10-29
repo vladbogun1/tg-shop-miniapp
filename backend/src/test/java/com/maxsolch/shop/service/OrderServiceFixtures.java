@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.promo.app.PromoService;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
@@ -12,7 +13,7 @@ import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 

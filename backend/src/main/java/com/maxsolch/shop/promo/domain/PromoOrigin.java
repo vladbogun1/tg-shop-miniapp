@@ -1,4 +1,4 @@
-package com.maxsolch.shop.domain;
+package com.maxsolch.shop.promo.domain;
 
 /**
  * Where a promo code came from — the tabs of the «Промокоды» page and the filter of the order's

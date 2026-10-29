@@ -1,6 +1,6 @@
-package com.maxsolch.shop.repository;
+package com.maxsolch.shop.promo.infra;
 
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -56,7 +56,7 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, byte[]> {
 
     /**
      * Orders with an admin's manual amount/percent discount ({@code promo_code} starts with
-     * {@code prefix}, see {@link com.maxsolch.shop.domain.PromoOrigin#MANUAL_DISCOUNT_LABEL}), newest first.
+     * {@code prefix}, see {@link com.maxsolch.shop.promo.domain.PromoOrigin#MANUAL_DISCOUNT_LABEL}), newest first.
      */
     @Query("select o from Order o where o.promoCode like concat(:prefix, '%') and o.discountMinor > 0 "
             + "order by o.createdAt desc")

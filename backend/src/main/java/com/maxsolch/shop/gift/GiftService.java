@@ -1,13 +1,13 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.GiftDtos.GiftInfoDto;
 import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.GiftDtos.TierInfoDto;
-import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;

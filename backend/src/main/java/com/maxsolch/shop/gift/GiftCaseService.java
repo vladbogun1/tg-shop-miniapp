@@ -2,7 +2,7 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseOpenDto;
 import com.maxsolch.shop.gift.GiftDtos.OrderGiftDto;

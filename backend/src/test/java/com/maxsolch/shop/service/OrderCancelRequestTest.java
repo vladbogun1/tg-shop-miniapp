@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -8,7 +9,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import jakarta.persistence.EntityManager;

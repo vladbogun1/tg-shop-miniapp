@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.error.BadRequestException;

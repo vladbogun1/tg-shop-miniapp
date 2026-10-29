@@ -1,6 +1,6 @@
-package com.maxsolch.shop.repository;
+package com.maxsolch.shop.promo.infra;
 
-import com.maxsolch.shop.domain.PromoReservation;
+import com.maxsolch.shop.promo.domain.PromoReservation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

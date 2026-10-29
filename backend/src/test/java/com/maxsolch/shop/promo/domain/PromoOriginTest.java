@@ -1,12 +1,12 @@
-package com.maxsolch.shop.domain;
+package com.maxsolch.shop.promo.domain;
 
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.repository.PromoCodeRepository;
-import com.maxsolch.shop.repository.PromoReservationRepository;
-import com.maxsolch.shop.service.PromoAdminService;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoReservationRepository;
+import com.maxsolch.shop.promo.app.PromoAdminService;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.controller.AdminPromoController;
-import com.maxsolch.shop.web.dto.PromoCodeDto;
+import com.maxsolch.shop.promo.api.AdminPromoController;
+import com.maxsolch.shop.promo.api.PromoCodeDto;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

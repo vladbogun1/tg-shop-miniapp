@@ -1,4 +1,4 @@
-package com.maxsolch.shop.domain;
+package com.maxsolch.shop.promo.domain;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.Column;
@@ -18,7 +18,7 @@ import java.time.Instant;
  * window between "the shop promised me −20%" and "the order is placed". For a code with a usage
  * limit that window is a race: somebody else's checkout could take the last use, and the customer
  * would be told {@code invalid promo code} on the final step with no way to remove it. A
- * reservation closes the window for {@link com.maxsolch.shop.service.PromoService#HOLD} and is
+ * reservation closes the window for {@link com.maxsolch.shop.promo.app.PromoService#HOLD} and is
  * released when it expires, when the customer clears the code, or when the order is created.
  *
  * <p>Unlimited codes are never reserved — there is nothing to run out of.

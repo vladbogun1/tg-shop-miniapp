@@ -1,14 +1,15 @@
-package com.maxsolch.shop.service;
+package com.maxsolch.shop.promo.app;
 
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.domain.PromoReservation;
-import com.maxsolch.shop.repository.PromoCodeRepository;
-import com.maxsolch.shop.repository.PromoReservationRepository;
+import com.maxsolch.shop.promo.domain.PromoReservation;
+import com.maxsolch.shop.promo.infra.PromoCodeRepository;
+import com.maxsolch.shop.promo.infra.PromoReservationRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.web.dto.PromoPreviewDto;
+import com.maxsolch.shop.promo.api.PromoPreviewDto;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;

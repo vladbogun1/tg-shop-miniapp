@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.service.OrderEvents;
 import com.maxsolch.shop.service.OrderService;
