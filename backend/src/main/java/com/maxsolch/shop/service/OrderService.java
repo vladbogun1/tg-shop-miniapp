@@ -468,16 +468,13 @@ public class OrderService {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(Instant.now());
         String r = reason == null ? "" : reason.trim();
         if (r.length() > 500) {
             r = r.substring(0, 500);
         }
-        order.setRejectReason(r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r);
-        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
-        order.setCancelledByCustomer(true);
-        return afterTransition(order);
+        return rejectLocked(order, new RejectCause(Instant.now(),
+                r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r,
+                RejectReasonCode.CHANGED_MIND.name(), true));
     }
 
     /** Error code: the order is paid — the customer has to file a cancellation request. */
@@ -543,15 +540,12 @@ public class OrderService {
         }
         Instant now = Instant.now();
         restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(now);
-        order.setRejectReason(CustomerRejectReason.BY_REQUEST + ": " + nz(order.getCancelRequestReason()));
-        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
-        order.setCancelledByCustomer(true);
         order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
         order.setCancelRequestResolvedAt(now);
         order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
-        Order saved = afterTransition(order);
+        Order saved = rejectLocked(order, new RejectCause(now,
+                CustomerRejectReason.BY_REQUEST + ": " + nz(order.getCancelRequestReason()),
+                RejectReasonCode.CHANGED_MIND.name(), true));
         events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
         return saved;
     }
@@ -647,17 +641,15 @@ public class OrderService {
             ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
                     OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
         }
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(Instant.now());
-        order.setRejectReason(reason == null || reason.isBlank() ? null : reason.trim());
-        order.setRejectReasonCode(reasonCode == null ? null : reasonCode.name());
         if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
             // Rejected by hand while the customer's request was open: the request is fulfilled
             // (the refund, if any, stays the admin's call — the inbox keeps reminding).
             order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
             order.setCancelRequestResolvedAt(Instant.now());
         }
-        return afterTransition(order);
+        return rejectLocked(order, new RejectCause(Instant.now(),
+                reason == null || reason.isBlank() ? null : reason.trim(),
+                reasonCode == null ? null : reasonCode.name(), false));
     }
 
     /** Dispatcher used by the admin board / status PATCH endpoint. */
@@ -859,11 +851,9 @@ public class OrderService {
             return null;
         }
         restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(now);
-        order.setRejectReason(CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч");
-        order.setRejectReasonCode(RejectReasonCode.PAYMENT_TIMEOUT.name());
-        return afterTransition(order);
+        return rejectLocked(order, new RejectCause(now,
+                CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч",
+                RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
     }
 
     // ----- admin order editing: gifts & discounts -----
@@ -1667,6 +1657,28 @@ public class OrderService {
                 promoCodeRepository.save(p);
             }
         });
+    }
+
+    /**
+     * Why and when an order is rejected: what the four paths to REJECTED (customer cancel, approved
+     * cancel request, admin reject, payment timeout) write on the order. The paths differ in what
+     * they do BEFORE this (stock, money, the cancel request), not in this part.
+     *
+     * @param cancelledByCustomer set the flag; {@code false} leaves it as it is (never true before a reject)
+     */
+    private record RejectCause(Instant at, String reason, String reasonCode, boolean cancelledByCustomer) {
+    }
+
+    /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
+    private Order rejectLocked(Order order, RejectCause cause) {
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(cause.at());
+        order.setRejectReason(cause.reason());
+        order.setRejectReasonCode(cause.reasonCode());
+        if (cause.cancelledByCustomer()) {
+            order.setCancelledByCustomer(true);
+        }
+        return afterTransition(order);
     }
 
     /**
