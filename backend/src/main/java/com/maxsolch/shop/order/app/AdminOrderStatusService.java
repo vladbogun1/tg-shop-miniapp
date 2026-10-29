@@ -80,7 +80,7 @@ public class AdminOrderStatusService {
                         + (reasonCode == null ? "" : ", код причины " + reasonCode.name())
                         + (req.rejectReason() == null || req.rejectReason().isBlank() ? "" : ", причина: " + req.rejectReason())
                         + (target == OrderStatus.REJECTED
-                                ? (OrderService.RETURN_IN_TRANSIT.equals(updated.getReturnStatus())
+                                ? (Order.RETURN_IN_TRANSIT.equals(updated.getReturnStatus())
                                         ? ", посылка едет назад (сток — по приходу)"
                                         : restock ? ", сток возвращён" : ", БЕЗ возврата стока")
                                 : ""));

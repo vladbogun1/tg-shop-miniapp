@@ -1,5 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
+import com.maxsolch.shop.order.domain.PromoDiscount;
 import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.gift.CaseLowMargin;
@@ -269,7 +270,7 @@ public class PromoService {
 
     /** A valid code; the message says the discount skips some items («Упор на скидки»), if it does. */
     private PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil, long excludedMinor) {
-        long discount = OrderService.discountFor(promo, subtotal, excludedMinor);
+        long discount = PromoDiscount.discountFor(promo, subtotal, excludedMinor);
         String note = excludedMinor > 0 ? messages.current("api.promo.partlyExcluded") : null;
         return new PromoPreviewDto(true, discount, subtotal - discount, note, reservedUntil);
     }

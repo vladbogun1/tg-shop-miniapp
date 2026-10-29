@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -166,7 +167,7 @@ class OrderQueryServiceGoldenTest {
             boolean customer = inv.getArgument(2);
             String lang = inv.getArgument(1);
             return new GiftDtos.OrderGiftDto(o.getGiftTier(), o.getGiftDiscountMinor(), o.getGiftCaseStatus(),
-                    OrderService.giftCaseOpenable(o),
+                    GiftCaseRules.giftCaseOpenable(o),
                     customer ? null : new GiftDtos.CaseItemDto("k1", "PRODUCT", "p-" + lang, "Prize",
                             "https://img/prize.jpg", 25000, "RARE", 0, 0),
                     new GiftDtos.PromoDto("GIFT-AB12", 10, 0, Instant.parse("2026-12-01T00:00:00Z"), false),
@@ -247,7 +248,7 @@ class OrderQueryServiceGoldenTest {
         o.setPaymentDueAt(Instant.parse("2026-10-03T10:00:00Z"));
         o.setUncollectedMinor(30000);
         o.setDeliveredAt(Instant.parse("2026-10-06T09:00:00Z"));
-        o.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
         o.setReturnedAt(Instant.parse("2026-10-07T08:00:00Z"));
         o.setRefundedMinor(0);
         o.setTrackingNumber("20450000333444");
@@ -345,7 +346,7 @@ class OrderQueryServiceGoldenTest {
         o.setDiscountMinor(18000);
         o.setGiftDiscountMinor(5000);
         o.setGiftTier("SILVER");
-        o.setGiftCaseStatus(OrderService.GIFT_CASE_SEALED);
+        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
         o.setRejectReason("Не оплачен в течение 24 ч");
         o.setRejectReasonCode("UNPAID");
         o.setRejectedAt(Instant.parse("2026-10-03T10:01:00Z"));

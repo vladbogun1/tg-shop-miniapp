@@ -235,7 +235,7 @@ class OrderAdjustmentServiceTest {
         assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(o.getTrackingNumber()).isEqualTo("20450000000000");
         assertThat(o.getItems().get(0).getReturnPendingQty()).isEqualTo(1);
-        assertThat(o.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(o.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(o.getRefundedMinor()).isEqualTo(10_000);       // paid value moved over
         assertThat(mouse.getStock()).isEqualTo(5);                // not on the shelf yet
 
@@ -568,7 +568,7 @@ class OrderAdjustmentServiceTest {
     @Test
     void receiveReturn_brokenUnits_areWrittenOff_andTheParcelIsMarkedReceived() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
         Product p = product(0);
         OrderItem it = item(o, p, 1L, 1);
         com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
@@ -579,7 +579,7 @@ class OrderAdjustmentServiceTest {
                 List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 null, "owner");
 
-        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_RECEIVED);
+        assertThat(r.order().getReturnStatus()).isEqualTo(Order.RETURN_RECEIVED);
         assertThat(r.order().getReturnReceivedAt()).isNotNull();
         assertThat(it.getReturnedQty()).isEqualTo(1);
         verify(writeoffs).save(any());
@@ -628,7 +628,7 @@ class OrderAdjustmentServiceTest {
                 List.of(), 0, 0), "owner");
 
         assertThat(r.order().getStatus()).isEqualTo(OrderStatus.DELIVERED);
-        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(r.order().getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(r.order().getReturnSentAt()).isNotNull();
         assertThat(it.getReturnedQty()).isEqualTo(1);
         assertThat(it.getReturnPendingQty()).isEqualTo(1);
@@ -675,7 +675,7 @@ class OrderAdjustmentServiceTest {
                 List.of(), 0, 0), "owner");
 
         assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
-        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(r.order().getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(refused.getReturnPendingQty()).isEqualTo(1);
         assertThat(keyboard.getReturnedQty()).isZero();
         assertThat(mouse.getStock()).isZero(); // on its way, not on the shelf yet
@@ -742,7 +742,7 @@ class OrderAdjustmentServiceTest {
     @Test
     void receiveReturn_partialReturnOfADeliveredOrder_takesOnlyTheTravellingUnits() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
         Product mouse = product(0);
         OrderItem back = item(o, mouse, 1L, 3);
         back.setReturnedQty(2);
@@ -757,7 +757,7 @@ class OrderAdjustmentServiceTest {
                 List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 null, "owner");
 
-        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_RECEIVED);
+        assertThat(r.order().getReturnStatus()).isEqualTo(Order.RETURN_RECEIVED);
         assertThat(r.order().getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(mouse.getStock()).isEqualTo(1);
         assertThat(back.getRestockedQty()).isEqualTo(1);

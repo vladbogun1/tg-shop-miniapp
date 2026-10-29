@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.returns.app.OrderReturnRecordsAssembler;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
@@ -209,7 +210,7 @@ public class OrderQueryService {
                 .amountDueMinor(pay.amountDueMinor())
                 .cancelRequestStatus(o.getCancelRequestStatus())
                 .giftCaseStatus(o.getGiftCaseStatus())
-                .giftCaseOpenable(OrderService.giftCaseOpenable(o))
+                .giftCaseOpenable(GiftCaseRules.giftCaseOpenable(o))
                 .uncollectedMinor(pay.uncollectedMinor())
                 .build();
     }
@@ -283,7 +284,7 @@ public class OrderQueryService {
 
     private OrderDetailDto customerView(Order o, String lang) {
         // A sealed gift case keeps its prize a surprise: the customer sees the line after opening.
-        boolean sealed = OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
+        boolean sealed = GiftCaseRules.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus());
         // The payment method is a Russian snapshot; the customer gets its translation while the
         // option still has the same title (content_translations, PAYMENT_OPTION/title).
         String paymentTitle = o.getPaymentOptionTitle();
@@ -384,7 +385,7 @@ public class OrderQueryService {
                 .cancelRequestAdminComment(o.getCancelRequestAdminComment())
                 .giftCaseStatus(o.getGiftCaseStatus())
                 .giftCaseOpenedAt(o.getGiftCaseOpenedAt())
-                .giftCaseOpenable(OrderService.giftCaseOpenable(o))
+                .giftCaseOpenable(GiftCaseRules.giftCaseOpenable(o))
                 .giftDiscountMinor(o.getGiftDiscountMinor())
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
                 .uncollectedMinor(pay.uncollectedMinor());

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -157,7 +158,7 @@ class OrderMergeServiceTest {
                 .isInstanceOf(BadRequestException.class).hasMessageContaining("до отправки");
 
         Order sealed = order(OrderStatus.APPROVED, 1, item("D", 1_000, 1));
-        sealed.setGiftCaseStatus(OrderService.GIFT_CASE_SEALED);
+        sealed.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
         assertThatThrownBy(() -> service.merge(a.getId(), sealed.getId(), false, false, null, "admin"))
                 .isInstanceOf(BadRequestException.class).hasMessageContaining("кейс");
         // The other way round is fine: the case stays with the order that stays.

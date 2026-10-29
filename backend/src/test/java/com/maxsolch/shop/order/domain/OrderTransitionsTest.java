@@ -417,7 +417,7 @@ class OrderTransitionsTest {
         Order r = service.reject(o.getId(), "не забрал", RejectReasonCode.CHANGED_MIND, true, true);
 
         assertThat(r.getStatus()).isEqualTo(OrderStatus.REJECTED);
-        assertThat(r.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(r.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(r.getReturnSentAt()).isNotNull();
         assertThat(r.getItems().get(0).getReturnPendingQty()).isEqualTo(2);
         assertThat(product.getStock()).isEqualTo(3);

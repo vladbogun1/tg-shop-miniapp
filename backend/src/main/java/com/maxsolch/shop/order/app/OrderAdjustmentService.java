@@ -420,8 +420,8 @@ public class OrderAdjustmentService {
                 case IN_TRANSIT -> {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
                     item.setReturnPendingQty(item.getReturnPendingQty() + line.quantity());
-                    if (!OrderService.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
-                        order.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+                    if (!Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+                        order.setReturnStatus(Order.RETURN_IN_TRANSIT);
                         order.setReturnSentAt(Instant.now());
                         order.setReturnReceivedAt(null);
                     }
@@ -606,7 +606,7 @@ public class OrderAdjustmentService {
     @Transactional
     public Result receiveReturn(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
         Order order = load(orderId);
-        if (!OrderService.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+        if (!Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
             throw new BadRequestException("заказ не ждёт возвращения посылки");
         }
         List<ReceivedLine> given = lines == null ? List.of() : lines;
@@ -647,7 +647,7 @@ public class OrderAdjustmentService {
             }
             settleInTransit(order, item, restocked, defect, w);
         }
-        order.setReturnStatus(OrderService.RETURN_RECEIVED);
+        order.setReturnStatus(Order.RETURN_RECEIVED);
         order.setReturnReceivedAt(Instant.now());
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
@@ -1067,7 +1067,7 @@ public class OrderAdjustmentService {
         }
         boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
         if (!anyPending && order.getStatus() != OrderStatus.REJECTED) {
-            order.setReturnStatus(otherPosted ? OrderService.RETURN_RECEIVED : null);
+            order.setReturnStatus(otherPosted ? Order.RETURN_RECEIVED : null);
             if (!otherPosted) {
                 order.setReturnSentAt(null);
                 order.setReturnReceivedAt(null);

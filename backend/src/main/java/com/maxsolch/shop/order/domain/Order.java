@@ -25,6 +25,10 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
 
+    /** {@link #getReturnStatus()}: the refused parcel is on its way back / has arrived. */
+    public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
+    public static final String RETURN_RECEIVED = "RECEIVED";
+
     @Id
     @Column(name = "id", columnDefinition = "BINARY(16)", nullable = false)
     private byte[] id;

@@ -237,7 +237,7 @@ class AdminOrderControllerTest {
     void status_rejectInTransit_goesThroughReject_andAuditsTheTrip() {
         Order updated = new Order();
         updated.setId(order.getId());
-        updated.setReturnStatus(OrderService.RETURN_IN_TRANSIT);
+        updated.setReturnStatus(Order.RETURN_IN_TRANSIT);
         when(orderService.reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("REJECTED", null, "отказ на почте", null, "REFUSED_AT_POST", null, true));

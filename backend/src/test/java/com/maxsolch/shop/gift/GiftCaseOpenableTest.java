@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.app.OrderService;
@@ -21,15 +22,15 @@ class GiftCaseOpenableTest {
 
     @Test
     void onlyAPaidSealedCaseOpens() {
-        assertThat(OrderService.giftCaseOpenable(order("SEALED", OrderStatus.NEW, false, 0))).isFalse();
-        assertThat(OrderService.giftCaseOpenable(order("SEALED", OrderStatus.NEW, true, 300_000))).isTrue();
-        assertThat(OrderService.giftCaseOpenable(order("SEALED", OrderStatus.APPROVED, true, 10_000))).isTrue();
+        assertThat(GiftCaseRules.giftCaseOpenable(order("SEALED", OrderStatus.NEW, false, 0))).isFalse();
+        assertThat(GiftCaseRules.giftCaseOpenable(order("SEALED", OrderStatus.NEW, true, 300_000))).isTrue();
+        assertThat(GiftCaseRules.giftCaseOpenable(order("SEALED", OrderStatus.APPROVED, true, 10_000))).isTrue();
     }
 
     @Test
     void openedRejectedOrNoCaseDoNotOpen() {
-        assertThat(OrderService.giftCaseOpenable(order("OPENED", OrderStatus.APPROVED, true, 300_000))).isFalse();
-        assertThat(OrderService.giftCaseOpenable(order("SEALED", OrderStatus.REJECTED, true, 300_000))).isFalse();
-        assertThat(OrderService.giftCaseOpenable(order(null, OrderStatus.APPROVED, true, 300_000))).isFalse();
+        assertThat(GiftCaseRules.giftCaseOpenable(order("OPENED", OrderStatus.APPROVED, true, 300_000))).isFalse();
+        assertThat(GiftCaseRules.giftCaseOpenable(order("SEALED", OrderStatus.REJECTED, true, 300_000))).isFalse();
+        assertThat(GiftCaseRules.giftCaseOpenable(order(null, OrderStatus.APPROVED, true, 300_000))).isFalse();
     }
 }

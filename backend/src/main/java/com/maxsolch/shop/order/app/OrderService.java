@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
@@ -254,7 +256,7 @@ public class OrderService {
         PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
         long lowMarginMinor = lowMarginMinor(order);
         if (promo != null) {
-            discount = discountFor(promo, subtotal, promoExcluded(promo, lowMarginMinor, subtotal));
+            discount = PromoDiscount.discountFor(promo, subtotal, promoExcluded(promo, lowMarginMinor, subtotal));
             order.setPromoCode(promo.getCode());
             promo.setUsesCount(promo.getUsesCount() + 1);
             promoCodeRepository.save(promo);
@@ -602,7 +604,7 @@ public class OrderService {
         }
         boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
         if (inTransit) {
-            order.setReturnStatus(RETURN_IN_TRANSIT);
+            order.setReturnStatus(Order.RETURN_IN_TRANSIT);
             order.setReturnSentAt(Instant.now());
             for (OrderItem item : order.getItems()) {
                 item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
@@ -975,7 +977,7 @@ public class OrderService {
             // holds do not stand in their way — only the code's own usage limit does.
             // The order's customer is passed for the owner check of personal codes (V44).
             PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
-            discount = discountFor(p, subtotal, promoExcluded(p, lowMarginMinor(order), subtotal));
+            discount = PromoDiscount.discountFor(p, subtotal, promoExcluded(p, lowMarginMinor(order), subtotal));
             p.setUsesCount(p.getUsesCount() + 1);
             promoCodeRepository.save(p);
             order.setPromoCode(p.getCode());
@@ -1004,9 +1006,6 @@ public class OrderService {
 
     // ----- archive (orders are never deleted) -----
 
-    /** {@link Order#getReturnStatus()}: the refused parcel is on its way back / has arrived. */
-    public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
-    public static final String RETURN_RECEIVED = "RECEIVED";
 
     /**
      * Archives a closed order (DELIVERED / REJECTED): it leaves the board, the lists and the
@@ -1021,7 +1020,7 @@ public class OrderService {
         if (order.getArchivedAt() != null) {
             throw new BadRequestException("заказ уже в архиве");
         }
-        if (RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
+        if (Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
             throw new BadRequestException("посылка ещё едет назад — сначала отметьте «Посылка вернулась»");
         }
         OrderStatus status = order.getStatus();
@@ -1246,7 +1245,7 @@ public class OrderService {
             title = p.getTitle();
         }
         order.setGiftTier(tier.name());
-        order.setGiftCaseStatus(GIFT_CASE_SEALED);
+        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
         order.setGiftCaseOpenedAt(null);
         return GiftService.record(order.getId(), prize, title);
     }
@@ -1260,37 +1259,17 @@ public class OrderService {
     public Order openGiftCase(byte[] orderId) {
         Order order = lock(orderId);
         if (order.getGiftCaseStatus() == null) {
-            throw new BadRequestException(messages.current("api.giftCase.none"), GIFT_CASE_NONE);
+            throw new BadRequestException(messages.current("api.giftCase.none"), GiftCaseRules.GIFT_CASE_NONE);
         }
-        if (GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
-            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GIFT_CASE_ALREADY_OPENED);
+        if (GiftCaseRules.GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
+            throw new BadRequestException(messages.current("api.giftCase.alreadyOpened"), GiftCaseRules.GIFT_CASE_ALREADY_OPENED);
         }
-        if (!giftCaseOpenable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GIFT_CASE_UNPAID);
+        if (!GiftCaseRules.giftCaseOpenable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.unpaid"), GiftCaseRules.GIFT_CASE_UNPAID);
         }
-        order.setGiftCaseStatus(GIFT_CASE_OPENED);
+        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
         order.setGiftCaseOpenedAt(Instant.now());
         return orderRepository.save(order);
-    }
-
-    /** A sealed case can be opened: the order is paid (online part arrived) and not rejected. */
-    public static boolean giftCaseOpenable(Order order) {
-        if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
-            return false;
-        }
-        return order.isPaid() || (order.getReceivedMinor() > 0 && OrderMoney.amountDueMinor(order) == 0);
-    }
-
-    /** The prize line of the order's case (a product prize that is still in the order). */
-    public static Optional<OrderItem> casePrizeLine(Order order) {
-        return order.getItems().stream().filter(i -> i.isAutoGift() && i.getCaseRarity() != null).findFirst();
-    }
-
-    /** Swapping the case prize is possible while the order is still being put together. */
-    public static boolean giftCaseSwappable(Order order) {
-        return GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())
-                && OrderTransitions.isOpen(order)
-                && casePrizeLine(order).isPresent();
     }
 
     /**
@@ -1300,10 +1279,10 @@ public class OrderService {
     @Transactional
     public Order removeCasePrizeForSwap(byte[] orderId) {
         Order order = lock(orderId);
-        if (!giftCaseSwappable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GIFT_CASE_SWAP_UNAVAILABLE);
+        if (!GiftCaseRules.giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE);
         }
-        OrderItem item = casePrizeLine(order).orElseThrow();
+        OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
         stock.restoreLine(item);
         order.getItems().remove(item);
         recomputeTotals(order);
@@ -1322,7 +1301,7 @@ public class OrderService {
      */
     @Transactional(readOnly = true)
     public List<PrizeSize> casePrizeSizes(Order order) {
-        OrderItem line = casePrizeLine(order).orElse(null);
+        OrderItem line = GiftCaseRules.casePrizeLine(order).orElse(null);
         if (line == null || line.getVariantId() == null) {
             return List.of();
         }
@@ -1341,23 +1320,23 @@ public class OrderService {
     /**
      * The customer picks the size of the opened case's product prize while the order is still being put
      * together: the held unit goes back to stock and one of the chosen size is reserved instead. Picking
-     * the held size just confirms it. 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone.
+     * the held size just confirms it. 400 GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE when that size is gone.
      */
     @Transactional
     public Order chooseCasePrizeSize(byte[] orderId, String variantId) {
         Order order = lock(orderId);
-        if (!giftCaseSwappable(order)) {
-            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+        if (!GiftCaseRules.giftCaseSwappable(order)) {
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
         }
-        OrderItem item = casePrizeLine(order).orElseThrow();
+        OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
         Product product = productRepository.findByIdForUpdate(item.getProductId()).orElse(null);
         ProductVariant target = product == null || variantId == null ? null : findVariant(product, variantId);
         if (target == null || item.getVariantId() == null) {
-            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+            throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
         }
         if (!java.util.Arrays.equals(target.getId(), item.getVariantId())) {
             if (target.getStock() < item.getQuantity()) {
-                throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
+                throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
             }
             stock.moveLine(product, target, item);
             item.setVariantId(target.getId());
@@ -1415,14 +1394,6 @@ public class OrderService {
                 null, null, 1));
         return saved;
     }
-
-    public static final String GIFT_CASE_SEALED = "SEALED";
-    public static final String GIFT_CASE_OPENED = "OPENED";
-    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
-    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
-    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
-    public static final String GIFT_CASE_SWAP_UNAVAILABLE = "GIFT_CASE_SWAP_UNAVAILABLE";
-    public static final String GIFT_CASE_SIZE_UNAVAILABLE = "GIFT_CASE_SIZE_UNAVAILABLE";
 
     /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
     private void releasePromoUsage(String code) {
@@ -1513,26 +1484,6 @@ public class OrderService {
     }
 
     /**
-     * Discount for a promo code against a subtotal. Fixed amount wins over percent, and both are
-     * capped at the subtotal so a misconfigured code (say 150%) can never produce a negative total
-     * or a stored discount larger than the order itself.
-     */
-    public static long discountFor(PromoCode promo, long subtotal) {
-        return discountFor(promo, subtotal, 0);
-    }
-
-    /**
-     * The same against the subtotal without {@code excludedMinor} (the low-margin products no promo code
-     * applies to, {@link #promoExcluded}); capped at what is left. Order: the excluded products come off
-     * first, then the percent (or amount), then the code's own ceiling ({@code max_discount_minor}, V63).
-     */
-    public static long discountFor(PromoCode promo, long subtotal, long excludedMinor) {
-        long base = Math.max(0, subtotal - Math.max(0, excludedMinor));
-        long discount = discountOn(promo, base);
-        return Math.min(discount, base);
-    }
-
-    /**
      * What of the subtotal a code does not touch: the low-margin products («Упор на скидки») — no promo
      * code applies to them, a case code or any other. A code on a cart of only such products is refused,
      * so the use is not wasted.
@@ -1569,22 +1520,6 @@ public class OrderService {
 
     private java.util.Set<String> lowMarginIds() {
         return caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
-    }
-
-    private static long discountOn(PromoCode promo, long subtotal) {
-        long discount;
-        if (promo.getDiscountAmountMinor() > 0) {
-            discount = promo.getDiscountAmountMinor();
-        } else if (promo.getDiscountPercent() > 0) {
-            int percent = Math.min(100, promo.getDiscountPercent());
-            discount = subtotal * percent / 100;
-        } else {
-            discount = 0;
-        }
-        if (promo.getMaxDiscountMinor() > 0) {
-            discount = Math.min(discount, promo.getMaxDiscountMinor());
-        }
-        return Math.min(Math.max(0, discount), subtotal);
     }
 
     private DeliveryMethod parseDelivery(String value) {

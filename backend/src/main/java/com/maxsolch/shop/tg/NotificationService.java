@@ -1,5 +1,6 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
@@ -86,7 +87,7 @@ public class NotificationService {
                     + statusCustomerNote(order, locale);
             if ("SEALED".equals(order.getGiftCaseStatus()) && order.getStatus() != OrderStatus.REJECTED) {
                 // The gift case waits in the order until the customer opens it in the shop.
-                text += (text.endsWith("\n") ? "" : "\n") + messages.get(locale, OrderService.giftCaseOpenable(order)
+                text += (text.endsWith("\n") ? "" : "\n") + messages.get(locale, GiftCaseRules.giftCaseOpenable(order)
                         ? "bot.giftCase.grantedOpen" : "bot.giftCase.sealed");
             }
             return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
@@ -116,7 +117,7 @@ public class NotificationService {
         customerBot.send("notifyCustomerGiftCase", "ORDER_GIFT_CASE", order, locale -> {
             String text = messages.get(locale, "bot.giftCase.grantedTitle") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
-                    + messages.get(locale, OrderService.giftCaseOpenable(order)
+                    + messages.get(locale, GiftCaseRules.giftCaseOpenable(order)
                             ? "bot.giftCase.grantedOpen" : "bot.giftCase.grantedAfterPay");
             return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
         });

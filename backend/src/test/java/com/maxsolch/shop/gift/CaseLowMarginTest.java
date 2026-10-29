@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift;
 
+import com.maxsolch.shop.order.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.order.app.OrderService;
 import org.junit.jupiter.api.Test;
@@ -110,15 +111,15 @@ class CaseLowMarginTest {
         PromoCode percent = new PromoCode();
         percent.setDiscountPercent(10);
         // Mouse 4 000 ₴ (low-margin) + pad 800 ₴: 10 % of 800 only.
-        assertThat(OrderService.discountFor(percent, 480_000, 400_000)).isEqualTo(8_000);
-        assertThat(OrderService.discountFor(percent, 480_000)).isEqualTo(48_000);
+        assertThat(PromoDiscount.discountFor(percent, 480_000, 400_000)).isEqualTo(8_000);
+        assertThat(PromoDiscount.discountFor(percent, 480_000)).isEqualTo(48_000);
 
         PromoCode fixed = new PromoCode();
         fixed.setDiscountAmountMinor(30_000);
         // −300 ₴ is capped at the 200 ₴ the code may touch.
-        assertThat(OrderService.discountFor(fixed, 420_000, 400_000)).isEqualTo(20_000);
-        assertThat(OrderService.discountFor(fixed, 480_000, 400_000)).isEqualTo(30_000);
-        assertThat(OrderService.discountFor(fixed, 400_000, 400_000)).isZero();
+        assertThat(PromoDiscount.discountFor(fixed, 420_000, 400_000)).isEqualTo(20_000);
+        assertThat(PromoDiscount.discountFor(fixed, 480_000, 400_000)).isEqualTo(30_000);
+        assertThat(PromoDiscount.discountFor(fixed, 400_000, 400_000)).isZero();
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
@@ -87,7 +88,7 @@ public class GiftCaseService {
     }
 
     private static BadRequestException swapUnavailable() {
-        return new BadRequestException("Заменить приз уже нельзя", OrderService.GIFT_CASE_SWAP_UNAVAILABLE);
+        return new BadRequestException("Заменить приз уже нельзя", GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE);
     }
 
     /** The gift block of an order page; {@code customer}: the prize stays hidden until the case is opened. */
@@ -97,13 +98,13 @@ public class GiftCaseService {
             return null;
         }
         OrderGiftCase rec = order.getGiftCaseStatus() == null ? null : giftService.orderCase(order.getId()).orElse(null);
-        boolean hidden = customer && !OrderService.GIFT_CASE_OPENED.equals(order.getGiftCaseStatus());
+        boolean hidden = customer && !GiftCaseRules.GIFT_CASE_OPENED.equals(order.getGiftCaseStatus());
         CaseItemDto prize = rec == null || hidden ? null : wonDto(rec, lang);
         PromoDto promo = rec == null || hidden ? null : promoDto(rec.getPromoCode());
         SwapDto swap = rec == null || hidden ? null : swapOffer(order, rec);
         SizeDto size = order.getGiftCaseStatus() == null || hidden ? null : sizeDto(order);
         return new OrderGiftDto(order.getGiftTier(), order.getGiftDiscountMinor(), order.getGiftCaseStatus(),
-                OrderService.giftCaseOpenable(order), prize, promo, swap, size,
+                GiftCaseRules.giftCaseOpenable(order), prize, promo, swap, size,
                 customer || rec == null ? null : rec.isLowMargin());
     }
 
@@ -115,7 +116,7 @@ public class GiftCaseService {
 
     /** The size block of the case prize line; null when the prize has no sizes or has left the order. */
     SizeDto sizeDto(Order order) {
-        var line = OrderService.casePrizeLine(order).orElse(null);
+        var line = GiftCaseRules.casePrizeLine(order).orElse(null);
         if (line == null || line.getVariantId() == null) {
             return null;
         }
@@ -123,7 +124,7 @@ public class GiftCaseService {
         if (sizes.isEmpty()) {
             return null;
         }
-        return new SizeDto(line.isVariantPending(), OrderService.giftCaseSwappable(order),
+        return new SizeDto(line.isVariantPending(), GiftCaseRules.giftCaseSwappable(order),
                 UuidUtil.toString(line.getVariantId()), line.getVariantNameSnapshot(),
                 sizes.stream().map(s -> new SizeOption(s.variantId(), s.name())).toList());
     }
@@ -135,7 +136,7 @@ public class GiftCaseService {
         if (reel.stream().noneMatch(c -> c.key().equals(won.key()))) {
             reel.add(won);
         }
-        return new CaseOpenDto(OrderService.GIFT_CASE_OPENED, tier, won, reel,
+        return new CaseOpenDto(GiftCaseRules.GIFT_CASE_OPENED, tier, won, reel,
                 rec == null ? null : promoDto(rec.getPromoCode()),
                 rec == null ? new SwapDto(false, 0, null) : swapOffer(order, rec), sizeDto(order));
     }
@@ -155,8 +156,8 @@ public class GiftCaseService {
 
     /** An order sealed before the prize records existed: the prize line is all there is. */
     private CaseItemDto legacyWon(Order order, String lang) {
-        var line = OrderService.casePrizeLine(order).orElseThrow(
-                () -> new BadRequestException("в заказе нет приза кейса", OrderService.GIFT_CASE_NONE));
+        var line = GiftCaseRules.casePrizeLine(order).orElseThrow(
+                () -> new BadRequestException("в заказе нет приза кейса", GiftCaseRules.GIFT_CASE_NONE));
         String pid = UuidUtil.toString(line.getProductId());
         ProductDto p = catalogService.getProduct(pid, lang).orElse(null);
         return new CaseItemDto("p" + pid, GiftCaseItem.Kind.PRODUCT.name(), pid,
@@ -179,7 +180,7 @@ public class GiftCaseService {
         if (rec.getSwappedAt() != null) {
             return new SwapDto(false, rec.getSwapAmountMinor(), rec.getSwappedAt());
         }
-        if (rec.isDiscount() || rec.getProductId() == null || !OrderService.giftCaseSwappable(order)) {
+        if (rec.isDiscount() || rec.getProductId() == null || !GiftCaseRules.giftCaseSwappable(order)) {
             return new SwapDto(false, 0, null);
         }
         long price = catalogService.getProduct(UuidUtil.toString(rec.getProductId()), "ru")

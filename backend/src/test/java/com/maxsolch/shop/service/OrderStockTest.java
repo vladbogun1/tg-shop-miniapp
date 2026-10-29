@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderService;
@@ -453,7 +454,7 @@ class OrderStockTest {
         Product p = product(0);
         ProductVariant m = variant(p, "M", 3);
         Order o = order(OrderStatus.NEW);
-        o.setGiftCaseStatus(OrderService.GIFT_CASE_OPENED);
+        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem it = line(o, p, m, 5, 1);
         it.setGift(true);
         it.setAutoGift(true);
@@ -472,7 +473,7 @@ class OrderStockTest {
         ProductVariant m = variant(p, "M", 3);
         ProductVariant l = variant(p, "L", 1);
         Order o = order(OrderStatus.NEW);
-        o.setGiftCaseStatus(OrderService.GIFT_CASE_OPENED);
+        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem it = line(o, p, m, 5, 1);
         it.setGift(true);
         it.setAutoGift(true);

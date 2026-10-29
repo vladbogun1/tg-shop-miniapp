@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
@@ -225,7 +226,7 @@ public class OrderMergeService {
         if (!staying && o.getTrackingNumber() != null && !o.getTrackingNumber().isBlank()) {
             return "у заказа " + id + " уже есть ТТН — оставьте основным его или удалите ТТН";
         }
-        if (!staying && OrderService.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus())) {
+        if (!staying && GiftCaseRules.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus())) {
             return "в заказе " + id + " не открыт кейс — оставьте основным его";
         }
         return null;

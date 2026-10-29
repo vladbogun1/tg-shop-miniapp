@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.PromoDiscount;
+import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
@@ -1141,7 +1143,7 @@ class OrderServiceTest {
         Order rejected = service.reject(o.getId(), null, RejectReasonCode.REFUSED_AT_POST, true, true);
 
         assertThat(rejected.getStatus()).isEqualTo(OrderStatus.REJECTED);
-        assertThat(rejected.getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(rejected.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(rejected.getReturnSentAt()).isNotNull();
         assertThat(it.getReturnPendingQty()).isEqualTo(1);
         verify(productRepository, never()).findByIdForUpdate(any());
@@ -1207,7 +1209,7 @@ class OrderServiceTest {
 
         // Capped at the subtotal, so a total can never go negative and the stored discount can
         // never exceed the order itself.
-        assertThat(OrderService.discountFor(broken, 10_000)).isEqualTo(10_000);
+        assertThat(PromoDiscount.discountFor(broken, 10_000)).isEqualTo(10_000);
     }
 
     @Test
@@ -1216,8 +1218,8 @@ class OrderServiceTest {
         promo.setDiscountAmountMinor(30_000);
         promo.setDiscountPercent(10);
 
-        assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000);
-        assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(30_000);
+        assertThat(PromoDiscount.discountFor(promo, 10_000)).isEqualTo(10_000);
+        assertThat(PromoDiscount.discountFor(promo, 100_000)).isEqualTo(30_000);
     }
 
     @Test
@@ -1226,13 +1228,13 @@ class OrderServiceTest {
         bonus.setDiscountPercent(5);
         bonus.setMaxDiscountMinor(10_000); // 5 %, but at most 100 ₴
 
-        assertThat(OrderService.discountFor(bonus, 1_000_000)).isEqualTo(10_000); // 10 000 ₴ → −100 ₴
-        assertThat(OrderService.discountFor(bonus, 200_000)).isEqualTo(10_000);   // exactly 5 %
-        assertThat(OrderService.discountFor(bonus, 100_000)).isEqualTo(5_000);    // below the ceiling
-        assertThat(OrderService.discountFor(bonus, 4_000)).isEqualTo(200);
+        assertThat(PromoDiscount.discountFor(bonus, 1_000_000)).isEqualTo(10_000); // 10 000 ₴ → −100 ₴
+        assertThat(PromoDiscount.discountFor(bonus, 200_000)).isEqualTo(10_000);   // exactly 5 %
+        assertThat(PromoDiscount.discountFor(bonus, 100_000)).isEqualTo(5_000);    // below the ceiling
+        assertThat(PromoDiscount.discountFor(bonus, 4_000)).isEqualTo(200);
 
         bonus.setMaxDiscountMinor(0); // no ceiling
-        assertThat(OrderService.discountFor(bonus, 1_000_000)).isEqualTo(50_000);
+        assertThat(PromoDiscount.discountFor(bonus, 1_000_000)).isEqualTo(50_000);
     }
 
     @Test
@@ -1242,9 +1244,9 @@ class OrderServiceTest {
         promo.setMaxDiscountMinor(15_000);
 
         // 10 000 ₴, of them 8 000 ₴ excluded: 10 % of 2 000 ₴ = 200 ₴ → ceiling 150 ₴.
-        assertThat(OrderService.discountFor(promo, 1_000_000, 800_000)).isEqualTo(15_000);
+        assertThat(PromoDiscount.discountFor(promo, 1_000_000, 800_000)).isEqualTo(15_000);
         // 9 000 ₴ excluded: 10 % of 1 000 ₴ = 100 ₴, under the ceiling.
-        assertThat(OrderService.discountFor(promo, 1_000_000, 900_000)).isEqualTo(10_000);
+        assertThat(PromoDiscount.discountFor(promo, 1_000_000, 900_000)).isEqualTo(10_000);
     }
 
     @Test
@@ -1253,8 +1255,8 @@ class OrderServiceTest {
         promo.setDiscountAmountMinor(30_000);
         promo.setMaxDiscountMinor(20_000);
 
-        assertThat(OrderService.discountFor(promo, 100_000)).isEqualTo(20_000);
-        assertThat(OrderService.discountFor(promo, 10_000)).isEqualTo(10_000); // still not above the subtotal
+        assertThat(PromoDiscount.discountFor(promo, 100_000)).isEqualTo(20_000);
+        assertThat(PromoDiscount.discountFor(promo, 10_000)).isEqualTo(10_000); // still not above the subtotal
     }
 
     // ---------- the size of a case prize (V59) ----------
@@ -1278,7 +1280,7 @@ class OrderServiceTest {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
         o.setStatus(status);
-        o.setGiftCaseStatus(OrderService.GIFT_CASE_OPENED);
+        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem line = new OrderItem();
         line.setOrder(o);
         line.setProductId(productId);
@@ -1369,7 +1371,7 @@ class OrderServiceTest {
         Order order = checkoutWithCase(2_161_00);
 
         assertThat(order.getItems()).noneMatch(OrderItem::isGift);
-        assertThat(order.getGiftCaseStatus()).isEqualTo(OrderService.GIFT_CASE_SEALED);
+        assertThat(order.getGiftCaseStatus()).isEqualTo(GiftCaseRules.GIFT_CASE_SEALED);
     }
 
     @Test
@@ -1536,7 +1538,7 @@ class OrderServiceTest {
 
         Order granted = service.grantGiftCase(o.getId(), tier, true);
 
-        assertThat(granted.getGiftCaseStatus()).isEqualTo(OrderService.GIFT_CASE_SEALED);
+        assertThat(granted.getGiftCaseStatus()).isEqualTo(GiftCaseRules.GIFT_CASE_SEALED);
         assertThat(granted.getGiftTier()).isEqualTo("SILVER");
         OrderItem line = granted.getItems().stream().filter(OrderItem::isGift).findFirst().orElseThrow();
         assertThat(line.getPriceMinorSnapshot()).isZero();
