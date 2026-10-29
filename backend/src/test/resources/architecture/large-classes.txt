@@ -11,10 +11,10 @@ com/maxsolch/shop/preorder/PreorderBatchService.java 734
 com/maxsolch/shop/preorder/PreorderQueueService.java 724
 com/maxsolch/shop/review/ReviewService.java 591
 com/maxsolch/shop/service/AdminProductService.java 741
-com/maxsolch/shop/service/OrderAdjustmentService.java 1222
-com/maxsolch/shop/service/OrderQueryService.java 585
-com/maxsolch/shop/service/OrderService.java 1629
+com/maxsolch/shop/order/app/OrderAdjustmentService.java 1222
+com/maxsolch/shop/order/app/OrderQueryService.java 585
+com/maxsolch/shop/order/app/OrderService.java 1629
 com/maxsolch/shop/service/WebAuthService.java 569
 com/maxsolch/shop/support/SupportService.java 650
 com/maxsolch/shop/translation/TranslationAdminService.java 955
-com/maxsolch/shop/web/controller/AdminOrderController.java 522
+com/maxsolch/shop/order/api/AdminOrderController.java 522

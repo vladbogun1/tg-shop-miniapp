@@ -43,6 +43,13 @@ class ArchitectureV2Test {
         Map<String, Integer> actual = count(violations);
         Map<String, Integer> baseline = readBaseline();
 
+        String dump = System.getProperty("architecture.v2.dump");
+        if (dump != null) {
+            Files.writeString(Path.of(dump), violations.stream()
+                    .map(v -> v.rule() + " " + v.module() + " | " + v.key()).sorted()
+                    .collect(Collectors.joining("\n", "", "\n")), StandardCharsets.UTF_8);
+        }
+
         String summary = summary(classes, actual);
         System.out.println(summary);
         Files.createDirectories(SUMMARY.getParent());
@@ -63,7 +70,22 @@ class ArchitectureV2Test {
 
         if (Boolean.getBoolean("architecture.v2.update")) {
             if (Files.exists(BASELINE)) {
-                assertThat(grew).as("the baseline may only go down; fix the code for these").isEmpty();
+                // Moving classes between modules may shift a rule's count from one row to another (a legacy class
+                // becomes a class of 'order'), but the total per rule may not grow. A rule whose total has to grow
+                // on purpose (it became measurable, e.g. M1/M2 once modules exist) is named in
+                // -Darchitecture.v2.allow-growth=M1,M2 and the reason goes into the commit message.
+                java.util.Set<String> allowed = java.util.Set.of(
+                        System.getProperty("architecture.v2.allow-growth", "").split(","));
+                Map<String, Integer> was = ruleTotals(baseline);
+                Map<String, Integer> now = ruleTotals(actual);
+                List<String> totalGrew = new ArrayList<>();
+                now.forEach((rule, n) -> {
+                    if (n > was.getOrDefault(rule, 0) && !allowed.contains(rule)) {
+                        totalGrew.add(rule + ": " + was.getOrDefault(rule, 0) + " -> " + n);
+                    }
+                });
+                assertThat(totalGrew).as("the total of a rule may not grow; fix the code (or name the rule in "
+                        + "-Darchitecture.v2.allow-growth with a reason)").isEmpty();
             }
             writeBaseline(actual);
             return;
@@ -74,6 +96,12 @@ class ArchitectureV2Test {
         }
         assertThat(grew).as("new violations of the target architecture (rule module: baseline -> now); "
                 + "fix the code, do not raise the baseline").isEmpty();
+    }
+
+    private static Map<String, Integer> ruleTotals(Map<String, Integer> perRuleAndModule) {
+        Map<String, Integer> m = new TreeMap<>();
+        perRuleAndModule.forEach((key, n) -> m.merge(key.split(" ")[0], n, Integer::sum));
+        return m;
     }
 
     private static Map<String, Integer> count(List<Violation> violations) {

@@ -197,7 +197,7 @@ final class V2Rules {
                     && (name.equals("newBuilder") || name.equals("newHttpClient"))) {
                 out.add(new Violation("H1", from.module(), detail));
             }
-            if (owner.equals(root + ".domain.Order") && name.equals("setStatus")
+            if ((owner.equals(root + ".domain.Order") || owner.equals(root + ".order.domain.Order")) && name.equals("setStatus")
                     && !Placement.outermost(c).getName().equals(owner)) {
                 out.add(new Violation("O1", from.module(), detail));
             }
