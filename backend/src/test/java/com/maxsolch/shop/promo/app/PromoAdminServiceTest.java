@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.promo.api.PromoCodeUpsertRequest;
+import com.maxsolch.shop.promo.app.PromoCodeUpsertRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;

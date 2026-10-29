@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.app.ConversationDto;
 import com.maxsolch.shop.order.app.MessageDto;
-import com.maxsolch.shop.order.api.SendMessageRequest;
+import com.maxsolch.shop.order.app.SendMessageRequest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

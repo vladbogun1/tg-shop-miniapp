@@ -9,7 +9,7 @@ import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.web.dto.NpCityDto;
 import com.maxsolch.shop.web.dto.NpWarehouseDto;
 import com.maxsolch.shop.web.dto.PaymentOptionDto;
-import com.maxsolch.shop.promo.api.PromoPreviewDto;
+import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;

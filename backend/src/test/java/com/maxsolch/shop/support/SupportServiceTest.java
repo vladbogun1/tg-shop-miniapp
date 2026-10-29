@@ -16,7 +16,7 @@ import com.maxsolch.shop.support.SupportDtos.ThreadDto;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.order.api.SendMessageRequest;
+import com.maxsolch.shop.order.app.SendMessageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

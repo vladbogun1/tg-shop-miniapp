@@ -25,14 +25,10 @@ K1 legacy 2
 L1 legacy 7
 L1 order 2
 L1 promo 2
-L2 cart 2
-L2 legacy 39
-L2 order 2
-L2 promo 2
-L3 cart 1
+L2 legacy 38
 L3 legacy 18
 L4 legacy 11
-M1 legacy 19
+M1 legacy 13
 M1 order 1
 M1 platform 1
 M2 promo 4

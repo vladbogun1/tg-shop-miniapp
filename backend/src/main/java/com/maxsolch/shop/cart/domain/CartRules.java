@@ -1,7 +1,6 @@
 package com.maxsolch.shop.cart.domain;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -36,6 +35,10 @@ public final class CartRules {
         }
     }
 
+    /** A line as the caller supplies it, before ids are parsed (the app maps its request DTO to this). */
+    public record RawLine(String productId, String variantId, int quantity) {
+    }
+
     public record Line(LineKey key, int quantity) {
     }
 
@@ -44,12 +47,12 @@ public final class CartRules {
      * client cache must not fail a whole sync), duplicates of one key are summed, every quantity is
      * clamped to {@link #MAX_QUANTITY}. Order of first appearance is kept.
      */
-    public static List<Line> normalize(List<CartLineInput> input) {
+    public static List<Line> normalize(List<RawLine> input) {
         Map<LineKey, Integer> acc = new LinkedHashMap<>();
         if (input == null) {
             return List.of();
         }
-        for (CartLineInput in : input) {
+        for (RawLine in : input) {
             if (in == null || in.quantity() <= 0) {
                 continue;
             }

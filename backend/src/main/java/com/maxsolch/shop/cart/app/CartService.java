@@ -16,9 +16,9 @@ import com.maxsolch.shop.cart.domain.CartRules.LineKey;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.cart.api.CartDtos.CartDto;
-import com.maxsolch.shop.cart.api.CartDtos.CartLineDto;
-import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
+import com.maxsolch.shop.cart.app.CartDtos.CartDto;
+import com.maxsolch.shop.cart.app.CartDtos.CartLineDto;
+import com.maxsolch.shop.cart.app.CartDtos.CartLineInput;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,7 +90,7 @@ public class CartService {
     @Transactional
     public CartDto replace(long userId, List<CartLineInput> input, String lang) {
         checkRequestSize(input);
-        List<Line> wanted = CartRules.normalize(input);
+        List<Line> wanted = CartRules.normalize(raw(input));
         if (wanted.size() > CartRules.MAX_LINES) {
             throw new DomainException.BadRequest(messages.current("api.cart.tooManyLines", CartRules.MAX_LINES));
         }
@@ -102,7 +102,7 @@ public class CartService {
     @Transactional
     public CartDto merge(long userId, List<CartLineInput> input, String lang) {
         checkRequestSize(input);
-        List<Line> guest = CartRules.normalize(input);
+        List<Line> guest = CartRules.normalize(raw(input));
         Written w = write(userId, current -> CartRules.merge(current, guest), true);
         return toDto(w.cart(), w.items(), lang);
     }
@@ -213,6 +213,17 @@ public class CartService {
                 continue;
             }
             out.add(l);
+        }
+        return out;
+    }
+
+    private static List<CartRules.RawLine> raw(List<CartLineInput> input) {
+        if (input == null) {
+            return null;
+        }
+        List<CartRules.RawLine> out = new ArrayList<>(input.size());
+        for (CartLineInput in : input) {
+            out.add(in == null ? null : new CartRules.RawLine(in.productId(), in.variantId(), in.quantity()));
         }
         return out;
     }

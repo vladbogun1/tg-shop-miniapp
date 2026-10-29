@@ -1,4 +1,4 @@
-package com.maxsolch.shop.cart.api;
+package com.maxsolch.shop.cart.app;
 
 import jakarta.validation.constraints.NotNull;
 

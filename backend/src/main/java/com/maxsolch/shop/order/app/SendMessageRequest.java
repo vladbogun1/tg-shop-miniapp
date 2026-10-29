@@ -1,4 +1,4 @@
-package com.maxsolch.shop.order.api;
+package com.maxsolch.shop.order.app;
 
 public record SendMessageRequest(
         String text,

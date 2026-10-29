@@ -1,4 +1,4 @@
-package com.maxsolch.shop.promo.api;
+package com.maxsolch.shop.promo.app;
 
 import java.time.Instant;
 

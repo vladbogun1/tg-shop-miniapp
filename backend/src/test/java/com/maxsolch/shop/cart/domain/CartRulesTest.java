@@ -2,7 +2,7 @@ package com.maxsolch.shop.cart.domain;
 
 import com.maxsolch.shop.cart.domain.CartRules.Line;
 import com.maxsolch.shop.cart.domain.CartRules.LineKey;
-import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
+import com.maxsolch.shop.cart.domain.CartRules.RawLine;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -20,13 +20,13 @@ class CartRulesTest {
     @Test
     void normalize_sumsDuplicates_clampsQuantity_dropsJunk() {
         List<Line> lines = CartRules.normalize(List.of(
-                new CartLineInput(P1, null, 2),
-                new CartLineInput(P1.toUpperCase(), "", 3),     // same line: case + blank variant
-                new CartLineInput(P2, V1, 500),                 // clamped to 99
-                new CartLineInput("not-a-uuid", null, 1),       // dropped
-                new CartLineInput(P2, "bad", 1),                // bad variant id → dropped
-                new CartLineInput(P2, null, 0),                 // non-positive → dropped
-                new CartLineInput(null, null, 1)));
+                new RawLine(P1, null, 2),
+                new RawLine(P1.toUpperCase(), "", 3),     // same line: case + blank variant
+                new RawLine(P2, V1, 500),                 // clamped to 99
+                new RawLine("not-a-uuid", null, 1),       // dropped
+                new RawLine(P2, "bad", 1),                // bad variant id → dropped
+                new RawLine(P2, null, 0),                 // non-positive → dropped
+                new RawLine(null, null, 1)));
 
         assertThat(lines).containsExactly(
                 new Line(new LineKey(P1, null), 5),

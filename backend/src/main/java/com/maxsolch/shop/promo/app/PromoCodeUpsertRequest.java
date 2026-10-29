@@ -1,4 +1,4 @@
-package com.maxsolch.shop.promo.api;
+package com.maxsolch.shop.promo.app;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

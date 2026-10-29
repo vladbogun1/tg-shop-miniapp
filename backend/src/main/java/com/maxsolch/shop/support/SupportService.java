@@ -21,7 +21,7 @@ import com.maxsolch.shop.support.SupportDtos.ThreadDto;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.order.api.SendMessageRequest;
+import com.maxsolch.shop.order.app.SendMessageRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;

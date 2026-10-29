@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.app.UpdateOrderStatusRequest;
+import com.maxsolch.shop.order.app.SendMessageRequest;
 import com.maxsolch.shop.order.app.DispatchOrderDto;
 import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.app.OrderBoardDto;
