@@ -10,17 +10,18 @@
 
 ## Архитектура (общие правила кода — в `~/.claude/CLAUDE.md`, раздел «Как писать код»)
 
-- Правила ниже частично проверяет CI (ArchUnit, лимит размера классов, ESLint `complexity`/`max-lines`/`max-depth`):
-  старый долг заморожен, новый валит сборку. Как это устроено и когда можно добавить исключение —
-  [docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md). Упала проверка — сначала исправлять код, не список.
+Целевая структура бэкенда **утверждена** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (модули, шаблон `api/app/domain/infra`,
+единые способы «как делаем», порядок переезда). Переезд идёт в ветке `arch/v2` по шагам; прогресс — сводка ArchUnit v2
+(`mvn test -Dtest=ArchitectureV2Test`), как читать — [docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md).
 
-- Бэкенд уходит от технических корзин (`service/`, `repository/`, `web/controller/`) к пакетам по фиче
-  (`payment/`, `novaposhta/`, `preorder/`, `gift/` …). Новую фичу — в свой пакет, не в `service/`.
-- **Не дописывать** в `OrderService` (~1900 строк), `OrderAdjustmentService`, `NotificationService`,
-  `AdminOrderController`: новая логика — отдельный класс в пакете фичи, большой класс только вызывает его.
-  Если правка всё же внутри — по возможности вынести затронутый кусок, не меняя поведения.
-- Контроллеры тонкие: разбор запроса → вызов сервиса → DTO. Бизнес-правила, проверки статусов и расчёты
-  денег — не в контроллере и не во фронте.
-- Деньги — только в минорных единицах (`*_minor`), расчёт в одном месте на бэкенде; фронт показывает, не считает.
-- Статус заказа сейчас ставится `setStatus(OrderStatus.…)` в ~10 местах трёх сервисов — это долг. Новых таких мест
-  не добавлять: переход статуса со своими проверками — через один метод (завести, когда первый раз понадобится).
+Кратко (полный список — в ARCHITECTURE.md, раздел 3):
+- Код по бизнес-модулям `com.maxsolch.shop.<модуль>.{api,app,domain,infra}` + `platform`; не в `service/`, `web/`, `repository/`.
+- `api → app → domain`, `infra → domain`; другой модуль — только через его `app`; циклов между модулями нет.
+- Ошибки — `platform.error.DomainException` с `ErrorCode`; после коммита — доменное событие
+  + `@TransactionalEventListener(AFTER_COMMIT)` (`platform.tx.DomainEvents`); время — `Clock` + `ShopZone`; текущий админ — `CurrentActor`;
+  настройки — `@ConfigurationProperties` (не `@Value`); фоновая задача — `@Scheduled` + `@SchedulerLock`;
+  внешний HTTP — через `platform.http` (таймауты обязательны, ретрай только идемпотентных).
+- Статус заказа — только методами `Order`; деньги — minor-единицы, формулы в `OrderMoney`.
+- Не дописывать в `OrderService`, `OrderAdjustmentService`, `NotificationService`, `AdminOrderController`:
+  новая логика — отдельный класс в модуле. Контроллеры тонкие.
+- Число нарушений в `v2-baseline.txt` только уменьшается. Упала проверка — чинить код, не baseline.
