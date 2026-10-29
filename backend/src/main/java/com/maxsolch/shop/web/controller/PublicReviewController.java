@@ -4,7 +4,7 @@ import com.maxsolch.shop.review.ReviewDtos.ReviewFeed;
 import com.maxsolch.shop.review.ReviewDtos.ReviewPage;
 import com.maxsolch.shop.review.ReviewFeedService;
 import com.maxsolch.shop.review.ReviewService;
-import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.domain.ContentLocale;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.CacheControl;

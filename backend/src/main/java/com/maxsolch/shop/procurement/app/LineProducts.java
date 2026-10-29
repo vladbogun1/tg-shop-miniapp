@@ -1,8 +1,8 @@
 package com.maxsolch.shop.procurement.app;
 
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;

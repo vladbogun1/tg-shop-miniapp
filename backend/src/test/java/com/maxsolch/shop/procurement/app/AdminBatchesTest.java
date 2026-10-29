@@ -5,7 +5,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.ArriveLineResult;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveResult;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -5,7 +5,7 @@ import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import jakarta.validation.Validation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

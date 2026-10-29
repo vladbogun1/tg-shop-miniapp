@@ -1,6 +1,5 @@
 package com.maxsolch.shop.payment.domain;
 
-import com.maxsolch.shop.payment.domain.MonobankGateway;
 
 /** What a payment receipt is: a fiscal check (PRRO) of a sale or a refund, or the bank's квитанція. */
 public enum ReceiptKind {

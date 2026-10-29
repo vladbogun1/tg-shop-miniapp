@@ -8,19 +8,15 @@ import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.media.MediaSigner;
+import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.domain.OrderErrors;
-import com.maxsolch.shop.order.app.ConversationDto;
-import com.maxsolch.shop.order.app.MessageDto;
-import com.maxsolch.shop.order.app.SendMessageRequest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 

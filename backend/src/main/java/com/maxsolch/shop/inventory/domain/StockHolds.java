@@ -1,7 +1,7 @@
 package com.maxsolch.shop.inventory.domain;
 
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 
 /**
  * Units of the shelf promised to people waiting in a queue (pre-orders). Inventory moves stock and asks

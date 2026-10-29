@@ -10,7 +10,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.BatchSummaryDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

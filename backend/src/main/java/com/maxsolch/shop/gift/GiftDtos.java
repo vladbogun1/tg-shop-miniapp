@@ -1,6 +1,6 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.catalog.app.ProductDto;
 
 import java.time.Instant;
 import java.util.List;

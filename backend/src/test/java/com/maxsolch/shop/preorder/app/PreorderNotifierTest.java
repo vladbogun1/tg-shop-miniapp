@@ -59,8 +59,8 @@ class PreorderNotifierTest {
         Messages msgs = new Messages((MessageSource) source, users);
         notifier = new PreorderNotifier(queue,
                 new com.maxsolch.shop.tg.CustomerBot(bot, props, msgs, activity),
-                new com.maxsolch.shop.platform.i18n.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),
-                        mock(com.maxsolch.shop.translation.TranslationService.class)));
+                new com.maxsolch.shop.translation.app.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),
+                        mock(com.maxsolch.shop.translation.app.TranslationService.class)));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
     }
 

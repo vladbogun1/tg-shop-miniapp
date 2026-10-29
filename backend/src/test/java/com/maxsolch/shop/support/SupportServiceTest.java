@@ -1,13 +1,13 @@
 package com.maxsolch.shop.support;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxDtos.Item;
-import com.maxsolch.shop.media.ImageStorageService;
-import com.maxsolch.shop.media.MediaSigner;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.media.app.ImageStorageService;
+import com.maxsolch.shop.media.app.MediaSigner;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;

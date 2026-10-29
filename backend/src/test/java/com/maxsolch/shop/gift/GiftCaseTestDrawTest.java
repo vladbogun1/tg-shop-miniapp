@@ -2,10 +2,10 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.service.CatalogService;
+import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.catalog.app.ProductDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

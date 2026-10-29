@@ -7,7 +7,6 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.domain.OrderErrors;
-import com.maxsolch.shop.order.app.UpdateOrderStatusRequest;
 import org.springframework.stereotype.Service;
 
 /**

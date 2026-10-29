@@ -3,7 +3,7 @@ package com.maxsolch.shop.it;
 import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;

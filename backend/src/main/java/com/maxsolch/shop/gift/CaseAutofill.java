@@ -1,18 +1,18 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.catalog.Category;
-import com.maxsolch.shop.catalog.CategoryRepository;
+import com.maxsolch.shop.catalog.domain.Category;
+import com.maxsolch.shop.catalog.infra.CategoryRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.gift.GiftDtos.AutofillDto;
 import com.maxsolch.shop.gift.GiftDtos.AutofillRequest;
 import com.maxsolch.shop.gift.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.GiftDtos.DraftItemDto;
-import com.maxsolch.shop.service.CatalogService;
+import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.catalog.app.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

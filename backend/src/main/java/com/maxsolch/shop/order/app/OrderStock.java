@@ -1,14 +1,14 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.app.PreorderQueueService;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

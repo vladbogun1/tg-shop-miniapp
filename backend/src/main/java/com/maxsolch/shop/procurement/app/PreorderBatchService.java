@@ -7,8 +7,8 @@ import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.EtaMode;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveLine;
@@ -23,7 +23,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.ItemDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -36,7 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -76,14 +75,14 @@ public class PreorderBatchService {
     /** FIFO stock lots: an arrival becomes a lot priced by the batch. */
     private final com.maxsolch.shop.inventory.app.LotLedger ledger;
     /** Public pages show «скоро в наличии» and ETAs: rebuilt once a change commits. */
-    private final com.maxsolch.shop.site.SiteRevalidator siteRevalidator;
+    private final com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator;
 
     public PreorderBatchService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                                 SupplierRepository suppliers,
                                 ProductRepository products, BatchQueue queue, LineProducts lineProducts,
                                 SettingsService settings,
                                 com.maxsolch.shop.inventory.app.LotLedger ledger,
-                                com.maxsolch.shop.site.SiteRevalidator siteRevalidator, Clock clock) {
+                                com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator, Clock clock) {
         this.batches = batches;
         this.items = items;
         this.suppliers = suppliers;

@@ -14,7 +14,7 @@ import java.util.Base64;
 /**
  * Short-lived signed download links for payment receipts ({@code GET /api/receipts/file}).
  *
- * <p>The same idea as {@link com.maxsolch.shop.media.MediaSigner}: a plain {@code <a href>} and
+ * <p>The same idea as {@link com.maxsolch.shop.media.app.MediaSigner}: a plain {@code <a href>} and
  * the Telegram Mini App's {@code downloadFile} / {@code openLink} cannot carry an Authorization
  * header, so the authorisation travels in the link. The link names OUR invoice row id (not the
  * monobank invoiceId), the receipt kind and the fiscal check id; the HMAC covers all of them and

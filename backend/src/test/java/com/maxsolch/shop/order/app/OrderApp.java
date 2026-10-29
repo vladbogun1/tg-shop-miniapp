@@ -12,7 +12,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.tg.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;

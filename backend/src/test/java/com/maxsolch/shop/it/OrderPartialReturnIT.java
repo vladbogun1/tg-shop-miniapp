@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.returns.app.Returns;
 import com.maxsolch.shop.returns.domain.LineOutcome;

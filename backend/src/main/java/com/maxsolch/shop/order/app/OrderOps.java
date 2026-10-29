@@ -1,8 +1,8 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.inventory.app.Stock;
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;

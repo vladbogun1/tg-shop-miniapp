@@ -6,7 +6,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;

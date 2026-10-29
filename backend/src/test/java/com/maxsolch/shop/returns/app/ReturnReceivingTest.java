@@ -1,6 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;

@@ -2,8 +2,8 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.gift.GiftDtos.AutofillDto;
 import com.maxsolch.shop.gift.GiftDtos.DraftItemDto;
-import com.maxsolch.shop.web.dto.ProductDto;
-import com.maxsolch.shop.web.dto.ProductImageDto;
+import com.maxsolch.shop.catalog.app.ProductDto;
+import com.maxsolch.shop.catalog.app.ProductImageDto;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

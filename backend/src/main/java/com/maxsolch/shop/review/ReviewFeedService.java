@@ -5,8 +5,8 @@ import com.maxsolch.shop.review.ReviewDtos.ReviewFeed;
 import com.maxsolch.shop.review.ReviewStore.FeedRow;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.translation.TranslationEntityType;
-import com.maxsolch.shop.translation.TranslationService;
+import com.maxsolch.shop.translation.domain.TranslationEntityType;
+import com.maxsolch.shop.translation.app.TranslationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;

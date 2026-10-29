@@ -7,7 +7,7 @@ import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxDtos.Item;
 import com.maxsolch.shop.inbox.InboxFacts.ChatRow;
 import com.maxsolch.shop.inbox.InboxFacts.OrderRow;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

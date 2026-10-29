@@ -3,7 +3,7 @@ package com.maxsolch.shop.tg;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.media.ImageStorageService;
+import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.app.OrderEvents;
 import org.junit.jupiter.api.Test;

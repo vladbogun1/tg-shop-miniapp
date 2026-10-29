@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.security;
 
 import com.maxsolch.shop.web.controller.AdminReviewController;
-import com.maxsolch.shop.web.controller.AdminTranslationController;
+import com.maxsolch.shop.translation.api.AdminTranslationController;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;

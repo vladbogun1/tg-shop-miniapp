@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.gift.GiftDtos.GiftResponse;
-import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.domain.ContentLocale;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;

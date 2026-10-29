@@ -2,7 +2,7 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.service.CatalogService;
+import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import org.junit.jupiter.api.Test;

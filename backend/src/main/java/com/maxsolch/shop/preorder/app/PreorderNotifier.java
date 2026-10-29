@@ -2,7 +2,7 @@ package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.platform.i18n.BotTexts;
+import com.maxsolch.shop.translation.app.BotTexts;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;

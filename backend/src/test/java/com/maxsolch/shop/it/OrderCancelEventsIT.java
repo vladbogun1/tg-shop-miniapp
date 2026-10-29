@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.app.CancelRequests;
 import com.maxsolch.shop.order.app.OrderPayments;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

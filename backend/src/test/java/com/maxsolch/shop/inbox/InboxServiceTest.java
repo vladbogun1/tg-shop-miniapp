@@ -9,7 +9,7 @@ import com.maxsolch.shop.inbox.InboxDtos.RestoreRequest;
 import com.maxsolch.shop.inbox.InboxDtos.SnoozeRequest;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

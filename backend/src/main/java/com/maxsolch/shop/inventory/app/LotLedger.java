@@ -4,8 +4,8 @@ import com.maxsolch.shop.inventory.domain.StockLot;
 import com.maxsolch.shop.inventory.infra.StockLotRepository;
 import com.maxsolch.shop.inventory.domain.LotAllocations;
 import com.maxsolch.shop.inventory.infra.StockLotRepository;
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;

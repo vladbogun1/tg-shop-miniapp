@@ -1,6 +1,6 @@
 package com.maxsolch.shop.it;
 
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;

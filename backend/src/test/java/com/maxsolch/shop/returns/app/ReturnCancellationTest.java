@@ -1,16 +1,14 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.returns.domain.LineOutcome;
 import com.maxsolch.shop.returns.domain.ManualRefund;
 import com.maxsolch.shop.returns.domain.WizardLine;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

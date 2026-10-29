@@ -8,11 +8,11 @@ import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.GiftDtos.TierInfoDto;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.service.CatalogService;
+import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.ProductDto;
+import com.maxsolch.shop.catalog.app.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

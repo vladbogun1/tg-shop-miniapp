@@ -5,7 +5,6 @@ import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.domain.PromoReservation;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.promo.infra.PromoReservationRepository;
-import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

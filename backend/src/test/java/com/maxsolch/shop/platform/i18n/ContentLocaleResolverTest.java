@@ -1,6 +1,6 @@
 package com.maxsolch.shop.platform.i18n;
 
-import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.domain.ContentLocale;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.servlet.LocaleResolver;

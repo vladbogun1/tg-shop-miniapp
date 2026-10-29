@@ -5,12 +5,12 @@ import com.maxsolch.shop.preorder.domain.PreorderSubscription;
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -63,7 +63,7 @@ class PreorderQueueServiceTest {
     @Mock
     Messages messages;
     @Mock
-    com.maxsolch.shop.translation.TranslationService translations;
+    com.maxsolch.shop.translation.app.TranslationService translations;
 
     PreorderQueueService service;
     Product product;

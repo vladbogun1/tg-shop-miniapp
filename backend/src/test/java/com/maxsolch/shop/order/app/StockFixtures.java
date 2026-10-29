@@ -5,7 +5,7 @@ import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.inventory.domain.StockHolds;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.preorder.app.PreorderQueueService;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 
 import static org.mockito.Mockito.mock;
 

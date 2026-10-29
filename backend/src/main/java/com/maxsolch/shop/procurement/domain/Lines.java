@@ -1,8 +1,8 @@
 package com.maxsolch.shop.procurement.domain;
 
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductImage;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductImage;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.util.UuidUtil;
 
 import java.util.Arrays;

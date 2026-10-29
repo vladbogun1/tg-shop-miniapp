@@ -1,8 +1,8 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.inventory.app.Stock;
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

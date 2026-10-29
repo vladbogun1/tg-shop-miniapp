@@ -1,7 +1,7 @@
 package com.maxsolch.shop.returns.app;
 
 import com.maxsolch.shop.cart.app.CartService;
-import com.maxsolch.shop.domain.Product;
+import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -14,13 +14,12 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import com.maxsolch.shop.returns.domain.ManualRefund;
 import com.maxsolch.shop.returns.domain.ReturnPlan;
 import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.returns.infra.OrderExchangeLineRepository;
-import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;

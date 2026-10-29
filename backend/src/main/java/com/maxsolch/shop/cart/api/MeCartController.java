@@ -1,8 +1,7 @@
 package com.maxsolch.shop.cart.api;
 
-import com.maxsolch.shop.cart.app.CartDtos;
 import com.maxsolch.shop.cart.app.CartService;
-import com.maxsolch.shop.translation.ContentLocale;
+import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.cart.app.CartDtos.CartDto;
 import com.maxsolch.shop.cart.app.CartDtos.CartWriteRequest;

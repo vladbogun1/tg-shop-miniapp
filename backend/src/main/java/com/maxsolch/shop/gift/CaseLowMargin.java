@@ -1,10 +1,10 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.catalog.Brand;
-import com.maxsolch.shop.catalog.BrandRepository;
+import com.maxsolch.shop.catalog.domain.Brand;
+import com.maxsolch.shop.catalog.infra.BrandRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import org.springframework.stereotype.Service;

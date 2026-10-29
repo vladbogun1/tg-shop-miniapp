@@ -1,7 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
-import com.maxsolch.shop.media.ImageStorageService;
-import com.maxsolch.shop.media.UploadValidator;
+import com.maxsolch.shop.media.app.ImageStorageService;
+import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.time.ShopZone;

@@ -25,7 +25,7 @@ import com.maxsolch.shop.review.ReviewDtos.Summary;
 import com.maxsolch.shop.review.ReviewStore.ProductInfo;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import lombok.extern.slf4j.Slf4j;

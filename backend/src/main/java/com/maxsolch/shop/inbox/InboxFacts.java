@@ -2,7 +2,7 @@ package com.maxsolch.shop.inbox;
 
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 
 import java.time.Instant;
 import java.util.List;

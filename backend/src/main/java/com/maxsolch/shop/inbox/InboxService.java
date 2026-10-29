@@ -12,7 +12,7 @@ import com.maxsolch.shop.inbox.InboxDtos.SnoozeRequest;
 import com.maxsolch.shop.inbox.InboxDtos.SnoozeResult;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.site.SiteRevalidator;
+import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.web.SecurityUtil;
 import lombok.extern.slf4j.Slf4j;

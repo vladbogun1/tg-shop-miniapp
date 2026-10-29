@@ -8,8 +8,6 @@ import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.infra.OrderSearchTerm;
 import com.maxsolch.shop.order.domain.OrderErrors;
-import com.maxsolch.shop.order.app.OrderBoardDto;
-import com.maxsolch.shop.order.app.OrderCardDto;
 import com.maxsolch.shop.platform.time.ShopZone;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

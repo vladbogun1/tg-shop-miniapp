@@ -4,8 +4,6 @@ import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaCityRepository;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
-import com.maxsolch.shop.delivery.app.NpCityDto;
-import com.maxsolch.shop.delivery.app.NpWarehouseDto;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;

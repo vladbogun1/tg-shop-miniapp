@@ -1,12 +1,12 @@
 package com.maxsolch.shop.inventory.app;
 
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.inventory.domain.InventoryErrors;
 import com.maxsolch.shop.inventory.domain.LotAllocations;
 import com.maxsolch.shop.inventory.domain.StockHolds;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.repository.ProductRepository;
+import com.maxsolch.shop.catalog.infra.ProductRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;

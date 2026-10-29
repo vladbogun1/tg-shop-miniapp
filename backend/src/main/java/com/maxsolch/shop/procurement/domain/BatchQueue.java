@@ -1,7 +1,7 @@
 package com.maxsolch.shop.procurement.domain;
 
-import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.domain.ProductVariant;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.ProductVariant;
 
 import java.time.Instant;
 import java.util.Collection;
