@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderExchange;
 import com.maxsolch.shop.domain.OrderExchangeLine;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
@@ -1222,8 +1223,7 @@ public class OrderAdjustmentService {
      * overpayment is exactly what has to go back.
      */
     public static long refundableMinor(Order order) {
-        long received = Math.max(0, order.getReceivedMinor());
-        return Math.max(0, received - Math.max(0, order.getRefundedMinor()));
+        return OrderMoney.refundableMinor(order);
     }
 
     /** Same row lock as every other order change (OrderService), so edits cannot interleave. */

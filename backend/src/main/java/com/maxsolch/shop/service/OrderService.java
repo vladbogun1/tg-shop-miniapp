@@ -11,6 +11,7 @@ import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderItem;
@@ -792,13 +793,12 @@ public class OrderService {
 
     /** What the customer pays for the order in the end: the total without the units refused at the branch. */
     public static long collectableMinor(Order order) {
-        return Math.max(0, order.getTotalMinor() - Math.max(0, order.getUncollectedMinor()));
+        return OrderMoney.collectableMinor(order);
     }
 
     /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */
     public static long dueOnlineMinor(Order order) {
-        long total = order.getTotalMinor();
-        return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
+        return OrderMoney.dueOnlineMinor(order);
     }
 
     /**
@@ -806,7 +806,7 @@ public class OrderService {
      * part — the prepayment, or the whole order — has not arrived.
      */
     public static boolean onlinePaymentMissing(Order order) {
-        return order.getPaymentDueAt() != null && amountDueMinor(order) > 0;
+        return OrderMoney.onlinePaymentMissing(order);
     }
 
     private static String shortId(Order order) {
@@ -816,7 +816,7 @@ public class OrderService {
 
     /** Still to pay online right now (0 once the online part is covered). */
     public static long amountDueMinor(Order order) {
-        return Math.max(0, dueOnlineMinor(order) - Math.max(0, order.getReceivedMinor()));
+        return OrderMoney.amountDueMinor(order);
     }
 
     /**
@@ -1343,13 +1343,7 @@ public class OrderService {
 
     /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
     private void recomputeTotals(Order order) {
-        long subtotal = order.getItems().stream()
-                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
-        order.setSubtotalMinor(subtotal);
-        long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
-        order.setDiscountMinor(discount);
-        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
-        order.setTotalMinor(Math.max(0, subtotal - discount));
+        OrderMoney.reprice(order);
         settleFreeOrder(order);
     }
 

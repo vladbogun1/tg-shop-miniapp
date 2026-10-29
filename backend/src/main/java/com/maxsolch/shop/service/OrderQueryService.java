@@ -2,6 +2,7 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
@@ -463,12 +464,12 @@ public class OrderQueryService {
 
     /** Exact amount actually received for the order (online payments + the admin "mark paid" dialog). */
     public static long receivedMinor(Order o) {
-        return Math.min(Math.max(0, o.getReceivedMinor()), o.getTotalMinor());
+        return OrderMoney.receivedMinor(o);
     }
 
     /** Cash-on-delivery (наложка) to collect at Nova Poshta; units refused at the branch are not paid for. */
     public static long codMinor(Order o) {
-        return Math.max(0, OrderService.collectableMinor(o) - receivedMinor(o));
+        return OrderMoney.codMinor(o);
     }
 
     /** All APPROVED orders mapped to dispatch rows (newest first). */
