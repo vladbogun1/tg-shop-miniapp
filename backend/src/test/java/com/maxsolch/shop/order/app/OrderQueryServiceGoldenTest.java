@@ -179,13 +179,14 @@ class OrderQueryServiceGoldenTest {
                     customer ? null : Boolean.TRUE);
         });
 
+        @SuppressWarnings("unchecked")
+        org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftProvider =
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(giftProvider.getIfAvailable()).thenReturn(gifts);
         service = new OrderQueryService(orders, messages, items, invoiceRepo, mono, images, translation, users,
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
-                java.time.Clock.systemUTC());
-        service.setMovementRepository(movementRepo);
-        service.setWriteoffRepository(writeoffRepo);
-        service.setGiftCaseService(gifts);
+                java.time.Clock.systemUTC(), movementRepo, writeoffRepo, giftProvider);
 
         AtomicReference<ObjectMapper> ref = new AtomicReference<>();
         // The ObjectMapper of the application: Spring Boot's own JacksonAutoConfiguration (no custom config in config/).

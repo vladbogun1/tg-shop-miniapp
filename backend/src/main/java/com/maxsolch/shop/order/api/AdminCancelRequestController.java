@@ -1,15 +1,10 @@
 package com.maxsolch.shop.order.api;
 
-import com.maxsolch.shop.order.app.OrderDetailDto;
-import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.app.AdminCancelRequests;
 import com.maxsolch.shop.order.app.CancelRequestService;
-import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.order.domain.OrderErrors;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,17 +24,12 @@ import java.util.List;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminCancelRequestController {
 
-    private final CancelRequestService cancelRequests;
-    private final OrderRepository orderRepository;
+    private final AdminCancelRequests cancelRequests;
     private final OrderQueryService orderQueryService;
-    private final AdminAuditService audit;
 
-    public AdminCancelRequestController(CancelRequestService cancelRequests, OrderRepository orderRepository,
-                                        OrderQueryService orderQueryService, AdminAuditService audit) {
+    public AdminCancelRequestController(AdminCancelRequests cancelRequests, OrderQueryService orderQueryService) {
         this.cancelRequests = cancelRequests;
-        this.orderRepository = orderRepository;
         this.orderQueryService = orderQueryService;
-        this.audit = audit;
     }
 
     /** Optional (approve) / required (decline) comment shown to the customer. */
@@ -58,13 +48,7 @@ public class AdminCancelRequestController {
     @PostMapping("/approve")
     @Operation(summary = "Approve: reject the order (CHANGED_MIND), restock, refund every paid monobank invoice in full")
     public ApproveResponse approve(@PathVariable String id, @RequestBody(required = false) ResolveRequest req) {
-        Order order = load(id);
-        CancelRequestService.ApproveResult r = cancelRequests.approve(order.getId(), req == null ? null : req.comment());
-        audit.record("ORDER_CANCEL_REQUEST_APPROVE", "ORDER", id,
-                "запрос отмены одобрен: заказ отменён, сток возвращён, на возврат "
-                        + MoneyFormat.uah(r.refundRequestedMinor()) + " (" + r.refundedInvoices() + " счёт.)"
-                        + (r.refundErrors().isEmpty() ? "" : ", ошибки возврата: " + String.join("; ", r.refundErrors()))
-                        + (r.manualRefundMinor() > 0 ? ", вернуть вручную: " + MoneyFormat.uah(r.manualRefundMinor()) : ""));
+        CancelRequestService.ApproveResult r = cancelRequests.approve(id, req == null ? null : req.comment());
         return new ApproveResponse(orderQueryService.toDetail(r.order()), r.refundRequestedMinor(),
                 r.refundedInvoices(), r.refundErrors(), r.manualRefundMinor());
     }
@@ -72,20 +56,6 @@ public class AdminCancelRequestController {
     @PostMapping("/decline")
     @Operation(summary = "Decline with a comment (required) shown to the customer")
     public OrderDetailDto decline(@PathVariable String id, @RequestBody(required = false) ResolveRequest req) {
-        Order order = load(id);
-        String comment = req == null ? null : req.comment();
-        Order updated = cancelRequests.decline(order.getId(), comment);
-        audit.record("ORDER_CANCEL_REQUEST_DECLINE", "ORDER", id, "запрос отмены отклонён: " + comment);
-        return orderQueryService.toDetail(updated);
-    }
-
-    private Order load(String id) {
-        byte[] key;
-        try {
-            key = UuidUtil.toBytes(id);
-        } catch (IllegalArgumentException e) {
-            throw OrderErrors.notFound("заказ не найден");
-        }
-        return orderRepository.findById(key).orElseThrow(() -> OrderErrors.notFound("заказ не найден"));
+        return orderQueryService.toDetail(cancelRequests.decline(id, req == null ? null : req.comment()));
     }
 }

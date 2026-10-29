@@ -57,13 +57,11 @@ public class OrderQueryService {
     private final OrderReturnsView returnsView;
     private final Clock clock;
 
-    /** The gift block of the order page (docs/GIFT-CASE.md); a setter so the tests' constructor stays. */
-    private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setGiftCaseService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.gift.GiftCaseService giftCaseService) {
-        this.giftCaseService = giftCaseService;
-    }
+    /** The gift block of the order page (docs/GIFT-CASE.md); resolved on first use, the gift module depends on the order one. */
+    private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases;
+    /** Money journal and write-offs shown to the admin. */
+    private final com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
+    private final com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
@@ -75,7 +73,10 @@ public class OrderQueryService {
                              UserRepository userRepository,
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
-                             Clock clock) {
+                             Clock clock,
+                             com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
+                             com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository,
+                             org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -87,6 +88,9 @@ public class OrderQueryService {
         this.customerRejectReason = customerRejectReason;
         this.returnsView = returnsView;
         this.clock = clock;
+        this.movementRepository = movementRepository;
+        this.writeoffRepository = writeoffRepository;
+        this.giftCases = giftCases;
     }
 
     /**
@@ -289,7 +293,7 @@ public class OrderQueryService {
                 .rejectReason(customerRejectReason.current(o.getRejectReason()))
                 .receivedMinor(OrderPaymentState.of(o).receivedMinor())
                 .exchanges(List.of())
-                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, lang, true))
+                .gift(gift() == null ? null : gift().orderGift(o, lang, true))
                 .admin(null)
                 .build();
     }
@@ -302,7 +306,7 @@ public class OrderQueryService {
                 // above the total — that overpayment is to be refunded); the customer, the capped.
                 .receivedMinor(Math.max(0, o.getReceivedMinor()))
                 .exchanges(returnsView.exchangesOf(o.getId()))
-                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, ContentLocale.RU, false))
+                .gift(gift() == null ? null : gift().orderGift(o, ContentLocale.RU, false))
                 .admin(adminExtras(o))
                 .build();
     }
@@ -378,18 +382,8 @@ public class OrderQueryService {
                 .uncollectedMinor(pay.uncollectedMinor());
     }
 
-    /** Money journal and write-offs (optional: unit tests build the service without them). */
-    private com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
-    private com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setMovementRepository(com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository) {
-        this.movementRepository = movementRepository;
-    }
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setWriteoffRepository(com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository) {
-        this.writeoffRepository = writeoffRepository;
+    private com.maxsolch.shop.gift.GiftCaseService gift() {
+        return giftCases.getIfAvailable();
     }
 
     private OrderDetailDto.AdminExtras adminExtras(Order o) {
