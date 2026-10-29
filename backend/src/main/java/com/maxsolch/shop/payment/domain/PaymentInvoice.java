@@ -118,7 +118,7 @@ public class PaymentInvoice {
 
     /** Set by Hibernate on insert (the domain does not read the clock). */
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     /** Set by Hibernate on insert and on every real update. */

@@ -2,6 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -35,6 +36,7 @@ public class MonobankSignatureVerifier {
     private volatile PublicKey key;
     private final AtomicReference<Instant> lastFetch = new AtomicReference<>(Instant.EPOCH);
 
+    @Autowired
     public MonobankSignatureVerifier(MonobankGateway client, Clock clock) {
         this(client::pubkey, clock);
     }
