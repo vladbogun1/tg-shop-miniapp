@@ -116,6 +116,11 @@ export interface MergeCandidate {
   lines: string[];
   /** Why it cannot be merged now; null = it can. */
   blocker?: string | null;
+  /** What the merged order would be: total, received, still to pay online, cash on delivery. */
+  mergedTotalMinor: number;
+  mergedReceivedMinor: number;
+  mergedAmountDueMinor: number;
+  mergedCodMinor: number;
 }
 
 export interface MergeBody {

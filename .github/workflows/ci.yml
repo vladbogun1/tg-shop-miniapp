@@ -244,6 +244,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      # Java DTO заказа (golden-JSON бэкенда) <-> TS-типы shared/frontend-admin/e2e: docs/ARCHITECTURE-CHECKS.md
+      - run: npm run check:dto-drift
       - run: npm run build
       # Mini App only: the admin runs on the owner's desktop browser (docs/BROWSER-SUPPORT.md).
       - name: Browser compatibility (iOS 15.4+ / Chrome 92+)
