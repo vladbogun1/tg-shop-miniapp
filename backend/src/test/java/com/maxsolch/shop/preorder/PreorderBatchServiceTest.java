@@ -70,9 +70,7 @@ class PreorderBatchServiceTest {
     @BeforeEach
     void setUp() {
         service = new PreorderBatchService(batches, items, subs, suppliers, products, users, queue, settings, events,
-                Clock.fixed(NOW, ZoneOffset.UTC));
-        service.setLedger(ledger);
-        service.setSiteRevalidator(revalidator);
+                ledger, revalidator, Clock.fixed(NOW, ZoneOffset.UTC));
         batch = new PreorderBatch();
         batch.setId(5L);
         batch.setTitle("Lamzu, ноябрь");

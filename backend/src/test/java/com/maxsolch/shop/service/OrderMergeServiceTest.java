@@ -40,8 +40,7 @@ class OrderMergeServiceTest {
         orders = mock(OrderRepository.class);
         orderService = mock(OrderService.class);
         ledger = mock(MoneyLedger.class);
-        service = new OrderMergeService(orders, orderService, mock(ApplicationEventPublisher.class));
-        service.setMoneyLedger(ledger);
+        service = new OrderMergeService(orders, orderService, mock(ApplicationEventPublisher.class), ledger);
         when(orders.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         // The real recompute: subtotal from the lines, the absolute discount capped at it.
         doAnswer(inv -> {

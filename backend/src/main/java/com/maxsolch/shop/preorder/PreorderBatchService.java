@@ -76,19 +76,28 @@ public class PreorderBatchService {
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    /** FIFO stock lots: an arrival becomes a lot priced by the batch. */
+    private final com.maxsolch.shop.costing.LotLedger ledger;
+    /** Public pages show «скоро в наличии» and ETAs: rebuilt once a change commits. */
+    private final com.maxsolch.shop.site.SiteRevalidator siteRevalidator;
 
     @Autowired
     public PreorderBatchService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                                 PreorderSubscriptionRepository subs, SupplierRepository suppliers,
                                 ProductRepository products, UserRepository users, PreorderQueueService queue,
-                                SettingsService settings, ApplicationEventPublisher events) {
-        this(batches, items, subs, suppliers, products, users, queue, settings, events, Clock.systemUTC());
+                                SettingsService settings, ApplicationEventPublisher events,
+                                com.maxsolch.shop.costing.LotLedger ledger,
+                                com.maxsolch.shop.site.SiteRevalidator siteRevalidator) {
+        this(batches, items, subs, suppliers, products, users, queue, settings, events, ledger, siteRevalidator,
+                Clock.systemUTC());
     }
 
     PreorderBatchService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                          PreorderSubscriptionRepository subs, SupplierRepository suppliers,
                          ProductRepository products, UserRepository users, PreorderQueueService queue,
-                         SettingsService settings, ApplicationEventPublisher events, Clock clock) {
+                         SettingsService settings, ApplicationEventPublisher events,
+                         com.maxsolch.shop.costing.LotLedger ledger, com.maxsolch.shop.site.SiteRevalidator siteRevalidator,
+                         Clock clock) {
         this.batches = batches;
         this.items = items;
         this.subs = subs;
@@ -98,28 +107,14 @@ public class PreorderBatchService {
         this.queue = queue;
         this.settings = settings;
         this.events = events;
-        this.clock = clock;
-    }
-
-    /** FIFO stock lots: an arrival becomes a lot priced by the batch (optional in unit tests). */
-    private com.maxsolch.shop.costing.LotLedger ledger;
-    private com.maxsolch.shop.site.SiteRevalidator siteRevalidator;
-
-    @Autowired(required = false)
-    void setSiteRevalidator(com.maxsolch.shop.site.SiteRevalidator siteRevalidator) {
+        this.ledger = ledger;
         this.siteRevalidator = siteRevalidator;
+        this.clock = clock;
     }
 
     /** Public pages show «скоро в наличии» and ETAs: rebuild them once the change commits. */
     private void publicChanged() {
-        if (siteRevalidator != null) {
-            siteRevalidator.allChanged();
-        }
-    }
-
-    @Autowired(required = false)
-    void setLedger(com.maxsolch.shop.costing.LotLedger ledger) {
-        this.ledger = ledger;
+        siteRevalidator.allChanged();
     }
 
     // ---------------------------------------------------------------- batches
@@ -280,7 +275,7 @@ public class PreorderBatchService {
                 }
                 products.save(p);
                 i.setQtyArrived(arrived);
-                if (ledger != null && arrived > 0) {
+                if (arrived > 0) {
                     ledger.receive(p.getId(), i.getVariantId(), i.getId(), arrived);
                 }
                 h = queue.handOut(p, v, b.getId(), mode, hold, true);

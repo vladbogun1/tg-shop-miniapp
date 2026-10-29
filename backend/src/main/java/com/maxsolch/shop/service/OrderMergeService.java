@@ -14,7 +14,6 @@ import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,18 +42,13 @@ public class OrderMergeService {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher events;
-
-    private MoneyLedger moneyLedger;
+    private final MoneyLedger moneyLedger;
 
     public OrderMergeService(OrderRepository orderRepository, OrderService orderService,
-                             ApplicationEventPublisher events) {
+                             ApplicationEventPublisher events, MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.events = events;
-    }
-
-    @Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
         this.moneyLedger = moneyLedger;
     }
 
@@ -312,10 +306,8 @@ public class OrderMergeService {
     }
 
     private void ledger(Order order, OrderMoneyMovement.Kind kind, long amount, String adminName, String note) {
-        if (moneyLedger != null) {
-            moneyLedger.record(order.getId(), kind, OrderMoneyMovement.Channel.MERGE, amount,
-                    OrderMoneyMovement.Source.ADMIN, adminName, note, null);
-        }
+        moneyLedger.record(order.getId(), kind, OrderMoneyMovement.Channel.MERGE, amount,
+                OrderMoneyMovement.Source.ADMIN, adminName, note, null);
     }
 
     public static String shortId(byte[] id) {

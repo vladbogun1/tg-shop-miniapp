@@ -40,27 +40,23 @@ public class CatalogService {
     private final CatalogDirectory catalogDirectory;
     private final OrderItemRepository orderItemRepository;
     private final TranslationService translationService;
+    /** Pre-order holds: units kept for people in a queue are not shown as in stock. */
+    private final com.maxsolch.shop.preorder.PreorderQueueService preorders;
 
     public CatalogService(ProductRepository productRepository,
                           CatalogDirectory catalogDirectory,
                           OrderItemRepository orderItemRepository,
-                          TranslationService translationService) {
+                          TranslationService translationService,
+                          com.maxsolch.shop.preorder.PreorderQueueService preorders) {
         this.productRepository = productRepository;
         this.catalogDirectory = catalogDirectory;
         this.orderItemRepository = orderItemRepository;
         this.translationService = translationService;
-    }
-
-    /** Pre-order holds: units kept for people in a queue are not shown as in stock (optional in unit tests). */
-    private com.maxsolch.shop.preorder.PreorderQueueService preorders;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders) {
         this.preorders = preorders;
     }
 
     private Map<String, Integer> held() {
-        return preorders == null ? Map.of() : preorders.heldByLine();
+        return preorders.heldByLine();
     }
 
     @Transactional(readOnly = true)

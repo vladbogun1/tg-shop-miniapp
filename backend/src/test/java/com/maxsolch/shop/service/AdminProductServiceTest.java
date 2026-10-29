@@ -52,6 +52,8 @@ class AdminProductServiceTest {
     @Mock StockWriteoffRepository writeoffRepository;
     @Mock AdminAuditService audit;
 
+    com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs =
+            org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class);
     AdminProductService service;
     Product product;
     String id;
@@ -59,7 +61,9 @@ class AdminProductServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
-                catalogDirectory, brandService, writeoffRepository, audit);
+                catalogDirectory, brandService, writeoffRepository, audit,
+                org.mockito.Mockito.mock(com.maxsolch.shop.costing.LotLedger.class),
+                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderQueueService.class), preorderSubs);
         lenient().when(audit.currentAdminName()).thenReturn("Влад");
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
@@ -81,10 +85,8 @@ class AdminProductServiceTest {
         Product c = named("C");
         Product d = named("D");
         when(productRepository.findAllNotArchived()).thenReturn(List.of(a, b, c, d));
-        var subs = org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class);
-        when(subs.waitingByProduct()).thenReturn(List.of(
+        when(preorderSubs.waitingByProduct()).thenReturn(List.of(
                 new Object[]{c.getId(), 5L, 6L}, new Object[]{b.getId(), 2L, 9L}));
-        service.setPreorders(org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderQueueService.class), subs);
 
         List<AdminProductDto> plain = service.list(null);
         List<AdminProductDto> byDemand = service.list("demand");

@@ -47,28 +47,26 @@ public class OrderAdjustmentService {
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final OrderExchangeRepository exchangeRepository;
+    /** The order money journal: every refund / retention is recorded here. */
+    private final MoneyLedger moneyLedger;
 
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
                                   OrderStock stock,
                                   ApplicationEventPublisher events,
-                                  OrderExchangeRepository exchangeRepository) {
+                                  OrderExchangeRepository exchangeRepository,
+                                  MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.stock = stock;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
-    }
-
-    /** Money journal, write-offs, exchange lines (optional: unit tests build the service without them). */
-    private MoneyLedger moneyLedger;
-    private StockWriteoffRepository writeoffs;
-    private OrderExchangeLineRepository exchangeLines;
-
-    @Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
         this.moneyLedger = moneyLedger;
     }
+
+    /** Write-offs, exchange lines (optional: unit tests build the service without them). */
+    private StockWriteoffRepository writeoffs;
+    private OrderExchangeLineRepository exchangeLines;
 
     @Autowired(required = false)
     void setWriteoffs(StockWriteoffRepository writeoffs) {
@@ -278,10 +276,8 @@ public class OrderAdjustmentService {
         if (refundMinor > 0) {
             order.setRefundedMinor(order.getRefundedMinor() + refundMinor);
             parts.add("возврат денег " + MoneyFormat.uah(refundMinor));
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
-                        refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
+                    refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
@@ -448,21 +444,17 @@ public class OrderAdjustmentService {
         for (ManualRefund r : refunds) {
             order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
             parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + channelLabel(r.channel()) + ")");
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
-                        OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
+                    OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
         }
         if (plan.monoRefundMinor() > 0) {
             parts.add("на карту через monobank " + MoneyFormat.uah(plan.monoRefundMinor()) + " (запрошено)");
         }
         if (plan.retainMinor() > 0) {
             parts.add("удержано " + MoneyFormat.uah(plan.retainMinor()) + " (доставка)");
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER,
-                        plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
-                        cleanNote == null ? "удержано: доставка" : cleanNote, null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER,
+                    plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
+                    cleanNote == null ? "удержано: доставка" : cleanNote, null);
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
@@ -524,7 +516,7 @@ public class OrderAdjustmentService {
         if (plan.retainMinor() < 0 || plan.monoRefundMinor() < 0) {
             throw new BadRequestException("сумма не может быть отрицательной");
         }
-        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
+        long retainedBefore = moneyLedger.retainedMinor(order.getId());
         long refundable = Math.max(0, OrderMoney.refundableMinor(order) - retainedBefore);
         long mono = monoSent ? 0 : plan.monoRefundMinor();
         if (manual + mono + plan.retainMinor() > refundable) {
@@ -834,7 +826,7 @@ public class OrderAdjustmentService {
                 orderService.exchangePaymentOptionId(order), com.maxsolch.shop.domain.OrderSource.ADMIN,
                 com.maxsolch.shop.gift.GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
         String childShort = shortId(child.getId());
-        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
+        long retainedBefore = moneyLedger.retainedMinor(order.getId());
         long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
                 child.getTotalMinor()));
         if (moved > 0) {
@@ -1002,11 +994,9 @@ public class OrderAdjustmentService {
                 creditBack = Math.max(0, Math.min(rec.getRefundMinor(), kept));
                 if (creditBack > 0) {
                     child.setRefundedMinor(Math.max(0, child.getRefundedMinor()) + creditBack);
-                    if (moneyLedger != null) {
-                        moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
-                                creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
-                                "обмен отменён, зачёт обратно в заказ #" + shortId(order.getId()), null);
-                    }
+                    moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
+                            creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
+                            "обмен отменён, зачёт обратно в заказ #" + shortId(order.getId()), null);
                 }
                 orderRepository.save(child);
                 if (child.getStatus() != OrderStatus.REJECTED) {
@@ -1193,10 +1183,8 @@ public class OrderAdjustmentService {
     /** Money of a cancelled return came back: «возвращено» goes down, the journal gets a minus refund. */
     private void bookMoneyBack(Order order, long amount, OrderMoneyMovement.Channel channel, String adminName, String note) {
         order.setRefundedMinor(Math.max(0, order.getRefundedMinor() - amount));
-        if (moneyLedger != null) {
-            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
-                    OrderMoneyMovement.Source.ADMIN, adminName, note, null);
-        }
+        moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
+                OrderMoneyMovement.Source.ADMIN, adminName, note, null);
     }
 
     /** How the customer sends a refund back: the way it went out; monobank refunds come back by transfer. */

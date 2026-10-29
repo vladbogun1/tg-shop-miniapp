@@ -61,7 +61,7 @@ class OrderCancelRequestTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(orderRepository, productRepository, promoCodeRepository,
+        service = OrderServiceFixtures.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));

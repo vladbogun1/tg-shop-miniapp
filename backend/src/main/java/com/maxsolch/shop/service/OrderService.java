@@ -80,42 +80,18 @@ public class OrderService {
     private final OrderStock stock;
     /** The order money journal: every movement of money on an order is recorded here. */
     private final MoneyLedger moneyLedger;
+    /** monobank invoices of an order — guards {@link #delete}. */
+    private final PaymentInvoiceRepository paymentInvoices;
+    /** The gift for the order sum / the gift case. */
+    private final GiftService giftService;
+    /** Gifts already given to a person this month. */
+    private final GiftRegistryService giftRegistry;
+    /** Low-margin products of the gift case. */
+    private final CaseLowMargin caseLowMargin;
 
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
     private int paymentDueHours = 24;
-
-    /** monobank invoices of an order — guards {@link #delete} (optional: unit tests build the service without it). */
-    private PaymentInvoiceRepository paymentInvoices;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setPaymentInvoices(PaymentInvoiceRepository paymentInvoices) {
-        this.paymentInvoices = paymentInvoices;
-    }
-
-    /** The gift for the order sum / the gift case (optional: unit tests build the service without it). */
-    private GiftService giftService;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setGiftService(GiftService giftService) {
-        this.giftService = giftService;
-    }
-
-    /** Gifts already given to a person this month (optional like the gift itself; null = no limit). */
-    private GiftRegistryService giftRegistry;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setGiftRegistry(GiftRegistryService giftRegistry) {
-        this.giftRegistry = giftRegistry;
-    }
-
-    /** Low-margin products of the gift case (optional like the gift itself). */
-    private CaseLowMargin caseLowMargin;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setCaseLowMargin(CaseLowMargin caseLowMargin) {
-        this.caseLowMargin = caseLowMargin;
-    }
 
     private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
                         OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
@@ -135,7 +111,11 @@ public class OrderService {
                         Messages messages,
                         EntityManager entityManager,
                         OrderStock stock,
-                        MoneyLedger moneyLedger) {
+                        MoneyLedger moneyLedger,
+                        PaymentInvoiceRepository paymentInvoices,
+                        GiftService giftService,
+                        GiftRegistryService giftRegistry,
+                        CaseLowMargin caseLowMargin) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -148,6 +128,10 @@ public class OrderService {
         this.entityManager = entityManager;
         this.stock = stock;
         this.moneyLedger = moneyLedger;
+        this.paymentInvoices = paymentInvoices;
+        this.giftService = giftService;
+        this.giftRegistry = giftRegistry;
+        this.caseLowMargin = caseLowMargin;
     }
 
     /**
@@ -215,8 +199,7 @@ public class OrderService {
         // The gift for the order sum is locked in the same id order, up front: taking its row after
         // the cart's could deadlock with an order that has the gift product in its cart.
         // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
-        Optional<GiftService.GiftConfig> giftCfg = giftService == null
-                || GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
+        Optional<GiftService.GiftConfig> giftCfg = GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
                 ? Optional.empty() : giftService.giftConfig();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
@@ -935,9 +918,7 @@ public class OrderService {
             if (order.getGiftDiscountMinor() <= 0) {
                 order.setGiftTier(null);
             }
-            if (giftService != null) {
-                giftService.deleteOrderCase(order.getId());
-            }
+            giftService.deleteOrderCase(order.getId());
         }
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
@@ -1082,9 +1063,6 @@ public class OrderService {
      * hide the money from everybody who looks at the board.
      */
     private void requireNoOnlineMoneyInFlight(byte[] orderId) {
-        if (paymentInvoices == null) {
-            return;
-        }
         List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
         if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
                 || PaymentInvoice.HOLD.equals(i.getStatus()))) {
@@ -1240,8 +1218,7 @@ public class OrderService {
      * и месячный лимит»), kopecks; {@link Long#MAX_VALUE} without a limit.
      */
     private long giftLimitLeft(Order order) {
-        return giftRegistry == null ? Long.MAX_VALUE
-                : giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
+        return giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
     }
 
     /**
@@ -1405,8 +1382,7 @@ public class OrderService {
         if (order.getGiftCaseStatus() != null) {
             throw new BadRequestException("У заказа уже есть кейс");
         }
-        GiftService.TierConfig cfg = (giftService == null
-                ? Optional.<GiftService.TierConfig>empty() : giftService.tier(tier))
+        GiftService.TierConfig cfg = giftService.tier(tier)
                 .orElseThrow(() -> new BadRequestException("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
         // Prize rows locked in id order, like the checkout.
         Map<String, Optional<Product>> locked = new HashMap<>();
@@ -1485,7 +1461,7 @@ public class OrderService {
      * depending on whether the order still awaits shipment.
      */
     private Order afterTransition(Order order) {
-        if (order.getStatus() == OrderStatus.REJECTED && giftService != null) {
+        if (order.getStatus() == OrderStatus.REJECTED) {
             // An unused code from the case (a discount prize, a swap) goes with the order.
             giftService.revokeCasePromo(order.getId());
         }
@@ -1587,7 +1563,7 @@ public class OrderService {
     }
 
     private java.util.Set<String> lowMarginIds() {
-        return caseLowMargin == null || caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
+        return caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
     }
 
     private static long discountOn(PromoCode promo, long subtotal) {

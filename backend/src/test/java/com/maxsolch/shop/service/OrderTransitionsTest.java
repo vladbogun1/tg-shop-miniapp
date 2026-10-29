@@ -86,11 +86,12 @@ class OrderTransitionsTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(orderRepository, productRepository, promoCodeRepository,
+        service = OrderServiceFixtures.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
-                StockFixtures.stock(productRepository, messages), ledger);
-        service.setGiftService(giftService);
+                StockFixtures.stock(productRepository, messages), ledger,
+                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class), giftService,
+                OrderServiceFixtures.unlimitedRegistry(), OrderServiceFixtures.noLowMargin());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -519,8 +520,7 @@ class OrderTransitionsTest {
     @Test
     void merge_closesTheSourceWithoutStatusChangedAndWithoutRevokingTheCasePromo() {
         ApplicationEventPublisher mergeEvents = org.mockito.Mockito.mock(ApplicationEventPublisher.class);
-        OrderMergeService merge = new OrderMergeService(orderRepository, service, mergeEvents);
-        merge.setMoneyLedger(ledger);
+        OrderMergeService merge = new OrderMergeService(orderRepository, service, mergeEvents, ledger);
         Order target = mergeable(OrderStatus.APPROVED, 42);
         Order source = mergeable(OrderStatus.NEW, 42);
         source.setPromoCode("CASE9TSRK7");
@@ -540,7 +540,7 @@ class OrderTransitionsTest {
 
     @Test
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
-        OrderAdjustmentService adjust = new OrderAdjustmentService(orderRepository, service, StockFixtures.stock(productRepository, messages), events, exchangeRepository);
+        OrderAdjustmentService adjust = new OrderAdjustmentService(orderRepository, service, StockFixtures.stock(productRepository, messages), events, exchangeRepository, ledger);
         Order o = order(OrderStatus.DELIVERED);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");

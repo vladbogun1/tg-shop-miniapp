@@ -71,6 +71,14 @@ class OrderServiceTest {
     com.maxsolch.shop.i18n.Messages messages;
     @Mock
     EntityManager entityManager;
+    @Mock
+    com.maxsolch.shop.gift.GiftService gift;
+    @Mock
+    com.maxsolch.shop.gift.GiftRegistryService giftRegistry;
+    @Mock
+    com.maxsolch.shop.gift.CaseLowMargin caseLowMargin;
+    @Mock
+    com.maxsolch.shop.payment.PaymentInvoiceRepository paymentInvoices;
 
     OrderService service;
 
@@ -81,10 +89,14 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(orderRepository, productRepository,
+        service = OrderServiceFixtures.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
-                StockFixtures.stock(productRepository, messages), moneyLedger);
+                StockFixtures.stock(productRepository, messages), moneyLedger,
+                paymentInvoices, gift, giftRegistry, caseLowMargin);
+        // No gift configured, no monthly limit, no low-margin products — unless a test says otherwise.
+        lenient().when(giftRegistry.remainingMinor(any(), any())).thenReturn(Long.MAX_VALUE);
+        lenient().when(caseLowMargin.none()).thenReturn(true);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -432,10 +444,8 @@ class OrderServiceTest {
         mouse.setId(UuidUtil.toBytes(mouseUuid));
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? pad : mouse));
-        com.maxsolch.shop.gift.CaseLowMargin lowMargin = org.mockito.Mockito.mock(com.maxsolch.shop.gift.CaseLowMargin.class);
-        lenient().when(lowMargin.none()).thenReturn(false);
-        lenient().when(lowMargin.productIds()).thenReturn(java.util.Set.of(mouseUuid));
-        service.setCaseLowMargin(lowMargin);
+        lenient().when(caseLowMargin.none()).thenReturn(false);
+        lenient().when(caseLowMargin.productIds()).thenReturn(java.util.Set.of(mouseUuid));
         return mouseUuid;
     }
 
@@ -1101,15 +1111,12 @@ class OrderServiceTest {
 
     @Test
     void archive_paymentStillProcessing_isRejected() {
-        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
-                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
-        service.setPaymentInvoices(invoices);
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         com.maxsolch.shop.payment.PaymentInvoice processing = new com.maxsolch.shop.payment.PaymentInvoice();
         processing.setStatus(com.maxsolch.shop.payment.PaymentInvoice.PROCESSING);
         processing.setAmountMinor(150_000);
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
+        when(paymentInvoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 
         assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
                 .isInstanceOf(BadRequestException.class)
@@ -1341,7 +1348,6 @@ class OrderServiceTest {
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? bought : prize));
 
-        var gift = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftService.class);
         var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
         when(gift.giftConfig()).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.GiftConfig(null, 0,
                 List.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00, 0, 0, 0, List.of(
@@ -1349,10 +1355,7 @@ class OrderServiceTest {
                                 com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000),
                         new com.maxsolch.shop.gift.GiftService.CaseEntry(2, tier,
                                 com.maxsolch.shop.gift.GiftCaseItem.Kind.DISCOUNT, null, 5, 0, "RARE", 1)))))));
-        var registry = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftRegistryService.class);
-        when(registry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
-        service.setGiftService(gift);
-        service.setGiftRegistry(registry);
+        when(giftRegistry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
 
         return service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null));
     }

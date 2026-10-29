@@ -69,6 +69,11 @@ public class AdminProductService {
     private final BrandAdminService brandService;
     private final StockWriteoffRepository writeoffRepository;
     private final AdminAuditService audit;
+    /** FIFO stock lots follow a stock typed by hand. */
+    private final LotLedger ledger;
+    /** Queues of a product that leaves sale are closed. */
+    private final com.maxsolch.shop.preorder.PreorderQueueService preorders;
+    private final com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs;
 
     public AdminProductService(ProductRepository productRepository,
                                ImageStorageService imageStorageService,
@@ -77,7 +82,10 @@ public class AdminProductService {
                                CatalogDirectory catalogDirectory,
                                BrandAdminService brandService,
                                StockWriteoffRepository writeoffRepository,
-                               AdminAuditService audit) {
+                               AdminAuditService audit,
+                               LotLedger ledger,
+                               com.maxsolch.shop.preorder.PreorderQueueService preorders,
+                               com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs) {
         this.productRepository = productRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;
@@ -86,38 +94,18 @@ public class AdminProductService {
         this.brandService = brandService;
         this.writeoffRepository = writeoffRepository;
         this.audit = audit;
-    }
-
-    /** FIFO stock lots follow a stock typed by hand (optional: unit tests build the service without it). */
-    private LotLedger ledger;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setLedger(LotLedger ledger) {
         this.ledger = ledger;
-    }
-
-    /** Queues of a product that leaves sale are closed (optional: unit tests build the service without it). */
-    private com.maxsolch.shop.preorder.PreorderQueueService preorders;
-    private com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setPreorders(com.maxsolch.shop.preorder.PreorderQueueService preorders,
-                      com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs) {
         this.preorders = preorders;
         this.preorderSubs = preorderSubs;
     }
 
     private void closeQueues(Product p) {
-        if (preorders != null) {
-            preorders.closeForProduct(p.getId());
-        }
+        preorders.closeForProduct(p.getId());
     }
 
     private void syncLots(Product p) {
-        if (ledger != null) {
-            productRepository.flush(); // new variants get their ids before the lots refer to them
-            ledger.syncProduct(p);
-        }
+        productRepository.flush(); // new variants get their ids before the lots refer to them
+        ledger.syncProduct(p);
     }
 
     @Transactional(readOnly = true)
@@ -148,9 +136,6 @@ public class AdminProductService {
     /** product id → [distinct people, units] waiting for it. */
     private Map<String, int[]> waitingByProduct() {
         Map<String, int[]> out = new java.util.HashMap<>();
-        if (preorderSubs == null) {
-            return out;
-        }
         for (Object[] r : preorderSubs.waitingByProduct()) {
             out.put(UuidUtil.toString((byte[]) r[0]), new int[]{((Number) r[1]).intValue(), ((Number) r[2]).intValue()});
         }
