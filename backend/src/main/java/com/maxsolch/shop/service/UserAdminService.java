@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -49,9 +50,11 @@ public class UserAdminService {
     private EntityManager em;
 
     private final UserRepository userRepository;
+    private final Clock clock;
 
-    public UserAdminService(UserRepository userRepository, AppProperties props) {
+    public UserAdminService(UserRepository userRepository, AppProperties props, Clock clock) {
         this.userRepository = userRepository;
+        this.clock = clock;
         this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(businessZone(props.getTimezone()));
     }
 
@@ -166,7 +169,7 @@ public class UserAdminService {
         long active = userRepository.countUsersWithOrders();
         long inactive = Math.max(0, total - active);
 
-        Instant from = range.from();
+        Instant from = range.from(clock.instant());
         List<Instant> created = userRepository.createdAtsSince(from);
         long newInRange = created.size();
 

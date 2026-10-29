@@ -192,6 +192,7 @@ public class Exchanges {
                 .map(i -> ReturnText.title(i) + " ×" + i.getQuantity())
                 .toList();
         OrderExchange ex = new OrderExchange();
+        ex.setCreatedAt(clock.instant());
         ex.setOrderId(order.getId());
         ex.setNewOrderId(child.getId());
         ex.setPreviousStatus(order.getStatus().name());

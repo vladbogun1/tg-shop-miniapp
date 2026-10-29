@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -78,13 +77,6 @@ public class OrderReturn {
 
     @Column(name = "debt_paid_at")
     private Instant debtPaidAt;
-
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-    }
 
     /**
      * Why this record cannot be cancelled right now, or null. An exchange can only be undone while its

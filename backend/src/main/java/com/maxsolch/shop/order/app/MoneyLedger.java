@@ -8,6 +8,7 @@ import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -20,9 +21,11 @@ import java.util.Locale;
 public class MoneyLedger {
 
     private final OrderMoneyMovementRepository repository;
+    private final Clock clock;
 
-    public MoneyLedger(OrderMoneyMovementRepository repository) {
+    public MoneyLedger(OrderMoneyMovementRepository repository, Clock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     public OrderMoneyMovement record(byte[] orderId, Kind kind, Channel channel, long amountMinor,
@@ -32,7 +35,9 @@ public class MoneyLedger {
         m.setKind(kind.name());
         m.setChannel(channel.name());
         m.setAmountMinor(amountMinor);
-        m.setOccurredAt(Instant.now());
+        Instant now = clock.instant();
+        m.setOccurredAt(now);
+        m.setCreatedAt(now);
         m.setSource(source.name());
         m.setAdminName(cut(adminName, 255));
         m.setNote(cut(note, 500));

@@ -72,7 +72,7 @@ class CartServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CartService(cartRepository, itemRepository, productRepository, translationService, messages);
+        service = new CartService(cartRepository, itemRepository, productRepository, translationService, messages, java.time.Clock.systemUTC());
         cart.setUserId(USER);
         cart.setVersion(0);
         cart.setUpdatedAt(Instant.EPOCH);

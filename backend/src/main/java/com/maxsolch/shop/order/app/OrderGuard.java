@@ -44,11 +44,6 @@ public class OrderGuard {
     private final Messages messages;
     private final Clock clock;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public OrderGuard(SettingsService settings, OrderGuardStore store, Messages messages) {
-        this(settings, store, messages, Clock.systemUTC());
-    }
-
     OrderGuard(SettingsService settings, OrderGuardStore store, Messages messages, Clock clock) {
         this.settings = settings;
         this.store = store;

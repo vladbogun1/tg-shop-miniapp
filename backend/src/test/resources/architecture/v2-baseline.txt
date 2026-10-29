@@ -10,11 +10,9 @@ A2 legacy 14
 A2 order 2
 A2 promo 1
 A3 legacy 3
-C1 cart 1
 C1 legacy 71
-C1 order 8
-C1 promo 2
-C1 returns 2
+C1 order 1
+C1 promo 1
 CA legacy 7
 CA order 1
 E1 legacy 78

@@ -276,6 +276,7 @@ public class Returns {
     private void saveRecord(Order order, ReturnPlan plan, List<ManualRefund> refunds, long manual, String cleanNote,
                             String adminName, List<OrderReturnLine> recordLines) {
         OrderReturn rec = new OrderReturn();
+        rec.setCreatedAt(clock.instant());
         rec.setOrderId(order.getId());
         rec.setRefundMinor(manual);
         rec.setRefundChannel(refunds.isEmpty() ? null : refunds.get(0).channel().name());

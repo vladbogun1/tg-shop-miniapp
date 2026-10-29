@@ -28,6 +28,7 @@ import com.maxsolch.shop.web.dto.OnlinePaymentDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +55,7 @@ public class OrderQueryService {
     private final UserRepository userRepository;
     private final CustomerRejectReason customerRejectReason;
     private final OrderReturnsView returnsView;
+    private final Clock clock;
 
     /** The gift block of the order page (docs/GIFT-CASE.md); a setter so the tests' constructor stays. */
     private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
@@ -72,7 +74,8 @@ public class OrderQueryService {
                              TranslationService translationService,
                              UserRepository userRepository,
                              CustomerRejectReason customerRejectReason,
-                             OrderReturnsView returnsView) {
+                             OrderReturnsView returnsView,
+                             Clock clock) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -83,6 +86,7 @@ public class OrderQueryService {
         this.userRepository = userRepository;
         this.customerRejectReason = customerRejectReason;
         this.returnsView = returnsView;
+        this.clock = clock;
     }
 
     /**
@@ -581,7 +585,7 @@ public class OrderQueryService {
         PaymentInvoice inv = OrderMoney.amountDueMinor(o) > 0
                 ? list.get(0)
                 : list.stream().filter(i -> i.getAppliedAt() != null).findFirst().orElse(list.get(0));
-        boolean live = inv.isPayable(java.time.Instant.now());
+        boolean live = inv.isPayable(clock.instant());
         return new OnlinePaymentDto(monobank.isEnabled(), inv.getStatus(), live ? inv.getPageUrl() : null,
                 inv.getExpiresAt(), inv.getAmountMinor(), inv.getMaskedPan(), inv.getPaymentMethod(),
                 inv.getFailureReason());

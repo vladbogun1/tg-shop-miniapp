@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -41,19 +43,22 @@ public class MessageService {
     private final ApplicationEventPublisher events;
     private final MediaSigner mediaSigner;
     private final Messages messages;
+    private final Clock clock;
 
     public MessageService(OrderMessageRepository messageRepository,
                           OrderRepository orderRepository,
                           SimpMessagingTemplate messagingTemplate,
                           ApplicationEventPublisher events,
                           MediaSigner mediaSigner,
-                          Messages messages) {
+                          Messages messages,
+                          Clock clock) {
         this.messageRepository = messageRepository;
         this.orderRepository = orderRepository;
         this.messagingTemplate = messagingTemplate;
         this.events = events;
         this.mediaSigner = mediaSigner;
         this.messages = messages;
+        this.clock = clock;
     }
 
     /** Default page size for the chat — roughly two screens of history. */
@@ -137,7 +142,7 @@ public class MessageService {
     @Transactional
     public void markRead(byte[] orderId, SenderType readSenderType) {
         // readSenderType = the side whose messages are now considered read by the viewer.
-        messageRepository.markRead(orderId, readSenderType, Instant.now());
+        messageRepository.markRead(orderId, readSenderType, clock.instant());
     }
 
     /** Total unread ADMIN messages across a customer's orders (customer bell). */
@@ -192,7 +197,7 @@ public class MessageService {
     /** Mark ALL unread customer messages read (admin "read all"). Returns count marked. */
     @Transactional
     public int markAllReadForAdmin() {
-        return messageRepository.markAllRead(SenderType.CUSTOMER, Instant.now());
+        return messageRepository.markAllRead(SenderType.CUSTOMER, clock.instant());
     }
 
     /** Strip HTML tags + collapse whitespace for short text previews (SYSTEM cards carry HTML). */
@@ -212,6 +217,8 @@ public class MessageService {
             throw OrderErrors.badRequest(messages.current("api.chat.needsContent"));
         }
         OrderMessage m = new OrderMessage();
+        // TIMESTAMP(0) column: whole seconds, so the value sent now equals the one read later.
+        m.setCreatedAt(clock.instant().truncatedTo(ChronoUnit.SECONDS));
         m.setOrder(order);
         m.setSenderType(senderType);
         m.setSenderId(senderId);

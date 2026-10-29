@@ -22,6 +22,7 @@ import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -60,17 +61,20 @@ public class CartService {
     private final ProductRepository productRepository;
     private final TranslationService translationService;
     private final Messages messages;
+    private final Clock clock;
 
     public CartService(CartRepository cartRepository,
                        CartItemRepository itemRepository,
                        ProductRepository productRepository,
                        TranslationService translationService,
-                       Messages messages) {
+                       Messages messages,
+                       Clock clock) {
         this.cartRepository = cartRepository;
         this.itemRepository = itemRepository;
         this.productRepository = productRepository;
         this.translationService = translationService;
         this.messages = messages;
+        this.clock = clock;
     }
 
     // ------------------------------------------------------------------ API
@@ -147,7 +151,7 @@ public class CartService {
             wanted = existing(wanted);
         }
 
-        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
         boolean changed = false;
         Set<LineKey> keep = new HashSet<>();
         List<CartItem> added = new ArrayList<>();

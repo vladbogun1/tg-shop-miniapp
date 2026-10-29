@@ -7,6 +7,7 @@ import com.maxsolch.shop.repository.StockWriteoffRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -35,14 +36,16 @@ public class StockWriteoffReportService {
     }
 
     private final StockWriteoffRepository repository;
+    private final Clock clock;
 
-    public StockWriteoffReportService(StockWriteoffRepository repository) {
+    public StockWriteoffReportService(StockWriteoffRepository repository, Clock clock) {
         this.repository = repository;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public Report report(TimeRange range) {
-        Instant from = range.from();
+        Instant from = range.from(clock.instant());
         List<StockWriteoff> rows = from == null
                 ? repository.findAllByOrderByCreatedAtDesc()
                 : repository.findByCreatedAtGreaterThanEqualOrderByCreatedAtDesc(from);

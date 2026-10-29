@@ -16,6 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -48,15 +49,18 @@ public class PromoService {
     private final PromoReservationRepository reservationRepository;
     private final Messages messages;
     private final SettingsService settings;
+    private final Clock clock;
 
     public PromoService(PromoCodeRepository promoCodeRepository,
                         PromoReservationRepository reservationRepository,
                         Messages messages,
-                        SettingsService settings) {
+                        SettingsService settings,
+                        Clock clock) {
         this.promoCodeRepository = promoCodeRepository;
         this.reservationRepository = reservationRepository;
         this.messages = messages;
         this.settings = settings;
+        this.clock = clock;
     }
 
     /** Low-margin products a case promo code does not apply to (optional: unit tests build without it). */
@@ -98,7 +102,7 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
-        String personal = personalRejection(promo, userId, Instant.now());
+        String personal = personalRejection(promo, userId, clock.instant());
         if (personal != null) {
             return invalid(subtotal, messages.current(personal));
         }
@@ -132,7 +136,7 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
-        String personal = personalRejection(promo, userId, Instant.now());
+        String personal = personalRejection(promo, userId, clock.instant());
         if (personal != null) {
             return invalid(subtotal, messages.current(personal));
         }
@@ -147,7 +151,7 @@ public class PromoService {
             return valid(promo, subtotal, null, excluded);
         }
 
-        Instant until = Instant.now().plus(hold());
+        Instant until = clock.instant().plus(hold());
         PromoReservation reservation = reservationRepository
                 .find(promo.getId(), userId)
                 .orElseGet(() -> {
@@ -198,7 +202,7 @@ public class PromoService {
             return 0;
         }
         long heldByOthers = reservationRepository.countOthers(
-                promo.getId(), userId == null ? Long.MIN_VALUE : userId, Instant.now());
+                promo.getId(), userId == null ? Long.MIN_VALUE : userId, clock.instant());
         return left - heldByOthers;
     }
 
@@ -234,7 +238,7 @@ public class PromoService {
     @Scheduled(fixedDelayString = "${app.promo.reservation-sweep-ms:600000}", initialDelay = 60_000)
     @Transactional
     public void sweepExpired() {
-        int removed = reservationRepository.deleteExpired(Instant.now());
+        int removed = reservationRepository.deleteExpired(clock.instant());
         if (removed > 0) {
             log.debug("Released {} expired promo reservation(s)", removed);
         }

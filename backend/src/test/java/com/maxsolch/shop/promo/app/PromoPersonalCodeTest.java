@@ -45,7 +45,8 @@ class PromoPersonalCodeTest {
 
     @BeforeEach
     void setUp() {
-        service = new PromoService(promoCodeRepository, reservationRepository, messages, settings);
+        service = new PromoService(promoCodeRepository, reservationRepository, messages, settings,
+                java.time.Clock.systemUTC());
         lenient().when(settings.get(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }

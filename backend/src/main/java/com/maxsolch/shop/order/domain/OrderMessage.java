@@ -10,13 +10,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 @Getter
 @Setter
@@ -78,11 +76,4 @@ public class OrderMessage {
     @Column(name = "read_at")
     private Instant readAt;
 
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            // TIMESTAMP(0) column: whole seconds, so the value sent now equals the one read later.
-            createdAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        }
-    }
 }

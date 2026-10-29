@@ -5,7 +5,7 @@ import java.time.Instant;
 
 /**
  * Time-range filter shared by the admin order list, board, and metrics endpoints. Translates a
- * request token into a createdAt lower bound (relative to {@link Instant#now()}). {@code ALL} has
+ * request token into a createdAt lower bound (relative to the moment the caller passes in). {@code ALL} has
  * no bound (returns {@code null}). {@code MONTH} is the default.
  *
  * <p>Uses day-based {@link Duration} (Instant does not support month/year units).
@@ -38,10 +38,6 @@ public enum TimeRange {
     /** Lower bound for createdAt, or {@code null} for ALL (no bound). */
     public Instant from(Instant now) {
         return period == null ? null : now.minus(period);
-    }
-
-    public Instant from() {
-        return from(Instant.now());
     }
 
     public String token() {

@@ -181,7 +181,8 @@ class OrderQueryServiceGoldenTest {
 
         service = new OrderQueryService(orders, messages, items, invoiceRepo, mono, images, translation, users,
                 rejectReason,
-                new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup));
+                new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
+                java.time.Clock.systemUTC());
         service.setMovementRepository(movementRepo);
         service.setWriteoffRepository(writeoffRepo);
         service.setGiftCaseService(gifts);
