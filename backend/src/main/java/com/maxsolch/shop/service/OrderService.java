@@ -375,7 +375,7 @@ public class OrderService {
     @Transactional
     public Order approve(byte[] orderId) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.NEW) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.APPROVED)) {
             throw new BadRequestException("одобрить можно только новый заказ");
         }
         order.setStatus(OrderStatus.APPROVED);
@@ -399,7 +399,7 @@ public class OrderService {
     @Transactional
     public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.APPROVED && order.getStatus() != OrderStatus.NEW) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.SHIPPED)) {
             throw new BadRequestException("отправить можно только новый или одобренный заказ");
         }
         if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
@@ -425,7 +425,7 @@ public class OrderService {
     @Transactional
     public Order deliver(byte[] orderId) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.SHIPPED) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.DELIVERED)) {
             throw new BadRequestException("доставленным можно отметить только отправленный заказ");
         }
         order.setStatus(OrderStatus.DELIVERED);
@@ -621,10 +621,10 @@ public class OrderService {
                         boolean returnInTransit) {
         Order order = lock(orderId);
         OrderStatus before = order.getStatus();
-        if (before == OrderStatus.REJECTED) {
-            throw new BadRequestException("заказ уже отклонён");
-        }
-        if (before == OrderStatus.DELIVERED) {
+        if (!OrderTransitions.allowed(before, OrderStatus.REJECTED)) {
+            if (before == OrderStatus.REJECTED) {
+                throw new BadRequestException("заказ уже отклонён");
+            }
             // Rejecting a delivered order used to keep its «получено» (the automatic full amount
             // set on delivery) — metrics then showed money that never was. A return records it right.
             throw new BadRequestException(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
