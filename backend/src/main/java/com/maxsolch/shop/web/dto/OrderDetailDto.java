@@ -76,6 +76,7 @@ public record OrderDetailDto(
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         AdminExtras admin) {
 
+    @lombok.Builder
     public record AdminExtras(Instant archivedAt,
                               String archivedBy,
                               String archiveReason,

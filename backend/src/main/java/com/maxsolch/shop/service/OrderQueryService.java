@@ -388,15 +388,24 @@ public class OrderQueryService {
                                 w.getQuantity(), w.getUndoneQty(), w.getUndoneNote(), w.getReason(),
                                 w.getUnitValueMinor(), w.getNote(), w.getAdminName(), w.getCreatedAt()))
                         .toList();
-        return new OrderDetailDto.AdminExtras(o.getArchivedAt(), o.getArchivedBy(), o.getArchiveReason(),
-                o.getReturnStatus(), o.getReturnReceivedAt(), movements, retained, monoLeft, writeoffs,
-                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
-                exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()),
-                returnRecords(o),
-                o.getMergedIntoOrderId() == null ? null : UuidUtil.toString(o.getMergedIntoOrderId()),
-                orderRepository.mergedChildren(List.of(o.getId())).stream()
+        return OrderDetailDto.AdminExtras.builder()
+                .archivedAt(o.getArchivedAt())
+                .archivedBy(o.getArchivedBy())
+                .archiveReason(o.getArchiveReason())
+                .returnStatus(o.getReturnStatus())
+                .returnReceivedAt(o.getReturnReceivedAt())
+                .movements(movements)
+                .retainedMinor(retained)
+                .monoRefundableMinor(monoLeft)
+                .writeoffs(writeoffs)
+                .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
+                .exchangeOrderIds(exchangeChildren(List.of(o.getId())).getOrDefault(UuidUtil.toString(o.getId()), List.of()))
+                .returns(returnRecords(o))
+                .mergedIntoId(o.getMergedIntoOrderId() == null ? null : UuidUtil.toString(o.getMergedIntoOrderId()))
+                .mergedFromIds(orderRepository.mergedChildren(List.of(o.getId())).stream()
                         .map(r -> UuidUtil.toString((byte[]) r[1]))
-                        .toList());
+                        .toList())
+                .build();
     }
 
     /** Rows of the «Объединить» window (V71). */
