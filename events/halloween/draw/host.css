@@ -87,3 +87,4 @@ body.no-hints #hints { display: none; }
 #dlg .ok { color: var(--slime); }
 #dlg .warn { color: #ffb35c; }
 #dlg button.primary { background: var(--orange); color: #140800; border-color: transparent; font-weight: 700; }
+#dlg td.bad { color: #ff7b7b; font-weight: 600; }

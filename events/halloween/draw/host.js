@@ -2,6 +2,7 @@
 // chosen visual animate to it. See VISUAL-CONTRACT.md.
 import { VISUALS } from "./visuals/registry.js";
 import { mockParticipants, mockDraw } from "./mock.js";
+import { showPeople, spendCell } from "./admin-tools.js";
 
 const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
@@ -244,6 +245,8 @@ function setupControls() {
     TEST || confirm("Перекрутити останній раунд? Попередній переможець цього раунду вибуває і в розіграші більше не бере участі.") && roll(true);
   $("lock").onclick = lockList;
   $("contacts").onclick = () => showContacts().catch(fail);
+  $("people").onclick = () =>
+    (MOCK || TEST ? Promise.reject(new Error("У тестовому режимі учасники несправжні")) : showPeople({ api, dialog, fail, esc, pool: POOL, onChange: refreshList })).catch(fail);
   $("codes").onclick = () => showCodes().catch(fail);
   $("proof").onclick = () => downloadProof().catch(fail);
   $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value); };
@@ -275,6 +278,12 @@ function dialog(title, html) {
   return $("dlg-body");
 }
 
+async function refreshList() {
+  await load();
+  state.visual?.setParticipants(visibleList());
+  renderStats();
+}
+
 async function lockList() {
   if (!TEST && !confirm("Зафіксувати список учасників? Після цього нові гарбузи й замовлення вже не додадуть квитків.")) return;
   try {
@@ -290,12 +299,12 @@ async function showContacts() {
   if (MOCK || TEST) return fail("У тестовому режимі контактів немає: учасники несправжні");
   const rows = await api("/winners");
   const body = rows.length
-    ? `<table><tr><th>Раунд</th><th>Імʼя</th><th>Telegram</th><th>id</th><th>Коли</th><th></th></tr>${rows
+    ? `<table><tr><th>Раунд</th><th>Імʼя</th><th>Telegram</th><th>id</th>${POOL === "orders" ? "<th>Сума зараз</th>" : ""}<th>Коли</th><th></th></tr>${rows
         .map(
           (r) =>
             `<tr class="${r.voided ? "voided" : ""}"><td>${r.round}${r.attempt > 1 ? ` (спроба ${r.attempt})` : ""}</td><td>${esc(r.name)}</td><td>${
               r.username ? `<a href="https://t.me/${esc(r.username)}" target="_blank" rel="noopener">@${esc(r.username)}</a>` : "—"
-            }</td><td>${esc(r.tgId)}</td><td>${new Date(r.drawnAt).toLocaleString("uk-UA")}</td><td>${
+            }</td><td>${esc(r.tgId)}</td>${spendCell(r, esc)}<td>${new Date(r.drawnAt).toLocaleString("uk-UA")}</td><td>${
               r.voided ? "" : r.contacted ? `<a href="/support?thread=${esc(r.contacted.threadId)}" target="_blank" rel="noopener" class="ok">✓ написано</a>` : `<button data-msg="${r.round}">Написати</button>`
             }</td></tr>`
         )

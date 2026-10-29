@@ -12,6 +12,7 @@ import { config } from "./config.js";
 import { customer, admin } from "./auth.js";
 import * as game from "./game.js";
 import * as draw from "./draw.js";
+import * as adminPeople from "./admin-people.js";
 import * as rehearsal from "./test-draw.js";
 import * as prizes from "./prizes.js";
 import { db } from "./db.js";
@@ -140,7 +141,8 @@ async function adminApi(req, res, path, query) {
     }
     if (path === "winners" && req.method === "GET") {
       const sent = prizes.contacted();
-      return send(res, 200, (await draw.winnersFull(pool)).map((w) => ({ ...w, contacted: sent.get(w.drawId) || null, prize: prizes.prizeFor(pool, w.round) })));
+      const rows = (await draw.winnersFull(pool)).map((w) => ({ ...w, contacted: sent.get(w.drawId) || null, prize: prizes.prizeFor(pool, w.round) }));
+      return send(res, 200, await adminPeople.withSpend(pool, rows));
     }
     // Prize packs and the round → pack choice (made before the stream, changeable any time).
     if (path === "prizes" && req.method === "GET") return send(res, 200, prizes.state(pool));
@@ -179,6 +181,11 @@ async function adminApi(req, res, path, query) {
     }
     if (path === "codes" && req.method === "GET") return send(res, 200, game.listCodes());
     if (path === "codes" && req.method === "POST") return send(res, 200, game.saveCode(b, who.tgId));
+    if (path === "people" && req.method === "GET") return send(res, 200, await adminPeople.people(pool));
+    if (path === "include" && req.method === "POST") {
+      adminPeople.include(pool, b.tgId);
+      return send(res, 200, { ok: true });
+    }
     if (path === "exclude" && req.method === "POST") {
       const live = await liveEntries(pool);
       const hit = live.find((e) => draw.publicId(e.tgId) === b.id || e.tgId === String(b.tgId || ""));
