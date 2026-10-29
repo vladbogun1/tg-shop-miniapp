@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.payment.PaymentInvoice;
 import com.maxsolch.shop.payment.PaymentInvoiceRepository;
@@ -65,7 +66,7 @@ class CancelRequestServiceTest {
     private Order rejected(long received) {
         Order o = new Order();
         o.setId(orderId);
-        o.setStatus(OrderStatus.REJECTED);
+        OrderStates.withStatus(o, OrderStatus.REJECTED);
         o.setTotalMinor(100_000);
         o.setReceivedMinor(received);
         return o;

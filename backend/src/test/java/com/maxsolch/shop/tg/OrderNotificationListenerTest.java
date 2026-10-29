@@ -1,5 +1,6 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -28,7 +29,7 @@ class OrderNotificationListenerTest {
     private Order order(OrderStatus status) {
         Order o = new Order();
         o.setId(ID);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         when(orders.findById(ID)).thenReturn(Optional.of(o));
         return o;
     }

@@ -3,6 +3,7 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.PromoDiscount;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderTransitions;
+import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
@@ -167,7 +168,6 @@ public class OrderService {
 
         Order order = new Order();
         order.setCurrency("UAH");
-        order.setStatus(OrderStatus.NEW);
         order.setCustomerName(required(cmd.customerName(), "customerName"));
         order.setPhone(required(cmd.phone(), "phone"));
         order.setComment(cmd.comment());
@@ -277,7 +277,7 @@ public class OrderService {
         OrderGiftCase drawn = giftCfg.map(g -> applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
-        settleFreeOrder(order);
+        order.settleIfFree(Instant.now());
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
@@ -342,17 +342,7 @@ public class OrderService {
     @Transactional
     public Order approve(byte[] orderId) {
         Order order = lock(orderId);
-        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.APPROVED)) {
-            throw new BadRequestException("одобрить можно только новый заказ");
-        }
-        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
-            // Same as ship: approving would leave the customer's open request hanging.
-            throw new BadRequestException(
-                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
-        }
-        order.setStatus(OrderStatus.APPROVED);
-        order.setApprovedAt(Instant.now());
-        // The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit.
+        order.approve(Instant.now());
         return afterTransition(order);
     }
 
@@ -361,9 +351,6 @@ public class OrderService {
         return ship(orderId, trackingNumber, false);
     }
 
-    /** {@link OrderService#ship} refuses an order whose online payment is missing unless the admin confirmed. */
-    public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
-
     /**
      * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or
      *                    the whole order) has not arrived — e.g. agreed with the customer in the chat
@@ -371,44 +358,15 @@ public class OrderService {
     @Transactional
     public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
         Order order = lock(orderId);
-        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.SHIPPED)) {
-            throw new BadRequestException("отправить можно только новый или одобренный заказ");
-        }
-        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
-            // Shipping would leave the customer's open request hanging forever (the inbox only
-            // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
-            throw new BadRequestException(
-                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
-        }
-        if (!allowUnpaid && OrderMoney.onlinePaymentMissing(order)) {
-            throw new BadRequestException((order.getPrepaymentMinor() > 0 ? "Предоплата" : "Онлайн-оплата")
-                    + " по заказу #" + shortId(order) + " не пришла (не хватает "
-                    + MoneyFormat.uah(OrderMoney.amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
-                    SHIP_UNPAID_CODE);
-        }
-        order.setStatus(OrderStatus.SHIPPED);
-        order.setShippedAt(Instant.now());
-        if (trackingNumber != null && !trackingNumber.isBlank()) {
-            order.setTrackingNumber(trackingNumber.trim());
-        }
+        order.ship(trackingNumber, allowUnpaid, Instant.now());
         return afterTransition(order);
     }
 
     @Transactional
     public Order deliver(byte[] orderId) {
         Order order = lock(orderId);
-        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.DELIVERED)) {
-            throw new BadRequestException("доставленным можно отметить только отправленный заказ");
-        }
-        order.setStatus(OrderStatus.DELIVERED);
-        order.setDeliveredAt(Instant.now());
-        // Delivered ⇒ fully settled (COD collected on delivery + any prepayment). Record the
-        // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
-        // lowered: after an exchange for something cheaper the customer paid more than the new
-        // total, and the metrics read that overpayment to tell a refunded difference from a return.
-        // Units refused at the branch (partial pickup) were never paid for: left out.
         long receivedBefore = order.getReceivedMinor();
-        order.setReceivedMinor(Math.max(order.getReceivedMinor(), OrderMoney.collectableMinor(order)));
+        order.deliver(Instant.now());
         ledger(order, OrderMoneyMovement.Kind.PAYMENT,
                 order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
                         ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
@@ -417,10 +375,6 @@ public class OrderService {
                         ? "остаток при получении (частичный выкуп, не выкуплено "
                                 + MoneyFormat.uah(order.getUncollectedMinor()) + ")"
                         : "остаток при получении (доставлен)", null);
-        if (!order.isPaid()) {
-            order.setPaid(true);
-            order.setPaidAt(Instant.now());
-        }
         return afterTransition(order);
     }
 
@@ -436,7 +390,7 @@ public class OrderService {
             // Paid orders go through a cancellation request (requestCancel) instead.
             throw new BadRequestException(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
         }
-        if (!OrderTransitions.isOpen(order)) {
+        if (!order.isOpen()) {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         stock.restoreAll(order);
@@ -579,10 +533,6 @@ public class OrderService {
         return reject(orderId, reason, reasonCode, restock, false);
     }
 
-    /** Shown when someone tries to reject an order the customer already received. */
-    public static final String REJECT_DELIVERED =
-            "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
-
     /**
      * @param returnInTransit only for a SHIPPED order (refused at the post office, sent back): the
      *                        goods are not on the shelf yet, so nothing is restocked now — the
@@ -594,21 +544,10 @@ public class OrderService {
                         boolean returnInTransit) {
         Order order = lock(orderId);
         OrderStatus before = order.getStatus();
-        if (!OrderTransitions.allowed(before, OrderStatus.REJECTED)) {
-            if (before == OrderStatus.REJECTED) {
-                throw new BadRequestException("заказ уже отклонён");
-            }
-            // Rejecting a delivered order used to keep its «получено» (the automatic full amount
-            // set on delivery) — metrics then showed money that never was. A return records it right.
-            throw new BadRequestException(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
-        }
+        order.requireRejectable();
         boolean inTransit = returnInTransit && before == OrderStatus.SHIPPED;
         if (inTransit) {
-            order.setReturnStatus(Order.RETURN_IN_TRANSIT);
-            order.setReturnSentAt(Instant.now());
-            for (OrderItem item : order.getItems()) {
-                item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
-            }
+            order.markReturnInTransit(Instant.now());
         } else if (restock) {
             stock.restoreAll(order);
         }
@@ -620,7 +559,7 @@ public class OrderService {
             ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
                     OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
         }
-        boolean requestWasOpen = CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus());
+        boolean requestWasOpen = order.isCancelRequestPending();
         if (requestWasOpen) {
             // Rejected by hand while the customer's request was open: the request is fulfilled
             // (the refund, if any, stays the admin's call — the inbox keeps reminding).
@@ -849,7 +788,7 @@ public class OrderService {
     public Order addItem(byte[] orderId, String productId, String variantId, int qty,
                          boolean gift, boolean notifyCustomer) {
         Order order = lock(orderId);
-        requireEditable(order);
+        order.requireEditable();
         if (qty < 1) {
             throw new BadRequestException("quantity must be >= 1");
         }
@@ -911,7 +850,7 @@ public class OrderService {
     @Transactional
     public Order removeItem(byte[] orderId, long itemId) {
         Order order = lock(orderId);
-        requireEditable(order);
+        order.requireEditable();
         OrderItem item = order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
@@ -937,7 +876,7 @@ public class OrderService {
     @Transactional
     public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
         Order order = lock(orderId);
-        requireEditable(order);
+        order.requireEditable();
         if (newQty < 1) {
             throw new BadRequestException("quantity must be >= 1 (use remove to delete)");
         }
@@ -962,7 +901,7 @@ public class OrderService {
     public Order applyDiscount(byte[] orderId, String promoCode, Long amountMinor,
                                Integer percent, boolean clear, boolean notifyCustomer) {
         Order order = lock(orderId);
-        requireEditable(order);
+        order.requireEditable();
         long subtotal = order.getItems().stream()
                 .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
 
@@ -997,7 +936,7 @@ public class OrderService {
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
         order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
-        settleFreeOrder(order);
+        order.settleIfFree(Instant.now());
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
@@ -1081,14 +1020,6 @@ public class OrderService {
 
     // ----- helpers -----
 
-    /** Order composition/discount may only be edited before dispatch. */
-    private void requireEditable(Order order) {
-        OrderStatus s = order.getStatus();
-        if (!OrderTransitions.isOpen(s)) {
-            throw new BadRequestException("заказ можно менять только в статусе «Новый» или «Одобрен»");
-        }
-    }
-
     /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
     void recomputeOrderTotals(Order order) {
         recomputeTotals(order);
@@ -1097,22 +1028,7 @@ public class OrderService {
     /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
     private void recomputeTotals(Order order) {
         OrderMoney.reprice(order);
-        settleFreeOrder(order);
-    }
-
-    /**
-     * Nothing to pay: a discount (a case prize, a manual one) covers the whole order. It counts as paid at
-     * once and has no payment deadline — otherwise it hung as «не оплачен» with a timer, and a NEW one was
-     * auto-cancelled for non-payment. If an item is added later, the paid order asks for a top-up as usual.
-     */
-    static void settleFreeOrder(Order order) {
-        if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
-                || !OrderTransitions.isOpen(order)) {
-            return;
-        }
-        order.setPaid(true);
-        order.setPaidAt(Instant.now());
-        order.setPaymentDueAt(null);
+        order.settleIfFree(Instant.now());
     }
 
     /**
@@ -1362,7 +1278,7 @@ public class OrderService {
     @Transactional
     public Order grantGiftCase(byte[] orderId, GiftCaseTier.Tier tier, boolean notifyCustomer) {
         Order order = lock(orderId);
-        requireEditable(order);
+        order.requireEditable();
         if (order.getGiftCaseStatus() != null) {
             throw new BadRequestException("У заказа уже есть кейс");
         }
@@ -1409,25 +1325,9 @@ public class OrderService {
         });
     }
 
-    /**
-     * Why and when an order is rejected: what the four paths to REJECTED (customer cancel, approved
-     * cancel request, admin reject, payment timeout) write on the order. The paths differ in what
-     * they do BEFORE this (stock, money, the cancel request), not in this part.
-     *
-     * @param cancelledByCustomer set the flag; {@code false} leaves it as it is (never true before a reject)
-     */
-    private record RejectCause(Instant at, String reason, String reasonCode, boolean cancelledByCustomer) {
-    }
-
     /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
     private Order rejectLocked(Order order, RejectCause cause) {
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(cause.at());
-        order.setRejectReason(cause.reason());
-        order.setRejectReasonCode(cause.reasonCode());
-        if (cause.cancelledByCustomer()) {
-            order.setCancelledByCustomer(true);
-        }
+        order.reject(cause);
         return afterTransition(order);
     }
 

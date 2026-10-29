@@ -12,6 +12,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -28,6 +30,12 @@ public class Order {
     /** {@link #getReturnStatus()}: the refused parcel is on its way back / has arrived. */
     public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
     public static final String RETURN_RECEIVED = "RECEIVED";
+
+    /** Error code: shipping needs the online payment that has not arrived (the admin may confirm). */
+    public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
+    /** Shown when someone tries to reject an order the customer already received. */
+    public static final String REJECT_DELIVERED =
+            "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
 
     @Id
     @Column(name = "id", columnDefinition = "BINARY(16)", nullable = false)
@@ -75,6 +83,8 @@ public class Order {
     @Column(name = "comment", length = 1024)
     private String comment;
 
+    /** Changes only through the transition methods below ({@link #approve}, {@link #ship}, ...). */
+    @Setter(AccessLevel.NONE)
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private OrderStatus status = OrderStatus.NEW;
@@ -249,6 +259,146 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("createdAt ASC, id ASC")
     private List<OrderMessage> messages = new ArrayList<>();
+
+    // ----- state machine: the status moves only through these methods -----
+
+    /** Not dispatched yet and not closed: the order can still be edited, cancelled, merged. */
+    public boolean isOpen() {
+        return OrderTransitions.isOpen(status);
+    }
+
+    /** Order composition/discount may only be edited before dispatch. */
+    public void requireEditable() {
+        if (!isOpen()) {
+            throw OrderErrors.badRequest("заказ можно менять только в статусе «Новый» или «Одобрен»");
+        }
+    }
+
+    public boolean isCancelRequestPending() {
+        return CancelRequestStatus.PENDING.name().equals(cancelRequestStatus);
+    }
+
+    /** NEW → APPROVED. The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit. */
+    public void approve(Instant now) {
+        if (!OrderTransitions.allowed(status, OrderStatus.APPROVED)) {
+            throw OrderErrors.badRequest("одобрить можно только новый заказ");
+        }
+        requireNoPendingCancelRequest();
+        status = OrderStatus.APPROVED;
+        approvedAt = now;
+    }
+
+    /**
+     * NEW/APPROVED → SHIPPED.
+     *
+     * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or the whole
+     *                    order) has not arrived — e.g. agreed with the customer in the chat
+     */
+    public void ship(String trackingNumber, boolean allowUnpaid, Instant now) {
+        if (!OrderTransitions.allowed(status, OrderStatus.SHIPPED)) {
+            throw OrderErrors.badRequest("отправить можно только новый или одобренный заказ");
+        }
+        requireNoPendingCancelRequest();
+        if (!allowUnpaid && OrderMoney.onlinePaymentMissing(this)) {
+            throw OrderErrors.badRequest((prepaymentMinor > 0 ? "Предоплата" : "Онлайн-оплата")
+                    + " по заказу #" + shortId() + " не пришла (не хватает "
+                    + MoneyFormat.uah(OrderMoney.amountDueMinor(this)) + "). Отправить без неё можно только с подтверждением админа.",
+                    SHIP_UNPAID_CODE);
+        }
+        status = OrderStatus.SHIPPED;
+        shippedAt = now;
+        if (trackingNumber != null && !trackingNumber.isBlank()) {
+            this.trackingNumber = trackingNumber.trim();
+        }
+    }
+
+    /**
+     * SHIPPED → DELIVERED. Delivered means fully settled (COD collected on delivery + any prepayment): the
+     * collectable amount counts as received, so наложка is 0 and it is never delivered-but-unpaid. Never
+     * lowered: after an exchange for something cheaper the customer paid more than the new total, and the
+     * metrics read that overpayment to tell a refunded difference from a return. Units refused at the
+     * branch (partial pickup) were never paid for: left out.
+     */
+    public void deliver(Instant now) {
+        if (!OrderTransitions.allowed(status, OrderStatus.DELIVERED)) {
+            throw OrderErrors.badRequest("доставленным можно отметить только отправленный заказ");
+        }
+        status = OrderStatus.DELIVERED;
+        deliveredAt = now;
+        receivedMinor = Math.max(receivedMinor, OrderMoney.collectableMinor(this));
+        if (!paid) {
+            paid = true;
+            paidAt = now;
+        }
+    }
+
+    /** Throws when the order cannot be rejected at all (already rejected, or delivered — a return is a wizard). */
+    public void requireRejectable() {
+        if (!OrderTransitions.allowed(status, OrderStatus.REJECTED)) {
+            if (status == OrderStatus.REJECTED) {
+                throw OrderErrors.badRequest("заказ уже отклонён");
+            }
+            // Rejecting a delivered order used to keep its «получено» (the automatic full amount
+            // set on delivery) — metrics then showed money that never was. A return records it right.
+            throw OrderErrors.badRequest(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
+        }
+    }
+
+    /** NEW/APPROVED/SHIPPED → REJECTED with the reason; what the path did before (stock, money) is its own business. */
+    public void reject(RejectCause cause) {
+        requireRejectable();
+        status = OrderStatus.REJECTED;
+        rejectedAt = cause.at();
+        rejectReason = cause.reason();
+        rejectReasonCode = cause.reasonCode();
+        if (cause.cancelledByCustomer()) {
+            cancelledByCustomer = true;
+        }
+    }
+
+    /** A refused parcel is on its way back: every line waits for the units not yet restocked (V68). */
+    public void markReturnInTransit(Instant now) {
+        returnStatus = RETURN_IN_TRANSIT;
+        returnSentAt = now;
+        for (OrderItem item : items) {
+            item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
+        }
+    }
+
+    /** This order was merged into another (V71): closed as REJECTED with code MERGED, its lines live on there. */
+    public void markMerged(Instant now, String reason, byte[] targetOrderId) {
+        reject(new RejectCause(now, reason, RejectReasonCode.MERGED.name(), false));
+        mergedIntoOrderId = targetOrderId;
+        paymentDueAt = null;
+    }
+
+    /**
+     * Nothing to pay: a discount (a case prize, a manual one) covers the whole order. It counts as paid at
+     * once and has no payment deadline — otherwise it hung as «не оплачен» with a timer, and a NEW one was
+     * auto-cancelled for non-payment. If an item is added later, the paid order asks for a top-up as usual.
+     */
+    public void settleIfFree(Instant now) {
+        if (paid || totalMinor != 0 || items.isEmpty() || !isOpen()) {
+            return;
+        }
+        paid = true;
+        paidAt = now;
+        paymentDueAt = null;
+    }
+
+    private void requireNoPendingCancelRequest() {
+        if (isCancelRequestPending()) {
+            // Approving or shipping would leave the customer's open request hanging (the inbox only
+            // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
+            throw OrderErrors.badRequest(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+        }
+    }
+
+    private String shortId() {
+        String full = id == null ? "" : UuidUtil.toString(id);
+        return full == null || full.length() < 8 ? String.valueOf(full) : full.substring(0, 8);
+    }
 
     @PrePersist
     void prePersist() {

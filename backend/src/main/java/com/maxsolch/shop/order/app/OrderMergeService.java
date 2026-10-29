@@ -185,12 +185,7 @@ public class OrderMergeService {
         }
 
         // 4. The merged order is closed, keeping its lines and money history.
-        source.setStatus(OrderStatus.REJECTED);
-        source.setRejectedAt(Instant.now());
-        source.setRejectReasonCode(RejectReasonCode.MERGED.name());
-        source.setRejectReason(MERGED_PREFIX + targetShort);
-        source.setMergedIntoOrderId(target.getId());
-        source.setPaymentDueAt(null);
+        source.markMerged(Instant.now(), MERGED_PREFIX + targetShort, target.getId());
 
         Order savedTarget = orderRepository.save(target);
         Order savedSource = orderRepository.save(source);

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.PromoDiscount;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.service.StockFixtures;
@@ -23,7 +25,6 @@ import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.BeforeEach;
@@ -215,7 +216,7 @@ class OrderServiceTest {
         CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null, null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.paymentRequired");
         verify(orderRepository, never()).save(any());
     }
@@ -226,7 +227,7 @@ class OrderServiceTest {
         CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.paymentUnknown");
     }
 
@@ -289,7 +290,7 @@ class OrderServiceTest {
 
         assertThatThrownBy(() -> service.createOrder(
                 cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 5)), null)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         verify(cartService, never()).removeOrdered(org.mockito.ArgumentMatchers.anyLong(), any());
     }
 
@@ -304,7 +305,7 @@ class OrderServiceTest {
                 List.of(new CreateOrderCommand.Line(productUuid, null, 5)), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.outOfStock");
         verify(orderRepository, never()).save(any());
     }
@@ -319,7 +320,7 @@ class OrderServiceTest {
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null); // no variant
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.variantRequired");
     }
 
@@ -334,7 +335,7 @@ class OrderServiceTest {
                 List.of(new CreateOrderCommand.Line(productUuid, foreignVariant, 1)), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.variantMismatch");
     }
 
@@ -349,7 +350,7 @@ class OrderServiceTest {
                 List.of(new CreateOrderCommand.Line(productUuid, UuidUtil.toString(v.getId()), 5)), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.outOfStock");
     }
 
@@ -358,7 +359,7 @@ class OrderServiceTest {
         CreateOrderCommand command = cmd(List.of(), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.noItems");
     }
 
@@ -372,7 +373,7 @@ class OrderServiceTest {
                 List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null);
 
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.order.unavailable");
     }
 
@@ -519,7 +520,7 @@ class OrderServiceTest {
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "SAVE10")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.promo.caseExcluded");
         assertThat(promo.getUsesCount()).isZero();
     }
@@ -530,7 +531,7 @@ class OrderServiceTest {
         PromoCode promo = casePromo("CASE10", 10);
 
         assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "CASE10")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.promo.caseExcluded");
         assertThat(promo.getUsesCount()).isZero();
     }
@@ -589,9 +590,9 @@ class OrderServiceTest {
         // The apps branch on the CODE, not the wording: the message is customer-facing Russian and
         // is free to change.
         assertThatThrownBy(() -> service.createOrder(command))
-                .isInstanceOf(BadRequestException.class)
-                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.type(BadRequestException.class))
-                .extracting(BadRequestException::getCode)
+                .isInstanceOf(DomainException.BadRequest.class)
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.type(DomainException.BadRequest.class))
+                .extracting(DomainException.BadRequest::getCode)
                 .isEqualTo(OrderService.PROMO_REJECTED);
     }
 
@@ -600,7 +601,7 @@ class OrderServiceTest {
     private Order persistedOrder(OrderStatus status) {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setItems(new ArrayList<>());
         return o;
     }
@@ -632,7 +633,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.approve(o.getId()))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("только новый");
     }
 
@@ -642,7 +643,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.deliver(o.getId()))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("только отправленный");
     }
 
@@ -681,7 +682,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("уже отклонён");
     }
 
@@ -692,7 +693,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.reject(o.getId(), "возврат на НП", false))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("оформите «Возврат»");
         assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
     }
@@ -757,7 +758,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.ship(o.getId(), null))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("запрос отмены");
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
     }
@@ -777,10 +778,10 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.ship(o.getId(), "20450000000000"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("Предоплата по заказу #")
                 .hasMessageContaining("не пришла")
-                .satisfies(e -> assertThat(((BadRequestException) e).getCode()).isEqualTo(OrderService.SHIP_UNPAID_CODE));
+                .satisfies(e -> assertThat(((DomainException) e).getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
 
         Order shipped = service.changeStatus(o.getId(), OrderStatus.SHIPPED, "20450000000000", null, null, true, true);
@@ -815,7 +816,7 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.NEW);
         // findById not needed: NEW case throws before any lookup
         assertThatThrownBy(() -> service.changeStatus(o.getId(), OrderStatus.NEW, null, null, true))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("«Новые» нельзя");
     }
 
@@ -924,7 +925,7 @@ class OrderServiceTest {
         Order notDue = unpaidOrderWithOneItem(p, 1, now.plusSeconds(60));
         Order legacy = unpaidOrderWithOneItem(p, 1, null); // placed before online payment existed
         Order approved = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
-        approved.setStatus(OrderStatus.APPROVED);
+        OrderStates.withStatus(approved, OrderStatus.APPROVED);
         for (Order o : List.of(paid, partlyPaid, notDue, legacy, approved)) {
             when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
             assertThat(service.expireUnpaid(o.getId(), now)).isNull();
@@ -958,7 +959,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.markPaid(o.getId(), 999_999))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("больше суммы заказа");
         assertThat(o.getReceivedMinor()).isZero();
         verify(orderRepository, never()).save(any());
@@ -1006,12 +1007,12 @@ class OrderServiceTest {
         o.getItems().add(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         org.mockito.Mockito.doAnswer(inv -> {
-            ((Order) inv.getArgument(0)).setStatus(OrderStatus.REJECTED);
+            OrderStates.withStatus(inv.getArgument(0), OrderStatus.REJECTED);
             return null;
         }).when(entityManager).refresh(o, LockModeType.PESSIMISTIC_WRITE);
 
         assertThatThrownBy(() -> service.reject(o.getId(), "x", true))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(p.getStock()).isEqualTo(5);
         verify(productRepository, never()).findByIdForUpdate(any());
     }
@@ -1069,7 +1070,7 @@ class OrderServiceTest {
             when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
             assertThatThrownBy(() -> service.archive(o.getId(), "дубль заказа", "Влад"))
-                    .isInstanceOf(BadRequestException.class)
+                    .isInstanceOf(DomainException.BadRequest.class)
                     .hasMessageContaining("только доставленный или отклонённый");
         }
         verify(orderRepository, never()).delete(any());
@@ -1102,12 +1103,12 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> service.archive(o.getId(), " ", "Влад"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("почему");
 
         service.archive(o.getId(), "дубль", "Влад");
         assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("уже в архиве");
 
         Order back = service.unarchive(o.getId());
@@ -1125,7 +1126,7 @@ class OrderServiceTest {
         when(paymentInvoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 
         assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("банк ещё обрабатывает");
     }
 
@@ -1279,7 +1280,7 @@ class OrderServiceTest {
         p.setVariants(new ArrayList<>(List.of(m, l, xl)));
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem line = new OrderItem();
         line.setOrder(o);
@@ -1330,11 +1331,11 @@ class OrderServiceTest {
     void aSizeOutOfStockOrAShippedOrderIsRefused() {
         SizedPrize s = sizedPrize(OrderStatus.NEW);
         assertThatThrownBy(() -> service.chooseCasePrizeSize(s.order().getId(), UuidUtil.toString(s.xl().getId())))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(s.line().isVariantPending()).isTrue();
         SizedPrize shipped = sizedPrize(OrderStatus.SHIPPED);
         assertThatThrownBy(() -> service.chooseCasePrizeSize(shipped.order().getId(), UuidUtil.toString(shipped.l().getId())))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(shipped.l().getStock()).isEqualTo(1);
     }
 
@@ -1437,7 +1438,7 @@ class OrderServiceTest {
         assertThat(service.exchangePaymentOptionId(gone)).isEqualTo(UuidUtil.toString(fullPayment.getId()));
 
         when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of());
-        assertThatThrownBy(() -> service.exchangePaymentOptionId(gone)).isInstanceOf(BadRequestException.class)
+        assertThatThrownBy(() -> service.exchangePaymentOptionId(gone)).isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("нет активного способа оплаты для нового заказа");
     }
 
@@ -1515,7 +1516,7 @@ class OrderServiceTest {
 
         Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
         assertThatThrownBy(() -> service.applyDiscount(shipped.getId(), null, 100L, null, false, false))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("заказ можно менять только в статусе «Новый» или «Одобрен»");
     }
 
@@ -1546,10 +1547,10 @@ class OrderServiceTest {
         verify(gift).saveOrderCase(any());
         // a second case is refused
         assertThatThrownBy(() -> service.grantGiftCase(o.getId(), tier, false))
-                .isInstanceOf(BadRequestException.class).hasMessage("У заказа уже есть кейс");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("У заказа уже есть кейс");
         // and so is a closed order
         Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
         assertThatThrownBy(() -> service.grantGiftCase(shipped.getId(), tier, false))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 }

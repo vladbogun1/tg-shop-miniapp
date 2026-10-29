@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
@@ -57,7 +58,7 @@ class OrderMergeServiceTest {
     private Order order(OrderStatus status, long tgUserId, OrderItem... items) {
         Order o = new Order();
         o.setId(UuidUtil.toBytes(UUID.randomUUID().toString()));
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setTgUserId(tgUserId);
         o.setPhone("+380671234567");
         o.setCreatedAt(Instant.now());

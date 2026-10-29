@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderEvents;
@@ -19,7 +20,6 @@ import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -109,7 +109,7 @@ class OrderTransitionsTest {
     private Order order(OrderStatus status) {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setTotalMinor(100_000);
         OrderItem it = new OrderItem();
         it.setOrder(o);
@@ -144,7 +144,7 @@ class OrderTransitionsTest {
                     ? null : "доставленным можно отметить только отправленный заказ";
             case REJECTED -> switch (from) {
                 case REJECTED -> "заказ уже отклонён";
-                case DELIVERED -> OrderService.REJECT_DELIVERED;
+                case DELIVERED -> Order.REJECT_DELIVERED;
                 default -> null;
             };
         };
@@ -162,7 +162,7 @@ class OrderTransitionsTest {
                     assertThat(r.getStatus()).as(pair).isEqualTo(to);
                 } else {
                     assertThatThrownBy(() -> service.changeStatus(o.getId(), to, null, null, true))
-                            .as(pair).isInstanceOf(BadRequestException.class).hasMessage(refusal);
+                            .as(pair).isInstanceOf(DomainException.BadRequest.class).hasMessage(refusal);
                     assertThat(o.getStatus()).as(pair).isEqualTo(from);
                 }
             }
@@ -174,14 +174,14 @@ class OrderTransitionsTest {
         // Only the reject of a delivered order carries a code; the other refusals are plain.
         assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.DELIVERED).getId(),
                 OrderStatus.REJECTED, null, null, true))
-                .isInstanceOfSatisfying(BadRequestException.class,
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo("ORDER_DELIVERED_REJECT"));
         assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.REJECTED).getId(),
                 OrderStatus.REJECTED, null, null, true))
-                .isInstanceOfSatisfying(BadRequestException.class, e -> assertThat(e.getCode()).isNull());
+                .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> assertThat(e.getCode()).isNull());
         assertThatThrownBy(() -> service.changeStatus(order(OrderStatus.SHIPPED).getId(),
                 OrderStatus.APPROVED, null, null, true))
-                .isInstanceOfSatisfying(BadRequestException.class, e -> assertThat(e.getCode()).isNull());
+                .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> assertThat(e.getCode()).isNull());
     }
 
     @Test
@@ -216,14 +216,14 @@ class OrderTransitionsTest {
         Order shipIt = order(OrderStatus.NEW);
         shipIt.setCancelRequestStatus("PENDING");
         assertThatThrownBy(() -> service.ship(shipIt.getId(), null))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("запрос отмены");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(shipIt.getStatus()).isEqualTo(OrderStatus.NEW);
 
         // Owner's decision 29.10.2026: approve is blocked the same way as ship.
         Order approveIt = order(OrderStatus.NEW);
         approveIt.setCancelRequestStatus("PENDING");
         assertThatThrownBy(() -> service.approve(approveIt.getId()))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("запрос отмены");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(approveIt.getStatus()).isEqualTo(OrderStatus.NEW);
         assertThat(approveIt.getApprovedAt()).isNull();
         assertThat(approveIt.getCancelRequestStatus()).isEqualTo("PENDING");
@@ -234,8 +234,8 @@ class OrderTransitionsTest {
         Order o = order(OrderStatus.APPROVED);
         o.setPaymentDueAt(Instant.now().plusSeconds(3600));
         assertThatThrownBy(() -> service.ship(o.getId(), null))
-                .isInstanceOfSatisfying(BadRequestException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(OrderService.SHIP_UNPAID_CODE));
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
+                        e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
         assertThat(service.ship(o.getId(), null, true).getStatus()).isEqualTo(OrderStatus.SHIPPED);
     }
 
@@ -291,17 +291,17 @@ class OrderTransitionsTest {
         Order paid = order(OrderStatus.NEW);
         paid.setPaid(true);
         assertThatThrownBy(() -> service.cancelByCustomer(paid.getId(), "x"))
-                .isInstanceOfSatisfying(BadRequestException.class,
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(OrderService.PAID_NEEDS_REQUEST));
         Order received = order(OrderStatus.NEW);
         received.setReceivedMinor(1);
         assertThatThrownBy(() -> service.cancelByCustomer(received.getId(), "x"))
-                .isInstanceOfSatisfying(BadRequestException.class,
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(OrderService.PAID_NEEDS_REQUEST));
         for (OrderStatus s : List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.REJECTED)) {
             Order o = order(s);
             assertThatThrownBy(() -> service.cancelByCustomer(o.getId(), "x"))
-                    .isInstanceOfSatisfying(BadRequestException.class,
+                    .isInstanceOfSatisfying(DomainException.BadRequest.class,
                             e -> assertThat(e.getCode()).isEqualTo(OrderService.CANNOT_CANCEL));
         }
         assertThat(product.getStock()).isEqualTo(3);
@@ -350,13 +350,13 @@ class OrderTransitionsTest {
 
         Order none = order(OrderStatus.NEW);
         assertThatThrownBy(() -> service.approveCancelRequest(none.getId(), null))
-                .isInstanceOfSatisfying(BadRequestException.class,
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(OrderService.NO_PENDING_REQUEST));
 
         Order shipped = order(OrderStatus.SHIPPED);
         shipped.setCancelRequestStatus("PENDING");
         assertThatThrownBy(() -> service.approveCancelRequest(shipped.getId(), null))
-                .isInstanceOfSatisfying(BadRequestException.class, e -> {
+                .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> {
                     assertThat(e.getCode()).isEqualTo(OrderService.CANNOT_CANCEL);
                     assertThat(e.getMessage()).isEqualTo("заказ уже SHIPPED — отмена по запросу невозможна");
                 });

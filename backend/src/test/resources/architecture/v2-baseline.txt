@@ -48,7 +48,6 @@ M2 promo 4
 N1 legacy 49
 N1 order 1
 N1 platform 7
-O1 order 3
 P1 platform 26
 S1 legacy 21
 S1 platform 4

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MoneyLedger;
@@ -124,7 +125,7 @@ class OrderStockTest {
     private Order order(OrderStatus status) {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setItems(new ArrayList<>());
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;

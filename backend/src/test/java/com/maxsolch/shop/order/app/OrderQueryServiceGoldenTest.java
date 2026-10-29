@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
@@ -433,7 +434,7 @@ class OrderQueryServiceGoldenTest {
         Order o = new Order();
         o.setId(id(n));
         o.setUserId(7000L + n);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setSource(OrderSource.MINIAPP);
         o.setCurrency("UAH");
         o.setCustomerName("Иван Петренко " + n);

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
@@ -85,7 +86,7 @@ class OrderAdjustmentServiceTest {
     private Order order(OrderStatus status) {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");
         o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -82,7 +83,7 @@ class OrderCancelRequestTest {
     private Order order(OrderStatus status, long received) {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setTotalMinor(100_000);
         o.setReceivedMinor(received);
         o.setPaid(received > 0);

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.tg;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -335,7 +336,7 @@ final class NotifyHarness {
         Order o = new Order();
         o.setId(UuidUtil.toBytes("1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9"));
         o.setTgUserId(tgUserId);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setCurrency("₴");
         o.setCustomerName("Іван <Петренко> & Co");
         o.setPhone("+380501234567");
@@ -374,7 +375,7 @@ final class NotifyHarness {
         Order o = new Order();
         o.setId(UuidUtil.toBytes("9f8e7d6c-5b4a-4392-8180-0a1b2c3d4e5f"));
         o.setTgUserId(tgUserId);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setSource(OrderSource.WEB);
         o.setCurrency("₴");
         o.setCustomerName("Олена");

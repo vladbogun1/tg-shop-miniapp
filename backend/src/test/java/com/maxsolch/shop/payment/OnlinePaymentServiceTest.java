@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
@@ -79,7 +80,7 @@ class OnlinePaymentServiceTest {
     private static Order order() {
         Order o = new Order();
         o.setId(UuidUtil.randomBytes());
-        o.setStatus(OrderStatus.NEW);
+        OrderStates.withStatus(o, OrderStatus.NEW);
         o.setItems(new ArrayList<>(List.of(line("Свеча", "Лаванда", 300_00, 2), line("Плед", null, 400_00, 1))));
         o.setSubtotalMinor(1000_00);
         o.setTotalMinor(1000_00);
@@ -226,7 +227,7 @@ class OnlinePaymentServiceTest {
     @Test
     void start_refusesARejectedOrder() {
         Order o = order();
-        o.setStatus(OrderStatus.REJECTED);
+        OrderStates.withStatus(o, OrderStatus.REJECTED);
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
@@ -238,7 +239,7 @@ class OnlinePaymentServiceTest {
     @Test
     void start_refusesAnOrderCancelledForNonPayment() {
         Order o = order();
-        o.setStatus(OrderStatus.REJECTED);
+        OrderStates.withStatus(o, OrderStatus.REJECTED);
         o.setRejectReasonCode("PAYMENT_TIMEOUT");
         given(o);
 
@@ -263,7 +264,7 @@ class OnlinePaymentServiceTest {
     void start_approvedOrderIsPayablePastTheDeadline() {
         // The shop approved it (maybe agreed in the chat): the customer may pay late until it is rejected.
         Order o = order();
-        o.setStatus(OrderStatus.APPROVED);
+        OrderStates.withStatus(o, OrderStatus.APPROVED);
         o.setPrepaymentMinor(100_00);
         o.setPaymentDueAt(Instant.now().minus(Duration.ofHours(5)));
         given(o);

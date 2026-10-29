@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -25,7 +26,7 @@ class ReviewRulesTest {
         o.setId(UuidUtil.randomBytes());
         o.setUserId(userId);
         o.setTgUserId(userId);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         return o;
     }
 

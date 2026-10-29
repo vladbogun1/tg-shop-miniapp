@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift;
 
+import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -13,7 +14,7 @@ class GiftCaseOpenableTest {
     private static Order order(String caseStatus, OrderStatus status, boolean paid, long received) {
         Order o = new Order();
         o.setGiftCaseStatus(caseStatus);
-        o.setStatus(status);
+        OrderStates.withStatus(o, status);
         o.setTotalMinor(300_000);
         o.setPaid(paid);
         o.setReceivedMinor(received);

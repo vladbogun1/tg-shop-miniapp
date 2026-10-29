@@ -841,8 +841,7 @@ public class OrderAdjustmentService {
         // rest through monobank) or наложкой on delivery. A prepayment snapshot would cap the online part.
         child.setPrepaymentMinor(0);
         if (to == OrderStatus.APPROVED) {
-            child.setStatus(OrderStatus.APPROVED);
-            child.setApprovedAt(Instant.now());
+            child.approve(Instant.now());
         }
         child = orderRepository.save(child);
 
