@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import java.time.Clock;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
 class OnlinePaymentServiceTest {
 
     @Mock
-    MonobankClient mono;
+    MonobankGateway mono;
     @Mock
     PaymentInvoiceRepository invoices;
     @Mock
@@ -120,10 +120,10 @@ class OnlinePaymentServiceTest {
         Order o = order();
         o.getItems().add(line("Подарок", null, 0, 1)); // gifts are not on the receipt
 
-        List<MonobankClient.BasketItem> basket = OnlinePaymentService.basket(o, 1000_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 1000_00, "abcd1234");
 
-        assertThat(basket).extracting(MonobankClient.BasketItem::name).containsExactly("Свеча (Лаванда)", "Плед");
-        assertThat(basket).extracting(MonobankClient.BasketItem::qty).containsExactly(2L, 1L);
+        assertThat(basket).extracting(MonobankGateway.BasketItem::name).containsExactly("Свеча (Лаванда)", "Плед");
+        assertThat(basket).extracting(MonobankGateway.BasketItem::qty).containsExactly(2L, 1L);
         assertThat(basket.stream().mapToLong(b -> b.sum() * b.qty()).sum()).isEqualTo(1000_00);
     }
 
@@ -132,7 +132,7 @@ class OnlinePaymentServiceTest {
         Order o = order();
         o.setPrepaymentMinor(100_00);
 
-        List<MonobankClient.BasketItem> basket = OnlinePaymentService.basket(o, 100_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 100_00, "abcd1234");
 
         assertThat(basket).singleElement().satisfies(b -> {
             assertThat(b.name()).isEqualTo("Передоплата за замовлення #abcd1234");
@@ -147,7 +147,7 @@ class OnlinePaymentServiceTest {
         o.setDiscountMinor(50_00);
         o.setTotalMinor(950_00);
 
-        List<MonobankClient.BasketItem> basket = OnlinePaymentService.basket(o, 950_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 950_00, "abcd1234");
 
         assertThat(basket).singleElement().satisfies(b -> {
             assertThat(b.name()).isEqualTo("Оплата замовлення #abcd1234");
@@ -161,14 +161,14 @@ class OnlinePaymentServiceTest {
     void start_createsAnInvoiceForWhatIsDue() {
         Order o = order();
         given(o);
-        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-new", "https://pay/inv-new"));
+        when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-new", "https://pay/inv-new"));
 
         OnlinePaymentService.StartedPayment started = service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "en");
 
         assertThat(started.invoiceId()).isEqualTo("inv-new");
         assertThat(started.pageUrl()).isEqualTo("https://pay/inv-new");
         assertThat(started.amountMinor()).isEqualTo(1000_00);
-        ArgumentCaptor<MonobankClient.CreateInvoice> req = ArgumentCaptor.forClass(MonobankClient.CreateInvoice.class);
+        ArgumentCaptor<MonobankGateway.CreateInvoice> req = ArgumentCaptor.forClass(MonobankGateway.CreateInvoice.class);
         verify(mono).createInvoice(req.capture());
         assertThat(req.getValue().amount()).isEqualTo(1000_00);
         assertThat(req.getValue().reference()).isEqualTo(UuidUtil.toString(o.getId()));
@@ -186,7 +186,7 @@ class OnlinePaymentServiceTest {
         Order o = order();
         o.setPrepaymentMinor(100_00);
         given(o);
-        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-new", "https://pay/inv-new"));
+        when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-new", "https://pay/inv-new"));
 
         assertThat(service.start(o.getId(), OnlinePaymentService.ReturnTo.MINIAPP, "uk").amountMinor()).isEqualTo(100_00);
     }
@@ -273,12 +273,12 @@ class OnlinePaymentServiceTest {
         o.setPrepaymentMinor(100_00);
         o.setPaymentDueAt(Instant.now().minus(Duration.ofHours(5)));
         given(o);
-        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-late", "https://pay/inv-late"));
+        when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-late", "https://pay/inv-late"));
 
         OnlinePaymentService.StartedPayment started = service.start(o.getId(), OnlinePaymentService.ReturnTo.MINIAPP, "uk");
 
         assertThat(started.amountMinor()).isEqualTo(100_00);
-        ArgumentCaptor<MonobankClient.CreateInvoice> req = ArgumentCaptor.forClass(MonobankClient.CreateInvoice.class);
+        ArgumentCaptor<MonobankGateway.CreateInvoice> req = ArgumentCaptor.forClass(MonobankGateway.CreateInvoice.class);
         verify(mono).createInvoice(req.capture());
         // The page lives its normal TTL, not cut to the past deadline.
         assertThat(req.getValue().validitySeconds()).isGreaterThan(60);
@@ -294,12 +294,12 @@ class OnlinePaymentServiceTest {
         o.setTotalMinor(1250_00);
         o.setPaymentDueAt(Instant.now().minus(Duration.ofDays(2)));
         given(o);
-        when(mono.createInvoice(any())).thenReturn(new MonobankClient.CreatedInvoice("inv-top", "https://pay/inv-top"));
+        when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-top", "https://pay/inv-top"));
 
         OnlinePaymentService.StartedPayment started = service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk");
 
         assertThat(started.amountMinor()).isEqualTo(250_00);
-        ArgumentCaptor<MonobankClient.CreateInvoice> req = ArgumentCaptor.forClass(MonobankClient.CreateInvoice.class);
+        ArgumentCaptor<MonobankGateway.CreateInvoice> req = ArgumentCaptor.forClass(MonobankGateway.CreateInvoice.class);
         verify(mono).createInvoice(req.capture());
         assertThat(req.getValue().amount()).isEqualTo(250_00);
         assertThat(req.getValue().validitySeconds()).isGreaterThan(60);

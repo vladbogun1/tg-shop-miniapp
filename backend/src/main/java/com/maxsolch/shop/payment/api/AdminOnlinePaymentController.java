@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment.api;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -38,13 +38,13 @@ public class AdminOnlinePaymentController {
 
     private final OnlinePaymentService payments;
     private final PaymentInvoiceRepository invoices;
-    private final MonobankClient monobank;
+    private final MonobankGateway monobank;
     private final AdminAuditService audit;
     private final JdbcTemplate jdbc;
     private final ReceiptService receipts;
 
     public AdminOnlinePaymentController(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
-                                        MonobankClient monobank, AdminAuditService audit, JdbcTemplate jdbc,
+                                        MonobankGateway monobank, AdminAuditService audit, JdbcTemplate jdbc,
                                         ReceiptService receipts) {
         this.receipts = receipts;
         this.payments = payments;
@@ -108,7 +108,7 @@ public class AdminOnlinePaymentController {
         if (monobank.isEnabled()) {
             try {
                 merchant = monobank.details().merchantName();
-            } catch (MonobankClient.MonobankException e) {
+            } catch (MonobankGateway.MonobankException e) {
                 error = e.getMessage();
             }
         }

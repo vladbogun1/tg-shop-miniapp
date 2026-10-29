@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -15,9 +15,9 @@ class FiscalBasketTest {
 
     @Test
     void basketJsonRoundTripsWithTaxCodes() throws Exception {
-        List<MonobankClient.BasketItem> sold = List.of(
-                new MonobankClient.BasketItem("Мышь", 2, 150000, "p-1", List.of(1)),
-                new MonobankClient.BasketItem("Коврик", 1, 50000, "p-2", List.of(1)));
+        List<MonobankGateway.BasketItem> sold = List.of(
+                new MonobankGateway.BasketItem("Мышь", 2, 150000, "p-1", List.of(1)),
+                new MonobankGateway.BasketItem("Коврик", 1, 50000, "p-2", List.of(1)));
         ObjectMapper json = new ObjectMapper();
         String stored = json.writeValueAsString(sold);
 
@@ -30,7 +30,7 @@ class FiscalBasketTest {
                 org.mockito.Mockito.mock(SettingsService.class), null, java.time.Clock.systemUTC());
         assertThat(svc.refundItems(inv, 350000, true)).containsExactlyElementsOf(sold);
 
-        List<MonobankClient.BasketItem> partial = svc.refundItems(inv, 10000, false);
+        List<MonobankGateway.BasketItem> partial = svc.refundItems(inv, 10000, false);
         assertThat(partial).hasSize(1);
         assertThat(partial.get(0).sum()).isEqualTo(10000);
         assertThat(partial.get(0).qty()).isEqualTo(1);
@@ -38,6 +38,6 @@ class FiscalBasketTest {
 
     @Test
     void shortConstructorHasNoTax() {
-        assertThat(new MonobankClient.BasketItem("x", 1, 100, "c").tax()).isEmpty();
+        assertThat(new MonobankGateway.BasketItem("x", 1, 100, "c").tax()).isEmpty();
     }
 }

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -146,7 +146,7 @@ class MonobankSignatureVerifierTest {
     void unreachableKeyApi_failsClosed() throws Exception {
         KeyPair kp = keyPair();
         MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(() -> {
-            throw new MonobankClient.MonobankException(0, null, "down");
+            throw new MonobankGateway.MonobankException(0, null, "down");
         }, clock);
 
         assertThat(verifier.verify(BODY, sign(kp.getPrivate(), BODY))).isFalse();

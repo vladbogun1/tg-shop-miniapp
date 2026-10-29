@@ -1,5 +1,8 @@
 package com.maxsolch.shop.payment.infra;
 
+import com.maxsolch.shop.payment.domain.MonobankGateway;
+import com.maxsolch.shop.platform.http.HttpClients;
+import com.maxsolch.shop.platform.http.HttpClientsProperties;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The monobank client against a local server: what goes on the wire (token, body, path), how an error answer
- * becomes a {@link MonobankClient.MonobankException}, and that a POST (invoice, refund) is never sent twice.
+ * becomes a {@link MonobankGateway.MonobankException}, and that a POST (invoice, refund) is never sent twice.
  */
 class MonobankClientHttpTest {
 
@@ -64,15 +67,15 @@ class MonobankClientHttpTest {
 
     /** One place that builds the client, so the construction can change without touching the cases. */
     private static MonobankClient newClient(AppProperties props) {
-        return new MonobankClient(props, JSON);
+        return new MonobankClient(props, JSON, new HttpClients(new HttpClientsProperties()));
     }
 
     @Test
     void createInvoiceSendsTokenAndTheAmountAndReadsTheIds() throws Exception {
         answer = "{\"invoiceId\":\"inv-1\",\"pageUrl\":\"https://pay.example/inv-1\"}";
 
-        MonobankClient.CreatedInvoice created = client("t-1").createInvoice(new MonobankClient.CreateInvoice(
-                12_300, "order-ref", "Оплата", List.of(new MonobankClient.BasketItem("Mouse", 1, 12_300, "sku-1")),
+        MonobankGateway.CreatedInvoice created = client("t-1").createInvoice(new MonobankGateway.CreateInvoice(
+                12_300, "order-ref", "Оплата", List.of(new MonobankGateway.BasketItem("Mouse", 1, 12_300, "sku-1")),
                 "https://site/return", "https://site/hook", 3600, true));
 
         assertThat(created.invoiceId()).isEqualTo("inv-1");
@@ -102,7 +105,7 @@ class MonobankClientHttpTest {
         answer = "{\"errCode\":\"BAD_AMOUNT\",\"errText\":\"amount is wrong\"}";
 
         assertThatThrownBy(() -> client("t").cancel("inv-1", "ref", 5L))
-                .isInstanceOfSatisfying(MonobankClient.MonobankException.class, e -> {
+                .isInstanceOfSatisfying(MonobankGateway.MonobankException.class, e -> {
                     assertThat(e.getErrCode()).isEqualTo("BAD_AMOUNT");
                     assertThat(e.getMessage()).isEqualTo("monobank 400 BAD_AMOUNT: amount is wrong");
                 });
@@ -113,15 +116,45 @@ class MonobankClientHttpTest {
         status = 503;
         answer = "{}";
 
-        assertThatThrownBy(() -> client("t").remove("inv-1")).isInstanceOf(MonobankClient.MonobankException.class);
+        assertThatThrownBy(() -> client("t").remove("inv-1")).isInstanceOf(MonobankGateway.MonobankException.class);
 
+        assertThat(hits.get()).isEqualTo(1);
+    }
+
+    @Test
+    void aGetIsNotRepeatedByDefault() {
+        status = 503;
+
+        assertThatThrownBy(() -> client("t").pubkey()).isInstanceOf(MonobankGateway.MonobankException.class);
+
+        assertThat(hits.get()).isEqualTo(1);
+    }
+
+    @Test
+    void withRetriesConfiguredAGetIsRepeatedButAPostStillIsNot() {
+        status = 503;
+        HttpClientsProperties overrides = new HttpClientsProperties();
+        HttpClientsProperties.Client monobank = new HttpClientsProperties.Client();
+        monobank.setMaxRetries(2);
+        monobank.setRetryBackoff(java.time.Duration.ofMillis(1));
+        overrides.getClients().put("monobank", monobank);
+        AppProperties props = new AppProperties();
+        props.getPayment().getMonobank().setToken("t");
+        props.getPayment().getMonobank().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort());
+        MonobankClient client = new MonobankClient(props, JSON, new HttpClients(overrides));
+
+        assertThatThrownBy(client::pubkey).isInstanceOf(MonobankGateway.MonobankException.class);
+        assertThat(hits.get()).isEqualTo(3);
+
+        hits.set(0);
+        assertThatThrownBy(() -> client.remove("inv-1")).isInstanceOf(MonobankGateway.MonobankException.class);
         assertThat(hits.get()).isEqualTo(1);
     }
 
     @Test
     void withoutATokenNothingIsSent() {
         assertThatThrownBy(() -> client("").details())
-                .isInstanceOf(MonobankClient.MonobankException.class)
+                .isInstanceOf(MonobankGateway.MonobankException.class)
                 .hasMessageContaining("DISABLED");
 
         assertThat(hits.get()).isZero();
@@ -136,7 +169,7 @@ class MonobankClientHttpTest {
         props.getPayment().getMonobank().setApiUrl("http://127.0.0.1:" + port);
 
         assertThatThrownBy(() -> newClient(props).pubkey())
-                .isInstanceOf(MonobankClient.MonobankException.class)
+                .isInstanceOf(MonobankGateway.MonobankException.class)
                 .hasMessageContaining("IO");
     }
 }

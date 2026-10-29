@@ -1,16 +1,19 @@
 package com.maxsolch.shop.payment.infra;
 
-import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
+import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.http.HttpClientSettings;
+import com.maxsolch.shop.platform.http.HttpClients;
+import com.maxsolch.shop.platform.http.ResilientHttp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -19,40 +22,31 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * monobank acquiring API (https://monobank.ua/api-docs/acquiring) — the few calls the shop needs.
- * Plain {@link HttpClient} + Jackson, like the other integrations. The token never reaches a log.
+ * monobank acquiring API over {@code platform.http}: 5 s to connect, 15 s per request (as before the move to the
+ * platform client), no retries by default — the customer waits on these calls, and a repeat would double the
+ * worst case. {@code app.http.clients.monobank.max-retries} turns on bounded retries of the GET calls; a POST
+ * (create invoice, refund, remove) is never repeated. The token never reaches a log.
  */
 @Slf4j
 @Component
-public class MonobankClient {
+public class MonobankClient implements MonobankGateway {
 
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    static final String CLIENT_NAME = "monobank";
 
     private final AppProperties props;
     private final ObjectMapper mapper;
-    private final HttpClient http = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
+    private final ResilientHttp http;
 
-    public MonobankClient(AppProperties props, ObjectMapper mapper) {
+    public MonobankClient(AppProperties props, ObjectMapper mapper, HttpClients clients) {
         this.props = props;
         this.mapper = mapper;
+        this.http = clients.create(HttpClientSettings.defaults(CLIENT_NAME)
+                .withTimeouts(Duration.ofSeconds(5), Duration.ofSeconds(15)));
     }
 
+    @Override
     public boolean isEnabled() {
         return props.getPayment().getMonobank().isEnabled();
-    }
-
-    /**
-     * One line of the basket shown on the payment page and used for fiscal receipts.
-     * {@code tax} — tax rate codes of the merchant's PRRO (mandatory for Вчасно.Каса); may be empty.
-     */
-    public record BasketItem(String name, long qty, long sum, String code, List<Integer> tax) {
-
-        public BasketItem(String name, long qty, long sum, String code) {
-            this(name, qty, sum, code, List.of());
-        }
     }
 
     private static Map<String, Object> item(BasketItem b, boolean withUnit) {
@@ -71,17 +65,7 @@ public class MonobankClient {
         return m;
     }
 
-    public record CreateInvoice(long amount, String reference, String destination, List<BasketItem> basket,
-                                String redirectUrl, String webHookUrl, long validitySeconds, boolean iframe) {
-    }
-
-    public record CreatedInvoice(String invoiceId, String pageUrl) {
-    }
-
-    public record MerchantDetails(String merchantId, String merchantName, String edrpou) {
-    }
-
-    /** {@code POST /api/merchant/invoice/create}. */
+    @Override
     public CreatedInvoice createInvoice(CreateInvoice req) {
         Map<String, Object> paymInfo = new java.util.LinkedHashMap<>();
         paymInfo.put("reference", req.reference());
@@ -105,21 +89,13 @@ public class MonobankClient {
         return new CreatedInvoice(res.path("invoiceId").asText(null), res.path("pageUrl").asText(null));
     }
 
-    /** {@code GET /api/merchant/invoice/status}. */
+    @Override
     public MonobankInvoiceStatus status(String invoiceId) {
         JsonNode res = call("GET", "/api/merchant/invoice/status?invoiceId=" + enc(invoiceId), null);
         return mapper.convertValue(res, MonobankInvoiceStatus.class);
     }
 
-    /** {@code POST /api/merchant/invoice/cancel} — full refund when {@code amount} is null. */
-    public String cancel(String invoiceId, String extRef, Long amount) {
-        return cancel(invoiceId, extRef, amount, List.of());
-    }
-
-    /**
-     * Refund with the returned items ({@code items} — mandatory when fiscalisation is on, so a
-     * return receipt can be issued).
-     */
+    @Override
     public String cancel(String invoiceId, String extRef, Long amount, List<BasketItem> items) {
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("invoiceId", invoiceId);
@@ -133,36 +109,12 @@ public class MonobankClient {
         return call("POST", "/api/merchant/invoice/cancel", body).path("status").asText(null);
     }
 
-    /** {@code POST /api/merchant/invoice/remove} — closes an unpaid payment page. */
+    @Override
     public void remove(String invoiceId) {
         call("POST", "/api/merchant/invoice/remove", Map.of("invoiceId", invoiceId));
     }
 
-    /**
-     * One fiscal receipt of an invoice (PRRO — Вчасно.Каса / Checkbox / monopay).
-     *
-     * @param type   sale | return
-     * @param status new | process | done | failed
-     * @param file   base64 PDF; usually only once {@code done}
-     */
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public record FiscalCheck(String id, String type, String status, String statusDescription, String taxUrl,
-                              String file, String fiscalizationSource) {
-
-        public boolean isDone() {
-            return "done".equalsIgnoreCase(status);
-        }
-
-        public boolean isFailed() {
-            return "failed".equalsIgnoreCase(status);
-        }
-
-        public boolean isReturn() {
-            return "return".equalsIgnoreCase(type);
-        }
-    }
-
-    /** {@code GET /api/merchant/invoice/fiscal-checks} — empty when fiscalisation is off. */
+    @Override
     public List<FiscalCheck> fiscalChecks(String invoiceId) {
         JsonNode res = call("GET", "/api/merchant/invoice/fiscal-checks?invoiceId=" + enc(invoiceId), null);
         JsonNode checks = res.path("checks");
@@ -176,34 +128,19 @@ public class MonobankClient {
         return out;
     }
 
-    /**
-     * {@code GET /api/merchant/invoice/receipt} — the bank's payment receipt (квитанція) as a PDF.
-     * Not a fiscal document; works without a PRRO. Null when monobank returned no file.
-     */
+    @Override
     public byte[] bankReceipt(String invoiceId) {
         String file = call("GET", "/api/merchant/invoice/receipt?invoiceId=" + enc(invoiceId), null)
                 .path("file").asText(null);
-        return decodePdf(file);
+        return MonobankGateway.decodePdf(file);
     }
 
-    /** base64 → bytes; null for a missing or broken value. */
-    public static byte[] decodePdf(String base64) {
-        if (base64 == null || base64.isBlank()) {
-            return null;
-        }
-        try {
-            return java.util.Base64.getMimeDecoder().decode(base64);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
-    /** {@code GET /api/merchant/pubkey} — base64 of the PEM public key for webhook signatures. */
+    @Override
     public String pubkey() {
         return call("GET", "/api/merchant/pubkey", null).path("key").asText(null);
     }
 
-    /** {@code GET /api/merchant/details} — also a cheap "is the token valid" probe. */
+    @Override
     public MerchantDetails details() {
         JsonNode res = call("GET", "/api/merchant/details", null);
         return new MerchantDetails(res.path("merchantId").asText(null), res.path("merchantName").asText(null),
@@ -217,7 +154,6 @@ public class MonobankClient {
         }
         try {
             HttpRequest.Builder b = HttpRequest.newBuilder(URI.create(trimSlash(cfg.getApiUrl()) + path))
-                    .timeout(REQUEST_TIMEOUT)
                     .header("X-Token", cfg.getToken())
                     .header("X-Cms", "chisetup")
                     .header("Accept", "application/json");
@@ -227,6 +163,7 @@ public class MonobankClient {
             } else {
                 b.method(method, HttpRequest.BodyPublishers.noBody());
             }
+            // retried only when idempotent by method (GET), and only if max-retries is raised above 0
             HttpResponse<String> res = http.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             String text = res.body() == null ? "" : res.body();
             if (res.statusCode() / 100 != 2) {
@@ -258,19 +195,5 @@ public class MonobankClient {
 
     private static String enc(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
-    }
-
-    /** A monobank call failed: HTTP status (0 = no response), errCode, errText. */
-    public static class MonobankException extends RuntimeException {
-        private final String errCode;
-
-        public MonobankException(int httpStatus, String errCode, String errText) {
-            super("monobank " + (httpStatus == 0 ? "" : httpStatus + " ") + (errCode == null ? "" : errCode + ": ") + errText);
-            this.errCode = errCode;
-        }
-
-        public String getErrCode() {
-            return errCode;
-        }
     }
 }

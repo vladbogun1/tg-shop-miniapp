@@ -23,7 +23,7 @@ import com.maxsolch.shop.domain.StockWriteoff;
 import com.maxsolch.shop.gift.GiftCaseService;
 import com.maxsolch.shop.gift.GiftDtos;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
@@ -96,7 +96,7 @@ class OrderQueryServiceGoldenTest {
         OrderMessageRepository messages = mock(OrderMessageRepository.class);
         OrderItemRepository items = mock(OrderItemRepository.class);
         PaymentInvoiceRepository invoiceRepo = mock(PaymentInvoiceRepository.class);
-        MonobankClient mono = mock(MonobankClient.class);
+        MonobankGateway mono = mock(MonobankGateway.class);
         ProductImageRepository images = mock(ProductImageRepository.class);
         TranslationService translation = mock(TranslationService.class);
         UserRepository users = mock(UserRepository.class);

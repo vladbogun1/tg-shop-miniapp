@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +35,7 @@ public class MonobankSignatureVerifier {
     private volatile PublicKey key;
     private final AtomicReference<Instant> lastFetch = new AtomicReference<>(Instant.EPOCH);
 
-    public MonobankSignatureVerifier(MonobankClient client, Clock clock) {
+    public MonobankSignatureVerifier(MonobankGateway client, Clock clock) {
         this(client::pubkey, clock);
     }
 

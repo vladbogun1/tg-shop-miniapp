@@ -13,7 +13,7 @@ import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.UserRepository;
@@ -49,7 +49,7 @@ public class OrderQueryService {
     private final OrderMessageRepository messageRepository;
     private final OrderItemRepository orderItemRepository;
     private final PaymentInvoiceRepository invoiceRepository;
-    private final MonobankClient monobank;
+    private final MonobankGateway monobank;
     private final ProductImageRepository productImageRepository;
     private final TranslationService translationService;
     private final UserRepository userRepository;
@@ -67,7 +67,7 @@ public class OrderQueryService {
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              PaymentInvoiceRepository invoiceRepository,
-                             MonobankClient monobank,
+                             MonobankGateway monobank,
                              ProductImageRepository productImageRepository,
                              TranslationService translationService,
                              UserRepository userRepository,

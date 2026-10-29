@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import org.springframework.cache.Cache;
@@ -37,7 +37,7 @@ public class ReceiptService {
     public static final String FAILED = "FAILED";
 
     /** The cached answer for one invoice; {@code ok=false} — the call failed. */
-    record Checks(List<MonobankClient.FiscalCheck> checks, boolean ok) {
+    record Checks(List<MonobankGateway.FiscalCheck> checks, boolean ok) {
 
         boolean isFinal() {
             return ok && !checks.isEmpty() && checks.stream().allMatch(c -> c.isDone() || c.isFailed());
@@ -48,7 +48,7 @@ public class ReceiptService {
     public record Pdf(byte[] bytes, String fileName) {
     }
 
-    private final MonobankClient mono;
+    private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
     private final ReceiptSigner signer;
 
@@ -57,7 +57,7 @@ public class ReceiptService {
     private final Cache finalChecks;
     private final Cache failed;
 
-    public ReceiptService(MonobankClient mono, PaymentInvoiceRepository invoices, ReceiptSigner signer,
+    public ReceiptService(MonobankGateway mono, PaymentInvoiceRepository invoices, ReceiptSigner signer,
                           CacheManager caches) {
         this.mono = mono;
         this.invoices = invoices;
@@ -100,7 +100,7 @@ public class ReceiptService {
             List<ReceiptDto> out = new ArrayList<>();
             for (PaymentInvoice inv : paid) {
                 String rowId = UuidUtil.toString(inv.getId());
-                for (MonobankClient.FiscalCheck c : checks(inv)) {
+                for (MonobankGateway.FiscalCheck c : checks(inv)) {
                     out.add(toDto(rowId, inv, c));
                 }
                 out.add(new ReceiptDto("bank:" + rowId, ReceiptKind.BANK.name(), READY, null, null,
@@ -113,7 +113,7 @@ public class ReceiptService {
         }
     }
 
-    ReceiptDto toDto(String rowId, PaymentInvoice inv, MonobankClient.FiscalCheck c) {
+    ReceiptDto toDto(String rowId, PaymentInvoice inv, MonobankGateway.FiscalCheck c) {
         ReceiptKind kind = ReceiptKind.ofCheck(c);
         String status = statusOf(c);
         String download = READY.equals(status) && c.id() != null ? signer.signedUrl(rowId, kind, c.id()) : null;
@@ -122,7 +122,7 @@ public class ReceiptService {
     }
 
     /** new / process → PENDING, done → READY, failed (or anything unknown) → FAILED. */
-    static String statusOf(MonobankClient.FiscalCheck c) {
+    static String statusOf(MonobankGateway.FiscalCheck c) {
         String s = c.status() == null ? "" : c.status().toLowerCase(java.util.Locale.ROOT);
         return switch (s) {
             case "new", "process" -> PENDING;
@@ -140,7 +140,7 @@ public class ReceiptService {
     }
 
     /** Cached fiscal checks of a paid invoice (without PDFs); empty on any failure. */
-    List<MonobankClient.FiscalCheck> checks(PaymentInvoice inv) {
+    List<MonobankGateway.FiscalCheck> checks(PaymentInvoice inv) {
         String externalId = inv.getExternalId();
         String key = cacheKey(inv);
         Checks cached = cached(key);
@@ -157,16 +157,16 @@ public class ReceiptService {
     }
 
     /** A fresh answer from the background job — keeps the page in step without another call. */
-    void remember(PaymentInvoice inv, List<MonobankClient.FiscalCheck> fresh) {
+    void remember(PaymentInvoice inv, List<MonobankGateway.FiscalCheck> fresh) {
         cachePut(cacheKey(inv), new Checks(stripFiles(fresh), true));
     }
 
-    private static List<MonobankClient.FiscalCheck> stripFiles(List<MonobankClient.FiscalCheck> list) {
+    private static List<MonobankGateway.FiscalCheck> stripFiles(List<MonobankGateway.FiscalCheck> list) {
         if (list == null) {
             return List.of();
         }
         return list.stream()
-                .map(c -> new MonobankClient.FiscalCheck(c.id(), c.type(), c.status(), c.statusDescription(),
+                .map(c -> new MonobankGateway.FiscalCheck(c.id(), c.type(), c.status(), c.statusDescription(),
                         c.taxUrl(), null, c.fiscalizationSource()))
                 .toList();
     }
@@ -195,12 +195,12 @@ public class ReceiptService {
             if (kind == ReceiptKind.BANK) {
                 bytes = mono.bankReceipt(inv.getExternalId());
             } else {
-                List<MonobankClient.FiscalCheck> fresh = mono.fiscalChecks(inv.getExternalId());
+                List<MonobankGateway.FiscalCheck> fresh = mono.fiscalChecks(inv.getExternalId());
                 remember(inv, fresh);
                 bytes = fresh.stream()
                         .filter(c -> checkId != null && checkId.equals(c.id()) && c.isDone())
                         .findFirst()
-                        .map(c -> MonobankClient.decodePdf(c.file()))
+                        .map(c -> MonobankGateway.decodePdf(c.file()))
                         .orElse(null);
             }
             return bytes == null || bytes.length == 0 ? Optional.empty() : Optional.of(new Pdf(bytes, fileName));

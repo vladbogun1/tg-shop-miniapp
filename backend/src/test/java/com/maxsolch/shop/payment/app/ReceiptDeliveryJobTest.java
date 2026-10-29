@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment.app;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.payment.infra.ReceiptDeliveryStore;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -44,7 +44,7 @@ class ReceiptDeliveryJobTest {
     static final String PDF_B64 = Base64.getEncoder().encodeToString("%PDF-1.4".getBytes());
 
     @Mock
-    MonobankClient mono;
+    MonobankGateway mono;
     @Mock
     PaymentInvoiceRepository invoices;
     @Mock
@@ -91,8 +91,8 @@ class ReceiptDeliveryJobTest {
         lenient().when(notifications.sendReceipt(any(), any(), any(), any())).thenReturn(NotificationService.Delivery.SENT);
     }
 
-    private static MonobankClient.FiscalCheck check(String id, String type, String status) {
-        return new MonobankClient.FiscalCheck(id, type, status, null, "https://cabinet.tax.gov.ua/cashregs/check",
+    private static MonobankGateway.FiscalCheck check(String id, String type, String status) {
+        return new MonobankGateway.FiscalCheck(id, type, status, null, "https://cabinet.tax.gov.ua/cashregs/check",
                 "done".equals(status) ? PDF_B64 : null, "checkbox");
     }
 
@@ -202,7 +202,7 @@ class ReceiptDeliveryJobTest {
     @Test
     void monobankError_isNotTreatedAsNoChecks() {
         inv.setAppliedAt(NOW.minus(Duration.ofHours(2)));
-        when(mono.fiscalChecks("inv-1")).thenThrow(new MonobankClient.MonobankException(500, "X", "boom"));
+        when(mono.fiscalChecks("inv-1")).thenThrow(new MonobankGateway.MonobankException(500, "X", "boom"));
 
         job.deliver(NOW);
 

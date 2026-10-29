@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.payment.infra.ReceiptDeliveryStore;
 import com.maxsolch.shop.platform.cache.CacheConfig;
@@ -48,7 +48,7 @@ public class ReceiptDeliveryJob {
     static final Duration WINDOW = Duration.ofHours(48);
     static final Duration BANK_FALLBACK_AFTER = Duration.ofMinutes(30);
 
-    private final MonobankClient mono;
+    private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
     private final OrderRepository orders;
     private final UserRepository users;
@@ -66,7 +66,7 @@ public class ReceiptDeliveryJob {
      */
     private final Cache quiet;
 
-    public ReceiptDeliveryJob(MonobankClient mono, PaymentInvoiceRepository invoices, OrderRepository orders,
+    public ReceiptDeliveryJob(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderRepository orders,
                               UserRepository users, ReceiptDeliveryStore store, ReceiptService receipts,
                               NotificationService notifications, SettingsService settings,
                               CacheManager caches, Clock clock) {
@@ -127,7 +127,7 @@ public class ReceiptDeliveryJob {
             return;
         }
 
-        List<MonobankClient.FiscalCheck> checks;
+        List<MonobankGateway.FiscalCheck> checks;
         try {
             checks = mono.fiscalChecks(inv.getExternalId());
         } catch (Exception e) {
@@ -152,7 +152,7 @@ public class ReceiptDeliveryJob {
         }
 
         boolean allSettled = true;
-        for (MonobankClient.FiscalCheck c : checks) {
+        for (MonobankGateway.FiscalCheck c : checks) {
             if (c.id() == null || c.isFailed() || handled.containsKey(c.id())) {
                 continue;
             }
@@ -160,7 +160,7 @@ public class ReceiptDeliveryJob {
                 allSettled = false;
                 continue;
             }
-            byte[] pdf = MonobankClient.decodePdf(c.file());
+            byte[] pdf = MonobankGateway.decodePdf(c.file());
             if (pdf == null) {
                 // done, but the PDF is not attached yet — next run
                 allSettled = false;

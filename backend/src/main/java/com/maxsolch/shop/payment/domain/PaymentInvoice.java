@@ -73,7 +73,7 @@ public class PaymentInvoice {
     @Column(name = "display_type", nullable = false, length = 8)
     private String displayType = "page";
 
-    /** Basket sent with the invoice (JSON list of MonobankClient.BasketItem), for refund receipts. */
+    /** Basket sent with the invoice (JSON list of MonobankGateway.BasketItem), for refund receipts. */
     @Column(name = "basket_json", columnDefinition = "TEXT")
     private String basketJson;
 

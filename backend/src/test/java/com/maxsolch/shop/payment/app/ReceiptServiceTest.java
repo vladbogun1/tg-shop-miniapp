@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 class ReceiptServiceTest {
 
     @Mock
-    MonobankClient mono;
+    MonobankGateway mono;
     @Mock
     PaymentInvoiceRepository invoices;
 
@@ -59,8 +59,8 @@ class ReceiptServiceTest {
         return i;
     }
 
-    private static MonobankClient.FiscalCheck check(String id, String type, String status) {
-        return new MonobankClient.FiscalCheck(id, type, status, "", "https://cabinet.tax.gov.ua/cashregs/check?id=" + id,
+    private static MonobankGateway.FiscalCheck check(String id, String type, String status) {
+        return new MonobankGateway.FiscalCheck(id, type, status, "", "https://cabinet.tax.gov.ua/cashregs/check?id=" + id,
                 "done".equals(status) ? Base64.getEncoder().encodeToString("%PDF-1.4".getBytes()) : null, "checkbox");
     }
 
@@ -116,7 +116,7 @@ class ReceiptServiceTest {
     @Test
     void monobankFailure_noFiscalEntries_andNoException() {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(invoice("inv-1", true)));
-        when(mono.fiscalChecks("inv-1")).thenThrow(new MonobankClient.MonobankException(500, "X", "boom"));
+        when(mono.fiscalChecks("inv-1")).thenThrow(new MonobankGateway.MonobankException(500, "X", "boom"));
 
         List<ReceiptDto> list = service.forOrder(orderId);
 

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment.domain;
 
-import com.maxsolch.shop.payment.infra.MonobankClient;
+import com.maxsolch.shop.payment.domain.MonobankGateway;
 
 /** What a payment receipt is: a fiscal check (PRRO) of a sale or a refund, or the bank's квитанція. */
 public enum ReceiptKind {
@@ -19,7 +19,7 @@ public enum ReceiptKind {
         return fileSuffix;
     }
 
-    public static ReceiptKind ofCheck(MonobankClient.FiscalCheck c) {
+    public static ReceiptKind ofCheck(MonobankGateway.FiscalCheck c) {
         return c.isReturn() ? FISCAL_RETURN : FISCAL_SALE;
     }
 
