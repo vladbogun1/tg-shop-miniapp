@@ -3,6 +3,7 @@ package com.maxsolch.shop.order.domain;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.Checkout;
@@ -581,7 +582,7 @@ class OrderTransitionsTest {
         lenient().when(paymentOptionRepository.findById(any())).thenReturn(Optional.of(po));
         lenient().when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of(po));
 
-        OrderAdjustmentService.Result r = adjust.exchange(o.getId(),
+        OrderChange r = adjust.exchange(o.getId(),
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(product.getId()), null, 1)),
                 OrderStatus.APPROVED, false, null, "admin");

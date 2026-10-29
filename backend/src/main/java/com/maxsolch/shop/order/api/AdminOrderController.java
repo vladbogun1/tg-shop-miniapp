@@ -16,6 +16,9 @@ import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
+import com.maxsolch.shop.order.app.MoneyLedger;
+import com.maxsolch.shop.order.app.OrderChange;
+import com.maxsolch.shop.order.app.OrderDeliveryEditing;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.OrderQueryService;
@@ -74,6 +77,7 @@ public class AdminOrderController {
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
     private final OrderAdjustmentService adjustments;
+    private final OrderDeliveryEditing deliveryEditing;
     private final OnlinePaymentService payments;
 
     /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
@@ -112,6 +116,7 @@ public class AdminOrderController {
                                 ImageStorageService imageStorageService,
                                 UploadValidator uploadValidator,
                                 OrderAdjustmentService adjustments,
+                                OrderDeliveryEditing deliveryEditing,
                                 OnlinePaymentService payments) {
         this.queries = queries;
         this.statusService = statusService;
@@ -129,6 +134,7 @@ public class AdminOrderController {
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
         this.adjustments = adjustments;
+        this.deliveryEditing = deliveryEditing;
         this.payments = payments;
     }
 
@@ -208,7 +214,7 @@ public class AdminOrderController {
     @Operation(summary = "Correct the tracking number (ТТН) of a shipped / delivered order; the customer is told")
     public OrderDetailDto updateTracking(@PathVariable String id,
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateTrackingRequest req) {
-        OrderAdjustmentService.Result r = adjustments.updateTracking(load(id).getId(), req.trackingNumber());
+        OrderChange r = deliveryEditing.updateTracking(load(id).getId(), req.trackingNumber());
         audit.record("ORDER_TRACKING", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
     }
@@ -217,8 +223,8 @@ public class AdminOrderController {
     @Operation(summary = "Correct recipient name / phone / Nova Poshta city and branch (null fields unchanged)")
     public OrderDetailDto updateDelivery(@PathVariable String id,
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateDeliveryRequest req) {
-        OrderAdjustmentService.Result r = adjustments.updateDelivery(load(id).getId(),
-                new OrderAdjustmentService.DeliveryPatch(req.customerName(), req.phone(),
+        OrderChange r = deliveryEditing.updateDelivery(load(id).getId(),
+                new OrderDeliveryEditing.DeliveryPatch(req.customerName(), req.phone(),
                         req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName()));
         audit.record("ORDER_DELIVERY", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
@@ -233,7 +239,7 @@ public class AdminOrderController {
                         .map(l -> new OrderAdjustmentService.ReturnLine(l.itemId(), l.quantity(),
                                 l.restock() == null || l.restock()))
                         .toList();
-        OrderAdjustmentService.Result r = adjustments.registerReturn(load(id).getId(), lines,
+        OrderChange r = adjustments.registerReturn(load(id).getId(), lines,
                 req.refundMinor() == null ? 0 : req.refundMinor(), req.note());
         audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
@@ -262,7 +268,7 @@ public class AdminOrderController {
                 throw new BadRequestException("неизвестный статус: " + req.targetStatus());
             }
         }
-        OrderAdjustmentService.Result r = adjustments.exchange(load(id).getId(), returned, items, target,
+        OrderChange r = adjustments.exchange(load(id).getId(), returned, items, target,
                 req.notifyCustomer() == null || req.notifyCustomer(), req.note(), audit.currentAdminName());
         audit.record("ORDER_EXCHANGE", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
@@ -317,7 +323,7 @@ public class AdminOrderController {
                 "ручной заказ на " + MoneyFormat.uah(created.getTotalMinor())
                         + (req.paidMinor() > 0
                                 ? ", получено " + MoneyFormat.uah(req.paidMinor()) + " ("
-                                        + OrderAdjustmentService.channelLabel(channel) + ")"
+                                        + MoneyLedger.channelLabel(channel) + ")"
                                 : ""));
         return orderQueryService.toDetail(created);
     }
@@ -336,7 +342,7 @@ public class AdminOrderController {
                 (req.receivedMinor() > 0
                         ? "подтверждено получено: " + MoneyFormat.uah(req.receivedMinor())
                         : "оплата снята")
-                        + " (" + OrderAdjustmentService.channelLabel(channel) + ")"
+                        + " (" + MoneyLedger.channelLabel(channel) + ")"
                         + (req.note() == null || req.note().isBlank() ? "" : "; " + req.note().trim()));
         return orderQueryService.toDetail(updated);
     }
@@ -456,7 +462,7 @@ public class AdminOrderController {
                 : req.lines().stream()
                         .map(l -> new OrderAdjustmentService.ReceivedLine(l.itemId(), l.quantity(), ReturnWizardService.parseOutcome(l.outcome())))
                         .toList();
-        OrderAdjustmentService.Result r = adjustments.receiveReturn(load(id).getId(), lines, req.note(),
+        OrderChange r = adjustments.receiveReturn(load(id).getId(), lines, req.note(),
                 audit.currentAdminName());
         audit.record("ORDER_RETURN_RECEIVED", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
@@ -474,7 +480,7 @@ public class AdminOrderController {
                 throw new BadRequestException("неизвестный вариант денег: " + req.money());
             }
         }
-        OrderAdjustmentService.Result r = adjustments.cancelReturn(load(id).getId(), returnId, money, req.note(),
+        OrderChange r = adjustments.cancelReturn(load(id).getId(), returnId, money, req.note(),
                 audit.currentAdminName());
         audit.record("ORDER_RETURN_CANCEL", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(orderLookup.get(r.order().getId()));
@@ -483,7 +489,7 @@ public class AdminOrderController {
     @PostMapping("/{id}/returns/{returnId}/debt-paid")
     @Operation(summary = "The customer sent back the money of a cancelled return")
     public OrderDetailDto returnDebtPaid(@PathVariable String id, @PathVariable long returnId) {
-        OrderAdjustmentService.Result r = adjustments.settleReturnDebt(load(id).getId(), returnId, audit.currentAdminName());
+        OrderChange r = adjustments.settleReturnDebt(load(id).getId(), returnId, audit.currentAdminName());
         audit.record("ORDER_RETURN_DEBT_PAID", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
     }

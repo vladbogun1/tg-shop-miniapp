@@ -138,6 +138,10 @@ public final class OrderApp {
         return new OrderMerge(orders, ops, events, ledger);
     }
 
+    public OrderDeliveryEditing deliveryEditing(OrderRepository orders, ApplicationEventPublisher events) {
+        return new OrderDeliveryEditing(ops, orders, events);
+    }
+
     OrderOps ops() {
         return ops;
     }

@@ -4,7 +4,6 @@ import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.returns.domain.OrderExchange;
@@ -33,7 +32,6 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Admin corrections to an order: fixing the tracking number after shipping, fixing the recipient /
@@ -100,115 +98,6 @@ public class OrderAdjustmentService {
         this.returnLines = returnLines;
     }
 
-    /** Result of an adjustment: the saved order and the audit line. */
-    public record Result(Order order, String auditDetails) {
-    }
-
-    // ----- tracking number -----
-
-    /**
-     * Replaces the ТТН of a shipped order. Before this existed a typo stayed forever and the
-     * customer tracked somebody else's parcel. The customer is told the new number.
-     */
-    @Transactional
-    public Result updateTracking(byte[] orderId, String trackingNumber) {
-        Order order = load(orderId);
-        if (order.getStatus() != OrderStatus.SHIPPED && order.getStatus() != OrderStatus.DELIVERED) {
-            throw new BadRequestException("ТТН можно изменить только у отправленного или доставленного заказа");
-        }
-        String ttn = trackingNumber == null ? "" : trackingNumber.replaceAll("\\s+", "");
-        if (ttn.isEmpty()) {
-            throw new BadRequestException("укажите номер ТТН");
-        }
-        if (ttn.length() > 128) {
-            throw new BadRequestException("номер ТТН слишком длинный");
-        }
-        String old = order.getTrackingNumber();
-        if (ttn.equals(old)) {
-            return new Result(order, "ТТН не изменилась");
-        }
-        order.setTrackingNumber(ttn);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.TRACKING, true));
-        return new Result(saved, "ТТН: " + (old == null ? "—" : old) + " → " + ttn);
-    }
-
-    // ----- recipient & delivery -----
-
-    /** Fields to change; null = leave as is. City and warehouse go together (refs + names). */
-    public record DeliveryPatch(String customerName,
-                                String phone,
-                                String npCityRef,
-                                String npCityName,
-                                String npWarehouseRef,
-                                String npWarehouseName) {
-    }
-
-    /**
-     * Fixes the recipient's name / phone or the Nova Poshta branch while the parcel can still be
-     * re-addressed. Before this the only way out of a customer's typo was to reject and re-create.
-     */
-    @Transactional
-    public Result updateDelivery(byte[] orderId, DeliveryPatch patch) {
-        Order order = load(orderId);
-        OrderStatus s = order.getStatus();
-        if (s != OrderStatus.NEW && s != OrderStatus.APPROVED && s != OrderStatus.SHIPPED) {
-            throw new BadRequestException("данные доставки можно менять, пока заказ не доставлен и не отклонён");
-        }
-        List<String> changes = new ArrayList<>();
-
-        if (patch.customerName() != null) {
-            String name = patch.customerName().trim();
-            if (name.isEmpty()) {
-                throw new BadRequestException("ФИО не может быть пустым");
-            }
-            if (name.length() > 255) {
-                throw new BadRequestException("ФИО слишком длинное");
-            }
-            if (!name.equals(order.getCustomerName())) {
-                changes.add("ФИО: " + order.getCustomerName() + " → " + name);
-                order.setCustomerName(name);
-            }
-        }
-        if (patch.phone() != null) {
-            String phone = patch.phone().trim();
-            if (phone.replaceAll("\\D", "").length() < 10 || phone.length() > 64) {
-                throw new BadRequestException("проверьте номер телефона");
-            }
-            if (!phone.equals(order.getPhone())) {
-                changes.add("телефон: " + order.getPhone() + " → " + phone);
-                order.setPhone(phone);
-            }
-        }
-        boolean addressGiven = patch.npCityRef() != null || patch.npWarehouseRef() != null
-                || patch.npCityName() != null || patch.npWarehouseName() != null;
-        if (addressGiven) {
-            if (order.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA) {
-                throw new BadRequestException("у заказа самовывоз — отделение не указывается");
-            }
-            if (isBlank(patch.npCityRef()) || isBlank(patch.npCityName())
-                    || isBlank(patch.npWarehouseRef()) || isBlank(patch.npWarehouseName())) {
-                throw new BadRequestException("выберите город и отделение Новой Почты");
-            }
-            if (!Objects.equals(patch.npWarehouseRef().trim(), order.getNpWarehouseRef())
-                    || !Objects.equals(patch.npCityRef().trim(), order.getNpCityRef())) {
-                changes.add("доставка: " + nz(order.getNpCityName()) + ", " + nz(order.getNpWarehouseName())
-                        + " → " + patch.npCityName().trim() + ", " + patch.npWarehouseName().trim());
-                order.setNpCityRef(patch.npCityRef().trim());
-                order.setNpCityName(patch.npCityName().trim());
-                order.setNpWarehouseRef(patch.npWarehouseRef().trim());
-                order.setNpWarehouseName(patch.npWarehouseName().trim());
-            }
-        }
-        if (changes.isEmpty()) {
-            return new Result(order, "без изменений");
-        }
-        Order saved = orderRepository.save(order);
-        // Refreshes the seller's dispatch card ("К ОТПРАВКЕ") and the channel card.
-        events.publishEvent(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.DETAILS, false));
-        return new Result(saved, String.join("; ", changes));
-    }
-
     // ----- returns -----
 
     /**
@@ -232,7 +121,7 @@ public class OrderAdjustmentService {
      * something cheaper sends the order back to NEW with the difference still to give back).
      */
     @Transactional
-    public Result registerReturn(byte[] orderId, List<ReturnLine> lines, long refundMinor, String note) {
+    public OrderChange registerReturn(byte[] orderId, List<ReturnLine> lines, long refundMinor, String note) {
         Order order = load(orderId);
         OrderStatus s = order.getStatus();
         boolean overpaidInWork = OrderTransitions.isOpen(s)
@@ -296,7 +185,7 @@ public class OrderAdjustmentService {
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         String details = "возврат: " + String.join(", ", parts)
                 + (note == null || note.isBlank() ? "" : "; " + note.trim());
-        return new Result(saved, details);
+        return new OrderChange(saved, details);
     }
 
     // ----- return wizard (V68) -----
@@ -341,7 +230,7 @@ public class OrderAdjustmentService {
      * {@link #registerReturn}); every amount lands in the money journal; defects in «Списания».
      */
     @Transactional
-    public Result registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName) {
+    public OrderChange registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName) {
         return registerReturnPlan(orderId, plan, adminName, false);
     }
 
@@ -375,7 +264,7 @@ public class OrderAdjustmentService {
      *                 left out of the limit here
      */
     @Transactional
-    public Result registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName, boolean monoSent) {
+    public OrderChange registerReturnPlan(byte[] orderId, ReturnPlan plan, String adminName, boolean monoSent) {
         Order order = load(orderId);
         validatePlan(order, plan, monoSent);
         OrderStatus s = order.getStatus();
@@ -456,7 +345,7 @@ public class OrderAdjustmentService {
         }
         for (ManualRefund r : refunds) {
             order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
-            parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + channelLabel(r.channel()) + ")");
+            parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + MoneyLedger.channelLabel(r.channel()) + ")");
             moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
                     OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
         }
@@ -489,7 +378,7 @@ public class OrderAdjustmentService {
         events.publishEvent(new OrderEvents.Returned(saved.getId(), plan.notifyCustomer(),
                 String.join(", ", customerParts), refundedNow));
         String details = "возврат: " + String.join(", ", parts) + (cleanNote == null ? "" : "; " + cleanNote);
-        return new Result(saved, details);
+        return new OrderChange(saved, details);
     }
 
     /** Status, amounts and channels of a wizard plan; nothing is changed. */
@@ -615,7 +504,7 @@ public class OrderAdjustmentService {
      * as sellable.
      */
     @Transactional
-    public Result receiveReturn(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
+    public OrderChange receiveReturn(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
         Order order = load(orderId);
         if (!Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
             throw new BadRequestException("заказ не ждёт возвращения посылки");
@@ -662,7 +551,7 @@ public class OrderAdjustmentService {
         order.setReturnReceivedAt(Instant.now());
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return new Result(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
+        return new OrderChange(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
                 + (cleanNote == null ? "" : "; " + cleanNote));
     }
 
@@ -718,20 +607,6 @@ public class OrderAdjustmentService {
         }
     }
 
-    public static String channelLabel(OrderMoneyMovement.Channel c) {
-        return switch (c) {
-            case MONO -> "monobank";
-            case NP_COD -> "наложка НП";
-            case NP_PAYMENT_CONTROL -> "контроль оплаты НП";
-            case CARD_TRANSFER -> "перевод на карту";
-            case CASH -> "наличные";
-            case NP_CLAIM -> "претензия НП";
-            case OTHER -> "другое";
-            case EXCHANGE -> "зачёт в обмен";
-            case MERGE -> "перенос при объединении";
-        };
-    }
-
     // ----- exchange -----
 
     /** One line going out instead of the returned goods. */
@@ -756,7 +631,7 @@ public class OrderAdjustmentService {
      * (наложка or online); a cheaper one leaves the rest refundable here, for the return wizard.
      */
     @Transactional
-    public Result exchange(byte[] orderId, List<WizardLine> returned, List<ExchangeNewLine> given,
+    public OrderChange exchange(byte[] orderId, List<WizardLine> returned, List<ExchangeNewLine> given,
                            OrderStatus target, boolean notifyCustomer, String note, String adminName) {
         Order order = load(orderId);
         if (order.getStatus() != OrderStatus.DELIVERED) {
@@ -906,7 +781,7 @@ public class OrderAdjustmentService {
                 + (due > 0 ? "; доплата " + MoneyFormat.uah(due) : "")
                 + (over > 0 ? "; к возврату " + MoneyFormat.uah(over) + " (кнопка «Возврат» в заказе #" + shortId + ")" : "")
                 + (cleanNote == null ? "" : "; " + cleanNote);
-        return new Result(child, details);
+        return new OrderChange(child, details);
     }
 
     // ----- cancelling a return or an exchange (V70) -----
@@ -962,7 +837,7 @@ public class OrderAdjustmentService {
      * comes back). Nothing is deleted: the record is stamped as cancelled.
      */
     @Transactional
-    public Result cancelReturn(byte[] orderId, long returnId, CancelMoney money, String note, String adminName) {
+    public OrderChange cancelReturn(byte[] orderId, long returnId, CancelMoney money, String note, String adminName) {
         Order order = load(orderId);
         if (returnRecords == null || returnLines == null) {
             throw new BadRequestException("отмена возврата недоступна");
@@ -1113,13 +988,13 @@ public class OrderAdjustmentService {
         returnRecords.save(rec);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return new Result(saved, (exchange ? "обмен отменён: " : "возврат отменён: ")
+        return new OrderChange(saved, (exchange ? "обмен отменён: " : "возврат отменён: ")
                 + (parts.isEmpty() ? "без товара" : String.join(", ", parts)) + "; " + cleanNote);
     }
 
     /** The customer sent back the money of a cancelled return they owed. */
     @Transactional
-    public Result settleReturnDebt(byte[] orderId, long returnId, String adminName) {
+    public OrderChange settleReturnDebt(byte[] orderId, long returnId, String adminName) {
         Order order = load(orderId);
         OrderReturn rec = returnRecordsOf(order.getId()).stream()
                 .filter(x -> x.getId() != null && x.getId() == returnId).findFirst()
@@ -1135,7 +1010,7 @@ public class OrderAdjustmentService {
         returnRecords.save(rec);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return new Result(saved, "деньги по отменённому возврату пришли: " + MoneyFormat.uah(amount));
+        return new OrderChange(saved, "деньги по отменённому возврату пришли: " + MoneyFormat.uah(amount));
     }
 
     /**
@@ -1224,11 +1099,4 @@ public class OrderAdjustmentService {
         return ops.lock(orderId);
     }
 
-    private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
-    }
-
-    private static String nz(String s) {
-        return s == null ? "—" : s;
-    }
 }

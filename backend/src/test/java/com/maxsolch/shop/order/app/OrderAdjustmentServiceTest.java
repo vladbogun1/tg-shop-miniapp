@@ -121,68 +121,6 @@ class OrderAdjustmentServiceTest {
         return it;
     }
 
-    // ---------- tracking ----------
-
-    @Test
-    void updateTracking_shippedOrder_replacesNumberAndNotifiesCustomer() {
-        Order o = order(OrderStatus.SHIPPED);
-        o.setTrackingNumber("20450000000000");
-
-        OrderAdjustmentService.Result r = service.updateTracking(o.getId(), " 2045 0000 0000 01 ");
-
-        assertThat(r.order().getTrackingNumber()).isEqualTo("20450000000001");
-        assertThat(r.auditDetails()).contains("20450000000000").contains("20450000000001");
-        ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
-        OrderEvents.Edited edited = (OrderEvents.Edited) event.getValue();
-        assertThat(edited.kind()).isEqualTo(OrderEvents.EditKind.TRACKING);
-        assertThat(edited.notifyCustomer()).isTrue();
-    }
-
-    @Test
-    void updateTracking_beforeShipping_isRejected() {
-        Order o = order(OrderStatus.APPROVED);
-
-        assertThatThrownBy(() -> service.updateTracking(o.getId(), "20450000000001"))
-                .isInstanceOf(BadRequestException.class);
-        verify(events, never()).publishEvent(any());
-    }
-
-    // ---------- delivery ----------
-
-    @Test
-    void updateDelivery_changesOnlyGivenFields_andDescribesThem() {
-        Order o = order(OrderStatus.APPROVED);
-
-        OrderAdjustmentService.Result r = service.updateDelivery(o.getId(),
-                new OrderAdjustmentService.DeliveryPatch(null, "+380671234567",
-                        "city-2", "Львів", "wh-9", "Відділення №9"));
-
-        assertThat(r.order().getCustomerName()).isEqualTo("Іван Петренко");
-        assertThat(r.order().getPhone()).isEqualTo("+380671234567");
-        assertThat(r.order().getNpWarehouseRef()).isEqualTo("wh-9");
-        assertThat(r.order().getNpCityName()).isEqualTo("Львів");
-        assertThat(r.auditDetails()).contains("телефон").contains("Львів");
-    }
-
-    @Test
-    void updateDelivery_halfAnAddress_isRejected() {
-        Order o = order(OrderStatus.NEW);
-
-        assertThatThrownBy(() -> service.updateDelivery(o.getId(),
-                new OrderAdjustmentService.DeliveryPatch(null, null, "city-2", "Львів", null, null)))
-                .isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void updateDelivery_deliveredOrder_isRejected() {
-        Order o = order(OrderStatus.DELIVERED);
-
-        assertThatThrownBy(() -> service.updateDelivery(o.getId(),
-                new OrderAdjustmentService.DeliveryPatch("Нове Ім'я", null, null, null, null, null)))
-                .isInstanceOf(BadRequestException.class);
-    }
-
     // ---------- exchange ----------
 
     /** Saved orders get an id like @PrePersist would, and are found again by findByIdForUpdate. */
@@ -227,7 +165,7 @@ class OrderAdjustmentServiceTest {
         List<Order> all = trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
-        OrderAdjustmentService.Result r = service.exchange(o.getId(),
+        OrderChange r = service.exchange(o.getId(),
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
                 OrderStatus.NEW, true, "не подошёл цвет", "admin");
@@ -305,7 +243,7 @@ class OrderAdjustmentServiceTest {
         trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
-        OrderAdjustmentService.Result r = service.exchange(o.getId(),
+        OrderChange r = service.exchange(o.getId(),
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
                 OrderStatus.APPROVED, false, null, "admin");
@@ -359,7 +297,7 @@ class OrderAdjustmentServiceTest {
 
         assertThatThrownBy(() -> service.registerReturn(o.getId(), List.of(), 16_000, null))
                 .isInstanceOf(BadRequestException.class);
-        OrderAdjustmentService.Result r = service.registerReturn(o.getId(), List.of(), 15_000, "разница за обмен");
+        OrderChange r = service.registerReturn(o.getId(), List.of(), 15_000, "разница за обмен");
 
         assertThat(r.order().getRefundedMinor()).isEqualTo(15_000);
         assertThatThrownBy(() -> service.registerReturn(o.getId(), List.of(), 1_000, null))
@@ -394,7 +332,7 @@ class OrderAdjustmentServiceTest {
         OrderItem b = item(o, pad, 2L, 1);
         when(productRepository.findByIdForUpdate(mouse.getId())).thenReturn(Optional.of(mouse));
 
-        OrderAdjustmentService.Result r = service.registerReturn(o.getId(), List.of(
+        OrderChange r = service.registerReturn(o.getId(), List.of(
                 new OrderAdjustmentService.ReturnLine(1L, 1, true),
                 new OrderAdjustmentService.ReturnLine(2L, 1, false)), 15_000, "брак коврика");
 
@@ -444,7 +382,7 @@ class OrderAdjustmentServiceTest {
                 List.of(new OrderAdjustmentService.ReturnLine(1L, 1, true)), 0, null))
                 .isInstanceOf(BadRequestException.class);
 
-        OrderAdjustmentService.Result r = service.registerReturn(o.getId(), List.of(), 10_000, null);
+        OrderChange r = service.registerReturn(o.getId(), List.of(), 10_000, null);
         assertThat(r.order().getRefundedMinor()).isEqualTo(10_000);
     }
 
@@ -474,7 +412,7 @@ class OrderAdjustmentServiceTest {
         o.setReceivedMinor(30_000);
         MoneyLedger ledger = wireLedger();
 
-        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(List.of(),
+        OrderChange r = service.registerReturnPlan(o.getId(), plan(List.of(),
                 List.of(new OrderAdjustmentService.ManualRefund(
                         com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 20_000, null)),
                 10_000, 0), "owner");
@@ -576,7 +514,7 @@ class OrderAdjustmentServiceTest {
                 org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
         service.setWriteoffs(writeoffs);
 
-        OrderAdjustmentService.Result r = service.receiveReturn(o.getId(),
+        OrderChange r = service.receiveReturn(o.getId(),
                 List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 null, "owner");
 
@@ -609,7 +547,7 @@ class OrderAdjustmentServiceTest {
         o.setRefundedMinor(10_000); // the bank refund is already booked by the time the books are written
         wireLedger();
 
-        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(List.of(), List.of(), 0, 10_000),
+        OrderChange r = service.registerReturnPlan(o.getId(), plan(List.of(), List.of(), 0, 10_000),
                 "owner", true);
         assertThat(r.auditDetails()).contains("monobank");
     }
@@ -624,7 +562,7 @@ class OrderAdjustmentServiceTest {
         OrderItem it = item(o, mouse, 1L, 3);
         wireLedger();
 
-        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(
+        OrderChange r = service.registerReturnPlan(o.getId(), plan(
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
                 List.of(), 0, 0), "owner");
 
@@ -671,7 +609,7 @@ class OrderAdjustmentServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("вернуть нечего");
 
-        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(
+        OrderChange r = service.registerReturnPlan(o.getId(), plan(
                 List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
                 List.of(), 0, 0), "owner");
 
@@ -731,7 +669,7 @@ class OrderAdjustmentServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("100 ₴");
 
-        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(back,
+        OrderChange r = service.registerReturnPlan(o.getId(), plan(back,
                 List.of(new OrderAdjustmentService.ManualRefund(
                         com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_000, null)), 0, 0), "owner");
 
@@ -754,7 +692,7 @@ class OrderAdjustmentServiceTest {
                 org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
         service.setWriteoffs(writeoffs);
 
-        OrderAdjustmentService.Result r = service.receiveReturn(o.getId(),
+        OrderChange r = service.receiveReturn(o.getId(),
                 List.of(new OrderAdjustmentService.ReceivedLine(1L, 1, OrderAdjustmentService.LineOutcome.DEFECT)),
                 null, "owner");
 
@@ -1041,7 +979,7 @@ class OrderAdjustmentServiceTest {
         wireReturnRecords(recs);
         wireExchanges();
 
-        OrderAdjustmentService.Result made = service.exchange(o.getId(),
+        OrderChange made = service.exchange(o.getId(),
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
                 List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
                 OrderStatus.NEW, true, null, "admin");
@@ -1054,7 +992,7 @@ class OrderAdjustmentServiceTest {
         assertThat(recs.get(0).getRefundMinor()).isEqualTo(10_000);
         assertThat(other.getStock()).isEqualTo(2);
 
-        OrderAdjustmentService.Result r = service.cancelReturn(o.getId(), recs.get(0).getId(), null,
+        OrderChange r = service.cancelReturn(o.getId(), recs.get(0).getId(), null,
                 "передумал", "owner");
 
         assertThat(child.getStatus()).isEqualTo(OrderStatus.REJECTED);
@@ -1166,11 +1104,11 @@ class OrderAdjustmentServiceTest {
     void channelLabel_hasAWordingForEveryChannel() {
         for (com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel c
                 : com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.values()) {
-            assertThat(OrderAdjustmentService.channelLabel(c)).isNotBlank();
+            assertThat(MoneyLedger.channelLabel(c)).isNotBlank();
         }
-        assertThat(OrderAdjustmentService.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.NP_COD))
+        assertThat(MoneyLedger.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.NP_COD))
                 .isEqualTo("наложка НП");
-        assertThat(OrderAdjustmentService.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.EXCHANGE))
+        assertThat(MoneyLedger.channelLabel(com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.EXCHANGE))
                 .isEqualTo("зачёт в обмен");
     }
 }

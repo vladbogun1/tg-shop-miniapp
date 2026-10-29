@@ -85,7 +85,7 @@ public class ReturnWizardService {
                 audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
                         "возврат на карту через monobank " + MoneyFormat.uah(mono) + " (мастер возврата)");
             }
-            OrderAdjustmentService.Result r = adjustments.registerReturnPlan(order.getId(), plan,
+            com.maxsolch.shop.order.app.OrderChange r = adjustments.registerReturnPlan(order.getId(), plan,
                     audit.currentAdminName(), mono > 0);
             audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
         } finally {

@@ -64,6 +64,21 @@ public class MoneyLedger {
         }
     }
 
+    /** The channel as the admin audit log words it. */
+    public static String channelLabel(Channel c) {
+        return switch (c) {
+            case MONO -> "monobank";
+            case NP_COD -> "наложка НП";
+            case NP_PAYMENT_CONTROL -> "контроль оплаты НП";
+            case CARD_TRANSFER -> "перевод на карту";
+            case CASH -> "наличные";
+            case NP_CLAIM -> "претензия НП";
+            case OTHER -> "другое";
+            case EXCHANGE -> "зачёт в обмен";
+            case MERGE -> "перенос при объединении";
+        };
+    }
+
     private static String cut(String s, int max) {
         if (s == null || s.isBlank()) {
             return null;

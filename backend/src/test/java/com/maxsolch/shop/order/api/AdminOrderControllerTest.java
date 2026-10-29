@@ -11,6 +11,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderArchive;
@@ -90,6 +91,8 @@ class AdminOrderControllerTest {
     @Mock
     OrderAdjustmentService adjustments;
     @Mock
+    com.maxsolch.shop.order.app.OrderDeliveryEditing deliveryEditing;
+    @Mock
     OnlinePaymentService payments;
 
     Order order;
@@ -113,7 +116,7 @@ class AdminOrderControllerTest {
         return new AdminOrderController(adminQueries,
                 new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
                 new ReturnWizardService(adminQueries, lookup, adjustments, payments, audit),
-                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, adjustments, payments);
+                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, adjustments, deliveryEditing, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,
@@ -472,7 +475,7 @@ class AdminOrderControllerTest {
         Order fresh = new Order();
         fresh.setId(order.getId());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderAdjustmentService.Result(order, "возврат: 1"));
+                .thenReturn(new OrderChange(order, "возврат: 1"));
         when(lookup.get(order.getId())).thenReturn(fresh);
         when(queries.toDetail(fresh)).thenReturn(detail);
 
@@ -499,7 +502,7 @@ class AdminOrderControllerTest {
         var req = wizard(List.of(), List.of(), 2_500L, null);
         when(payments.refundableInvoice(order.getId(), 2_500)).thenReturn("inv-1");
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderAdjustmentService.Result(order, "d"));
+                .thenReturn(new OrderChange(order, "d"));
         when(lookup.get(order.getId())).thenReturn(order);
 
         controller().returnWizard(id, req);
@@ -545,7 +548,7 @@ class AdminOrderControllerTest {
         // the lock was released: the same order can be tried again
         when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv");
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
+                .thenReturn(new OrderChange(order, "ok"));
         when(lookup.get(any(byte[].class))).thenReturn(order);
         c.returnWizard(id, req);
         verify(adjustments).registerReturnPlan(any(byte[].class), any(), any(), eq(true));
@@ -562,7 +565,7 @@ class AdminOrderControllerTest {
             return null;
         }).when(adjustments).checkReturnPlan(any(byte[].class), any());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
+                .thenReturn(new OrderChange(order, "ok"));
         when(lookup.get(any(byte[].class))).thenReturn(order);
 
         c.returnWizard(id, req);
@@ -587,7 +590,7 @@ class AdminOrderControllerTest {
             return null;
         }).when(adjustments).checkReturnPlan(any(byte[].class), any());
         when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderAdjustmentService.Result(order, "ok"));
+                .thenReturn(new OrderChange(order, "ok"));
         when(lookup.get(any(byte[].class))).thenReturn(order);
 
         c.returnWizard(id, req);
