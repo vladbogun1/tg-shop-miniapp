@@ -2,7 +2,6 @@ package com.maxsolch.shop.media;
 
 import com.maxsolch.shop.platform.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -44,8 +43,8 @@ public class MediaThumbnailer {
     private final String imgproxyUrl;
     private final String bucket;
 
-    public MediaThumbnailer(AppProperties props,
-                            @Value("${app.media.imgproxy-url:http://imgproxy:8080}") String imgproxyUrl) {
+    public MediaThumbnailer(AppProperties props) {
+        String imgproxyUrl = props.getMedia().getImgproxyUrl();
         this.imgproxyUrl = imgproxyUrl == null ? "" : imgproxyUrl.replaceAll("/+$", "");
         this.bucket = props.getS3().getBucket();
     }

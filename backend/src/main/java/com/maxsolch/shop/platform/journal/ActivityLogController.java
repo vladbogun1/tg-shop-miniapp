@@ -7,7 +7,7 @@ import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Value;
+import com.maxsolch.shop.platform.time.ShopZone;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -53,17 +53,11 @@ public class ActivityLogController {
 
     public ActivityLogController(ActivityLogStore store, BroadcastRepository broadcasts,
                                  ActivityLogRetention retention,
-                                 @Value("${app.timezone:Europe/Kyiv}") String timezone) {
+                                 ShopZone shopZone) {
         this.store = store;
         this.broadcasts = broadcasts;
         this.retention = retention;
-        ZoneId z;
-        try {
-            z = ZoneId.of(timezone);
-        } catch (DateTimeException e) {
-            z = ZoneId.of("Europe/Kyiv");
-        }
-        this.zone = z;
+        this.zone = shopZone.zone();
     }
 
     /** A page of the feed; {@code totals} (by result, whole filter) only on the first page. */

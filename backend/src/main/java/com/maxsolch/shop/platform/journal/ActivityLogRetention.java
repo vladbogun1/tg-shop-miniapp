@@ -1,7 +1,8 @@
 package com.maxsolch.shop.platform.journal;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import com.maxsolch.shop.platform.config.AppProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +23,12 @@ public class ActivityLogRetention {
     private final int retentionDays;
     private final int moneyRetentionDays;
 
-    public ActivityLogRetention(ActivityLogStore store,
-                                @Value("${app.journal.retention-days:90}") int retentionDays,
-                                @Value("${app.journal.money-retention-days:1095}") int moneyRetentionDays) {
+    @Autowired
+    public ActivityLogRetention(ActivityLogStore store, AppProperties props) {
+        this(store, props.getJournal().getRetentionDays(), props.getJournal().getMoneyRetentionDays());
+    }
+
+    public ActivityLogRetention(ActivityLogStore store, int retentionDays, int moneyRetentionDays) {
         this.store = store;
         this.retentionDays = Math.max(7, retentionDays);
         // never shorter than the general window, or money rows would go first

@@ -1,9 +1,8 @@
 package com.maxsolch.shop;
 
-import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.core.Ordered;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -25,7 +24,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableCaching(order = Ordered.LOWEST_PRECEDENCE - 1)
 @EnableScheduling
 @EnableAsync
-@EnableConfigurationProperties(AppProperties.class)
+// every @ConfigurationProperties class (AppProperties now, one per module later) registers itself
+@ConfigurationPropertiesScan
 public class TgShopApplication {
 
     public static void main(String[] args) {

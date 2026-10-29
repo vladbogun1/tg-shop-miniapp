@@ -35,7 +35,7 @@ class ActivityLogApiTest {
     void setUp() {
         store = mock(ActivityLogStore.class);
         broadcasts = mock(BroadcastRepository.class);
-        controller = new ActivityLogController(store, broadcasts, new ActivityLogRetention(store, 90, 1095), "Europe/Kyiv");
+        controller = new ActivityLogController(store, broadcasts, new ActivityLogRetention(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
     }
 
     private static ActivityLogStore.Filter filter(String order, String q) {

@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -59,10 +59,8 @@ public class VisitorLocationService {
     private final boolean enabled;
 
     @Autowired
-    public VisitorLocationService(JdbcTemplate jdbc, GeoIpLookup geo,
-                                  @Value("${app.geoip.enabled:true}") boolean enabled,
-                                  @Value("${app.geoip.throttle:PT15M}") Duration throttle) {
-        this(jdbc, geo, enabled, throttle, newWorker());
+    public VisitorLocationService(JdbcTemplate jdbc, GeoIpLookup geo, AppProperties props) {
+        this(jdbc, geo, props.getGeoip().isEnabled(), props.getGeoip().getThrottle(), newWorker());
     }
 
     VisitorLocationService(JdbcTemplate jdbc, GeoIpLookup geo, boolean enabled, Duration throttle,

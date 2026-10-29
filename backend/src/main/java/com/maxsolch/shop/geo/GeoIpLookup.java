@@ -6,7 +6,8 @@ import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.record.Location;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import com.maxsolch.shop.platform.config.AppProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -46,7 +47,12 @@ public class GeoIpLookup {
 
     private final DatabaseReader reader;
 
-    public GeoIpLookup(@Value("${app.geoip.path:}") String path) {
+    @Autowired
+    public GeoIpLookup(AppProperties props) {
+        this(props.getGeoip().getPath());
+    }
+
+    public GeoIpLookup(String path) {
         this.reader = open(path);
     }
 

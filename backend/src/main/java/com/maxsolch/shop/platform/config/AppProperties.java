@@ -3,12 +3,16 @@ package com.maxsolch.shop.platform.config;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+import java.time.Duration;
 
 /**
  * Binds the {@code app.*} configuration tree from application.yml / environment.
  */
 @Getter
 @Setter
+@Validated
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
@@ -26,6 +30,9 @@ public class AppProperties {
     private Site site = new Site();
     private Push push = new Push();
     private Payment payment = new Payment();
+    private Geoip geoip = new Geoip();
+    private Media media = new Media();
+    private Journal journal = new Journal();
 
     @Getter
     @Setter
@@ -166,5 +173,29 @@ public class AppProperties {
         public boolean isEnabled() {
             return token != null && !token.isBlank();
         }
+    }
+
+    /** IP to place lookup for the admin users map; empty path = map off, enabled=false stops recording IPs. */
+    @Getter
+    @Setter
+    public static class Geoip {
+        private String path = "";
+        private boolean enabled = true;
+        private Duration throttle = Duration.ofMinutes(15);
+    }
+
+    @Getter
+    @Setter
+    public static class Media {
+        /** imgproxy base URL; blank = thumbnails off and callers fall back to the original. */
+        private String imgproxyUrl = "http://imgproxy:8080";
+    }
+
+    /** Retention of the "Bot and site" journal. */
+    @Getter
+    @Setter
+    public static class Journal {
+        private int retentionDays = 90;
+        private int moneyRetentionDays = 1095;
     }
 }
