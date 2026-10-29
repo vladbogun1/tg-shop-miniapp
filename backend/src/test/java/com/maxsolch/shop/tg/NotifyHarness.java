@@ -105,7 +105,8 @@ final class NotifyHarness {
 
     /** The only place that changes when the service constructor does. */
     private NotificationService build(Messages messages, CustomerRejectReason rejectReason) {
-        return new NotificationService(bot, props, messages, settings, rejectReason, activity);
+        return new NotificationService(bot, props, messages, settings, rejectReason, activity,
+                new CustomerBot(bot, props, messages, activity));
     }
 
     private void wire() {

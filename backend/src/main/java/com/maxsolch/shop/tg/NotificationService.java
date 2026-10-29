@@ -39,6 +39,11 @@ import java.util.List;
 import java.util.Locale;
 
 import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.tg.TgFormat.idStr;
+import static com.maxsolch.shop.tg.TgFormat.money;
+import static com.maxsolch.shop.tg.TgFormat.nz;
+import static com.maxsolch.shop.tg.TgFormat.shortId;
+import static com.maxsolch.shop.tg.TgFormat.trim;
 
 /**
  * Best-effort Telegram notifications. Every method swallows failures (try/catch + log) so the
@@ -54,16 +59,18 @@ public class NotificationService {
     private final SettingsService settings;
     private final CustomerRejectReason customerRejectReason;
     private final ActivityLog activity;
+    private final CustomerBot customerBot;
 
     public NotificationService(@Lazy ShopBot bot, AppProperties props, Messages messages,
                                SettingsService settings, CustomerRejectReason customerRejectReason,
-                               ActivityLog activity) {
+                               ActivityLog activity, CustomerBot customerBot) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
         this.settings = settings;
         this.customerRejectReason = customerRejectReason;
         this.activity = activity;
+        this.customerBot = customerBot;
     }
 
     /**
@@ -178,21 +185,16 @@ public class NotificationService {
     /** DM the customer about a status change (only if tg_user_id is present and > 0). */
     public void notifyCustomerStatus(Order order) {
         // Admin switch (Настройки → Уведомления), e.g. while bulk-fixing statuses.
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
+        if (!customerBot.canReach(order)) {
             return;
         }
         if (!settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)) {
-            activity.record(ActivityLog.Entry.bot("ORDER_STATUS").toCustomer(tgUserId).order(order.getId())
-                    .text("Статус " + order.getStatus() + " — уведомления покупателям выключены в настройках")
-                    .skipped("NOTIFICATIONS_OFF"));
+            customerBot.skipped(order, "ORDER_STATUS",
+                    "Статус " + order.getStatus() + " — уведомления покупателям выключены в настройках",
+                    "NOTIFICATIONS_OFF");
             return;
         }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerStatus", "ORDER_STATUS", order, locale -> {
             String text = customerStatusHeader(order, locale) + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + statusCustomerNote(order, locale);
@@ -201,29 +203,13 @@ public class NotificationService {
                 text += (text.endsWith("\n") ? "" : "\n") + messages.get(locale, OrderService.giftCaseOpenable(order)
                         ? "bot.giftCase.grantedOpen" : "bot.giftCase.sealed");
             }
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build();
-            dm("ORDER_STATUS", order, msg);
-        } catch (Exception e) {
-            log.warn("notifyCustomerStatus failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
+        });
     }
 
     /** DM the customer that an admin added a free gift to their order. */
     public void notifyCustomerGift(Order order, String productTitle, String variantName, int qty) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerGift", "ORDER_GIFT", order, locale -> {
             StringBuilder t = new StringBuilder();
             t.append(messages.get(locale, "bot.gift.title")).append('\n');
             t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
@@ -235,41 +221,19 @@ public class NotificationService {
                 t.append(" × ").append(qty);
             }
             t.append(messages.get(locale, "bot.gift.enjoy"));
-            dm("ORDER_GIFT", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(t.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerGift failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(t.toString(), customerBot.chatButton(order, locale));
+        });
     }
 
     /** DM the customer that an admin gave them a gift case (no prize name — it is a surprise). */
     public void notifyCustomerGiftCase(Order order) {
-        if (!enabled()) {
-            return;
-        }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerGiftCase", "ORDER_GIFT_CASE", order, locale -> {
             String text = messages.get(locale, "bot.giftCase.grantedTitle") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, OrderService.giftCaseOpenable(order)
                             ? "bot.giftCase.grantedOpen" : "bot.giftCase.grantedAfterPay");
-            dm("ORDER_GIFT_CASE", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(chatButton(order, locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerGiftCase failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.chatButton(order, locale));
+        });
     }
 
     /**
@@ -279,15 +243,10 @@ public class NotificationService {
      */
     public void notifyCustomerCasePromo(Order order, String code, int percent, long amountMinor,
                                         Instant expiresAt) {
-        if (!enabled() || code == null || code.isBlank()) {
+        if (code == null || code.isBlank()) {
             return;
         }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        customerBot.send("notifyCustomerCasePromo", "ORDER_CASE_PROMO", order, locale -> {
             String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
             String text = messages.get(locale, "bot.giftCase.promoTitle") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
@@ -295,15 +254,8 @@ public class NotificationService {
                     + (expiresAt == null ? "" : messages.get(locale, "bot.giftCase.promoUntil",
                             expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n")
                     + messages.get(locale, "bot.giftCase.promoHint");
-            dm("ORDER_CASE_PROMO", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(cartButton(locale))
-                    .build());
-        } catch (Exception e) {
-            log.warn("notifyCustomerCasePromo failed for order {}: {}", idStr(order), e.getMessage());
-        }
+            return new CustomerBot.Dm(text, customerBot.cartButton(locale));
+        });
     }
 
     /**
@@ -314,31 +266,17 @@ public class NotificationService {
      */
     public boolean notifyCustomerCasePromoExpiring(Order order, String code, int percent, long amountMinor,
                                                    Instant expiresAt) {
-        if (!enabled() || code == null || code.isBlank() || expiresAt == null) {
+        if (code == null || code.isBlank() || expiresAt == null) {
             return false;
         }
-        Long tgUserId = order.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return false;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        return customerBot.send("notifyCustomerCasePromoExpiring", "ORDER_CASE_PROMO_EXPIRING", order, locale -> {
             String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
             String text = messages.get(locale, "bot.giftCase.promoExpiringTitle", discount) + "\n"
                     + messages.get(locale, "bot.giftCase.promoExpiringBody", "<code>" + escHtml(code) + "</code>",
                             expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n"
                     + messages.get(locale, "bot.giftCase.promoHint");
-            dm("ORDER_CASE_PROMO_EXPIRING", order, SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text)
-                    .parseMode("HTML")
-                    .replyMarkup(cartButton(locale))
-                    .build());
-            return true;
-        } catch (Exception e) {
-            log.warn("notifyCustomerCasePromoExpiring failed for order {}: {}", idStr(order), e.getMessage());
-            return false;
-        }
+            return new CustomerBot.Dm(text, customerBot.cartButton(locale));
+        });
     }
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -1095,34 +1033,5 @@ public class NotificationService {
             }
         }
         return d.toString();
-    }
-
-    /**
-     * Minor units → whole currency units, rounded the same way the frontends do
-     * (lib/money.ts uses Math.round). Truncating here made a Telegram card and the app show
-     * different totals for the same order whenever kopecks were involved.
-     */
-    private String money(long minor) {
-        return com.maxsolch.shop.common.MoneyFormat.amount(minor);
-    }
-
-    private String nz(String s) {
-        return s == null ? "" : s;
-    }
-
-    private String trim(String s, int max) {
-        if (s == null) {
-            return "";
-        }
-        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
-    }
-
-    private String idStr(Order order) {
-        return UuidUtil.toString(order.getId());
-    }
-
-    private String shortId(Order order) {
-        String id = idStr(order);
-        return id == null ? "?" : id.substring(0, 8);
     }
 }
