@@ -23,9 +23,18 @@ services:
       HW_STARTS_AT: ${HW_STARTS_AT:-}
       HW_ENDS_AT: ${HW_ENDS_AT:-}
       HW_STREAM_AT: ${HW_STREAM_AT:-}
-      HW_STREAM_URL: ${HW_STREAM_URL:-}
+      HW_STREAMS: ${HW_STREAMS:-}
       HW_GOAL: ${HW_GOAL:-}
       HW_DAILY_CAP: ${HW_DAILY_CAP:-}
+      HW_FULL_WEIGHT: ${HW_FULL_WEIGHT:-}
+      HW_MIN_SPEND_UAH: ${HW_MIN_SPEND_UAH:-}
+      HW_MAX_ORDER_TICKETS: ${HW_MAX_ORDER_TICKETS:-}
+      HW_ROUNDS_PUMPKINS: ${HW_ROUNDS_PUMPKINS:-}
+      HW_ROUNDS_ORDERS: ${HW_ROUNDS_ORDERS:-}
+      # bot DMs "you are in the draw": the shop bot token (send only); off unless HW_NOTIFY=1
+      HW_BOT_TOKEN: ${BOT_TOKEN:-}
+      HW_NOTIFY: ${HW_NOTIFY:-0}
+      HW_NOTIFY_ONLY: ${HW_NOTIFY_ONLY:-}
       HW_EXCLUDE_IDS: ${HW_EXCLUDE_IDS:-9000000000000001}
     volumes:
       - halloween_data:/data

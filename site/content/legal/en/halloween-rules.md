@@ -1,6 +1,6 @@
 ---
 title: Halloween Hunt giveaway rules
-updated: 2026-10-25
+updated: 2026-10-29
 status: draft
 ---
 
@@ -14,27 +14,33 @@ A Halloween prize draw among ChiSetup customers and viewers. The winners are pic
 
 ## 2. Dates
 
-- Pumpkins and orders count from **Monday 26.10.2026 00:00** to **Saturday 31.10.2026 00:00** (Kyiv time).
-- The draw takes place on stream on **Friday 30.10.2026 in the evening**. The time and the stream link are in the event panel on the website and in the Mini App.
+- Pumpkins and orders count from **Friday 30.10.2026 00:00** to **Sunday 01.11.2026 18:00** (Kyiv time).
+- The draws are live on **Sunday 01.11.2026 at 19:00** on [TikTok](https://www.tiktok.com/@lessons_maxsolch) and [Kick](https://kick.com/maxsolkh).
 
 ## 3. How to enter
 
-Sign in with Telegram on chisetup.com.ua or open the shop's Mini App in Telegram, otherwise we cannot contact the winner.
+Sign in with Telegram on chisetup.com.ua or open the shop's Mini App in Telegram — otherwise we cannot contact the winner.
 
-Tickets:
+There are **two separate draws**:
 
-- **50 pumpkins = 1 ticket.** Pumpkins appear on the pages of the website and the Mini App from time to time: tap one to collect it. Up to 15 pumpkins a day.
-- **Every order this week = +1 ticket.** Orders placed during the event and paid or accepted by the shop count; cancelled and rejected ones do not.
-- Tickets add up: the more tickets, the better the odds.
-- **Code words.** Code words may be announced on stream. Enter them in the event panel for extra pumpkins. Each word works a limited number of times, once per person.
+**Pumpkin draw (free).** Pumpkins pop up on the pages of the site and the Mini App from time to time — tap one to collect it. Up to 8 pumpkins a day.
 
-Entry is free: a ticket can be earned with pumpkins alone, no purchase needed.
+- Everyone with at least **1 pumpkin** takes part.
+- **A full set is 15 pumpkins** and weighs 100 tickets. A partial set gives 1 ticket per pumpkin (1–14), so a few pumpkins give a very small chance.
+- **Code words.** Code words may be announced on stream — enter them in the event panel to get extra pumpkins. Each word works a limited number of times, once per person.
+
+**Purchase draw.** Customers whose orders during the event add up to **500 UAH or more**.
+
+- 1 ticket per full 500 UAH, up to 5 tickets.
+- Orders placed during the event and paid or accepted by the shop count; cancelled, rejected and refunded amounts do not.
+
+The pumpkin draw is free, no purchase needed. The shop's bot lets you know when you are in.
 
 ## 4. The draw
 
-- **5 prizes**, one in each of five rounds. One person can win only one prize.
+- **3 prizes in each draw**, one per round. One person can win only one prize within a draw, but can win in both draws.
 - A participant's chance is proportional to their number of tickets.
-- Before the stream the list of participants is frozen and a fingerprint (sha256) of a secret number and the list is shown on screen. That number, not the host, decides the winners. After the draw the number and the list can be checked.
+- Before the stream the list of each draw is frozen and a fingerprint (sha256) of a secret number and the list is shown on screen. That number, not the host, decides the winners. After the draw the number and the list can be checked.
 - The prizes are announced separately before the stream.
 
 ## 5. Claiming a prize
