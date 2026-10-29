@@ -3,6 +3,7 @@ package com.maxsolch.shop.web.dto;
 import java.time.Instant;
 import java.util.List;
 
+@lombok.Builder
 public record OrderDetailDto(
         String id,
         String status,

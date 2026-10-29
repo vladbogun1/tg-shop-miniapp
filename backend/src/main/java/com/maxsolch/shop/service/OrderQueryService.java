@@ -292,66 +292,67 @@ public class OrderQueryService {
             paymentTitle = translationService.overlay(lang).text(TranslationEntityType.PAYMENT_OPTION,
                     UuidUtil.toString(o.getPaymentOptionId()), TranslationEntityType.TITLE, paymentTitle);
         }
-        return new OrderDetailDto(
-                UuidUtil.toString(o.getId()),
-                o.getStatus().name(),
-                o.getSubtotalMinor(),
-                o.getDiscountMinor(),
-                o.getTotalMinor(),
-                o.getCurrency(),
-                o.getCustomerName(),
-                o.getPhone(),
-                o.getComment(),
-                o.getPromoCode(),
-                o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name(),
-                o.getNpCityName(),
-                o.getNpWarehouseName(),
-                paymentTitle,
-                o.getTrackingNumber(),
-                customer ? customerRejectReason.current(o.getRejectReason()) : o.getRejectReason(),
-                items,
-                payment,
-                o.getTgUserId(),
-                o.getTgUsername(),
-                o.getCreatedAt(),
-                o.getApprovedAt(),
-                o.getShippedAt(),
-                o.getDeliveredAt(),
-                o.getRejectedAt(),
-                o.isPaid(),
-                o.getPaidAt(),
-                o.getPrepaymentMinor(),
+        return OrderDetailDto.builder()
+                .id(UuidUtil.toString(o.getId()))
+                .status(o.getStatus().name())
+                .subtotalMinor(o.getSubtotalMinor())
+                .discountMinor(o.getDiscountMinor())
+                .totalMinor(o.getTotalMinor())
+                .currency(o.getCurrency())
+                .customerName(o.getCustomerName())
+                .phone(o.getPhone())
+                .comment(o.getComment())
+                .promoCode(o.getPromoCode())
+                .deliveryMethod(o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name())
+                .npCityName(o.getNpCityName())
+                .npWarehouseName(o.getNpWarehouseName())
+                .paymentOptionTitle(paymentTitle)
+                .trackingNumber(o.getTrackingNumber())
+                .rejectReason(customer ? customerRejectReason.current(o.getRejectReason()) : o.getRejectReason())
+                .items(items)
+                .payment(payment)
+                .tgUserId(o.getTgUserId())
+                .tgUsername(o.getTgUsername())
+                .createdAt(o.getCreatedAt())
+                .approvedAt(o.getApprovedAt())
+                .shippedAt(o.getShippedAt())
+                .deliveredAt(o.getDeliveredAt())
+                .rejectedAt(o.getRejectedAt())
+                .paid(o.isPaid())
+                .paidAt(o.getPaidAt())
+                .prepaymentMinor(o.getPrepaymentMinor())
                 // The admin sees what really arrived (an exchange for something cheaper leaves it
                 // above the total — that overpayment is to be refunded); the customer, the capped.
-                customer ? OrderMoney.receivedMinor(o) : Math.max(0, o.getReceivedMinor()),
-                o.getPaymentDueAt(),
-                OrderMoney.amountDueMinor(o),
-                sourceOf(o),
-                customerLocale,
-                o.getRejectReasonCode(),
-                Math.max(0, o.getRefundedMinor()),
-                o.getReturnedAt(),
-                o.getNpCityRef(),
-                o.getNpWarehouseRef(),
-                o.getCancelRequestStatus(),
-                o.getCancelRequestReason(),
-                o.getCancelRequestedAt(),
-                o.getCancelRequestResolvedAt(),
-                o.getCancelRequestAdminComment(),
-                customer ? List.of() : exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
+                .receivedMinor(customer ? OrderMoney.receivedMinor(o) : Math.max(0, o.getReceivedMinor()))
+                .paymentDueAt(o.getPaymentDueAt())
+                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .source(sourceOf(o))
+                .customerLocale(customerLocale)
+                .rejectReasonCode(o.getRejectReasonCode())
+                .refundedMinor(Math.max(0, o.getRefundedMinor()))
+                .returnedAt(o.getReturnedAt())
+                .npCityRef(o.getNpCityRef())
+                .npWarehouseRef(o.getNpWarehouseRef())
+                .cancelRequestStatus(o.getCancelRequestStatus())
+                .cancelRequestReason(o.getCancelRequestReason())
+                .cancelRequestedAt(o.getCancelRequestedAt())
+                .cancelRequestResolvedAt(o.getCancelRequestResolvedAt())
+                .cancelRequestAdminComment(o.getCancelRequestAdminComment())
+                .exchanges(customer ? List.of() : exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
                         .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
                                 e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
                                 e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName(),
                                 e.getNewOrderId() == null ? null : UuidUtil.toString(e.getNewOrderId())))
-                        .toList(),
-                o.getGiftCaseStatus(),
-                o.getGiftCaseOpenedAt(),
-                OrderService.giftCaseOpenable(o),
-                giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer),
-                o.getGiftDiscountMinor(),
-                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
-                Math.max(0, o.getUncollectedMinor()),
-                customer ? null : adminExtras(o));
+                        .toList())
+                .giftCaseStatus(o.getGiftCaseStatus())
+                .giftCaseOpenedAt(o.getGiftCaseOpenedAt())
+                .giftCaseOpenable(OrderService.giftCaseOpenable(o))
+                .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer))
+                .giftDiscountMinor(o.getGiftDiscountMinor())
+                .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
+                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .admin(customer ? null : adminExtras(o))
+                .build();
     }
 
     /** Money journal and write-offs (optional: unit tests build the service without them). */
