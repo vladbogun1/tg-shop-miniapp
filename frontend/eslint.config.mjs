@@ -1,6 +1,8 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
+import { architectureLimits } from "../shared/eslint/architecture-limits.mjs";
+import legacyLimits from "./eslint.legacy-limits.mjs";
 
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
@@ -17,6 +19,9 @@ const config = [
       "@next/next/no-img-element": "off",
     },
   },
+  // Size/complexity limits: error for new code, warning for files in eslint.legacy-limits.mjs.
+  // Translation dictionaries are data, their length says nothing about complexity.
+  ...architectureLimits(legacyLimits, ["i18n/{en,ru,uk}.ts"]),
 ];
 
 export default config;
