@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMoney;
+import com.maxsolch.shop.domain.OrderPaymentState;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
@@ -181,6 +182,7 @@ public class OrderQueryService {
     @Transactional(readOnly = true)
     public OrderSummaryDto toSummary(Order o, CardContext ctx) {
         String id = UuidUtil.toString(o.getId());
+        OrderPaymentState pay = OrderPaymentState.of(o);
         return OrderSummaryDto.builder()
                 .id(id)
                 .status(o.getStatus().name())
@@ -189,20 +191,21 @@ public class OrderQueryService {
                 .createdAt(o.getCreatedAt())
                 .itemsCount(ctx.itemsFor(id))
                 .unreadCount(ctx.unreadFor(id))
-                .paid(o.isPaid())
-                .receivedMinor(OrderMoney.receivedMinor(o))
-                .paymentDueAt(o.getPaymentDueAt())
-                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .paid(pay.paid())
+                .receivedMinor(pay.receivedMinor())
+                .paymentDueAt(pay.paymentDueAt())
+                .amountDueMinor(pay.amountDueMinor())
                 .cancelRequestStatus(o.getCancelRequestStatus())
                 .giftCaseStatus(o.getGiftCaseStatus())
                 .giftCaseOpenable(OrderService.giftCaseOpenable(o))
-                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .uncollectedMinor(pay.uncollectedMinor())
                 .build();
     }
 
     @Transactional(readOnly = true)
     public OrderCardDto toCard(Order o, CardContext ctx) {
         String id = UuidUtil.toString(o.getId());
+        OrderPaymentState pay = OrderPaymentState.of(o);
         return OrderCardDto.builder()
                 .id(id)
                 .customerName(o.getCustomerName())
@@ -214,10 +217,10 @@ public class OrderQueryService {
                 .unreadCount(ctx.unreadFor(id))
                 .createdAt(o.getCreatedAt())
                 .status(o.getStatus().name())
-                .paid(o.isPaid())
-                .receivedMinor(OrderMoney.receivedMinor(o))
-                .paymentDueAt(o.getPaymentDueAt())
-                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .paid(pay.paid())
+                .receivedMinor(pay.receivedMinor())
+                .paymentDueAt(pay.paymentDueAt())
+                .amountDueMinor(pay.amountDueMinor())
                 .source(sourceOf(o))
                 .cancelRequestStatus(o.getCancelRequestStatus())
                 .archived(o.getArchivedAt() != null)
@@ -227,7 +230,7 @@ public class OrderQueryService {
                 .lines(ctx.linesFor(id))
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
                 .exchangeOrderIds(ctx.exchangesOf(id))
-                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .uncollectedMinor(pay.uncollectedMinor())
                 .build();
     }
 
@@ -282,6 +285,7 @@ public class OrderQueryService {
                 .map(it -> toItemDto(o, it, thumbnails, names))
                 .toList();
         OnlinePaymentDto payment = onlinePayment(o);
+        OrderPaymentState pay = OrderPaymentState.of(o);
         // The language the customer chose in the shop (users.locale): the admin answers in it.
         Long customerId = o.getUserId() != null ? o.getUserId() : o.getTgUserId();
         String customerLocale = customerId == null ? null : userRepository.localeOf(customerId).orElse(null);
@@ -318,14 +322,14 @@ public class OrderQueryService {
                 .shippedAt(o.getShippedAt())
                 .deliveredAt(o.getDeliveredAt())
                 .rejectedAt(o.getRejectedAt())
-                .paid(o.isPaid())
+                .paid(pay.paid())
                 .paidAt(o.getPaidAt())
                 .prepaymentMinor(o.getPrepaymentMinor())
                 // The admin sees what really arrived (an exchange for something cheaper leaves it
                 // above the total — that overpayment is to be refunded); the customer, the capped.
-                .receivedMinor(customer ? OrderMoney.receivedMinor(o) : Math.max(0, o.getReceivedMinor()))
-                .paymentDueAt(o.getPaymentDueAt())
-                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .receivedMinor(customer ? pay.receivedMinor() : Math.max(0, o.getReceivedMinor()))
+                .paymentDueAt(pay.paymentDueAt())
+                .amountDueMinor(pay.amountDueMinor())
                 .source(sourceOf(o))
                 .customerLocale(customerLocale)
                 .rejectReasonCode(o.getRejectReasonCode())
@@ -350,7 +354,7 @@ public class OrderQueryService {
                 .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, lang, customer))
                 .giftDiscountMinor(o.getGiftDiscountMinor())
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
-                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .uncollectedMinor(pay.uncollectedMinor())
                 .admin(customer ? null : adminExtras(o))
                 .build();
     }
@@ -502,8 +506,7 @@ public class OrderQueryService {
     }
 
     private DispatchOrderDto toDispatch(Order o, Map<String, String> thumbnails) {
-        long received = OrderMoney.receivedMinor(o);
-        long cod = OrderMoney.codMinor(o);
+        OrderPaymentState pay = OrderPaymentState.of(o);
         List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
                 .map(it -> new DispatchOrderDto.DispatchItem(
                         it.getTitleSnapshot(), it.getVariantNameSnapshot(),
@@ -525,17 +528,17 @@ public class OrderQueryService {
                 .items(items)
                 .totalMinor(o.getTotalMinor())
                 .prepaymentMinor(o.getPrepaymentMinor())
-                .receivedMinor(received)
-                .codMinor(cod)
-                .paid(o.isPaid())
+                .receivedMinor(pay.receivedMinor())
+                .codMinor(OrderMoney.codMinor(o))
+                .paid(pay.paid())
                 .currency(o.getCurrency())
                 .paymentOptionTitle(o.getPaymentOptionTitle())
                 .trackingNumber(o.getTrackingNumber())
                 .createdAt(o.getCreatedAt())
                 .approvedAt(o.getApprovedAt())
                 .status(o.getStatus().name())
-                .paymentDueAt(o.getPaymentDueAt())
-                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .paymentDueAt(pay.paymentDueAt())
+                .amountDueMinor(pay.amountDueMinor())
                 .build();
     }
 
