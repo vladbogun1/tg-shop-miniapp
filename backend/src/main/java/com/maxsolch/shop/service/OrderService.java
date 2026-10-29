@@ -464,7 +464,7 @@ public class OrderService {
             // Paid orders go through a cancellation request (requestCancel) instead.
             throw new BadRequestException(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
         }
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         restoreStock(order);
@@ -512,7 +512,7 @@ public class OrderService {
                             ? "api.cancelRequest.declinedBefore" : "api.cancelRequest.exists"),
                     CANCEL_REQUEST_EXISTS);
         }
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         if (!order.isPaid() && order.getReceivedMinor() <= 0) {
@@ -537,7 +537,7 @@ public class OrderService {
     public Order approveCancelRequest(byte[] orderId, String comment) {
         Order order = lock(orderId);
         requirePendingRequest(order);
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException("заказ уже " + order.getStatus() + " — отмена по запросу невозможна",
                     CANNOT_CANCEL);
         }
@@ -1126,7 +1126,7 @@ public class OrderService {
     /** Order composition/discount may only be edited before dispatch. */
     private void requireEditable(Order order) {
         OrderStatus s = order.getStatus();
-        if (s != OrderStatus.NEW && s != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(s)) {
             throw new BadRequestException("заказ можно менять только в статусе «Новый» или «Одобрен»");
         }
     }
@@ -1331,7 +1331,7 @@ public class OrderService {
      */
     static void settleFreeOrder(Order order) {
         if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
-                || (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED)) {
+                || !OrderTransitions.isOpen(order)) {
             return;
         }
         order.setPaid(true);
@@ -1513,7 +1513,7 @@ public class OrderService {
     /** Swapping the case prize is possible while the order is still being put together. */
     public static boolean giftCaseSwappable(Order order) {
         return GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())
-                && (order.getStatus() == OrderStatus.NEW || order.getStatus() == OrderStatus.APPROVED)
+                && OrderTransitions.isOpen(order)
                 && casePrizeLine(order).isPresent();
     }
 

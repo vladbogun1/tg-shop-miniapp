@@ -215,7 +215,7 @@ public class OrderMergeService {
      */
     static String blocker(Order o, boolean staying) {
         String id = "#" + shortId(o.getId());
-        if (o.getStatus() != OrderStatus.NEW && o.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(o)) {
             return "заказ " + id + " уже не новый и не одобренный — объединять можно только до отправки";
         }
         if (o.getArchivedAt() != null) {

@@ -220,7 +220,7 @@ public class OrderAdjustmentService {
     public Result registerReturn(byte[] orderId, List<ReturnLine> lines, long refundMinor, String note) {
         Order order = load(orderId);
         OrderStatus s = order.getStatus();
-        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
+        boolean overpaidInWork = OrderTransitions.isOpen(s)
                 && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
@@ -485,7 +485,7 @@ public class OrderAdjustmentService {
     /** Status, amounts and channels of a wizard plan; nothing is changed. */
     private void validatePlan(Order order, ReturnPlan plan, boolean monoSent) {
         OrderStatus s = order.getStatus();
-        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
+        boolean overpaidInWork = OrderTransitions.isOpen(s)
                 && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
