@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderPayments;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.app.OrderService;
@@ -23,6 +25,8 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
 
     @Autowired
     OrderService orders;
+    @Autowired
+    OrderPayments orderPayments;
 
     private Order placed(long tg, String phone, Product p, int qty) {
         Order o = orders.createOrder(checkout(tg, phone, p, qty));
@@ -67,7 +71,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
     void approveCancelRequestNotifiesAfterCommitAndRollbackSendsNothing() {
         Product p = product(5_000, 3);
         Order o = placed(9_003, "+380673330003", p, 1);
-        orders.markPaid(o.getId(), 5_000);
+        orderPayments.markPaid(o.getId(), 5_000);
         orders.requestCancel(o.getId(), "не нужен");
         Mockito.reset(notificationService);
 

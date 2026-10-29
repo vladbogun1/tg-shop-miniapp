@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderPayments;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -33,11 +33,11 @@ import static com.maxsolch.shop.platform.util.Texts.cut;
 public class PaymentStatusApplier {
 
     private final PaymentInvoiceRepository invoices;
-    private final OrderService orderService;
+    private final OrderPayments orderPayments;
 
-    public PaymentStatusApplier(PaymentInvoiceRepository invoices, OrderService orderService) {
+    public PaymentStatusApplier(PaymentInvoiceRepository invoices, OrderPayments orderPayments) {
         this.invoices = invoices;
-        this.orderService = orderService;
+        this.orderPayments = orderPayments;
     }
 
     /** «Журнал → Бот и сайт» (optional: tests build the applier without it). */
@@ -117,7 +117,7 @@ public class PaymentStatusApplier {
         boolean paidState = PaymentInvoice.SUCCESS.equals(st.status()) || PaymentInvoice.REVERSED.equals(st.status());
         if (paidState && inv.getAppliedAt() == null) {
             inv.setAppliedAt(Instant.now());
-            orderService.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor(), inv.getExternalId());
+            orderPayments.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor(), inv.getExternalId());
             log.info("monobank: invoice {} paid, {} kop credited to order {}", inv.getExternalId(),
                     inv.getAmountMinor(), UuidUtil.toString(inv.getOrderId()));
             journal(payment("PAYMENT_SUCCESS", inv)
@@ -141,7 +141,7 @@ public class PaymentStatusApplier {
             long delta = refundedNow - inv.getRefundedMinor();
             if (delta > 0) {
                 inv.setRefundedMinor(refundedNow);
-                orderService.recordOnlineRefund(inv.getOrderId(), delta, inv.getExternalId());
+                orderPayments.recordOnlineRefund(inv.getOrderId(), delta, inv.getExternalId());
                 log.info("monobank: invoice {} refund {} kop booked", inv.getExternalId(), delta);
                 journal(payment("REFUND", inv)
                         .text("Возврат на карту: " + MoneyFormat.amount(delta) + " грн")

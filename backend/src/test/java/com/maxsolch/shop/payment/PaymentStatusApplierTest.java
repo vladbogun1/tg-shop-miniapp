@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderPayments;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,14 +33,14 @@ class PaymentStatusApplierTest {
     @Mock
     PaymentInvoiceRepository invoices;
     @Mock
-    OrderService orderService;
+    OrderPayments orderPayments;
 
     PaymentStatusApplier applier;
     PaymentInvoice inv;
 
     @BeforeEach
     void setUp() {
-        applier = new PaymentStatusApplier(invoices, orderService);
+        applier = new PaymentStatusApplier(invoices, orderPayments);
         inv = new PaymentInvoice();
         inv.setId(UuidUtil.randomBytes());
         inv.setOrderId(UuidUtil.randomBytes());
@@ -65,11 +65,11 @@ class PaymentStatusApplierTest {
         assertThat(applier.apply(success(T2))).isTrue();
         assertThat(applier.apply(success(T2))).isTrue(); // the same webhook delivered again
 
-        verify(orderService, times(1)).recordOnlinePayment(eq(inv.getOrderId()), eq(4200L), any());
+        verify(orderPayments, times(1)).recordOnlinePayment(eq(inv.getOrderId()), eq(4200L), any());
         assertThat(inv.getStatus()).isEqualTo(PaymentInvoice.SUCCESS);
         assertThat(inv.getAppliedAt()).isNotNull();
         assertThat(inv.getProviderModifiedAt()).isEqualTo(Instant.parse(T2));
-        verify(orderService, never()).recordOnlineRefund(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlineRefund(any(), anyLong(), any());
     }
 
     @Test
@@ -90,7 +90,7 @@ class PaymentStatusApplierTest {
 
         applier.apply(success(T1));
 
-        verify(orderService, never()).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlinePayment(any(), anyLong(), any());
         assertThat(inv.getStatus()).isEqualTo(PaymentInvoice.FAILURE);
     }
 
@@ -101,14 +101,14 @@ class PaymentStatusApplierTest {
         applier.apply(status(PaymentInvoice.PROCESSING, 4200L, null, T3));
 
         assertThat(inv.getStatus()).isEqualTo(PaymentInvoice.SUCCESS);
-        verify(orderService, times(1)).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, times(1)).recordOnlinePayment(any(), anyLong(), any());
     }
 
     @Test
     void amountMismatch_isNotApplied() {
         assertThat(applier.apply(status(PaymentInvoice.SUCCESS, 1L, 1L, T2))).isTrue();
 
-        verify(orderService, never()).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlinePayment(any(), anyLong(), any());
         verify(invoices, never()).save(any());
         assertThat(inv.getStatus()).isEqualTo(PaymentInvoice.CREATED);
         assertThat(inv.getAppliedAt()).isNull();
@@ -119,7 +119,7 @@ class PaymentStatusApplierTest {
         applier.apply(new MonobankInvoiceStatus(INVOICE, PaymentInvoice.SUCCESS, null, null, 4200L, 840, 4200L,
                 T1, T2, null, null, null));
 
-        verify(orderService, never()).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlinePayment(any(), anyLong(), any());
     }
 
     @Test
@@ -129,21 +129,21 @@ class PaymentStatusApplierTest {
         // 30 UAH went back to the card (admin button or the monobank cabinet)
         applier.apply(status(PaymentInvoice.SUCCESS, 4200L, 1200L, T2));
         applier.apply(status(PaymentInvoice.SUCCESS, 4200L, 1200L, T2));
-        verify(orderService, times(1)).recordOnlineRefund(eq(inv.getOrderId()), eq(3000L), any());
+        verify(orderPayments, times(1)).recordOnlineRefund(eq(inv.getOrderId()), eq(3000L), any());
         assertThat(inv.getRefundedMinor()).isEqualTo(3000);
 
         // the rest follows: only the new part is booked
         applier.apply(status(PaymentInvoice.REVERSED, 4200L, 0L, T3));
-        verify(orderService).recordOnlineRefund(eq(inv.getOrderId()), eq(1200L), any());
+        verify(orderPayments).recordOnlineRefund(eq(inv.getOrderId()), eq(1200L), any());
         assertThat(inv.getRefundedMinor()).isEqualTo(4200);
-        verify(orderService, times(1)).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, times(1)).recordOnlinePayment(any(), anyLong(), any());
     }
 
     @Test
     void refundOfAnUnpaidInvoice_isNotBooked() {
         applier.apply(status(PaymentInvoice.FAILURE, 4200L, 0L, T2));
 
-        verify(orderService, never()).recordOnlineRefund(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlineRefund(any(), anyLong(), any());
     }
 
     @Test
@@ -152,8 +152,8 @@ class PaymentStatusApplierTest {
         applier.apply(new MonobankInvoiceStatus(INVOICE, PaymentInvoice.REVERSED, null, null, 4200L, 980, null,
                 T1, T2, null, null, List.of(new MonobankInvoiceStatus.CancelItem("success", 4200L, 980, T2, T2, "r1"))));
 
-        verify(orderService).recordOnlinePayment(eq(inv.getOrderId()), eq(4200L), any());
-        verify(orderService).recordOnlineRefund(eq(inv.getOrderId()), eq(4200L), any());
+        verify(orderPayments).recordOnlinePayment(eq(inv.getOrderId()), eq(4200L), any());
+        verify(orderPayments).recordOnlineRefund(eq(inv.getOrderId()), eq(4200L), any());
     }
 
     @Test
@@ -162,6 +162,6 @@ class PaymentStatusApplierTest {
                 4200L, T1, T2, null, null, null))).isFalse();
         assertThat(applier.apply(null)).isFalse();
 
-        verify(orderService, never()).recordOnlinePayment(any(), anyLong(), any());
+        verify(orderPayments, never()).recordOnlinePayment(any(), anyLong(), any());
     }
 }

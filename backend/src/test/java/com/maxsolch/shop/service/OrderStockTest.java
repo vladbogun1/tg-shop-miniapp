@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderService;
-import com.maxsolch.shop.order.app.OrderServiceFixtures;
+import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -94,9 +94,9 @@ class OrderStockTest {
     }
 
     private OrderService newService() {
-        return OrderServiceFixtures.create(orderRepository, productRepository, promoCodeRepository,
+        return OrderApp.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
-                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class));
+                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class)).service();
     }
 
     private Product product(int stock) {

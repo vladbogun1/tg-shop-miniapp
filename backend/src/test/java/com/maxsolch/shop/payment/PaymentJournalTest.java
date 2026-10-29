@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderPayments;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,7 +31,7 @@ class PaymentJournalTest {
     @BeforeEach
     void setUp() {
         PaymentInvoiceRepository invoices = mock(PaymentInvoiceRepository.class);
-        applier = new PaymentStatusApplier(invoices, mock(OrderService.class));
+        applier = new PaymentStatusApplier(invoices, mock(OrderPayments.class));
         activity = mock(ActivityLog.class);
         applier.setActivity(activity);
         inv = new PaymentInvoice();
@@ -87,7 +87,7 @@ class PaymentJournalTest {
     void withoutTheJournalNothingBreaks() {
         PaymentInvoiceRepository invoices = mock(PaymentInvoiceRepository.class);
         when(invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, INVOICE)).thenReturn(Optional.of(inv));
-        PaymentStatusApplier bare = new PaymentStatusApplier(invoices, mock(OrderService.class));
+        PaymentStatusApplier bare = new PaymentStatusApplier(invoices, mock(OrderPayments.class));
         assertThat(bare.apply(status(PaymentInvoice.SUCCESS, null, null, 4200L, "2026-10-05T10:00:05Z"))).isTrue();
         verify(activity, never()).recordAfterCommit(any());
     }

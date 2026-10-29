@@ -46,6 +46,7 @@ public class OrderAdjustmentService {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final OrderPayments orderPayments;
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final OrderExchangeRepository exchangeRepository;
@@ -54,12 +55,14 @@ public class OrderAdjustmentService {
 
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
+                                  OrderPayments orderPayments,
                                   OrderStock stock,
                                   ApplicationEventPublisher events,
                                   OrderExchangeRepository exchangeRepository,
                                   MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
+        this.orderPayments = orderPayments;
         this.stock = stock;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
@@ -832,7 +835,7 @@ public class OrderAdjustmentService {
         long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
                 child.getTotalMinor()));
         if (moved > 0) {
-            child = orderService.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
+            child = orderPayments.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
                     "зачёт по обмену из заказа #" + shortId);
         }
         child.setExchangeOfOrderId(order.getId());

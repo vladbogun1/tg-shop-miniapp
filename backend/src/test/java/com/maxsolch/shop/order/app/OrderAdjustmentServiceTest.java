@@ -76,10 +76,10 @@ class OrderAdjustmentServiceTest {
     void setUp() {
         ledgerMock = org.mockito.Mockito.mock(MoneyLedger.class);
         OrderStock stock = StockFixtures.stock(productRepository, messages);
-        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
+        OrderApp app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager, stock, org.mockito.Mockito.mock(MoneyLedger.class));
-        service = new OrderAdjustmentService(orderRepository, orderService, stock, events, exchangeRepository, ledgerMock);
+        service = app.adjustment(orderRepository, stock, events, exchangeRepository, ledgerMock);
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -372,12 +372,12 @@ class OrderAdjustmentServiceTest {
         o.setTotalMinor(5_000);
         o.setReceivedMinor(10_000);
         o.setPaid(true);
-        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
+        OrderApp app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
 
-        Order delivered = orderService.deliver(o.getId());
+        Order delivered = app.service().deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(10_000);
     }
@@ -683,11 +683,11 @@ class OrderAdjustmentServiceTest {
         assertThat(OrderMoney.codMinor(r.order())).isEqualTo(19_900);
         assertThat(r.auditDetails()).contains("не выкуплено на почте 100 ₴").contains("наложка теперь 199 ₴");
 
-        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
+        OrderApp app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
-        Order delivered = orderService.deliver(o.getId());
+        Order delivered = app.service().deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
         assertThat(OrderMoney.codMinor(delivered)).isZero();

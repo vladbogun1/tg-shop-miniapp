@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderPayments;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.app.OrderMergeService;
@@ -21,6 +23,8 @@ class OrderMergeIT extends AbstractMysqlIT {
     @Autowired
     OrderService orders;
     @Autowired
+    OrderPayments orderPayments;
+    @Autowired
     OrderMergeService merge;
 
     @Test
@@ -28,7 +32,7 @@ class OrderMergeIT extends AbstractMysqlIT {
         Product a = product(10_000, 5);
         Order target = orders.createOrder(checkout(9_101, "+380674440001", a, 1));
         Order source = orders.createOrder(checkout(9_101, "+380674440001", a, 2));
-        orders.markPaid(source.getId(), 20_000);
+        orderPayments.markPaid(source.getId(), 20_000);
         int stockA = stockOf(a);
         Mockito.reset(notificationService);
 

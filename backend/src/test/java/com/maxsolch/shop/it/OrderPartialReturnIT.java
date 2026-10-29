@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderPayments;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -25,6 +27,8 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     @Autowired
     OrderService orders;
     @Autowired
+    OrderPayments orderPayments;
+    @Autowired
     OrderAdjustmentService adjustments;
     @Autowired
     OrderRepository orderRepository;
@@ -33,7 +37,7 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     private Order paidAndShipped(Product p, long tg, String phone, String ttn) {
         Order o = orders.createOrder(checkout(tg, phone, p, 3));
         o = orders.applyDiscount(o.getId(), null, 100L, null, false, false);
-        orders.markPaid(o.getId(), 9_899);
+        orderPayments.markPaid(o.getId(), 9_899);
         orders.approve(o.getId());
         return orders.ship(o.getId(), ttn);
     }

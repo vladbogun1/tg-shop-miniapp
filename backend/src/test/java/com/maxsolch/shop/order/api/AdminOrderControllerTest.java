@@ -12,6 +12,8 @@ import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderQueryService;
+import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
@@ -66,6 +68,10 @@ class AdminOrderControllerTest {
     @Mock
     OrderService orderService;
     @Mock
+    OrderPayments orderPayments;
+    @Mock
+    OrderArchive orderArchive;
+    @Mock
     OrderQueryService queries;
     @Mock
     AdminAuditService audit;
@@ -95,7 +101,7 @@ class AdminOrderControllerTest {
         return new AdminOrderController(lookup,
                 new AdminOrderStatusService(lookup, orderService, payments, audit),
                 new ReturnWizardService(lookup, orderService, adjustments, payments, audit),
-                orderService, queries, null, audit, null, null, adjustments, payments);
+                orderService, orderPayments, orderArchive, queries, null, audit, null, null, adjustments, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,

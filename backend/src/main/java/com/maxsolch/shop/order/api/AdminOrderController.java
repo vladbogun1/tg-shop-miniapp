@@ -19,6 +19,8 @@ import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderQueryService;
+import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
 import com.maxsolch.shop.order.domain.OrderWindow;
 import com.maxsolch.shop.returns.app.ReturnWizardService;
@@ -56,6 +58,8 @@ public class AdminOrderController {
     private final AdminOrderStatusService statusService;
     private final ReturnWizardService returnWizards;
     private final OrderService orderService;
+    private final OrderPayments orderPayments;
+    private final OrderArchive orderArchive;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
     private final AdminAuditService audit;
@@ -88,6 +92,8 @@ public class AdminOrderController {
                                 AdminOrderStatusService statusService,
                                 ReturnWizardService returnWizards,
                                 OrderService orderService,
+                                OrderPayments orderPayments,
+                                OrderArchive orderArchive,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
                                 AdminAuditService audit,
@@ -99,6 +105,8 @@ public class AdminOrderController {
         this.statusService = statusService;
         this.returnWizards = returnWizards;
         this.orderService = orderService;
+        this.orderPayments = orderPayments;
+        this.orderArchive = orderArchive;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.audit = audit;
@@ -306,7 +314,7 @@ public class AdminOrderController {
                 req.channel() == null || req.channel().isBlank()
                         ? com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.OTHER
                         : com.maxsolch.shop.order.app.MoneyLedger.parseChannel(req.channel());
-        Order updated = orderService.markPaid(load(id).getId(), req.receivedMinor(), channel,
+        Order updated = orderPayments.markPaid(load(id).getId(), req.receivedMinor(), channel,
                 audit.currentAdminName(), req.note());
         audit.record("ORDER_PAID", "ORDER", id,
                 (req.receivedMinor() > 0
@@ -392,7 +400,7 @@ public class AdminOrderController {
     @Operation(summary = "Archive a DELIVERED/REJECTED order (main admin only; reason required)")
     public OrderDetailDto archive(@PathVariable String id,
                                   @Valid @RequestBody OrderAdjustmentDtos.ArchiveRequest req) {
-        Order archived = orderService.archive(load(id).getId(), req.reason(), audit.currentAdminName());
+        Order archived = orderArchive.archive(load(id).getId(), req.reason(), audit.currentAdminName());
         audit.record("ORDER_ARCHIVE", "ORDER", id,
                 "в архив: " + archived.getCustomerName() + ", " + MoneyFormat.uah(archived.getTotalMinor())
                         + ", статус " + archived.getStatus() + "; причина: " + archived.getArchiveReason());
@@ -403,7 +411,7 @@ public class AdminOrderController {
     @RequiredSuperAdmin
     @Operation(summary = "Bring an order back from the archive (main admin only)")
     public OrderDetailDto unarchive(@PathVariable String id) {
-        Order back = orderService.unarchive(load(id).getId());
+        Order back = orderArchive.unarchive(load(id).getId());
         audit.record("ORDER_UNARCHIVE", "ORDER", id, "возвращён из архива");
         return orderQueryService.toDetail(back);
     }

@@ -6,7 +6,7 @@ import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderService;
-import com.maxsolch.shop.order.app.OrderServiceFixtures;
+import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -84,17 +84,19 @@ class OrderTransitionsTest {
     @Mock
     OrderExchangeRepository exchangeRepository;
 
+    OrderApp app;
     OrderService service;
     Product product;
 
     @BeforeEach
     void setUp() {
-        service = OrderServiceFixtures.create(orderRepository, productRepository, promoCodeRepository,
+        app = OrderApp.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
                 StockFixtures.stock(productRepository, messages), ledger,
                 org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class), giftService,
-                OrderServiceFixtures.unlimitedRegistry(), OrderServiceFixtures.noLowMargin());
+                OrderApp.unlimitedRegistry(), OrderApp.noLowMargin());
+        service = app.service();
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -543,7 +545,7 @@ class OrderTransitionsTest {
 
     @Test
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
-        OrderAdjustmentService adjust = new OrderAdjustmentService(orderRepository, service, StockFixtures.stock(productRepository, messages), events, exchangeRepository, ledger);
+        OrderAdjustmentService adjust = app.adjustment(orderRepository, StockFixtures.stock(productRepository, messages), events, exchangeRepository, ledger);
         Order o = order(OrderStatus.DELIVERED);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");

@@ -87,7 +87,10 @@ class OrderServiceTest {
     @Mock
     com.maxsolch.shop.payment.PaymentInvoiceRepository paymentInvoices;
 
+    OrderApp app;
     OrderService service;
+    OrderPayments payments;
+    OrderArchive archive;
 
     private String productUuid;
     private byte[] productId;
@@ -96,11 +99,14 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = OrderServiceFixtures.create(orderRepository, productRepository,
+        app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), moneyLedger,
                 paymentInvoices, gift, giftRegistry, caseLowMargin);
+        service = app.service();
+        payments = app.payments();
+        archive = app.archive();
         // No gift configured, no monthly limit, no low-margin products — unless a test says otherwise.
         lenient().when(giftRegistry.remainingMinor(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(caseLowMargin.none()).thenReturn(true);
@@ -840,7 +846,7 @@ class OrderServiceTest {
         o.setPrepaymentMinor(10_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order paid = service.recordOnlinePayment(o.getId(), 10_000);
+        Order paid = payments.recordOnlinePayment(o.getId(), 10_000);
 
         assertThat(paid.getStatus()).isEqualTo(OrderStatus.NEW); // an admin still confirms
         assertThat(paid.isPaid()).isTrue();
@@ -865,7 +871,7 @@ class OrderServiceTest {
         o.setPaidAt(paidAt);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order paid = service.recordOnlinePayment(o.getId(), 20_000);
+        Order paid = payments.recordOnlinePayment(o.getId(), 20_000);
 
         assertThat(paid.getReceivedMinor()).isEqualTo(30_000);
         assertThat(paid.getPaidAt()).isEqualTo(paidAt); // the first payment time is kept
@@ -878,7 +884,7 @@ class OrderServiceTest {
         o.setRefundedMinor(1_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThat(service.recordOnlineRefund(o.getId(), 4_000).getRefundedMinor()).isEqualTo(5_000);
+        assertThat(payments.recordOnlineRefund(o.getId(), 4_000).getRefundedMinor()).isEqualTo(5_000);
     }
 
     private Order unpaidOrderWithOneItem(Product p, int qty, Instant dueAt) {
@@ -944,7 +950,7 @@ class OrderServiceTest {
         o.setTotalMinor(50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order paid = service.markPaid(o.getId(), 10_000);
+        Order paid = payments.markPaid(o.getId(), 10_000);
 
         assertThat(paid.isPaid()).isTrue();
         assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
@@ -958,7 +964,7 @@ class OrderServiceTest {
         o.setCurrency("UAH");
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.markPaid(o.getId(), 999_999))
+        assertThatThrownBy(() -> payments.markPaid(o.getId(), 999_999))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("больше суммы заказа");
         assertThat(o.getReceivedMinor()).isZero();
@@ -971,7 +977,7 @@ class OrderServiceTest {
         o.setTotalMinor(50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order paid = service.markPaid(o.getId(), 50_000);
+        Order paid = payments.markPaid(o.getId(), 50_000);
 
         assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
         assertThat(OrderMoney.codMinor(paid)).isZero();
@@ -1069,7 +1075,7 @@ class OrderServiceTest {
             Order o = persistedOrder(status);
             when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-            assertThatThrownBy(() -> service.archive(o.getId(), "дубль заказа", "Влад"))
+            assertThatThrownBy(() -> archive.archive(o.getId(), "дубль заказа", "Влад"))
                     .isInstanceOf(DomainException.BadRequest.class)
                     .hasMessageContaining("только доставленный или отклонённый");
         }
@@ -1086,7 +1092,7 @@ class OrderServiceTest {
         o.getItems().add(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order archived = service.archive(o.getId(), "тестовый заказ", "Влад");
+        Order archived = archive.archive(o.getId(), "тестовый заказ", "Влад");
 
         assertThat(archived.getArchivedAt()).isNotNull();
         assertThat(archived.getArchivedBy()).isEqualTo("Влад");
@@ -1102,16 +1108,16 @@ class OrderServiceTest {
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        assertThatThrownBy(() -> service.archive(o.getId(), " ", "Влад"))
+        assertThatThrownBy(() -> archive.archive(o.getId(), " ", "Влад"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("почему");
 
-        service.archive(o.getId(), "дубль", "Влад");
-        assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
+        archive.archive(o.getId(), "дубль", "Влад");
+        assertThatThrownBy(() -> archive.archive(o.getId(), "дубль", "Влад"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("уже в архиве");
 
-        Order back = service.unarchive(o.getId());
+        Order back = archive.unarchive(o.getId());
         assertThat(back.getArchivedAt()).isNull();
         assertThat(back.getArchiveReason()).isNull();
     }
@@ -1125,7 +1131,7 @@ class OrderServiceTest {
         processing.setAmountMinor(150_000);
         when(paymentInvoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 
-        assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
+        assertThatThrownBy(() -> archive.archive(o.getId(), "дубль", "Влад"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("банк ещё обрабатывает");
     }
@@ -1166,7 +1172,7 @@ class OrderServiceTest {
         o.setReceivedMinor(50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order cleared = service.markPaid(o.getId(), 0);
+        Order cleared = payments.markPaid(o.getId(), 0);
 
         assertThat(cleared.isPaid()).isFalse();
         assertThat(cleared.getPaidAt()).isNull();
@@ -1183,7 +1189,7 @@ class OrderServiceTest {
         o.setReceivedMinor(10_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
-        Order fixed = service.markPaid(o.getId(), 50_000);
+        Order fixed = payments.markPaid(o.getId(), 50_000);
 
         assertThat(fixed.getReceivedMinor()).isEqualTo(50_000);
         assertThat(fixed.getPaidAt()).isEqualTo(paidAt);
@@ -1196,7 +1202,7 @@ class OrderServiceTest {
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         Instant before = Instant.now();
 
-        Order paid = service.markPaid(o.getId(), 10_000);
+        Order paid = payments.markPaid(o.getId(), 10_000);
 
         assertThat(paid.getPaidAt()).isNotNull().isAfterOrEqualTo(before);
     }

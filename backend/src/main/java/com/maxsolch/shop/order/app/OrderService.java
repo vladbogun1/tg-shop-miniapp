@@ -31,8 +31,6 @@ import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.payment.PaymentInvoice;
-import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -88,8 +86,8 @@ public class OrderService {
     private final OrderStock stock;
     /** The order money journal: every movement of money on an order is recorded here. */
     private final MoneyLedger moneyLedger;
-    /** monobank invoices of an order — guards {@link #delete}. */
-    private final PaymentInvoiceRepository paymentInvoices;
+    /** Money received on an order: a manual order may be created already paid. */
+    private final OrderPayments payments;
     /** The gift for the order sum / the gift case. */
     private final GiftService giftService;
     /** Gifts already given to a person this month. */
@@ -120,7 +118,7 @@ public class OrderService {
                         EntityManager entityManager,
                         OrderStock stock,
                         MoneyLedger moneyLedger,
-                        PaymentInvoiceRepository paymentInvoices,
+                        OrderPayments payments,
                         GiftService giftService,
                         GiftRegistryService giftRegistry,
                         CaseLowMargin caseLowMargin) {
@@ -136,7 +134,7 @@ public class OrderService {
         this.entityManager = entityManager;
         this.stock = stock;
         this.moneyLedger = moneyLedger;
-        this.paymentInvoices = paymentInvoices;
+        this.payments = payments;
         this.giftService = giftService;
         this.giftRegistry = giftRegistry;
         this.caseLowMargin = caseLowMargin;
@@ -315,7 +313,7 @@ public class OrderService {
         order.setPaymentDueAt(null);
         orderRepository.save(order);
         if (paidMinor > 0) {
-            return markPaid(order.getId(), paidMinor, channel, adminName,
+            return payments.markPaid(order.getId(), paidMinor, channel, adminName,
                     note == null || note.isBlank() ? "оплата при ручном заказе" : note);
         }
         return order;
@@ -662,107 +660,6 @@ public class OrderService {
     }
 
     /**
-     * Sets the amount actually received (admin-only: the payment dialog, or an automatic
-     * settlement on delivery). {@code 0} clears the payment.
-     */
-    @Transactional
-    public Order markPaid(byte[] orderId, long receivedMinor) {
-        return markPaid(orderId, receivedMinor, OrderMoneyMovement.Channel.OTHER, null, null);
-    }
-
-    /**
-     * Same, naming how the money came ({@code channel}, the admin, a note) for the money journal:
-     * a raise is a PAYMENT through that channel, a cut a negative CORRECTION.
-     */
-    @Transactional
-    public Order markPaid(byte[] orderId, long receivedMinor, OrderMoneyMovement.Channel channel,
-                          String adminName, String note) {
-        Order order = lock(orderId);
-        if (receivedMinor < 0) {
-            throw new BadRequestException("сумма не может быть отрицательной");
-        }
-        if (receivedMinor > order.getTotalMinor()) {
-            // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" without
-            // the admin noticing the amount they typed was never what got saved.
-            throw new BadRequestException("получено больше суммы заказа ("
-                    + MoneyFormat.uah(order.getTotalMinor()) + ")");
-        }
-        long received = receivedMinor;
-        long diff = received - order.getReceivedMinor();
-        ledger(order, diff > 0 ? OrderMoneyMovement.Kind.PAYMENT : OrderMoneyMovement.Kind.CORRECTION,
-                channel == null ? OrderMoneyMovement.Channel.OTHER : channel, diff,
-                OrderMoneyMovement.Source.ADMIN, adminName,
-                note == null || note.isBlank() ? (diff > 0 ? "отмечено получено" : "исправлено «получено»") : note,
-                null);
-        order.setReceivedMinor(received);
-        boolean paid = received > 0 || order.getTotalMinor() == 0; // a free order stays paid (settleFreeOrder)
-        // Correcting the amount of an order that is already paid keeps the original payment date:
-        // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
-        boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
-        order.setPaid(paid);
-        order.setPaidAt(!paid ? null : wasPaid ? order.getPaidAt() : Instant.now());
-        Order saved = orderRepository.save(order);
-        // COD on the seller's card changes with the received amount — keep it in sync.
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    private static String shortId(Order order) {
-        String id = order.getId() == null ? "" : UuidUtil.toString(order.getId());
-        return id == null || id.length() < 8 ? String.valueOf(id) : id.substring(0, 8);
-    }
-
-    /**
-     * Money arrived online (a monobank invoice succeeded). Adds it to the received amount — which
-     * drives наложка — and marks the order paid. The status is NOT moved: an admin still confirms
-     * the order by hand (if the goods turn out unavailable, the money is refunded).
-     */
-    @Transactional
-    public Order recordOnlinePayment(byte[] orderId, long amountMinor) {
-        return recordOnlinePayment(orderId, amountMinor, null);
-    }
-
-    @Transactional
-    public Order recordOnlinePayment(byte[] orderId, long amountMinor, String invoiceExtId) {
-        Order order = lock(orderId);
-        long before = Math.max(0, order.getReceivedMinor());
-        long received = Math.min(order.getTotalMinor(), before + amountMinor);
-        // The journal books what the order counts (received is capped at the total), so it always
-        // matches received − refunded; the bank's full amount stays in the note.
-        long counted = Math.max(0, received - before);
-        ledger(order, OrderMoneyMovement.Kind.PAYMENT, OrderMoneyMovement.Channel.MONO, counted,
-                OrderMoneyMovement.Source.AUTO, null,
-                counted == amountMinor ? "оплата monobank"
-                        : "оплата monobank " + MoneyFormat.uah(amountMinor) + ", зачтено в пределах суммы заказа",
-                invoiceExtId);
-        order.setReceivedMinor(received);
-        if (received > 0 && !order.isPaid()) {
-            order.setPaid(true);
-            order.setPaidAt(Instant.now());
-        }
-        Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
-        return saved;
-    }
-
-    /** A refund went through at monobank: book it as money given back to the customer. */
-    @Transactional
-    public Order recordOnlineRefund(byte[] orderId, long amountMinor) {
-        return recordOnlineRefund(orderId, amountMinor, null);
-    }
-
-    @Transactional
-    public Order recordOnlineRefund(byte[] orderId, long amountMinor, String invoiceExtId) {
-        Order order = lock(orderId);
-        ledger(order, OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.MONO, amountMinor,
-                OrderMoneyMovement.Source.AUTO, null, "возврат на карту (monobank)", invoiceExtId);
-        order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    /**
      * The online payment deadline passed with nothing paid: reject the order (reason
      * PAYMENT_TIMEOUT) and put the goods back on the shelf. Re-checked under the row lock, so a
      * payment that landed meanwhile wins. Returns null when the order no longer qualifies.
@@ -941,81 +838,6 @@ public class OrderService {
         events.publishEvent(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
         return saved;
-    }
-
-    // ----- archive (orders are never deleted) -----
-
-
-    /**
-     * Archives a closed order (DELIVERED / REJECTED): it leaves the board, the lists and the
-     * customer's history, and keeps everything — items, chat, payments, receipts, money journal.
-     * Replaces the hard delete (25.10.2026: 49 orders were deleted for good, payment records went
-     * with them). Stock and promo usage are not touched: archiving changes visibility, not history.
-     * The main admin only (checked by the controller).
-     */
-    @Transactional
-    public Order archive(byte[] orderId, String reason, String adminName) {
-        Order order = lock(orderId);
-        if (order.getArchivedAt() != null) {
-            throw new BadRequestException("заказ уже в архиве");
-        }
-        if (Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
-            throw new BadRequestException("посылка ещё едет назад — сначала отметьте «Посылка вернулась»");
-        }
-        OrderStatus status = order.getStatus();
-        if (status != OrderStatus.DELIVERED && status != OrderStatus.REJECTED) {
-            throw new BadRequestException(
-                    "в архив можно убрать только доставленный или отклонённый заказ — сначала отклоните его");
-        }
-        String why = reason == null ? "" : reason.trim();
-        if (why.length() < 3) {
-            throw new BadRequestException("напишите, почему заказ убирается в архив");
-        }
-        if (why.length() > 500) {
-            throw new BadRequestException("причина длиннее 500 символов");
-        }
-        requireNoOnlineMoneyInFlight(orderId);
-        order.setArchivedAt(Instant.now());
-        order.setArchivedBy(adminName);
-        order.setArchiveReason(why);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    /** Back from the archive, as it was. */
-    @Transactional
-    public Order unarchive(byte[] orderId) {
-        Order order = lock(orderId);
-        if (order.getArchivedAt() == null) {
-            throw new BadRequestException("заказ не в архиве");
-        }
-        order.setArchivedAt(null);
-        order.setArchivedBy(null);
-        order.setArchiveReason(null);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    public static final String ARCHIVE_ONLINE_IN_FLIGHT =
-            "По заказу есть онлайн-платёж, который банк ещё обрабатывает — дождитесь итога в блоке «Онлайн-оплата»";
-
-    /**
-     * A payment the bank is still processing must land on a visible order: an archived one would
-     * hide the money from everybody who looks at the board.
-     */
-    private void requireNoOnlineMoneyInFlight(byte[] orderId) {
-        List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
-        if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
-                || PaymentInvoice.HOLD.equals(i.getStatus()))) {
-            throw new BadRequestException(ARCHIVE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
-        }
-    }
-
-    /** Paid (credited to the order) and not everything has gone back to the card yet. */
-    static boolean keepsOnlineMoney(PaymentInvoice inv) {
-        return inv.getAppliedAt() != null && inv.getRefundedMinor() < inv.getAmountMinor();
     }
 
     // ----- helpers -----
