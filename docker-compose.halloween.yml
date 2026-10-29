@@ -22,6 +22,8 @@ services:
       HW_BACKEND_URL: http://backend:8080
       HW_STARTS_AT: ${HW_STARTS_AT:-}
       HW_ENDS_AT: ${HW_ENDS_AT:-}
+      HW_ORDERS_FROM: ${HW_ORDERS_FROM:-}
+      HW_ORDERS_TO: ${HW_ORDERS_TO:-}
       HW_STREAM_AT: ${HW_STREAM_AT:-}
       HW_STREAMS: ${HW_STREAMS:-}
       HW_GOAL: ${HW_GOAL:-}
