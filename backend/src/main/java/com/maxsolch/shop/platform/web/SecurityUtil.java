@@ -1,28 +1,20 @@
 package com.maxsolch.shop.platform.web;
 
-import com.maxsolch.shop.platform.error.UnauthorizedException;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
- * Convenience accessor for the authenticated {@link AuthPrincipal} in controllers.
+ * Convenience accessor for the authenticated {@link AuthPrincipal}.
+ *
+ * @deprecated inject {@link CurrentActor}; this only delegates to it.
  */
+@Deprecated
 public final class SecurityUtil {
 
     private SecurityUtil() {
     }
 
     public static AuthPrincipal currentPrincipal() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p) {
-            return p;
-        }
-        // No principal at all means "not authenticated" (401), not "authenticated but not
-        // allowed" (403) — the admin frontend distinguishes them when deciding to re-login.
-        // Plain text on purpose: this runs outside a request-scoped bean, and the apps only ever
-        // show it when a session died — the frontend replaces it with its own wording.
-        throw new UnauthorizedException("not authenticated");
+        return CurrentActor.read();
     }
 
     public static long currentUserId() {
