@@ -1,14 +1,13 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.delivery.app.NovaPoshtaService;
-import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
+import com.maxsolch.shop.payment.app.PaymentOptionDto;
+import com.maxsolch.shop.payment.app.PaymentOptions;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.delivery.app.NpCityDto;
 import com.maxsolch.shop.delivery.app.NpWarehouseDto;
-import com.maxsolch.shop.payment.app.PaymentOptionDto;
 import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,19 +24,17 @@ import java.util.Locale;
 @Tag(name = "Public", description = "Public payment options and Nova Poshta directory")
 public class PublicController {
 
-    private final PaymentOptionRepository paymentOptionRepository;
+    private final PaymentOptions paymentOptions;
     private final NovaPoshtaService novaPoshtaService;
     private final PromoService promoService;
     private final TranslationService translationService;
 
-    public PublicController(PaymentOptionRepository paymentOptionRepository,
-                            NovaPoshtaService novaPoshtaService,
-                            PromoService promoService,
-                            TranslationService translationService) {
-        this.paymentOptionRepository = paymentOptionRepository;
+    public PublicController(PaymentOptions paymentOptions, NovaPoshtaService novaPoshtaService,
+                            PromoService promoService, TranslationService translationService) {
+        this.paymentOptions = paymentOptions;
+        this.translationService = translationService;
         this.novaPoshtaService = novaPoshtaService;
         this.promoService = promoService;
-        this.translationService = translationService;
     }
 
     /**
@@ -64,15 +61,7 @@ public class PublicController {
     @Operation(summary = "List active payment options (title/description translated for uk/en, ?lang= wins)")
     public List<PaymentOptionDto> paymentOptions(Locale locale) {
         TranslationService.Overlay overlay = translationService.overlay(ContentLocale.normalize(locale));
-        return paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc().stream()
-                .map(p -> new PaymentOptionDto(
-                        UuidUtil.toString(p.getId()),
-                        p.getTitle(),
-                        p.getDescription(),
-                        p.isRequiresPrepayment(),
-                        p.getPrepaymentMinor()))
-                .map(overlay::paymentOption)
-                .toList();
+        return paymentOptions.active().stream().map(overlay::paymentOption).toList();
     }
 
     @GetMapping("/np/cities")
