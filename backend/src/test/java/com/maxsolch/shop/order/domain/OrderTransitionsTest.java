@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CancelRequests;
 import com.maxsolch.shop.order.app.OrderApp;
-import com.maxsolch.shop.service.StockFixtures;
+import com.maxsolch.shop.inventory.app.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;

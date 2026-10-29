@@ -13,7 +13,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.returns.domain.LineOutcome;
 import com.maxsolch.shop.returns.domain.ManualRefund;
 import com.maxsolch.shop.returns.domain.WizardLine;
-import com.maxsolch.shop.service.StockFixtures;
+import com.maxsolch.shop.inventory.app.StockFixtures;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -196,8 +196,8 @@ class ReturnsTest extends ReturnsTestBase {
         assertThat(it.getReturnedQty()).isEqualTo(1);
         assertThat(it.getRestockedQty()).isZero();
         assertThat(p.getStock()).isZero();
-        ArgumentCaptor<com.maxsolch.shop.domain.StockWriteoff> w =
-                ArgumentCaptor.forClass(com.maxsolch.shop.domain.StockWriteoff.class);
+        ArgumentCaptor<com.maxsolch.shop.inventory.domain.StockWriteoff> w =
+                ArgumentCaptor.forClass(com.maxsolch.shop.inventory.domain.StockWriteoff.class);
         verify(writeoffs).save(w.capture());
         assertThat(w.getValue().getQuantity()).isEqualTo(1);
         // 10 000 at −10 % order discount

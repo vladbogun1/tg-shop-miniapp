@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.costing.LotLedger;
+import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.catalog.Brand;
 import com.maxsolch.shop.catalog.BrandAdminService;
 import com.maxsolch.shop.catalog.CardStatus;
@@ -17,10 +17,10 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.ProductVariant;
-import com.maxsolch.shop.domain.StockWriteoff;
+import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.repository.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.platform.error.BadRequestException;
@@ -72,8 +72,8 @@ public class AdminProductService {
     /** FIFO stock lots follow a stock typed by hand. */
     private final LotLedger ledger;
     /** Queues of a product that leaves sale are closed. */
-    private final com.maxsolch.shop.preorder.PreorderQueueService preorders;
-    private final com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs;
+    private final com.maxsolch.shop.preorder.app.PreorderQueueService preorders;
+    private final com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository preorderSubs;
 
     public AdminProductService(ProductRepository productRepository,
                                ImageStorageService imageStorageService,
@@ -84,8 +84,8 @@ public class AdminProductService {
                                StockWriteoffRepository writeoffRepository,
                                AdminAuditService audit,
                                LotLedger ledger,
-                               com.maxsolch.shop.preorder.PreorderQueueService preorders,
-                               com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs) {
+                               com.maxsolch.shop.preorder.app.PreorderQueueService preorders,
+                               com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository preorderSubs) {
         this.productRepository = productRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;

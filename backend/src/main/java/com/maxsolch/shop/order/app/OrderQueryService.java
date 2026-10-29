@@ -55,7 +55,7 @@ public class OrderQueryService {
     private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases;
     /** Money journal and write-offs shown to the admin. */
     private final com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
-    private final com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository;
+    private final com.maxsolch.shop.inventory.infra.StockWriteoffRepository writeoffRepository;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
@@ -67,7 +67,7 @@ public class OrderQueryService {
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
-                             com.maxsolch.shop.repository.StockWriteoffRepository writeoffRepository,
+                             com.maxsolch.shop.inventory.infra.StockWriteoffRepository writeoffRepository,
                              org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;

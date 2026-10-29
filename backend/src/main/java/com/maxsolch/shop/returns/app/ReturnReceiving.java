@@ -1,6 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.domain.StockWriteoff;
+import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLookup;
@@ -14,7 +14,7 @@ import com.maxsolch.shop.returns.domain.OrderReturn;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
-import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

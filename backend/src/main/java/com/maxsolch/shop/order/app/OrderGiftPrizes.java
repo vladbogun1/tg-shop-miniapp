@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
-import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.it;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.costing.LotLedger;
+import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.media.ImageStorageService;

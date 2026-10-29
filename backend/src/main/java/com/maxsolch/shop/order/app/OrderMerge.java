@@ -9,7 +9,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.CancelRequestStatus;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderItemLot;
+import com.maxsolch.shop.order.domain.OrderItemLot;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;

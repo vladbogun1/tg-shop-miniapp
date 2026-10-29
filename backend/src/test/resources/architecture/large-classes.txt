@@ -3,12 +3,12 @@
 # Lower the number when a file shrinks; remove the line when it is under 500. See docs/ARCHITECTURE-CHECKS.md.
 com/maxsolch/shop/catalog/CardsService.java 702
 com/maxsolch/shop/catalog/SpecAttributeAdminService.java 558
-com/maxsolch/shop/costing/MarginService.java 503
+com/maxsolch/shop/finance/app/MarginService.java 503
 com/maxsolch/shop/gift/CaseAutofill.java 618
 com/maxsolch/shop/gift/GiftService.java 553
 com/maxsolch/shop/platform/journal/ActivityLog.java 522
-com/maxsolch/shop/preorder/PreorderBatchService.java 734
-com/maxsolch/shop/preorder/PreorderQueueService.java 724
+com/maxsolch/shop/procurement/app/PreorderBatchService.java 734
+com/maxsolch/shop/preorder/app/PreorderQueueService.java 724
 com/maxsolch/shop/review/ReviewService.java 591
 com/maxsolch/shop/service/AdminProductService.java 741
 com/maxsolch/shop/order/app/OrderQueryService.java 585

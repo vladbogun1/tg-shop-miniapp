@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
-import com.maxsolch.shop.domain.OrderItemLot;
+import com.maxsolch.shop.order.domain.OrderItemLot;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -41,13 +41,13 @@ public class CatalogService {
     private final OrderItemRepository orderItemRepository;
     private final TranslationService translationService;
     /** Pre-order holds: units kept for people in a queue are not shown as in stock. */
-    private final com.maxsolch.shop.preorder.PreorderQueueService preorders;
+    private final com.maxsolch.shop.preorder.app.PreorderQueueService preorders;
 
     public CatalogService(ProductRepository productRepository,
                           CatalogDirectory catalogDirectory,
                           OrderItemRepository orderItemRepository,
                           TranslationService translationService,
-                          com.maxsolch.shop.preorder.PreorderQueueService preorders) {
+                          com.maxsolch.shop.preorder.app.PreorderQueueService preorders) {
         this.productRepository = productRepository;
         this.catalogDirectory = catalogDirectory;
         this.orderItemRepository = orderItemRepository;
@@ -109,10 +109,10 @@ public class CatalogService {
         }
         int heldHere = 0;
         if (p.getVariants() == null || p.getVariants().isEmpty()) {
-            heldHere = held.getOrDefault(com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), null), 0);
+            heldHere = held.getOrDefault(com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), null), 0);
         } else {
             for (var v : p.getVariants()) {
-                heldHere += held.getOrDefault(com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), v.getId()), 0);
+                heldHere += held.getOrDefault(com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), v.getId()), 0);
             }
         }
         return Math.max(0, p.getStock() - heldHere);
@@ -125,7 +125,7 @@ public class CatalogService {
         List<ProductVariantDto> variants = p.getVariants().stream()
                 .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(),
                         Math.max(0, v.getStock() - held.getOrDefault(
-                                com.maxsolch.shop.preorder.PreorderQueueService.lineKey(p.getId(), v.getId()), 0)),
+                                com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), v.getId()), 0)),
                         v.getSortOrder()))
                 .toList();
         CatalogSnapshot catalog = catalogDirectory.snapshot();

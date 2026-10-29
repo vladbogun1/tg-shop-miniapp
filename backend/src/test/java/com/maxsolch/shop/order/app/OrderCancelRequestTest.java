@@ -2,7 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderStates;
-import com.maxsolch.shop.service.StockFixtures;
+import com.maxsolch.shop.inventory.app.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;

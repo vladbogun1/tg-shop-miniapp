@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

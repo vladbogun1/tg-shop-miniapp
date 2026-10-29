@@ -1,14 +1,14 @@
 package com.maxsolch.shop.returns.app;
 
-import com.maxsolch.shop.domain.StockWriteoff;
+import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.repository.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
-import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

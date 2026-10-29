@@ -12,7 +12,7 @@ import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.service.OrderStock;
+import com.maxsolch.shop.inventory.app.OrderStock;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.springframework.context.ApplicationEventPublisher;

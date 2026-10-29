@@ -43,11 +43,11 @@ class AdminProductCatalogTest {
     void setUp() {
         service = new AdminProductService(products, mock(ImageStorageService.class), mock(SlugService.class),
                 mock(TranslationService.class), directory, brands,
-                mock(com.maxsolch.shop.repository.StockWriteoffRepository.class),
+                mock(com.maxsolch.shop.inventory.infra.StockWriteoffRepository.class),
                 mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
-                mock(com.maxsolch.shop.costing.LotLedger.class),
-                mock(com.maxsolch.shop.preorder.PreorderQueueService.class),
-                mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class));
+                mock(com.maxsolch.shop.inventory.app.LotLedger.class),
+                mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),
+                mock(com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository.class));
         when(directory.load()).thenReturn(CatalogFixtures.snapshot());
         when(directory.snapshot()).thenReturn(CatalogFixtures.snapshot());
         when(products.save(any())).thenAnswer(i -> i.getArgument(0));

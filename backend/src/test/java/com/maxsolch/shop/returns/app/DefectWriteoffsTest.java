@@ -31,9 +31,9 @@ class DefectWriteoffsTest extends ReturnsTestBase {
         wireLedger();
         List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
         List<com.maxsolch.shop.returns.domain.OrderReturnLine> lines = wireReturnRecords(recs);
-        List<com.maxsolch.shop.domain.StockWriteoff> saved = new ArrayList<>();
+        List<com.maxsolch.shop.inventory.domain.StockWriteoff> saved = new ArrayList<>();
         when(writeoffs.save(any())).thenAnswer(inv -> {
-            com.maxsolch.shop.domain.StockWriteoff w = inv.getArgument(0);
+            com.maxsolch.shop.inventory.domain.StockWriteoff w = inv.getArgument(0);
             if (w.getId() == null) {
                 w.setId(77L);
                 saved.add(w);
@@ -66,7 +66,7 @@ class DefectWriteoffsTest extends ReturnsTestBase {
     @Test
     void restoreWriteoff_withoutAnOrder_putsTheUnitsBackOnTheShelf_andRefusesTooMany() {
         Product p = product(1);
-        com.maxsolch.shop.domain.StockWriteoff w = new com.maxsolch.shop.domain.StockWriteoff();
+        com.maxsolch.shop.inventory.domain.StockWriteoff w = new com.maxsolch.shop.inventory.domain.StockWriteoff();
         w.setId(8L);
         w.setProductId(p.getId());
         w.setTitle("Мишка");

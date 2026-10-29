@@ -3,9 +3,9 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
-import com.maxsolch.shop.domain.StockWriteoff;
+import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.repository.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import org.mockito.ArgumentCaptor;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -52,8 +52,8 @@ class AdminProductServiceTest {
     @Mock StockWriteoffRepository writeoffRepository;
     @Mock AdminAuditService audit;
 
-    com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs =
-            org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class);
+    com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository preorderSubs =
+            org.mockito.Mockito.mock(com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository.class);
     AdminProductService service;
     Product product;
     String id;
@@ -62,8 +62,8 @@ class AdminProductServiceTest {
     void setUp() {
         service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
                 catalogDirectory, brandService, writeoffRepository, audit,
-                org.mockito.Mockito.mock(com.maxsolch.shop.costing.LotLedger.class),
-                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.PreorderQueueService.class), preorderSubs);
+                org.mockito.Mockito.mock(com.maxsolch.shop.inventory.app.LotLedger.class),
+                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class), preorderSubs);
         lenient().when(audit.currentAdminName()).thenReturn("Влад");
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
