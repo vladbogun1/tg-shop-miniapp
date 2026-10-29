@@ -61,7 +61,7 @@ class AdminProductServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
-                catalogDirectory, brandService, writeoffRepository, audit,
+                catalogDirectory, brandService, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepository, java.time.Clock.systemUTC()), audit,
                 org.mockito.Mockito.mock(com.maxsolch.shop.inventory.app.LotLedger.class),
                 org.mockito.Mockito.mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class), preorderSubs);
         lenient().when(audit.currentAdminName()).thenReturn("Влад");

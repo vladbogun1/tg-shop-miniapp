@@ -20,7 +20,7 @@ import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.app.StockWriteoffs;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.platform.error.BadRequestException;
@@ -67,7 +67,7 @@ public class AdminProductService {
     private final TranslationService translationService;
     private final CatalogDirectory catalogDirectory;
     private final BrandAdminService brandService;
-    private final StockWriteoffRepository writeoffRepository;
+    private final StockWriteoffs writeoffRepository;
     private final AdminAuditService audit;
     /** FIFO stock lots follow a stock typed by hand. */
     private final LotLedger ledger;
@@ -81,7 +81,7 @@ public class AdminProductService {
                                TranslationService translationService,
                                CatalogDirectory catalogDirectory,
                                BrandAdminService brandService,
-                               StockWriteoffRepository writeoffRepository,
+                               StockWriteoffs writeoffRepository,
                                AdminAuditService audit,
                                LotLedger ledger,
                                com.maxsolch.shop.preorder.app.PreorderQueueService preorders,
@@ -641,16 +641,10 @@ public class AdminProductService {
         }
         String admin = audit.currentAdminName();
         for (StockDrop d : drops) {
-            StockWriteoff w = new StockWriteoff();
-            w.setProductId(p.getId());
-            w.setVariantId(d.variantId());
-            w.setTitle(d.variantName() == null ? p.getTitle() : p.getTitle() + " / " + d.variantName());
-            w.setQuantity(d.quantity());
-            w.setReason(reason.name());
-            w.setNote(note == null ? null : note.length() > 500 ? note.substring(0, 500) : note);
-            w.setUnitValueMinor(p.getPriceMinor());
-            w.setAdminName(admin);
-            writeoffRepository.save(w);
+            writeoffRepository.record(p.getId(), d.variantId(),
+                    d.variantName() == null ? p.getTitle() : p.getTitle() + " / " + d.variantName(), d.quantity(),
+                    reason, note == null ? null : note.length() > 500 ? note.substring(0, 500) : note,
+                    null, p.getPriceMinor(), admin);
         }
     }
 

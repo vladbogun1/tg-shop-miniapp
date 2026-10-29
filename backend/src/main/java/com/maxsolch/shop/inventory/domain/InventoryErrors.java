@@ -15,4 +15,8 @@ public final class InventoryErrors {
     public static DomainException.BadRequest badRequest(String message) {
         return new DomainException.BadRequest(message);
     }
+
+    public static DomainException.NotFound notFound(String message) {
+        return new DomainException.NotFound(message);
+    }
 }

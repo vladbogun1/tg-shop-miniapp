@@ -55,7 +55,7 @@ public class OrderQueryService {
     private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases;
     /** Money journal and write-offs shown to the admin. */
     private final com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
-    private final com.maxsolch.shop.inventory.infra.StockWriteoffRepository writeoffRepository;
+    private final com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
@@ -67,7 +67,7 @@ public class OrderQueryService {
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
-                             com.maxsolch.shop.inventory.infra.StockWriteoffRepository writeoffRepository,
+                             com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository,
                              org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
@@ -387,7 +387,7 @@ public class OrderQueryService {
                 .mapToLong(OrderDetailDto.MovementDto::amountMinor).sum();
         long monoLeft = onlinePayments.refundableMinor(o.getId());
         List<OrderDetailDto.WriteoffDto> writeoffs = writeoffRepository == null ? List.of()
-                : writeoffRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
+                : writeoffRepository.ofOrder(o.getId()).stream()
                         .map(w -> new OrderDetailDto.WriteoffDto(w.getId() == null ? 0 : w.getId(), w.getTitle(),
                                 w.getQuantity(), w.getUndoneQty(), w.getUndoneNote(), w.getReason(),
                                 w.getUnitValueMinor(), w.getNote(), w.getAdminName(), w.getCreatedAt()))

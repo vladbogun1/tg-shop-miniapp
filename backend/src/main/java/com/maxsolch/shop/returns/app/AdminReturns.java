@@ -40,13 +40,14 @@ public class AdminReturns {
     private final ReturnCancellation cancellation;
     private final OrderOnlinePayments payments;
     private final AdminAuditService audit;
+    private final DefectWriteoffs defects;
 
     /** Orders whose return wizard is running right now (one backend instance): no double submit. */
     private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
 
     public AdminReturns(AdminOrderQueries queries, OrderLookup orders, Returns returns, ReturnReceiving receiving,
                         Exchanges exchanges, ReturnCancellation cancellation, OrderOnlinePayments payments,
-                        AdminAuditService audit) {
+                        AdminAuditService audit, DefectWriteoffs defects) {
         this.queries = queries;
         this.orders = orders;
         this.returns = returns;
@@ -55,6 +56,14 @@ public class AdminReturns {
         this.cancellation = cancellation;
         this.payments = payments;
         this.audit = audit;
+        this.defects = defects;
+    }
+
+    /** A written-off unit turned out fine: back on the shelf (the write-off stays, marked). Returns the audit summary. */
+    public String restoreWriteoff(long writeoffId, int quantity, String note) {
+        String summary = defects.restore(writeoffId, quantity, note, audit.currentAdminName());
+        audit.record("STOCK_WRITEOFF_RESTORE", "STOCK_WRITEOFF", String.valueOf(writeoffId), summary);
+        return summary;
     }
 
     /** The simple return: units and one refund. */

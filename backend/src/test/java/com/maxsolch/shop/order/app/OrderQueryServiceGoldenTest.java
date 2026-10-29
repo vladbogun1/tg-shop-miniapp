@@ -190,7 +190,7 @@ class OrderQueryServiceGoldenTest {
                 images, translation, users,
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
-                movementRepo, writeoffRepo, giftProvider);
+                movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), giftProvider);
 
         AtomicReference<ObjectMapper> ref = new AtomicReference<>();
         // The ObjectMapper of the application: Spring Boot's own JacksonAutoConfiguration (no custom config in config/).

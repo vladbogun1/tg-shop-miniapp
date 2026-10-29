@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.app.StockWriteoffs;
 import com.maxsolch.shop.returns.domain.LineOutcome;
 import com.maxsolch.shop.returns.domain.OrderExchange;
 import com.maxsolch.shop.returns.domain.OrderReturn;
@@ -42,7 +42,7 @@ public class ReturnCancellation {
     private final OrderLifecycle lifecycle;
     private final OrderStock stock;
     private final MoneyLedger moneyLedger;
-    private final StockWriteoffRepository writeoffs;
+    private final StockWriteoffs writeoffs;
     private final OrderReturnRepository returnRecords;
     private final OrderReturnLineRepository returnLines;
     private final OrderExchangeRepository exchangeRepository;
@@ -50,7 +50,7 @@ public class ReturnCancellation {
     private final Clock clock;
 
     public ReturnCancellation(OrderLookup orders, OrderLifecycle lifecycle, OrderStock stock, MoneyLedger moneyLedger,
-                              StockWriteoffRepository writeoffs, OrderReturnRepository returnRecords,
+                              StockWriteoffs writeoffs, OrderReturnRepository returnRecords,
                               OrderReturnLineRepository returnLines, OrderExchangeRepository exchangeRepository,
                               ApplicationEventPublisher events, Clock clock) {
         this.orders = orders;
@@ -235,13 +235,8 @@ public class ReturnCancellation {
                 stock.takeBackUnits(item, l.getRestockedQty());
             }
             if (l.getDefectQty() > 0 && l.getWriteoffId() != null) {
-                writeoffs.findById(l.getWriteoffId()).ifPresent(w -> {
-                    w.setUndoneQty(Math.min(w.getQuantity(), w.getUndoneQty() + l.getDefectQty()));
-                    w.setUndoneAt(clock.instant());
-                    w.setUndoneBy(adminName);
-                    w.setUndoneNote("возврат отменён");
-                    writeoffs.save(w);
-                });
+                writeoffs.find(l.getWriteoffId())
+                        .ifPresent(w -> writeoffs.undo(w, l.getDefectQty(), adminName, "возврат отменён"));
             }
             item.setReturnedQty(Math.max(0, item.getReturnedQty() - l.getQuantity()));
             parts.add(ReturnText.title(item) + " ×" + l.getQuantity() + " снова в заказе");

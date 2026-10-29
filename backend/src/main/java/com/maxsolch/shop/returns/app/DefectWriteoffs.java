@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
+import com.maxsolch.shop.inventory.app.StockWriteoffs;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.inventory.app.Stock;
@@ -21,13 +21,13 @@ import java.time.Clock;
 @Service
 public class DefectWriteoffs {
 
-    private final StockWriteoffRepository writeoffs;
+    private final StockWriteoffs writeoffs;
     private final OrderReturnLineRepository returnLines;
     private final OrderLookup orders;
     private final Stock stock;
     private final Clock clock;
 
-    public DefectWriteoffs(StockWriteoffRepository writeoffs, OrderReturnLineRepository returnLines,
+    public DefectWriteoffs(StockWriteoffs writeoffs, OrderReturnLineRepository returnLines,
                            OrderLookup orders, Stock stock, Clock clock) {
         this.writeoffs = writeoffs;
         this.returnLines = returnLines;
@@ -42,17 +42,9 @@ public class DefectWriteoffs {
         if (quantity <= 0) {
             return null;
         }
-        StockWriteoff w = new StockWriteoff();
-        w.setProductId(item.getProductId());
-        w.setVariantId(item.getVariantId());
-        w.setTitle(ReturnText.cut(ReturnText.title(item), 255));
-        w.setQuantity(quantity);
-        w.setReason(StockWriteoff.Reason.DEFECT.name());
-        w.setNote(note == null ? null : ReturnText.cut(note, 500));
-        w.setOrderId(orderId);
-        w.setUnitValueMinor(unitValueMinor);
-        w.setAdminName(adminName);
-        return writeoffs.save(w);
+        return writeoffs.record(item.getProductId(), item.getVariantId(), ReturnText.cut(ReturnText.title(item), 255),
+                quantity, StockWriteoff.Reason.DEFECT, note == null ? null : ReturnText.cut(note, 500), orderId,
+                unitValueMinor, adminName);
     }
 
     /**
@@ -61,8 +53,7 @@ public class DefectWriteoffs {
      */
     @Transactional
     public String restore(long writeoffId, int quantity, String note, String adminName) {
-        StockWriteoff w = writeoffs.findById(writeoffId)
-                .orElseThrow(() -> OrderErrors.notFound("списание не найдено"));
+        StockWriteoff w = writeoffs.require(writeoffId);
         int left = w.activeQty();
         if (left <= 0) {
             throw OrderErrors.badRequest("по этому списанию всё уже вернули");
@@ -99,11 +90,7 @@ public class DefectWriteoffs {
             orders.save(order);
         }
         stock.restockProduct(w.getProductId(), w.getVariantId(), quantity - restored, null);
-        w.setUndoneQty(w.getUndoneQty() + quantity);
-        w.setUndoneAt(clock.instant());
-        w.setUndoneBy(adminName);
-        w.setUndoneNote(cleanNote == null ? "вернули на склад" : cleanNote);
-        writeoffs.save(w);
+        writeoffs.undo(w, quantity, adminName, cleanNote == null ? "вернули на склад" : cleanNote);
         return "из брака на склад: " + w.getTitle() + " ×" + quantity + (cleanNote == null ? "" : "; " + cleanNote);
     }
 }

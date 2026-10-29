@@ -43,7 +43,7 @@ class AdminProductCatalogTest {
     void setUp() {
         service = new AdminProductService(products, mock(ImageStorageService.class), mock(SlugService.class),
                 mock(TranslationService.class), directory, brands,
-                mock(com.maxsolch.shop.inventory.infra.StockWriteoffRepository.class),
+                mock(com.maxsolch.shop.inventory.app.StockWriteoffs.class),
                 mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
                 mock(com.maxsolch.shop.inventory.app.LotLedger.class),
                 mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),

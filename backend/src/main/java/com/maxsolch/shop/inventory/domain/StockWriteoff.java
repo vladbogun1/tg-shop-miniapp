@@ -5,10 +5,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
@@ -59,6 +59,8 @@ public class StockWriteoff {
     @Column(name = "admin_name", length = 255)
     private String adminName;
 
+    /** Set by Hibernate on insert (the domain does not read the clock). */
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -80,10 +82,11 @@ public class StockWriteoff {
         return Math.max(0, quantity - undoneQty);
     }
 
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
+    /** {@code quantity} units count as written off no more (never beyond the written-off quantity). */
+    public void undo(int qty, Instant at, String by, String note) {
+        undoneQty = Math.min(quantity, undoneQty + qty);
+        undoneAt = at;
+        undoneBy = by;
+        undoneNote = note;
     }
 }

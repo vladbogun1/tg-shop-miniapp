@@ -51,13 +51,13 @@ public final class ReturnsApp {
                                     OrderExchangeLineRepository exchangeLines) {
         OrderLookup lookup = app.lookup(orders);
         Clock clock = Clock.systemUTC();
-        DefectWriteoffs defects = new DefectWriteoffs(writeoffs, returnLines, lookup, shelf, clock);
+        DefectWriteoffs defects = new DefectWriteoffs(new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffs, clock), returnLines, lookup, shelf, clock);
         Returns returns = new Returns(lookup, stock, ledger, defects, returnRecords, returnLines, events, clock);
         ReturnReceiving receiving = new ReturnReceiving(lookup, stock, defects, returnRecords, returnLines, events,
                 clock);
         Exchanges exchanges = new Exchanges(lookup, app.checkout(), app.payments(), ledger, returns,
                 exchangeRepository, exchangeLines, returnRecords, events, clock);
-        ReturnCancellation cancellation = new ReturnCancellation(lookup, app.lifecycle(), stock, ledger, writeoffs,
+        ReturnCancellation cancellation = new ReturnCancellation(lookup, app.lifecycle(), stock, ledger, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffs, clock),
                 returnRecords, returnLines, exchangeRepository, events, clock);
         return new ReturnsApp(defects, returns, receiving, exchanges, cancellation);
     }
