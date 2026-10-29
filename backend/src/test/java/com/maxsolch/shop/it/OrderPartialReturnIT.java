@@ -12,11 +12,11 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.app.OrderAdjustmentService;
-import com.maxsolch.shop.order.app.OrderAdjustmentService.LineOutcome;
-import com.maxsolch.shop.order.app.OrderAdjustmentService.ManualRefund;
-import com.maxsolch.shop.order.app.OrderAdjustmentService.ReturnPlan;
-import com.maxsolch.shop.order.app.OrderAdjustmentService.WizardLine;
+import com.maxsolch.shop.returns.app.Returns;
+import com.maxsolch.shop.returns.domain.LineOutcome;
+import com.maxsolch.shop.returns.domain.ManualRefund;
+import com.maxsolch.shop.returns.domain.ReturnPlan;
+import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.order.app.Checkout;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +37,7 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     @Autowired
     OrderPayments orderPayments;
     @Autowired
-    OrderAdjustmentService adjustments;
+    Returns adjustments;
     @Autowired
     OrderRepository orderRepository;
 
@@ -79,9 +79,9 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
         long third = OrderMoney.paidForUnitsMinor(loaded, item, 2, 1);
         assertThat(first + second + third).isEqualTo(9_899);
 
-        adjustments.registerReturnPlan(o.getId(), plan(item.getId(), 1, first), "it");
-        adjustments.registerReturnPlan(o.getId(), plan(item.getId(), 1, second), "it");
-        adjustments.registerReturnPlan(o.getId(), plan(item.getId(), 1, third), "it");
+        adjustments.registerPlan(o.getId(), plan(item.getId(), 1, first), "it");
+        adjustments.registerPlan(o.getId(), plan(item.getId(), 1, second), "it");
+        adjustments.registerPlan(o.getId(), plan(item.getId(), 1, third), "it");
 
         assertThat(longOf("refunded_minor", o.getId())).isEqualTo(9_899);
         Long journal = jdbc.queryForObject("SELECT SUM(amount_minor) FROM order_money_movements "
@@ -101,8 +101,8 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
         Order loaded = withItems(o.getId());
         OrderItem item = loaded.getItems().get(0);
 
-        adjustments.registerReturnPlan(o.getId(), plan(item.getId(), 1, 0), "it");
-        adjustments.registerReturnPlan(o.getId(), plan(item.getId(), 1, 0), "it");
+        adjustments.registerPlan(o.getId(), plan(item.getId(), 1, 0), "it");
+        adjustments.registerPlan(o.getId(), plan(item.getId(), 1, 0), "it");
 
         long expected = OrderMoney.paidForUnitsMinor(loaded, item, 0, 1)
                 + OrderMoney.paidForUnitsMinor(loaded, item, 1, 1);

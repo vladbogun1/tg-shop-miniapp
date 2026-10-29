@@ -1,5 +1,7 @@
-package com.maxsolch.shop.order.api;
+package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.app.OrderReturnsView.ExchangeDto;
+import com.maxsolch.shop.order.app.OrderReturnsView.ReturnRecordDto;
 import com.maxsolch.shop.web.dto.OnlinePaymentDto;
 import java.time.Instant;
 import java.util.List;
@@ -127,40 +129,6 @@ public record OrderDetailDto(
                                     long mergedCodMinor) {
     }
 
-    /** One return / exchange; only the newest active one can be cancelled ({@code cancellable}). */
-    public record ReturnRecordDto(long id,
-                                  /** RETURN | EXCHANGE */
-                                  String kind,
-                                  Instant createdAt,
-                                  String adminName,
-                                  String note,
-                                  List<ReturnRecordLineDto> lines,
-                                  long refundMinor,
-                                  String refundChannel,
-                                  long monoRefundMinor,
-                                  /** Replacement order of an exchange. */
-                                  String newOrderId,
-                                  Instant cancelledAt,
-                                  String cancelledBy,
-                                  String cancelNote,
-                                  long debtMinor,
-                                  Instant debtPaidAt,
-                                  boolean cancellable,
-                                  /** Why the newest record cannot be cancelled now (shown on the button). */
-                                  String cancelBlocker) {
-    }
-
-    public record ReturnRecordLineDto(long itemId,
-                                      String title,
-                                      String imageUrl,
-                                      int quantity,
-                                      /** RESTOCK | DEFECT | KEPT | IN_TRANSIT */
-                                      String outcome,
-                                      int restockedQty,
-                                      int defectQty,
-                                      int pendingQty) {
-    }
-
     public record MovementDto(long id,
                               String kind,
                               String channel,
@@ -183,18 +151,5 @@ public record OrderDetailDto(
                               String note,
                               String adminName,
                               Instant createdAt) {
-    }
-
-    public record ExchangeDto(Instant createdAt,
-                              String previousStatus,
-                              String previousTracking,
-                              String returnedSummary,
-                              String givenSummary,
-                              long totalBeforeMinor,
-                              long totalAfterMinor,
-                              String note,
-                              String adminName,
-                              /** The replacement order (V69); null for exchanges made before it. */
-                              String newOrderId) {
     }
 }

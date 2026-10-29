@@ -1,6 +1,5 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.order.domain.Order;
@@ -171,7 +170,7 @@ public class OrderStock {
 
     /**
      * Puts {@code units} of one order line back on the shelf and records them on the line (partial returns
-     * of {@link OrderAdjustmentService} too).
+     * of {@code Returns} too).
      */
     public void restockUnits(OrderItem item, int units) {
         if (units <= 0) {

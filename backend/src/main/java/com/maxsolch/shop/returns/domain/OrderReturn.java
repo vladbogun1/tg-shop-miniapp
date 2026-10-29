@@ -7,6 +7,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderMoneyMovement;
+import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -78,5 +84,43 @@ public class OrderReturn {
         if (createdAt == null) {
             createdAt = Instant.now();
         }
+    }
+
+    /**
+     * Why this record cannot be cancelled right now, or null. An exchange can only be undone while its
+     * replacement has not shipped and holds no money beyond the moved credit.
+     *
+     * @param replacement the replacement order of an exchange (null for a plain return)
+     */
+    public String cancelBlocker(Order replacement) {
+        if (cancelledAt != null) {
+            return "уже отменён";
+        }
+        if (!Kind.EXCHANGE.name().equals(kind) || replacement == null) {
+            return null;
+        }
+        String no = UuidUtil.toString(replacement.getId()).substring(0, 8);
+        OrderStatus st = replacement.getStatus();
+        if (st == OrderStatus.SHIPPED || st == OrderStatus.DELIVERED) {
+            return "замену #" + no + " уже отправили — оформите «Возврат» в заказе #" + no;
+        }
+        long kept = OrderMoney.keptMinor(replacement);
+        if (kept > refundMinor) {
+            return "по замене #" + no + " уже доплатили " + MoneyFormat.uah(kept - refundMinor)
+                    + " — отклоните заказ #" + no + " и верните эти деньги «Возвратом», потом отмените обмен";
+        }
+        return null;
+    }
+
+    /** How the customer sends a refund back: the way it went out; monobank refunds come back by transfer. */
+    public OrderMoneyMovement.Channel backChannel() {
+        if (refundMinor > 0 && refundChannel != null) {
+            try {
+                return OrderMoneyMovement.Channel.valueOf(refundChannel);
+            } catch (IllegalArgumentException ignored) {
+                // fall through
+            }
+        }
+        return OrderMoneyMovement.Channel.CARD_TRANSFER;
     }
 }

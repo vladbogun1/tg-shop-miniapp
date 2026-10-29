@@ -12,6 +12,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.returns.domain.OrderExchange;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
+import com.maxsolch.shop.returns.app.ReturnRecords;
 import com.maxsolch.shop.returns.domain.OrderReturn;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.order.domain.OrderSource;
@@ -26,6 +27,8 @@ import com.maxsolch.shop.payment.MonobankClient;
 import com.maxsolch.shop.payment.PaymentInvoice;
 import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
+import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
+import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
@@ -101,7 +104,9 @@ class OrderQueryServiceGoldenTest {
         OrderExchangeRepository exchangeRepo = mock(OrderExchangeRepository.class);
         OrderMoneyMovementRepository movementRepo = mock(OrderMoneyMovementRepository.class);
         StockWriteoffRepository writeoffRepo = mock(StockWriteoffRepository.class);
-        OrderAdjustmentService adjustments = mock(OrderAdjustmentService.class);
+        OrderReturnRepository returnRepo = mock(OrderReturnRepository.class);
+        OrderReturnLineRepository returnLineRepo = mock(OrderReturnLineRepository.class);
+        OrderLookup lookup = mock(OrderLookup.class);
         GiftCaseService gifts = mock(GiftCaseService.class);
 
         when(mono.isEnabled()).thenReturn(true);
@@ -147,18 +152,15 @@ class OrderQueryServiceGoldenTest {
         TranslationService.Overlay overlay = mock(TranslationService.Overlay.class);
         when(overlay.text(any(), any(), any(), any())).thenAnswer(inv -> "[tr] " + inv.getArgument(3));
         when(translation.overlay(anyString())).thenReturn(overlay);
-        when(adjustments.returnRecordsOf(any()))
+        when(returnRepo.findByOrderIdOrderByIdAsc(any()))
                 .thenAnswer(inv -> returns.getOrDefault(key(inv.getArgument(0)), List.of()));
-        when(adjustments.returnLinesOf(anyList())).thenAnswer(inv -> {
+        when(lookup.find(any())).thenAnswer(inv -> Optional.ofNullable(ordersById.get(key(inv.getArgument(0)))));
+        when(returnLineRepo.findByReturnIdInOrderByIdAsc(anyList())).thenAnswer(inv -> {
             List<OrderReturnLine> out = new ArrayList<>();
             for (Long id : inv.<List<Long>>getArgument(0)) {
                 out.addAll(returnLines.getOrDefault(id, List.of()));
             }
             return out;
-        });
-        when(adjustments.cancelBlocker(any(), any())).thenAnswer(inv -> {
-            OrderReturn r = inv.getArgument(0);
-            return r.getKind().equals("EXCHANGE") ? "Замена уже отправлена" : null;
         });
         when(gifts.orderGift(any(), anyString(), anyBoolean())).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
@@ -178,10 +180,10 @@ class OrderQueryServiceGoldenTest {
         });
 
         service = new OrderQueryService(orders, messages, items, invoiceRepo, mono, images, translation, users,
-                rejectReason, exchangeRepo);
+                rejectReason,
+                new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup));
         service.setMovementRepository(movementRepo);
         service.setWriteoffRepository(writeoffRepo);
-        service.setAdjustments(adjustments);
         service.setGiftCaseService(gifts);
 
         AtomicReference<ObjectMapper> ref = new AtomicReference<>();
@@ -497,7 +499,13 @@ class OrderQueryServiceGoldenTest {
     }
 
     private static OrderReturn ret(long n, Order o, String kind, Long exchangeId, long refund) {
-        OrderReturn r = new OrderReturn();
+        // The rule that decides the blocker has its own test (ReturnCancellationTest); the golden pins the mapping.
+        OrderReturn r = new OrderReturn() {
+            @Override
+            public String cancelBlocker(Order replacement) {
+                return getKind().equals("EXCHANGE") ? "Замена уже отправлена" : null;
+            }
+        };
         r.setId(n);
         r.setOrderId(o.getId());
         r.setKind(kind);

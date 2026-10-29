@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
@@ -10,7 +11,6 @@ import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.AdminOrderStatusService;
-import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderLookup;
@@ -20,10 +20,8 @@ import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.Checkout;
-import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
-import com.maxsolch.shop.order.api.OrderAdjustmentDtos.ReturnWizardRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,8 +59,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Characterisation of the order endpoints that are being thinned out (board, list, status, return
- * wizard): the contract is the HTTP-level result — what is returned, thrown and written to the
+ * Characterisation of the order endpoints that are being thinned out (board, list, status): the contract is the HTTP-level result — what is returned, thrown and written to the
  * audit — not where the code lives. Wiring is in {@link #controller()} only.
  */
 @ExtendWith(MockitoExtension.class)
@@ -89,8 +86,6 @@ class AdminOrderControllerTest {
     @Mock
     AdminAuditService audit;
     @Mock
-    OrderAdjustmentService adjustments;
-    @Mock
     com.maxsolch.shop.order.app.OrderDeliveryEditing deliveryEditing;
     @Mock
     OnlinePaymentService payments;
@@ -115,8 +110,7 @@ class AdminOrderControllerTest {
         AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries);
         return new AdminOrderController(adminQueries,
                 new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
-                new ReturnWizardService(adminQueries, lookup, adjustments, payments, audit),
-                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, adjustments, deliveryEditing, payments);
+                checkout, editing, lifecycle, orderPayments, orderArchive, giftCases, queries, lookup, null, audit, null, null, deliveryEditing, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,
@@ -439,162 +433,5 @@ class AdminOrderControllerTest {
         when(queries.toCards(List.of(order), SenderType.CUSTOMER)).thenReturn(cards);
 
         assertThat(controller().byUser(77L)).isSameAs(cards);
-    }
-
-    // ------------------------------------------------------------------ return wizard
-
-    private static ReturnWizardRequest wizard(List<ReturnWizardRequest.WizardLine> lines,
-                                              List<ReturnWizardRequest.Refund> refunds, Long mono, Long retain) {
-        return new ReturnWizardRequest(lines, refunds, mono, retain, "note", null);
-    }
-
-    @Test
-    void wizard_unknownOrder_isNotFound() {
-        when(orders.findById(any())).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> controller().returnWizard(id, wizard(null, null, null, null)))
-                .isInstanceOf(NotFoundException.class);
-        verifyNoInteractions(adjustments, payments, audit);
-    }
-
-    @Test
-    void wizard_badOutcome_isBadRequest_andNothingRuns() {
-        var req = wizard(List.of(new ReturnWizardRequest.WizardLine(1, 1, "melted")), null, null, null);
-
-        assertThatThrownBy(() -> controller().returnWizard(id, req))
-                .isInstanceOf(BadRequestException.class).hasMessage("неизвестное состояние товара: melted");
-        verifyNoInteractions(adjustments, payments, audit);
-    }
-
-    @Test
-    void wizard_manualOnly_checksThenSaves_auditsAndReturnsFreshOrder() {
-        var req = wizard(List.of(new ReturnWizardRequest.WizardLine(5, 2, null)),
-                List.of(new ReturnWizardRequest.Refund("CASH", 0, null),
-                        new ReturnWizardRequest.Refund("CARD_TRANSFER", 4_000, "n")),
-                null, 300L);
-        Order fresh = new Order();
-        fresh.setId(order.getId());
-        when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderChange(order, "возврат: 1"));
-        when(lookup.get(order.getId())).thenReturn(fresh);
-        when(queries.toDetail(fresh)).thenReturn(detail);
-
-        OrderDetailDto result = controller().returnWizard(id, req);
-
-        assertThat(result).isSameAs(detail);
-        ArgumentCaptor<OrderAdjustmentService.ReturnPlan> plan = ArgumentCaptor.forClass(OrderAdjustmentService.ReturnPlan.class);
-        InOrder in = inOrder(adjustments, audit);
-        in.verify(adjustments).checkReturnPlan(eq(order.getId()), plan.capture());
-        in.verify(adjustments).registerReturnPlan(eq(order.getId()), eq(plan.getValue()), eq("Иван"), eq(false));
-        in.verify(audit).record("ORDER_RETURN", "ORDER", id, "возврат: 1");
-        assertThat(plan.getValue().lines()).containsExactly(
-                new OrderAdjustmentService.WizardLine(5, 2, OrderAdjustmentService.LineOutcome.RESTOCK));
-        assertThat(plan.getValue().refunds()).hasSize(1);
-        assertThat(plan.getValue().refunds().get(0).amountMinor()).isEqualTo(4_000);
-        assertThat(plan.getValue().retainMinor()).isEqualTo(300);
-        assertThat(plan.getValue().monoRefundMinor()).isZero();
-        assertThat(plan.getValue().notifyCustomer()).isTrue();
-        verifyNoInteractions(payments);
-    }
-
-    @Test
-    void wizard_withMonobank_checkBankAuditBooks_inThatOrder() {
-        var req = wizard(List.of(), List.of(), 2_500L, null);
-        when(payments.refundableInvoice(order.getId(), 2_500)).thenReturn("inv-1");
-        when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderChange(order, "d"));
-        when(lookup.get(order.getId())).thenReturn(order);
-
-        controller().returnWizard(id, req);
-
-        InOrder in = inOrder(adjustments, payments, audit);
-        in.verify(adjustments).checkReturnPlan(eq(order.getId()), any());
-        in.verify(payments).refundableInvoice(order.getId(), 2_500);
-        in.verify(payments).refund(order.getId(), "inv-1", 2_500L);
-        in.verify(audit).record("ORDER_REFUND_ONLINE", "ORDER", id,
-                "возврат на карту через monobank 25 ₴ (мастер возврата)");
-        in.verify(adjustments).registerReturnPlan(eq(order.getId()), any(), eq("Иван"), eq(true));
-        in.verify(audit).record("ORDER_RETURN", "ORDER", id, "d");
-    }
-
-    @Test
-    void wizard_bankRefuses_nothingSaved_codeKept_lockReleased() {
-        var req = wizard(List.of(), List.of(), 2_500L, null);
-        when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv-1");
-        org.mockito.Mockito.doThrow(new BadRequestException("нет денег")).when(payments)
-                .refund(any(byte[].class), anyString(), anyLong());
-
-        assertThatThrownBy(() -> controller().returnWizard(id, req))
-                .isInstanceOfSatisfying(BadRequestException.class, e -> {
-                    assertThat(e.getMessage()).isEqualTo(
-                            "monobank не принял возврат денег: нет денег. Ничего не сохранено — исправьте и повторите.");
-                    assertThat(e.getCode()).isEqualTo("MONO_REFUND_FAILED");
-                });
-        verify(adjustments, never()).registerReturnPlan(any(byte[].class), any(), any(), anyBoolean());
-        verify(audit, never()).record(anyString(), anyString(), any(), anyString());
-    }
-
-    @Test
-    void wizard_refusedPlan_sendsNoMoney_andReleasesTheLock() {
-        var req = wizard(List.of(), List.of(), 2_500L, null);
-        AdminOrderController c = controller();
-        org.mockito.Mockito.doThrow(new BadRequestException("план плох")).doNothing()
-                .when(adjustments).checkReturnPlan(any(byte[].class), any());
-
-        assertThatThrownBy(() -> c.returnWizard(id, req)).hasMessage("план плох");
-        verifyNoInteractions(payments);
-        verify(audit, never()).record(anyString(), anyString(), any(), anyString());
-
-        // the lock was released: the same order can be tried again
-        when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv");
-        when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderChange(order, "ok"));
-        when(lookup.get(any(byte[].class))).thenReturn(order);
-        c.returnWizard(id, req);
-        verify(adjustments).registerReturnPlan(any(byte[].class), any(), any(), eq(true));
-    }
-
-    @Test
-    void wizard_secondSubmitWhileFirstRuns_isRejected_thenFreeAgain() {
-        var req = wizard(List.of(), List.of(), null, null);
-        AdminOrderController c = controller();
-        org.mockito.Mockito.doAnswer(inv -> {
-            assertThatThrownBy(() -> c.returnWizard(id, req))
-                    .isInstanceOf(BadRequestException.class)
-                    .hasMessage("возврат по этому заказу уже оформляется — дождитесь окончания");
-            return null;
-        }).when(adjustments).checkReturnPlan(any(byte[].class), any());
-        when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderChange(order, "ok"));
-        when(lookup.get(any(byte[].class))).thenReturn(order);
-
-        c.returnWizard(id, req);
-
-        verify(adjustments, times(1)).registerReturnPlan(any(byte[].class), any(), any(), anyBoolean());
-        c.returnWizard(id, req); // lock released after the first run
-        verify(adjustments, times(2)).registerReturnPlan(any(byte[].class), any(), any(), anyBoolean());
-    }
-
-    @Test
-    void wizard_lockIsPerOrder() {
-        var req = wizard(List.of(), List.of(), null, null);
-        Order other = new Order();
-        other.setId(UuidUtil.randomBytes());
-        String otherId = UuidUtil.toString(other.getId());
-        when(orders.findById(other.getId())).thenReturn(Optional.of(other));
-        AdminOrderController c = controller();
-        org.mockito.Mockito.doAnswer(inv -> {
-            if (java.util.Arrays.equals(inv.getArgument(0, byte[].class), order.getId())) {
-                c.returnWizard(otherId, req); // a different order is not blocked
-            }
-            return null;
-        }).when(adjustments).checkReturnPlan(any(byte[].class), any());
-        when(adjustments.registerReturnPlan(any(byte[].class), any(), any(), anyBoolean()))
-                .thenReturn(new OrderChange(order, "ok"));
-        when(lookup.get(any(byte[].class))).thenReturn(order);
-
-        c.returnWizard(id, req);
-
-        verify(adjustments, times(2)).registerReturnPlan(any(byte[].class), any(), any(), anyBoolean());
     }
 }

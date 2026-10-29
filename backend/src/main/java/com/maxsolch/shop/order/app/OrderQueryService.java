@@ -1,7 +1,6 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.GiftCaseRules;
-import com.maxsolch.shop.returns.app.OrderReturnRecordsAssembler;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -11,7 +10,6 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
-import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
@@ -25,8 +23,6 @@ import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
 import com.maxsolch.shop.order.api.DispatchOrderDto;
 import com.maxsolch.shop.order.api.OrderCardDto;
-import com.maxsolch.shop.order.api.OrderDetailDto;
-import com.maxsolch.shop.order.api.OrderItemDto;
 import com.maxsolch.shop.order.api.OrderSummaryDto;
 import com.maxsolch.shop.web.dto.OnlinePaymentDto;
 import org.springframework.stereotype.Service;
@@ -57,7 +53,7 @@ public class OrderQueryService {
     private final TranslationService translationService;
     private final UserRepository userRepository;
     private final CustomerRejectReason customerRejectReason;
-    private final OrderExchangeRepository exchangeRepository;
+    private final OrderReturnsView returnsView;
 
     /** The gift block of the order page (docs/GIFT-CASE.md); a setter so the tests' constructor stays. */
     private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
@@ -65,14 +61,6 @@ public class OrderQueryService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     void setGiftCaseService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.gift.GiftCaseService giftCaseService) {
         this.giftCaseService = giftCaseService;
-    }
-
-    /** Return records for the drawer (V70); lazy — the adjustment service reads orders too. */
-    private OrderAdjustmentService adjustments;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setAdjustments(@org.springframework.context.annotation.Lazy OrderAdjustmentService adjustments) {
-        this.adjustments = adjustments;
     }
 
     public OrderQueryService(OrderRepository orderRepository,
@@ -84,7 +72,7 @@ public class OrderQueryService {
                              TranslationService translationService,
                              UserRepository userRepository,
                              CustomerRejectReason customerRejectReason,
-                             OrderExchangeRepository exchangeRepository) {
+                             OrderReturnsView returnsView) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -94,7 +82,7 @@ public class OrderQueryService {
         this.translationService = translationService;
         this.userRepository = userRepository;
         this.customerRejectReason = customerRejectReason;
-        this.exchangeRepository = exchangeRepository;
+        this.returnsView = returnsView;
     }
 
     /**
@@ -309,12 +297,7 @@ public class OrderQueryService {
                 // The admin sees what really arrived (an exchange for something cheaper leaves it
                 // above the total — that overpayment is to be refunded); the customer, the capped.
                 .receivedMinor(Math.max(0, o.getReceivedMinor()))
-                .exchanges(exchangeRepository.findByOrderIdOrderByCreatedAtAsc(o.getId()).stream()
-                        .map(e -> new OrderDetailDto.ExchangeDto(e.getCreatedAt(), e.getPreviousStatus(),
-                                e.getPreviousTracking(), e.getReturnedSummary(), e.getGivenSummary(),
-                                e.getTotalBeforeMinor(), e.getTotalAfterMinor(), e.getNote(), e.getAdminName(),
-                                e.getNewOrderId() == null ? null : UuidUtil.toString(e.getNewOrderId())))
-                        .toList())
+                .exchanges(returnsView.exchangesOf(o.getId()))
                 .gift(giftCaseService == null ? null : giftCaseService.orderGift(o, ContentLocale.RU, false))
                 .admin(adminExtras(o))
                 .build();
@@ -477,9 +460,8 @@ public class OrderQueryService {
     }
 
     /** The order's return records for the drawer, with what each did and whether it can be undone. */
-    private List<OrderDetailDto.ReturnRecordDto> returnRecords(Order o) {
-        return OrderReturnRecordsAssembler.assemble(o, adjustments, exchangeRepository, orderRepository,
-                this::thumbnailsFor);
+    private List<OrderReturnsView.ReturnRecordDto> returnRecords(Order o) {
+        return returnsView.records(o, this::thumbnailsFor);
     }
 
     /** All APPROVED orders mapped to dispatch rows (newest first). */

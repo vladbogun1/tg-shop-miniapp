@@ -22,7 +22,7 @@ import com.maxsolch.shop.order.api.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.order.api.MessageDto;
 import com.maxsolch.shop.translation.ContentLocale;
-import com.maxsolch.shop.order.api.OrderDetailDto;
+import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.api.OrderSummaryDto;
 import com.maxsolch.shop.web.dto.PaymentStartResponse;
 import com.maxsolch.shop.web.dto.StartPaymentRequest;

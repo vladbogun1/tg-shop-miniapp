@@ -269,6 +269,22 @@ public class Checkout {
     }
 
     /**
+     * The replacement order of an exchange: the same customer and address as {@code original}, the given goods, no
+     * gift and no payment deadline, ordered the admin way. What the returned goods were paid for is moved to it by
+     * the caller.
+     */
+    @Transactional
+    public Order createExchangeOrder(Order original, List<CreateOrderCommand.Line> goods, String adminName) {
+        return createAdminOrder(new CreateOrderCommand(
+                null, original.getTgUserId(), original.getTgUsername(), goods,
+                original.getCustomerName(), original.getPhone(), null, null,
+                original.getDeliveryMethod() == null ? null : original.getDeliveryMethod().name(),
+                original.getNpCityRef(), original.getNpCityName(), original.getNpWarehouseRef(),
+                original.getNpWarehouseName(), exchangePaymentOptionId(original), OrderSource.ADMIN,
+                GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
+    }
+
+    /**
      * Payment option of an exchange replacement: the original order's while it is still offered,
      * otherwise the first active one (the rest of a dearer replacement is collected through it).
      */

@@ -12,7 +12,6 @@ import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.tg.NotificationService;
 import jakarta.persistence.EntityManager;
@@ -146,9 +145,8 @@ public final class OrderApp {
         return ops;
     }
 
-    /** The adjustment service over the same scenarios (its own stock / ledger mocks, as the tests pass them). */
-    public OrderAdjustmentService adjustment(OrderRepository orders, OrderStock stock, ApplicationEventPublisher events,
-                                             OrderExchangeRepository exchanges, MoneyLedger ledger) {
-        return new OrderAdjustmentService(orders, checkout, ops, payments, lifecycle, stock, events, exchanges, ledger);
+    /** The order lookup the returns scenarios use (read, row lock, save) over the same ops. */
+    public OrderLookup lookup(OrderRepository orders) {
+        return new OrderLookup(orders, ops);
     }
 }

@@ -2,7 +2,9 @@ package com.maxsolch.shop.order.domain;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.MoneyLedger;
-import com.maxsolch.shop.order.app.OrderAdjustmentService;
+import com.maxsolch.shop.returns.app.Exchanges;
+import com.maxsolch.shop.returns.app.ReturnsApp;
+import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderMerge;
@@ -547,7 +549,7 @@ class OrderTransitionsTest {
 
     @Test
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
-        OrderAdjustmentService adjust = app.adjustment(orderRepository, StockFixtures.stock(productRepository, messages), events, exchangeRepository, ledger);
+        Exchanges adjust = ReturnsApp.create(app, orderRepository, StockFixtures.stock(productRepository, messages), events, ledger, exchangeRepository).exchanges;
         Order o = order(OrderStatus.DELIVERED);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");
@@ -583,8 +585,8 @@ class OrderTransitionsTest {
         lenient().when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of(po));
 
         OrderChange r = adjust.exchange(o.getId(),
-                List.of(new OrderAdjustmentService.WizardLine(1L, 1, null)),
-                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(product.getId()), null, 1)),
+                List.of(new WizardLine(1L, 1, null)),
+                List.of(new Exchanges.NewLine(UuidUtil.toString(product.getId()), null, 1)),
                 OrderStatus.APPROVED, false, null, "admin");
 
         assertThat(r.order().getStatus()).isEqualTo(OrderStatus.APPROVED);

@@ -21,7 +21,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.MeProfileDto;
-import com.maxsolch.shop.order.api.OrderDetailDto;
+import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.api.OrderSummaryDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

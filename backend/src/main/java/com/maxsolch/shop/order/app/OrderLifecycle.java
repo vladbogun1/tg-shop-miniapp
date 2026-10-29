@@ -115,7 +115,7 @@ public class OrderLifecycle {
      * @param returnInTransit only for a SHIPPED order (refused at the post office, sent back): the
      *                        goods are not on the shelf yet, so nothing is restocked now; the
      *                        order waits as "parcel on its way back" until it is received
-     *                        ({@link OrderAdjustmentService#receiveReturn}).
+     *                        ({@code ReturnReceiving.receive}).
      */
     @Transactional
     public Order reject(byte[] orderId, String reason, RejectReasonCode reasonCode, boolean restock,

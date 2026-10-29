@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -19,7 +20,6 @@ import com.maxsolch.shop.order.app.AdminOrderStatusService;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderDeliveryEditing;
-import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
@@ -30,7 +30,6 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.domain.OrderWindow;
-import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.UploadResponse;
@@ -63,7 +62,6 @@ public class AdminOrderController {
 
     private final AdminOrderQueries queries;
     private final AdminOrderStatusService statusService;
-    private final ReturnWizardService returnWizards;
     private final Checkout checkout;
     private final OrderEditing editing;
     private final OrderLifecycle lifecycle;
@@ -76,7 +74,6 @@ public class AdminOrderController {
     private final AdminAuditService audit;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
-    private final OrderAdjustmentService adjustments;
     private final OrderDeliveryEditing deliveryEditing;
     private final OnlinePaymentService payments;
 
@@ -102,7 +99,6 @@ public class AdminOrderController {
 
     public AdminOrderController(AdminOrderQueries queries,
                                 AdminOrderStatusService statusService,
-                                ReturnWizardService returnWizards,
                                 Checkout checkout,
                                 OrderEditing editing,
                                 OrderLifecycle lifecycle,
@@ -115,12 +111,10 @@ public class AdminOrderController {
                                 AdminAuditService audit,
                                 ImageStorageService imageStorageService,
                                 UploadValidator uploadValidator,
-                                OrderAdjustmentService adjustments,
                                 OrderDeliveryEditing deliveryEditing,
                                 OnlinePaymentService payments) {
         this.queries = queries;
         this.statusService = statusService;
-        this.returnWizards = returnWizards;
         this.checkout = checkout;
         this.editing = editing;
         this.lifecycle = lifecycle;
@@ -133,7 +127,6 @@ public class AdminOrderController {
         this.audit = audit;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
-        this.adjustments = adjustments;
         this.deliveryEditing = deliveryEditing;
         this.payments = payments;
     }
@@ -227,50 +220,6 @@ public class AdminOrderController {
                 new OrderDeliveryEditing.DeliveryPatch(req.customerName(), req.phone(),
                         req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName()));
         audit.record("ORDER_DELIVERY", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
-    }
-
-    @PostMapping("/{id}/return")
-    @Operation(summary = "Register a (partial) return: returned units per line, restock per line, refunded amount")
-    public OrderDetailDto registerReturn(@PathVariable String id,
-                                         @Valid @RequestBody OrderAdjustmentDtos.RegisterReturnRequest req) {
-        List<OrderAdjustmentService.ReturnLine> lines = req.lines() == null ? List.of()
-                : req.lines().stream()
-                        .map(l -> new OrderAdjustmentService.ReturnLine(l.itemId(), l.quantity(),
-                                l.restock() == null || l.restock()))
-                        .toList();
-        OrderChange r = adjustments.registerReturn(load(id).getId(), lines,
-                req.refundMinor() == null ? 0 : req.refundMinor(), req.note());
-        audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
-    }
-
-    @PostMapping("/{id}/exchange")
-    @Operation(summary = "Exchange on a delivered order: the returned units come back like a return (on their way "
-            + "or already in stock / written off), the replacement goes out as a NEW linked order with its own ТТН; "
-            + "returns the new order")
-    public OrderDetailDto exchange(@PathVariable String id,
-                                   @Valid @RequestBody OrderAdjustmentDtos.ExchangeRequest req) {
-        List<OrderAdjustmentService.WizardLine> returned = req.returned() == null ? List.of()
-                : req.returned().stream()
-                        .map(l -> new OrderAdjustmentService.WizardLine(l.itemId(), l.quantity(),
-                                l.outcome() == null || l.outcome().isBlank() ? null : ReturnWizardService.parseOutcome(l.outcome())))
-                        .toList();
-        List<OrderAdjustmentService.ExchangeNewLine> items = req.items() == null ? List.of()
-                : req.items().stream()
-                        .map(l -> new OrderAdjustmentService.ExchangeNewLine(l.productId(), l.variantId(), l.quantity()))
-                        .toList();
-        OrderStatus target = OrderStatus.NEW;
-        if (req.targetStatus() != null && !req.targetStatus().isBlank()) {
-            try {
-                target = OrderStatus.valueOf(req.targetStatus().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new BadRequestException("неизвестный статус: " + req.targetStatus());
-            }
-        }
-        OrderChange r = adjustments.exchange(load(id).getId(), returned, items, target,
-                req.notifyCustomer() == null || req.notifyCustomer(), req.note(), audit.currentAdminName());
-        audit.record("ORDER_EXCHANGE", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
     }
 
@@ -443,55 +392,6 @@ public class AdminOrderController {
     @Operation(summary = "Deprecated: archives the order (orders are never deleted); reason required")
     public OrderDetailDto delete(@PathVariable String id, @RequestParam(required = false) String reason) {
         return archive(id, new OrderAdjustmentDtos.ArchiveRequest(reason));
-    }
-
-    /** Return wizard (V68): the whole flow, incl. the monobank refund and the one-at-a-time lock, is in {@link ReturnWizardService}. */
-    @PostMapping("/{id}/returns")
-    @Operation(summary = "Return wizard: lines (RESTOCK/DEFECT/KEPT), manual refunds by channel, "
-            + "optional monobank refund, retained amount")
-    public OrderDetailDto returnWizard(@PathVariable String id,
-                                       @Valid @RequestBody OrderAdjustmentDtos.ReturnWizardRequest req) {
-        return orderQueryService.toDetail(returnWizards.register(id, req));
-    }
-
-    @PostMapping("/{id}/return-received")
-    @Operation(summary = "The refused parcel is back at the shop: sellable units restocked, DEFECT lines written off")
-    public OrderDetailDto returnReceived(@PathVariable String id,
-                                         @Valid @RequestBody OrderAdjustmentDtos.ReceiveReturnRequest req) {
-        List<OrderAdjustmentService.ReceivedLine> lines = req.lines() == null ? List.of()
-                : req.lines().stream()
-                        .map(l -> new OrderAdjustmentService.ReceivedLine(l.itemId(), l.quantity(), ReturnWizardService.parseOutcome(l.outcome())))
-                        .toList();
-        OrderChange r = adjustments.receiveReturn(load(id).getId(), lines, req.note(),
-                audit.currentAdminName());
-        audit.record("ORDER_RETURN_RECEIVED", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
-    }
-
-    @PostMapping("/{id}/returns/{returnId}/cancel")
-    @Operation(summary = "Cancel the newest return / exchange: units back into the order, money back or as a debt")
-    public OrderDetailDto cancelReturn(@PathVariable String id, @PathVariable long returnId,
-                                       @Valid @RequestBody OrderAdjustmentDtos.CancelReturnRequest req) {
-        OrderAdjustmentService.CancelMoney money = null;
-        if (req.money() != null && !req.money().isBlank()) {
-            try {
-                money = OrderAdjustmentService.CancelMoney.valueOf(req.money().trim().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new BadRequestException("неизвестный вариант денег: " + req.money());
-            }
-        }
-        OrderChange r = adjustments.cancelReturn(load(id).getId(), returnId, money, req.note(),
-                audit.currentAdminName());
-        audit.record("ORDER_RETURN_CANCEL", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(orderLookup.get(r.order().getId()));
-    }
-
-    @PostMapping("/{id}/returns/{returnId}/debt-paid")
-    @Operation(summary = "The customer sent back the money of a cancelled return")
-    public OrderDetailDto returnDebtPaid(@PathVariable String id, @PathVariable long returnId) {
-        OrderChange r = adjustments.settleReturnDebt(load(id).getId(), returnId, audit.currentAdminName());
-        audit.record("ORDER_RETURN_DEBT_PAID", "ORDER", id, r.auditDetails());
-        return orderQueryService.toDetail(r.order());
     }
 
     /**
