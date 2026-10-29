@@ -109,10 +109,10 @@ public class CatalogService {
         }
         int heldHere = 0;
         if (p.getVariants() == null || p.getVariants().isEmpty()) {
-            heldHere = held.getOrDefault(com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), null), 0);
+            heldHere = held.getOrDefault(com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), null), 0);
         } else {
             for (var v : p.getVariants()) {
-                heldHere += held.getOrDefault(com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), v.getId()), 0);
+                heldHere += held.getOrDefault(com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), v.getId()), 0);
             }
         }
         return Math.max(0, p.getStock() - heldHere);
@@ -125,7 +125,7 @@ public class CatalogService {
         List<ProductVariantDto> variants = p.getVariants().stream()
                 .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(),
                         Math.max(0, v.getStock() - held.getOrDefault(
-                                com.maxsolch.shop.preorder.app.PreorderQueueService.lineKey(p.getId(), v.getId()), 0)),
+                                com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), v.getId()), 0)),
                         v.getSortOrder()))
                 .toList();
         CatalogSnapshot catalog = catalogDirectory.snapshot();

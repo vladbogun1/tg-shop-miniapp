@@ -29,7 +29,8 @@ import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import com.maxsolch.shop.procurement.app.PreorderBatchService;
-import com.maxsolch.shop.preorder.app.PreorderQueueService;
+import com.maxsolch.shop.procurement.app.LineProducts;
+import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
@@ -65,14 +66,14 @@ public class CostingService {
     private final BatchExpenseRepository expenses;
     private final StockLotRepository lots;
     private final ProductRepository products;
-    private final PreorderQueueService queue;
+    private final LineProducts queue;
     private final LotLedger ledger;
     private final BatchExpenseFileRepository files;
     private final ImageStorageService storage;
 
     public CostingService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                           BatchExpenseRepository expenses, StockLotRepository lots, ProductRepository products,
-                          PreorderQueueService queue, LotLedger ledger, BatchExpenseFileRepository files,
+                          LineProducts queue, LotLedger ledger, BatchExpenseFileRepository files,
                           ImageStorageService storage) {
         this.files = files;
         this.storage = storage;
@@ -149,7 +150,7 @@ public class CostingService {
         List<MoneyLineDto> out = new ArrayList<>();
         for (PreorderBatchItem i : lines) {
             Product p = byId.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : PreorderQueueService.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
             BatchCost.LineCost c = cost.get(i.getId());
             long price = p == null ? 0 : p.getPriceMinor();
             Long unit = c == null ? null : c.costUnitMinor();
@@ -157,7 +158,7 @@ public class CostingService {
             out.add(new MoneyLineDto(i.getId(), UuidUtil.toString(i.getProductId()),
                     i.getVariantId() == null ? null : UuidUtil.toString(i.getVariantId()),
                     p == null ? "(товар удалён)" : p.getTitle(), v == null ? null : v.getName(),
-                    p == null ? null : PreorderQueueService.imageOf(p), i.getQtyOrdered(), i.getQtyArrived(),
+                    p == null ? null : Lines.imageOf(p), i.getQtyOrdered(), i.getQtyArrived(),
                     qtyOf(i), i.getUnitPriceFx(), i.getWeightG(), i.getManualExtraMinor(),
                     c == null ? null : c.purchaseUnitMinor(), c == null ? null : c.purchaseLineMinor(),
                     c == null ? 0 : c.extraLineMinor(), c == null ? 0 : c.extraUnitMinor(), unit, price, margin,
@@ -344,7 +345,7 @@ public class CostingService {
             if (l.getQtyLeft() <= 0 && l.getQtyIn() <= 0) {
                 continue;
             }
-            ProductVariant v = PreorderQueueService.variantById(p, l.getVariantId());
+            ProductVariant v = Lines.variantById(p, l.getVariantId());
             UnitCost c = book.of(l);
             PreorderBatch b = book.batchOf(l);
             out.add(new LotDto(l.getId(), l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()),
@@ -374,7 +375,7 @@ public class CostingService {
             if (l.batch()) {
                 continue;
             }
-            String key = PreorderQueueService.lineKey(l.getProductId(), l.getVariantId());
+            String key = Lines.key(l.getProductId(), l.getVariantId());
             units.computeIfAbsent(key, k -> new int[1])[0] += l.getQtyLeft();
             if (l.getUnitCostMinor() != null) {
                 cost.put(key, l.getUnitCostMinor());
@@ -389,10 +390,10 @@ public class CostingService {
             if (p == null || p.isArchived()) {
                 return;
             }
-            ProductVariant v = PreorderQueueService.variantById(p, l.getVariantId());
+            ProductVariant v = Lines.variantById(p, l.getVariantId());
             out.add(new OpeningRowDto(UuidUtil.toString(p.getId()),
                     l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()), p.getTitle(),
-                    v == null ? null : v.getName(), PreorderQueueService.imageOf(p), n[0], cost.get(key),
+                    v == null ? null : v.getName(), Lines.imageOf(p), n[0], cost.get(key),
                     p.getPriceMinor()));
         });
         out.sort(Comparator.comparing(OpeningRowDto::title, String.CASE_INSENSITIVE_ORDER)
@@ -424,7 +425,7 @@ public class CostingService {
     public ReconcileDto reconcile() {
         Map<String, Integer> onLots = new HashMap<>();
         for (StockLot l : lots.findAll()) {
-            onLots.merge(PreorderQueueService.lineKey(l.getProductId(), l.getVariantId()), l.getQtyLeft(),
+            onLots.merge(Lines.key(l.getProductId(), l.getVariantId()), l.getQtyLeft(),
                     Integer::sum);
         }
         int keys = 0;
@@ -435,7 +436,7 @@ public class CostingService {
             boolean drift = false;
             if (variants) {
                 for (ProductVariant v : p.getVariants()) {
-                    String key = PreorderQueueService.lineKey(p.getId(), v.getId());
+                    String key = Lines.key(p.getId(), v.getId());
                     seen.add(key);
                     keys++;
                     if (onLots.getOrDefault(key, 0) != v.getStock()) {
@@ -445,7 +446,7 @@ public class CostingService {
                     }
                 }
             } else {
-                String key = PreorderQueueService.lineKey(p.getId(), null);
+                String key = Lines.key(p.getId(), null);
                 seen.add(key);
                 keys++;
                 if (onLots.getOrDefault(key, 0) != p.getStock()) {

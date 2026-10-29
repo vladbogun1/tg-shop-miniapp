@@ -5,7 +5,7 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.preorder.app.PreorderDtos.EtaDto;
+import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.tg.ShopBot;

@@ -3,8 +3,7 @@ package com.maxsolch.shop.preorder.app;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
-import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
-import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
+import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -14,8 +13,7 @@ import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,9 +53,7 @@ class PreorderQueueServiceTest {
     @Mock
     PreorderSubscriptionRepository subs;
     @Mock
-    PreorderBatchRepository batches;
-    @Mock
-    PreorderBatchItemRepository items;
+    BatchCatalog batches;
     @Mock
     ProductRepository products;
     @Mock
@@ -73,7 +69,7 @@ class PreorderQueueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PreorderQueueService(subs, batches, items, products, settings, events, messages,
+        service = new PreorderQueueService(subs, batches, products, settings, events, messages,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         product = new Product();
         product.setId(UuidUtil.toBytes(UUID.randomUUID()));
@@ -92,8 +88,8 @@ class PreorderQueueServiceTest {
             }
             return s;
         });
-        when(items.findPublicLines(any())).thenReturn(List.of());
-        when(items.findPublicLines()).thenReturn(List.of());
+        when(batches.publicLines(any())).thenReturn(List.of());
+        when(batches.publicLines()).thenReturn(List.of());
     }
 
     private SubscribeRequest req(int qty) {
@@ -134,7 +130,7 @@ class PreorderQueueServiceTest {
         product.setStock(1);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         verify(subs, never()).save(any());
     }
 
@@ -153,7 +149,7 @@ class PreorderQueueServiceTest {
         when(settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)).thenReturn(false);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -171,11 +167,11 @@ class PreorderQueueServiceTest {
     @Test
     void subscribeChecksQuantityAndTheLimitOfQueues() {
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(11)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
 
         when(subs.countByUserIdAndStatusIn(eq(USER), any())).thenReturn(20L);
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -183,7 +179,7 @@ class PreorderQueueServiceTest {
         product.setActive(false);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     // ---- hand-out
@@ -260,7 +256,7 @@ class PreorderQueueServiceTest {
     void someoneElsesPlaceCannotBeLeft() {
         when(subs.findById(1L)).thenReturn(Optional.of(seat(1, 99, Status.WAITING, 1, 0, 10)));
 
-        assertThatThrownBy(() -> service.unsubscribe(USER, 1)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.unsubscribe(USER, 1)).isInstanceOf(DomainException.NotFound.class);
     }
 
     @Test

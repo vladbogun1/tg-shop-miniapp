@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.i18n.BotTexts;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
-import com.maxsolch.shop.preorder.app.PreorderDtos.EtaDto;
+import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderNotifier;
 import com.maxsolch.shop.preorder.app.PreorderQueueService;

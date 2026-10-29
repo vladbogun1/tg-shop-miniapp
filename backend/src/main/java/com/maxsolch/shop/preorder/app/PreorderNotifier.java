@@ -4,7 +4,7 @@ import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.i18n.BotTexts;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.preorder.app.PreorderDtos.EtaDto;
+import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.tg.CustomerBot;
 import lombok.extern.slf4j.Slf4j;
@@ -177,7 +177,7 @@ public class PreorderNotifier {
     }
 
     private static String at(Instant t, DateTimeFormatter f) {
-        return t == null ? "" : t.atZone(PreorderQueueService.KYIV).format(f);
+        return t == null ? "" : t.atZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT).format(f);
     }
 
     private InlineKeyboardMarkup buyButton(MyPreorderDto p, Locale l) {

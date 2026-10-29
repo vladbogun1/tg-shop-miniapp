@@ -25,7 +25,7 @@ public final class PreorderCsv {
                     .append(s.qty()).append(';')
                     .append(cell(s.status())).append(';')
                     .append(cell(s.source())).append(';')
-                    .append(s.createdAt() == null ? "" : s.createdAt().atZone(PreorderQueueService.KYIV).format(TIME)).append(';')
+                    .append(s.createdAt() == null ? "" : s.createdAt().atZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT).format(TIME)).append(';')
                     .append(s.botBlocked() ? "true" : "false")
                     .append("\r\n");
         }

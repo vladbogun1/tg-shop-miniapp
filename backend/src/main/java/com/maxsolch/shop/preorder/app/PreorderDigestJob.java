@@ -80,7 +80,7 @@ public class PreorderDigestJob {
         if (token == null || token.isBlank() || chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
             return false;
         }
-        LocalDate today = LocalDate.now(clock.withZone(PreorderQueueService.KYIV));
+        LocalDate today = LocalDate.now(clock.withZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT));
         if (settings.system(DAY_KEY).map(today.toString()::equals).orElse(false)) {
             return false;
         }

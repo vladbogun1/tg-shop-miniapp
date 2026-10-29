@@ -20,7 +20,8 @@ import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
-import com.maxsolch.shop.preorder.app.PreorderQueueService;
+import com.maxsolch.shop.procurement.app.LineProducts;
+import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
@@ -67,13 +68,13 @@ public class MarginService {
     private final StockLotRepository lots;
     private final PreorderBatchRepository batches;
     private final PreorderBatchItemRepository batchItems;
-    private final PreorderQueueService queue;
+    private final LineProducts queue;
     private final MetricsFactsLoader facts;
     private final SettingsService settings;
 
     public MarginService(NamedParameterJdbcTemplate jdbc, CostingService costing, StockLotRepository lots,
                          PreorderBatchRepository batches, PreorderBatchItemRepository batchItems,
-                         PreorderQueueService queue, MetricsFactsLoader facts, SettingsService settings) {
+                         LineProducts queue, MetricsFactsLoader facts, SettingsService settings) {
         this.settings = settings;
         this.jdbc = jdbc;
         this.costing = costing;
@@ -475,7 +476,7 @@ public class MarginService {
         boolean preliminary = false;
         for (PreorderBatchItem i : lines) {
             Product p = products.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : PreorderQueueService.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
             int in = i.getQtyArrived() == null ? 0 : i.getQtyArrived();
             int l = batchLots.stream().filter(x -> x.getBatchItemId().equals(i.getId()))
                     .mapToInt(StockLot::getQtyLeft).sum();
