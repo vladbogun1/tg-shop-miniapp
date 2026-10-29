@@ -81,7 +81,8 @@ class OrderServiceTest {
     void setUp() {
         service = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages));
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));

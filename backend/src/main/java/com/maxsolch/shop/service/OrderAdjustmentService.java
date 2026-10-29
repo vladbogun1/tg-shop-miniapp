@@ -44,15 +44,18 @@ public class OrderAdjustmentService {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final OrderExchangeRepository exchangeRepository;
 
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
+                                  OrderStock stock,
                                   ApplicationEventPublisher events,
                                   OrderExchangeRepository exchangeRepository) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
+        this.stock = stock;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
     }
@@ -264,7 +267,7 @@ public class OrderAdjustmentService {
             if (line.restock()) {
                 // Never more than is still out of stock for this line.
                 int canRestock = item.getQuantity() - item.getRestockedQty();
-                orderService.restockItem(item, Math.min(line.quantity(), canRestock));
+                stock.restockUnits(item, Math.min(line.quantity(), canRestock));
             }
             units += line.quantity();
             parts.add(item.getTitleSnapshot() + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (не на склад)"));
@@ -401,7 +404,7 @@ public class OrderAdjustmentService {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
                     int canRestock = item.getQuantity() - item.getRestockedQty();
                     int restocked = Math.min(line.quantity(), canRestock);
-                    orderService.restockItem(item, restocked);
+                    stock.restockUnits(item, restocked);
                     rl.setRestockedQty(restocked);
                     parts.add(title + " ×" + line.quantity() + " (на склад)");
                     customerParts.add(title + " ×" + line.quantity());
@@ -636,7 +639,7 @@ public class OrderAdjustmentService {
             int restocked = 0;
             if (sellable > 0) {
                 restocked = Math.min(sellable, item.getQuantity() - item.getRestockedQty());
-                orderService.restockItem(item, restocked);
+                stock.restockUnits(item, restocked);
                 parts.add(title + " ×" + sellable + " (на склад)");
             }
             StockWriteoff w = null;
@@ -1051,7 +1054,7 @@ public class OrderAdjustmentService {
                 item.setReturnPendingQty(Math.max(0, item.getReturnPendingQty() - pending));
             }
             if (l.getRestockedQty() > 0) {
-                orderService.takeBackUnits(item, l.getRestockedQty());
+                stock.takeBackUnits(item, l.getRestockedQty());
             }
             if (l.getDefectQty() > 0 && writeoffs != null && l.getWriteoffId() != null) {
                 writeoffs.findById(l.getWriteoffId()).ifPresent(w -> {
@@ -1169,7 +1172,7 @@ public class OrderAdjustmentService {
                     line.setRestockedQty(Math.min(line.getQuantity(), line.getRestockedQty() + take));
                 }
                 // the units go back into the lots the order took them from, so their cost stays known
-                orderService.restockProduct(w.getProductId(), w.getVariantId(), take, line);
+                stock.restockProduct(w.getProductId(), w.getVariantId(), take, line);
                 restored += take;
                 move -= take;
                 if (move == 0) {
@@ -1178,7 +1181,7 @@ public class OrderAdjustmentService {
             }
             orderRepository.save(order);
         }
-        orderService.restockProduct(w.getProductId(), w.getVariantId(), quantity - restored, null);
+        stock.restockProduct(w.getProductId(), w.getVariantId(), quantity - restored, null);
         w.setUndoneQty(w.getUndoneQty() + quantity);
         w.setUndoneAt(Instant.now());
         w.setUndoneBy(adminName);

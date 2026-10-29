@@ -86,11 +86,9 @@ class OrderStockTest {
     }
 
     private OrderService newService() {
-        OrderService s = new OrderService(orderRepository, productRepository, promoCodeRepository,
-                paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager);
-        s.setLedger(lots);
-        s.setPreorders(queue);
-        return s;
+        return new OrderService(orderRepository, productRepository, promoCodeRepository,
+                paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
+                new OrderStock(productRepository, messages, lots, queue));
     }
 
     private Product product(int stock) {

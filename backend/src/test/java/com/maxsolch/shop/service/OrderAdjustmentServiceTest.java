@@ -67,10 +67,11 @@ class OrderAdjustmentServiceTest {
 
     @BeforeEach
     void setUp() {
+        OrderStock stock = StockFixtures.stock(productRepository, messages);
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
-        service = new OrderAdjustmentService(orderRepository, orderService, events, exchangeRepository);
+                promoService, cartService, messages, entityManager, stock);
+        service = new OrderAdjustmentService(orderRepository, orderService, stock, events, exchangeRepository);
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -365,7 +366,8 @@ class OrderAdjustmentServiceTest {
         o.setPaid(true);
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages));
 
         Order delivered = orderService.deliver(o.getId());
 
@@ -677,7 +679,8 @@ class OrderAdjustmentServiceTest {
 
         OrderService orderService = new OrderService(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages));
         Order delivered = orderService.deliver(o.getId());
 
         assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);

@@ -88,7 +88,8 @@ class OrderTransitionsTest {
     void setUp() {
         service = new OrderService(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
-                entityManager);
+                entityManager,
+                StockFixtures.stock(productRepository, messages));
         service.setGiftService(giftService);
         service.setMoneyLedger(ledger);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -540,7 +541,7 @@ class OrderTransitionsTest {
 
     @Test
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
-        OrderAdjustmentService adjust = new OrderAdjustmentService(orderRepository, service, events, exchangeRepository);
+        OrderAdjustmentService adjust = new OrderAdjustmentService(orderRepository, service, StockFixtures.stock(productRepository, messages), events, exchangeRepository);
         Order o = order(OrderStatus.DELIVERED);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");
