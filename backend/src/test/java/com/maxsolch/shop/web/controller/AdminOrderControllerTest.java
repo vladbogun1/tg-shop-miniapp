@@ -95,7 +95,7 @@ class AdminOrderControllerTest {
     }
 
     AdminOrderController controller() {
-        AdminOrderQueries lookup = new AdminOrderQueries(orders, queries, null);
+        AdminOrderQueries lookup = new AdminOrderQueries(orders, queries);
         return new AdminOrderController(lookup,
                 new AdminOrderStatusService(lookup, orderService, payments, audit),
                 new ReturnWizardService(lookup, orderService, adjustments, payments, audit),

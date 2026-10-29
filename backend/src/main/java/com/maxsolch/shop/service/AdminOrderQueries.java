@@ -1,8 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.SenderType;
@@ -16,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,14 +45,10 @@ public class AdminOrderQueries {
 
     private final OrderRepository orderRepository;
     private final OrderQueryService orderQueryService;
-    /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
-    private final AppProperties props;
 
-    public AdminOrderQueries(OrderRepository orderRepository, OrderQueryService orderQueryService,
-                             AppProperties props) {
+    public AdminOrderQueries(OrderRepository orderRepository, OrderQueryService orderQueryService) {
         this.orderRepository = orderRepository;
         this.orderQueryService = orderQueryService;
-        this.props = props;
     }
 
     /** The order of the {@code /api/admin/orders/{id}} URL; 404 for a malformed or unknown id. */
@@ -69,16 +62,12 @@ public class AdminOrderQueries {
         return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
     }
 
-    private OrderWindow window(String range, String from, String to) {
-        return OrderWindow.parse(range, from, to, AnalyticsZone.of(props), Instant.now());
-    }
-
     /**
-     * Kanban board grouped by status (q filtered, newest first, capped). The range applies to the
-     * closed columns (DELIVERED / REJECTED) only; {@code closedLimit} caps those columns.
+     * Kanban board grouped by status (q filtered, newest first, capped). The window applies to the
+     * closed columns (DELIVERED / REJECTED) only; {@code closedLimit} caps those columns. The caller
+     * cuts the window (the shop's timezone is its business, not this class's).
      */
-    public OrderBoardDto board(String q, String range, String from, String to, Integer closedLimit) {
-        OrderWindow w = window(range, from, to);
+    public OrderBoardDto board(String q, OrderWindow w, Integer closedLimit) {
         OrderSearchTerm term = OrderSearchTerm.parse(q);
         int closedCap = closedLimit == null
                 ? BOARD_COLUMN_LIMIT
@@ -153,10 +142,9 @@ public class AdminOrderQueries {
     }
 
     /** One page of the order table. {@code archived} picks the archive instead of the live orders. */
-    public List<OrderCardDto> list(OrderStatus statusFilter, String q, String range, String from, String to,
+    public List<OrderCardDto> list(OrderStatus statusFilter, String q, OrderWindow w,
                                    int page, int size, String sortBy, String sortDir, boolean archived) {
         OrderSearchTerm term = OrderSearchTerm.parse(q);
-        OrderWindow w = window(range, from, to);
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
                 sortOf(sortBy, sortDir));
         return orderQueryService.toCards(

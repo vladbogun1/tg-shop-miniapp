@@ -1,6 +1,8 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.common.MoneyFormat;
+import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
@@ -18,6 +20,7 @@ import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderMergeService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.service.OrderWindow;
 import com.maxsolch.shop.service.ReturnWizardService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.SecurityUtil;
@@ -46,6 +49,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +71,18 @@ public class AdminOrderController {
     private final UploadValidator uploadValidator;
     private final OrderAdjustmentService adjustments;
     private final OnlinePaymentService payments;
+
+    /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
+    private AppProperties props;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setProps(AppProperties props) {
+        this.props = props;
+    }
+
+    private OrderWindow window(String range, String from, String to) {
+        return OrderWindow.parse(range, from, to, AnalyticsZone.of(props), Instant.now());
+    }
 
     /** Merging orders (V71). */
     private OrderMergeService merges;
@@ -121,7 +137,7 @@ public class AdminOrderController {
                                @RequestParam(required = false) String from,
                                @RequestParam(required = false) String to,
                                @RequestParam(required = false) Integer closedLimit) {
-        return queries.board(q, range, from, to, closedLimit);
+        return queries.board(q, window(range, from, to), closedLimit);
     }
 
     @GetMapping("/by-user/{telegramUserId}")
@@ -142,7 +158,7 @@ public class AdminOrderController {
                                    @RequestParam(defaultValue = "createdAt") String sortBy,
                                    @RequestParam(defaultValue = "desc") String sortDir,
                                    @RequestParam(defaultValue = "false") boolean archived) {
-        return queries.list(parseStatusOrNull(status), q, range, from, to, page, size, sortBy, sortDir, archived);
+        return queries.list(parseStatusOrNull(status), q, window(range, from, to), page, size, sortBy, sortDir, archived);
     }
 
     @GetMapping("/dispatch")
