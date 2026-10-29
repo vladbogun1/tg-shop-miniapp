@@ -167,7 +167,8 @@ public class SellerChannel {
         if (!enabled()) {
             return;
         }
-        ping(name, journalType, order, journalSummary, text, chatId());
+        ping(name + " failed for order " + idStr(order), orderEntry(journalType, order, journalSummary), text,
+                "/orders/" + idStr(order), chatId());
     }
 
     /** Same, but a chat id of {@code "0"} counts as «not configured» (payment and cancel-request notes). */
@@ -176,11 +177,24 @@ public class SellerChannel {
         if (!enabled()) {
             return;
         }
-        ping(name, journalType, order, journalSummary, text, chatIdZeroIsUnset());
+        ping(name + " failed for order " + idStr(order), orderEntry(journalType, order, journalSummary), text,
+                "/orders/" + idStr(order), chatIdZeroIsUnset());
     }
 
-    private void ping(String name, String journalType, Order order, String journalSummary,
-                      Supplier<String> text, String chatId) {
+    /**
+     * A note into the chat topic that is not about an order (a support thread): the caller's journal
+     * entry (type, customer, details, summary) and the admin page the button opens ({@code adminPath},
+     * e.g. {@code /support?thread=…}). A chat id of {@code "0"} counts as «not configured».
+     */
+    public void pingChatTopicUnlessZero(String failure, ActivityLog.Entry entry, String adminPath,
+                                        Supplier<String> text) {
+        if (!enabled()) {
+            return;
+        }
+        ping(failure, entry, text, adminPath, chatIdZeroIsUnset());
+    }
+
+    private void ping(String failure, ActivityLog.Entry entry, Supplier<String> text, String adminPath, String chatId) {
         if (chatId == null) {
             return;
         }
@@ -189,15 +203,48 @@ public class SellerChannel {
                     .chatId(chatId)
                     .text(text.get())
                     .parseMode("HTML")
-                    .replyMarkup(adminButtons(order))
+                    .replyMarkup(adminButton(adminPath))
                     .build();
             int topic = props.getTelegram().getNotifyTopicChat();
             if (topic > 0) {
                 msg.setMessageThreadId(topic);
             }
-            toAdmins(journalType, order, msg, journalSummary);
+            toAdmins(entry, msg);
         } catch (Exception e) {
-            log.warn("{} failed for order {}: {}", name, idStr(order), e.getMessage());
+            log.warn("{}: {}", failure, e.getMessage());
+        }
+    }
+
+    // ----- a personal DM to one admin -----
+
+    /** The bot is on and this is a real Telegram user (id > 0): an admin's own chat can be written to. */
+    public boolean canDmAdmin(long adminId) {
+        return enabled() && adminId > 0;
+    }
+
+    /**
+     * One HTML message into an admin's private chat, journaled as {@code entry} (the caller sets type and
+     * summary: an invite link or an alert's IPs do not belong in the journal). Best-effort, and a failure
+     * is only an {@code info} line — typically the admin never pressed /start in the bot.
+     *
+     * @return whether the message went out
+     */
+    public boolean dmAdmin(String failure, long adminId, ActivityLog.Entry entry, String text, InlineKeyboardMarkup markup) {
+        if (!canDmAdmin(adminId)) {
+            return false;
+        }
+        try {
+            // The message is built inside the journaled call: a text that cannot be sent is a FAILED row.
+            activity.bot(entry.toAdmins(String.valueOf(adminId)), () -> bot.execute(SendMessage.builder()
+                    .chatId(String.valueOf(adminId))
+                    .text(text)
+                    .parseMode("HTML")
+                    .replyMarkup(markup)
+                    .build()));
+            return true;
+        } catch (Exception e) {
+            log.info("{}: {}", failure, e.getMessage());
+            return false;
         }
     }
 
@@ -312,11 +359,23 @@ public class SellerChannel {
      * journal: the seller's cards carry the customer's phone and address, which do not belong there.
      */
     private Message toAdmins(String type, Order order, SendMessage msg, String summary) throws TelegramApiException {
-        return activity.bot(ActivityLog.Entry.bot(type).toAdmins(msg.getChatId()).order(order.getId())
-                .customer(order.getTgUserId()).text(summary), () -> bot.execute(msg));
+        return toAdmins(orderEntry(type, order, summary), msg);
+    }
+
+    private Message toAdmins(ActivityLog.Entry entry, SendMessage msg) throws TelegramApiException {
+        return activity.bot(entry.toAdmins(msg.getChatId()), () -> bot.execute(msg));
+    }
+
+    private static ActivityLog.Entry orderEntry(String type, Order order, String summary) {
+        return ActivityLog.Entry.bot(type).order(order.getId()).customer(order.getTgUserId()).text(summary);
     }
 
     private InlineKeyboardMarkup adminButtons(Order order) {
+        return adminButton("/orders/" + idStr(order));
+    }
+
+    /** The «open in admin» button for an admin page; null until a public HTTPS admin URL is configured. */
+    private InlineKeyboardMarkup adminButton(String adminPath) {
         String adminBase = props.getAdminBaseUrl();
         // Skip buttons until a public HTTPS admin URL is configured (local http://localhost is
         // rejected by Telegram and would fail the whole message send).
@@ -325,7 +384,7 @@ public class SellerChannel {
         }
         InlineKeyboardButton open = InlineKeyboardButton.builder()
                 .text("🔎 Открыть в админке")
-                .url(adminBase + "/orders/" + idStr(order))
+                .url(adminBase + adminPath)
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(open))).build();
     }

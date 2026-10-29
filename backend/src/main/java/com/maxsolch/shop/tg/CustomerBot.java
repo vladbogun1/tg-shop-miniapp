@@ -35,8 +35,15 @@ import static com.maxsolch.shop.tg.TgFormat.isHttps;
 @Component
 public class CustomerBot {
 
-    /** What to send: the HTML text and the (optional) inline keyboard. */
-    public record Dm(String text, InlineKeyboardMarkup markup) {
+    /**
+     * What to send: the HTML text, the (optional) inline keyboard and what the journal keeps instead
+     * of the text (null = the text itself; a personal promo code, say, does not belong in the journal).
+     */
+    public record Dm(String text, InlineKeyboardMarkup markup, String journalText) {
+
+        public Dm(String text, InlineKeyboardMarkup markup) {
+            this(text, markup, text);
+        }
     }
 
     private final ShopBot bot;
@@ -58,7 +65,11 @@ public class CustomerBot {
 
     /** The bot is on and the order's customer has a Telegram chat to write to (tg_user_id > 0). */
     public boolean canReach(Order order) {
-        Long tgUserId = order.getTgUserId();
+        return canReach(order.getTgUserId());
+    }
+
+    /** The bot is on and this Telegram user is a real chat to write to (id > 0). */
+    public boolean canReach(Long tgUserId) {
         return enabled() && tgUserId != null && tgUserId > 0;
     }
 
@@ -73,19 +84,36 @@ public class CustomerBot {
         if (!canReach(order)) {
             return false;
         }
-        Long tgUserId = order.getTgUserId();
+        return deliver(name + " failed for order " + idStr(order), order.getTgUserId(), journal(journalType, order), compose);
+    }
+
+    /**
+     * The same for a customer who is not tied to an order (a support thread, a review, a place in the
+     * pre-order queue). {@code entry} is the journal row without its text; {@code failure} is the log line
+     * prefix for a failed send. {@code compose} may return null: there is nothing to say after all.
+     *
+     * @return whether the message went out
+     */
+    public boolean sendTo(String failure, Long tgUserId, ActivityLog.Entry entry, Function<Locale, Dm> compose) {
+        return canReach(tgUserId) && deliver(failure, tgUserId, entry, compose);
+    }
+
+    private boolean deliver(String failure, Long tgUserId, ActivityLog.Entry entry, Function<Locale, Dm> compose) {
         try {
             Dm dm = compose.apply(messages.localeOf(tgUserId));
+            if (dm == null) {
+                return false;
+            }
             SendMessage msg = SendMessage.builder()
                     .chatId(String.valueOf(tgUserId))
                     .text(dm.text())
                     .parseMode("HTML")
                     .replyMarkup(dm.markup())
                     .build();
-            activity.bot(journal(journalType, order).text(msg.getText()), () -> bot.execute(msg));
+            activity.bot(entry.text(dm.journalText()), () -> bot.execute(msg));
             return true;
         } catch (Exception e) {
-            log.warn("{} failed for order {}: {}", name, idStr(order), e.getMessage());
+            log.warn("{}: {}", failure, e.getMessage());
             return false;
         }
     }
@@ -127,6 +155,11 @@ public class CustomerBot {
     /** Opens the order's chat in the Mini App. */
     public InlineKeyboardMarkup chatButton(Order order, Locale locale) {
         return webAppButton(messages.get(locale, "bot.openChat"), "?startapp=order_" + idStr(order));
+    }
+
+    /** Opens the Mini App ({@code startApp} null = its home) with the given button text. */
+    public InlineKeyboardMarkup miniAppButton(String text, String startApp) {
+        return webAppButton(text, startApp == null ? "" : "?startapp=" + startApp);
     }
 
     private InlineKeyboardMarkup webAppButton(String text, String startApp) {
