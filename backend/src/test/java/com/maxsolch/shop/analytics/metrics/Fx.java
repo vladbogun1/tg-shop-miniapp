@@ -32,6 +32,7 @@ final class Fx {
         long discount = 0;
         long received = 0;
         long refunded = 0;
+        long uncollected = 0;
         Instant created;
         Instant approved;
         Instant shipped;
@@ -156,6 +157,14 @@ final class Fx {
             return this;
         }
 
+        /** Partial pickup (V72): {@code minor} refused at the branch; delivery books only the rest. */
+        O pickedUpPart(Instant deliveredAt, long uncollectedMinor) {
+            uncollected = uncollectedMinor;
+            delivered(deliveredAt);
+            received = Math.max(received - uncollectedMinor, 0);
+            return this;
+        }
+
         O rejectedAt(Instant at) {
             status = OrderStatus.REJECTED;
             rejectedAt = at;
@@ -166,7 +175,7 @@ final class Fx {
             return new OrderFact(id, status, source, total, subtotal, discount, received, refunded, created,
                     approved, shipped, delivered, rejectedAt, paidAt, returnedAt, paid, tg, "Покупатель " + tg,
                     "user" + tg, delivery, payment, promo, reason, reasonCode, prepayment, dueAt, onlinePaid,
-                    onlinePaidAt, onlineRefundAt);
+                    onlinePaidAt, onlineRefundAt, uncollected);
         }
     }
 

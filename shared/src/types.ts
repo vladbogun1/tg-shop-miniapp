@@ -227,6 +227,12 @@ export interface OrderItem {
   caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
   /** A case prize whose size the customer has not chosen yet (V59). */
   variantPending?: boolean;
+  /** Units the customer gave back (a return, or refused at the post office and already received). */
+  returnedQty?: number;
+  /** Units on their way back to the shop (V68). */
+  returnPendingQty?: number;
+  /** What one unit actually cost: the price with the order discount spread in (V68). */
+  unitPaidMinor?: number;
 }
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
@@ -326,6 +332,8 @@ export interface OrderSummary {
   giftCaseStatus?: "SEALED" | "OPENED" | null;
   /** SEALED and the order is paid (not rejected): the customer can open it now. */
   giftCaseOpenable?: boolean;
+  /** Refused at the Nova Poshta branch (partial pickup): not paid for. */
+  uncollectedMinor?: number;
 }
 
 /** Customer's request to cancel a PAID order (one per order). */
@@ -355,6 +363,8 @@ export interface OrderDetail {
   giftDiscountMinor?: number;
   /** Replacement of an exchange on that order (V69): the difference is paid online or on delivery. */
   exchangeOfId?: string | null;
+  /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
+  uncollectedMinor?: number;
   /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
   gift?: OrderGift | null;
   totalMinor: number;
@@ -417,6 +427,8 @@ export interface OrderCard {
   amountDueMinor?: number;
   /** PENDING = the customer asks to cancel this paid order. */
   cancelRequestStatus?: CancelRequestStatus | null;
+  /** Refused at the Nova Poshta branch (partial pickup): the card shows total − this. */
+  uncollectedMinor?: number;
 }
 
 // ---- chat -------------------------------------------------------------------

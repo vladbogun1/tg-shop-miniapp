@@ -2,24 +2,21 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
-import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
+import com.maxsolch.shop.payment.CustomerPaymentRefresh;
 import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.repository.AdminUserRepository;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.service.CustomerOrders;
+import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.PromoService;
 import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
@@ -57,9 +54,8 @@ import java.util.Locale;
 @PreAuthorize("hasRole('CUSTOMER')")
 public class MeController {
 
-    private final UserRepository userRepository;
-    private final AdminUserRepository adminUserRepository;
-    private final OrderRepository orderRepository;
+    private final CustomerProfileService profiles;
+    private final CustomerOrders customerOrders;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
     private final OrderService orderService;
@@ -69,6 +65,7 @@ public class MeController {
     private final ClientEventService clientEventService;
     private final Messages messages;
     private final OnlinePaymentService onlinePayments;
+    private final CustomerPaymentRefresh paymentRefresh;
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.payment.CancelRequestService cancelRequests;
     @org.springframework.beans.factory.annotation.Autowired
@@ -76,8 +73,6 @@ public class MeController {
     /** «Журнал → Бот и сайт»: what the customer did here (optional — tests build the controller bare). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.maxsolch.shop.journal.ActivityLog activity;
-    /** Last customer-triggered status poll per order: at most one call to monobank per 5 s. */
-    private final java.util.Map<String, java.time.Instant> lastRefresh = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Opening the gift case (V57); a setter so the unit tests' constructor stays as it is. */
     private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
@@ -87,9 +82,8 @@ public class MeController {
         this.giftCaseService = giftCaseService;
     }
 
-    public MeController(UserRepository userRepository,
-                        AdminUserRepository adminUserRepository,
-                        OrderRepository orderRepository,
+    public MeController(CustomerProfileService profiles,
+                        CustomerOrders customerOrders,
                         OrderQueryService orderQueryService,
                         MessageService messageService,
                         OrderService orderService,
@@ -98,10 +92,10 @@ public class MeController {
                         PromoService promoService,
                         ClientEventService clientEventService,
                         Messages messages,
-                        OnlinePaymentService onlinePayments) {
-        this.userRepository = userRepository;
-        this.adminUserRepository = adminUserRepository;
-        this.orderRepository = orderRepository;
+                        OnlinePaymentService onlinePayments,
+                        CustomerPaymentRefresh paymentRefresh) {
+        this.profiles = profiles;
+        this.customerOrders = customerOrders;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.orderService = orderService;
@@ -111,6 +105,7 @@ public class MeController {
         this.clientEventService = clientEventService;
         this.messages = messages;
         this.onlinePayments = onlinePayments;
+        this.paymentRefresh = paymentRefresh;
     }
 
     /**
@@ -166,17 +161,10 @@ public class MeController {
     public ResponseEntity<Void> setLocale(@RequestParam String locale) {
         java.util.Locale parsed = Messages.normalize(locale);
         if (parsed != null) {
-            long userId = SecurityUtil.currentUserId();
-            userRepository.findById(userId).ifPresent(user -> {
-                String before = user.getLocale();
-                user.setLocale(parsed.getLanguage());
-                userRepository.save(user);
-                if (!parsed.getLanguage().equals(before)) {
+            profiles.changeLocale(SecurityUtil.currentUserId(), parsed.getLanguage()).ifPresent(change ->
                     journal(ActivityLog.fromRequest("LOCALE_CHANGED")
-                            .text("Язык: " + (before == null ? "—" : before) + " → " + parsed.getLanguage())
-                            .detail("from", before).detail("to", parsed.getLanguage()));
-                }
-            });
+                            .text("Язык: " + (change.before() == null ? "—" : change.before()) + " → " + change.after())
+                            .detail("from", change.before()).detail("to", change.after())));
         }
         return ResponseEntity.noContent().build();
     }
@@ -192,12 +180,7 @@ public class MeController {
     @GetMapping
     @Operation(summary = "Current customer profile")
     public MeProfileDto me() {
-        long userId = SecurityUtil.currentUserId();
-        boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(userId);
-        return userRepository.findById(userId)
-                .map(u -> new MeProfileDto(u.getTelegramUserId(), u.getUsername(),
-                        u.getFirstName(), u.getLastName(), admin))
-                .orElseGet(() -> new MeProfileDto(userId, null, null, null, admin));
+        return profiles.profile(SecurityUtil.currentUserId());
     }
 
     @GetMapping("/unread-count")
@@ -215,10 +198,8 @@ public class MeController {
     @GetMapping("/orders")
     @Operation(summary = "List my orders")
     public List<OrderSummaryDto> myOrders() {
-        long userId = SecurityUtil.currentUserId();
         // Unread and item counts come from two grouped queries, not one pair per order.
-        return orderQueryService.toSummaries(orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .filter(o -> o.getArchivedAt() == null).toList());
+        return orderQueryService.toSummaries(customerOrders.activeOf(SecurityUtil.currentUserId()));
     }
 
     @GetMapping("/orders/{id}")
@@ -344,15 +325,7 @@ public class MeController {
             + "payment page) and return the order")
     public OrderDetailDto refreshPayment(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
-        java.time.Instant now = java.time.Instant.now();
-        java.time.Instant last = lastRefresh.get(id);
-        if (last == null || last.plusSeconds(5).isBefore(now)) {
-            lastRefresh.put(id, now);
-            if (lastRefresh.size() > 10_000) {
-                lastRefresh.clear();
-            }
-            onlinePayments.refreshOrder(order.getId());
-        }
+        paymentRefresh.refreshIfDue(id, order.getId());
         return orderQueryService.toDetail(orderService.get(order.getId()), ContentLocale.normalize(locale));
     }
 
@@ -422,21 +395,7 @@ public class MeController {
     }
 
     private Order ownedOrder(String id) {
-        byte[] key;
-        try {
-            key = UuidUtil.toBytes(id);
-        } catch (IllegalArgumentException e) {
-            throw new NotFoundException(messages.current("api.order.notFound"));
-        }
-        Order order = orderRepository.findById(key)
-                // Archived orders are gone for the customer (V68): no chat, case or cancel on them.
-                .filter(o -> o.getArchivedAt() == null)
-                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
-        long userId = SecurityUtil.currentUserId();
-        if (order.getUserId() == null || order.getUserId() != userId) {
-            throw new ForbiddenException(messages.current("api.order.notYours"));
-        }
-        return order;
+        return customerOrders.ownedBy(id, SecurityUtil.currentUserId());
     }
 
     private void journal(ActivityLog.Entry entry) {

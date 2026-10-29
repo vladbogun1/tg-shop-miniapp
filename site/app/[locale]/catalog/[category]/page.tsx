@@ -11,7 +11,7 @@ import { SITE_URL } from "@/lib/config";
 import { localeOf } from "@/lib/route";
 import { CategoryIntro, SHOW_CATEGORY_INTRO } from "@/components/catalog/CategoryIntro";
 import { catalogPageMeta, categoryTitle, categoryWords, metaPrice } from "@/lib/seo";
-import { getCategories, getCategory, getListingProducts, NotFoundError, safe } from "@/lib/server-api";
+import { getCategories, getCategory, getListingProducts, getPreorderIndex, NotFoundError, safe } from "@/lib/server-api";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is
@@ -103,7 +103,8 @@ export default async function CategoryPage({
   const state = await parseCatalogState(`/catalog/${c.slug}`, searchParams);
   // «Уцінка» is a condition collection: no condition facet, no condition filter.
   const filter = { ...state.filter, q: undefined, ...(c.isSale ? { conditions: [] } : {}) };
-  const listing = c.products ? computeListing(c.schema, c.products, { ...filter, category: c.slug }, state.sort, state.page, locale, state.from) : null;
+  const pre = await getPreorderIndex(locale);
+  const listing = c.products ? computeListing(c.schema, c.products, { ...filter, category: c.slug }, state.sort, state.page, locale, state.from, pre) : null;
 
   const heading = c.detail?.h1?.trim() || c.name;
   const intro = c.detail?.introText?.trim();
@@ -127,7 +128,8 @@ export default async function CategoryPage({
         tree={tree}
         activeSlug={c.slug}
         chips={root && root.children.length > 0 ? { root, children: root.children } : null}
-        card={cardContext(c.schema, locale)}
+        card={cardContext(c.schema, locale, pre)}
+        coming={(pre?.size ?? 0) > 0}
         footer={
           SHOW_CATEGORY_INTRO && intro && state.page === 1 ? (
             <CategoryIntro locale={locale} title={heading} text={intro} />

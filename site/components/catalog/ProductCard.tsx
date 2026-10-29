@@ -5,7 +5,7 @@
  * whole picture/title is a real link (open in new tab works); hover lifts the card, lightens the
  * border, draws the orange bottom line and zooms the photo. Out of stock: desaturated photo.
  */
-import { ShoppingBag, SlidersHorizontal } from "lucide-react";
+import { Bell, Check, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { toast } from "@/components/ui/Toast";
 import { useI18n } from "@/i18n/context";
@@ -14,17 +14,25 @@ import type { CardProduct } from "@/lib/card";
 import { stockOf, useCart } from "@/lib/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
+import { PreorderBadge } from "@/components/preorder/PreorderPanel";
+import { cardEtaLine, isLive, useMyPreorders } from "@/lib/preorder";
 import { RatingMini } from "@/components/reviews/RatingLink";
 import { CompareToggle } from "@/components/compare/CompareToggle";
 import { useFmt } from "@/lib/use-fmt";
 
 export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
-  const { t, href } = useI18n();
+  const { t, href, locale } = useI18n();
   const fmt = useFmt();
+  const mine = useMyPreorders().data;
   const add = useCart((s) => s.add);
   const hasVariants = (product.variants?.length ?? 0) > 0;
   const stock = stockOf(product, null);
   const inStock = stock > 0;
+  const pre = !inStock ? product.preorder ?? null : null;
+  // my places in this product (signed in): held units can be bought, a waiting place is shown as such
+  const myLive = inStock ? [] : mine.filter((m) => m.productId === product.id && isLive(m.status));
+  const held = myLive.find((m) => m.status === "HELD" || m.status === "NOTIFIED");
+  const queued = !held && myLive.length > 0;
   const off = discountPercent(product.priceMinor, product.compareAtMinor);
   const url = href(`/product/${product.slug}`);
   const used = product.condition === "MARKDOWN" || product.condition === "USED" ? product.condition : null;
@@ -33,7 +41,7 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
   return (
     <article className="nb nb-hover group relative flex h-full flex-col overflow-hidden">
       <Link href={url} className="flex flex-1 flex-col" aria-label={product.title}>
-        <div className={`relative aspect-square w-full overflow-hidden bg-[var(--surface-2)] ${inStock ? "" : "[&_img]:grayscale-[.85] [&_img]:opacity-60"}`}>
+        <div className={`relative aspect-square w-full overflow-hidden bg-[var(--surface-2)] ${inStock || pre || held ? "" : "[&_img]:grayscale-[.85] [&_img]:opacity-60"}`}>
           <Image
             src={image?.url}
             alt={product.title}
@@ -43,14 +51,18 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
             className="h-full w-full"
             imgClassName="group-hover:scale-[1.04]"
           />
-          <span
-            className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] ${
-              inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
-            }`}
-          >
-            <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
-            {inStock ? t("product.inStock") : t("product.outOfStock")}
-          </span>
+          {pre ? (
+            <PreorderBadge label={t("preorder.badge")} className="absolute left-2 top-2 max-w-[calc(100%-1rem)]" />
+          ) : (
+            <span
+              className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] ${
+                inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
+              }`}
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
+              {inStock ? t("product.inStock") : t("product.outOfStock")}
+            </span>
+          )}
           {/* on the photo from sm up; a phone tile (~140–170 px) has no room for it next to «В наявності»
               — there it sits in the price row instead */}
           {off > 0 && (
@@ -89,10 +101,37 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
               </span>
             )}
           </div>
+          {pre && (
+            <p className="line-clamp-1 font-display text-[12px] font-semibold text-[var(--pre)]">{cardEtaLine(pre, t, locale)}</p>
+          )}
         </div>
       </Link>
       <div className="p-3 sm:p-4">
-        {hasVariants || !inStock ? (
+        {held ? (
+          <Link
+            href={url}
+            className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-2 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
+          >
+            <ShoppingBag className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
+            <span className="truncate">{t("preorder.card.held")}</span>
+          </Link>
+        ) : queued ? (
+          <Link
+            href={url}
+            className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[12px] font-semibold text-[var(--muted)] sm:text-[13px]"
+          >
+            <Check className="h-4 w-4 shrink-0 text-[var(--ok)] max-[359px]:hidden" strokeWidth={2.5} />
+            <span className="truncate">{t("preorder.card.inQueue")}</span>
+          </Link>
+        ) : pre ? (
+          <Link
+            href={url}
+            className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--pre)] bg-transparent px-2 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--pre-soft)] sm:text-[13px]"
+          >
+            <Bell className="h-4 w-4 shrink-0 text-[var(--pre)] max-[359px]:hidden" strokeWidth={2.25} />
+            <span className="truncate">{t("preorder.card.notify")}</span>
+          </Link>
+        ) : hasVariants || !inStock ? (
           <Link
             href={url}
             aria-disabled={!inStock}

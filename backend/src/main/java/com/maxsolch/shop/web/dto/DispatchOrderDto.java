@@ -9,6 +9,7 @@ import java.util.List;
  *   receivedMinor = already paid (prepayment, or full when paid)
  *   codMinor      = total - received → the amount to collect at Nova Poshta
  */
+@lombok.Builder
 public record DispatchOrderDto(
         String id,
         String shortId,

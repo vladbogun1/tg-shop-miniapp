@@ -23,6 +23,7 @@ import { useEffect } from "react";
 import { cartSignature, type CartLineInput, type ServerCart, type ServerCartLine } from "@shop/shared";
 import { api, isAuthFailure, putCartOnUnload } from "./api";
 import { lineKey, useCart, type CartLine } from "./cart";
+import { holdFloor } from "./preorder-core";
 import { SESSION_KEY, useSession } from "./session";
 
 const WRITE_DEBOUNCE_MS = 400;
@@ -63,7 +64,7 @@ function toLine(s: ServerCartLine, prev: CartLine | undefined): CartLine {
     currency: s.currency,
     imageUrl: s.imageUrl,
     // The UI already treats stock 0 as "cannot be ordered" (greyed out, checkout blocked).
-    stock: s.available ? s.stock : 0,
+    stock: holdFloor(s.productId, s.variantId, s.available ? s.stock : 0),
     quantity: s.quantity,
     previousPriceMinor: priceChanged ? prev!.priceMinor : (prev?.previousPriceMinor ?? null),
   };

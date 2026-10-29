@@ -1,0 +1,102 @@
+=== uk / openable
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Вам подарували кейс! Замовлення #1a2b3c4d Відкрийте його в замовленні в магазині — товар додамо до посилки безкоштовно, знижку дамо промокодом.
+  tgUserId=101
+  type=ORDER_GIFT_CASE
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Вам подарували кейс!</b>
+Замовлення <b>#1a2b3c4d</b>
+Відкрийте його в замовленні в магазині — товар додамо до посилки безкоштовно, знижку дамо промокодом.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / after payment
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Вам подарували кейс! Замовлення #1a2b3c4d Кейс відкриється після оплати замовлення — товар додамо до посилки безкоштовно, знижку дамо промокодом.
+  tgUserId=101
+  type=ORDER_GIFT_CASE
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Вам подарували кейс!</b>
+Замовлення <b>#1a2b3c4d</b>
+Кейс відкриється після оплати замовлення — товар додамо до посилки безкоштовно, знижку дамо промокодом.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / openable
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Вам подарили кейс! Заказ #1a2b3c4d Откройте его в заказе в магазине — товар добавим в посылку бесплатно, скидку дадим промокодом.
+  tgUserId=102
+  type=ORDER_GIFT_CASE
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Вам подарили кейс!</b>
+Заказ <b>#1a2b3c4d</b>
+Откройте его в заказе в магазине — товар добавим в посылку бесплатно, скидку дадим промокодом.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / after payment
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Вам подарили кейс! Заказ #1a2b3c4d Кейс откроется после оплаты заказа — товар добавим в посылку бесплатно, скидку дадим промокодом.
+  tgUserId=102
+  type=ORDER_GIFT_CASE
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Вам подарили кейс!</b>
+Заказ <b>#1a2b3c4d</b>
+Кейс откроется после оплаты заказа — товар добавим в посылку бесплатно, скидку дадим промокодом.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / openable
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 You got a gift case! Order #1a2b3c4d Open it in your order in the shop — a product goes into your parcel for free, a discount comes as a promo code.
+  tgUserId=103
+  type=ORDER_GIFT_CASE
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>You got a gift case!</b>
+Order <b>#1a2b3c4d</b>
+Open it in your order in the shop — a product goes into your parcel for free, a discount comes as a promo code.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / after payment
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 You got a gift case! Order #1a2b3c4d The case opens once the order is paid — a product goes into your parcel for free, a discount comes as a promo code.
+  tgUserId=103
+  type=ORDER_GIFT_CASE
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>You got a gift case!</b>
+Order <b>#1a2b3c4d</b>
+The case opens once the order is paid — a product goes into your parcel for free, a discount comes as a promo code.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

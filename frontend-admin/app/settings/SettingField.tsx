@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/cn";
@@ -47,6 +48,15 @@ export function SettingField({
               <span className="font-display text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{item.unit}</span>
             ) : undefined
           }
+        />
+      </div>
+    ) : item.type === "SELECT" ? (
+      <div className="w-full max-w-[260px]">
+        <Select<string>
+          label={item.label}
+          value={String(entry.raw)}
+          onChange={(v) => onChange(v)}
+          options={item.options ?? []}
         />
       </div>
     ) : item.type === "TEXT" ? (

@@ -1,0 +1,57 @@
+=== uk
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Номер ТТН у замовленні #1a2b3c4d оновлено: 2045<01>23456789
+  tgUserId=101
+  type=ORDER_TRACKING
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 Номер ТТН у замовленні <b>#1a2b3c4d</b> оновлено: <code>2045&lt;01&gt;23456789</code>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / no tracking number → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Номер ТТН в заказе #1a2b3c4d обновлён: 2045<01>23456789
+  tgUserId=102
+  type=ORDER_TRACKING
+SendMessage chat=102 thread=null parse=HTML
+<<<📦 Номер ТТН в заказе <b>#1a2b3c4d</b> обновлён: <code>2045&lt;01&gt;23456789</code>>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / no tracking number → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Tracking number for order #1a2b3c4d updated: 2045<01>23456789
+  tgUserId=103
+  type=ORDER_TRACKING
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 Tracking number for order <b>#1a2b3c4d</b> updated: <code>2045&lt;01&gt;23456789</code>>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / no tracking number → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+

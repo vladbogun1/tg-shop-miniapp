@@ -16,6 +16,7 @@ import type { Locale } from "@shop/shared";
 import { api } from "@/lib/api";
 import { CartSync } from "@/lib/cart-sync";
 import { CompareTabSync } from "@/lib/compare";
+import { PreorderHoldsSync } from "@/lib/preorder";
 import { useSession } from "@/lib/session";
 
 function makeClient() {
@@ -68,6 +69,7 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <InputModality />
         <LocaleSync locale={locale} />
         <CartSync />
+        <PreorderHoldsSync />
         <Analytics />
         {children}
         <CartDrawer />

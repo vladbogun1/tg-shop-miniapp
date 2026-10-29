@@ -5,7 +5,7 @@ import { catalogPageMeta } from "@/lib/seo";
 import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
 import { cardContext, computeListing, loadSchema, menuTree } from "@/lib/catalog";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getListingProducts, safe } from "@/lib/server-api";
+import { getCategories, getListingProducts, getPreorderIndex, safe } from "@/lib/server-api";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is
@@ -44,12 +44,13 @@ export default async function CatalogPage({
   const state = await parseCatalogState("/catalog", searchParams);
   // All products: only brand / price / condition / stock facets (no category → no attributes).
   const filter = { ...state.filter, q: undefined, attrs: {} };
-  const [categories, schema, products] = await Promise.all([
+  const [categories, schema, products, pre] = await Promise.all([
     safe(getCategories(locale), []),
     loadSchema(locale),
     safe(getListingProducts(locale), null),
+    getPreorderIndex(locale),
   ]);
-  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale, state.from) : null;
+  const listing = products ? computeListing(schema, products, { ...filter, category: null }, state.sort, state.page, locale, state.from, pre) : null;
   return (
     <CatalogView
       locale={locale}
@@ -60,7 +61,8 @@ export default async function CatalogPage({
       tree={menuTree(categories)}
       activeSlug={null}
       hint
-      card={cardContext(schema, locale)}
+      card={cardContext(schema, locale, pre)}
+      coming={(pre?.size ?? 0) > 0}
     />
   );
 }

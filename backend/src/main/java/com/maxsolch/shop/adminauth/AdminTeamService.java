@@ -57,7 +57,7 @@ public class AdminTeamService {
     public record AdminRow(long telegramUserId, String name, String username, String role, String status,
                            boolean active, boolean totpEnabled, boolean passwordSet, Instant createdAt,
                            AdminTeamFacts.LastLogin lastLogin, int trustedDevices, Instant lockedUntil,
-                           InviteRow invite, String telegramLabel, boolean self) {
+                           InviteRow invite, String telegramLabel, boolean self, boolean finance) {
     }
 
     public record Team(List<AdminRow> admins, List<InviteRow> invites) {
@@ -141,7 +141,7 @@ public class AdminTeamService {
                         devices.getOrDefault(a.getTelegramUserId(), 0),
                         a.getLockedUntil() != null && a.getLockedUntil().isAfter(now) ? a.getLockedUntil() : null,
                         inviteOf.get(a.getTelegramUserId()), labels.get(a.getTelegramUserId()),
-                        a.getTelegramUserId() == callerId))
+                        a.getTelegramUserId() == callerId, a.isFinance() || a.isSuperAdmin()))
                 .toList();
         return new Team(rows, newInvites);
     }
@@ -249,6 +249,24 @@ public class AdminTeamService {
         tokenValidator.invalidate(targetId);
         audit.recordFor(callerId, "ADMIN_UPDATE", "ADMIN", String.valueOf(targetId),
                 who(fresh) + ": " + details);
+    }
+
+    /**
+     * «Финансы» on / off for an admin who is not the main one: purchase prices, batch expenses and margin
+     * (the main admin sees them anyway). Needs the caller's code like a role change.
+     */
+    public void setFinance(long callerId, long targetId, boolean finance, String code, ClientInfo client) {
+        AdminUser target = find(targetId);
+        guard(callerId, target, false);
+        if (target.isFinance() == finance) {
+            return;
+        }
+        requireOwnCode(callerId, code, client, "право «Финансы»");
+        AdminUser fresh = find(targetId);
+        fresh.setFinance(finance);
+        repo.save(fresh);
+        audit.recordFor(callerId, "ADMIN_FINANCE", "ADMIN", String.valueOf(targetId),
+                who(fresh) + ": «Финансы» " + (finance ? "включены" : "выключены"));
     }
 
     /** «Сбросить 2FA»: the next sign-in sets it up again; every session and trusted device ends. */

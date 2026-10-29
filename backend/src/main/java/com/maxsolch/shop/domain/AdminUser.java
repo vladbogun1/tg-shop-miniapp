@@ -48,6 +48,10 @@ public class AdminUser {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    /** «Финансы» (V74): purchase prices, batch expenses and margin; the main admin sees them anyway. */
+    @Column(name = "finance", nullable = false)
+    private boolean finance = false;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 

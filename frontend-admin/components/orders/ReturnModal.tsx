@@ -3,7 +3,7 @@
 /**
  * Return wizard (POST /orders/{id}/returns, V68) — written to need no explanation:
  *   1. Что возвращают — where the goods are now (on their way by post / already here / staying
- *      with the customer), which lines (a «Вернуть» switch, a counter for several units), брак for
+ *      with the customer; a shipped parcel: refused at the branch, partial pickup — V72), which lines (a «Вернуть» switch, a counter for several units), брак for
  *      goods already here, and — when the order has a gift — a separate question: take it back too
  *      or leave it with the customer.
  *   2. Деньги — what the customer paid for the returned goods (the sale price, discount included)
@@ -83,6 +83,8 @@ export function ReturnModal({
 
   const orderId = order?.id ?? null;
   const delivered = order?.status === "DELIVERED";
+  /** The parcel is at the branch: the customer takes part of it, the refused rest comes back (V72). */
+  const shipped = order?.status === "SHIPPED";
   // Money only: a rejected order (the parcel is received with «Посылка вернулась») or an overpaid one.
   const moneyOnly =
     !!order &&
@@ -93,9 +95,11 @@ export function ReturnModal({
   useEffect(() => {
     if (!open) return;
     setStep(moneyOnly ? 2 : 1);
-    // A delivered parcel comes back by post; a self-pickup (or a parcel not delivered yet) is here.
+    // A delivered parcel (or the part refused at the branch) comes back by post; a self-pickup is here.
     setWhere(
-      delivered && order?.deliveryMethod === "NOVA_POSHTA" ? "POST" : "HERE",
+      (delivered || shipped) && order?.deliveryMethod === "NOVA_POSHTA"
+        ? "POST"
+        : "HERE",
     );
     setPicked({});
     setDefect({});
@@ -144,7 +148,21 @@ export function ReturnModal({
     (s, it) => s + (it.id != null ? (picked[it.id] ?? 0) * unitPaid(it) : 0),
     0,
   );
-  const suggested = moneyOnly
+  /**
+   * Partial pickup: the refused goods come off наложка, so only what was paid above the price of
+   * the goods the customer keeps goes back (a prepaid-in-full order: the refused part).
+   */
+  const pickup = !moneyOnly && shipped && where !== "KEPT";
+  const collectable = order
+    ? Math.max(0, order.totalMinor - Math.max(0, order.uncollectedMinor ?? 0))
+    : 0;
+  const collectableAfter = Math.max(0, collectable - goodsValue);
+  const pickupOver = Math.max(0, received - returnedMoney - collectableAfter);
+  const codBefore = Math.max(0, collectable - received);
+  const codAfter = Math.max(0, collectableAfter - received);
+  const suggested = pickup
+    ? Math.min(pickupOver, cap)
+    : moneyOnly
     ? order?.status === "REJECTED"
       ? cap
       : Math.min(overpaid, cap)
@@ -163,7 +181,9 @@ export function ReturnModal({
   const limit =
     order.status === "NEW" || order.status === "APPROVED"
       ? Math.min(overpaid, cap)
-      : cap;
+      : pickup
+        ? Math.min(pickupOver, cap)
+        : cap;
 
   const errors: string[] = [];
   if (amountMinor > limit)
@@ -171,9 +191,13 @@ export function ReturnModal({
   // Goods stay with the customer → a compensation is the whole point; «Далее» waits for the amount.
   const needsCompensation = !moneyOnly && where === "KEPT" && amountMinor === 0;
 
+  // Nothing taken at the branch is a refused parcel: «Отклонить» with «Посылка едет назад».
+  const refusedAll = pickup && allPaidBack;
+
   const nextDisabled =
     step === 1
-      ? units === 0 || (askGift && giftLines.some((g) => !giftChoice[g.id!]))
+      ? units === 0 ||
+        refusedAll || (askGift && giftLines.some((g) => !giftChoice[g.id!]))
       : errors.length > 0 || needsCompensation || (moneyOnly && amountMinor === 0);
   const nothing = units === 0 && amountMinor === 0;
   const dirty = units > 0 || amountMinor > 0 || note.trim() !== "";
@@ -274,7 +298,16 @@ export function ReturnModal({
             icon: <Truck className="h-4 w-4" />,
           },
         ]
-      : []),
+      : shipped
+        ? [
+            {
+              value: "POST" as Where,
+              label: "Не забрал на почте — едет назад",
+              hint: "Покупатель забрал не всё. Отказанное едет к нам, наложка уменьшится на его стоимость. Когда придёт — нажмёте «Посылка вернулась».",
+              icon: <Truck className="h-4 w-4" />,
+            },
+          ]
+        : []),
     {
       value: "HERE",
       label: "Уже у нас",
@@ -530,7 +563,26 @@ export function ReturnModal({
               </section>
             )}
 
-            {units > 0 && where !== "KEPT" && (
+            {refusedAll && (
+              <p className="text-[12.5px] font-medium text-[var(--warn)]">
+                Покупатель не забирает ничего — это отказ от посылки:
+                отклоните заказ с «Посылка едет назад».
+              </p>
+            )}
+            {units > 0 && pickup && !refusedAll && (
+              <p className="text-[12.5px] text-[var(--text-muted)]">
+                Не выкуплено на{" "}
+                <b className="tabular text-[var(--text)]">
+                  {money(goodsValue, cur)}
+                </b>{" "}
+                — наложка станет{" "}
+                <b className="tabular text-[var(--text)]">
+                  {money(codAfter, cur)}
+                </b>{" "}
+                вместо {money(codBefore, cur)}.
+              </p>
+            )}
+            {units > 0 && where !== "KEPT" && !pickup && (
               <p className="text-[12.5px] text-[var(--text-muted)]">
                 Покупатель заплатил за это{" "}
                 <b className="tabular text-[var(--text)]">
@@ -552,7 +604,25 @@ export function ReturnModal({
                   : `Заказ ещё не отправлен — вернуть можно только переплату: ${money(overpaid, cur)}.`}
               </p>
             )}
-            {!moneyOnly && where !== "KEPT" && (
+            {pickup && (
+              <div className="card-2 flex flex-col gap-1.5 px-3 py-2.5 text-[13px]">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[var(--text-muted)]">
+                    Не выкуплено — снимется с наложки
+                  </span>
+                  <b className="tabular text-[15px] text-[var(--text)]">
+                    {money(goodsValue, cur)}
+                  </b>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[var(--text-muted)]">Наложка станет</span>
+                  <b className="tabular text-[15px] text-[var(--text)]">
+                    {money(codAfter, cur)}
+                  </b>
+                </div>
+              </div>
+            )}
+            {!moneyOnly && where !== "KEPT" && !pickup && (
               <div className="card-2 flex items-center justify-between gap-3 px-3 py-2.5 text-[13px]">
                 <span className="text-[var(--text-muted)]">
                   Заплатил за возвращённое
@@ -580,7 +650,11 @@ export function ReturnModal({
               hint={
                 where === "KEPT" && !moneyOnly
                   ? "Сколько денег отдаёте покупателю, раз товар остаётся у него."
-                  : amountMinor === suggested
+                  : pickup && suggested === 0
+                    ? "За невыкупленное покупатель не платил — оно просто не войдёт в наложку. Возвращать нечего."
+                    : pickup
+                      ? `Покупатель заплатил заранее больше, чем стоит то, что он забрал: к возврату ${money(suggested, cur)}.`
+                      : amountMinor === suggested
                     ? "Подставили полную сумму. Можно уменьшить, если договорились иначе; 0 — без возврата денег."
                     : `Полная сумма — ${money(suggested, cur)}. 0 — без возврата денег.`
               }
@@ -688,6 +762,16 @@ export function ReturnModal({
                 </b>
               )}
             </div>
+            {pickup && units > 0 && (
+              <div className="card-2 flex items-center justify-between gap-3 px-3 py-2.5 text-[13px]">
+                <span className="text-[var(--text-muted)]">
+                  Наложка: {money(codBefore, cur)} →
+                </span>
+                <b className="tabular text-[15px] text-[var(--text)]">
+                  {money(codAfter, cur)}
+                </b>
+              </div>
+            )}
             {where === "POST" && units > 0 && (
               <p className="text-[12.5px] text-[var(--text-muted)]">
                 Заказ появится в колонке «Едет назад». Когда посылка придёт —

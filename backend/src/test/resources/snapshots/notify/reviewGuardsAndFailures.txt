@@ -1,0 +1,85 @@
+=== tg_user_id=null
+result: [false, false]
+(nothing sent)
+
+=== bonusIssued tg_user_id=null
+(nothing sent)
+
+=== tg_user_id=0
+result: [false, false]
+(nothing sent)
+
+=== bonusIssued tg_user_id=0
+(nothing sent)
+
+=== tg_user_id=-5
+result: [false, false]
+(nothing sent)
+
+=== bonusIssued tg_user_id=-5
+(nothing sent)
+
+=== bot token blank
+result: [false, false, false]
+(nothing sent)
+
+=== bot token blank: bonusIssued
+(nothing sent)
+
+=== Telegram fails: false, journaled
+result: [false, false]
+Journal
+  chatId=101
+  details={bonusPercent=5}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Як вам замовлення #1a2b3c4d? Залиште відгук про товари — і отримайте −5% на наступну покупку.
+  tgUserId=101
+  type=REVIEW_REMINDER
+SendMessage chat=101 thread=null parse=HTML
+<<<⭐ <b>Як вам замовлення #1a2b3c4d?</b>
+Залиште відгук про товари — і отримайте −5% на наступну покупку.>>>
+markup: [{Залишити відгук webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=101
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% сгорает 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=101 thread=null parse=HTML
+<<<⏳ <b>Ваш бонус −5% скоро згорить</b>
+Промокод <code>C</code> діє до 01.12.2026. Під час оформлення замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== Telegram fails: bonusIssued
+Journal
+  chatId=101
+  details={maxDiscountMinor=0, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% до 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Дякуємо за відгук!</b>
+Ваш особистий промокод <code>C</code> — знижка 5% на наступне замовлення. Діє до 01.12.2026, один раз. Код також є в кабінеті, у розділі «Відгуки». Під час наступного замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== push: moderation, 3 stars
+Push PushMessage[title=Новый отзыв на модерации, body=★★★ Lamzu <Atlantis>, url=/reviews, tag=reviews, badge=4, urgent=false, image=null, group=null]
+
+=== push: rating out of range, long title, huge count
+Push PushMessage[title=Новый отзыв на модерации, body=★★★★★ ттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттттт…, url=/reviews, tag=reviews, badge=2147483647, urgent=false, image=null, group=null]
+
+=== push: null title, rating 0
+Push PushMessage[title=Новый отзыв на модерации, body=★ , url=/reviews, tag=reviews, badge=1, urgent=false, image=null, group=null]
+
+=== push fails: swallowed
+(nothing sent)
+

@@ -148,8 +148,8 @@ public final class OverviewCalculator {
             if (!channel.matches(o.source())) {
                 continue;
             }
-            if (o.status() == OrderStatus.SHIPPED && o.totalMinor() > o.receivedMinor()) {
-                codInTransit += o.totalMinor() - o.receivedMinor();
+            if (o.status() == OrderStatus.SHIPPED && o.codMinor() > 0) {
+                codInTransit += o.codMinor();
                 codOrders++;
             }
             if (awaitingConfirmation(o)) {

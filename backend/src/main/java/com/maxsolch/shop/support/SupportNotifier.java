@@ -1,25 +1,19 @@
 package com.maxsolch.shop.support;
 
 import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.i18n.ChatPreview;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.tg.CustomerBot;
+import com.maxsolch.shop.tg.SellerChannel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
-import java.util.List;
-import java.util.Locale;
 
 import static com.maxsolch.shop.common.Texts.ellipsize;
 import static com.maxsolch.shop.common.Texts.escHtml;
@@ -40,19 +34,17 @@ import static com.maxsolch.shop.common.Texts.nullToEmpty;
 @Component
 public class SupportNotifier {
 
-    private final ShopBot bot;
-    private final AppProperties props;
+    private final CustomerBot customer;
+    private final SellerChannel seller;
     private final Messages messages;
     private final AdminPushService push;
     private final InboxService inbox;
     private final SupportThreadRepository threads;
-    private final ActivityLog activity;
 
-    public SupportNotifier(@Lazy ShopBot bot, AppProperties props, Messages messages, AdminPushService push,
-                           @Lazy InboxService inbox, SupportThreadRepository threads, ActivityLog activity) {
-        this.activity = activity;
-        this.bot = bot;
-        this.props = props;
+    public SupportNotifier(CustomerBot customer, SellerChannel seller, Messages messages, AdminPushService push,
+                           @Lazy InboxService inbox, SupportThreadRepository threads) {
+        this.customer = customer;
+        this.seller = seller;
         this.messages = messages;
         this.push = push;
         this.inbox = inbox;
@@ -82,15 +74,9 @@ public class SupportNotifier {
     // ------------------------------------------------------------------ customer
 
     void dmCustomer(SupportThread t, String preview) {
-        if (!botEnabled()) {
-            return;
-        }
-        Long tgUserId = t.getTgUserId();
-        if (tgUserId == null || tgUserId <= 0) {
-            return;
-        }
-        try {
-            Locale locale = messages.localeOf(tgUserId);
+        String id = UuidUtil.toString(t.getId());
+        customer.sendTo("Support DM failed for thread " + id, t.getTgUserId(),
+                ActivityLog.Entry.bot("SUPPORT_REPLY").toCustomer(t.getTgUserId()).detail("thread", id), locale -> {
             StringBuilder text = new StringBuilder();
             text.append(messages.get(locale, "bot.support.reply")).append('\n');
             if (t.getProductTitle() != null && !t.getProductTitle().isBlank()) {
@@ -101,44 +87,20 @@ public class SupportNotifier {
                         .append("</blockquote>\n");
             }
             text.append(messages.get(locale, "bot.support.cta"));
-            SendMessage msg = SendMessage.builder()
-                    .chatId(String.valueOf(tgUserId))
-                    .text(text.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(openThreadButton(t, locale))
-                    .build();
-            activity.bot(ActivityLog.Entry.bot("SUPPORT_REPLY").toCustomer(tgUserId).text(msg.getText())
-                    .detail("thread", UuidUtil.toString(t.getId())), () -> bot.execute(msg));
-        } catch (Exception e) {
-            log.warn("Support DM failed for thread {}: {}", UuidUtil.toString(t.getId()), e.getMessage());
-        }
-    }
-
-    /** Opens the thread in the Mini App (deep link support_<id>); null until a public HTTPS URL is set. */
-    private InlineKeyboardMarkup openThreadButton(SupportThread t, Locale locale) {
-        String webapp = props.getWebappBaseUrl();
-        if (!isHttps(webapp)) {
-            return null;
-        }
-        InlineKeyboardButton btn = InlineKeyboardButton.builder()
-                .text(messages.get(locale, "bot.support.open"))
-                .webApp(WebAppInfo.builder()
-                        .url(webapp + "?startapp=support_" + UuidUtil.toString(t.getId())).build())
-                .build();
-        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
+            // The button opens the thread in the Mini App (deep link support_<id>).
+            return new CustomerBot.Dm(text.toString(),
+                    customer.miniAppButton(messages.get(locale, "bot.support.open"), "support_" + id));
+        });
     }
 
     // ------------------------------------------------------------------ admins
 
     void notifyAdminsTelegram(SupportThread t, String preview, boolean newThread) {
-        if (!botEnabled()) {
-            return;
-        }
-        String chatId = props.getTelegram().getNotifyChatId();
-        if (chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
-            return;
-        }
-        try {
+        String id = UuidUtil.toString(t.getId());
+        ActivityLog.Entry entry = ActivityLog.Entry.bot("ADMIN_SUPPORT_PING").customer(t.getTgUserId())
+                .text(newThread ? "Новый вопрос в поддержку" : "Новое сообщение в поддержке")
+                .detail("thread", id);
+        seller.pingChatTopicUnlessZero("Support admin ping failed for thread " + id, entry, "/support?thread=" + id, () -> {
             StringBuilder text = new StringBuilder();
             text.append(newThread ? "🛟 <b>Поддержка · новый вопрос</b>\n" : "🛟 <b>Поддержка · новое сообщение</b>\n");
             text.append(escHtml(t.getCustomerName() == null ? "Покупатель" : t.getCustomerName()));
@@ -149,34 +111,8 @@ public class SupportNotifier {
             if (preview != null && !preview.isBlank()) {
                 text.append("<blockquote>").append(escHtml(ellipsize(preview, 300))).append("</blockquote>");
             }
-            SendMessage msg = SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text.toString())
-                    .parseMode("HTML")
-                    .replyMarkup(adminButton(t))
-                    .build();
-            int topic = props.getTelegram().getNotifyTopicChat();
-            if (topic > 0) {
-                msg.setMessageThreadId(topic);
-            }
-            activity.bot(ActivityLog.Entry.bot("ADMIN_SUPPORT_PING").toAdmins(chatId).customer(t.getTgUserId())
-                    .text(newThread ? "Новый вопрос в поддержку" : "Новое сообщение в поддержке")
-                    .detail("thread", UuidUtil.toString(t.getId())), () -> bot.execute(msg));
-        } catch (Exception e) {
-            log.warn("Support admin ping failed for thread {}: {}", UuidUtil.toString(t.getId()), e.getMessage());
-        }
-    }
-
-    private InlineKeyboardMarkup adminButton(SupportThread t) {
-        String adminBase = props.getAdminBaseUrl();
-        if (!isHttps(adminBase)) {
-            return null;
-        }
-        InlineKeyboardButton open = InlineKeyboardButton.builder()
-                .text("🔎 Открыть в админке")
-                .url(adminBase + "/support?thread=" + UuidUtil.toString(t.getId()))
-                .build();
-        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(open))).build();
+            return text.toString();
+        });
     }
 
     /** Lock-screen text: no message body (it may hold a phone number), just who and about what. */
@@ -198,16 +134,5 @@ public class SupportNotifier {
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    // ------------------------------------------------------------------ helpers
-
-    private boolean botEnabled() {
-        String token = props.getTelegram().getBotToken();
-        return token != null && !token.isBlank();
-    }
-
-    private static boolean isHttps(String url) {
-        return url != null && url.startsWith("https://");
     }
 }

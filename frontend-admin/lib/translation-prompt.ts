@@ -59,6 +59,8 @@ export const KIND_LABEL: Record<string, string> = {
   "PAYMENT_OPTION.description": "способ оплаты (пояснение покупателю)",
   "REPLY_TEMPLATE.body":
     "шаблон ответа покупателю в чате заказа (вежливо, как пишет магазин; плейсхолдеры {name}, {orderNo}, {total}, {cod}, {ttn}, {warehouse} оставить без изменений)",
+  "BOT_TEXT.body":
+    "сообщение Telegram-бота покупателю (HTML-теги <b> оставить, плейсхолдеры {0}, {1}, {2}, {3} оставить без изменений, переносы строк сохранить)",
 };
 
 /** Short Russian label for the admin UI. */
@@ -77,6 +79,7 @@ export const KIND_SHORT: Record<string, string> = {
   "PAYMENT_OPTION.title": "Оплата",
   "PAYMENT_OPTION.description": "Оплата: описание",
   "REPLY_TEMPLATE.body": "Шаблон чата",
+  "BOT_TEXT.body": "Сообщение бота",
 };
 
 /** Glossary ru → uk | en (docs/i18n-glossary.md, «Термины»). */

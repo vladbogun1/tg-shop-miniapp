@@ -29,7 +29,9 @@ public final class SettingsDtos {
             Integer maxLength,
             String unit,
             Instant updatedAt,
-            String updatedBy) {
+            String updatedBy,
+            /** SELECT only: the allowed values with labels; null for other types. */
+            List<SettingDefinition.Option> options) {
     }
 
     public record SettingsGroupDto(String id, String title, String description) {

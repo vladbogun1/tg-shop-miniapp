@@ -8,6 +8,7 @@
  */
 export * from "./brand/logo";
 export * from "./brand/preloader";
+export * from "./availability";
 export * from "./cart";
 export * from "./catalog";
 export * from "./cn";

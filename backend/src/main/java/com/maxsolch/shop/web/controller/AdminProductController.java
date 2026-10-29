@@ -185,9 +185,9 @@ public class AdminProductController {
     }
 
     @GetMapping("/products")
-    @Operation(summary = "List non-archived products")
-    public List<AdminProductDto> products() {
-        return productService.list();
+    @Operation(summary = "List non-archived products; sort=demand puts the most waited-for first")
+    public List<AdminProductDto> products(@RequestParam(required = false) String sort) {
+        return productService.list(sort);
     }
 
     @GetMapping("/products/archived")

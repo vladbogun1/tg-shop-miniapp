@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.catalog.Brand;
 import com.maxsolch.shop.catalog.BrandAdminService;
 import com.maxsolch.shop.catalog.CardStatus;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +69,11 @@ public class AdminProductService {
     private final BrandAdminService brandService;
     private final StockWriteoffRepository writeoffRepository;
     private final AdminAuditService audit;
+    /** FIFO stock lots follow a stock typed by hand. */
+    private final LotLedger ledger;
+    /** Queues of a product that leaves sale are closed. */
+    private final com.maxsolch.shop.preorder.PreorderQueueService preorders;
+    private final com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs;
 
     public AdminProductService(ProductRepository productRepository,
                                ImageStorageService imageStorageService,
@@ -75,7 +82,10 @@ public class AdminProductService {
                                CatalogDirectory catalogDirectory,
                                BrandAdminService brandService,
                                StockWriteoffRepository writeoffRepository,
-                               AdminAuditService audit) {
+                               AdminAuditService audit,
+                               LotLedger ledger,
+                               com.maxsolch.shop.preorder.PreorderQueueService preorders,
+                               com.maxsolch.shop.preorder.PreorderSubscriptionRepository preorderSubs) {
         this.productRepository = productRepository;
         this.imageStorageService = imageStorageService;
         this.slugService = slugService;
@@ -84,12 +94,52 @@ public class AdminProductService {
         this.brandService = brandService;
         this.writeoffRepository = writeoffRepository;
         this.audit = audit;
+        this.ledger = ledger;
+        this.preorders = preorders;
+        this.preorderSubs = preorderSubs;
+    }
+
+    private void closeQueues(Product p) {
+        preorders.closeForProduct(p.getId());
+    }
+
+    private void syncLots(Product p) {
+        productRepository.flush(); // new variants get their ids before the lots refer to them
+        ledger.syncProduct(p);
     }
 
     @Transactional(readOnly = true)
     public List<AdminProductDto> list() {
+        return list(null);
+    }
+
+    /**
+     * The catalog for the admin with how many people wait for each product. {@code sort=demand} — the most
+     * wanted first (distinct people, then units), the rest keep the default order.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminProductDto> list(String sort) {
         CatalogSnapshot catalog = catalogDirectory.snapshot();
-        return productRepository.findAllNotArchived().stream().map(p -> toAdminDto(p, catalog)).toList();
+        Map<String, int[]> waiting = waitingByProduct();
+        List<AdminProductDto> out = new ArrayList<>(productRepository.findAllNotArchived().stream()
+                .map(p -> {
+                    int[] w = waiting.get(UuidUtil.toString(p.getId()));
+                    AdminProductDto dto = toAdminDto(p, catalog);
+                    return w == null ? dto : dto.withWaiting(w[0], w[1]);
+                }).toList());
+        if (sort != null && "demand".equalsIgnoreCase(sort.trim())) {
+            out.sort(Comparator.comparingInt(AdminProductDto::waitingPeople).reversed()); // stable: ties keep order
+        }
+        return out;
+    }
+
+    /** product id → [distinct people, units] waiting for it. */
+    private Map<String, int[]> waitingByProduct() {
+        Map<String, int[]> out = new java.util.HashMap<>();
+        for (Object[] r : preorderSubs.waitingByProduct()) {
+            out.put(UuidUtil.toString((byte[]) r[0]), new int[]{((Number) r[1]).intValue(), ((Number) r[2]).intValue()});
+        }
+        return out;
     }
 
     @Transactional(readOnly = true)
@@ -132,7 +182,9 @@ public class AdminProductService {
         p.setCardStatus(CardStatus.DRAFT);
         p.setUnfinished(true);
         applyVariants(p, req, null);
-        return toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
+        Product created = productRepository.save(p);
+        syncLots(created);
+        return toAdminDto(created, catalogDirectory.load()).withSpecIssues(issues);
     }
 
     @Caching(evict = {
@@ -176,7 +228,12 @@ public class AdminProductService {
             drops.add(new StockDrop(null, null, productDrop));
         }
         recordWriteoffs(p, drops, req);
-        AdminProductDto saved = toAdminDto(productRepository.save(p), catalogDirectory.load()).withSpecIssues(issues);
+        if (wasActive && !p.isActive()) {
+            closeQueues(p);
+        }
+        Product stored = productRepository.save(p);
+        syncLots(stored);
+        AdminProductDto saved = toAdminDto(stored, catalogDirectory.load()).withSpecIssues(issues);
         // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
         translationService.deleteForEntities(TranslationEntityType.VARIANT, removedVariants);
         return saved;
@@ -203,7 +260,11 @@ public class AdminProductService {
         if (active && !p.isActive()) {
             checkPublishable(p, force);
         }
+        boolean wasActive = p.isActive();
         p.setActive(active);
+        if (wasActive && !active) {
+            closeQueues(p);
+        }
         syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
@@ -217,6 +278,9 @@ public class AdminProductService {
     public AdminProductDto setArchived(String id, boolean archived) {
         Product p = load(id);
         p.setArchived(archived);
+        if (archived) {
+            closeQueues(p);
+        }
         syncUnfinished(p);
         return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
     }
@@ -670,6 +734,8 @@ public class AdminProductService {
                 SpecsJson.readMap(p.getCardMetaJson()),
                 catalog.missingRequired(categoryId, specs),
                 null,
-                p.isUnfinished());
+                p.isUnfinished(),
+                0,
+                0);
     }
 }

@@ -1,0 +1,414 @@
+=== onNewOrder
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  tgUserId=101
+  type=ADMIN_ORDER_CARD
+SendMessage chat=-1001234567890 thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+📦 ТТН: <code>123</code>
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=5 dispatch=null
+
+=== onStatusChanged
+DeleteMessage chat=-1001234567890 message=5
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  tgUserId=101
+  type=ADMIN_ORDER_CARD
+SendMessage chat=-1001234567890 thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+📦 ТТН: <code>123</code>
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerStatus
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Підтверджено Замовлення #1a2b3c4d Ми підтвердили ваше замовлення і готуємо його до відправлення.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Підтверджено</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми підтвердили ваше замовлення і готуємо його до відправлення.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerGift
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарунок до замовлення Замовлення #1a2b3c4d Ми додали вам подарунок: T . Приємного користування!
+  tgUserId=101
+  type=ORDER_GIFT
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Подарунок до замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми додали вам подарунок: <b>T</b>. Приємного користування!>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerGiftCase
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Вам подарували кейс! Замовлення #1a2b3c4d Кейс відкриється після оплати замовлення — товар додамо до посилки безкоштовно, знижку дамо промокодом.
+  tgUserId=101
+  type=ORDER_GIFT_CASE
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Вам подарували кейс!</b>
+Замовлення <b>#1a2b3c4d</b>
+Кейс відкриється після оплати замовлення — товар додамо до посилки безкоштовно, знижку дамо промокодом.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerCasePromo
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Знижка з кейса! Замовлення #1a2b3c4d У вашому кейсі — знижка −5% . Ваш промокод: C Діє до 18.11.2026 включно, на одне замовлення. Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».
+  tgUserId=101
+  type=ORDER_CASE_PROMO
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Знижка з кейса!</b>
+Замовлення <b>#1a2b3c4d</b>
+У вашому кейсі — знижка <b>−5%</b>. Ваш промокод: <code>C</code>
+Діє до 18.11.2026 включно, на одне замовлення.
+Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».>>>
+markup: [{🛍 До кошика webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerDiscount
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🏷 Знижка на замовлення Замовлення #1a2b3c4d Вам застосовано знижку 200 ₴. Нова сума до сплати: 10 500 ₴
+  tgUserId=101
+  type=ORDER_DISCOUNT
+SendMessage chat=101 thread=null parse=HTML
+<<<🏷 <b>Знижка на замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Вам застосовано знижку 200 ₴.
+Нова сума до сплати: <b>10 500 ₴</b>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerOrderChanged
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Склад замовлення оновлено Замовлення #1a2b3c4d Нова сума до сплати: 10 500 ₴
+  tgUserId=101
+  type=ORDER_CHANGED
+SendMessage chat=101 thread=null parse=HTML
+<<<🧾 <b>Склад замовлення оновлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Нова сума до сплати: <b>10 500 ₴</b>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerExchange
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмін оформлено Замовлення #1a2b3c4d Натомість надішлемо: x Доплата при отриманні: 9 500 ₴ Новий номер ТТН надішлемо, щойно відправимо посилку.
+  tgUserId=101
+  type=ORDER_EXCHANGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔄 <b>Обмін оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Натомість надішлемо: <b>x</b>
+Доплата при отриманні: <b>9 500 ₴</b>
+Новий номер ТТН надішлемо, щойно відправимо посилку.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerMerged
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Замовлення обʼєднано Замовлення #deadbeef додали до #1a2b3c4d — надішлемо все однією посилкою. До оплати онлайн у замовленні: 9 500 ₴ .
+  tgUserId=101
+  type=ORDER_MERGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔗 <b>Замовлення обʼєднано</b>
+Замовлення <b>#deadbeef</b> додали до <b>#1a2b3c4d</b> — надішлемо все однією посилкою.
+До оплати онлайн у замовленні: <b>9 500 ₴</b>.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerReturn
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Повернення оформлено Замовлення #1a2b3c4d Прийняли: x Повертаємо: 0,01 ₴ Якщо є питання — напишіть у чат замовлення.
+  tgUserId=101
+  type=ORDER_RETURN
+SendMessage chat=101 thread=null parse=HTML
+<<<↩️ <b>Повернення оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Прийняли: <b>x</b>
+Повертаємо: <b>0,01 ₴</b>
+Якщо є питання — напишіть у чат замовлення.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerTracking
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Номер ТТН у замовленні #1a2b3c4d оновлено: 123
+  tgUserId=101
+  type=ORDER_TRACKING
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 Номер ТТН у замовленні <b>#1a2b3c4d</b> оновлено: <code>123</code>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== onAdminChatMessage
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d hi Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+<blockquote>hi</blockquote>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== onCustomerChatMessage
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== onPaymentReceived
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 1 000 ₴
+  tgUserId=101
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>1 000 ₴</b> · наложка <b>9 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплату отримано Замовлення #1a2b3c4d Надійшло 1 000 ₴. Ми перевіримо наявність і підтвердимо замовлення.
+  tgUserId=101
+  type=PAYMENT_RECEIVED
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Оплату отримано</b>
+Замовлення <b>#1a2b3c4d</b>
+Надійшло 1 000 ₴. Ми перевіримо наявність і підтвердимо замовлення.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== onCancelRequested
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Запрос отмены заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CANCEL_REQUEST
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛑 <b>Запрос отмены</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Оплачено: <b>1 000 ₴</b>
+<blockquote></blockquote>
+<i>Одобрите (отмена + возврат денег на карту) или отклоните в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== notifyCustomerCancelRequest
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Скасування відхилено Замовлення #1a2b3c4d залишається в силі. Коментар магазину:
+  tgUserId=101
+  type=CANCEL_REQUEST_DECLINED
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Скасування відхилено</b>
+Замовлення <b>#1a2b3c4d</b> залишається в силі.
+Коментар магазину: >>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== postDispatchCard
+result: false
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка «К отправке» #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_DISPATCH_CARD
+SendMessage chat=-1001234567890 thread=17 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+
+=== syncDispatchCard
+result: false
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка «К отправке» #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_DISPATCH_CARD
+SendMessage chat=-1001234567890 thread=17 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-1001234567890 thread=null message=null dispatch=null
+

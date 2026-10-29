@@ -1,6 +1,7 @@
 package com.maxsolch.shop.inbox;
 
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.inbox.InboxDtos.Group;
 import com.maxsolch.shop.inbox.InboxDtos.Inbox;
@@ -189,10 +190,9 @@ public final class InboxRules {
                 && !isCancelRequested(o);
     }
 
-    /** Same as {@code OrderService.amountDueMinor}: what is still to pay online. */
+    /** What is still to pay online; the formula lives in {@link OrderMoney#amountDueMinor(long, long, long)}. */
     static long onlineDue(OrderRow o) {
-        long due = o.prepaymentMinor() > 0 ? Math.min(o.prepaymentMinor(), o.totalMinor()) : o.totalMinor();
-        return Math.max(0, due - Math.max(0, o.receivedMinor()));
+        return OrderMoney.amountDueMinor(o.totalMinor(), o.prepaymentMinor(), o.receivedMinor());
     }
 
     static boolean isNewStale(OrderRow o, Instant now, int hours) {
@@ -261,7 +261,7 @@ public final class InboxRules {
         Instant since = o.rejectedAt() != null ? o.rejectedAt() : o.createdAt();
         // The version follows the refunded amount too: a partial refund brings the row back.
         return orderItem(InboxItemType.PAYMENT, o, "refund:" + version(since) + ":" + o.refundedMinor(),
-                PAID_REFUND, o.receivedMinor() - Math.max(0, o.refundedMinor()), "вернуть",
+                PAID_REFUND, OrderMoney.netReceivedMinor(o.receivedMinor(), o.refundedMinor()), "вернуть",
                 null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 

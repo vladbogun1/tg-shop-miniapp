@@ -14,7 +14,9 @@ import { Ban, Truck, Store, MessageCircle, Package2, Undo2, Repeat } from "lucid
 import type { AdminOrderCard, CardLine } from "@/lib/orders-api";
 import { Image } from "@/lib/image";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
+import { payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
+import { returningMinor } from "@/lib/orders";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { SourceBadge } from "@/components/orders/SourceBadge";
@@ -79,6 +81,11 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
   const allLines = order.lines ?? [];
   const lines = returning ? allLines.filter((l) => l.returning > 0) : allLines;
   const units = returning ? order.returningUnits ?? 0 : order.itemsCount;
+  // Partial pickup: the card shows what the customer actually pays, the tooltip — the full order.
+  // In «Едет назад» it is what is travelling back instead (the refused units, at the price paid).
+  const uncollected = order.uncollectedMinor ?? 0;
+  const backMinor = returningMinor(order);
+  const amount = returning && backMinor > 0 ? backMinor : payableMinor(order);
   return (
     <div
       onClick={onClick}
@@ -99,7 +106,18 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
       </div>
 
       <div className="mt-1.5 flex items-center gap-2.5">
-        <span className="font-display tabular text-[16px] font-bold text-[var(--ink)]">{money(order.totalMinor, order.currency)}</span>
+        <span
+          className="font-display tabular whitespace-nowrap text-[16px] font-bold text-[var(--ink)]"
+          title={
+            returning && backMinor > 0
+              ? `Едет назад товара на ${money(backMinor, order.currency)} (заказ на ${money(order.totalMinor, order.currency)})`
+              : uncollected > 0
+                ? `Заказ на ${money(order.totalMinor, order.currency)}, не выкуплено на почте ${money(uncollected, order.currency)}`
+                : undefined
+          }
+        >
+          {money(amount, order.currency)}
+        </span>
         {lines.length > 0 ? (
           <LineStrip lines={lines} units={units} returning={returning} />
         ) : (

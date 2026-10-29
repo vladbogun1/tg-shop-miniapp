@@ -1,5 +1,7 @@
 package com.maxsolch.shop.payment;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.config.AppProperties;
@@ -154,7 +156,7 @@ public class OnlinePaymentService {
                 && "PAYMENT_TIMEOUT".equals(order.getRejectReasonCode())) {
             throw new ConflictException(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
         }
-        long amount = OrderService.amountDueMinor(order);
+        long amount = OrderMoney.amountDueMinor(order);
         if (order.getStatus() == OrderStatus.REJECTED || order.getStatus() == OrderStatus.DELIVERED || amount <= 0) {
             throw new ConflictException(messages.current("api.payment.notPayable"), "NOT_PAYABLE");
         }

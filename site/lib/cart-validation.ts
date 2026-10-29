@@ -13,6 +13,7 @@ import type { Product } from "@shop/shared";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "./api";
 import { stockOf, useCart } from "./cart";
+import { holdFloor } from "./preorder-core";
 
 export function useCartValidation(enabled = true) {
   const lines = useCart((s) => s.lines);
@@ -54,7 +55,8 @@ export function useCartValidation(enabled = true) {
         }
         const variant = l.variantId ? p.variants?.find((v) => v.id === l.variantId) ?? null : null;
         if (l.variantId && !variant) return l.stock === 0 ? l : { ...l, stock: 0 };
-        const stock = Math.max(0, stockOf(p, variant));
+        // the catalog stock excludes units held for pre-order queues — mine included (lib/preorder)
+        const stock = holdFloor(l.productId, l.variantId, Math.max(0, stockOf(p, variant)));
         const priceChanged = p.priceMinor !== l.priceMinor;
         const quantity = stock > 0 ? Math.min(Math.max(l.quantity, 1), stock) : l.quantity;
         if (!priceChanged && stock === l.stock && quantity === l.quantity) return l;

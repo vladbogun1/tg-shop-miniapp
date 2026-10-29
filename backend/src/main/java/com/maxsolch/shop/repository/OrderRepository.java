@@ -80,6 +80,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                        @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,
                        @Param("from") Instant from,
+                       @Param("to") Instant to,
                        Pageable pageable);
 
     /**
@@ -92,6 +93,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,
                                @Param("from") Instant from,
+                               @Param("to") Instant to,
                                Pageable pageable);
 
     /**
@@ -111,10 +113,11 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                         @Param("idLo") byte[] idLo,
                         @Param("idHi") byte[] idHi);
 
-    @Query("select o.status, count(o), coalesce(sum(o.totalMinor), 0) from Order o"
+    @Query("select o.status, count(o), coalesce(sum(o.totalMinor - o.uncollectedMinor), 0) from Order o"
             + OrderSearchQueries.WHERE_COLUMN_ALL_STATUSES + "group by o.status")
     List<Object[]> statsByStatus(@Param("q") String q,
                                  @Param("idLo") byte[] idLo,
                                  @Param("idHi") byte[] idHi,
-                                 @Param("from") Instant from);
+                                 @Param("from") Instant from,
+                                 @Param("to") Instant to);
 }

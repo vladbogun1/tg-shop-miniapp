@@ -1,0 +1,252 @@
+=== uk / text
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d Відправили <сьогодні> Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+<blockquote>Відправили &lt;сьогодні&gt;</blockquote>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / long text (160)
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя… Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+<blockquote>яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя…</blockquote>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / photo preview
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d 📷 Фото Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+<blockquote>📷 Фото</blockquote>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / file preview
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d 📎 Файл Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+<blockquote>📎 Файл</blockquote>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / no preview
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Нове повідомлення щодо замовлення #1a2b3c4d Натисніть, щоб відкрити листування 👇
+  tgUserId=101
+  type=CHAT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Нове повідомлення щодо замовлення #1a2b3c4d</b>
+Натисніть, щоб відкрити листування 👇>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / text
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Новое сообщение по заказу #1a2b3c4d Відправили <сьогодні> Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=CHAT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Новое сообщение по заказу #1a2b3c4d</b>
+<blockquote>Відправили &lt;сьогодні&gt;</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / long text (160)
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Новое сообщение по заказу #1a2b3c4d яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя… Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=CHAT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Новое сообщение по заказу #1a2b3c4d</b>
+<blockquote>яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя…</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / photo preview
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Новое сообщение по заказу #1a2b3c4d 📷 Фото Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=CHAT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Новое сообщение по заказу #1a2b3c4d</b>
+<blockquote>📷 Фото</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / file preview
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Новое сообщение по заказу #1a2b3c4d 📎 Файл Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=CHAT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Новое сообщение по заказу #1a2b3c4d</b>
+<blockquote>📎 Файл</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / no preview
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Новое сообщение по заказу #1a2b3c4d Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=CHAT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Новое сообщение по заказу #1a2b3c4d</b>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / text
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 New message about order #1a2b3c4d Відправили <сьогодні> Tap to open the chat 👇
+  tgUserId=103
+  type=CHAT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>New message about order #1a2b3c4d</b>
+<blockquote>Відправили &lt;сьогодні&gt;</blockquote>
+Tap to open the chat 👇>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / long text (160)
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 New message about order #1a2b3c4d яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя… Tap to open the chat 👇
+  tgUserId=103
+  type=CHAT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>New message about order #1a2b3c4d</b>
+<blockquote>яяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя…</blockquote>
+Tap to open the chat 👇>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / photo preview
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 New message about order #1a2b3c4d 📷 Photo Tap to open the chat 👇
+  tgUserId=103
+  type=CHAT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>New message about order #1a2b3c4d</b>
+<blockquote>📷 Photo</blockquote>
+Tap to open the chat 👇>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / file preview
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 New message about order #1a2b3c4d 📎 File Tap to open the chat 👇
+  tgUserId=103
+  type=CHAT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>New message about order #1a2b3c4d</b>
+<blockquote>📎 File</blockquote>
+Tap to open the chat 👇>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / no preview
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 New message about order #1a2b3c4d Tap to open the chat 👇
+  tgUserId=103
+  type=CHAT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>New message about order #1a2b3c4d</b>
+Tap to open the chat 👇>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

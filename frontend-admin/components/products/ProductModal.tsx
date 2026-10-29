@@ -15,6 +15,10 @@
  * (expectedStock) — the server answers 409 STOCK_CONFLICT if orders moved it meanwhile.
  * Turning «На витрине» on for a DRAFT card goes through the publishing gate (PublishGate).
  */
+import { WaitLine } from "@/components/preorders/WaitBadge";
+import { FactoryOrderLine } from "@/components/preorders/FactoryOrder";
+import { PREORDERS_KEY, peopleOfRows, preordersApi, releaseDemand, releaseSummary, type Demand } from "@/lib/preorders";
+import { ProductCostBlock, marginHint, useProductCost } from "@/components/products/ProductCostBlock";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -201,6 +205,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   const catsQ = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, enabled: open, staleTime: 60_000 });
   const brandsQ = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, enabled: open, staleTime: 60_000 });
   const schemaQ = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, enabled: open, staleTime: 60_000 });
+  const costInfo = useProductCost(product?.id, open);
   const categories = useMemo(() => catsQ.data ?? schemaQ.data?.categories ?? [], [catsQ.data, schemaQ.data]);
   const brands = brandsQ.data ?? [];
   const attrs = useMemo(
@@ -267,6 +272,8 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   );
   const priceMinor = f.priceMajor.trim() ? toMinor(f.priceMajor) : 0;
   const compareAtMinor = f.compareAtMajor.trim() ? toMinor(f.compareAtMajor) : 0;
+  // Margin hint under the price field: only once the price differs from the saved one.
+  const priceMarginHint = product && priceMinor !== product.priceMinor ? marginHint(costInfo, priceMinor) : null;
   const compareAtInvalid = compareAtMinor > 0 && compareAtMinor <= priceMinor;
   const slugPreview = f.slug.trim() ? slugify(f.slug) : slugify(f.title);
   // A "Бренд: …" line or a known name in the texts — offered as a one-tap suggestion.
@@ -377,6 +384,49 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
     }, 0);
   }
 
+  /** Lines (variant id or null for a product without variants) whose stock the form raises. */
+  function stockRaises(): (string | null)[] {
+    const base = baseStockRef.current;
+    if (!hasVariants) return (Number(f.stock) || 0) > base.stock ? [null] : [];
+    return f.variants.flatMap((v) => {
+      const was = v.id ? base.variants[v.id] : undefined;
+      return v.id && was !== undefined && (Number(v.stock) || 0) > was ? [v.id] : [];
+    });
+  }
+
+  /**
+   * Stock was raised by hand and people wait for it: offer (never do) handing out the holds.
+   * Runs after the save; a missing endpoint (old backend) just means no offer.
+   */
+  async function offerRelease(productId: string, raised: (string | null)[]) {
+    if (raised.length === 0) return;
+    let demand: Demand[];
+    try {
+      demand = await qc.fetchQuery({ queryKey: [...PREORDERS_KEY, "demand"], queryFn: preordersApi.demand, staleTime: 0 });
+    } catch {
+      return;
+    }
+    const rows = demand.filter((d) => d.productId === productId && raised.includes(d.variantId ?? null));
+    const people = peopleOfRows(rows);
+    if (people === 0) return;
+    push(
+      `${people} ${plural(people, "человек ждёт", "человека ждут", "человек ждут")} этот товар. Раздать брони?`,
+      "info",
+      {
+        label: "Раздать брони",
+        onClick: () => {
+          releaseDemand(rows)
+            .then((res) => {
+              push(releaseSummary(res), res.heldPeople > 0 ? "ok" : "info");
+              qc.invalidateQueries({ queryKey: PREORDERS_KEY });
+              qc.invalidateQueries({ queryKey: ["products"] });
+            })
+            .catch((e) => push(e instanceof ApiError ? e.message : "Не удалось раздать брони", "error"));
+        },
+      }
+    );
+  }
+
   function reportIssues(saved: AdminProductSaved) {
     const issues = saved.specIssues ?? [];
     if (!issues.length) return;
@@ -467,6 +517,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       if (!r) return;
       stockReasonRef.current = r;
     }
+    const raised = stockRaises();
     setSaving(true);
     try {
       const turningOn = f.active && product.active === false;
@@ -479,6 +530,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       if (!ok || !saved) return;
       reportIssues(saved);
       push("Сохранено", "ok");
+      void offerRelease(product.id, raised);
       onSaved();
       onClose();
     } catch (e) {
@@ -778,6 +830,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                     onChange={(e) => set("priceMajor", e.target.value)}
                     placeholder="0"
                     error={f.active && priceMinor <= 0 ? "Товару на витрине нужна цена" : undefined}
+                    hint={priceMarginHint ?? undefined}
                   />
                   <Input
                     label="Старая цена, ₴"
@@ -797,6 +850,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
                     onChange={(e) => set("stock", e.target.value)}
                   />
                   <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
+                  {product?.id && <WaitLine productId={product.id} title={product.title} />}
+                  {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} />}
+                  {product?.id && <ProductCostBlock productId={product.id} />}
                 </div>
               )}
 

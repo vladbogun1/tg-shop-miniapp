@@ -1,0 +1,364 @@
+=== uk / FISCAL_SALE with tax link
+result: SENT
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-check.pdf, kind=FISCAL_SALE}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Фіскальний чек до замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-check.pdf bytes=5 parse=HTML
+<<<🧾 <b>Фіскальний чек</b> до замовлення <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Перевірити на сайті ДПС</a>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / FISCAL_RETURN with tax link
+result: SENT
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-return.pdf, kind=FISCAL_RETURN}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Чек повернення до замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-return.pdf bytes=5 parse=HTML
+<<<🧾 <b>Чек повернення</b> до замовлення <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Перевірити на сайті ДПС</a>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / BANK with tax link
+result: SENT
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Перевірити на сайті ДПС</a>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / no tax link
+result: SENT
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / http tax link is not printed
+result: SENT
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / FISCAL_SALE with tax link
+result: SENT
+Journal
+  chatId=102
+  details={file=chisetup-1a2b3c4d-check.pdf, kind=FISCAL_SALE}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Фискальный чек к заказу #1a2b3c4d
+  tgUserId=102
+  type=RECEIPT
+SendDocument chat=102 file=chisetup-1a2b3c4d-check.pdf bytes=5 parse=HTML
+<<<🧾 <b>Фискальный чек</b> к заказу <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Проверить на сайте ГНС (ДПС)</a>>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / FISCAL_RETURN with tax link
+result: SENT
+Journal
+  chatId=102
+  details={file=chisetup-1a2b3c4d-return.pdf, kind=FISCAL_RETURN}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Чек возврата к заказу #1a2b3c4d
+  tgUserId=102
+  type=RECEIPT
+SendDocument chat=102 file=chisetup-1a2b3c4d-return.pdf bytes=5 parse=HTML
+<<<🧾 <b>Чек возврата</b> к заказу <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Проверить на сайте ГНС (ДПС)</a>>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / BANK with tax link
+result: SENT
+Journal
+  chatId=102
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанция банка об оплате заказа #1a2b3c4d
+  tgUserId=102
+  type=RECEIPT
+SendDocument chat=102 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанция банка</b> об оплате заказа <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Проверить на сайте ГНС (ДПС)</a>>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / no tax link
+result: SENT
+Journal
+  chatId=102
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанция банка об оплате заказа #1a2b3c4d
+  tgUserId=102
+  type=RECEIPT
+SendDocument chat=102 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанция банка</b> об оплате заказа <b>#1a2b3c4d</b>>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / http tax link is not printed
+result: SENT
+Journal
+  chatId=102
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанция банка об оплате заказа #1a2b3c4d
+  tgUserId=102
+  type=RECEIPT
+SendDocument chat=102 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанция банка</b> об оплате заказа <b>#1a2b3c4d</b>>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / FISCAL_SALE with tax link
+result: SENT
+Journal
+  chatId=103
+  details={file=chisetup-1a2b3c4d-check.pdf, kind=FISCAL_SALE}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Fiscal receipt for order #1a2b3c4d
+  tgUserId=103
+  type=RECEIPT
+SendDocument chat=103 file=chisetup-1a2b3c4d-check.pdf bytes=5 parse=HTML
+<<<🧾 <b>Fiscal receipt</b> for order <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Verify on the tax service (DPS) website</a>>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / FISCAL_RETURN with tax link
+result: SENT
+Journal
+  chatId=103
+  details={file=chisetup-1a2b3c4d-return.pdf, kind=FISCAL_RETURN}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Refund receipt for order #1a2b3c4d
+  tgUserId=103
+  type=RECEIPT
+SendDocument chat=103 file=chisetup-1a2b3c4d-return.pdf bytes=5 parse=HTML
+<<<🧾 <b>Refund receipt</b> for order <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Verify on the tax service (DPS) website</a>>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / BANK with tax link
+result: SENT
+Journal
+  chatId=103
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Bank receipt for the payment of order #1a2b3c4d
+  tgUserId=103
+  type=RECEIPT
+SendDocument chat=103 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Bank receipt</b> for the payment of order <b>#1a2b3c4d</b>
+<a href="https://cabinet.example.test/check?id=1&amp;x=&quot;2&quot;">Verify on the tax service (DPS) website</a>>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / no tax link
+result: SENT
+Journal
+  chatId=103
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Bank receipt for the payment of order #1a2b3c4d
+  tgUserId=103
+  type=RECEIPT
+SendDocument chat=103 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Bank receipt</b> for the payment of order <b>#1a2b3c4d</b>>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / http tax link is not printed
+result: SENT
+Journal
+  chatId=103
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Bank receipt for the payment of order #1a2b3c4d
+  tgUserId=103
+  type=RECEIPT
+SendDocument chat=103 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Bank receipt</b> for the payment of order <b>#1a2b3c4d</b>>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== empty pdf → FAILED
+result: FAILED
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== null pdf → FAILED
+result: FAILED
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== no telegram → FAILED
+result: FAILED
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== telegram says: Forbidden: bot was blocked by the user
+result: BLOCKED
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== telegram says: Forbidden: user is deactivated
+result: BLOCKED
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== telegram says: Bad Request: chat not found
+result: BLOCKED
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== telegram says: Forbidden: bot can't initiate conversation with a user
+result: BLOCKED
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== telegram says: Bad Gateway
+result: FAILED
+Journal
+  chatId=101
+  details={file=chisetup-1a2b3c4d-receipt.pdf, kind=BANK}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Квитанція банку про оплату замовлення #1a2b3c4d
+  tgUserId=101
+  type=RECEIPT
+SendDocument chat=101 file=chisetup-1a2b3c4d-receipt.pdf bytes=5 parse=HTML
+<<<🧾 <b>Квитанція банку</b> про оплату замовлення <b>#1a2b3c4d</b>>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

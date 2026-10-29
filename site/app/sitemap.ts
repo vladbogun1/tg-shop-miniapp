@@ -3,7 +3,7 @@ import { localePath } from "@/i18n";
 import { LOCALES } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
 import { untranslatedLegalPaths } from "@/lib/legal";
-import { getCategories, getSitemap, safe } from "@/lib/server-api";
+import { getCategories, getComingBatches, getSitemap, safe } from "@/lib/server-api";
 
 /** Built per request from /api/public/sitemap (the build has no backend); data cached for 60 s. */
 export const dynamic = "force-dynamic";
@@ -30,9 +30,10 @@ function entries(path: string, lastModified?: string | null): MetadataRoute.Site
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [data, menu] = await Promise.all([
+  const [data, menu, coming] = await Promise.all([
     safe(getSitemap(), { products: [], categories: [] }),
     safe(getCategories("uk"), null),
+    safe(getComingBatches("uk"), []),
   ]);
   // Empty categories are noindex (soft 404) — keep them out. The backend already skips them; this
   // also covers an older backend.
@@ -42,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     null
   );
   return [
+    ...(coming.length > 0 ? entries("/coming-soon") : []),
     ...STATIC.flatMap((p) => entries(p, p === "/" || p === "/catalog" ? newest : null)),
     ...data.categories.filter((c) => !empty.has(c.slug)).flatMap((c) => entries(`/catalog/${c.slug}`, c.updatedAt)),
     ...data.products.flatMap((p) => entries(`/product/${p.slug}`, p.updatedAt)),

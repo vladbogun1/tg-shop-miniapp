@@ -4,7 +4,7 @@
  * Account frame: sign-in gate + left menu (Заказы · Профиль и настройки · Устройства · Выйти),
  * a horizontal tab row on phones.
  */
-import { Loader2, LogOut, MonitorSmartphone, Package, Settings } from "lucide-react";
+import { Bell, Loader2, LogOut, MonitorSmartphone, Package, Settings } from "lucide-react";
 import { MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import { useI18n } from "@/i18n/context";
 import { displayName, rememberedUser, useLogout, useSession } from "@/lib/session";
 import { LifeBuoy } from "lucide-react";
 import { useSupportConfig, useSupportUnread } from "@/lib/support";
+import { useMyPreorders } from "@/lib/preorder";
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
   const { t, href } = useI18n();
@@ -24,6 +25,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const logout = useLogout();
   const { enabled: supportEnabled } = useSupportConfig();
   const supportUnread = useSupportUnread();
+  const myPreorders = useMyPreorders().data;
+  const heldCount = myPreorders.filter((m) => m.status === "HELD").length;
   const [name, setName] = useState<string | null>(null);
   useEffect(() => setName(displayName(rememberedUser())), []);
 
@@ -46,6 +49,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const items = [
     { href: "/account", label: t("account.orders"), icon: Package, active: path === "/account" || path.startsWith("/account/orders") },
     { href: "/account/reviews", label: t("account.reviews"), icon: MessageSquareText, active: path === "/account/reviews" },
+    { href: "/account/waitlist", label: t("preorder.account.title"), icon: Bell, active: path === "/account/waitlist" },
     ...(supportEnabled ? [{ href: "/account/support", label: t("support.nav"), icon: LifeBuoy, active: path.startsWith("/account/support") }] : []),
     { href: "/account/settings", label: t("account.settings"), icon: Settings, active: path === "/account/settings" },
     { href: "/account/settings#sessions", label: t("account.devices"), icon: MonitorSmartphone, active: false },
@@ -78,6 +82,9 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 >
                   <Icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
                   {label}
+                  {h === "/account/waitlist" && heldCount > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-ink)]">{heldCount}</span>
+                  )}
                   {h === "/account/support" && supportUnread > 0 && (
                     <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--accent)] px-1 font-display text-[11px] font-bold leading-none text-[var(--accent-ink)]">{supportUnread}</span>
                   )}

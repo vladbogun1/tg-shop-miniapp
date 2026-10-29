@@ -43,6 +43,11 @@ export const BOARD_ORDER: BoardKey[] = ["NEW", "APPROVED", "SHIPPED", "DELIVERED
 export const BOARD_LABEL: Record<BoardKey, string> = { ...STATUS_COLUMN_LABEL, RETURNING: "Едет назад" };
 export const BOARD_VAR: Record<BoardKey, string> = { ...ORDER_STATUS_COLOR, RETURNING: "var(--st-returning)" };
 
+/** What is travelling back on an order right now: the units on the way × the price paid for them. */
+export function returningMinor(order: { lines?: { returningMinor?: number }[] }): number {
+  return (order.lines ?? []).reduce((acc, l) => acc + (l.returningMinor ?? 0), 0);
+}
+
 export function allowedTargets(from: OrderStatus): OrderStatus[] {
   return sharedAllowedTargets(from).filter((t) => !(from === "DELIVERED" && t === "REJECTED"));
 }

@@ -127,6 +127,7 @@ const http = createHttpClient({
 
 export const apiGet = http.get;
 export const apiPost = http.post;
+export const apiDel = http.del;
 
 /** Makes a server-relative signed media link absolute. */
 export function mediaUrl(path: string | null | undefined): string | null {

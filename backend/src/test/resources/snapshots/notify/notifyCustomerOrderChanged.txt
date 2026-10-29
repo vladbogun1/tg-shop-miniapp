@@ -1,0 +1,51 @@
+=== uk
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Склад замовлення оновлено Замовлення #1a2b3c4d Нова сума до сплати: 10 500 ₴
+  tgUserId=101
+  type=ORDER_CHANGED
+SendMessage chat=101 thread=null parse=HTML
+<<<🧾 <b>Склад замовлення оновлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Нова сума до сплати: <b>10 500 ₴</b>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Состав заказа обновлён Заказ #1a2b3c4d Новая сумма к оплате: 10 500 ₴
+  tgUserId=102
+  type=ORDER_CHANGED
+SendMessage chat=102 thread=null parse=HTML
+<<<🧾 <b>Состав заказа обновлён</b>
+Заказ <b>#1a2b3c4d</b>
+Новая сумма к оплате: <b>10 500 ₴</b>>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🧾 Order contents updated Order #1a2b3c4d New amount due: 10 500 ₴
+  tgUserId=103
+  type=ORDER_CHANGED
+SendMessage chat=103 thread=null parse=HTML
+<<<🧾 <b>Order contents updated</b>
+Order <b>#1a2b3c4d</b>
+New amount due: <b>10 500 ₴</b>>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

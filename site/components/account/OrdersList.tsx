@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MessageCircle, PackageOpen } from "lucide-react";
 import Link from "next/link";
-import { paymentState, shortOrderId, type OrderSummary } from "@shop/shared";
+import { payableMinor, paymentState, shortOrderId, type OrderSummary } from "@shop/shared";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useI18n } from "@/i18n/context";
@@ -98,7 +98,7 @@ function OrderRow({ order }: { order: OrderSummary }) {
           </span>
         )}
         <span className="font-display text-[16px] font-bold tabular-nums text-[var(--accent)]">
-          {fmt.money(order.totalMinor, order.currency)}
+          {fmt.money(payableMinor(order), order.currency)}
         </span>
         <ChevronRight className="hidden h-5 w-5 text-[var(--muted)] sm:block" strokeWidth={2.5} aria-hidden />
       </Link>

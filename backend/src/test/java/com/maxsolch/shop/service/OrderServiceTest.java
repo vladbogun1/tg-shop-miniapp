@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
@@ -48,6 +50,8 @@ import static org.mockito.Mockito.when;
 class OrderServiceTest {
 
     @Mock
+    MoneyLedger moneyLedger;
+    @Mock
     OrderRepository orderRepository;
     @Mock
     ProductRepository productRepository;
@@ -67,6 +71,14 @@ class OrderServiceTest {
     com.maxsolch.shop.i18n.Messages messages;
     @Mock
     EntityManager entityManager;
+    @Mock
+    com.maxsolch.shop.gift.GiftService gift;
+    @Mock
+    com.maxsolch.shop.gift.GiftRegistryService giftRegistry;
+    @Mock
+    com.maxsolch.shop.gift.CaseLowMargin caseLowMargin;
+    @Mock
+    com.maxsolch.shop.payment.PaymentInvoiceRepository paymentInvoices;
 
     OrderService service;
 
@@ -77,9 +89,14 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(orderRepository, productRepository,
+        service = OrderServiceFixtures.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages), moneyLedger,
+                paymentInvoices, gift, giftRegistry, caseLowMargin);
+        // No gift configured, no monthly limit, no low-margin products — unless a test says otherwise.
+        lenient().when(giftRegistry.remainingMinor(any(), any())).thenReturn(Long.MAX_VALUE);
+        lenient().when(caseLowMargin.none()).thenReturn(true);
         // Reservations are a separate concern (PromoServiceTest); here every code is simply free.
         lenient().when(promoService.remainingUses(any(), any())).thenReturn(Long.MAX_VALUE);
         lenient().when(messages.current(any(String.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -184,7 +201,7 @@ class OrderServiceTest {
         assertThat(order.getPrepaymentMinor()).isZero();
         assertThat(order.getPaymentDueAt()).isBetween(Instant.now().plus(java.time.Duration.ofHours(23)),
                 Instant.now().plus(java.time.Duration.ofHours(25)));
-        assertThat(OrderService.amountDueMinor(order)).isEqualTo(5_000);
+        assertThat(OrderMoney.amountDueMinor(order)).isEqualTo(5_000);
     }
 
     @Test
@@ -217,8 +234,8 @@ class OrderServiceTest {
                 UuidUtil.toString(prepay.getId())));
 
         assertThat(order.getPrepaymentMinor()).isEqualTo(10_000);
-        assertThat(OrderService.dueOnlineMinor(order)).isEqualTo(10_000);
-        assertThat(OrderService.amountDueMinor(order)).isEqualTo(10_000);
+        assertThat(OrderMoney.dueOnlineMinor(order)).isEqualTo(10_000);
+        assertThat(OrderMoney.amountDueMinor(order)).isEqualTo(10_000);
     }
 
     @Test
@@ -414,7 +431,7 @@ class OrderServiceTest {
         assertThat(order.isPaid()).isTrue();
         assertThat(order.getPaidAt()).isNotNull();
         assertThat(order.getPaymentDueAt()).isNull();
-        assertThat(OrderService.onlinePaymentMissing(order)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(order)).isFalse();
     }
 
     // ---------- a case promo code and low-margin products (docs/GIFT-CASE.md) ----------
@@ -427,10 +444,8 @@ class OrderServiceTest {
         mouse.setId(UuidUtil.toBytes(mouseUuid));
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? pad : mouse));
-        com.maxsolch.shop.gift.CaseLowMargin lowMargin = org.mockito.Mockito.mock(com.maxsolch.shop.gift.CaseLowMargin.class);
-        lenient().when(lowMargin.none()).thenReturn(false);
-        lenient().when(lowMargin.productIds()).thenReturn(java.util.Set.of(mouseUuid));
-        service.setCaseLowMargin(lowMargin);
+        lenient().when(caseLowMargin.none()).thenReturn(false);
+        lenient().when(caseLowMargin.productIds()).thenReturn(java.util.Set.of(mouseUuid));
         return mouseUuid;
     }
 
@@ -769,12 +784,12 @@ class OrderServiceTest {
     @Test
     void onlinePaymentMissing_onlyForOnlineOrdersWithMoneyStillDue() {
         Order o = approvedPrepaymentNotPaid();
-        assertThat(OrderService.onlinePaymentMissing(o)).isTrue();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isTrue();
         o.setReceivedMinor(10_000); // the prepayment arrived; the rest is наложка
-        assertThat(OrderService.onlinePaymentMissing(o)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse();
         Order legacy = persistedOrder(OrderStatus.APPROVED);
         legacy.setTotalMinor(50_000); // before online payments: no deadline, nothing "missing"
-        assertThat(OrderService.onlinePaymentMissing(legacy)).isFalse();
+        assertThat(OrderMoney.onlinePaymentMissing(legacy)).isFalse();
     }
 
     @Test
@@ -824,8 +839,8 @@ class OrderServiceTest {
         assertThat(paid.isPaid()).isTrue();
         assertThat(paid.getPaidAt()).isNotNull();
         assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
-        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
-        assertThat(OrderService.amountDueMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isEqualTo(40_000);
+        assertThat(OrderMoney.amountDueMinor(paid)).isZero();
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
         verify(events).publishEvent(event.capture());
         assertThat(event.getValue()).isInstanceOf(OrderEvents.PaymentReceived.class);
@@ -847,7 +862,7 @@ class OrderServiceTest {
 
         assertThat(paid.getReceivedMinor()).isEqualTo(30_000);
         assertThat(paid.getPaidAt()).isEqualTo(paidAt); // the first payment time is kept
-        assertThat(OrderQueryService.codMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isZero();
     }
 
     @Test
@@ -926,7 +941,7 @@ class OrderServiceTest {
 
         assertThat(paid.isPaid()).isTrue();
         assertThat(paid.getReceivedMinor()).isEqualTo(10_000);
-        assertThat(OrderQueryService.codMinor(paid)).isEqualTo(40_000);
+        assertThat(OrderMoney.codMinor(paid)).isEqualTo(40_000);
     }
 
     @Test
@@ -952,7 +967,7 @@ class OrderServiceTest {
         Order paid = service.markPaid(o.getId(), 50_000);
 
         assertThat(paid.getReceivedMinor()).isEqualTo(50_000);
-        assertThat(OrderQueryService.codMinor(paid)).isZero();
+        assertThat(OrderMoney.codMinor(paid)).isZero();
     }
 
     // ---------- row locking ----------
@@ -1096,15 +1111,12 @@ class OrderServiceTest {
 
     @Test
     void archive_paymentStillProcessing_isRejected() {
-        com.maxsolch.shop.payment.PaymentInvoiceRepository invoices =
-                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class);
-        service.setPaymentInvoices(invoices);
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         com.maxsolch.shop.payment.PaymentInvoice processing = new com.maxsolch.shop.payment.PaymentInvoice();
         processing.setStatus(com.maxsolch.shop.payment.PaymentInvoice.PROCESSING);
         processing.setAmountMinor(150_000);
-        when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
+        when(paymentInvoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 
         assertThatThrownBy(() -> service.archive(o.getId(), "дубль", "Влад"))
                 .isInstanceOf(BadRequestException.class)
@@ -1113,8 +1125,6 @@ class OrderServiceTest {
 
     @Test
     void rejectShipped_withReturnInTransit_doesNotRestock_andRetainsPrepayment() {
-        MoneyLedger ledger = org.mockito.Mockito.mock(MoneyLedger.class);
-        service.setMoneyLedger(ledger);
         Order o = persistedOrder(OrderStatus.SHIPPED);
         o.setPrepaymentMinor(10_000);
         o.setReceivedMinor(10_000);
@@ -1131,7 +1141,7 @@ class OrderServiceTest {
         assertThat(rejected.getReturnSentAt()).isNotNull();
         assertThat(it.getReturnPendingQty()).isEqualTo(1);
         verify(productRepository, never()).findByIdForUpdate(any());
-        verify(ledger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
+        verify(moneyLedger).record(eq(o.getId()), eq(com.maxsolch.shop.domain.OrderMoneyMovement.Kind.RETAINED),
                 any(), eq(10_000L), any(), any(), any(), any());
     }
 
@@ -1338,7 +1348,6 @@ class OrderServiceTest {
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? bought : prize));
 
-        var gift = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftService.class);
         var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
         when(gift.giftConfig()).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.GiftConfig(null, 0,
                 List.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00, 0, 0, 0, List.of(
@@ -1346,10 +1355,7 @@ class OrderServiceTest {
                                 com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000),
                         new com.maxsolch.shop.gift.GiftService.CaseEntry(2, tier,
                                 com.maxsolch.shop.gift.GiftCaseItem.Kind.DISCOUNT, null, 5, 0, "RARE", 1)))))));
-        var registry = org.mockito.Mockito.mock(com.maxsolch.shop.gift.GiftRegistryService.class);
-        when(registry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
-        service.setGiftService(gift);
-        service.setGiftRegistry(registry);
+        when(giftRegistry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
 
         return service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null));
     }

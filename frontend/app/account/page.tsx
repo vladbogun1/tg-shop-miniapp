@@ -23,12 +23,13 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
-import { paymentState } from "@shop/shared";
+import { payableMinor, paymentState } from "@shop/shared";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { LanguageSegments } from "@/components/LanguageToggle";
 import { SupportEntry } from "@/components/account/SupportEntry";
+import { AccountPreordersLink } from "@/components/preorder/AccountPreordersLink";
 import { AccountReviewsLink } from "@/components/reviews/AccountReviewsLink";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
@@ -111,6 +112,8 @@ export default function AccountPage() {
       <div className="mb-5">
         <LanguageSegments />
       </div>
+
+      <AccountPreordersLink />
 
       <AccountReviewsLink />
 
@@ -213,7 +216,7 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
             {formatDate(order.createdAt)} · {t("account.itemsCount", { n: order.itemsCount })}
           </p>
           <span className="font-display mt-1.5 inline-block text-[17px] font-bold tabular-nums text-[var(--ink)]">
-            {money(order.totalMinor, order.currency)}
+            {money(payableMinor(order), order.currency)}
           </span>
         </div>
         <div className="flex flex-col items-end gap-2">

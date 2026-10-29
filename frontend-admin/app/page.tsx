@@ -27,6 +27,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { Search, RefreshCw, X, Plus } from "lucide-react";
+import { payableMinor } from "@shop/shared";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { useConfirm } from "@/components/ui/ConfirmModal";
@@ -41,7 +42,8 @@ import {
   shortId,
   type BoardKey,
 } from "@/lib/orders";
-import { useTimeRange, RANGE_OPTIONS } from "@/lib/range";
+import { useOrdersPeriod } from "@/lib/orders-period";
+import { OrdersPeriodPicker } from "@/components/orders/OrdersPeriodPicker";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
 import { useFillHeight } from "@/lib/use-fill-height";
@@ -53,6 +55,7 @@ import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { QueryState } from "@/components/ui/QueryState";
 import { TodayStrip } from "@/components/metrics/TodayStrip";
+import { WantedWidget } from "@/components/preorders/WantedWidget";
 import { KanbanColumn } from "@/components/orders/KanbanColumn";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { MobileBoard } from "@/components/orders/MobileBoard";
@@ -82,7 +85,7 @@ export default function BoardPage() {
   const isDesktop = useIsDesktop();
   const [view, setView] = useState<View>("board");
   const [search, setSearch] = useState("");
-  const [range, setRange] = useTimeRange();
+  const [period, setPeriod] = useOrdersPeriod();
   const [closedLimit, setClosedLimit] = useState(CLOSED_PAGE);
   const [mobileTab, setMobileTab] = useState<BoardKey>("NEW");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -99,10 +102,10 @@ export default function BoardPage() {
 
   // Debounced so typing does not fire a board load per keystroke.
   const debouncedSearch = useDebounced(search);
-  const boardKey = ["board", debouncedSearch, range, closedLimit] as const;
+  const boardKey = ["board", debouncedSearch, period, closedLimit] as const;
   const boardQ = useQuery({
     queryKey: boardKey,
-    queryFn: () => ordersApi.board({ q: debouncedSearch || undefined, range, closedLimit }),
+    queryFn: () => ordersApi.board({ q: debouncedSearch || undefined, period, closedLimit }),
     // The board is the heaviest admin query; 10s polling kept the database busy all day for
     // changes that are rare. Mutations invalidate it immediately, so this is only a safety net
     // for changes made elsewhere (another admin, the bot).
@@ -183,8 +186,8 @@ export default function BoardPage() {
         next.counts[from] = Math.max(0, (next.counts[from] ?? 0) - 1);
         next.counts[payload.status] = (next.counts[payload.status] ?? 0) + 1;
         if (next.sums) {
-          next.sums[from] = Math.max(0, (next.sums[from] ?? 0) - moved.totalMinor);
-          next.sums[payload.status] = (next.sums[payload.status] ?? 0) + moved.totalMinor;
+          next.sums[from] = Math.max(0, (next.sums[from] ?? 0) - payableMinor(moved));
+          next.sums[payload.status] = (next.sums[payload.status] ?? 0) + payableMinor(moved);
         }
         qc.setQueryData(boardKey, next);
       }
@@ -332,23 +335,27 @@ export default function BoardPage() {
           </div>
         </div>
         {showRange && (
-          <div className="thin-scroll flex max-w-full items-center gap-2 overflow-x-auto">
-            {view === "board" && (
-              <span className="field-label hidden shrink-0 !text-[11px] !text-[var(--text-faint)] xl:inline">
-                Период для «Доставлен / Отклонён»:
-              </span>
-            )}
-            <SegmentedControl options={RANGE_OPTIONS} value={range} onChange={setRange} className="h-10 shrink-0 pointer-coarse:h-11" />
-          </div>
+          <OrdersPeriodPicker
+            value={period}
+            onChange={setPeriod}
+            label={
+              view === "board" && (
+                <span className="field-label hidden shrink-0 !text-[11px] !text-[var(--text-faint)] xl:inline">
+                  Период для «Доставлен / Отклонён»:
+                </span>
+              )
+            }
+          />
         )}
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} className="h-10 shrink-0 pointer-coarse:h-11" />
       </div>
 
       {view === "table" ? (
-        <OrdersTable search={debouncedSearch} range={range} onOpen={setOpenId} />
+        <OrdersTable search={debouncedSearch} period={period} onOpen={setOpenId} />
       ) : (
         <>
           <TodayStrip />
+          <WantedWidget />
           {paidNewOnly && (
             <div className="mb-3 flex items-center gap-2">
               <span className="text-[13px] font-semibold text-[var(--text)]">Показаны только оплаченные новые заказы — подтвердите их</span>

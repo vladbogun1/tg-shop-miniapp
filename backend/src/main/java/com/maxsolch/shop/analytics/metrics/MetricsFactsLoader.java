@@ -85,6 +85,7 @@ public class MetricsFactsLoader {
         String reasonCode = hasOrderColumn("reject_reason_code") ? "o.reject_reason_code" : "null";
         String prepayment = hasOrderColumn("prepayment_minor") ? "o.prepayment_minor" : "0";
         String dueAt = hasOrderColumn("payment_due_at") ? "o.payment_due_at" : "null";
+        String uncollected = hasOrderColumn("uncollected_minor") ? "o.uncollected_minor" : "0";
         boolean invoices = hasInvoices();
         // Credited monobank invoices per order: how much came online, when, and the last refund.
         String online = invoices
@@ -101,7 +102,8 @@ public class MetricsFactsLoader {
                 + dueAt + " payment_due_at, "
                 + (invoices ? "coalesce(pi.online_paid_minor, 0)" : "0") + " online_paid_minor, "
                 + (invoices ? "pi.online_paid_at" : "null") + " online_paid_at, "
-                + (invoices ? "pi.online_refund_at" : "null") + " online_refund_at "
+                + (invoices ? "pi.online_refund_at" : "null") + " online_refund_at, "
+                + uncollected + " uncollected_minor "
                 + "from orders o " + online
                 // A merged order (V71) is not an order of its own: its lines live on in the one it joined.
                 + (hasOrderColumn("reject_reason_code") ? "where coalesce(o.reject_reason_code, '') <> 'MERGED' " : "")
@@ -135,7 +137,8 @@ public class MetricsFactsLoader {
                 ts(rs, "payment_due_at"),
                 rs.getLong("online_paid_minor"),
                 ts(rs, "online_paid_at"),
-                ts(rs, "online_refund_at")));
+                ts(rs, "online_refund_at"),
+                rs.getLong("uncollected_minor")));
     }
 
     private List<MetricsFacts.InvoiceFact> loadInvoices() {

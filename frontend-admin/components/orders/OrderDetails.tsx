@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
-import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText } from "@shop/shared";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText, payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
 import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "@/lib/gift";
 import {
@@ -44,6 +44,7 @@ import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";
 import { OnlinePaymentBlock } from "./OnlinePaymentBlock";
 import { MoneyLedgerBlock } from "./MoneyLedgerBlock";
+import { OrderProfitBlock } from "./OrderProfitBlock";
 import { ReturnHistoryBlock } from "./ReturnHistoryBlock";
 
 export interface DetailHandlers {
@@ -64,6 +65,8 @@ export interface DetailHandlers {
   onMerge?: () => void;
   /** Open another order in the same drawer (the two sides of an exchange or a merge). */
   onOpenOrder?: (id: string) => void;
+  /** Tap on a line's photo or title: the product's quick view (the same panel as on a supply page). */
+  onOpenProduct?: (productId: string) => void;
   /** «Посылка вернулась» — only while the refused parcel is on its way back. */
   onReturnReceived?: () => void;
   /** «Вернуть из архива» — main admin only, archived orders. */
@@ -324,20 +327,44 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
 
       <MoneyLedgerBlock order={order} onChanged={h.onPaymentChanged} />
 
+      <OrderProfitBlock orderId={order.id} />
+
       {/* Items */}
       <Section title="Состав">
         <div className="flex flex-col gap-3">
-          {order.items.map((it, i) => (
+          {order.items.map((it, i) => {
+            const pid = it.productId;
+            const open = h.onOpenProduct && pid ? () => h.onOpenProduct!(pid) : undefined;
+            return (
             <div key={it.id ?? i} className="flex items-start gap-3">
-              <Image
-                src={it.imageUrl ?? undefined}
-                alt={it.title}
-                size={96}
-                className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]"
-              />
+              {/* Photo and title open the product's quick view; the qty buttons below stay their own targets. */}
+              <button
+                type="button"
+                onClick={open}
+                disabled={!open}
+                aria-label={`Просмотр товара «${it.title}»`}
+                className="nb-press shrink-0 rounded-[var(--r-md)] transition-shadow enabled:hover:shadow-[0_0_0_2px_var(--accent)] disabled:cursor-default pointer-coarse:-m-1 pointer-coarse:p-1"
+              >
+                <Image
+                  src={it.imageUrl ?? undefined}
+                  alt={it.title}
+                  size={96}
+                  className="h-12 w-12 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]"
+                />
+              </button>
               <div className="min-w-0 flex-1">
                 {/* Two lines, not one: on a phone a single truncated line hid what was ordered. */}
-                <div className="line-clamp-2 break-words text-[14px] leading-snug text-[var(--text)]" title={it.title}>
+                <div
+                  role={open ? "button" : undefined}
+                  tabIndex={open ? 0 : undefined}
+                  onClick={open}
+                  onKeyDown={open ? (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open()) : undefined}
+                  className={cn(
+                    "line-clamp-2 break-words text-[14px] leading-snug text-[var(--text)]",
+                    open && "cursor-pointer decoration-[var(--accent)] underline-offset-2 hover:underline"
+                  )}
+                  title={it.title}
+                >
                   {it.gift && it.caseRarity && (
                     <span
                       className="chip-tint mr-1.5 !px-2 align-[1px] !text-[10px]"
@@ -409,7 +436,8 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
           {gift?.tier && casePromo && (
             <div className="flex items-start gap-3">
               <img src={`/case/${gift.tier.toLowerCase()}/case-closed-sm.webp`} alt="" className="h-12 w-12 shrink-0 object-contain" />
@@ -477,6 +505,18 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
             <span className="text-[13px] uppercase tracking-[0.06em]">Итого</span>
             <span>{money(order.totalMinor, order.currency)}</span>
           </div>
+          {(order.uncollectedMinor ?? 0) > 0 && (
+            <>
+              <div className="flex justify-between font-semibold text-[var(--danger-ink)]">
+                <span>Не выкуплено на почте</span>
+                <span>−{money(order.uncollectedMinor ?? 0, order.currency)}</span>
+              </div>
+              <div className="font-display flex items-baseline justify-between pt-0.5 text-[16px] font-bold text-[var(--ink)]">
+                <span className="text-[13px] uppercase tracking-[0.06em]">К оплате</span>
+                <span>{money(payableMinor(order), order.currency)}</span>
+              </div>
+            </>
+          )}
         </div>
         {(editable || h.onReturn || h.onExchange || h.onMerge) && (
           <div className="mt-3 flex flex-wrap gap-2">

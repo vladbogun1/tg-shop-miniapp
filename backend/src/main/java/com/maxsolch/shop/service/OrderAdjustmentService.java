@@ -3,6 +3,7 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderExchange;
 import com.maxsolch.shop.domain.OrderExchangeLine;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
@@ -26,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -41,28 +44,29 @@ public class OrderAdjustmentService {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final OrderExchangeRepository exchangeRepository;
+    /** The order money journal: every refund / retention is recorded here. */
+    private final MoneyLedger moneyLedger;
 
     public OrderAdjustmentService(OrderRepository orderRepository,
                                   OrderService orderService,
+                                  OrderStock stock,
                                   ApplicationEventPublisher events,
-                                  OrderExchangeRepository exchangeRepository) {
+                                  OrderExchangeRepository exchangeRepository,
+                                  MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
+        this.stock = stock;
         this.events = events;
         this.exchangeRepository = exchangeRepository;
-    }
-
-    /** Money journal, write-offs, exchange lines (optional: unit tests build the service without them). */
-    private MoneyLedger moneyLedger;
-    private StockWriteoffRepository writeoffs;
-    private OrderExchangeLineRepository exchangeLines;
-
-    @Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
         this.moneyLedger = moneyLedger;
     }
+
+    /** Write-offs, exchange lines (optional: unit tests build the service without them). */
+    private StockWriteoffRepository writeoffs;
+    private OrderExchangeLineRepository exchangeLines;
 
     @Autowired(required = false)
     void setWriteoffs(StockWriteoffRepository writeoffs) {
@@ -219,8 +223,8 @@ public class OrderAdjustmentService {
     public Result registerReturn(byte[] orderId, List<ReturnLine> lines, long refundMinor, String note) {
         Order order = load(orderId);
         OrderStatus s = order.getStatus();
-        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
-                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+        boolean overpaidInWork = OrderTransitions.isOpen(s)
+                && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
         }
@@ -230,15 +234,14 @@ public class OrderAdjustmentService {
                     ? "по отклонённому заказу можно оформить только возврат денег"
                     : "заказ ещё не отправлен — можно вернуть только переплату");
         }
-        if (overpaidInWork && refundMinor > order.getReceivedMinor() - Math.max(0, order.getRefundedMinor())
-                - order.getTotalMinor()) {
+        if (overpaidInWork && refundMinor > OrderMoney.overpaidMinor(order)) {
             throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(
-                    order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor()));
+                    OrderMoney.overpaidMinor(order)));
         }
         if (refundMinor < 0) {
             throw new BadRequestException("сумма возврата не может быть отрицательной");
         }
-        long refundable = refundableMinor(order);
+        long refundable = OrderMoney.refundableMinor(order);
         if (refundMinor > refundable) {
             throw new BadRequestException("вернуть можно не больше, чем получено: " + MoneyFormat.uah(refundable));
         }
@@ -262,7 +265,7 @@ public class OrderAdjustmentService {
             if (line.restock()) {
                 // Never more than is still out of stock for this line.
                 int canRestock = item.getQuantity() - item.getRestockedQty();
-                orderService.restockItem(item, Math.min(line.quantity(), canRestock));
+                stock.restockUnits(item, Math.min(line.quantity(), canRestock));
             }
             units += line.quantity();
             parts.add(item.getTitleSnapshot() + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (не на склад)"));
@@ -273,10 +276,8 @@ public class OrderAdjustmentService {
         if (refundMinor > 0) {
             order.setRefundedMinor(order.getRefundedMinor() + refundMinor);
             parts.add("возврат денег " + MoneyFormat.uah(refundMinor));
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
-                        refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
+                    refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
@@ -399,14 +400,14 @@ public class OrderAdjustmentService {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
                     int canRestock = item.getQuantity() - item.getRestockedQty();
                     int restocked = Math.min(line.quantity(), canRestock);
-                    orderService.restockItem(item, restocked);
+                    stock.restockUnits(item, restocked);
                     rl.setRestockedQty(restocked);
                     parts.add(title + " ×" + line.quantity() + " (на склад)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
                 case DEFECT -> {
                     item.setReturnedQty(item.getReturnedQty() + line.quantity());
-                    StockWriteoff w = writeOff(item, line.quantity(), unitPaidMinor(order, item), order.getId(),
+                    StockWriteoff w = writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item), order.getId(),
                             cleanNote, adminName);
                     rl.setDefectQty(line.quantity());
                     rl.setWriteoffId(w == null ? null : w.getId());
@@ -431,24 +432,29 @@ public class OrderAdjustmentService {
         if (units == 0 && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
             throw new BadRequestException("укажите, что вернули, или сумму возврата");
         }
+        if (s == OrderStatus.SHIPPED) {
+            // Partial pickup: what the customer refused at the branch is never paid for.
+            long refused = refusedValueMinor(order, lines, true);
+            if (refused > 0) {
+                order.setUncollectedMinor(Math.max(0, order.getUncollectedMinor()) + refused);
+                parts.add("не выкуплено на почте " + MoneyFormat.uah(refused) + ", наложка теперь "
+                        + MoneyFormat.uah(OrderMoney.codMinor(order)));
+            }
+        }
         for (ManualRefund r : refunds) {
             order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
             parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + channelLabel(r.channel()) + ")");
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
-                        OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
+                    OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
         }
         if (plan.monoRefundMinor() > 0) {
             parts.add("на карту через monobank " + MoneyFormat.uah(plan.monoRefundMinor()) + " (запрошено)");
         }
         if (plan.retainMinor() > 0) {
             parts.add("удержано " + MoneyFormat.uah(plan.retainMinor()) + " (доставка)");
-            if (moneyLedger != null) {
-                moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER,
-                        plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
-                        cleanNote == null ? "удержано: доставка" : cleanNote, null);
-            }
+            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER,
+                    plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
+                    cleanNote == null ? "удержано: доставка" : cleanNote, null);
         }
         order.setReturnedAt(Instant.now());
         Order saved = orderRepository.save(order);
@@ -476,16 +482,17 @@ public class OrderAdjustmentService {
     /** Status, amounts and channels of a wizard plan; nothing is changed. */
     private void validatePlan(Order order, ReturnPlan plan, boolean monoSent) {
         OrderStatus s = order.getStatus();
-        boolean overpaidInWork = (s == OrderStatus.NEW || s == OrderStatus.APPROVED)
-                && order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) > order.getTotalMinor();
+        boolean overpaidInWork = OrderTransitions.isOpen(s)
+                && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
             throw new BadRequestException("возврат оформляется для отправленного, доставленного или отклонённого заказа");
         }
         List<WizardLine> lines = plan.lines() == null ? List.of()
                 : plan.lines().stream().filter(l -> l.quantity() > 0).toList();
-        if (s == OrderStatus.SHIPPED && lines.stream().anyMatch(l -> l.outcome() == LineOutcome.IN_TRANSIT)) {
-            throw new BadRequestException("посылка ещё не у покупателя — если её не забрали, отклоните заказ с «Посылка едет назад»");
+        if (s == OrderStatus.SHIPPED && !lines.isEmpty() && nothingPickedUp(order, lines)) {
+            throw new BadRequestException("покупатель не забрал ничего — отклоните заказ с «Посылка едет назад»");
         }
+        long pickupValue = s == OrderStatus.SHIPPED ? refusedValueMinor(order, lines, false) : 0;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
             throw new BadRequestException(s == OrderStatus.REJECTED
                     ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
@@ -509,8 +516,8 @@ public class OrderAdjustmentService {
         if (plan.retainMinor() < 0 || plan.monoRefundMinor() < 0) {
             throw new BadRequestException("сумма не может быть отрицательной");
         }
-        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
-        long refundable = Math.max(0, refundableMinor(order) - retainedBefore);
+        long retainedBefore = moneyLedger.retainedMinor(order.getId());
+        long refundable = Math.max(0, OrderMoney.refundableMinor(order) - retainedBefore);
         long mono = monoSent ? 0 : plan.monoRefundMinor();
         if (manual + mono + plan.retainMinor() > refundable) {
             throw new BadRequestException("вернуть и удержать вместе можно не больше, чем получено и ещё не возвращено"
@@ -518,14 +525,70 @@ public class OrderAdjustmentService {
                     + ": " + MoneyFormat.uah(refundable));
         }
         if (overpaidInWork) {
-            long over = order.getReceivedMinor() - Math.max(0, order.getRefundedMinor()) - order.getTotalMinor();
+            long over = OrderMoney.overpaidMinor(order);
             if (manual + mono > over) {
                 throw new BadRequestException("до отправки можно вернуть только переплату: " + MoneyFormat.uah(over));
+            }
+        }
+        if (s == OrderStatus.SHIPPED && manual + mono > 0) {
+            // Partial pickup: the refused units come off наложка; only money paid above what the
+            // customer owes for the rest goes back.
+            long over = Math.max(0, OrderMoney.netReceivedMinor(order)
+                    - (OrderMoney.collectableMinor(order) - pickupValue));
+            if (manual + mono > over) {
+                throw new BadRequestException(over == 0
+                        ? "посылка ещё на почте — за невыкупленное покупатель просто не платит наложку, вернуть нечего"
+                        : "посылка ещё на почте — вернуть можно только переплату: " + MoneyFormat.uah(over));
             }
         }
         if (lines.isEmpty() && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
             throw new BadRequestException("укажите, что вернули, или сумму возврата");
         }
+    }
+
+    /** Every paid unit of a shipped order would be refused — that is a refused parcel, not a partial pickup. */
+    private static boolean nothingPickedUp(Order order, List<WizardLine> lines) {
+        for (OrderItem item : order.getItems()) {
+            if (item.isGift() || item.getId() == null) {
+                continue;
+            }
+            int back = lines.stream()
+                    .filter(l -> l.itemId() == item.getId() && l.outcome() != LineOutcome.KEPT)
+                    .mapToInt(WizardLine::quantity).sum();
+            if (item.getQuantity() - item.getReturnedQty() - back > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Paid value of the units of a shipped order the customer refused at the branch (partial
+     * pickup): every line that comes back, wherever it is now; a compensation (KEPT) is not one.
+     * The value of an item's units follows {@link OrderMoney#paidForUnitsMinor}, so refusing the
+     * same line in several steps adds up to its exact paid amount.
+     *
+     * @param applied the lines are already counted in {@code returnedQty} (called after the wizard
+     *                booked them); otherwise they are not yet
+     */
+    static long refusedValueMinor(Order order, List<WizardLine> lines, boolean applied) {
+        Map<OrderItem, Integer> units = new IdentityHashMap<>();
+        for (WizardLine l : lines) {
+            if (l.outcome() == LineOutcome.KEPT || l.quantity() <= 0) {
+                continue;
+            }
+            order.getItems().stream()
+                    .filter(i -> i.getId() != null && i.getId() == l.itemId())
+                    .findFirst()
+                    .ifPresent(item -> units.merge(item, l.quantity(), Integer::sum));
+        }
+        long sum = 0;
+        for (Map.Entry<OrderItem, Integer> e : units.entrySet()) {
+            OrderItem item = e.getKey();
+            int already = applied ? item.getReturnedQty() - e.getValue() : item.getReturnedQty();
+            sum += OrderMoney.paidForUnitsMinor(order, item, already, e.getValue());
+        }
+        return sum;
     }
 
     /** One line of «Посылка вернулась»: units of this order line and what state they came in. */
@@ -568,7 +631,7 @@ public class OrderAdjustmentService {
             int restocked = 0;
             if (sellable > 0) {
                 restocked = Math.min(sellable, item.getQuantity() - item.getRestockedQty());
-                orderService.restockItem(item, restocked);
+                stock.restockUnits(item, restocked);
                 parts.add(title + " ×" + sellable + " (на склад)");
             }
             StockWriteoff w = null;
@@ -577,7 +640,7 @@ public class OrderAdjustmentService {
                     // A delivered order's returned units were counted when the return was registered.
                     item.setReturnedQty(item.getReturnedQty() + defect);
                 }
-                w = writeOff(item, defect, unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
+                w = writeOff(item, defect, OrderMoney.unitPaidMinor(order, item), order.getId(), cleanNote, adminName);
                 parts.add(title + " ×" + defect + " (брак, списан)");
             }
             settleInTransit(order, item, restocked, defect, w);
@@ -588,23 +651,6 @@ public class OrderAdjustmentService {
         events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
         return new Result(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
                 + (cleanNote == null ? "" : "; " + cleanNote));
-    }
-
-    /**
-     * What one unit of a line actually cost the customer: its price with the order discount spread
-     * over the paid lines in proportion (gifts cost nothing). The wizard's suggested refund.
-     */
-    public static long unitPaidMinor(Order order, OrderItem item) {
-        if (item.isGift() || item.getPriceMinorSnapshot() <= 0) {
-            return 0;
-        }
-        long subtotal = order.getSubtotalMinor();
-        long discount = Math.max(0, order.getDiscountMinor());
-        if (subtotal <= 0 || discount == 0) {
-            return item.getPriceMinorSnapshot();
-        }
-        double share = Math.min(1.0, (double) discount / subtotal);
-        return Math.round(item.getPriceMinorSnapshot() * (1.0 - share));
     }
 
     private StockWriteoff writeOff(OrderItem item, int quantity, long unitValueMinor, byte[] orderId, String note,
@@ -731,6 +777,7 @@ public class OrderAdjustmentService {
         long credit = 0;
         List<String> backParts = new ArrayList<>();
         List<OrderExchangeLine> backLines = new ArrayList<>();
+        Map<OrderItem, Integer> exchangeBackUnits = new IdentityHashMap<>();
         for (WizardLine line : back) {
             LineOutcome outcome = line.outcome();
             if (outcome == LineOutcome.KEPT) {
@@ -745,8 +792,12 @@ public class OrderAdjustmentService {
                 throw new BadRequestException("по позиции «" + item.getTitleSnapshot()
                         + "» можно обменять не больше " + left + " шт.");
             }
-            long unit = unitPaidMinor(order, item);
-            credit += unit * line.quantity();
+            // units of the same item listed twice follow each other, so they don't share the same range
+            int alreadyBack = item.getReturnedQty() + exchangeBackUnits.merge(item, 0, Integer::sum);
+            long unit = OrderMoney.unitPaidMinor(order, item);
+            long lineValue = OrderMoney.paidForUnitsMinor(order, item, alreadyBack, line.quantity());
+            exchangeBackUnits.merge(item, line.quantity(), Integer::sum);
+            credit += lineValue;
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
             backParts.add(title + " ×" + line.quantity() + switch (outcome) {
@@ -775,8 +826,8 @@ public class OrderAdjustmentService {
                 orderService.exchangePaymentOptionId(order), com.maxsolch.shop.domain.OrderSource.ADMIN,
                 com.maxsolch.shop.gift.GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
         String childShort = shortId(child.getId());
-        long retainedBefore = moneyLedger == null ? 0 : moneyLedger.retainedMinor(order.getId());
-        long moved = Math.max(0, Math.min(Math.min(credit, refundableMinor(order) - retainedBefore),
+        long retainedBefore = moneyLedger.retainedMinor(order.getId());
+        long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
                 child.getTotalMinor()));
         if (moved > 0) {
             child = orderService.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
@@ -883,7 +934,7 @@ public class OrderAdjustmentService {
         if (st == OrderStatus.SHIPPED || st == OrderStatus.DELIVERED) {
             return "замену #" + no + " уже отправили — оформите «Возврат» в заказе #" + no;
         }
-        long kept = Math.max(0, replacement.getReceivedMinor()) - Math.max(0, replacement.getRefundedMinor());
+        long kept = OrderMoney.keptMinor(replacement);
         if (kept > rec.getRefundMinor()) {
             return "по замене #" + no + " уже доплатили " + MoneyFormat.uah(kept - rec.getRefundMinor())
                     + " — отклоните заказ #" + no + " и верните эти деньги «Возвратом», потом отмените обмен";
@@ -939,15 +990,13 @@ public class OrderAdjustmentService {
             }
             if (child != null) {
                 String no = shortId(child.getId());
-                long kept = Math.max(0, child.getReceivedMinor()) - Math.max(0, child.getRefundedMinor());
+                long kept = OrderMoney.keptMinor(child);
                 creditBack = Math.max(0, Math.min(rec.getRefundMinor(), kept));
                 if (creditBack > 0) {
                     child.setRefundedMinor(Math.max(0, child.getRefundedMinor()) + creditBack);
-                    if (moneyLedger != null) {
-                        moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
-                                creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
-                                "обмен отменён, зачёт обратно в заказ #" + shortId(order.getId()), null);
-                    }
+                    moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
+                            creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
+                            "обмен отменён, зачёт обратно в заказ #" + shortId(order.getId()), null);
                 }
                 orderRepository.save(child);
                 if (child.getStatus() != OrderStatus.REJECTED) {
@@ -969,12 +1018,21 @@ public class OrderAdjustmentService {
             otherPosted = returnLines.findByReturnIdInOrderByIdAsc(otherIds).stream()
                     .anyMatch(l -> LineOutcome.IN_TRANSIT.name().equals(l.getOutcome()));
         }
+        // Registered while the parcel was at the branch (partial pickup): the refused value comes back into наложка.
+        boolean pickup = !exchange && order.getShippedAt() != null && rec.getCreatedAt() != null
+                && rec.getCreatedAt().isAfter(order.getShippedAt())
+                && (order.getDeliveredAt() == null || rec.getCreatedAt().isBefore(order.getDeliveredAt()));
+        long refusedBack = 0;
         for (OrderReturnLine l : returnLines.findByReturnIdInOrderByIdAsc(List.of(rec.getId()))) {
             OrderItem item = order.getItems().stream()
                     .filter(i -> i.getId() != null && i.getId() == l.getItemId())
                     .findFirst().orElse(null);
             if (item == null) {
                 continue;
+            }
+            if (pickup && !LineOutcome.KEPT.name().equals(l.getOutcome())) {
+                // the record is the last one: before it the item had returnedQty - quantity units returned
+                refusedBack += OrderMoney.paidForUnitsMinor(order, item, item.getReturnedQty() - l.getQuantity(), l.getQuantity());
             }
             String title = item.getTitleSnapshot()
                     + (item.getVariantNameSnapshot() == null ? "" : " (" + item.getVariantNameSnapshot() + ")");
@@ -986,7 +1044,7 @@ public class OrderAdjustmentService {
                 item.setReturnPendingQty(Math.max(0, item.getReturnPendingQty() - pending));
             }
             if (l.getRestockedQty() > 0) {
-                orderService.takeBackUnits(item, l.getRestockedQty());
+                stock.takeBackUnits(item, l.getRestockedQty());
             }
             if (l.getDefectQty() > 0 && writeoffs != null && l.getWriteoffId() != null) {
                 writeoffs.findById(l.getWriteoffId()).ifPresent(w -> {
@@ -999,6 +1057,11 @@ public class OrderAdjustmentService {
             }
             item.setReturnedQty(Math.max(0, item.getReturnedQty() - l.getQuantity()));
             parts.add(title + " ×" + l.getQuantity() + " снова в заказе");
+        }
+        if (refusedBack > 0 && order.getUncollectedMinor() > 0) {
+            long back = Math.min(refusedBack, order.getUncollectedMinor());
+            order.setUncollectedMinor(order.getUncollectedMinor() - back);
+            parts.add("снова к оплате наложкой " + MoneyFormat.uah(back));
         }
         boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
         if (!anyPending && order.getStatus() != OrderStatus.REJECTED) {
@@ -1081,6 +1144,7 @@ public class OrderAdjustmentService {
             throw new BadRequestException("вернуть можно от 1 до " + left + " шт.");
         }
         String cleanNote = note == null || note.isBlank() ? null : cut(note.trim(), 500);
+        int restored = 0; // units already put back through their order line
         if (w.getOrderId() != null && returnLines != null) {
             Order order = load(w.getOrderId());
             int move = quantity;
@@ -1092,8 +1156,14 @@ public class OrderAdjustmentService {
                 l.setDefectQty(l.getDefectQty() - take);
                 l.setRestockedQty(l.getRestockedQty() + take);
                 returnLines.save(l);
-                order.getItems().stream().filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst()
-                        .ifPresent(i -> i.setRestockedQty(Math.min(i.getQuantity(), i.getRestockedQty() + take)));
+                OrderItem line = order.getItems().stream()
+                        .filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst().orElse(null);
+                if (line != null) {
+                    line.setRestockedQty(Math.min(line.getQuantity(), line.getRestockedQty() + take));
+                }
+                // the units go back into the lots the order took them from, so their cost stays known
+                stock.restockProduct(w.getProductId(), w.getVariantId(), take, line);
+                restored += take;
                 move -= take;
                 if (move == 0) {
                     break;
@@ -1101,7 +1171,7 @@ public class OrderAdjustmentService {
             }
             orderRepository.save(order);
         }
-        orderService.restockProduct(w.getProductId(), w.getVariantId(), quantity);
+        stock.restockProduct(w.getProductId(), w.getVariantId(), quantity - restored, null);
         w.setUndoneQty(w.getUndoneQty() + quantity);
         w.setUndoneAt(Instant.now());
         w.setUndoneBy(adminName);
@@ -1113,10 +1183,8 @@ public class OrderAdjustmentService {
     /** Money of a cancelled return came back: «возвращено» goes down, the journal gets a minus refund. */
     private void bookMoneyBack(Order order, long amount, OrderMoneyMovement.Channel channel, String adminName, String note) {
         order.setRefundedMinor(Math.max(0, order.getRefundedMinor() - amount));
-        if (moneyLedger != null) {
-            moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
-                    OrderMoneyMovement.Source.ADMIN, adminName, note, null);
-        }
+        moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
+                OrderMoneyMovement.Source.ADMIN, adminName, note, null);
     }
 
     /** How the customer sends a refund back: the way it went out; monobank refunds come back by transfer. */
@@ -1137,16 +1205,6 @@ public class OrderAdjustmentService {
 
     private static String cut(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
-    }
-
-    /**
-     * Money that can still be refunded: what was received minus what was already given back. The
-     * raw received amount, not capped at the total: after an exchange for something cheaper the
-     * overpayment is exactly what has to go back.
-     */
-    public static long refundableMinor(Order order) {
-        long received = Math.max(0, order.getReceivedMinor());
-        return Math.max(0, received - Math.max(0, order.getRefundedMinor()));
     }
 
     /** Same row lock as every other order change (OrderService), so edits cannot interleave. */

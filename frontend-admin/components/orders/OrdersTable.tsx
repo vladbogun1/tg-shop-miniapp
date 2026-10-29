@@ -4,7 +4,7 @@
  * OrdersTable — table view (GET /api/admin/orders → PLAIN OrderCardDto[]).
  * The backend returns a plain array (not a paged wrapper), so paging is a
  * simple Next/Prev driven by page/size: if the returned array length < size,
- * we are on the last page and Next is disabled. Respects q + range + status.
+ * we are on the last page and Next is disabled. Respects q + period + status.
  * On mobile it collapses to cards.
  */
 import { useEffect, useState } from "react";
@@ -22,8 +22,8 @@ import {
   type OrderSortBy,
   type OrderStatus,
   type SortDir,
-  type TimeRange,
 } from "@/lib/api";
+import { payableMinor } from "@shop/shared";
 import { money } from "@/lib/money";
 import { ordersApi, type AdminOrderCard } from "@/lib/orders-api";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
@@ -44,11 +44,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { cn } from "@/lib/cn";
+import type { OrdersPeriod } from "@/lib/orders-period";
 import { OrderCard } from "./OrderCard";
 
 interface Props {
   search: string;
-  range: TimeRange;
+  period: OrdersPeriod;
   onOpen: (id: string) => void;
 }
 
@@ -61,7 +62,7 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   ...STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABEL[s] })),
 ];
 
-export function OrdersTable({ search, range, onOpen }: Props) {
+export function OrdersTable({ search, period, onOpen }: Props) {
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<StatusFilter>("ALL");
   // Archive: everyone may look, only the main admin changes (inside the order card).
@@ -72,7 +73,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
   // reset to first page whenever filters/sort change
   useEffect(() => {
     setPage(0);
-  }, [search, range, status, sortBy, sortDir, archived]);
+  }, [search, period, status, sortBy, sortDir, archived]);
 
   // Toggle direction when re-clicking the active column, otherwise switch
   // column and default to descending.
@@ -86,12 +87,12 @@ export function OrdersTable({ search, range, onOpen }: Props) {
   }
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
-    queryKey: ["orders-table", search, range, status, page, sortBy, sortDir, archived],
+    queryKey: ["orders-table", search, period, status, page, sortBy, sortDir, archived],
     queryFn: () =>
       ordersApi.list({
         archived,
         q: search || undefined,
-        range,
+        period,
         status: status === "ALL" ? undefined : status,
         page,
         size: SIZE,
@@ -234,7 +235,7 @@ export function OrdersTable({ search, range, onOpen }: Props) {
                       </span>
                     </td>
                     <td className="r font-display whitespace-nowrap font-bold !text-[var(--ink)]">
-                      {money(o.totalMinor, o.currency)}
+                      {money(payableMinor(o), o.currency)}
                     </td>
                     <td>
                       <span className="inline-flex flex-wrap items-center gap-1">

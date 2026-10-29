@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
@@ -228,7 +230,7 @@ public class ReplyTemplateService {
         String id = UuidUtil.toString(order.getId());
         v.put("orderNo", id == null ? "" : id.substring(0, Math.min(8, id.length())));
         v.put("total", money(order.getTotalMinor()));
-        v.put("cod", money(OrderQueryService.codMinor(order)));
+        v.put("cod", money(OrderMoney.codMinor(order)));
         v.put("ttn", order.getTrackingNumber() == null || order.getTrackingNumber().isBlank()
                 ? "—" : order.getTrackingNumber());
         if (order.getDeliveryMethod() == DeliveryMethod.PICKUP) {

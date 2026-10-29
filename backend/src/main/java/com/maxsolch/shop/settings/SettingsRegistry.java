@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import static com.maxsolch.shop.settings.SettingDefinition.boolSetting;
 import static com.maxsolch.shop.settings.SettingDefinition.intSetting;
+import static com.maxsolch.shop.settings.SettingDefinition.selectSetting;
 import static com.maxsolch.shop.settings.SettingDefinition.textSetting;
 
 /**
@@ -56,6 +57,18 @@ public final class SettingsRegistry {
     public static final String ANTIBOT_MAX_QTY_PER_PRODUCT = "antibot.maxQtyPerProduct";
     public static final String ANTIBOT_MAX_UNITS_PER_ORDER = "antibot.maxUnitsPerOrder";
     public static final String ANTIBOT_MAX_SELF_CANCELS_PER_DAY = "antibot.maxSelfCancelsPerDay";
+    // Pre-orders and the waitlist (V73, preorder.*).
+    public static final String PREORDER_GROUP = "preorder";
+    public static final String PREORDER_ANY_PRODUCT = "preorder.anyProduct";
+    public static final String PREORDER_HOLD_HOURS = "preorder.holdHours";
+    public static final String PREORDER_SHOW_WAITING_FROM = "preorder.showWaitingFrom";
+    public static final String PREORDER_MAX_ACTIVE = "preorder.maxActive";
+    // Money of batches and margin (V74, costing.*).
+    public static final String COSTING_GROUP = "costing";
+    /** Bank fee in percent, a decimal as text ({@code 1.3}); used where monobank sent no fee of its own. */
+    public static final String COSTING_ACQUIRING_FEE_PERCENT = "costing.acquiringFeePercent";
+    /** How a new batch spreads its expenses: BY_VALUE | BY_QTY | BY_WEIGHT | MANUAL. */
+    public static final String COSTING_DEFAULT_DISTRIBUTION = "costing.defaultDistribution";
     // Support threads (SupportService). 0 = no limit / never.
     public static final String SUPPORT_ENABLED = "support.enabled";
     public static final String SUPPORT_COOLDOWN_SEC = "support.cooldownSec";
@@ -101,7 +114,11 @@ public final class SettingsRegistry {
             new Group("antibot", "Защита от ботов и спама",
                     "Лимиты на оформление заказов: против ботов и скупки товара. 0 — без ограничения."),
             new Group(GIFT_GROUP, "Подарок за сумму (кейсы)",
-                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."));
+                    "Подарок или кейс с призом за заказ от порога. Уровни и призы кейсов — в разделе «Кейс»."),
+            new Group(PREORDER_GROUP, "Предзаказы и ожидание",
+                    "Очередь на товары, которых нет: поставки, бронь при приезде, что видит покупатель."),
+            new Group(COSTING_GROUP, "Себестоимость и маржа",
+                    "Расчёт себестоимости поставок и маржи заказов (раздел «Финансы»)."));
 
     private static final List<SettingDefinition> DEFINITIONS = List.of(
             textSetting(PAYMENT_FISCAL_TAX_CODES, "payment",
@@ -317,6 +334,40 @@ public final class SettingsRegistry {
                     "Заказов за сутки",
                     "Сколько заказов покупатель может оформить за последние 24 часа. 0 — без ограничения.",
                     5, 0, 100, "шт"),
+            boolSetting(PREORDER_ANY_PRODUCT, PREORDER_GROUP,
+                    "Ожидание на любой отсутствующий товар",
+                    "Кнопка «Повідомити, коли з'явиться» на каждом товаре, которого нет, даже без поставки. "
+                            + "Кто ждёт — видно в «Поставки → Чего ждут». Выключено — встать в очередь можно "
+                            + "только на товары из открытой поставки.",
+                    true),
+            intSetting(PREORDER_HOLD_HOURS, PREORDER_GROUP,
+                    "Бронь при приезде",
+                    "Сколько часов товар держится за первым в очереди, когда он приехал. Не купил — бронь "
+                            + "переходит следующему. У поставки можно задать своё значение.",
+                    24, 1, 168, "ч"),
+            intSetting(PREORDER_SHOW_WAITING_FROM, PREORDER_GROUP,
+                    "Показывать «Чекають N людей» от",
+                    "С какого числа ждущих покупатели видят счётчик на странице товара. 0 — не показывать.",
+                    5, 0, 1000, "чел."),
+            intSetting(PREORDER_MAX_ACTIVE, PREORDER_GROUP,
+                    "Очередей у одного покупателя",
+                    "Сколько товаров один покупатель может ждать одновременно. 0 — без ограничения.",
+                    20, 0, 500, "шт"),
+            new SettingDefinition(COSTING_ACQUIRING_FEE_PERCENT, COSTING_GROUP, SettingType.STRING,
+                    "Комиссия эквайринга",
+                    "Сколько банк берёт с онлайн-оплаты, в процентах (например 1.3). Нужна только для оценки "
+                            + "маржи там, где monobank не прислал свою сумму комиссии. От 0 до 10.",
+                    "1.3", null, null, 8, "%"),
+            selectSetting(COSTING_DEFAULT_DISTRIBUTION, COSTING_GROUP,
+                    "Распределение расходов по умолчанию",
+                    "Как новая поставка делит расходы (фрахт, таможня) между позициями: по "
+                            + "стоимости закупки, по штукам, по весу или вручную. "
+                            + "У каждой поставки можно выбрать своё.",
+                    "BY_VALUE", java.util.List.of(
+                            new SettingDefinition.Option("BY_VALUE", "По стоимости"),
+                            new SettingDefinition.Option("BY_QTY", "По штукам"),
+                            new SettingDefinition.Option("BY_WEIGHT", "По весу"),
+                            new SettingDefinition.Option("MANUAL", "Вручную"))),
             intSetting(ANTIBOT_MAX_QTY_PER_PRODUCT, "antibot",
                     "Штук одного товара в заказе",
                     "Максимум одинаковых товаров (одного варианта) в одном заказе — против скупки. "

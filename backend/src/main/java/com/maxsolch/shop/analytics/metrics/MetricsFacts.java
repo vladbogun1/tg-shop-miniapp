@@ -1,5 +1,6 @@
 package com.maxsolch.shop.analytics.metrics;
 
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderStatus;
 
 import java.time.Instant;
@@ -89,7 +90,22 @@ public record MetricsFacts(List<OrderFact> orders,
                             Instant paymentDueAt,
                             long onlinePaidMinor,
                             Instant onlinePaidAt,
-                            Instant onlineRefundAt) {
+                            Instant onlineRefundAt,
+                            long uncollectedMinor) {
+
+        /** Without partial pickup (V72): nothing refused at the branch. */
+        public OrderFact(String id, OrderStatus status, String source, long totalMinor, long subtotalMinor,
+                         long discountMinor, long receivedMinor, long refundedMinor, Instant createdAt,
+                         Instant approvedAt, Instant shippedAt, Instant deliveredAt, Instant rejectedAt,
+                         Instant paidAt, Instant returnedAt, boolean paid, Long tgUserId, String customerName,
+                         String tgUsername, String deliveryMethod, String paymentOptionTitle, String promoCode,
+                         String rejectReason, String rejectReasonCode, long prepaymentMinor, Instant paymentDueAt,
+                         long onlinePaidMinor, Instant onlinePaidAt, Instant onlineRefundAt) {
+            this(id, status, source, totalMinor, subtotalMinor, discountMinor, receivedMinor, refundedMinor,
+                    createdAt, approvedAt, shippedAt, deliveredAt, rejectedAt, paidAt, returnedAt, paid, tgUserId,
+                    customerName, tgUsername, deliveryMethod, paymentOptionTitle, promoCode, rejectReason,
+                    rejectReasonCode, prepaymentMinor, paymentDueAt, onlinePaidMinor, onlinePaidAt, onlineRefundAt, 0);
+        }
 
         /** Before online payments: no prepayment snapshot, no deadline, no invoices. */
         public OrderFact(String id, OrderStatus status, String source, long totalMinor, long subtotalMinor,
@@ -206,16 +222,22 @@ public record MetricsFacts(List<OrderFact> orders,
          * AND refunds the difference — subtracting that refund again would count the removal twice.
          * The overpayment is what was paid above the current total: the credited monobank invoices
          * (exact, survive "Доставлен" resetting the received amount) or the received amount.
-         * Zero for orders that are not sold.
+         * Units refused at the branch (partial pickup) were never bought: their value is left out
+         * the same way. Zero for orders that are not sold.
          */
         public long soldMinor() {
             if (!sold()) {
                 return 0;
             }
-            long total = Math.max(0, totalMinor);
+            long total = OrderMoney.collectableMinor(totalMinor, uncollectedMinor);
             long overpaid = Math.max(0, Math.max(receivedMinor, onlinePaidMinor) - total);
             long returned = Math.max(0, refundedMinor - overpaid);
             return Math.max(0, total - Math.min(total, returned));
+        }
+
+        /** Наложка still to collect: the total without the units refused at the branch, minus what arrived. */
+        public long codMinor() {
+            return OrderMoney.codMinor(totalMinor, uncollectedMinor, receivedMinor);
         }
 
         /** Share of the order's item prices that stays sold: promo discount and refunds applied. */

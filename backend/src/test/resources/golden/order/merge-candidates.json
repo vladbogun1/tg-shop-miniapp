@@ -1,0 +1,48 @@
+[
+  {
+    "id" : "00000000-0000-4000-8000-000000000004",
+    "status" : "NEW",
+    "createdAt" : "2026-10-02T10:00:00Z",
+    "totalMinor" : 50000,
+    "receivedMinor" : 50000,
+    "prepaymentMinor" : 20000,
+    "paid" : true,
+    "paymentOptionTitle" : "Оплата картой онлайн",
+    "npCityName" : "Харьков",
+    "npWarehouseName" : "Отделение №4",
+    "customerName" : "Иван Петренко 4",
+    "trackingNumber" : "20450000555666",
+    "giftCaseStatus" : "SEALED",
+    "lines" : [
+      "Мышь Lamzu Atlantis (Чёрная) ×1"
+    ],
+    "blocker" : null,
+    "mergedTotalMinor" : 80000,
+    "mergedReceivedMinor" : 50000,
+    "mergedAmountDueMinor" : 10000,
+    "mergedCodMinor" : 20000
+  },
+  {
+    "id" : "00000000-0000-4000-8000-000000000005",
+    "status" : "APPROVED",
+    "createdAt" : "2026-10-02T10:00:00Z",
+    "totalMinor" : 30000,
+    "receivedMinor" : 0,
+    "prepaymentMinor" : 0,
+    "paid" : false,
+    "paymentOptionTitle" : "Оплата",
+    "npCityName" : "Харьков",
+    "npWarehouseName" : "Отделение №5",
+    "customerName" : "Иван Петренко 5",
+    "trackingNumber" : null,
+    "giftCaseStatus" : null,
+    "lines" : [
+      "Коврик ×2 · подарок"
+    ],
+    "blocker" : "Заказ уже отправлен",
+    "mergedTotalMinor" : 30000,
+    "mergedReceivedMinor" : 0,
+    "mergedAmountDueMinor" : 0,
+    "mergedCodMinor" : 30000
+  }
+]

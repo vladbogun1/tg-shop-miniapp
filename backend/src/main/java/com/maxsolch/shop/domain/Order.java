@@ -94,6 +94,13 @@ public class Order {
     @Column(name = "refunded_minor", nullable = false)
     private long refundedMinor = 0;
 
+    /**
+     * Paid value of the units refused at the Nova Poshta branch (partial pickup, V72): never
+     * collected, so «Доставлен», наложка and the metrics count the total minus this.
+     */
+    @Column(name = "uncollected_minor", nullable = false)
+    private long uncollectedMinor = 0;
+
     /** When the latest return was registered. */
     @Column(name = "returned_at")
     private Instant returnedAt;

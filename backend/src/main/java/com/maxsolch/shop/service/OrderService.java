@@ -10,6 +10,7 @@ import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderItem;
@@ -76,54 +77,25 @@ public class OrderService {
     private final CartService cartService;
     private final Messages messages;
     private final EntityManager entityManager;
+    private final OrderStock stock;
+    /** The order money journal: every movement of money on an order is recorded here. */
+    private final MoneyLedger moneyLedger;
+    /** monobank invoices of an order — guards {@link #delete}. */
+    private final PaymentInvoiceRepository paymentInvoices;
+    /** The gift for the order sum / the gift case. */
+    private final GiftService giftService;
+    /** Gifts already given to a person this month. */
+    private final GiftRegistryService giftRegistry;
+    /** Low-margin products of the gift case. */
+    private final CaseLowMargin caseLowMargin;
 
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
     private int paymentDueHours = 24;
 
-    /** monobank invoices of an order — guards {@link #delete} (optional: unit tests build the service without it). */
-    private PaymentInvoiceRepository paymentInvoices;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setPaymentInvoices(PaymentInvoiceRepository paymentInvoices) {
-        this.paymentInvoices = paymentInvoices;
-    }
-
-    /** The gift for the order sum / the gift case (optional: unit tests build the service without it). */
-    private GiftService giftService;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setGiftService(GiftService giftService) {
-        this.giftService = giftService;
-    }
-
-    /** Gifts already given to a person this month (optional like the gift itself; null = no limit). */
-    private GiftRegistryService giftRegistry;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setGiftRegistry(GiftRegistryService giftRegistry) {
-        this.giftRegistry = giftRegistry;
-    }
-
-    /** Low-margin products of the gift case (optional like the gift itself). */
-    private CaseLowMargin caseLowMargin;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setCaseLowMargin(CaseLowMargin caseLowMargin) {
-        this.caseLowMargin = caseLowMargin;
-    }
-
-    /** Order money journal (optional: unit tests build the service without it). */
-    private MoneyLedger moneyLedger;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
-        this.moneyLedger = moneyLedger;
-    }
-
     private void ledger(Order order, OrderMoneyMovement.Kind kind, OrderMoneyMovement.Channel channel, long amountMinor,
                         OrderMoneyMovement.Source source, String adminName, String note, String invoiceExtId) {
-        if (moneyLedger != null && amountMinor != 0) {
+        if (amountMinor != 0) {
             moneyLedger.record(order.getId(), kind, channel, amountMinor, source, adminName, note, invoiceExtId);
         }
     }
@@ -137,7 +109,13 @@ public class OrderService {
                         PromoService promoService,
                         CartService cartService,
                         Messages messages,
-                        EntityManager entityManager) {
+                        EntityManager entityManager,
+                        OrderStock stock,
+                        MoneyLedger moneyLedger,
+                        PaymentInvoiceRepository paymentInvoices,
+                        GiftService giftService,
+                        GiftRegistryService giftRegistry,
+                        CaseLowMargin caseLowMargin) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.promoCodeRepository = promoCodeRepository;
@@ -148,6 +126,12 @@ public class OrderService {
         this.cartService = cartService;
         this.messages = messages;
         this.entityManager = entityManager;
+        this.stock = stock;
+        this.moneyLedger = moneyLedger;
+        this.paymentInvoices = paymentInvoices;
+        this.giftService = giftService;
+        this.giftRegistry = giftRegistry;
+        this.caseLowMargin = caseLowMargin;
     }
 
     /**
@@ -215,8 +199,7 @@ public class OrderService {
         // The gift for the order sum is locked in the same id order, up front: taking its row after
         // the cart's could deadlock with an order that has the gift product in its cart.
         // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
-        Optional<GiftService.GiftConfig> giftCfg = giftService == null
-                || GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
+        Optional<GiftService.GiftConfig> giftCfg = GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
                 ? Optional.empty() : giftService.giftConfig();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
@@ -253,7 +236,8 @@ public class OrderService {
             } else if (hasVariants) {
                 throw new BadRequestException(messages.current("api.order.variantRequired", product.getTitle()));
             }
-            reserveStock(product, variant, line.quantity);
+            stock.requireAvailable(product, variant, line.quantity, cmd.userId());
+            stock.reserve(product, variant, line.quantity, item);
 
             subtotal += product.getPriceMinor() * (long) line.quantity;
             order.getItems().add(item);
@@ -278,7 +262,7 @@ public class OrderService {
 
         order.setSubtotalMinor(subtotal);
         order.setDiscountMinor(discount);
-        order.setTotalMinor(Math.max(0, subtotal - discount));
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, discount));
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
@@ -290,6 +274,7 @@ public class OrderService {
 
         productRepository.saveAll(toSave);
         Order saved = orderRepository.save(order);
+        stock.onOrderPlaced(cmd.userId(), saved);
         if (drawn != null) {
             drawn.setOrderId(saved.getId());
             giftService.saveOrderCase(drawn);
@@ -350,8 +335,13 @@ public class OrderService {
     @Transactional
     public Order approve(byte[] orderId) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.NEW) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.APPROVED)) {
             throw new BadRequestException("одобрить можно только новый заказ");
+        }
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Same as ship: approving would leave the customer's open request hanging.
+            throw new BadRequestException(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
         }
         order.setStatus(OrderStatus.APPROVED);
         order.setApprovedAt(Instant.now());
@@ -374,7 +364,7 @@ public class OrderService {
     @Transactional
     public Order ship(byte[] orderId, String trackingNumber, boolean allowUnpaid) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.APPROVED && order.getStatus() != OrderStatus.NEW) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.SHIPPED)) {
             throw new BadRequestException("отправить можно только новый или одобренный заказ");
         }
         if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
@@ -383,10 +373,10 @@ public class OrderService {
             throw new BadRequestException(
                     "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
         }
-        if (!allowUnpaid && onlinePaymentMissing(order)) {
+        if (!allowUnpaid && OrderMoney.onlinePaymentMissing(order)) {
             throw new BadRequestException((order.getPrepaymentMinor() > 0 ? "Предоплата" : "Онлайн-оплата")
                     + " по заказу #" + shortId(order) + " не пришла (не хватает "
-                    + MoneyFormat.uah(amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
+                    + MoneyFormat.uah(OrderMoney.amountDueMinor(order)) + "). Отправить без неё можно только с подтверждением админа.",
                     SHIP_UNPAID_CODE);
         }
         order.setStatus(OrderStatus.SHIPPED);
@@ -400,7 +390,7 @@ public class OrderService {
     @Transactional
     public Order deliver(byte[] orderId) {
         Order order = lock(orderId);
-        if (order.getStatus() != OrderStatus.SHIPPED) {
+        if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.DELIVERED)) {
             throw new BadRequestException("доставленным можно отметить только отправленный заказ");
         }
         order.setStatus(OrderStatus.DELIVERED);
@@ -409,13 +399,17 @@ public class OrderService {
         // full amount as received so наложка is 0 and it's never delivered-but-unpaid. Never
         // lowered: after an exchange for something cheaper the customer paid more than the new
         // total, and the metrics read that overpayment to tell a refunded difference from a return.
+        // Units refused at the branch (partial pickup) were never paid for: left out.
         long receivedBefore = order.getReceivedMinor();
-        order.setReceivedMinor(Math.max(order.getReceivedMinor(), order.getTotalMinor()));
+        order.setReceivedMinor(Math.max(order.getReceivedMinor(), OrderMoney.collectableMinor(order)));
         ledger(order, OrderMoneyMovement.Kind.PAYMENT,
                 order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
                         ? OrderMoneyMovement.Channel.NP_COD : OrderMoneyMovement.Channel.CASH,
                 order.getReceivedMinor() - receivedBefore, OrderMoneyMovement.Source.AUTO, null,
-                "остаток при получении (доставлен)", null);
+                order.getUncollectedMinor() > 0
+                        ? "остаток при получении (частичный выкуп, не выкуплено "
+                                + MoneyFormat.uah(order.getUncollectedMinor()) + ")"
+                        : "остаток при получении (доставлен)", null);
         if (!order.isPaid()) {
             order.setPaid(true);
             order.setPaidAt(Instant.now());
@@ -435,20 +429,17 @@ public class OrderService {
             // Paid orders go through a cancellation request (requestCancel) instead.
             throw new BadRequestException(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
         }
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
-        restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(Instant.now());
+        stock.restoreAll(order);
         String r = reason == null ? "" : reason.trim();
         if (r.length() > 500) {
             r = r.substring(0, 500);
         }
-        order.setRejectReason(r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r);
-        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
-        order.setCancelledByCustomer(true);
-        return afterTransition(order);
+        return rejectLocked(order, new RejectCause(Instant.now(),
+                r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r,
+                RejectReasonCode.CHANGED_MIND.name(), true));
     }
 
     /** Error code: the order is paid — the customer has to file a cancellation request. */
@@ -483,7 +474,7 @@ public class OrderService {
                             ? "api.cancelRequest.declinedBefore" : "api.cancelRequest.exists"),
                     CANCEL_REQUEST_EXISTS);
         }
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
         }
         if (!order.isPaid() && order.getReceivedMinor() <= 0) {
@@ -508,21 +499,18 @@ public class OrderService {
     public Order approveCancelRequest(byte[] orderId, String comment) {
         Order order = lock(orderId);
         requirePendingRequest(order);
-        if (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(order)) {
             throw new BadRequestException("заказ уже " + order.getStatus() + " — отмена по запросу невозможна",
                     CANNOT_CANCEL);
         }
         Instant now = Instant.now();
-        restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(now);
-        order.setRejectReason(CustomerRejectReason.BY_REQUEST + ": " + nz(order.getCancelRequestReason()));
-        order.setRejectReasonCode(RejectReasonCode.CHANGED_MIND.name());
-        order.setCancelledByCustomer(true);
+        stock.restoreAll(order);
         order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
         order.setCancelRequestResolvedAt(now);
         order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
-        Order saved = afterTransition(order);
+        Order saved = rejectLocked(order, new RejectCause(now,
+                byRequestReason(order.getCancelRequestReason()),
+                RejectReasonCode.CHANGED_MIND.name(), true));
         events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
         return saved;
     }
@@ -551,6 +539,13 @@ public class OrderService {
         if (!CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
             throw new BadRequestException("нет активного запроса отмены", NO_PENDING_REQUEST);
         }
+    }
+
+    /** «Отменён по запросу покупателя: причина», без висящего двоеточия при пустой причине. */
+    private static String byRequestReason(String requestReason) {
+        return nz(requestReason).isBlank()
+                ? CustomerRejectReason.BY_REQUEST
+                : CustomerRejectReason.BY_REQUEST + ": " + requestReason;
     }
 
     private static String nz(String s) {
@@ -592,10 +587,10 @@ public class OrderService {
                         boolean returnInTransit) {
         Order order = lock(orderId);
         OrderStatus before = order.getStatus();
-        if (before == OrderStatus.REJECTED) {
-            throw new BadRequestException("заказ уже отклонён");
-        }
-        if (before == OrderStatus.DELIVERED) {
+        if (!OrderTransitions.allowed(before, OrderStatus.REJECTED)) {
+            if (before == OrderStatus.REJECTED) {
+                throw new BadRequestException("заказ уже отклонён");
+            }
             // Rejecting a delivered order used to keep its «получено» (the automatic full amount
             // set on delivery) — metrics then showed money that never was. A return records it right.
             throw new BadRequestException(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
@@ -608,9 +603,9 @@ public class OrderService {
                 item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
             }
         } else if (restock) {
-            restoreStock(order);
+            stock.restoreAll(order);
         }
-        long kept = Math.max(0, order.getReceivedMinor()) - Math.max(0, order.getRefundedMinor());
+        long kept = OrderMoney.keptMinor(order);
         if (before == OrderStatus.SHIPPED && kept > 0 && order.getPrepaymentMinor() > 0
                 && kept <= order.getPrepaymentMinor()) {
             // Owner's rule (25.10.2026): the prepayment of a refused parcel pays for its delivery
@@ -618,17 +613,21 @@ public class OrderService {
             ledger(order, OrderMoneyMovement.Kind.RETAINED, OrderMoneyMovement.Channel.OTHER, kept,
                     OrderMoneyMovement.Source.AUTO, null, "предоплата удержана: доставка", null);
         }
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(Instant.now());
-        order.setRejectReason(reason == null || reason.isBlank() ? null : reason.trim());
-        order.setRejectReasonCode(reasonCode == null ? null : reasonCode.name());
-        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+        boolean requestWasOpen = CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus());
+        if (requestWasOpen) {
             // Rejected by hand while the customer's request was open: the request is fulfilled
             // (the refund, if any, stays the admin's call — the inbox keeps reminding).
             order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
             order.setCancelRequestResolvedAt(Instant.now());
         }
-        return afterTransition(order);
+        Order saved = rejectLocked(order, new RejectCause(Instant.now(),
+                reason == null || reason.isBlank() ? null : reason.trim(),
+                reasonCode == null ? null : reasonCode.name(), false));
+        if (requestWasOpen) {
+            // The customer asked to cancel and got what they asked for: answer like approveCancelRequest does.
+            events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        }
+        return saved;
     }
 
     /** Dispatcher used by the admin board / status PATCH endpoint. */
@@ -762,28 +761,9 @@ public class OrderService {
         return saved;
     }
 
-    /** What the customer pays online: the prepayment for "prepay + COD" options, else the total. */
-    public static long dueOnlineMinor(Order order) {
-        long total = order.getTotalMinor();
-        return order.getPrepaymentMinor() > 0 ? Math.min(order.getPrepaymentMinor(), total) : total;
-    }
-
-    /**
-     * An online-payment order (it got a deadline at checkout; older orders have none) whose online
-     * part — the prepayment, or the whole order — has not arrived.
-     */
-    public static boolean onlinePaymentMissing(Order order) {
-        return order.getPaymentDueAt() != null && amountDueMinor(order) > 0;
-    }
-
     private static String shortId(Order order) {
         String id = order.getId() == null ? "" : UuidUtil.toString(order.getId());
         return id == null || id.length() < 8 ? String.valueOf(id) : id.substring(0, 8);
-    }
-
-    /** Still to pay online right now (0 once the online part is covered). */
-    public static long amountDueMinor(Order order) {
-        return Math.max(0, dueOnlineMinor(order) - Math.max(0, order.getReceivedMinor()));
     }
 
     /**
@@ -848,12 +828,10 @@ public class OrderService {
                 || order.getPaymentDueAt() == null || order.getPaymentDueAt().isAfter(now)) {
             return null;
         }
-        restoreStock(order);
-        order.setStatus(OrderStatus.REJECTED);
-        order.setRejectedAt(now);
-        order.setRejectReason(CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч");
-        order.setRejectReasonCode(RejectReasonCode.PAYMENT_TIMEOUT.name());
-        return afterTransition(order);
+        stock.restoreAll(order);
+        return rejectLocked(order, new RejectCause(now,
+                CustomerRejectReason.UNPAID_PREFIX + Math.max(1, paymentDueHours) + " ч",
+                RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
     }
 
     // ----- admin order editing: gifts & discounts -----
@@ -885,18 +863,17 @@ public class OrderService {
                 throw new BadRequestException("variant does not belong to product: " + variantId);
             }
         }
-        reserveStock(product, variant, qty);
-
         byte[] vId = variant == null ? null : variant.getId();
         OrderItem existing = order.getItems().stream()
                 .filter(i -> i.isGift() == gift)
                 .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
                 .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
                 .findFirst().orElse(null);
+        OrderItem item = existing != null ? existing : new OrderItem();
+        stock.reserve(product, variant, qty, item);
         if (existing != null) {
             existing.setQuantity(existing.getQuantity() + qty);
         } else {
-            OrderItem item = new OrderItem();
             item.setOrder(order);
             item.setProductId(product.getId());
             item.setTitleSnapshot(product.getTitle());
@@ -932,7 +909,7 @@ public class OrderService {
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("order item not found"));
-        restoreItemStock(item);
+        stock.restoreLine(item);
         order.getItems().remove(item);
         if (item.isAutoGift() && item.getCaseRarity() != null) {
             // The case prize is gone: no case left to open.
@@ -941,9 +918,7 @@ public class OrderService {
             if (order.getGiftDiscountMinor() <= 0) {
                 order.setGiftTier(null);
             }
-            if (giftService != null) {
-                giftService.deleteOrderCase(order.getId());
-            }
+            giftService.deleteOrderCase(order.getId());
         }
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
@@ -965,16 +940,7 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order item not found"));
         int delta = newQty - item.getQuantity();
         if (delta != 0) {
-            Product product = productRepository.findByIdForUpdate(item.getProductId())
-                    .orElseThrow(() -> new BadRequestException("product not found"));
-            ProductVariant variant = item.getVariantId() == null ? null
-                    : findVariant(product, UuidUtil.toString(item.getVariantId()));
-            if (delta > 0) {
-                reserveStock(product, variant, delta);
-            } else {
-                releaseStock(product, variant, -delta);
-            }
-            productRepository.save(product);
+            stock.resizeLine(item, delta);
         }
         item.setQuantity(newQty);
         recomputeTotals(order);
@@ -1023,7 +989,7 @@ public class OrderService {
         // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
         order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
         order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
-        order.setTotalMinor(Math.max(0, subtotal - order.getDiscountMinor()));
+        order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
         settleFreeOrder(order);
         Order saved = orderRepository.save(order);
         events.publishEvent(OrderEvents.Edited.of(
@@ -1097,9 +1063,6 @@ public class OrderService {
      * hide the money from everybody who looks at the board.
      */
     private void requireNoOnlineMoneyInFlight(byte[] orderId) {
-        if (paymentInvoices == null) {
-            return;
-        }
         List<PaymentInvoice> invoices = paymentInvoices.findByOrderIdOrderByCreatedAtDesc(orderId);
         if (invoices.stream().anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus())
                 || PaymentInvoice.HOLD.equals(i.getStatus()))) {
@@ -1117,131 +1080,9 @@ public class OrderService {
     /** Order composition/discount may only be edited before dispatch. */
     private void requireEditable(Order order) {
         OrderStatus s = order.getStatus();
-        if (s != OrderStatus.NEW && s != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(s)) {
             throw new BadRequestException("заказ можно менять только в статусе «Новый» или «Одобрен»");
         }
-    }
-
-    /**
-     * Reserves {@code qty} units of a product line. The caller must already hold the product row
-     * lock ({@link ProductRepository#findByIdForUpdate}).
-     *
-     * <p>When the product has variants, the variant counters are the source of truth and
-     * {@code product.stock} is a pure rollup of them. Keeping it that way (rather than decrementing
-     * both independently and clamping at zero) is what stops stock from drifting: the old code lost
-     * units on an oversell — {@code Math.max(0, ...)} silently swallowed the difference — and then
-     * handed the full quantity back on a cancellation, inventing goods that do not exist.
-     */
-    private void reserveStock(Product product, ProductVariant variant, int qty) {
-        if (variant != null) {
-            if (variant.getStock() < qty) {
-                throw new BadRequestException(messages.current("api.order.outOfStock",
-                        product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock())));
-            }
-            variant.setStock(variant.getStock() - qty);
-            syncRollup(product);
-        } else {
-            if (product.getStock() < qty) {
-                throw new BadRequestException(messages.current("api.order.outOfStock",
-                        product.getTitle(), Math.max(0, product.getStock())));
-            }
-            product.setStock(product.getStock() - qty);
-        }
-    }
-
-    /** Returns qty to stock (inverse of reserveStock; product/variant already loaded and locked). */
-    private void releaseStock(Product product, ProductVariant variant, int qty) {
-        if (variant != null) {
-            variant.setStock(variant.getStock() + qty);
-            syncRollup(product);
-        } else {
-            product.setStock(product.getStock() + qty);
-        }
-    }
-
-    /**
-     * Return one item's units to product + variant stock — only the units not already put back by
-     * an earlier return ({@link OrderItem#getRestockedQty()}), so nothing is restocked twice.
-     */
-    private void restoreItemStock(OrderItem item) {
-        // Units returned without «на склад» were written off (damaged etc.) — they never go back.
-        restockItem(item, item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty()));
-    }
-
-    /**
-     * Puts {@code units} of one order line back on the shelf and records them on the line. Shared
-     * with {@link OrderAdjustmentService} (partial returns); the caller runs inside a transaction.
-     */
-    void restockItem(OrderItem item, int units) {
-        if (units <= 0) {
-            return;
-        }
-        releaseUnits(item, units);
-        item.setRestockedQty(Math.min(item.getQuantity(), item.getRestockedQty() + units));
-    }
-
-    /**
-     * Puts {@code units} of one order line back on the shelf without recording them on the line —
-     * for an exchange, where those units leave the order altogether.
-     */
-    void releaseUnits(OrderItem item, int units) {
-        if (units <= 0) {
-            return;
-        }
-        productRepository.findByIdForUpdate(item.getProductId()).ifPresent(product -> {
-            ProductVariant variant = item.getVariantId() == null ? null
-                    : findVariant(product, UuidUtil.toString(item.getVariantId()));
-            if (item.getVariantId() != null && variant == null) {
-                // The variant was deleted from the catalog after the order was placed: put the
-                // units back on the product so they are not lost entirely.
-                product.setStock(product.getStock() + units);
-            } else {
-                releaseStock(product, variant, units);
-            }
-            productRepository.save(product);
-        });
-    }
-
-    /**
-     * Inverse of {@link #restockItem}: a cancelled return takes the units it put on the shelf back
-     * into the order. Refused when they were sold meanwhile (not enough stock).
-     */
-    void takeBackUnits(OrderItem item, int units) {
-        if (units <= 0) {
-            return;
-        }
-        Product product = productRepository.findByIdForUpdate(item.getProductId())
-                .orElseThrow(() -> new BadRequestException("товар «" + item.getTitleSnapshot() + "» удалён из каталога"));
-        ProductVariant variant = item.getVariantId() == null ? null
-                : findVariant(product, UuidUtil.toString(item.getVariantId()));
-        int onShelf = variant != null ? variant.getStock() : product.getStock();
-        if (onShelf < units) {
-            throw new BadRequestException("«" + item.getTitleSnapshot() + "» уже продали: на складе " + Math.max(0, onShelf)
-                    + " шт., а вернуть в заказ нужно " + units + ". Верните товар на склад (или поправьте остаток) и повторите.");
-        }
-        if (item.getVariantId() != null && variant == null) {
-            product.setStock(product.getStock() - units);
-        } else {
-            reserveStock(product, variant, units);
-        }
-        productRepository.save(product);
-        item.setRestockedQty(Math.max(0, item.getRestockedQty() - units));
-    }
-
-    /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
-    void restockProduct(byte[] productId, byte[] variantId, int units) {
-        if (units <= 0) {
-            return;
-        }
-        Product product = productRepository.findByIdForUpdate(productId)
-                .orElseThrow(() -> new BadRequestException("товар удалён из каталога — вернуть на склад некуда"));
-        ProductVariant variant = variantId == null ? null : findVariant(product, UuidUtil.toString(variantId));
-        if (variantId != null && variant == null) {
-            product.setStock(product.getStock() + units);
-        } else {
-            releaseStock(product, variant, units);
-        }
-        productRepository.save(product);
     }
 
     /** Package-private twin of {@link #recomputeTotals} for {@link OrderAdjustmentService}. */
@@ -1249,24 +1090,9 @@ public class OrderService {
         recomputeTotals(order);
     }
 
-    /** product.stock mirrors the sum of variant stocks whenever the product has variants. */
-    private void syncRollup(Product product) {
-        if (product.getVariants() == null || product.getVariants().isEmpty()) {
-            return;
-        }
-        int rollup = product.getVariants().stream().mapToInt(ProductVariant::getStock).sum();
-        product.setStock(Math.max(0, rollup));
-    }
-
     /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
     private void recomputeTotals(Order order) {
-        long subtotal = order.getItems().stream()
-                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
-        order.setSubtotalMinor(subtotal);
-        long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
-        order.setDiscountMinor(discount);
-        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
-        order.setTotalMinor(Math.max(0, subtotal - discount));
+        OrderMoney.reprice(order);
         settleFreeOrder(order);
     }
 
@@ -1277,7 +1103,7 @@ public class OrderService {
      */
     static void settleFreeOrder(Order order) {
         if (order.isPaid() || order.getTotalMinor() != 0 || order.getItems().isEmpty()
-                || (order.getStatus() != OrderStatus.NEW && order.getStatus() != OrderStatus.APPROVED)) {
+                || !OrderTransitions.isOpen(order)) {
             return;
         }
         order.setPaid(true);
@@ -1300,8 +1126,8 @@ public class OrderService {
                     .max(Comparator.comparingInt(ProductVariant::getStock))
                     .orElseThrow();
         }
-        reserveStock(product, variant, 1);
         OrderItem item = new OrderItem();
+        stock.reserve(product, variant, 1, item);
         item.setOrder(order);
         item.setProductId(product.getId());
         item.setTitleSnapshot(product.getTitle());
@@ -1357,7 +1183,7 @@ public class OrderService {
                 order.setGiftTier(top.tier().name());
                 order.setGiftDiscountMinor(d);
                 order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
-                order.setTotalMinor(Math.max(0, order.getSubtotalMinor() - order.getDiscountMinor()));
+                order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
                 return null;
             }
         }
@@ -1392,8 +1218,7 @@ public class OrderService {
      * и месячный лимит»), kopecks; {@link Long#MAX_VALUE} without a limit.
      */
     private long giftLimitLeft(Order order) {
-        return giftRegistry == null ? Long.MAX_VALUE
-                : giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
+        return giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), Instant.now());
     }
 
     /**
@@ -1448,7 +1273,7 @@ public class OrderService {
         if (!GIFT_CASE_SEALED.equals(order.getGiftCaseStatus()) || order.getStatus() == OrderStatus.REJECTED) {
             return false;
         }
-        return order.isPaid() || (order.getReceivedMinor() > 0 && amountDueMinor(order) == 0);
+        return order.isPaid() || (order.getReceivedMinor() > 0 && OrderMoney.amountDueMinor(order) == 0);
     }
 
     /** The prize line of the order's case (a product prize that is still in the order). */
@@ -1459,7 +1284,7 @@ public class OrderService {
     /** Swapping the case prize is possible while the order is still being put together. */
     public static boolean giftCaseSwappable(Order order) {
         return GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())
-                && (order.getStatus() == OrderStatus.NEW || order.getStatus() == OrderStatus.APPROVED)
+                && OrderTransitions.isOpen(order)
                 && casePrizeLine(order).isPresent();
     }
 
@@ -1474,7 +1299,7 @@ public class OrderService {
             throw new BadRequestException(messages.current("api.giftCase.swapUnavailable"), GIFT_CASE_SWAP_UNAVAILABLE);
         }
         OrderItem item = casePrizeLine(order).orElseThrow();
-        restoreItemStock(item);
+        stock.restoreLine(item);
         order.getItems().remove(item);
         recomputeTotals(order);
         Order saved = orderRepository.save(order);
@@ -1529,13 +1354,7 @@ public class OrderService {
             if (target.getStock() < item.getQuantity()) {
                 throw new BadRequestException(messages.current("api.giftCase.sizeUnavailable"), GIFT_CASE_SIZE_UNAVAILABLE);
             }
-            ProductVariant held = product.getVariants().stream()
-                    .filter(v -> java.util.Arrays.equals(v.getId(), item.getVariantId())).findFirst().orElse(null);
-            if (held != null) {
-                releaseStock(product, held, item.getQuantity());
-            }
-            reserveStock(product, target, item.getQuantity());
-            productRepository.save(product);
+            stock.moveLine(product, target, item);
             item.setVariantId(target.getId());
             item.setVariantNameSnapshot(target.getName());
         }
@@ -1563,8 +1382,7 @@ public class OrderService {
         if (order.getGiftCaseStatus() != null) {
             throw new BadRequestException("У заказа уже есть кейс");
         }
-        GiftService.TierConfig cfg = (giftService == null
-                ? Optional.<GiftService.TierConfig>empty() : giftService.tier(tier))
+        GiftService.TierConfig cfg = giftService.tier(tier)
                 .orElseThrow(() -> new BadRequestException("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
         // Prize rows locked in id order, like the checkout.
         Map<String, Optional<Product>> locked = new HashMap<>();
@@ -1616,12 +1434,34 @@ public class OrderService {
     }
 
     /**
+     * Why and when an order is rejected: what the four paths to REJECTED (customer cancel, approved
+     * cancel request, admin reject, payment timeout) write on the order. The paths differ in what
+     * they do BEFORE this (stock, money, the cancel request), not in this part.
+     *
+     * @param cancelledByCustomer set the flag; {@code false} leaves it as it is (never true before a reject)
+     */
+    private record RejectCause(Instant at, String reason, String reasonCode, boolean cancelledByCustomer) {
+    }
+
+    /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
+    private Order rejectLocked(Order order, RejectCause cause) {
+        order.setStatus(OrderStatus.REJECTED);
+        order.setRejectedAt(cause.at());
+        order.setRejectReason(cause.reason());
+        order.setRejectReasonCode(cause.reasonCode());
+        if (cause.cancelledByCustomer()) {
+            order.setCancelledByCustomer(true);
+        }
+        return afterTransition(order);
+    }
+
+    /**
      * Persists a status transition and hands the Telegram side to the after-commit listener: it
      * moves the channel card, DMs the customer, and adds or removes the seller's dispatch card
      * depending on whether the order still awaits shipment.
      */
     private Order afterTransition(Order order) {
-        if (order.getStatus() == OrderStatus.REJECTED && giftService != null) {
+        if (order.getStatus() == OrderStatus.REJECTED) {
             // An unused code from the case (a discount prize, a swap) goes with the order.
             giftService.revokeCasePromo(order.getId());
         }
@@ -1630,28 +1470,8 @@ public class OrderService {
         return saved;
     }
 
-    /**
-     * Returns every line to stock. Product rows are locked in id order — the same order
-     * {@link #createOrder} uses — so a cancellation and a checkout touching the same two products
-     * cannot deadlock each other.
-     */
-    private void restoreStock(Order order) {
-        List<OrderItem> items = new ArrayList<>(order.getItems());
-        items.sort(Comparator.comparing(i -> UuidUtil.toString(i.getProductId())));
-        for (OrderItem item : items) {
-            restoreItemStock(item);
-        }
-    }
-
     private ProductVariant findVariant(Product product, String variantId) {
-        if (product.getVariants() == null) {
-            return null;
-        }
-        byte[] vid = toBytes(variantId, "variantId");
-        return product.getVariants().stream()
-                .filter(v -> java.util.Arrays.equals(v.getId(), vid))
-                .findFirst()
-                .orElse(null);
+        return OrderStock.variantOf(product, toBytes(variantId, "variantId"));
     }
 
     /**
@@ -1743,7 +1563,7 @@ public class OrderService {
     }
 
     private java.util.Set<String> lowMarginIds() {
-        return caseLowMargin == null || caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
+        return caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
     }
 
     private static long discountOn(PromoCode promo, long subtotal) {

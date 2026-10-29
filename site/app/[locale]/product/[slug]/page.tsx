@@ -1,7 +1,7 @@
 import { BadgeInfo, CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
+import { availabilityOf, type Availability, type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
@@ -12,9 +12,9 @@ import { localePath, makeT, type MessageKey } from "@/i18n";
 import { toCardProducts } from "@/lib/card";
 import { cardContext, loadSchema, yesNo } from "@/lib/catalog";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
-import { stockOf } from "@/lib/stock";
 import { localeOf } from "@/lib/route";
-import { getProductBySlug, getProductReviews, getProducts, safe } from "@/lib/server-api";
+import { getPreorderIndex, getProductBySlug, getProductPreorder, getProductReviews, getProducts, safe } from "@/lib/server-api";
+import { etaStartsOn } from "@/lib/preorder-core";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { reviewsLd } from "@/lib/reviews-ld";
 import {
@@ -36,6 +36,14 @@ type Params = Promise<{ locale: string; slug: string }>;
 export function generateStaticParams() {
   return [];
 }
+
+/** schema.org Offer.availability per state (a unit held for the viewer is, for a crawler, simply in stock). */
+const SCHEMA_AVAILABILITY: Record<Availability, string> = {
+  in_stock: "https://schema.org/InStock",
+  held: "https://schema.org/InStock",
+  preorder: "https://schema.org/PreOrder",
+  out_of_stock: "https://schema.org/OutOfStock",
+};
 
 function sortedImages(p: StorefrontProduct) {
   return (p.images ?? [])
@@ -117,7 +125,11 @@ export default async function ProductPage({ params }: { params: Params }) {
     ? await safe(getProducts({ category: category.slug, inStock: true, size: 9 }, locale), null)
     : null;
   const relatedItems = (related?.items ?? []).filter((p) => p.id !== product.id).slice(0, 8);
-  const reviewPage = await safe(getProductReviews(product.slug, locale), null);
+  const [reviewPage, preorder, preIndex] = await Promise.all([
+    safe(getProductReviews(product.slug, locale), null),
+    safe(getProductPreorder(product.id, product.slug, locale), null),
+    getPreorderIndex(locale),
+  ]);
 
   const crumbs: Crumb[] = [
     { label: t("catalog.title"), path: "/catalog" },
@@ -126,7 +138,10 @@ export default async function ProductPage({ params }: { params: Params }) {
   ];
   const path = `/product/${product.slug}`;
   const images = sortedImages(product);
-  const inStock = stockOf(product, null) > 0;
+  // Sold out but a batch brings it: schema.org PreOrder (+ the date it starts being available)
+  const preEta = preorder?.lines[0]?.eta ?? null;
+  const avail = availabilityOf(product, null, { coming: !!preEta });
+  const preStarts = avail === "preorder" && preEta ? etaStartsOn(preEta) : null;
 
   const brand = productBrandName(product);
   const condition = productCondition(product);
@@ -159,7 +174,8 @@ export default async function ProductPage({ params }: { params: Params }) {
       url: productUrl,
       priceCurrency: product.currency ?? "UAH",
       price: (product.priceMinor / 100).toFixed(2),
-      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      availability: SCHEMA_AVAILABILITY[avail],
+      ...(preStarts ? { availabilityStarts: preStarts } : {}),
       // As in the Google feed: markdown/used goods are sold with stated defects, not refurbished.
       itemCondition: markdown ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
       shippingDetails: shippingLd(),
@@ -178,7 +194,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-12">
         <Gallery images={images} alt={product.title} />
         <div className="min-w-0">
-          <BuyBox product={product} compareGroup={compareGroupOf(schema, product.categoryId)} />
+          <BuyBox product={product} compareGroup={compareGroupOf(schema, product.categoryId)} preorder={preorder} />
           {(product.brandRef || markdown) && (
             <div className="mt-4 flex flex-col gap-3">
               {product.brandRef && (
@@ -282,7 +298,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             <span aria-hidden className="tech-mark" />
             {t("product.related")}
           </h2>
-          <ProductGrid products={toCardProducts(relatedItems.slice(0, 4), cardContext(schema, locale))} />
+          <ProductGrid products={toCardProducts(relatedItems.slice(0, 4), cardContext(schema, locale, preIndex))} />
         </section>
       )}
     </div>

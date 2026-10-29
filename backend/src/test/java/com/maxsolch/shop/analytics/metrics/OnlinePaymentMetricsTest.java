@@ -31,6 +31,25 @@ class OnlinePaymentMetricsTest {
     }
 
     @Test
+    void partialPickup_refusedPartIsNeitherSoldNorReceived_andTheKeptLineKeepsItsRevenue() {
+        // 145 ₴ order, 100 ₴ prepaid; the customer took the 55 ₴ keyboard, refused 90 ₴ at the branch.
+        OrderFact o = order(kyiv("2026-10-13T22:56:00")).total(145_00).prepayment(1_00)
+                .paid(kyiv("2026-10-14T13:37:00"), 1_00)
+                .pickedUpPart(kyiv("2026-10-26T09:56:00"), 90_00).build();
+
+        assertThat(o.soldMinor()).isEqualTo(55_00);
+        assertThat(o.receivedParts()).containsExactly(1_00, 54_00);
+        assertThat(o.codMinor()).isZero();
+
+        MetricsFacts.ItemFact keyboard = new MetricsFacts.ItemFact(o.id(), "kb", null, "kb", null, 55_00, 1, false, 0);
+        MetricsFacts.ItemFact mouse = new MetricsFacts.ItemFact(o.id(), "m", null, "m", null, 90_00, 1, false, 1);
+        Map<MetricsFacts.ItemFact, Long> sold = facts(now, List.of(o), List.of(keyboard, mouse), List.of())
+                .soldValueByItem();
+        assertThat(sold.get(keyboard)).isEqualTo(55_00);
+        assertThat(sold.get(mouse)).isZero();
+    }
+
+    @Test
     void scheme_tellsOldTransfersFromMonobank() {
         Instant t = kyiv("2026-10-05T10:00:00");
         assertThat(order(t).build().scheme()).isEqualTo(PaymentScheme.NONE);

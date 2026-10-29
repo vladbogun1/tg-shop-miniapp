@@ -1,17 +1,19 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.MoneyFormat;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.CancelRequestStatus;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
+import com.maxsolch.shop.domain.OrderItemLot;
 import com.maxsolch.shop.domain.OrderMoneyMovement;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,18 +42,13 @@ public class OrderMergeService {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
     private final ApplicationEventPublisher events;
-
-    private MoneyLedger moneyLedger;
+    private final MoneyLedger moneyLedger;
 
     public OrderMergeService(OrderRepository orderRepository, OrderService orderService,
-                             ApplicationEventPublisher events) {
+                             ApplicationEventPublisher events, MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.orderService = orderService;
         this.events = events;
-    }
-
-    @Autowired(required = false)
-    void setMoneyLedger(MoneyLedger moneyLedger) {
         this.moneyLedger = moneyLedger;
     }
 
@@ -78,7 +75,7 @@ public class OrderMergeService {
                     String why = own != null ? own : blocker(o, false);
                     Order preview = preview(order, o);
                     return new Candidate(o, why, preview.getTotalMinor(), preview.getReceivedMinor(),
-                            OrderService.amountDueMinor(preview), OrderQueryService.codMinor(preview));
+                            OrderMoney.amountDueMinor(preview), OrderMoney.codMinor(preview));
                 })
                 .toList();
     }
@@ -131,11 +128,15 @@ public class OrderMergeService {
                             && i.getPriceMinorSnapshot() == from.getPriceMinorSnapshot()
                             && i.isVariantPending() == from.isVariantPending())
                     .findFirst().orElse(null);
+            OrderItem to;
             if (same != null) {
                 same.setQuantity(same.getQuantity() + from.getQuantity());
+                to = same;
             } else {
-                target.getItems().add(copy(from, target));
+                to = copy(from, target);
+                target.getItems().add(to);
             }
+            moveLots(from, to);
             moved.add(from.getTitleSnapshot()
                     + (from.getVariantNameSnapshot() == null ? "" : " (" + from.getVariantNameSnapshot() + ")")
                     + " ×" + from.getQuantity());
@@ -165,7 +166,7 @@ public class OrderMergeService {
         orderService.recomputeOrderTotals(target);
 
         // 3. Money: what the merged order received moves over (no real money moves).
-        long money = Math.max(0, source.getReceivedMinor() - Math.max(0, source.getRefundedMinor()));
+        long money = OrderMoney.refundableMinor(source);
         if (money > 0) {
             ledger(source, OrderMoneyMovement.Kind.REFUND, money, adminName, "перенесено в заказ #" + targetShort);
             source.setRefundedMinor(Math.max(0, source.getRefundedMinor()) + money);
@@ -177,7 +178,7 @@ public class OrderMergeService {
             target.setPaidAt(source.getPaidAt() != null ? source.getPaidAt() : Instant.now());
         }
         target.setPaid(paid);
-        if (paid && OrderService.amountDueMinor(target) == 0) {
+        if (paid && OrderMoney.amountDueMinor(target) == 0) {
             target.setPaymentDueAt(null);
         }
 
@@ -208,7 +209,7 @@ public class OrderMergeService {
      */
     static String blocker(Order o, boolean staying) {
         String id = "#" + shortId(o.getId());
-        if (o.getStatus() != OrderStatus.NEW && o.getStatus() != OrderStatus.APPROVED) {
+        if (!OrderTransitions.isOpen(o)) {
             return "заказ " + id + " уже не новый и не одобренный — объединять можно только до отправки";
         }
         if (o.getArchivedAt() != null) {
@@ -256,7 +257,7 @@ public class OrderMergeService {
         p.setTotalMinor(target.getTotalMinor() + source.getTotalMinor());
         p.setPrepaymentMinor(target.getPrepaymentMinor());
         p.setReceivedMinor(Math.max(0, target.getReceivedMinor())
-                + Math.max(0, source.getReceivedMinor() - Math.max(0, source.getRefundedMinor())));
+                + OrderMoney.refundableMinor(source));
         return p;
     }
 
@@ -277,6 +278,22 @@ public class OrderMergeService {
         return i;
     }
 
+    /** The stock lots the units came from move with them (V74 cost of goods), never counted twice. */
+    private static void moveLots(OrderItem from, OrderItem to) {
+        if (from.getLots() == null || from.getLots().isEmpty()) {
+            return;
+        }
+        for (OrderItemLot a : from.getLots()) {
+            OrderItemLot b = new OrderItemLot();
+            b.setItem(to);
+            b.setLotId(a.getLotId());
+            b.setQty(a.getQty());
+            b.setCreatedAt(a.getCreatedAt());
+            to.getLots().add(b);
+        }
+        from.getLots().clear();
+    }
+
     private static String joinPromo(String a, String b) {
         if (b == null || b.isBlank() || b.equals(a)) {
             return a;
@@ -289,10 +306,8 @@ public class OrderMergeService {
     }
 
     private void ledger(Order order, OrderMoneyMovement.Kind kind, long amount, String adminName, String note) {
-        if (moneyLedger != null) {
-            moneyLedger.record(order.getId(), kind, OrderMoneyMovement.Channel.MERGE, amount,
-                    OrderMoneyMovement.Source.ADMIN, adminName, note, null);
-        }
+        moneyLedger.record(order.getId(), kind, OrderMoneyMovement.Channel.MERGE, amount,
+                OrderMoneyMovement.Source.ADMIN, adminName, note, null);
     }
 
     public static String shortId(byte[] id) {

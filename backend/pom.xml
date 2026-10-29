@@ -24,6 +24,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <minio.version>8.5.17</minio.version>
         <geoip2.version>4.3.0</geoip2.version>
+        <archunit.version>1.4.1</archunit.version>
     </properties>
 
     <dependencies>
@@ -143,6 +144,13 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Architecture checks, see docs/ARCHITECTURE-CHECKS.md -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -178,6 +186,21 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+            <!-- Integration tests (*IT) run on a real MySQL, see docs/INTEGRATION-TESTS.md. Surefire does not
+                 pick *IT up, so `mvn test` stays fast; `mvn verify` (CI job "Backend (integration tests on
+                 MySQL)") runs them here. -DskipTests skips both. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

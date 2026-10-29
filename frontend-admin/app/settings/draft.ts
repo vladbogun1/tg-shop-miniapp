@@ -34,6 +34,9 @@ export function validate(item: SettingItem, raw: string | boolean): string | nul
     if (item.max != null && n > item.max) return `Не больше ${item.max}`;
     return null;
   }
+  if (item.type === "SELECT") {
+    return item.options?.some((o) => o.value === String(raw)) ? null : "Выберите значение из списка";
+  }
   if (item.type === "STRING" || item.type === "TEXT") {
     const s = String(raw);
     if (item.type === "STRING" && /[\r\n]/.test(s)) return "Только одна строка";
@@ -67,6 +70,7 @@ export function isDefault(item: SettingItem, entry: DraftEntry | undefined): boo
 }
 
 export function formatValue(item: SettingItem, value: SettingValue): string {
+  if (item.type === "SELECT") return item.options?.find((o) => o.value === String(value))?.label ?? String(value);
   if (item.type === "BOOL") return value ? "включено" : "выключено";
   if ((item.type === "TEXT" || item.type === "STRING") && String(value ?? "") === "") return "пусто";
   return item.unit ? `${value} ${item.unit}` : String(value);

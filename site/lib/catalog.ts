@@ -23,6 +23,7 @@ import { makeT } from "@/i18n";
 import type { CardContext } from "./card";
 import { PAGE_SIZE } from "./config";
 import { getCatalogSchema, getCategories, safe } from "./server-api";
+import { availabilityRank, type PreorderIndex } from "./preorder-core";
 import { stockOf } from "./stock";
 
 /** UI words of yes/no for bool specs, in the page language. */
@@ -144,8 +145,9 @@ function catalogEngine(schema: CatalogSchema, products: StorefrontProduct[], cat
 }
 
 /** Same order as the backend (PublicCatalogService.comparator): out of stock sinks, then the sort. */
-function sortProducts(items: StorefrontProduct[], sort: CatalogSort, locale: Locale): StorefrontProduct[] {
-  const sunk = (p: StorefrontProduct) => (stockOf(p, null) > 0 ? 0 : 1);
+function sortProducts(items: StorefrontProduct[], sort: CatalogSort, locale: Locale, pre?: PreorderIndex | null): StorefrontProduct[] {
+  // in stock → pre-order (on its way) → out of stock
+  const sunk = (p: StorefrontProduct) => availabilityRank(p, pre);
   const created = (p: StorefrontProduct) => Date.parse(p.createdAt ?? "") || 0;
   const order: (a: StorefrontProduct, b: StorefrontProduct) => number =
     sort === "price_asc"
@@ -172,14 +174,15 @@ export function computeListing(
   sort: CatalogSort,
   page: number,
   locale: Locale,
-  from?: number
+  from?: number,
+  pre?: PreorderIndex | null
 ): Listing {
   const t = makeT(locale);
   const engineFilter: CatalogFilter = { ...filter, q: undefined, category: engineCategory(schema, filter.category) };
   const labels = { brand: t("catalog.brand"), condition: t("catalog.condition") };
   const matched = filterProducts(schema, products, engineFilter);
   const facets = buildFacets(schema, products, engineFilter, labels);
-  const sorted = sortProducts(matched, sort, locale);
+  const sorted = sortProducts(matched, sort, locale, pre);
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const cur = Math.min(Math.max(1, page), pages);
   const first = Math.min(Math.max(1, from ?? cur), cur);
@@ -196,6 +199,6 @@ export function computeListing(
 }
 
 /** What the product tiles need to print their spec line. */
-export function cardContext(schema: CatalogSchema | null, locale: Locale): CardContext {
-  return { schema, locale, yesNo: yesNo(locale) };
+export function cardContext(schema: CatalogSchema | null, locale: Locale, pre?: PreorderIndex | null): CardContext {
+  return { schema, locale, yesNo: yesNo(locale), pre };
 }

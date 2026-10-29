@@ -17,6 +17,8 @@ export interface PaymentLike {
   status?: OrderStatus;
   totalMinor?: number;
   receivedMinor?: number;
+  /** Refused at the branch (partial pickup): not a shortfall. */
+  uncollectedMinor?: number;
   amountDueMinor?: number;
   paymentDueAt?: string | null;
 }

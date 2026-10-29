@@ -50,8 +50,9 @@ class CasePromoNotificationTest {
         AppProperties props = new AppProperties();
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
-        service = new NotificationService(bot, props, new Messages((MessageSource) source, users),
-                settings, rejectReason, activity);
+        Messages messages = new Messages((MessageSource) source, users);
+        service = new NotificationService(props, messages, settings, rejectReason,
+                new CustomerBot(bot, props, messages, activity), new SellerChannel(bot, props, activity));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
     }
 

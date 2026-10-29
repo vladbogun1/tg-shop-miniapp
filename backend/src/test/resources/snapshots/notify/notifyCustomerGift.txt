@@ -1,0 +1,153 @@
+=== uk / variant, qty 2
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарунок до замовлення Замовлення #1a2b3c4d Ми додали вам подарунок: Килимок <XL> (Чорний) × 2. Приємного користування!
+  tgUserId=101
+  type=ORDER_GIFT
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Подарунок до замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми додали вам подарунок: <b>Килимок &lt;XL&gt;</b> <i>(Чорний)</i> × 2. Приємного користування!>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / no variant, qty 1
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарунок до замовлення Замовлення #1a2b3c4d Ми додали вам подарунок: Стікери . Приємного користування!
+  tgUserId=101
+  type=ORDER_GIFT
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Подарунок до замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми додали вам подарунок: <b>Стікери</b>. Приємного користування!>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / blank variant, null title
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарунок до замовлення Замовлення #1a2b3c4d Ми додали вам подарунок: . Приємного користування!
+  tgUserId=101
+  type=ORDER_GIFT
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Подарунок до замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми додали вам подарунок: <b></b>. Приємного користування!>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / variant, qty 2
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарок к заказу Заказ #1a2b3c4d Мы добавили вам подарок: Килимок <XL> (Чорний) × 2. Приятного пользования!
+  tgUserId=102
+  type=ORDER_GIFT
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Подарок к заказу</b>
+Заказ <b>#1a2b3c4d</b>
+Мы добавили вам подарок: <b>Килимок &lt;XL&gt;</b> <i>(Чорний)</i> × 2. Приятного пользования!>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / no variant, qty 1
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарок к заказу Заказ #1a2b3c4d Мы добавили вам подарок: Стікери . Приятного пользования!
+  tgUserId=102
+  type=ORDER_GIFT
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Подарок к заказу</b>
+Заказ <b>#1a2b3c4d</b>
+Мы добавили вам подарок: <b>Стікери</b>. Приятного пользования!>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / blank variant, null title
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Подарок к заказу Заказ #1a2b3c4d Мы добавили вам подарок: . Приятного пользования!
+  tgUserId=102
+  type=ORDER_GIFT
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Подарок к заказу</b>
+Заказ <b>#1a2b3c4d</b>
+Мы добавили вам подарок: <b></b>. Приятного пользования!>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / variant, qty 2
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A gift with your order Order #1a2b3c4d We have added a gift for you: Килимок <XL> (Чорний) × 2. Enjoy!
+  tgUserId=103
+  type=ORDER_GIFT
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A gift with your order</b>
+Order <b>#1a2b3c4d</b>
+We have added a gift for you: <b>Килимок &lt;XL&gt;</b> <i>(Чорний)</i> × 2. Enjoy!>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / no variant, qty 1
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A gift with your order Order #1a2b3c4d We have added a gift for you: Стікери . Enjoy!
+  tgUserId=103
+  type=ORDER_GIFT
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A gift with your order</b>
+Order <b>#1a2b3c4d</b>
+We have added a gift for you: <b>Стікери</b>. Enjoy!>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / blank variant, null title
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A gift with your order Order #1a2b3c4d We have added a gift for you: . Enjoy!
+  tgUserId=103
+  type=ORDER_GIFT
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A gift with your order</b>
+Order <b>#1a2b3c4d</b>
+We have added a gift for you: <b></b>. Enjoy!>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

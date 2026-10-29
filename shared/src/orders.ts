@@ -118,9 +118,22 @@ export function allowedTargets(from: OrderStatus): OrderStatus[] {
   return TRANSITIONS[from];
 }
 
+/**
+ * What the customer actually pays for: the total minus what was refused at the Nova Poshta branch
+ * (partial pickup). Equals the total for every other order.
+ */
+export function payableMinor(order: { totalMinor: number; uncollectedMinor?: number }): number {
+  return Math.max(0, order.totalMinor - Math.max(0, order.uncollectedMinor ?? 0));
+}
+
 /** Cash to collect on delivery: everything not yet confirmed as received. */
-export function codMinor(order: { totalMinor: number; receivedMinor?: number }): number {
-  return Math.max(0, order.totalMinor - Math.max(0, order.receivedMinor ?? 0));
+export function codMinor(order: {
+  totalMinor: number;
+  receivedMinor?: number;
+  /** Units refused at the branch (partial pickup) are not paid for. */
+  uncollectedMinor?: number;
+}): number {
+  return Math.max(0, payableMinor(order) - Math.max(0, order.receivedMinor ?? 0));
 }
 
 /**
@@ -152,11 +165,13 @@ export function paymentState(order: {
   status?: OrderStatus;
   totalMinor?: number;
   receivedMinor?: number;
+  /** Refused at the branch (partial pickup): owed by nobody, so not a shortfall. */
+  uncollectedMinor?: number;
   amountDueMinor?: number;
   paymentDueAt?: string | null;
 }): PaymentState {
   if (order.paid) {
-    const total = order.totalMinor ?? 0;
+    const total = payableMinor({ totalMinor: order.totalMinor ?? 0, uncollectedMinor: order.uncollectedMinor });
     const received = order.receivedMinor;
     // Only claim "partial" when the amount is actually known and falls short (prepayment + COD).
     if (received !== undefined && total > 0 && received > 0 && received < total) {

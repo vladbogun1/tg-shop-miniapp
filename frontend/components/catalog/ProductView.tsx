@@ -10,19 +10,24 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
+import { Toast } from "@/components/ui/Toast";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { CompareViewButton } from "@/components/compare/CompareBits";
-import { compareGroupOf } from "@shop/shared";
+import { availabilityOf, compareGroupOf } from "@shop/shared";
 import { useCompare } from "@/lib/compare";
 import { Gallery } from "@/components/catalog/Gallery";
 import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "@/components/catalog/ProductSpecs";
+import { HoldBanner, PreorderBlock, PreorderCta } from "@/components/preorder/PreorderBlock";
+import { PreorderSheet } from "@/components/preorder/PreorderSheet";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { RatingBadge } from "@/components/reviews/Stars";
 import { useT } from "@/i18n/context";
 import { trackProductView } from "@/lib/analytics";
 import { EMPTY_SCHEMA, useCatalogSchema } from "@/lib/catalog";
 import { money } from "@/lib/money";
+import { heldFor, queuedFor, useComing, useMyPreorders, useProductPreorder } from "@/lib/preorders";
+import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/lib/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
 import type { Product, ProductVariant } from "@/lib/api";
@@ -73,6 +78,37 @@ function ViewBody({
 
   const needsVariant = hasVariants && !variant;
   const stock = hasVariants ? (variant?.stock ?? 0) : (product.stock ?? 0);
+
+  // Pre-orders: stock is net of reservations (mine too), so a unit held for me is added back here.
+  const token = useAccessToken();
+  const preQ = useProductPreorder(product.id);
+  const coming = useComing();
+  const mineAll = useMyPreorders().list;
+  const lineVariantId = hasVariants ? (variant?.id ?? null) : null;
+  const hold = needsVariant ? undefined : heldFor(mineAll, product.id, lineVariantId);
+  const queued = needsVariant ? undefined : queuedFor(mineAll, product.id, lineVariantId);
+  const eta = needsVariant
+    ? undefined
+    : (preQ.data?.lines.find((l) => (l.variantId ?? null) === lineVariantId)?.eta ?? coming.etaOf(product.id, lineVariantId));
+  const buyable = stock + (hold?.heldQty ?? 0);
+  const canNotify = !!token && preQ.data?.anyProduct !== false;
+  const holdHours = preQ.data?.holdHours ?? coming.holdHoursOf(product.id);
+  const avail = availabilityOf(product, variant, { coming: !!eta, heldQty: hold?.heldQty });
+  const mode: "pick" | "buy" | "pre" | "out" = needsVariant
+    ? "pick"
+    : avail === "in_stock" || avail === "held"
+      ? "buy"
+      : avail === "preorder" || canNotify
+        ? "pre"
+        : "out";
+  const buyProduct = hold && !hasVariants ? { ...product, stock: buyable } : product;
+  const buyVariant = hold && variant ? { ...variant, stock: buyable } : variant;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [preToast, setPreToast] = useState<string | null>(null);
+  const fireToast = (m: string) => {
+    setPreToast(m);
+    window.setTimeout(() => setPreToast(null), 1800);
+  };
 
   // One product_view per opening of the sheet (ViewBody is keyed by product id).
   useEffect(() => {
@@ -197,7 +233,9 @@ function ViewBody({
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {(product.variants ?? []).map((v) => {
-                    const out = v.stock <= 0;
+                    const vHeld = !!heldFor(mineAll, product.id, v.id ?? null);
+                    const vComing = !!coming.etaOf(product.id, v.id ?? null);
+                    const out = v.stock <= 0 && !vHeld && !vComing && !canNotify;
                     const on = variant?.id === v.id;
                     return (
                       <button
@@ -213,12 +251,16 @@ function ViewBody({
                       >
                         {on && <Check className="h-3.5 w-3.5" strokeWidth={2.75} />}
                         {v.name}
-                        {out ? t("product.variantOut") : ""}
+                        {v.stock > 0 ? "" : vHeld ? t("preorder.variant.held") : vComing ? t("preorder.variant.coming") : t("product.variantOut")}
                       </button>
                     );
                   })}
                 </div>
               </div>
+            )}
+
+            {mode === "pre" && (
+              <PreorderBlock eta={eta} waitingCount={preQ.data?.waitingCount ?? null} mine={queued} holdHours={holdHours} onEdit={() => setSheetOpen(true)} />
             )}
 
             <ProductGiftBanner priceMinor={product.priceMinor} currency={product.currency ?? "UAH"} />
@@ -252,26 +294,47 @@ function ViewBody({
           style={{ paddingBottom: "calc(var(--tabbar-h) + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
         >
           <div className="mx-auto w-full max-w-[480px]">
-            <AddToCartControl
-              product={product}
-              variant={variant}
-              needsVariant={needsVariant}
-              fullWidth
-              onAdded={() => {
-                haptic();
-                onAdded?.();
-              }}
-            />
+            {hold && mode === "buy" && <HoldBanner hold={hold} />}
+            {mode === "pre" ? (
+              <PreorderCta hasEta={!!eta} queued={!!queued} onClick={() => { haptic(); setSheetOpen(true); }} />
+            ) : (
+              <AddToCartControl
+                product={buyProduct}
+                variant={buyVariant}
+                needsVariant={needsVariant}
+                fullWidth
+                onAdded={() => {
+                  haptic();
+                  onAdded?.();
+                }}
+              />
+            )}
+            {/* in the pre-order state the block above already carries the hint */}
+            {mode !== "pre" && (
             <p className="mt-2 text-center text-[12px] font-medium text-[var(--muted)]">
-              {stock > 0
-                ? t("product.stockLeft", { n: stock })
+              {hold && buyable > 0
+                  ? t("preorder.held.left", { n: buyable })
+                  : stock > 0
+                  ? t("product.stockLeft", { n: stock })
                 : hasVariants && !variant
                   ? t("addToCart.chooseVariant")
                   : t("product.outOfStock")}
             </p>
+            )}
           </div>
         </div>
       </motion.div>
+      <PreorderSheet
+        product={product}
+        variant={needsVariant ? null : variant}
+        mine={queued}
+        coming={!!eta}
+        holdHours={holdHours}
+        open={sheetOpen && mode === "pre"}
+        onClose={() => setSheetOpen(false)}
+        onDone={fireToast}
+      />
+      <Toast message={preToast} />
     </div>
   );
 }

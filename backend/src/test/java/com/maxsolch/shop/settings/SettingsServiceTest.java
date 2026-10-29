@@ -192,6 +192,31 @@ class SettingsServiceTest {
     }
 
     @Test
+    void acquiringFeeIsNormalisedAndBounded() {
+        var d = SettingsRegistry.find(SettingsRegistry.COSTING_ACQUIRING_FEE_PERCENT).orElseThrow();
+        assertThat(SettingsService.normalize(d, "1,3")).isEqualTo("1.3");
+        assertThat(SettingsService.normalize(d, " 2.50 ")).isEqualTo("2.5");
+        assertThat(SettingsService.normalize(d, "0")).isEqualTo("0");
+        assertThat(SettingsService.normalize(d, "10")).isEqualTo("10");
+        assertThatThrownBy(() -> SettingsService.normalize(d, "10.1")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "-0.5")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "1.3%")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 1.3)).isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    void selectAcceptsOnlyTheListedValues() {
+        var d = SettingsRegistry.find(SettingsRegistry.COSTING_DEFAULT_DISTRIBUTION).orElseThrow();
+        assertThat(d.type()).isEqualTo(SettingType.SELECT);
+        assertThat(d.options()).extracting(SettingDefinition.Option::label)
+                .containsExactly("По стоимости", "По штукам", "По весу", "Вручную");
+        assertThat(SettingsService.normalize(d, " by_qty ")).isEqualTo("BY_QTY");
+        assertThatThrownBy(() -> SettingsService.normalize(d, "По штукам")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 5)).isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
     void normalizeInt() {
         SettingDefinition d = def(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
         assertThat(SettingsService.normalize(d, 21)).isEqualTo("21");

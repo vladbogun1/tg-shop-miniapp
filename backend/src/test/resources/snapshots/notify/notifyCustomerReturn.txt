@@ -1,0 +1,108 @@
+=== uk / items and refund
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Повернення оформлено Замовлення #1a2b3c4d Прийняли: Lamzu <Atlantis> × 1 Повертаємо: 4 590 ₴ Якщо є питання — напишіть у чат замовлення.
+  tgUserId=101
+  type=ORDER_RETURN
+SendMessage chat=101 thread=null parse=HTML
+<<<↩️ <b>Повернення оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Прийняли: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Повертаємо: <b>4 590 ₴</b>
+Якщо є питання — напишіть у чат замовлення.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / nothing else
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Повернення оформлено Замовлення #1a2b3c4d Якщо є питання — напишіть у чат замовлення.
+  tgUserId=101
+  type=ORDER_RETURN
+SendMessage chat=101 thread=null parse=HTML
+<<<↩️ <b>Повернення оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Якщо є питання — напишіть у чат замовлення.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / items and refund
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Возврат оформлен Заказ #1a2b3c4d Приняли: Lamzu <Atlantis> × 1 Возвращаем: 4 590 ₴ Если есть вопросы — напишите в чат заказа.
+  tgUserId=102
+  type=ORDER_RETURN
+SendMessage chat=102 thread=null parse=HTML
+<<<↩️ <b>Возврат оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Приняли: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Возвращаем: <b>4 590 ₴</b>
+Если есть вопросы — напишите в чат заказа.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / nothing else
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Возврат оформлен Заказ #1a2b3c4d Если есть вопросы — напишите в чат заказа.
+  tgUserId=102
+  type=ORDER_RETURN
+SendMessage chat=102 thread=null parse=HTML
+<<<↩️ <b>Возврат оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Если есть вопросы — напишите в чат заказа.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / items and refund
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Return registered Order #1a2b3c4d We received: Lamzu <Atlantis> × 1 Refund: 4 590 ₴ Questions? Write in the order chat.
+  tgUserId=103
+  type=ORDER_RETURN
+SendMessage chat=103 thread=null parse=HTML
+<<<↩️ <b>Return registered</b>
+Order <b>#1a2b3c4d</b>
+We received: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Refund: <b>4 590 ₴</b>
+Questions? Write in the order chat.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / nothing else
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=↩️ Return registered Order #1a2b3c4d Questions? Write in the order chat.
+  tgUserId=103
+  type=ORDER_RETURN
+SendMessage chat=103 thread=null parse=HTML
+<<<↩️ <b>Return registered</b>
+Order <b>#1a2b3c4d</b>
+Questions? Write in the order chat.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

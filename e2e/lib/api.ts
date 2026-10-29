@@ -4,8 +4,9 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { request, type APIRequestContext } from "@playwright/test";
-import { API_URL, E2E_DIR } from "../env.js";
+import { API_URL, E2E_DIR, backendEnv } from "../env.js";
 
 export const AUTH_DIR = path.join(E2E_DIR, ".auth");
 export const TOKEN_FILE = path.join(AUTH_DIR, "token.json");
@@ -205,5 +206,62 @@ export class Api {
       "get",
       `/api/admin/audit?page=0&size=50${params}`
     );
+  }
+}
+
+/**
+ * Customer calls (Mini App API). The e2e backend has no bot and refuses unsigned Telegram init data,
+ * so a CUSTOMER bearer token is signed here with the same test JWT secret the backend runs with
+ * (HS256, subject = Telegram id, claims role / tv — see JwtService). The user row must exist (seed).
+ */
+export function customerToken(telegramUserId: number): string {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64({ alg: "HS256", typ: "JWT" });
+  const body = b64({ sub: String(telegramUserId), role: "CUSTOMER", tv: 0, iat: now, exp: now + 3600 });
+  const key = Buffer.from(backendEnv().JWT_SECRET, "base64");
+  const sig = crypto.createHmac("sha256", key).update(`${head}.${body}`).digest("base64url");
+  return `${head}.${body}.${sig}`;
+}
+
+export class CustomerApi {
+  private constructor(private readonly ctx: APIRequestContext) {}
+
+  static async create(telegramUserId: number): Promise<CustomerApi> {
+    const ctx = await request.newContext({
+      baseURL: API_URL,
+      extraHTTPHeaders: { Authorization: `Bearer ${customerToken(telegramUserId)}`, Accept: "application/json" },
+    });
+    return new CustomerApi(ctx);
+  }
+
+  async dispose(): Promise<void> {
+    await this.ctx.dispose();
+  }
+
+  private async post<T>(url: string, data: unknown): Promise<T> {
+    const res = await this.ctx.post(url, { data });
+    if (!res.ok()) throw new Error(`POST ${url} → ${res.status()}: ${await res.text()}`);
+    return (await res.json()) as T;
+  }
+
+  /** «Повідомити, коли з'явиться»: встать в очередь на товар без остатка. */
+  subscribe(productId: string, qty = 1) {
+    return this.post<{ id: number; status: string; qty: number }>("/api/me/preorders", { productId, qty });
+  }
+
+  /** Checkout: Nova Poshta branch (invented, like the seeded orders), paid online in full. */
+  placeOrder(name: string, items: { productId: string; quantity: number }[]) {
+    return this.post<{ orderId: string }>("/api/orders", {
+      items,
+      customerName: name,
+      phone: "+380000000030",
+      deliveryMethod: "NOVA_POSHTA",
+      npCityRef: "e2e-city",
+      npCityName: "Київ",
+      npWarehouseRef: "e2e-wh-1",
+      npWarehouseName: "Відділення №1 (тест): вул. Вигадана, 1",
+      paymentOptionId: "e2e0b001-0000-4000-8000-000000000003",
+    });
   }
 }

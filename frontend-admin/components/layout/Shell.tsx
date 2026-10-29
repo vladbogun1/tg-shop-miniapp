@@ -43,6 +43,7 @@ import {
   ChevronRight,
   Gift,
   Ghost,
+  PackagePlus,
 } from "lucide-react";
 import { isHalloween } from "@shop/shared";
 import { useQuery } from "@tanstack/react-query";
@@ -105,6 +106,7 @@ const SECTIONS: NavSection[] = [
     icon: Package,
     items: [
       { href: "/products", label: "Товары", icon: Package },
+      { href: "/preorders", label: "Поставки", icon: PackagePlus },
       {
         href: "/cards",
         label: "Карточки",
@@ -177,6 +179,8 @@ const TITLE: Record<string, string> = {
   "/users": "Пользователи",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
+  "/preorders": "Поставки",
+  "/opening-cost": "Начальная себестоимость",
   "/reviews": "Отзывы",
   "/categories": "Категории",
   "/brands": "Бренды",
@@ -1011,7 +1015,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [collapsed, toggleCollapsed] = useCollapsedSidebar();
   const pathname = usePathname();
   const title =
-    TITLE[pathname] ?? (pathname.startsWith("/orders/") ? "Заказ" : "Панель");
+    TITLE[pathname] ?? (pathname.startsWith("/orders/") ? "Заказ" : pathname.startsWith("/preorders/") ? "Поставка" : "Панель");
 
   // Any navigation (menu link, system back, a tapped notification) closes the menu.
   useEffect(() => {

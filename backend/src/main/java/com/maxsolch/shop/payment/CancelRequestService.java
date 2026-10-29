@@ -2,6 +2,7 @@ package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
+import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.web.BadRequestException;
@@ -98,7 +99,7 @@ public class CancelRequestService {
             }
         }
         // Money the admin recorded by hand (not through monobank) has to go back by hand too.
-        long manual = Math.max(0, Math.min(order.getReceivedMinor(), order.getTotalMinor()) - onlineReceived);
+        long manual = Math.max(0, OrderMoney.receivedMinor(order) - onlineReceived);
         return new ApproveResult(orderService.get(orderId), requested, refunded, errors, manual);
     }
 

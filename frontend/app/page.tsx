@@ -20,10 +20,11 @@ import {
   PackageOpen,
   Search,
   SlidersHorizontal,
+  Truck,
   WifiOff,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { Logo } from "@/components/Logo";
 import { ProductCardSkeleton } from "@/components/catalog/ProductCardSkeleton";
@@ -33,6 +34,10 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { HalloweenBanner, HalloweenCounter } from "@/components/Halloween";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Toast } from "@/components/ui/Toast";
+import { PreorderSheet } from "@/components/preorder/PreorderSheet";
+import { PreorderRibbon } from "@/components/preorder/PreorderRibbon";
+import { useAccessToken } from "@/lib/auth";
+import { preorderCardState, preorderTier, queuedFor, useComing, useMyPreorders } from "@/lib/preorders";
 import { CompareSheet } from "@/components/compare/CompareSheet";
 import { CompareToastHost } from "@/components/compare/CompareBits";
 import { useCompare } from "@/lib/compare";
@@ -80,6 +85,11 @@ export default function CatalogPage() {
   const [sort, setSort] = useState<SortKey>("popular");
   const [sortOpen, setSortOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [onlyPre, setOnlyPre] = useState(false);
+  const [notifyFor, setNotifyFor] = useState<Product | null>(null);
+  const token = useAccessToken();
+  const coming = useComing();
+  const mine = useMyPreorders().list;
   const schemaQuery = useCatalogSchema();
   const schema = schemaQuery.data ?? EMPTY_SCHEMA;
 
@@ -91,6 +101,41 @@ export default function CatalogPage() {
   const products = useMemo(() => data ?? [], [data]);
 
   const items = useMemo(() => toEngineItems(products), [products]);
+
+  // Pre-order state per product (null = an ordinary in-stock one): badge, term, button, sort tier.
+  const preStates = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof preorderCardState>>();
+    for (const p of products) m.set(p.id, preorderCardState(p, productInStock(p), coming, mine));
+    return m;
+  }, [products, coming, mine]);
+  const hasPre = useMemo(() => products.some((p) => preStates.get(p.id)?.kind === "preorder"), [products, preStates]);
+
+  // Deep link from the bot: /?product=<id> opens that product (once the catalog is there).
+  const openFromUrl = useCallback(() => {
+    let handed: string | null = null;
+    try {
+      handed = sessionStorage.getItem("shop:open-product");
+    } catch {
+      /* storage blocked */
+    }
+    const id = new URLSearchParams(window.location.search).get("product") ?? handed;
+    if (!id || products.length === 0) return;
+    const p = products.find((x) => x.id === id);
+    if (p) setSelected(p);
+    try {
+      sessionStorage.removeItem("shop:open-product");
+    } catch {
+      /* storage blocked */
+    }
+    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
+  }, [products]);
+  useEffect(() => {
+    openFromUrl();
+    // the bot link can arrive after the catalog is already on screen (Providers pushes /?product=)
+    const on = () => window.setTimeout(openFromUrl, 0);
+    window.addEventListener("shop:product-link", on);
+    return () => window.removeEventListener("shop:product-link", on);
+  }, [openFromUrl]);
 
   // A stored category that no longer exists (renamed/emptied) is ignored, not a blank screen.
   const category =
@@ -111,11 +156,12 @@ export default function CatalogPage() {
   );
 
   const sorted = useMemo(() => {
-    const list = filterProducts(schema, items, effective).map((x) => x.src);
+    let list = filterProducts(schema, items, effective).map((x) => x.src);
+    if (onlyPre) list = list.filter((p) => preStates.get(p.id)?.kind === "preorder");
     return list.sort((a, b) => {
-      // Out-of-stock always sinks to the bottom.
-      const ai = productInStock(a) ? 0 : 1;
-      const bi = productInStock(b) ? 0 : 1;
+      // In stock (and held for me) → pre-order → out of stock.
+      const ai = preorderTier(preStates.get(a.id) ?? null);
+      const bi = preorderTier(preStates.get(b.id) ?? null);
       if (ai !== bi) return ai - bi;
       switch (sort) {
         case "price_asc":
@@ -129,7 +175,7 @@ export default function CatalogPage() {
           return (b.soldCount ?? 0) - (a.soldCount ?? 0) || a.title.localeCompare(b.title, getActiveTag());
       }
     });
-  }, [schema, items, effective, sort]);
+  }, [schema, items, effective, sort, onlyPre, preStates]);
 
   const summaries = useMemo(() => {
     const yesNo: [string, string] = [t("catalog.yes"), t("catalog.no")];
@@ -162,6 +208,13 @@ export default function CatalogPage() {
     haptic();
     setFilter((f) => filterForCategory(f, slug));
   };
+
+  const ribbonProducts = useMemo(() => {
+    const byId = new Map(products.map((p) => [p.id, p]));
+    return coming.productIds.map((id) => byId.get(id)).filter((p): p is Product => !!p && preStates.get(p.id)?.kind === "preorder");
+  }, [products, coming, preStates]);
+  const showRibbon =
+    ribbonProducts.length > 0 && !onlyPre && !search.trim() && filterCount === 0 && category === null && !isLoading && !isError;
 
   const showControls = !isLoading && !isError && products.length > 0;
   const fireToast = (msg: string) => {
@@ -316,7 +369,7 @@ export default function CatalogPage() {
               </div>
             </div>
 
-            {(roots.length > 0 || hasMarkdown) && (
+            {(roots.length > 0 || hasMarkdown || hasPre) && (
               <DragScroll className="no-scrollbar -mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-0.5">
                 <Chip active={category === null} onClick={() => selectCategory(null)}>
                   {t("catalog.allTags")}
@@ -326,6 +379,14 @@ export default function CatalogPage() {
                     {c.name}
                   </Chip>
                 ))}
+                {hasPre && (
+                  <Chip active={onlyPre} onClick={() => { haptic(); setOnlyPre((v) => !v); }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Truck className="h-3.5 w-3.5" strokeWidth={2.5} />
+                      {t("preorder.filter")}
+                    </span>
+                  </Chip>
+                )}
                 {hasMarkdown && (
                   <Chip active={category === MARKDOWN_COLLECTION_SLUG} onClick={() => selectCategory(MARKDOWN_COLLECTION_SLUG)}>
                     {t("catalog.markdown")}
@@ -420,6 +481,19 @@ export default function CatalogPage() {
           </EmptyState>
         )}
 
+        {showRibbon && (
+          <PreorderRibbon
+            products={ribbonProducts}
+            coming={coming}
+            onOpen={setSelected}
+            onAll={() => {
+              haptic();
+              setOnlyPre(true);
+              window.scrollTo({ top: 0 });
+            }}
+          />
+        )}
+
         {!isLoading && !isError && sorted.length > 0 && (
           // No `key` on the grid: re-keying it per filter used to remount all ~216 cards and replay
           // a 0.05 s stagger over every one of them (~10 s of spring animations, mostly off
@@ -435,11 +509,11 @@ export default function CatalogPage() {
                   animate={{ opacity: 1, y: 0, scale: 1, transition: { ...spring, delay: 0.03 + i * 0.04 } }}
                   className="catalog-cell flex"
                 >
-                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} preorder={preStates.get(p.id)} onNotify={token ? setNotifyFor : undefined} />
                 </motion.div>
               ) : (
                 <div key={p.id} className="catalog-cell flex">
-                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} />
+                  <ProductCard product={p} onOpen={setSelected} summary={summaries.get(p.id)} compareGroup={compareGroups.get(p.id)} preorder={preStates.get(p.id)} onNotify={token ? setNotifyFor : undefined} />
                 </div>
               ),
             )}
@@ -482,6 +556,16 @@ export default function CatalogPage() {
           setFilter((f) => filterForCategory(f, slug));
           window.scrollTo({ top: 0 });
         }}
+      />
+      <PreorderSheet
+        product={notifyFor}
+        variant={null}
+        mine={notifyFor ? queuedFor(mine, notifyFor.id, null) : undefined}
+        coming={!!notifyFor && !!coming.productEta(notifyFor.id)}
+        holdHours={notifyFor ? coming.holdHoursOf(notifyFor.id) : undefined}
+        open={!!notifyFor}
+        onClose={() => setNotifyFor(null)}
+        onDone={fireToast}
       />
       <CompareToastHost />
       <Toast message={toast} />

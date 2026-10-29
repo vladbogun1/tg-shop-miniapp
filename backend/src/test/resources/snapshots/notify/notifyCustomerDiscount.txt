@@ -1,0 +1,54 @@
+=== uk
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🏷 Знижка на замовлення Замовлення #1a2b3c4d Вам застосовано знижку 200 ₴. Нова сума до сплати: 10 500 ₴
+  tgUserId=101
+  type=ORDER_DISCOUNT
+SendMessage chat=101 thread=null parse=HTML
+<<<🏷 <b>Знижка на замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+Вам застосовано знижку 200 ₴.
+Нова сума до сплати: <b>10 500 ₴</b>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🏷 Скидка на заказ Заказ #1a2b3c4d Вам применена скидка 200 ₴. Новая сумма к оплате: 10 500 ₴
+  tgUserId=102
+  type=ORDER_DISCOUNT
+SendMessage chat=102 thread=null parse=HTML
+<<<🏷 <b>Скидка на заказ</b>
+Заказ <b>#1a2b3c4d</b>
+Вам применена скидка 200 ₴.
+Новая сумма к оплате: <b>10 500 ₴</b>>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🏷 Discount on your order Order #1a2b3c4d A discount of 200 ₴ has been applied. New amount due: 10 500 ₴
+  tgUserId=103
+  type=ORDER_DISCOUNT
+SendMessage chat=103 thread=null parse=HTML
+<<<🏷 <b>Discount on your order</b>
+Order <b>#1a2b3c4d</b>
+A discount of 200 ₴ has been applied.
+New amount due: <b>10 500 ₴</b>>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

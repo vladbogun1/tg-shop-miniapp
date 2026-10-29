@@ -21,6 +21,7 @@
  * Nothing here is rendered on the site.
  */
 import {
+  availabilityOf,
   type CatalogCategory,
   type CatalogSchema,
   categoryBySlug,
@@ -34,7 +35,7 @@ import {
 import { localePath, makeT } from "@/i18n";
 import { IMAGE_BASE, SITE_URL } from "./config";
 import { categoryWords, productBrandName, SITE_NAME } from "./seo";
-import { stockOf } from "./stock";
+import { etaStartsOn, type PreorderIndex } from "./preorder-core";
 
 /** Feed data window, seconds (admin edits still drop it early through the "catalog" tag). */
 export const FEED_REVALIDATE_SECONDS = 3600;
@@ -103,6 +104,8 @@ export interface FeedItem {
   url: string;
   images: string[];
   inStock: boolean;
+  /** Sold out, an open batch brings it, and its date is known: «preorder» + availability_date in Google's feed. */
+  preorderDate: string | null;
   /** condition ≠ NEW (markdown or used): sold with stated defects. */
   markdown: boolean;
   brand: string | null;
@@ -176,7 +179,7 @@ function feedSpecs(p: StorefrontProduct, schema: CatalogSchema, locale: Locale):
     .slice(0, MAX_SPECS);
 }
 
-export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, locale: Locale): FeedItem[] {
+export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, locale: Locale, pre?: PreorderIndex | null): FeedItem[] {
   const items: FeedItem[] = [];
   for (const p of products) {
     if (p.active === false || p.archived === true) continue;
@@ -192,6 +195,8 @@ export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, 
       .map(feedImage);
     if (images.length === 0) continue;
     const ids = p as StorefrontProduct & MaybeIdentifiers;
+    const eta = pre?.any.get(p.id) ?? null;
+    const availability = availabilityOf(p, null, { coming: !!eta });
     items.push({
       product: p,
       category,
@@ -200,7 +205,8 @@ export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, 
       specs: feedSpecs(p, schema, locale),
       url: `${SITE_URL}${localePath(locale, `/product/${p.slug}`)}`,
       images,
-      inStock: stockOf(p, null) > 0,
+      inStock: availability === "in_stock",
+      preorderDate: availability === "preorder" && eta ? etaStartsOn(eta) : null,
       markdown: (p.condition ?? ((p.tags ?? []).some((t) => t.slug === MARKDOWN_COLLECTION_SLUG) ? "MARKDOWN" : "NEW")) !== "NEW",
       // Brand directory first (the admin's brand used to be ignored here), then the text heuristic.
       brand: productBrandName(p),
@@ -280,7 +286,9 @@ function googleItem(it: FeedItem, shipping: string): string {
     ...it.images.slice(1, 11).map((u) => el("g:additional_image_link", u)),
     el("g:price", `${price(sale ? p.compareAtMinor! : p.priceMinor)} ${currency}`),
     sale ? el("g:sale_price", `${price(p.priceMinor)} ${currency}`) : "",
-    el("g:availability", it.inStock ? "in_stock" : "out_of_stock"),
+    // Google requires availability_date for preorder; a batch without a known date stays out_of_stock.
+    el("g:availability", it.inStock ? "in_stock" : it.preorderDate ? "preorder" : "out_of_stock"),
+    it.preorderDate ? el("g:availability_date", it.preorderDate + "T00:00+0000") : "",
     // «Уцінка» is sold with stated defects (returns.md), not professionally restored — Google's
     // "refurbished" would be wrong, "used" is the honest one.
     el("g:condition", it.markdown ? "used" : "new"),

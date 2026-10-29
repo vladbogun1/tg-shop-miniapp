@@ -13,9 +13,10 @@
 import type { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Inbox } from "lucide-react";
+import { payableMinor } from "@shop/shared";
 import type { AdminOrderCard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
-import { BOARD_LABEL, BOARD_VAR, RETURNING, type BoardKey } from "@/lib/orders";
+import { BOARD_LABEL, BOARD_VAR, RETURNING, returningMinor, type BoardKey } from "@/lib/orders";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { DraggableOrderCard } from "./DraggableOrderCard";
@@ -50,8 +51,9 @@ export function KanbanColumn({
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const returning = status === RETURNING;
-  const total = sum ?? orders.reduce((acc, o) => acc + o.totalMinor, 0);
+  const total = sum ?? orders.reduce((acc, o) => acc + payableMinor(o), 0);
   const returningUnits = orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0);
+  const returningSum = orders.reduce((acc, o) => acc + returningMinor(o), 0);
   const accent = BOARD_VAR[status];
 
   const dim = dragActive && !validTarget;
@@ -122,7 +124,9 @@ export function KanbanColumn({
         </div>
 
         <div className="tabular px-3.5 pb-3 pt-1.5 text-[12px] font-semibold text-[var(--text-muted)]">
-          {returning ? `${returningUnits} шт. в пути на склад` : money(total, "UAH")}
+          {returning
+            ? `${returningUnits} шт. в пути на склад${returningSum > 0 ? ` · ${money(returningSum, "UAH")}` : ""}`
+            : money(total, "UAH")}
           {orders.length < count && (
             <span className="ml-2 font-normal text-[var(--text-faint)]">
               · показано {orders.length} из {count}

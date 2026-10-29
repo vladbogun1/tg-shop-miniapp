@@ -2,6 +2,7 @@ package com.maxsolch.shop.web.dto;
 
 import java.time.Instant;
 
+@lombok.Builder
 public record OrderCardDto(
         String id,
         String customerName,
@@ -37,12 +38,16 @@ public record OrderCardDto(
         /** This order is the replacement of an exchange on that order (V69); null = not. */
         String exchangeOfId,
         /** Replacement orders created by exchanges on this one (V69), oldest first. */
-        java.util.List<String> exchangeOrderIds) {
+        java.util.List<String> exchangeOrderIds,
+        /** Refused at the Nova Poshta branch (partial pickup, V72): the card shows total − this. */
+        long uncollectedMinor) {
 
     /**
      * @param returning units of this line on their way back
      * @param returned  units of this line already given back
+     * @param returningMinor what the units on their way back cost (paid price) — the «Едет назад» card shows it
      */
-    public record CardLine(String imageUrl, String title, int quantity, int returning, int returned, boolean gift) {
+    public record CardLine(String imageUrl, String title, int quantity, int returning, int returned, boolean gift,
+                           long returningMinor) {
     }
 }

@@ -2,6 +2,7 @@ package com.maxsolch.shop.web.dto;
 
 import java.time.Instant;
 
+@lombok.Builder
 public record OrderSummaryDto(
         String id,
         String status,
@@ -21,5 +22,7 @@ public record OrderSummaryDto(
         String cancelRequestStatus,
         /** Gift case (V57): null | SEALED (waits to be opened) | OPENED. */
         String giftCaseStatus,
-        boolean giftCaseOpenable) {
+        boolean giftCaseOpenable,
+        /** Refused at the Nova Poshta branch (partial pickup, V72): not paid for, not part of the payment state. */
+        long uncollectedMinor) {
 }

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.domain.OrderMoney;
+
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
@@ -62,13 +64,17 @@ class OrderAdjustmentServiceTest {
     com.maxsolch.shop.repository.OrderExchangeRepository exchangeRepository;
 
     OrderAdjustmentService service;
+    /** The money journal behind the service under test (a mock that records nothing unless a test verifies it). */
+    MoneyLedger ledgerMock;
 
     @BeforeEach
     void setUp() {
-        OrderService orderService = new OrderService(orderRepository, productRepository,
+        ledgerMock = org.mockito.Mockito.mock(MoneyLedger.class);
+        OrderStock stock = StockFixtures.stock(productRepository, messages);
+        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
-        service = new OrderAdjustmentService(orderRepository, orderService, events, exchangeRepository);
+                promoService, cartService, messages, entityManager, stock, org.mockito.Mockito.mock(MoneyLedger.class));
+        service = new OrderAdjustmentService(orderRepository, orderService, stock, events, exchangeRepository, ledgerMock);
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -241,7 +247,7 @@ class OrderAdjustmentServiceTest {
         assertThat(child.getPaymentDueAt()).isNull();
         // The difference can be paid online in full (or наложкой): no prepayment cap.
         assertThat(child.getPrepaymentMinor()).isZero();
-        assertThat(OrderService.amountDueMinor(child)).isEqualTo(5_000);
+        assertThat(OrderMoney.amountDueMinor(child)).isEqualTo(5_000);
         assertThat(other.getStock()).isEqualTo(2);                // reserved for the new parcel
         assertThat(r.auditDetails()).contains("Клава").contains("зачтено 100 ₴").contains("доплата 50 ₴");
 
@@ -253,6 +259,32 @@ class OrderAdjustmentServiceTest {
         assertThat(ex.getValue().getReturnedSummary()).contains("(едет назад)");
         assertThat(ex.getValue().getTotalBeforeMinor()).isEqualTo(10_000);
         verify(events).publishEvent(any(OrderEvents.Exchanged.class));
+    }
+
+    @Test
+    void exchange_creditFollowsTheExactPaidAmountOfTheLine() {
+        // 3333 x 3 with 10 ₴ off, paid 89.99: exchanging all three moves exactly 89.99 over, not 90.00.
+        Order o = order(OrderStatus.DELIVERED);
+        o.setPaymentOptionId(UuidUtil.randomBytes());
+        o.setReceivedMinor(8_999);
+        o.setPaid(true);
+        o.setUserId(77L);
+        Product other = product(3);
+        other.setPriceMinor(20_000);
+        OrderItem line = item(o, product(5), 1L, 3);
+        line.setPriceMinorSnapshot(3_333);
+        o.setSubtotalMinor(9_999);
+        o.setDiscountMinor(1_000);
+        o.setTotalMinor(8_999);
+        trackOrders(o);
+        when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
+
+        service.exchange(o.getId(),
+                List.of(new OrderAdjustmentService.WizardLine(1L, 3, null)),
+                List.of(new OrderAdjustmentService.ExchangeNewLine(UuidUtil.toString(other.getId()), null, 1)),
+                OrderStatus.NEW, true, null, "admin");
+
+        assertThat(o.getRefundedMinor()).isEqualTo(8_999);
     }
 
     @Test
@@ -335,9 +367,10 @@ class OrderAdjustmentServiceTest {
         o.setTotalMinor(5_000);
         o.setReceivedMinor(10_000);
         o.setPaid(true);
-        OrderService orderService = new OrderService(orderRepository, productRepository,
+        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
-                promoService, cartService, messages, entityManager);
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
 
         Order delivered = orderService.deliver(o.getId());
 
@@ -421,9 +454,7 @@ class OrderAdjustmentServiceTest {
     // ---------- return wizard (V68) ----------
 
     private MoneyLedger wireLedger() {
-        MoneyLedger ledger = org.mockito.Mockito.mock(MoneyLedger.class);
-        service.setMoneyLedger(ledger);
-        return ledger;
+        return ledgerMock;
     }
 
     private static OrderAdjustmentService.ReturnPlan plan(List<OrderAdjustmentService.WizardLine> lines,
@@ -551,18 +582,6 @@ class OrderAdjustmentServiceTest {
     }
 
     @Test
-    void unitPaidMinor_spreadsTheOrderDiscount_andGiftsCostNothing() {
-        Order o = new Order();
-        o.setItems(new ArrayList<>());
-        o.setSubtotalMinor(40_000);
-        o.setDiscountMinor(10_000);
-        OrderItem it = item(o, product(1), 1L, 1);
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isEqualTo(7_500);
-        it.setGift(true);
-        assertThat(OrderAdjustmentService.unitPaidMinor(o, it)).isZero();
-    }
-
-    @Test
     void wizard_prepaymentAlreadyRetainedOnRefusal_cannotBeKeptOrRefundedAgain() {
         Order o = order(OrderStatus.REJECTED);
         o.setReceivedMinor(20_000);
@@ -615,7 +634,7 @@ class OrderAdjustmentServiceTest {
     }
 
     @Test
-    void wizard_inTransit_notForAParcelStillOnItsWayOut() {
+    void wizard_shippedParcelRefusedWhole_isARejectionNotAPartialPickup() {
         Order o = order(OrderStatus.SHIPPED);
         o.setReceivedMinor(30_000);
         item(o, product(0), 1L, 1);
@@ -623,7 +642,97 @@ class OrderAdjustmentServiceTest {
         assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
                 List.of(), 0, 0), "owner"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("не забрал ничего");
+    }
+
+    @Test
+    void wizard_partialPickupWithCod_refusedPartComesOffNalozhka_andDeliveryBooksOnlyTheRest() {
+        // 1C60C7C7: prepayment 100 ₴, the customer took the keyboard and refused the mouse at the branch.
+        Order o = order(OrderStatus.SHIPPED);
+        o.setTotalMinor(30_000);
+        o.setSubtotalMinor(30_000);
+        o.setPrepaymentMinor(100);
+        o.setReceivedMinor(100);
+        o.setPaid(true);
+        Product mouse = product(0);
+        OrderItem keyboard = item(o, product(0), 1L, 2);
+        OrderItem refused = item(o, mouse, 2L, 1);
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 100, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("вернуть нечего");
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT)),
+                List.of(), 0, 0), "owner");
+
+        assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
+        assertThat(r.order().getReturnStatus()).isEqualTo(OrderService.RETURN_IN_TRANSIT);
+        assertThat(refused.getReturnPendingQty()).isEqualTo(1);
+        assertThat(keyboard.getReturnedQty()).isZero();
+        assertThat(mouse.getStock()).isZero(); // on its way, not on the shelf yet
+        assertThat(OrderMoney.codMinor(r.order())).isEqualTo(19_900);
+        assertThat(r.auditDetails()).contains("не выкуплено на почте 100 ₴").contains("наложка теперь 199 ₴");
+
+        OrderService orderService = OrderServiceFixtures.create(orderRepository, productRepository,
+                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoService, cartService, messages, entityManager,
+                StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
+        Order delivered = orderService.deliver(o.getId());
+
+        assertThat(delivered.getReceivedMinor()).isEqualTo(20_000);
+        assertThat(OrderMoney.codMinor(delivered)).isZero();
+    }
+
+    @Test
+    void wizard_partialPickupWithADiscount_refusingALineInStepsNeverExceedsItsPaidAmount() {
+        // 3333 x 3 with 10 ₴ off: the line cost 89.99 (total), not 90.00.
+        Order o = order(OrderStatus.SHIPPED);
+        o.setSubtotalMinor(9_999);
+        o.setDiscountMinor(1_000);
+        o.setTotalMinor(8_999);
+        OrderItem line = item(o, product(0), 1L, 3);
+        line.setPriceMinorSnapshot(3_333);
+        List<OrderAdjustmentService.WizardLine> one =
+                List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT));
+
+        assertThat(service.registerReturnPlan(o.getId(), plan(one, List.of(), 0, 0), "owner")
+                .order().getUncollectedMinor()).isEqualTo(2_999);
+        assertThat(service.registerReturnPlan(o.getId(), plan(one, List.of(), 0, 0), "owner")
+                .order().getUncollectedMinor()).isEqualTo(5_999);   // 2999 + 3000 = floor(8999 * 2 / 3)
+        assertThat(line.getReturnedQty()).isEqualTo(2);
+        assertThat(OrderMoney.codMinor(o)).isEqualTo(3_000);        // the last unit: 8999 - 5999
+    }
+
+    @Test
+    void wizard_partialPickupOfAPrepaidOrder_refundsTheRefusedPart() {
+        Order o = order(OrderStatus.SHIPPED);
+        o.setTotalMinor(30_000);
+        o.setSubtotalMinor(30_000);
+        o.setReceivedMinor(30_000);
+        o.setPaid(true);
+        item(o, product(0), 1L, 2);
+        item(o, product(0), 2L, 1);
+        List<OrderAdjustmentService.WizardLine> back =
+                List.of(new OrderAdjustmentService.WizardLine(2L, 1, OrderAdjustmentService.LineOutcome.IN_TRANSIT));
+
+        assertThatThrownBy(() -> service.registerReturnPlan(o.getId(), plan(back,
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_001, null)), 0, 0), "owner"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("100 ₴");
+
+        OrderAdjustmentService.Result r = service.registerReturnPlan(o.getId(), plan(back,
+                List.of(new OrderAdjustmentService.ManualRefund(
+                        com.maxsolch.shop.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_000, null)), 0, 0), "owner");
+
+        assertThat(r.order().getUncollectedMinor()).isEqualTo(10_000);
+        assertThat(r.order().getRefundedMinor()).isEqualTo(10_000);
+        assertThat(OrderMoney.codMinor(r.order())).isZero();
     }
 
     @Test

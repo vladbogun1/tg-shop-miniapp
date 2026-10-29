@@ -11,7 +11,7 @@ import { CoinPop } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getProducts, getReviewFeed, safe } from "@/lib/server-api";
+import { getCategories, getPreorderIndex, getProducts, getReviewFeed, safe } from "@/lib/server-api";
 import { pageMeta, storeJsonLd } from "@/lib/seo";
 import { toCardProducts } from "@/lib/card";
 import { cardContext, loadSchema } from "@/lib/catalog";
@@ -40,16 +40,17 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
 
-  const [allCategories, schema, hits, fresh, feed] = await Promise.all([
+  const [allCategories, schema, hits, fresh, feed, pre] = await Promise.all([
     safe(getCategories(locale), []),
     loadSchema(locale),
     safe(getProducts({ sort: "default", inStock: true, size: 8 }, locale), null),
     safe(getProducts({ sort: "new", inStock: true, size: 8 }, locale), null),
     safe(getReviewFeed(locale), null),
+    getPreorderIndex(locale),
   ]);
   // Tiles and banner slides: ROOT categories with products (+ the virtual «Уцінка» last).
   const categories = menuTree(allCategories);
-  const card = cardContext(schema, locale);
+  const card = cardContext(schema, locale, pre);
 
   return (
     <>
@@ -104,8 +105,6 @@ export default async function HomePage({ params }: { params: LocaleParams }) {
                   name={c.name}
                   artKind={c.artKind}
                   count={t("home.categoryCount", { n: c.productCount })}
-                  loadingLabel={t("home.tile.loading")}
-                  readyLabel={t("home.tile.ready")}
                 />
               </li>
             ))}

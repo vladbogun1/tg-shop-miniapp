@@ -1,0 +1,371 @@
+=== uk / bonusIssued, no ceiling
+Journal
+  chatId=101
+  details={maxDiscountMinor=0, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% до 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Дякуємо за відгук!</b>
+Ваш особистий промокод <code>REV-&lt;AB&gt;12</code> — знижка 5% на наступне замовлення. Діє до 01.12.2026, один раз. Код також є в кабінеті, у розділі «Відгуки». Під час наступного замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== ru / bonusIssued, no ceiling
+Journal
+  chatId=102
+  details={maxDiscountMinor=0, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% до 01.12.2026
+  tgUserId=102
+  type=REVIEW_BONUS
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Спасибо за отзыв!</b>
+Ваш личный промокод <code>REV-&lt;AB&gt;12</code> — скидка 5% на следующий заказ. Действует до 01.12.2026, один раз. Код также есть в кабинете, в разделе «Отзывы». При следующем заказе магазин сам предложит его применить.>>>
+markup: [{Открыть магазин webapp=https://app.example.test}]
+
+=== en / bonusIssued, no ceiling
+Journal
+  chatId=103
+  details={maxDiscountMinor=0, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% до 01.12.2026
+  tgUserId=103
+  type=REVIEW_BONUS
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>Thank you for the review!</b>
+Your personal promo code <code>REV-&lt;AB&gt;12</code> gives 5% off your next order. Valid until 01.12.2026, once. You can also find it in your account under «Reviews». At your next checkout the shop will offer to apply it.>>>
+markup: [{Open the shop webapp=https://app.example.test}]
+
+=== uk / bonusIssued, ceiling 100 UAH
+Journal
+  chatId=101
+  details={maxDiscountMinor=10000, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% (до 100 ₴) до 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Дякуємо за відгук!</b>
+Ваш особистий промокод <code>REV-AB12</code> — знижка 5% (до 100 ₴) на наступне замовлення. Діє до 01.12.2026, один раз. Код також є в кабінеті, у розділі «Відгуки». Під час наступного замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== ru / bonusIssued, ceiling 100 UAH
+Journal
+  chatId=102
+  details={maxDiscountMinor=10000, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% (до 100 ₴) до 01.12.2026
+  tgUserId=102
+  type=REVIEW_BONUS
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Спасибо за отзыв!</b>
+Ваш личный промокод <code>REV-AB12</code> — скидка 5% (до 100 ₴) на следующий заказ. Действует до 01.12.2026, один раз. Код также есть в кабинете, в разделе «Отзывы». При следующем заказе магазин сам предложит его применить.>>>
+markup: [{Открыть магазин webapp=https://app.example.test}]
+
+=== en / bonusIssued, ceiling 100 UAH
+Journal
+  chatId=103
+  details={maxDiscountMinor=10000, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% (до 100 ₴) до 01.12.2026
+  tgUserId=103
+  type=REVIEW_BONUS
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>Thank you for the review!</b>
+Your personal promo code <code>REV-AB12</code> gives 5% (up to 100 ₴) off your next order. Valid until 01.12.2026, once. You can also find it in your account under «Reviews». At your next checkout the shop will offer to apply it.>>>
+markup: [{Open the shop webapp=https://app.example.test}]
+
+=== uk / reminder with bonus
+result: true
+Journal
+  chatId=101
+  details={bonusPercent=5}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Як вам замовлення #1a2b3c4d? Залиште відгук про товари — і отримайте −5% на наступну покупку.
+  tgUserId=101
+  type=REVIEW_REMINDER
+SendMessage chat=101 thread=null parse=HTML
+<<<⭐ <b>Як вам замовлення #1a2b3c4d?</b>
+Залиште відгук про товари — і отримайте −5% на наступну покупку.>>>
+markup: [{Залишити відгук webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== ru / reminder with bonus
+result: true
+Journal
+  chatId=102
+  details={bonusPercent=5}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Как вам заказ #1a2b3c4d? Оставьте отзыв о товарах — и получите −5% на следующую покупку.
+  tgUserId=102
+  type=REVIEW_REMINDER
+SendMessage chat=102 thread=null parse=HTML
+<<<⭐ <b>Как вам заказ #1a2b3c4d?</b>
+Оставьте отзыв о товарах — и получите −5% на следующую покупку.>>>
+markup: [{Оставить отзыв webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== en / reminder with bonus
+result: true
+Journal
+  chatId=103
+  details={bonusPercent=5}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ How was order #1a2b3c4d? Review the items — and get −5% off your next purchase.
+  tgUserId=103
+  type=REVIEW_REMINDER
+SendMessage chat=103 thread=null parse=HTML
+<<<⭐ <b>How was order #1a2b3c4d?</b>
+Review the items — and get −5% off your next purchase.>>>
+markup: [{Leave a review webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== uk / reminder with capped bonus
+result: true
+Journal
+  chatId=101
+  details={bonusPercent=7}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Як вам замовлення #1a2b3c4d? Залиште відгук про товари — і отримайте −7% (до 150 ₴) на наступну покупку.
+  tgUserId=101
+  type=REVIEW_REMINDER
+SendMessage chat=101 thread=null parse=HTML
+<<<⭐ <b>Як вам замовлення #1a2b3c4d?</b>
+Залиште відгук про товари — і отримайте −7% (до 150 ₴) на наступну покупку.>>>
+markup: [{Залишити відгук webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== ru / reminder with capped bonus
+result: true
+Journal
+  chatId=102
+  details={bonusPercent=7}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Как вам заказ #1a2b3c4d? Оставьте отзыв о товарах — и получите −7% (до 150 ₴) на следующую покупку.
+  tgUserId=102
+  type=REVIEW_REMINDER
+SendMessage chat=102 thread=null parse=HTML
+<<<⭐ <b>Как вам заказ #1a2b3c4d?</b>
+Оставьте отзыв о товарах — и получите −7% (до 150 ₴) на следующую покупку.>>>
+markup: [{Оставить отзыв webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== en / reminder with capped bonus
+result: true
+Journal
+  chatId=103
+  details={bonusPercent=7}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ How was order #1a2b3c4d? Review the items — and get −7% (up to 150 ₴) off your next purchase.
+  tgUserId=103
+  type=REVIEW_REMINDER
+SendMessage chat=103 thread=null parse=HTML
+<<<⭐ <b>How was order #1a2b3c4d?</b>
+Review the items — and get −7% (up to 150 ₴) off your next purchase.>>>
+markup: [{Leave a review webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== uk / reminder without bonus
+result: true
+Journal
+  chatId=101
+  details={bonusPercent=0}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Як вам замовлення #1a2b3c4d? Залиште відгук про товари — це допоможе іншим покупцям.
+  tgUserId=101
+  type=REVIEW_REMINDER
+SendMessage chat=101 thread=null parse=HTML
+<<<⭐ <b>Як вам замовлення #1a2b3c4d?</b>
+Залиште відгук про товари — це допоможе іншим покупцям.>>>
+markup: [{Залишити відгук webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== ru / reminder without bonus
+result: true
+Journal
+  chatId=102
+  details={bonusPercent=0}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Как вам заказ #1a2b3c4d? Оставьте отзыв о товарах — это поможет другим покупателям.
+  tgUserId=102
+  type=REVIEW_REMINDER
+SendMessage chat=102 thread=null parse=HTML
+<<<⭐ <b>Как вам заказ #1a2b3c4d?</b>
+Оставьте отзыв о товарах — это поможет другим покупателям.>>>
+markup: [{Оставить отзыв webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== en / reminder without bonus
+result: true
+Journal
+  chatId=103
+  details={bonusPercent=0}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ How was order #1a2b3c4d? Review the items — it helps other customers.
+  tgUserId=103
+  type=REVIEW_REMINDER
+SendMessage chat=103 thread=null parse=HTML
+<<<⭐ <b>How was order #1a2b3c4d?</b>
+Review the items — it helps other customers.>>>
+markup: [{Leave a review webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+
+=== uk / bonusExpiring
+result: true
+Journal
+  chatId=101
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% сгорает 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=101 thread=null parse=HTML
+<<<⏳ <b>Ваш бонус −5% скоро згорить</b>
+Промокод <code>REV-AB12</code> діє до 01.12.2026. Під час оформлення замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== ru / bonusExpiring
+result: true
+Journal
+  chatId=102
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% сгорает 01.12.2026
+  tgUserId=102
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=102 thread=null parse=HTML
+<<<⏳ <b>Ваш бонус −5% скоро сгорит</b>
+Промокод <code>REV-AB12</code> действует до 01.12.2026. При оформлении заказа магазин сам предложит его применить.>>>
+markup: [{Открыть магазин webapp=https://app.example.test}]
+
+=== en / bonusExpiring
+result: true
+Journal
+  chatId=103
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% сгорает 01.12.2026
+  tgUserId=103
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=103 thread=null parse=HTML
+<<<⏳ <b>Your −5% bonus expires soon</b>
+Promo code <code>REV-AB12</code> is valid until 01.12.2026. At checkout the shop will offer to apply it.>>>
+markup: [{Open the shop webapp=https://app.example.test}]
+
+=== uk / bonusExpiring capped
+result: true
+Journal
+  chatId=101
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% (до 100 ₴) сгорает 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=101 thread=null parse=HTML
+<<<⏳ <b>Ваш бонус −5% (до 100 ₴) скоро згорить</b>
+Промокод <code>REV-AB12</code> діє до 01.12.2026. Під час оформлення замовлення магазин сам запропонує його застосувати.>>>
+markup: [{Відкрити магазин webapp=https://app.example.test}]
+
+=== ru / bonusExpiring capped
+result: true
+Journal
+  chatId=102
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% (до 100 ₴) сгорает 01.12.2026
+  tgUserId=102
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=102 thread=null parse=HTML
+<<<⏳ <b>Ваш бонус −5% (до 100 ₴) скоро сгорит</b>
+Промокод <code>REV-AB12</code> действует до 01.12.2026. При оформлении заказа магазин сам предложит его применить.>>>
+markup: [{Открыть магазин webapp=https://app.example.test}]
+
+=== en / bonusExpiring capped
+result: true
+Journal
+  chatId=103
+  details={percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус −5% (до 100 ₴) сгорает 01.12.2026
+  tgUserId=103
+  type=REVIEW_BONUS_EXPIRING
+SendMessage chat=103 thread=null parse=HTML
+<<<⏳ <b>Your −5% (up to 100 ₴) bonus expires soon</b>
+Promo code <code>REV-AB12</code> is valid until 01.12.2026. At checkout the shop will offer to apply it.>>>
+markup: [{Open the shop webapp=https://app.example.test}]
+
+=== web app url not https: no button
+Journal
+  chatId=101
+  details={maxDiscountMinor=0, percent=5}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=Бонус за отзыв: персональный промокод −5% до 01.12.2026
+  tgUserId=101
+  type=REVIEW_BONUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Дякуємо за відгук!</b>
+Ваш особистий промокод <code>C</code> — знижка 5% на наступне замовлення. Діє до 01.12.2026, один раз. Код також є в кабінеті, у розділі «Відгуки». Під час наступного замовлення магазин сам запропонує його застосувати.>>>
+markup: none
+
+=== web app url not https: reminder
+result: true
+Journal
+  chatId=101
+  details={bonusPercent=5}
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⭐ Як вам замовлення #1a2b3c4d? Залиште відгук про товари — і отримайте −5% на наступну покупку.
+  tgUserId=101
+  type=REVIEW_REMINDER
+SendMessage chat=101 thread=null parse=HTML
+<<<⭐ <b>Як вам замовлення #1a2b3c4d?</b>
+Залиште відгук про товари — і отримайте −5% на наступну покупку.>>>
+markup: none
+

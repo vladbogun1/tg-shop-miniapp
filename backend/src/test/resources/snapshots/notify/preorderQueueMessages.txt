@@ -1,0 +1,669 @@
+=== uk / subscribed, range
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Ви в черзі MCHOSE <Ace> 68 (Black & White) Місце: №3 · 2 шт. Очікуємо: 10.11 – 20.11 Напишемо сюди, щойно товар приїде — бронь триматимемо за вами.
+  tgUserId=101
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=101 thread=null parse=HTML
+<<<🔔 <b>Ви в черзі</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Місце: <b>№3</b> · 2 шт.
+Очікуємо: 10.11 – 20.11
+Напишемо сюди, щойно товар приїде — бронь триматимемо за вами.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / subscribed, range
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №3 · 2 шт. Ожидаем: 10.11 – 20.11 Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№3</b> · 2 шт.
+Ожидаем: 10.11 – 20.11
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / subscribed, range
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 You are in the queue MCHOSE <Ace> 68 (Black & White) Place: #3 · 2 pcs Expected: 10.11 – 20.11 We will write here as soon as it arrives — the item will be held for you.
+  tgUserId=103
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=103 thread=null parse=HTML
+<<<🔔 <b>You are in the queue</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Place: <b>#3</b> · 2 pcs
+Expected: 10.11 – 20.11
+We will write here as soon as it arrives — the item will be held for you.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== uk / subscribed, no batch
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Повідомимо, коли зʼявиться MCHOSE <Ace> 68 (Black & White) Напишемо сюди, щойно товар буде в наявності.
+  tgUserId=101
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=101 thread=null parse=HTML
+<<<🔔 <b>Повідомимо, коли зʼявиться</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Напишемо сюди, щойно товар буде в наявності.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / subscribed, no batch
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Сообщим, когда появится MCHOSE <Ace> 68 (Black & White) Напишем сюда, как только товар будет в наличии.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Сообщим, когда появится</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Напишем сюда, как только товар будет в наличии.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / subscribed, no batch
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 We will let you know MCHOSE <Ace> 68 (Black & White) We will write here as soon as it is back in stock.
+  tgUserId=103
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=103 thread=null parse=HTML
+<<<🔔 <b>We will let you know</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+We will write here as soon as it is back in stock.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, date, no position
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Ви в черзі MCHOSE <Ace> 68 (Black & White) Місце: №1 · 1 шт. Очікуємо: 10.11 Напишемо сюди, щойно товар приїде — бронь триматимемо за вами.
+  tgUserId=101
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=101 thread=null parse=HTML
+<<<🔔 <b>Ви в черзі</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Місце: <b>№1</b> · 1 шт.
+Очікуємо: 10.11
+Напишемо сюди, щойно товар приїде — бронь триматимемо за вами.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode APPROX weeks=2
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Ожидаем: ~2 нед. Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Ожидаем: ~2 нед.
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode APPROX weeks=0
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Ожидаем: в ближайшее время Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Ожидаем: в ближайшее время
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode APPROX weeks=null
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Ожидаем: в ближайшее время Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Ожидаем: в ближайшее время
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode HIDDEN weeks=null
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode DATE weeks=null
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode RANGE weeks=null
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, eta mode OTHER weeks=null
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Вы в очереди MCHOSE <Ace> 68 (Black & White) Место: №2 · 1 шт. Напишем сюда, как только товар приедет — бронь будет за вами.
+  tgUserId=102
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=102 thread=null parse=HTML
+<<<🔔 <b>Вы в очереди</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Место: <b>№2</b> · 1 шт.
+Напишем сюда, как только товар приедет — бронь будет за вами.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, null title
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Повідомимо, коли зʼявиться Напишемо сюди, щойно товар буде в наявності.
+  tgUserId=101
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=101 thread=null parse=HTML
+<<<🔔 <b>Повідомимо, коли зʼявиться</b>
+<b></b>
+Напишемо сюди, щойно товар буде в наявності.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== subscribed, blank variant
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔔 Повідомимо, коли зʼявиться Ace Напишемо сюди, щойно товар буде в наявності.
+  tgUserId=101
+  type=PREORDER_SUBSCRIBED
+SendMessage chat=101 thread=null parse=HTML
+<<<🔔 <b>Повідомимо, коли зʼявиться</b>
+<b>Ace</b>
+Напишемо сюди, щойно товар буде в наявності.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== uk / hold granted, partial
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Приїхало! MCHOSE <Ace> 68 (Black & White) За вами заброньовано 2 шт. до 17:00, 12.11 . Ціна: 7 199 ₴. Після цього бронь перейде наступному в черзі. Приїхало менше, ніж ви чекали: решту (1 шт.) залишаємо в черзі.
+  tgUserId=101
+  type=PREORDER_HOLD
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 <b>Приїхало!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+За вами заброньовано <b>2 шт.</b> до <b>17:00, 12.11</b>.
+Ціна: 7 199 ₴. Після цього бронь перейде наступному в черзі.
+Приїхало менше, ніж ви чекали: решту (1 шт.) залишаємо в черзі.>>>
+markup: [{🛒 Купити webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== ru / hold granted, partial
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Приехало! MCHOSE <Ace> 68 (Black & White) За вами забронировано 2 шт. до 17:00, 12.11 . Цена: 7 199 ₴. После этого бронь перейдёт следующему в очереди. Приехало меньше, чем вы ждали: остальное (1 шт.) оставляем в очереди.
+  tgUserId=102
+  type=PREORDER_HOLD
+SendMessage chat=102 thread=null parse=HTML
+<<<📦 <b>Приехало!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+За вами забронировано <b>2 шт.</b> до <b>17:00, 12.11</b>.
+Цена: 7 199 ₴. После этого бронь перейдёт следующему в очереди.
+Приехало меньше, чем вы ждали: остальное (1 шт.) оставляем в очереди.>>>
+markup: [{🛒 Купить webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== en / hold granted, partial
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 It has arrived! MCHOSE <Ace> 68 (Black & White) 2 pcs are held for you until 17:00, 12.11 . Price: 7 199 ₴. After that the hold goes to the next person in line. Fewer arrived than you wanted: the rest (1 pcs) stays in the queue.
+  tgUserId=103
+  type=PREORDER_HOLD
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>It has arrived!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+<b>2 pcs</b> are held for you until <b>17:00, 12.11</b>.
+Price: 7 199 ₴. After that the hold goes to the next person in line.
+Fewer arrived than you wanted: the rest (1 pcs) stays in the queue.>>>
+markup: [{🛒 Buy webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== hold granted, full
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 It has arrived! MCHOSE <Ace> 68 (Black & White) 2 pcs are held for you until 17:00, 12.11 . Price: 7 199 ₴. After that the hold goes to the next person in line.
+  tgUserId=103
+  type=PREORDER_HOLD
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>It has arrived!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+<b>2 pcs</b> are held for you until <b>17:00, 12.11</b>.
+Price: 7 199 ₴. After that the hold goes to the next person in line.>>>
+markup: [{🛒 Buy webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== hold granted, no hold time
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 It has arrived! MCHOSE <Ace> 68 (Black & White) 2 pcs are held for you until . Price: 7 199 ₴. After that the hold goes to the next person in line.
+  tgUserId=103
+  type=PREORDER_HOLD
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>It has arrived!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+<b>2 pcs</b> are held for you until <b></b>.
+Price: 7 199 ₴. After that the hold goes to the next person in line.>>>
+markup: [{🛒 Buy webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== uk / arrived
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Приїхало! MCHOSE <Ace> 68 (Black & White) Товар уже в наявності — встигніть купити, кількість обмежена.
+  tgUserId=101
+  type=PREORDER_ARRIVED
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 <b>Приїхало!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Товар уже в наявності — встигніть купити, кількість обмежена.>>>
+markup: [{🛒 Купити webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== ru / arrived
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Приехало! MCHOSE <Ace> 68 (Black & White) Товар уже в наличии — успейте купить, количество ограничено.
+  tgUserId=102
+  type=PREORDER_ARRIVED
+SendMessage chat=102 thread=null parse=HTML
+<<<📦 <b>Приехало!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Товар уже в наличии — успейте купить, количество ограничено.>>>
+markup: [{🛒 Купить webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== en / arrived
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 It has arrived! MCHOSE <Ace> 68 (Black & White) It is in stock now — be quick, the quantity is limited.
+  tgUserId=103
+  type=PREORDER_ARRIVED
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>It has arrived!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+It is in stock now — be quick, the quantity is limited.>>>
+markup: [{🛒 Buy webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== uk / hold ending
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⏳ Бронь закінчується о 17:00 MCHOSE <Ace> 68 (Black & White) Не встигаєте — нічого страшного, товар перейде наступному в черзі.
+  tgUserId=101
+  type=PREORDER_HOLD_ENDING
+SendMessage chat=101 thread=null parse=HTML
+<<<⏳ <b>Бронь закінчується о 17:00</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Не встигаєте — нічого страшного, товар перейде наступному в черзі.>>>
+markup: [{🛒 Купити webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== ru / hold ending
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⏳ Бронь заканчивается в 17:00 MCHOSE <Ace> 68 (Black & White) Не успеваете — ничего страшного, товар перейдёт следующему в очереди.
+  tgUserId=102
+  type=PREORDER_HOLD_ENDING
+SendMessage chat=102 thread=null parse=HTML
+<<<⏳ <b>Бронь заканчивается в 17:00</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Не успеваете — ничего страшного, товар перейдёт следующему в очереди.>>>
+markup: [{🛒 Купить webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== en / hold ending
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⏳ Your hold ends at 17:00 MCHOSE <Ace> 68 (Black & White) No worries if you miss it — it will go to the next person in line.
+  tgUserId=103
+  type=PREORDER_HOLD_ENDING
+SendMessage chat=103 thread=null parse=HTML
+<<<⏳ <b>Your hold ends at 17:00</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+No worries if you miss it — it will go to the next person in line.>>>
+markup: [{🛒 Buy webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+
+=== uk / hold expired
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⌛ Бронь закінчилась MCHOSE <Ace> 68 (Black & White) Товар перейшов наступному в черзі. Можна стати в чергу знову.
+  tgUserId=101
+  type=PREORDER_HOLD_EXPIRED
+SendMessage chat=101 thread=null parse=HTML
+<<<⌛ <b>Бронь закінчилась</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Товар перейшов наступному в черзі. Можна стати в чергу знову.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / hold expired
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⌛ Бронь закончилась MCHOSE <Ace> 68 (Black & White) Товар перешёл следующему в очереди. Можно встать в очередь снова.
+  tgUserId=102
+  type=PREORDER_HOLD_EXPIRED
+SendMessage chat=102 thread=null parse=HTML
+<<<⌛ <b>Бронь закончилась</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Товар перешёл следующему в очереди. Можно встать в очередь снова.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / hold expired
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=⌛ Your hold has ended MCHOSE <Ace> 68 (Black & White) It went to the next person in line. You can join the queue again.
+  tgUserId=103
+  type=PREORDER_HOLD_EXPIRED
+SendMessage chat=103 thread=null parse=HTML
+<<<⌛ <b>Your hold has ended</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+It went to the next person in line. You can join the queue again.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== uk / still waiting
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🚚 Партія приїхала, але її не вистачило на всіх MCHOSE <Ace> 68 (Black & White) Ви залишаєтесь у черзі: №4 . Напишемо, щойно буде наступна.
+  tgUserId=101
+  type=PREORDER_STILL_WAITING
+SendMessage chat=101 thread=null parse=HTML
+<<<🚚 <b>Партія приїхала, але її не вистачило на всіх</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Ви залишаєтесь у черзі: <b>№4</b>. Напишемо, щойно буде наступна.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / still waiting
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🚚 Партия приехала, но её не хватило на всех MCHOSE <Ace> 68 (Black & White) Вы остаётесь в очереди: №4 . Напишем, как только будет следующая.
+  tgUserId=102
+  type=PREORDER_STILL_WAITING
+SendMessage chat=102 thread=null parse=HTML
+<<<🚚 <b>Партия приехала, но её не хватило на всех</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Вы остаётесь в очереди: <b>№4</b>. Напишем, как только будет следующая.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / still waiting
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🚚 The batch arrived, but not enough for everyone MCHOSE <Ace> 68 (Black & White) You stay in the queue: #4 . We will write when the next one comes.
+  tgUserId=103
+  type=PREORDER_STILL_WAITING
+SendMessage chat=103 thread=null parse=HTML
+<<<🚚 <b>The batch arrived, but not enough for everyone</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+You stay in the queue: <b>#4</b>. We will write when the next one comes.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== uk / closed, batch cancelled
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Поставку скасовано MCHOSE <Ace> 68 (Black & White) На жаль, партія не приїде. Ми закрили вашу чергу — можна повідомити, коли товар зʼявиться знову.
+  tgUserId=101
+  type=PREORDER_CLOSED
+SendMessage chat=101 thread=null parse=HTML
+<<<😔 <b>Поставку скасовано</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+На жаль, партія не приїде. Ми закрили вашу чергу — можна повідомити, коли товар зʼявиться знову.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / closed, batch cancelled
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Поставка отменена MCHOSE <Ace> 68 (Black & White) К сожалению, партия не приедет. Мы закрыли вашу очередь — можно подписаться, чтобы узнать, когда товар появится снова.
+  tgUserId=102
+  type=PREORDER_CLOSED
+SendMessage chat=102 thread=null parse=HTML
+<<<😔 <b>Поставка отменена</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+К сожалению, партия не приедет. Мы закрыли вашу очередь — можно подписаться, чтобы узнать, когда товар появится снова.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / closed, batch cancelled
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 The delivery was cancelled MCHOSE <Ace> 68 (Black & White) Sorry, this batch will not arrive. Your queue is closed — you can ask us to tell you when it is back.
+  tgUserId=103
+  type=PREORDER_CLOSED
+SendMessage chat=103 thread=null parse=HTML
+<<<😔 <b>The delivery was cancelled</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Sorry, this batch will not arrive. Your queue is closed — you can ask us to tell you when it is back.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== closed, reason PRODUCT_GONE
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=ℹ️ Товар більше недоступний MCHOSE <Ace> 68 (Black & White) Магазин зняв його з продажу, тому ваше очікування закрито.
+  tgUserId=101
+  type=PREORDER_CLOSED
+SendMessage chat=101 thread=null parse=HTML
+<<<ℹ️ <b>Товар більше недоступний</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Магазин зняв його з продажу, тому ваше очікування закрито.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== closed, reason BY_USER
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=ℹ️ Ваше очікування закрите магазином MCHOSE <Ace> 68 (Black & White)
+  tgUserId=101
+  type=PREORDER_CLOSED
+SendMessage chat=101 thread=null parse=HTML
+<<<ℹ️ Ваше очікування закрите магазином
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== closed, reason null
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=ℹ️ Ваше очікування закрите магазином MCHOSE <Ace> 68 (Black & White)
+  tgUserId=101
+  type=PREORDER_CLOSED
+SendMessage chat=101 thread=null parse=HTML
+<<<ℹ️ Ваше очікування закрите магазином
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== uk / batch cancelled, kept
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Поставку скасовано MCHOSE <Ace> 68 (Black & White) Партія не приїде. Ви залишаєтесь у списку очікування — напишемо сюди, щойно товар зʼявиться.
+  tgUserId=101
+  type=PREORDER_BATCH_CANCELLED
+SendMessage chat=101 thread=null parse=HTML
+<<<😔 <b>Поставку скасовано</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Партія не приїде. Ви залишаєтесь у списку очікування — напишемо сюди, щойно товар зʼявиться.>>>
+markup: [{📋 Мої очікування webapp=https://app.example.test?startapp=preorders}]
+
+=== ru / batch cancelled, kept
+Journal
+  chatId=102
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Поставка отменена MCHOSE <Ace> 68 (Black & White) Партия не приедет. Вы остаётесь в списке ожидания — напишем сюда, как только товар появится.
+  tgUserId=102
+  type=PREORDER_BATCH_CANCELLED
+SendMessage chat=102 thread=null parse=HTML
+<<<😔 <b>Поставка отменена</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Партия не приедет. Вы остаётесь в списке ожидания — напишем сюда, как только товар появится.>>>
+markup: [{📋 Мои ожидания webapp=https://app.example.test?startapp=preorders}]
+
+=== en / batch cancelled, kept
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Delivery cancelled MCHOSE <Ace> 68 (Black & White) This batch will not arrive. You stay on the waiting list — we will message you here as soon as the product appears.
+  tgUserId=103
+  type=PREORDER_BATCH_CANCELLED
+SendMessage chat=103 thread=null parse=HTML
+<<<😔 <b>Delivery cancelled</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+This batch will not arrive. You stay on the waiting list — we will message you here as soon as the product appears.>>>
+markup: [{📋 My waitlist webapp=https://app.example.test?startapp=preorders}]
+
+=== web app url not https: no button
+Journal
+  chatId=103
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=😔 Delivery cancelled MCHOSE <Ace> 68 (Black & White) This batch will not arrive. You stay on the waiting list — we will message you here as soon as the product appears.
+  tgUserId=103
+  type=PREORDER_BATCH_CANCELLED
+SendMessage chat=103 thread=null parse=HTML
+<<<😔 <b>Delivery cancelled</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+This batch will not arrive. You stay on the waiting list — we will message you here as soon as the product appears.>>>
+markup: none
+
