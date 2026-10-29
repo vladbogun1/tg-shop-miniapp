@@ -14,17 +14,17 @@ import { useI18n } from "@/i18n/context";
 const TEXT = {
   uk: {
     title: "Полювання на гарбузи",
-    sub: "Шукай гарбузи на сайті: кожен гарбуз дає участь у розіграші, 15 гарбузів — повний шанс. Покупки від 500 ₴ — окремий розіграш. Наживо 01.11 о 19:00 у TikTok і Kick",
+    sub: "Шукай гарбузи на сайті: один гарбуз уже дає участь у розіграші, а 15 дають найбільший шанс. За покупки від 500 ₴ окремий розіграш. Наживо 01.11 о 19:00 у TikTok і Kick",
     go: "Як узяти участь",
   },
   ru: {
     title: "Охота на тыквы",
-    sub: "Ищи тыквы на сайте: каждая тыква даёт участие в розыгрыше, 15 тыкв — полный шанс. Покупки от 500 ₴ — отдельный розыгрыш. Вживую 01.11 в 19:00 в TikTok и Kick",
+    sub: "Ищи тыквы на сайте: одна тыква уже даёт участие в розыгрыше, а 15 дают самый большой шанс. За покупки от 500 ₴ отдельный розыгрыш. Вживую 01.11 в 19:00 в TikTok и Kick",
     go: "Как участвовать",
   },
   en: {
     title: "Pumpkin hunt",
-    sub: "Find pumpkins on the site: each one gets you into the draw, 15 give the full chance. Orders from 500 UAH get a separate draw. Live on 01.11 at 19:00 on TikTok and Kick",
+    sub: "Find pumpkins on the site: one gets you into the draw, all 15 give the best chance. Orders from 500 UAH get a separate draw. Live on 01.11 at 19:00 on TikTok and Kick",
     go: "How to join",
   },
 } as const;
