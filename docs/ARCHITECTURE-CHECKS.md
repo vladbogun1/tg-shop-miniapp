@@ -49,7 +49,7 @@
 |---|---|---|
 | Контроллеры (`..web.controller..` и `*Controller`) не обращаются к репозиториям (`..repository..` и наследники Spring Data `Repository`) | `architecture/ArchitectureTest` | `src/test/resources/archunit_store/` |
 | Нет **новых** циклов между пакетами верхнего уровня `com.maxsolch.shop.*` | `ArchitectureTest` + `CyclicPackageDependencies` | там же |
-| `Order.setStatus(…)` вызывается только из 10 уже существующих методов (`OrderService`, `OrderAdjustmentService`, `OrderMergeService`) | `ArchitectureTest` | там же |
+| `Order.setStatus(…)` недоступен снаружи: статус меняется только методами `Order` (правило O1 = 0) | `ArchitectureV2Test` | `v2-baseline.txt` |
 | Файл в `src/main/java` не длиннее 500 строк | `architecture/ClassSizeTest` | `src/test/resources/architecture/large-classes.txt` |
 
 Детали:
