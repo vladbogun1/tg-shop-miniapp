@@ -7,6 +7,7 @@ import com.maxsolch.shop.payment.ReceiptService;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.security.AuthPrincipal;
 import com.maxsolch.shop.security.Role;
+import com.maxsolch.shop.service.CustomerOrders;
 import com.maxsolch.shop.web.ForbiddenException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.ReceiptDto;
@@ -48,7 +49,8 @@ class MeReceiptsOwnershipTest {
 
     @BeforeEach
     void setUp() {
-        controller = new MeController(null, null, orders, null, null, null, null, null, null, null, messages, null);
+        controller = new MeController(null, new CustomerOrders(orders, messages), null, null, null, null, null, null,
+                null, messages, null, null);
         ReflectionTestUtils.setField(controller, "receipts", receipts);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         order = new Order();

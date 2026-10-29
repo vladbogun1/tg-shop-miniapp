@@ -6,12 +6,15 @@ import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.i18n.Messages;
 import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.payment.CustomerPaymentRefresh;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.security.AuthPrincipal;
 import com.maxsolch.shop.security.Role;
+import com.maxsolch.shop.service.CustomerOrders;
+import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
@@ -95,8 +98,9 @@ class MeControllerTest {
     }
 
     MeController controller() {
-        MeController c = new MeController(users, admins, orders, queries, chat, orderService, null, null, null,
-                null, messages, payments);
+        MeController c = new MeController(new CustomerProfileService(users, admins),
+                new CustomerOrders(orders, messages), queries, chat, orderService, null, null, null,
+                null, messages, payments, new CustomerPaymentRefresh(payments));
         ReflectionTestUtils.setField(c, "activity", activity);
         return c;
     }
