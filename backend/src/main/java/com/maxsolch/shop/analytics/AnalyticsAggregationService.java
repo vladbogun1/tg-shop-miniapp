@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -64,6 +65,7 @@ public class AnalyticsAggregationService {
         }
     }
 
+    @SchedulerLock(name = "AnalyticsAggregationService.nightly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.analytics.rollup-cron:0 30 3 * * *}", zone = "${app.timezone:Europe/Kyiv}")
     public void nightly() {
         try {

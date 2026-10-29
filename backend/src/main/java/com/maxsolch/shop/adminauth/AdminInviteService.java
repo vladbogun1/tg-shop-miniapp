@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -353,6 +354,7 @@ public class AdminInviteService {
     }
 
     /** Used / revoked / expired invites are kept 90 days for the record. */
+    @SchedulerLock(name = "AdminInviteService.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "0 50 4 * * *")
     public void purge() {
         try {

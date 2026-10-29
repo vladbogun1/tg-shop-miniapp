@@ -9,6 +9,7 @@ import com.maxsolch.shop.tg.ShopBot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -61,6 +62,7 @@ public class PreorderDigestJob {
         this.clock = clock;
     }
 
+    @SchedulerLock(name = "PreorderDigestJob.daily", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "0 0 10 * * *", zone = "Europe/Kyiv")
     public void daily() {
         try {

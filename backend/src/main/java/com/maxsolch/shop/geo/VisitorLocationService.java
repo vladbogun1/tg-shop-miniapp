@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -140,6 +141,7 @@ public class VisitorLocationService {
         }
     }
 
+    @SchedulerLock(name = "VisitorLocationService.purgeOld", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.geoip.purge-cron:0 25 4 * * *}")
     public void purgeOld() {
         try {

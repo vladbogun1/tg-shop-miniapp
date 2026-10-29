@@ -10,6 +10,7 @@ import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.web.dto.PromoPreviewDto;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -228,6 +229,7 @@ public class PromoService {
      * Expired holds are already ignored by every query; this only keeps the table from growing
      * forever.
      */
+    @SchedulerLock(name = "PromoService.sweepExpired", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.promo.reservation-sweep-ms:600000}", initialDelay = 60_000)
     @Transactional
     public void sweepExpired() {

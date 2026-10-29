@@ -3,6 +3,7 @@ package com.maxsolch.shop.platform.journal;
 import lombok.extern.slf4j.Slf4j;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -43,6 +44,7 @@ public class ActivityLogRetention {
         return retentionDays;
     }
 
+    @SchedulerLock(name = "ActivityLogRetention.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.journal.purge-cron:0 35 4 * * *}")
     public void purge() {
         try {

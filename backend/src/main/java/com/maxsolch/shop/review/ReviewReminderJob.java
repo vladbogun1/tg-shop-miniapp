@@ -3,6 +3,7 @@ package com.maxsolch.shop.review;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,7 @@ public class ReviewReminderJob {
         this.clock = clock;
     }
 
+    @SchedulerLock(name = "ReviewReminderJob.run", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.reviews.reminder-ms:1800000}", initialDelay = 300_000)
     public void run() {
         try {

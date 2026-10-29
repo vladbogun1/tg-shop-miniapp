@@ -2,6 +2,7 @@ package com.maxsolch.shop.preorder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,7 @@ public class PreorderJobs {
         this.queue = queue;
     }
 
+    @SchedulerLock(name = "PreorderJobs.holds", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.preorder.holds-ms:300000}", initialDelay = 120_000)
     public void holds() {
         try {

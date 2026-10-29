@@ -4,6 +4,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +46,7 @@ public class PaymentJobs {
         this.orderService = orderService;
     }
 
+    @SchedulerLock(name = "PaymentJobs.run", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.payment.reconcile-ms:120000}", initialDelay = 90_000)
     public void run() {
         if (!running.compareAndSet(false, true)) {

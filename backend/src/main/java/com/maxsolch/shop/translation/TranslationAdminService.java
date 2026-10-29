@@ -36,6 +36,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.event.EventListener;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -756,6 +757,7 @@ public class TranslationAdminService {
     }
 
     /** Rows whose entity no longer exists (no FKs on the shared table). Daily. */
+    @SchedulerLock(name = "TranslationAdminService.cleanupOrphans", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.translations.orphan-cleanup-cron:0 50 4 * * *}")
     @Transactional
     public int cleanupOrphans() {

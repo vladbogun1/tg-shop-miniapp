@@ -4,6 +4,7 @@ import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.geo.GeoIpLookup;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -97,6 +98,7 @@ public class AdminLoginLogService {
                 adminId, limit);
     }
 
+    @SchedulerLock(name = "AdminLoginLogService.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.security.admin-login-log-purge-cron:0 40 4 * * *}")
     public void purge() {
         try {

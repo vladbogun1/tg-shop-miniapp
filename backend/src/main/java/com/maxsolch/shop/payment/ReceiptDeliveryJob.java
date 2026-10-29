@@ -10,6 +10,7 @@ import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.tg.NotificationService;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -72,6 +73,7 @@ public class ReceiptDeliveryJob {
         this.settings = settings;
     }
 
+    @SchedulerLock(name = "ReceiptDeliveryJob.run", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.payment.receipts-ms:90000}", initialDelay = 120_000)
     public void run() {
         if (!running.compareAndSet(false, true)) {

@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -54,6 +55,7 @@ public class AdminTokenRevocations {
     }
 
     /** Rows outlive their token by nothing: once the token has expired it is refused anyway. */
+    @SchedulerLock(name = "AdminTokenRevocations.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "0 17 * * * *")
     public void cleanup() {
         try {

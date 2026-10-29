@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.jdbc.core.JdbcTemplate;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -122,6 +123,7 @@ public class TrustedDeviceService {
     }
 
     /** Expired / revoked rows are kept a month for the record, then dropped. */
+    @SchedulerLock(name = "TrustedDeviceService.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "0 45 4 * * *")
     public void cleanup() {
         try {

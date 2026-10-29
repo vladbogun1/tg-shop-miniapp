@@ -22,6 +22,7 @@ import com.maxsolch.shop.web.dto.AuthUserDto;
 import com.maxsolch.shop.web.dto.WebAuthDtos.WebSessionDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -437,6 +438,7 @@ public class WebAuthService {
     // ================================================================== housekeeping
 
     /** Hourly: login requests a day past expiry, sessions expired or revoked over 30 days ago. */
+    @SchedulerLock(name = "WebAuthService.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.site.cleanup-cron:0 7 * * * *}")
     @Transactional
     public void cleanup() {

@@ -1,6 +1,7 @@
 package com.maxsolch.shop.support;
 
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ public class SupportJobs {
         this.support = support;
     }
 
+    @SchedulerLock(name = "SupportJobs.autoClose", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.support.auto-close-ms:3600000}", initialDelay = 300_000)
     public void autoClose() {
         try {

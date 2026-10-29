@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -165,6 +166,7 @@ public class ClientEventService {
         }
     }
 
+    @SchedulerLock(name = "ClientEventService.purgeOld", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.analytics.purge-cron:0 15 4 * * *}")
     @Transactional
     public void purgeOld() {

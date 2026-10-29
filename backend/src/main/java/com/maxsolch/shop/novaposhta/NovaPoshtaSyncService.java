@@ -14,6 +14,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,6 +107,7 @@ public class NovaPoshtaSyncService {
         }
     }
 
+    @SchedulerLock(name = "NovaPoshtaSyncService.scheduledSync", lockAtMostFor = "PT1H", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.novaposhta.sync-cron:0 30 3 * * *}")
     public void scheduledSync() {
         // The admin can pause the nightly run (Настройки → Новая Почта) while the NP API misbehaves;
