@@ -504,28 +504,29 @@ public class OrderQueryService {
         if (shortId != null && shortId.length() >= 8) {
             shortId = shortId.substring(0, 8);
         }
-        return new DispatchOrderDto(
-                UuidUtil.toString(o.getId()),
-                shortId,
-                o.getCustomerName(),
-                o.getPhone(),
-                o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name(),
-                o.getNpCityName(),
-                o.getNpWarehouseName(),
-                items,
-                o.getTotalMinor(),
-                o.getPrepaymentMinor(),
-                received,
-                cod,
-                o.isPaid(),
-                o.getCurrency(),
-                o.getPaymentOptionTitle(),
-                o.getTrackingNumber(),
-                o.getCreatedAt(),
-                o.getApprovedAt(),
-                o.getStatus().name(),
-                o.getPaymentDueAt(),
-                OrderMoney.amountDueMinor(o));
+        return DispatchOrderDto.builder()
+                .id(UuidUtil.toString(o.getId()))
+                .shortId(shortId)
+                .customerName(o.getCustomerName())
+                .phone(o.getPhone())
+                .deliveryMethod(o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name())
+                .npCityName(o.getNpCityName())
+                .npWarehouseName(o.getNpWarehouseName())
+                .items(items)
+                .totalMinor(o.getTotalMinor())
+                .prepaymentMinor(o.getPrepaymentMinor())
+                .receivedMinor(received)
+                .codMinor(cod)
+                .paid(o.isPaid())
+                .currency(o.getCurrency())
+                .paymentOptionTitle(o.getPaymentOptionTitle())
+                .trackingNumber(o.getTrackingNumber())
+                .createdAt(o.getCreatedAt())
+                .approvedAt(o.getApprovedAt())
+                .status(o.getStatus().name())
+                .paymentDueAt(o.getPaymentDueAt())
+                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .build();
     }
 
     /** One query for all the line thumbnails instead of one per line. */
