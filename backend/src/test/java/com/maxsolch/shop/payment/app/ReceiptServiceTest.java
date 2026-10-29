@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -40,7 +41,9 @@ class ReceiptServiceTest {
     void setUp() {
         AppProperties props = new AppProperties();
         props.getSecurity().setJwtSecret("c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==");
-        service = new ReceiptService(mono, invoices, new ReceiptSigner(props));
+        service = new ReceiptService(mono, invoices, new ReceiptSigner(props, java.time.Clock.systemUTC()),
+                new org.springframework.cache.concurrent.ConcurrentMapCacheManager(
+                        CacheConfig.RECEIPT_CHECKS_OPEN, CacheConfig.RECEIPT_CHECKS_FINAL, CacheConfig.RECEIPT_CHECKS_ERROR));
         lenient().when(mono.isEnabled()).thenReturn(true);
     }
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +26,8 @@ class FiscalBasketTest {
         inv.setExternalId("inv-1");
         inv.setBasketJson(stored);
 
-        OnlinePaymentService svc = new OnlinePaymentService(null, null, null, null, null, null, null);
+        OnlinePaymentService svc = new OnlinePaymentService(null, null, null, null, null, null, null,
+                org.mockito.Mockito.mock(SettingsService.class), null, java.time.Clock.systemUTC());
         assertThat(svc.refundItems(inv, 350000, true)).containsExactlyElementsOf(sold);
 
         List<MonobankClient.BasketItem> partial = svc.refundItems(inv, 10000, false);

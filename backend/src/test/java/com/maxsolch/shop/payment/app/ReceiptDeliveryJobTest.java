@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.payment.infra.MonobankClient;
@@ -65,7 +66,9 @@ class ReceiptDeliveryJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new ReceiptDeliveryJob(mono, invoices, orders, users, store, receipts, notifications, settings);
+        job = new ReceiptDeliveryJob(mono, invoices, orders, users, store, receipts, notifications, settings,
+                new org.springframework.cache.concurrent.ConcurrentMapCacheManager(CacheConfig.RECEIPT_DELIVERY_QUIET),
+                java.time.Clock.systemUTC());
         order = new Order();
         order.setId(UuidUtil.randomBytes());
         order.setTgUserId(TG);

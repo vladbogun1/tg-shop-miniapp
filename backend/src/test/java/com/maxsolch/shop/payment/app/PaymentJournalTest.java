@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import java.time.Clock;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -34,9 +35,8 @@ class PaymentJournalTest {
     @BeforeEach
     void setUp() {
         PaymentInvoiceRepository invoices = mock(PaymentInvoiceRepository.class);
-        applier = new PaymentStatusApplier(invoices, mock(OrderPayments.class));
         activity = mock(ActivityLog.class);
-        applier.setActivity(activity);
+        applier = new PaymentStatusApplier(invoices, mock(OrderPayments.class), activity, Clock.systemUTC());
         inv = new PaymentInvoice();
         inv.setId(UuidUtil.randomBytes());
         inv.setOrderId(UuidUtil.randomBytes());
@@ -84,15 +84,6 @@ class PaymentJournalTest {
         List<ActivityLog.Entry> all = recorded(2);
         assertThat(all.get(1).type()).isEqualTo("REFUND");
         assertThat(all.get(1).details()).containsEntry("refundMinor", 3000L);
-    }
-
-    @Test
-    void withoutTheJournalNothingBreaks() {
-        PaymentInvoiceRepository invoices = mock(PaymentInvoiceRepository.class);
-        when(invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, INVOICE)).thenReturn(Optional.of(inv));
-        PaymentStatusApplier bare = new PaymentStatusApplier(invoices, mock(OrderPayments.class));
-        assertThat(bare.apply(status(PaymentInvoice.SUCCESS, null, null, 4200L, "2026-10-05T10:00:05Z"))).isTrue();
-        verify(activity, never()).recordAfterCommit(any());
     }
 
     private List<ActivityLog.Entry> recorded(int times) {

@@ -2,6 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.app.OrderLifecycle;
@@ -10,6 +11,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,16 +38,18 @@ public class PaymentJobs {
     private final OrderLifecycle lifecycle;
     private final AtomicBoolean running = new AtomicBoolean();
 
-    /** «Журнал → Бот и сайт» (optional). */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.platform.journal.ActivityLog activity;
+    /** «Журнал → Бот и сайт». */
+    private final ActivityLog activity;
+    private final Clock clock;
 
     public PaymentJobs(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
-                       OrderRepository orders, OrderLifecycle lifecycle) {
+                       OrderRepository orders, OrderLifecycle lifecycle, ActivityLog activity, Clock clock) {
         this.payments = payments;
         this.invoices = invoices;
         this.orders = orders;
         this.lifecycle = lifecycle;
+        this.activity = activity;
+        this.clock = clock;
     }
 
     @SchedulerLock(name = "PaymentJobs.run", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
@@ -55,7 +59,7 @@ public class PaymentJobs {
             return;
         }
         try {
-            Instant now = Instant.now();
+            Instant now = clock.instant();
             if (payments.isEnabled()) {
                 for (PaymentInvoice inv : invoices.findOpenCreatedBefore(PaymentInvoice.OPEN, now.minus(POLL_AFTER))) {
                     payments.refresh(inv);
@@ -84,9 +88,9 @@ public class PaymentJobs {
                 if (lifecycle.expireUnpaid(orderId, now) != null) {
                     payments.closeOpenInvoices(orderId);
                     log.info("order {} rejected: not paid in time", id);
-                    if (activity != null) {
-                        activity.record(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(
-                                        com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                    {
+                        activity.record(ActivityLog.Entry.of(
+                                        ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
                                 .order(orderId)
                                 .text("Заказ #" + id.substring(0, 8) + " автоматически отменён: не оплачен вовремя, "
                                         + "товар вернулся на склад"));
@@ -94,9 +98,9 @@ public class PaymentJobs {
                 }
             } catch (Exception e) {
                 log.warn("auto-cancel of order {} failed: {}", id, e.getMessage());
-                if (activity != null) {
-                    activity.record(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(
-                                    com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                {
+                    activity.record(ActivityLog.Entry.of(
+                                    ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
                             .order(orderId).text("Автоотмена неоплаченного заказа не удалась")
                             .failed("ERROR", e.getMessage()));
                 }

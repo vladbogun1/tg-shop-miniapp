@@ -3,7 +3,6 @@ package com.maxsolch.shop.payment.app;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -72,7 +71,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void validSignature_verifies() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)));
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
 
         assertThat(verifier.verify(BODY, sign(kp.getPrivate(), BODY))).isTrue();
     }
@@ -80,7 +79,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void tamperedBody_fails() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)));
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
         String xSign = sign(kp.getPrivate(), BODY);
 
         byte[] tampered = new String(BODY, StandardCharsets.UTF_8).replace("4200", "1")
@@ -92,7 +91,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void missingOrGarbageHeader_fails() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)));
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
 
         assertThat(verifier.verify(BODY, null)).isFalse();
         assertThat(verifier.verify(BODY, " ")).isFalse();
@@ -104,7 +103,7 @@ class MonobankSignatureVerifierTest {
     void signatureByAnotherKey_fails() throws Exception {
         KeyPair ours = keyPair();
         KeyPair attacker = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(ours)));
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(ours)), clock);
 
         assertThat(verifier.verify(BODY, sign(attacker.getPrivate(), BODY))).isFalse();
     }
@@ -114,12 +113,12 @@ class MonobankSignatureVerifierTest {
         KeyPair oldKey = keyPair();
         KeyPair newKey = keyPair();
         Keys keys = new Keys(apiKey(oldKey), apiKey(newKey));
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock);
         // the old key is cached by a first webhook...
         assertThat(verifier.verify(BODY, sign(oldKey.getPrivate(), BODY))).isTrue();
         assertThat(keys.fetches).hasValue(1);
         // ...a while ago (the re-fetch is rate-limited to once a minute)
-        ageLastFetch(verifier);
+        clock.advance(120);
 
         // monobank rotated its key: the cached one fails, the fresh one verifies
         assertThat(verifier.verify(BODY, sign(newKey.getPrivate(), BODY))).isTrue();
@@ -134,7 +133,7 @@ class MonobankSignatureVerifierTest {
         KeyPair ours = keyPair();
         KeyPair attacker = keyPair();
         Keys keys = new Keys(apiKey(ours));
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock);
 
         for (int i = 0; i < 5; i++) {
             assertThat(verifier.verify(BODY, sign(attacker.getPrivate(), BODY))).isFalse();
@@ -148,14 +147,34 @@ class MonobankSignatureVerifierTest {
         KeyPair kp = keyPair();
         MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(() -> {
             throw new MonobankClient.MonobankException(0, null, "down");
-        });
+        }, clock);
 
         assertThat(verifier.verify(BODY, sign(kp.getPrivate(), BODY))).isFalse();
     }
 
-    private static void ageLastFetch(MonobankSignatureVerifier verifier) throws Exception {
-        Field f = MonobankSignatureVerifier.class.getDeclaredField("lastFetch");
-        f.setAccessible(true);
-        f.set(verifier, Instant.now().minusSeconds(120));
+    /** A clock the test moves by hand, so the once-a-minute limit needs no reflection or sleeping. */
+    private static final class MovableClock extends java.time.Clock {
+        private Instant now = Instant.parse("2026-10-07T12:00:00Z");
+
+        void advance(long seconds) {
+            now = now.plusSeconds(seconds);
+        }
+
+        @Override
+        public java.time.ZoneId getZone() {
+            return java.time.ZoneOffset.UTC;
+        }
+
+        @Override
+        public java.time.Clock withZone(java.time.ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
+
+    private final MovableClock clock = new MovableClock();
 }

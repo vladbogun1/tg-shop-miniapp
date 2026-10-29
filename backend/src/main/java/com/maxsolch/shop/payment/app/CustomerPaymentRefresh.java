@@ -2,6 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,16 +21,18 @@ public class CustomerPaymentRefresh {
     private static final int MAX_TRACKED_ORDERS = 10_000;
 
     private final OnlinePaymentService payments;
+    private final Clock clock;
     /** Last customer-triggered status poll per order. */
     private final Map<String, Instant> lastRefresh = new ConcurrentHashMap<>();
 
-    public CustomerPaymentRefresh(OnlinePaymentService payments) {
+    public CustomerPaymentRefresh(OnlinePaymentService payments, Clock clock) {
         this.payments = payments;
+        this.clock = clock;
     }
 
     /** Polls monobank for the order unless it was polled less than 5 s ago. */
     public void refreshIfDue(String key, byte[] orderId) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant last = lastRefresh.get(key);
         if (last == null || last.plusSeconds(MIN_SECONDS_BETWEEN_CALLS).isBefore(now)) {
             lastRefresh.put(key, now);

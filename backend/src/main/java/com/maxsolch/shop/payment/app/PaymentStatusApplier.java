@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -37,24 +38,20 @@ public class PaymentStatusApplier {
 
     private final PaymentInvoiceRepository invoices;
     private final OrderPayments orderPayments;
+    /** «Журнал → Бот и сайт». */
+    private final ActivityLog activity;
+    private final Clock clock;
 
-    public PaymentStatusApplier(PaymentInvoiceRepository invoices, OrderPayments orderPayments) {
+    public PaymentStatusApplier(PaymentInvoiceRepository invoices, OrderPayments orderPayments,
+                                ActivityLog activity, Clock clock) {
         this.invoices = invoices;
         this.orderPayments = orderPayments;
-    }
-
-    /** «Журнал → Бот и сайт» (optional: tests build the applier without it). */
-    private ActivityLog activity;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setActivity(ActivityLog activity) {
         this.activity = activity;
+        this.clock = clock;
     }
 
     private void journal(ActivityLog.Entry entry) {
-        if (activity != null) {
-            activity.recordAfterCommit(entry);
-        }
+        activity.recordAfterCommit(entry);
     }
 
     private static ActivityLog.Entry payment(String type, PaymentInvoice inv) {
@@ -119,7 +116,7 @@ public class PaymentStatusApplier {
 
         boolean paidState = PaymentInvoice.SUCCESS.equals(st.status()) || PaymentInvoice.REVERSED.equals(st.status());
         if (paidState && inv.getAppliedAt() == null) {
-            inv.setAppliedAt(Instant.now());
+            inv.setAppliedAt(clock.instant());
             orderPayments.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor(), inv.getExternalId());
             log.info("monobank: invoice {} paid, {} kop credited to order {}", inv.getExternalId(),
                     inv.getAmountMinor(), UuidUtil.toString(inv.getOrderId()));

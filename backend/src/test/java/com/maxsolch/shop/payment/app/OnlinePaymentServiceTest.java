@@ -1,5 +1,8 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import java.time.Clock;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -11,7 +14,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,7 +63,8 @@ class OnlinePaymentServiceTest {
         props = new AppProperties();
         props.getSite().setBaseUrl("https://chisetup.com.ua");
         props.setWebappBaseUrl("https://app.chisetup.com.ua");
-        service = new OnlinePaymentService(mono, invoices, orders, props, messages, tx, applier);
+        service = new OnlinePaymentService(mono, invoices, orders, props, messages, tx, applier,
+                mock(SettingsService.class), mock(ActivityLog.class), Clock.systemUTC());
         lenient().when(mono.isEnabled()).thenReturn(true);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
@@ -105,7 +110,7 @@ class OnlinePaymentServiceTest {
     }
 
     private static String code(Throwable t) {
-        return ((ConflictException) t).getCode();
+        return ((DomainException) t).getCode();
     }
 
     // ------------------------------------------------------------------ basket
@@ -206,7 +211,7 @@ class OnlinePaymentServiceTest {
         given(o, invoice(o, PaymentInvoice.PROCESSING, 1000_00, Instant.now().plus(Duration.ofMinutes(30))));
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_IN_PROGRESS"));
         verify(mono, never()).createInvoice(any());
     }
@@ -219,7 +224,7 @@ class OnlinePaymentServiceTest {
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("NOT_PAYABLE"));
         verify(mono, never()).createInvoice(any());
     }
@@ -231,7 +236,7 @@ class OnlinePaymentServiceTest {
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("NOT_PAYABLE"));
         verify(mono, never()).createInvoice(any());
     }
@@ -244,7 +249,7 @@ class OnlinePaymentServiceTest {
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_EXPIRED"));
     }
 
@@ -255,7 +260,7 @@ class OnlinePaymentServiceTest {
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_EXPIRED"));
         verify(mono, never()).createInvoice(any());
     }
@@ -305,7 +310,7 @@ class OnlinePaymentServiceTest {
         when(mono.isEnabled()).thenReturn(false);
 
         assertThatThrownBy(() -> service.start(UuidUtil.randomBytes(), OnlinePaymentService.ReturnTo.SITE, "uk"))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_UNAVAILABLE"));
         verify(orders, never()).findWithItemsById(any());
     }

@@ -5,8 +5,9 @@ import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.payment.infra.ReceiptDeliveryStore;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.infra.OrderRepository;
@@ -19,6 +20,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -54,20 +56,22 @@ public class ReceiptDeliveryJob {
     private final ReceiptService receipts;
     private final NotificationService notifications;
     private final SettingsService settings;
+    private final Clock clock;
     private final AtomicBoolean running = new AtomicBoolean();
 
     /**
      * Invoices with every check final and handled → their refunded amount at that moment. Skipped
-     * while it stays the same (a new refund brings a return check); rechecked every 15 min anyway.
+     * while it stays the same (a new refund brings a return check); rechecked every 15 min anyway
+     * (the cache expires, see {@link CacheConfig#RECEIPT_DELIVERY_QUIET}).
      */
-    private final Cache<String, Long> quiet = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(15))
-            .build();
+    private final Cache quiet;
 
     public ReceiptDeliveryJob(MonobankClient mono, PaymentInvoiceRepository invoices, OrderRepository orders,
                               UserRepository users, ReceiptDeliveryStore store, ReceiptService receipts,
-                              NotificationService notifications, SettingsService settings) {
+                              NotificationService notifications, SettingsService settings,
+                              CacheManager caches, Clock clock) {
+        this.quiet = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_DELIVERY_QUIET));
+        this.clock = clock;
         this.mono = mono;
         this.invoices = invoices;
         this.orders = orders;
@@ -85,7 +89,7 @@ public class ReceiptDeliveryJob {
             return;
         }
         try {
-            deliver(Instant.now());
+            deliver(clock.instant());
         } catch (Exception e) {
             log.warn("receipt delivery failed: {}", e.getMessage(), e);
         } finally {
@@ -108,7 +112,7 @@ public class ReceiptDeliveryJob {
     }
 
     void deliverInvoice(PaymentInvoice inv, Instant now) {
-        Long refunded = quiet.getIfPresent(inv.getExternalId());
+        Long refunded = quiet.get(inv.getExternalId(), Long.class);
         if (refunded != null && refunded == inv.getRefundedMinor()) {
             return;
         }

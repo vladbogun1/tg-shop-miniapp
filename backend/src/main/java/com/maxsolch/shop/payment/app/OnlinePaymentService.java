@@ -14,12 +14,15 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.payment.domain.PaymentErrors;
+import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -60,12 +63,19 @@ public class OnlinePaymentService {
     private final Messages messages;
     private final TransactionTemplate tx;
     private final PaymentStatusApplier applier;
+    /** PRRO tax codes for the basket. */
+    private final SettingsService settings;
+    /** «Журнал → Бот и сайт». */
+    private final ActivityLog activity;
+    private final Clock clock;
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
     /** One start per order at a time (double tap → one invoice). Single backend instance. */
     private final Map<String, Object> startLocks = new ConcurrentHashMap<>();
 
     public OnlinePaymentService(MonobankClient mono, PaymentInvoiceRepository invoices, OrderRepository orders,
                                 AppProperties props, Messages messages,
-                                TransactionTemplate tx, PaymentStatusApplier applier) {
+                                TransactionTemplate tx, PaymentStatusApplier applier,
+                                SettingsService settings, ActivityLog activity, Clock clock) {
         this.mono = mono;
         this.invoices = invoices;
         this.orders = orders;
@@ -73,29 +83,13 @@ public class OnlinePaymentService {
         this.messages = messages;
         this.tx = tx;
         this.applier = applier;
-    }
-
-    /** Optional (tests build the service without them): PRRO tax codes and basket JSON. */
-    private com.maxsolch.shop.platform.settings.SettingsService settings;
-    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
-
-    @org.springframework.beans.factory.annotation.Autowired
-    void setSettings(com.maxsolch.shop.platform.settings.SettingsService settings) {
         this.settings = settings;
-    }
-
-    /** «Журнал → Бот и сайт» (optional, like the settings above). */
-    private com.maxsolch.shop.platform.journal.ActivityLog activity;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setActivity(com.maxsolch.shop.platform.journal.ActivityLog activity) {
         this.activity = activity;
+        this.clock = clock;
     }
 
-    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
-        if (activity != null) {
-            activity.record(entry);
-        }
+    private void journal(ActivityLog.Entry entry) {
+        activity.record(entry);
     }
 
     public boolean isEnabled() {
@@ -104,10 +98,7 @@ public class OnlinePaymentService {
 
     /** Tax rate codes for every receipt line (setting payment.fiscalTaxCodes, e.g. "1" or "1,2"). */
     List<Integer> taxCodes() {
-        if (settings == null) {
-            return List.of();
-        }
-        String raw = settings.getString(com.maxsolch.shop.platform.settings.SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
+        String raw = settings.getString(SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
         List<Integer> out = new ArrayList<>();
         if (raw != null) {
             for (String part : raw.split("[,;\\s]+")) {
@@ -134,7 +125,7 @@ public class OnlinePaymentService {
      */
     public StartedPayment start(byte[] orderId, ReturnTo returnTo, String locale, boolean embedded) {
         if (!mono.isEnabled()) {
-            throw new ConflictException(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE");
+            throw PaymentErrors.conflict(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE");
         }
         String key = UuidUtil.toString(orderId);
         Object lock = startLocks.computeIfAbsent(key, k -> new Object());
@@ -149,17 +140,17 @@ public class OnlinePaymentService {
 
     private StartedPayment startLocked(byte[] orderId, ReturnTo returnTo, String locale, boolean embedded) {
         String display = embedded ? "iframe" : "page";
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         String key = UuidUtil.toString(orderId);
         Order order = orders.findWithItemsById(orderId)
-                .orElseThrow(() -> new BadRequestException(messages.current("api.order.notFound")));
+                .orElseThrow(() -> PaymentErrors.badRequest(messages.current("api.order.notFound")));
         if (order.getStatus() == OrderStatus.REJECTED
                 && "PAYMENT_TIMEOUT".equals(order.getRejectReasonCode())) {
-            throw new ConflictException(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
+            throw PaymentErrors.conflict(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
         }
         long amount = OrderMoney.amountDueMinor(order);
         if (order.getStatus() == OrderStatus.REJECTED || order.getStatus() == OrderStatus.DELIVERED || amount <= 0) {
-            throw new ConflictException(messages.current("api.payment.notPayable"), "NOT_PAYABLE");
+            throw PaymentErrors.conflict(messages.current("api.payment.notPayable"), "NOT_PAYABLE");
         }
         // The deadline binds a NEW order only (it is auto-cancelled after it). Once an admin approved the
         // order, the customer may pay late (they may have agreed in the chat) until the admin rejects it.
@@ -167,13 +158,13 @@ public class OnlinePaymentService {
         boolean deadlineApplies = order.getStatus() == OrderStatus.NEW && order.getPaymentDueAt() != null
                 && !order.isPaid();
         if (deadlineApplies && !order.getPaymentDueAt().isAfter(now)) {
-            throw new ConflictException(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
+            throw PaymentErrors.conflict(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
         }
 
         List<PaymentInvoice> existing = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
         for (PaymentInvoice inv : existing) {
             if (PaymentInvoice.PROCESSING.equals(inv.getStatus()) || PaymentInvoice.HOLD.equals(inv.getStatus())) {
-                throw new ConflictException(messages.current("api.payment.inProgress"), "PAYMENT_IN_PROGRESS");
+                throw PaymentErrors.conflict(messages.current("api.payment.inProgress"), "PAYMENT_IN_PROGRESS");
             }
             if (inv.isPayable(now) && inv.getAmountMinor() == amount && display.equals(inv.getDisplayType())) {
                 return new StartedPayment(inv.getExternalId(), inv.getPageUrl(), inv.getAmountMinor(), inv.getExpiresAt());
@@ -207,15 +198,15 @@ public class OnlinePaymentService {
                     embedded));
         } catch (MonobankClient.MonobankException e) {
             log.warn("monobank invoice/create failed for order {}: {}", key, e.getMessage());
-            journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(com.maxsolch.shop.platform.journal.ActivityLog.PAYMENT,
+            journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
                             "INVOICE_CREATE_FAILED").order(orderId)
-                    .text("monobank не создал счёт на " + com.maxsolch.shop.platform.util.MoneyFormat.amount(amount) + " грн")
+                    .text("monobank не создал счёт на " + MoneyFormat.amount(amount) + " грн")
                     .detail("amountMinor", amount).detail("returnTo", returnTo)
                     .failed("MONOBANK_ERROR", e.getMessage()));
-            throw new ConflictException(messages.current("api.payment.failed"), "PAYMENT_FAILED");
+            throw PaymentErrors.conflict(messages.current("api.payment.failed"), "PAYMENT_FAILED");
         }
         if (created.invoiceId() == null || created.pageUrl() == null) {
-            throw new ConflictException(messages.current("api.payment.failed"), "PAYMENT_FAILED");
+            throw PaymentErrors.conflict(messages.current("api.payment.failed"), "PAYMENT_FAILED");
         }
         PaymentInvoice inv = new PaymentInvoice();
         inv.setOrderId(orderId);
@@ -228,9 +219,9 @@ public class OnlinePaymentService {
         inv.setStatus(PaymentInvoice.CREATED);
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
-        journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(com.maxsolch.shop.platform.journal.ActivityLog.PAYMENT,
+        journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
                         "INVOICE_CREATED").order(orderId)
-                .text("Счёт monobank на " + com.maxsolch.shop.platform.util.MoneyFormat.amount(amount) + " грн"
+                .text("Счёт monobank на " + MoneyFormat.amount(amount) + " грн"
                         + (amount < order.getTotalMinor() ? " (предоплата)" : "")
                         + " · " + (returnTo == ReturnTo.SITE ? "сайт" : "Mini App")
                         + (embedded ? ", в окне" : ""))
@@ -367,16 +358,16 @@ public class OnlinePaymentService {
     public void refund(byte[] orderId, String invoiceId, Long amountMinor) {
         PaymentInvoice inv = invoices.findByProviderAndExternalId(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .filter(i -> java.util.Arrays.equals(i.getOrderId(), orderId))
-                .orElseThrow(() -> new BadRequestException("счёт не найден"));
+                .orElseThrow(() -> PaymentErrors.badRequest("счёт не найден"));
         if (inv.getAppliedAt() == null) {
-            throw new BadRequestException("счёт не оплачен — возвращать нечего");
+            throw PaymentErrors.badRequest("счёт не оплачен — возвращать нечего");
         }
         long left = inv.getAmountMinor() - inv.getRefundedMinor();
         if (amountMinor != null && (amountMinor <= 0 || amountMinor > left)) {
-            throw new BadRequestException("сумма возврата должна быть от 0,01 ₴ до " + MoneyFormat.uah(left));
+            throw PaymentErrors.badRequest("сумма возврата должна быть от 0,01 ₴ до " + MoneyFormat.uah(left));
         }
         if (left <= 0) {
-            throw new BadRequestException("по этому счёту всё уже возвращено");
+            throw PaymentErrors.badRequest("по этому счёту всё уже возвращено");
         }
         String extRef = "refund-" + UuidUtil.toString(UuidUtil.randomBytes()).substring(0, 13);
         try {
@@ -386,11 +377,11 @@ public class OnlinePaymentService {
             mono.cancel(inv.getExternalId(), extRef, full ? null : amountMinor,
                     refundItems(inv, full ? left : amountMinor, asSold));
         } catch (MonobankClient.MonobankException e) {
-            throw new BadRequestException("monobank отклонил возврат: " + e.getMessage());
+            throw PaymentErrors.badRequest("monobank отклонил возврат: " + e.getMessage());
         }
         tx.executeWithoutResult(s -> invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .ifPresent(i -> {
-                    i.setRefundPendingUntil(Instant.now().plus(Duration.ofDays(2)));
+                    i.setRefundPendingUntil(clock.instant().plus(Duration.ofDays(2)));
                     invoices.save(i);
                 }));
         refresh(inv);
@@ -402,9 +393,9 @@ public class OnlinePaymentService {
      */
     public String refundableInvoice(byte[] orderId, long amountMinor) {
         List<PaymentInvoice> all = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
-        if (all.stream().anyMatch(i -> i.getRefundPendingUntil() != null && i.getRefundPendingUntil().isAfter(Instant.now()))) {
+        if (all.stream().anyMatch(i -> i.getRefundPendingUntil() != null && i.getRefundPendingUntil().isAfter(clock.instant()))) {
             // Not booked as refunded until the bank confirms: a second wizard now could return it twice.
-            throw new BadRequestException("предыдущий возврат через monobank ещё обрабатывается банком — подождите подтверждения");
+            throw PaymentErrors.badRequest("предыдущий возврат через monobank ещё обрабатывается банком — подождите подтверждения");
         }
         List<PaymentInvoice> paid = all.stream()
                 .filter(i -> i.getAppliedAt() != null)
@@ -414,7 +405,7 @@ public class OnlinePaymentService {
                 .filter(i -> i.getAmountMinor() - i.getRefundedMinor() >= amountMinor)
                 .map(PaymentInvoice::getExternalId)
                 .findFirst()
-                .orElseThrow(() -> new BadRequestException(most <= 0
+                .orElseThrow(() -> PaymentErrors.badRequest(most <= 0
                         ? "через monobank по этому заказу вернуть нечего"
                         : "через monobank можно вернуть не больше " + MoneyFormat.uah(most) + " одним возвратом"));
     }

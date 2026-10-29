@@ -35,12 +35,7 @@ public class ReceiptSigner {
     private final byte[] key;
     private final Clock clock;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public ReceiptSigner(AppProperties props) {
-        this(props, Clock.systemUTC());
-    }
-
-    ReceiptSigner(AppProperties props, Clock clock) {
+    public ReceiptSigner(AppProperties props, Clock clock) {
         // Derived from the JWT secret, with its own prefix: a media signature is never a receipt one.
         String secret = props.getSecurity().getJwtSecret();
         this.key = ("receipt:" + (secret == null ? "" : secret)).getBytes(StandardCharsets.UTF_8);

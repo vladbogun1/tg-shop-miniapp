@@ -5,10 +5,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.Set;
@@ -115,9 +116,13 @@ public class PaymentInvoice {
     @Column(name = "refund_pending_until")
     private Instant refundPendingUntil;
 
-    @Column(name = "created_at", nullable = false)
+    /** Set by Hibernate on insert (the domain does not read the clock). */
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Set by Hibernate on insert and on every real update. */
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -126,16 +131,6 @@ public class PaymentInvoice {
         if (id == null) {
             id = UuidUtil.randomBytes();
         }
-        Instant now = Instant.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = Instant.now();
     }
 
     public boolean isOpen() {

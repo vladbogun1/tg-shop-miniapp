@@ -9,11 +9,10 @@ A2 payment 2
 A3 legacy 3
 C1 delivery 1
 C1 legacy 59
-C1 payment 11
+C1 payment 3
 CA legacy 5
-CA payment 2
 E1 legacy 72
-E1 payment 6
+E1 payment 4
 E1 platform 6
 H1 delivery 1
 H1 legacy 4
@@ -22,7 +21,6 @@ J1 delivery 1
 J1 legacy 8
 J1 platform 2
 K1 legacy 1
-K1 payment 1
 L1 legacy 3
 L1 payment 5
 L2 legacy 34
@@ -46,5 +44,5 @@ T1 platform 4
 T2 legacy 3
 T2 payment 1
 W1 legacy 32
-W1 payment 7
+W1 payment 1
 W1 platform 2

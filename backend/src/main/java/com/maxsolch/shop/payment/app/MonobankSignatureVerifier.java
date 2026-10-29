@@ -9,9 +9,11 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -29,16 +31,17 @@ public class MonobankSignatureVerifier {
     private static final Duration REFETCH_MIN_INTERVAL = Duration.ofMinutes(1);
 
     private final Supplier<String> keySource;
+    private final Clock clock;
     private volatile PublicKey key;
-    private volatile Instant lastFetch = Instant.EPOCH;
+    private final AtomicReference<Instant> lastFetch = new AtomicReference<>(Instant.EPOCH);
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public MonobankSignatureVerifier(MonobankClient client) {
-        this(client::pubkey);
+    public MonobankSignatureVerifier(MonobankClient client, Clock clock) {
+        this(client::pubkey, clock);
     }
 
-    MonobankSignatureVerifier(Supplier<String> keySource) {
+    MonobankSignatureVerifier(Supplier<String> keySource, Clock clock) {
         this.keySource = keySource;
+        this.clock = clock;
     }
 
     public boolean verify(byte[] body, String xSign) {
@@ -62,12 +65,21 @@ public class MonobankSignatureVerifier {
         return fresh != null && fresh != current && check(fresh, body, signature);
     }
 
-    private synchronized PublicKey refetch(boolean force) {
-        Instant now = Instant.now();
-        if (!force && lastFetch.plus(REFETCH_MIN_INTERVAL).isAfter(now)) {
-            return key;
+    /**
+     * Without a lock: the "at most once a minute" gate is a compare-and-set on the time of the last fetch, so
+     * of several forged requests arriving together exactly one calls the API. The very first fetch (no key
+     * yet) is not gated; two of them at once are harmless (idempotent GET).
+     */
+    private PublicKey refetch(boolean force) {
+        Instant now = clock.instant();
+        if (force) {
+            lastFetch.set(now);
+        } else {
+            Instant prev = lastFetch.get();
+            if (prev.plus(REFETCH_MIN_INTERVAL).isAfter(now) || !lastFetch.compareAndSet(prev, now)) {
+                return key;
+            }
         }
-        lastFetch = now;
         try {
             key = parse(keySource.get());
         } catch (Exception e) {

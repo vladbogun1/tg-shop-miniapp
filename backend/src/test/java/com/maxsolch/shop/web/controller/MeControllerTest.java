@@ -99,7 +99,7 @@ class MeControllerTest {
     MeController controller() {
         MeController c = new MeController(new CustomerProfileService(users, admins),
                 new CustomerOrders(orders, messages), queries, lookup, chat, null, null, null,
-                null, messages, payments, new CustomerPaymentRefresh(payments));
+                null, messages, payments, new CustomerPaymentRefresh(payments, java.time.Clock.systemUTC()));
         ReflectionTestUtils.setField(c, "activity", activity);
         return c;
     }

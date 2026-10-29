@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.Mockito.mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -43,7 +45,7 @@ class PaymentStatusApplierTest {
 
     @BeforeEach
     void setUp() {
-        applier = new PaymentStatusApplier(invoices, orderPayments);
+        applier = new PaymentStatusApplier(invoices, orderPayments, mock(ActivityLog.class), java.time.Clock.systemUTC());
         inv = new PaymentInvoice();
         inv.setId(UuidUtil.randomBytes());
         inv.setOrderId(UuidUtil.randomBytes());

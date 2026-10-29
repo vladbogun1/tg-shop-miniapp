@@ -4,15 +4,13 @@ import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.payment.infra.MonobankClient;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.payment.app.ReceiptDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -38,13 +36,6 @@ public class ReceiptService {
     public static final String READY = "READY";
     public static final String FAILED = "FAILED";
 
-    /** A check may still change (or none was issued yet). */
-    private static final Duration TTL_OPEN = Duration.ofSeconds(45);
-    /** Every check is done / failed: nothing changes until a refund adds a return check. */
-    private static final Duration TTL_FINAL = Duration.ofMinutes(10);
-    /** monobank failed: do not retry on every page load. */
-    private static final Duration TTL_ERROR = Duration.ofSeconds(60);
-
     /** The cached answer for one invoice; {@code ok=false} — the call failed. */
     record Checks(List<MonobankClient.FiscalCheck> checks, boolean ok) {
 
@@ -61,31 +52,39 @@ public class ReceiptService {
     private final PaymentInvoiceRepository invoices;
     private final ReceiptSigner signer;
 
-    private final Cache<String, Checks> cache = Caffeine.newBuilder()
-            .maximumSize(5_000)
-            .expireAfter(new Expiry<String, Checks>() {
-                @Override
-                public long expireAfterCreate(String key, Checks value, long currentTime) {
-                    Duration d = !value.ok() ? TTL_ERROR : value.isFinal() ? TTL_FINAL : TTL_OPEN;
-                    return d.toNanos();
-                }
+    /** Three caches, one per lifetime (see {@link CacheConfig}): a check may still change, all final, failed. */
+    private final Cache open;
+    private final Cache finalChecks;
+    private final Cache failed;
 
-                @Override
-                public long expireAfterUpdate(String key, Checks value, long currentTime, long currentDuration) {
-                    return expireAfterCreate(key, value, currentTime);
-                }
-
-                @Override
-                public long expireAfterRead(String key, Checks value, long currentTime, long currentDuration) {
-                    return currentDuration;
-                }
-            })
-            .build();
-
-    public ReceiptService(MonobankClient mono, PaymentInvoiceRepository invoices, ReceiptSigner signer) {
+    public ReceiptService(MonobankClient mono, PaymentInvoiceRepository invoices, ReceiptSigner signer,
+                          CacheManager caches) {
         this.mono = mono;
         this.invoices = invoices;
         this.signer = signer;
+        this.open = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_CHECKS_OPEN));
+        this.finalChecks = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_CHECKS_FINAL));
+        this.failed = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_CHECKS_ERROR));
+    }
+
+    private Checks cached(String key) {
+        for (Cache c : new Cache[] {finalChecks, open, failed}) {
+            Checks hit = c.get(key, Checks.class);
+            if (hit != null) {
+                return hit;
+            }
+        }
+        return null;
+    }
+
+    private void cachePut(String key, Checks value) {
+        Cache target = !value.ok() ? failed : value.isFinal() ? finalChecks : open;
+        for (Cache c : new Cache[] {finalChecks, open, failed}) {
+            if (c != target) {
+                c.evict(key);
+            }
+        }
+        target.put(key, value);
     }
 
     /** Receipts of every paid invoice of the order, oldest payment first. Never throws. */
@@ -144,7 +143,7 @@ public class ReceiptService {
     List<MonobankClient.FiscalCheck> checks(PaymentInvoice inv) {
         String externalId = inv.getExternalId();
         String key = cacheKey(inv);
-        Checks cached = cache.getIfPresent(key);
+        Checks cached = cached(key);
         if (cached == null) {
             try {
                 cached = new Checks(stripFiles(mono.fiscalChecks(externalId)), true);
@@ -152,14 +151,14 @@ public class ReceiptService {
                 log.warn("fiscal checks of invoice {} failed: {}", externalId, e.getMessage());
                 cached = new Checks(List.of(), false);
             }
-            cache.put(key, cached);
+            cachePut(key, cached);
         }
         return cached.checks();
     }
 
     /** A fresh answer from the background job — keeps the page in step without another call. */
     void remember(PaymentInvoice inv, List<MonobankClient.FiscalCheck> fresh) {
-        cache.put(cacheKey(inv), new Checks(stripFiles(fresh), true));
+        cachePut(cacheKey(inv), new Checks(stripFiles(fresh), true));
     }
 
     private static List<MonobankClient.FiscalCheck> stripFiles(List<MonobankClient.FiscalCheck> list) {
