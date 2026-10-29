@@ -446,16 +446,31 @@ public class OrderQueryService {
     public List<OrderDetailDto.MergeCandidateDto> mergeCandidates(List<OrderMergeService.Candidate> found) {
         return found.stream().map(c -> {
             Order o = c.order();
-            return new OrderDetailDto.MergeCandidateDto(UuidUtil.toString(o.getId()), o.getStatus().name(),
-                    o.getCreatedAt(), o.getTotalMinor(), Math.max(0, o.getReceivedMinor()), o.getPrepaymentMinor(), o.isPaid(),
-                    o.getPaymentOptionTitle(), o.getNpCityName(), o.getNpWarehouseName(), o.getCustomerName(),
-                    o.getTrackingNumber(), o.getGiftCaseStatus(),
-                    o.getItems().stream()
+            return OrderDetailDto.MergeCandidateDto.builder()
+                    .id(UuidUtil.toString(o.getId()))
+                    .status(o.getStatus().name())
+                    .createdAt(o.getCreatedAt())
+                    .totalMinor(o.getTotalMinor())
+                    .receivedMinor(Math.max(0, o.getReceivedMinor()))
+                    .prepaymentMinor(o.getPrepaymentMinor())
+                    .paid(o.isPaid())
+                    .paymentOptionTitle(o.getPaymentOptionTitle())
+                    .npCityName(o.getNpCityName())
+                    .npWarehouseName(o.getNpWarehouseName())
+                    .customerName(o.getCustomerName())
+                    .trackingNumber(o.getTrackingNumber())
+                    .giftCaseStatus(o.getGiftCaseStatus())
+                    .lines(o.getItems().stream()
                             .map(i -> i.getTitleSnapshot()
                                     + (i.getVariantNameSnapshot() == null ? "" : " (" + i.getVariantNameSnapshot() + ")")
                                     + " ×" + i.getQuantity() + (i.isGift() ? " · подарок" : ""))
-                            .toList(),
-                    c.blocker(), c.totalMinor(), c.receivedMinor(), c.amountDueMinor(), c.codMinor());
+                            .toList())
+                    .blocker(c.blocker())
+                    .mergedTotalMinor(c.totalMinor())
+                    .mergedReceivedMinor(c.receivedMinor())
+                    .mergedAmountDueMinor(c.amountDueMinor())
+                    .mergedCodMinor(c.codMinor())
+                    .build();
         }).toList();
     }
 

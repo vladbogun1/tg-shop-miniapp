@@ -102,6 +102,7 @@ public record OrderDetailDto(
     }
 
     /** Another open order of the same customer for «Объединить» (V71) and the merged result. */
+    @lombok.Builder
     public record MergeCandidateDto(String id,
                                     String status,
                                     Instant createdAt,
