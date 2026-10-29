@@ -21,7 +21,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.order.app.OrderDetailDto;
-import com.maxsolch.shop.order.api.OrderSummaryDto;
+import com.maxsolch.shop.order.app.OrderSummaryDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

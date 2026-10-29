@@ -21,10 +21,10 @@ import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.order.api.DispatchOrderDto;
-import com.maxsolch.shop.order.api.OrderCardDto;
-import com.maxsolch.shop.order.api.OrderSummaryDto;
-import com.maxsolch.shop.web.dto.OnlinePaymentDto;
+import com.maxsolch.shop.order.app.DispatchOrderDto;
+import com.maxsolch.shop.order.app.OrderCardDto;
+import com.maxsolch.shop.order.app.OrderSummaryDto;
+import com.maxsolch.shop.order.app.OnlinePaymentDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

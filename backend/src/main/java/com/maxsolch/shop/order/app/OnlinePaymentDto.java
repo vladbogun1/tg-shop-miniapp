@@ -1,4 +1,4 @@
-package com.maxsolch.shop.web.dto;
+package com.maxsolch.shop.order.app;
 
 import java.time.Instant;
 

@@ -20,10 +20,10 @@ import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.order.api.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
-import com.maxsolch.shop.order.api.MessageDto;
+import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.order.app.OrderDetailDto;
-import com.maxsolch.shop.order.api.OrderSummaryDto;
+import com.maxsolch.shop.order.app.OrderSummaryDto;
 import com.maxsolch.shop.web.dto.PaymentStartResponse;
 import com.maxsolch.shop.web.dto.StartPaymentRequest;
 import com.maxsolch.shop.promo.api.PromoPreviewDto;
@@ -191,7 +191,7 @@ public class MeController {
 
     @GetMapping("/conversations")
     @Operation(summary = "My orders with unread admin messages (notifications inbox)")
-    public List<com.maxsolch.shop.order.api.ConversationDto> conversations() {
+    public List<com.maxsolch.shop.order.app.ConversationDto> conversations() {
         return messageService.customerConversations(SecurityUtil.currentUserId());
     }
 

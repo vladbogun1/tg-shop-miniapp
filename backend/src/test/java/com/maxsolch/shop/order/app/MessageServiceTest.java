@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.media.MediaSigner;
-import com.maxsolch.shop.order.api.MessageDto;
+import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.api.SendMessageRequest;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMessage;

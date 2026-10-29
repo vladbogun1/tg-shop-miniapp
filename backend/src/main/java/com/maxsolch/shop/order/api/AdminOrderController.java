@@ -1,5 +1,9 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.app.DispatchOrderDto;
+import com.maxsolch.shop.order.app.MessageDto;
+import com.maxsolch.shop.order.app.OrderBoardDto;
+import com.maxsolch.shop.order.app.OrderCardDto;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.platform.util.MoneyFormat;

@@ -37,7 +37,7 @@ import com.maxsolch.shop.repository.ProductImageRepository;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.order.api.OrderCardDto;
+import com.maxsolch.shop.order.app.OrderCardDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;

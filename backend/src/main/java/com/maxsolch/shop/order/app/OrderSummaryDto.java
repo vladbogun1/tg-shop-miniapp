@@ -1,4 +1,4 @@
-package com.maxsolch.shop.order.api;
+package com.maxsolch.shop.order.app;
 
 import java.time.Instant;
 
