@@ -2,6 +2,7 @@ package com.maxsolch.shop.web.dto;
 
 import java.time.Instant;
 
+@lombok.Builder
 public record OrderCardDto(
         String id,
         String customerName,

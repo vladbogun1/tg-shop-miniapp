@@ -203,31 +203,32 @@ public class OrderQueryService {
     @Transactional(readOnly = true)
     public OrderCardDto toCard(Order o, CardContext ctx) {
         String id = UuidUtil.toString(o.getId());
-        return new OrderCardDto(
-                id,
-                o.getCustomerName(),
-                o.getTotalMinor(),
-                o.getCurrency(),
-                ctx.itemsFor(id),
-                o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name(),
-                o.getPaymentOptionTitle(),
-                ctx.unreadFor(id),
-                o.getCreatedAt(),
-                o.getStatus().name(),
-                o.isPaid(),
-                OrderMoney.receivedMinor(o),
-                o.getPaymentDueAt(),
-                OrderMoney.amountDueMinor(o),
-                sourceOf(o),
-                o.getCancelRequestStatus(),
-                o.getArchivedAt() != null,
-                o.getReturnStatus(),
-                ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returning).sum(),
-                ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returned).sum(),
-                ctx.linesFor(id),
-                o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()),
-                ctx.exchangesOf(id),
-                Math.max(0, o.getUncollectedMinor()));
+        return OrderCardDto.builder()
+                .id(id)
+                .customerName(o.getCustomerName())
+                .totalMinor(o.getTotalMinor())
+                .currency(o.getCurrency())
+                .itemsCount(ctx.itemsFor(id))
+                .deliveryMethod(o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name())
+                .paymentOptionTitle(o.getPaymentOptionTitle())
+                .unreadCount(ctx.unreadFor(id))
+                .createdAt(o.getCreatedAt())
+                .status(o.getStatus().name())
+                .paid(o.isPaid())
+                .receivedMinor(OrderMoney.receivedMinor(o))
+                .paymentDueAt(o.getPaymentDueAt())
+                .amountDueMinor(OrderMoney.amountDueMinor(o))
+                .source(sourceOf(o))
+                .cancelRequestStatus(o.getCancelRequestStatus())
+                .archived(o.getArchivedAt() != null)
+                .returnStatus(o.getReturnStatus())
+                .returningUnits(ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returning).sum())
+                .returnedUnits(ctx.linesFor(id).stream().mapToInt(OrderCardDto.CardLine::returned).sum())
+                .lines(ctx.linesFor(id))
+                .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
+                .exchangeOrderIds(ctx.exchangesOf(id))
+                .uncollectedMinor(Math.max(0, o.getUncollectedMinor()))
+                .build();
     }
 
     private static String sourceOf(Order o) {
