@@ -12,7 +12,7 @@
  * changes, so nothing on the page jumps.
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, LayoutGrid, Menu, Scale, ShoppingBag, User, X } from "lucide-react";
+import { ArrowRight, ChevronDown, LayoutGrid, Menu, Scale, ShoppingBag, User, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -454,7 +454,7 @@ function CatalogMenu({
   return (
     <div
       ref={wrap}
-      className="relative"
+      className="static"
       onPointerEnter={(e) => e.pointerType === "mouse" && show()}
       onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
       onBlur={(e) => {
@@ -487,51 +487,76 @@ function CatalogMenu({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16 }}
-            className="absolute left-0 top-full z-50 pt-2"
+            className="absolute inset-x-0 top-full z-50"
           >
+            <div className="container-site pointer-events-none pt-2">
             <nav
               aria-label={t("header.categories")}
-              className="grid w-[min(860px,calc(100vw-48px))] grid-cols-3 gap-x-4 gap-y-1 rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] p-4 shadow-[0_24px_60px_rgba(0,0,0,.6)]"
+              className="pointer-events-auto relative w-full max-w-[880px] before:absolute before:inset-x-0 before:-top-2 before:h-2 before:content-[''] rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] p-3 shadow-[0_24px_60px_rgba(0,0,0,.6)]"
             >
-              {tree.map((root) => {
-                const on = activeRoot === root.slug;
-                const kind = artKindOf(root.artKind, root.slug, root.name);
-                return (
-                  <div key={root.id} className="min-w-0 py-1">
-                    <Link
-                      href={href(`/catalog/${root.slug}`)}
-                      aria-current={activeSlug === root.slug ? "page" : undefined}
-                      className={`flex items-center gap-3 rounded-[var(--r)] border px-2 py-1.5 transition-colors ${
-                        on ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]" : "border-transparent text-[var(--ink)] hover:bg-[var(--surface-2)]"
+              <ul className="grid grid-cols-2 gap-2">
+                {tree.map((root) => {
+                  const on = activeRoot === root.slug;
+                  const kind = artKindOf(root.artKind, root.slug, root.name);
+                  return (
+                    <li
+                      key={root.id}
+                      className={`relative flex min-h-[78px] min-w-0 items-center gap-3 rounded-[var(--r)] border px-3 py-2.5 transition-colors ${
+                        on
+                          ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                          : "border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]"
                       }`}
                     >
-                      { }
-                      <img src={`/mascot/icons/${kind}.webp`} alt="" width={32} height={32} loading="lazy" className="h-8 w-8 shrink-0 object-contain" />
-                      <span className="min-w-0 flex-1 truncate font-display text-[14px] font-bold uppercase tracking-[.04em]">{root.name}</span>
-                      <span className="shrink-0 font-display text-[12px] tabular-nums opacity-60">{root.productCount}</span>
-                    </Link>
-                    {root.children.length > 0 && (
-                      <ul className="ml-[22px] mt-1 flex flex-col border-l border-[var(--line-strong)] pl-3">
-                        {root.children.map((c) => (
-                          <li key={c.id}>
-                            <Link
-                              href={href(`/catalog/${c.slug}`)}
-                              aria-current={activeSlug === c.slug ? "page" : undefined}
-                              className={`flex min-h-8 items-center justify-between gap-2 rounded-[var(--r)] px-2 text-[13px] font-medium transition-colors ${
-                                activeSlug === c.slug ? "text-[var(--accent-hi)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
-                              }`}
-                            >
-                              <span className="min-w-0 truncate">{c.name}</span>
-                              <span className="shrink-0 font-display text-[11px] tabular-nums opacity-60">{c.productCount}</span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[var(--r)] bg-[var(--bg)]">
+                        { }
+                        <img src={`/mascot/icons/${kind}.webp`} alt="" width={36} height={36} loading="lazy" className="h-9 w-9 object-contain" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        {/* the root's link covers the whole tile; the subcategory chips sit above it */}
+                        <Link
+                          href={href(`/catalog/${root.slug}`)}
+                          aria-current={activeSlug === root.slug ? "page" : undefined}
+                          className={`flex items-baseline gap-2 after:absolute after:inset-0 after:rounded-[var(--r)] after:content-[''] ${
+                            on ? "text-[var(--accent-hi)]" : "text-[var(--ink)]"
+                          }`}
+                        >
+                          <span className="min-w-0 truncate font-display text-[14px] font-bold uppercase tracking-[.04em]">{root.name}</span>
+                          <span className="shrink-0 font-display text-[12px] tabular-nums text-[var(--muted)]">{root.productCount}</span>
+                        </Link>
+                        {root.children.length > 0 && (
+                          <div className="relative z-[1] mt-1.5 flex flex-wrap gap-1.5">
+                            {root.children.map((c) => (
+                              <Link
+                                key={c.id}
+                                href={href(`/catalog/${c.slug}`)}
+                                aria-current={activeSlug === c.slug ? "page" : undefined}
+                                className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-colors ${
+                                  activeSlug === c.slug
+                                    ? "border-[var(--accent)] text-[var(--accent-hi)]"
+                                    : "border-[var(--line-strong)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]"
+                                }`}
+                              >
+                                {c.name}
+                                <span className="font-display text-[11px] tabular-nums opacity-60">{c.productCount}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Link
+                href={href("/catalog")}
+                className="mt-3 flex h-11 items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line)] font-display text-[13px] font-semibold uppercase tracking-[.1em] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-hi)]"
+              >
+                <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
+                {t("header.allProducts")}
+                <ArrowRight className="h-4 w-4" strokeWidth={2.25} />
+              </Link>
             </nav>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

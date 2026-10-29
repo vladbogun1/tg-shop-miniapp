@@ -80,6 +80,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                        @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,
                        @Param("from") Instant from,
+                       @Param("to") Instant to,
                        Pageable pageable);
 
     /**
@@ -92,6 +93,7 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
                                @Param("idLo") byte[] idLo,
                        @Param("idHi") byte[] idHi,
                                @Param("from") Instant from,
+                               @Param("to") Instant to,
                                Pageable pageable);
 
     /**
@@ -116,5 +118,6 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     List<Object[]> statsByStatus(@Param("q") String q,
                                  @Param("idLo") byte[] idLo,
                                  @Param("idHi") byte[] idHi,
-                                 @Param("from") Instant from);
+                                 @Param("from") Instant from,
+                                 @Param("to") Instant to);
 }

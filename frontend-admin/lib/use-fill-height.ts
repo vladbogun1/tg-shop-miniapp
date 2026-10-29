@@ -6,6 +6,10 @@ import { useLayoutEffect, type RefObject } from "react";
  * Stretches the element down to the bottom of the viewport (minus `gap`), so a board fits the
  * screen: the page itself does not scroll, its columns do. Re-measured when the window or the
  * content above it (toolbars, banners) changes size. Never shorter than `min`.
+ *
+ * Runs only when `enabled` flips, not on every render: the cleanup drops the height, and for that
+ * instant the columns grew to their full content, so the browser reset their scroll to the top —
+ * opening an order at the bottom of «Отправлен» threw the column back up.
  */
 export function useFillHeight(ref: RefObject<HTMLElement | null>, enabled: boolean, gap = 28, min = 420) {
   useLayoutEffect(() => {
@@ -31,5 +35,5 @@ export function useFillHeight(ref: RefObject<HTMLElement | null>, enabled: boole
       window.removeEventListener("resize", fit);
       el.style.height = "";
     };
-  });
+  }, [ref, enabled, gap, min]);
 }

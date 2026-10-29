@@ -18,9 +18,9 @@ import {
   type OrderCardDto,
   type OrderDetailDto,
   type OrderStatus,
-  type TimeRange,
   type UserCardDto,
 } from "./api";
+import { periodQuery, type OrdersPeriod } from "./orders-period";
 import type { BoardKey, MovementChannel, MovementKind, RejectReasonCode } from "./orders";
 
 export type { NpCity, NpWarehouse };
@@ -376,10 +376,10 @@ export interface AdminCreateOrderBody {
 export const ordersApi = {
   /** POST /api/admin/orders — a manual order (phone, Instagram, in person). */
   create: (body: AdminCreateOrderBody) => apiPost<AdminOrderDetail>("/api/admin/orders", body),
-  board: (params: { q?: string; range?: TimeRange; closedLimit?: number } = {}) => {
+  board: (params: { q?: string; period?: OrdersPeriod; closedLimit?: number } = {}) => {
     const sp = new URLSearchParams();
     if (params.q) sp.set("q", params.q);
-    if (params.range) sp.set("range", params.range);
+    if (params.period) for (const [k, v] of Object.entries(periodQuery(params.period))) sp.set(k, v);
     if (params.closedLimit) sp.set("closedLimit", String(params.closedLimit));
     const qs = sp.toString();
     return apiGet<AdminBoard>(`/api/admin/orders/board${qs ? `?${qs}` : ""}`);
@@ -435,7 +435,7 @@ export const ordersApi = {
   list: (params: {
     status?: string;
     q?: string;
-    range?: TimeRange;
+    period?: OrdersPeriod;
     page?: number;
     size?: number;
     sortBy?: string;
@@ -445,7 +445,7 @@ export const ordersApi = {
     const sp = new URLSearchParams();
     if (params.status) sp.set("status", params.status);
     if (params.q) sp.set("q", params.q);
-    if (params.range) sp.set("range", params.range);
+    if (params.period) for (const [k, v] of Object.entries(periodQuery(params.period))) sp.set(k, v);
     sp.set("page", String(params.page ?? 0));
     sp.set("size", String(params.size ?? 20));
     if (params.sortBy) sp.set("sortBy", params.sortBy);

@@ -1,6 +1,8 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.common.MoneyFormat;
+import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
@@ -19,7 +21,7 @@ import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderMergeService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.service.TimeRange;
+import com.maxsolch.shop.service.OrderWindow;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.SecurityUtil;
@@ -84,6 +86,18 @@ public class AdminOrderController {
         this.merges = merges;
     }
 
+    /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
+    private AppProperties props;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setProps(AppProperties props) {
+        this.props = props;
+    }
+
+    private OrderWindow window(String range, String from, String to) {
+        return OrderWindow.parse(range, from, to, AnalyticsZone.of(props), Instant.now());
+    }
+
     public AdminOrderController(OrderRepository orderRepository,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
@@ -131,11 +145,14 @@ public class AdminOrderController {
 
     @GetMapping("/board")
     @Operation(summary = "Kanban board grouped by status (q filtered, newest first, capped). The range "
-            + "applies to the closed columns (DELIVERED / REJECTED) only; closedLimit caps those columns.")
+            + "(rolling week|month|halfyear|year|all, calendar thismonth|prevmonth|thisyear|prevyear, or custom "
+            + "with from/to yyyy-MM-dd) applies to the closed columns (DELIVERED / REJECTED) only; closedLimit caps those columns.")
     public OrderBoardDto board(@RequestParam(required = false) String q,
                                @RequestParam(defaultValue = "month") String range,
+                               @RequestParam(required = false) String from,
+                               @RequestParam(required = false) String to,
                                @RequestParam(required = false) Integer closedLimit) {
-        Instant from = TimeRange.parse(range).from();
+        OrderWindow w = window(range, from, to);
         OrderSearchTerm term = OrderSearchTerm.parse(q);
         int closedCap = closedLimit == null
                 ? BOARD_COLUMN_LIMIT
@@ -151,7 +168,7 @@ public class AdminOrderController {
         for (OrderStatus status : OrderStatus.values()) {
             boolean closed = isClosed(status);
             List<Order> orders = orderRepository.searchByStatus(status, term.like(), term.idLo(), term.idHi(),
-                    closed ? from : null, PageRequest.of(0, closed ? closedCap : BOARD_COLUMN_LIMIT));
+                    closed ? w.from() : null, closed ? w.to() : null, PageRequest.of(0, closed ? closedCap : BOARD_COLUMN_LIMIT));
             byStatus.put(status.name(), orders);
             all.addAll(orders);
         }
@@ -176,8 +193,9 @@ public class AdminOrderController {
             counts.put(status.name(), 0L);
             sums.put(status.name(), 0L);
         }
-        List<Object[]> allTime = orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), null);
-        List<Object[]> ranged = from == null ? allTime : orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), from);
+        List<Object[]> allTime = orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), null, null);
+        List<Object[]> ranged = w.unbounded() ? allTime
+                : orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), w.from(), w.to());
         putStats(allTime, false, counts, sums);
         putStats(ranged, true, counts, sums);
         counts.put(RETURNING_COLUMN, orderRepository.countReturning(term.like(), term.idLo(), term.idHi()));
@@ -214,6 +232,8 @@ public class AdminOrderController {
     public List<OrderCardDto> list(@RequestParam(required = false) String status,
                                    @RequestParam(required = false) String q,
                                    @RequestParam(defaultValue = "month") String range,
+                                   @RequestParam(required = false) String from,
+                                   @RequestParam(required = false) String to,
                                    @RequestParam(defaultValue = "0") int page,
                                    @RequestParam(defaultValue = "20") int size,
                                    @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -221,11 +241,11 @@ public class AdminOrderController {
                                    @RequestParam(defaultValue = "false") boolean archived) {
         OrderStatus statusFilter = parseStatusOrNull(status);
         OrderSearchTerm term = OrderSearchTerm.parse(q);
-        Instant from = TimeRange.parse(range).from();
+        OrderWindow w = window(range, from, to);
         Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
                 sortOf(sortBy, sortDir));
         return orderQueryService.toCards(
-                orderRepository.search(statusFilter, archived, term.like(), term.idLo(), term.idHi(), from, pageable).getContent(),
+                orderRepository.search(statusFilter, archived, term.like(), term.idLo(), term.idHi(), w.from(), w.to(), pageable).getContent(),
                 SenderType.CUSTOMER);
     }
 
