@@ -378,6 +378,11 @@ public class OrderService {
         if (!OrderTransitions.allowed(order.getStatus(), OrderStatus.APPROVED)) {
             throw new BadRequestException("одобрить можно только новый заказ");
         }
+        if (CancelRequestStatus.PENDING.name().equals(order.getCancelRequestStatus())) {
+            // Same as ship: approving would leave the customer's open request hanging.
+            throw new BadRequestException(
+                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+        }
         order.setStatus(OrderStatus.APPROVED);
         order.setApprovedAt(Instant.now());
         // The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit.

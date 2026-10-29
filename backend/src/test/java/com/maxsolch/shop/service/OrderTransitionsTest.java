@@ -208,17 +208,20 @@ class OrderTransitionsTest {
     // ------------------------------------------------------------------ (г) cancel request vs ship / approve
 
     @Test
-    void ship_isBlockedByAPendingCancelRequest_approveIsNot() {
+    void ship_andApprove_areBothBlockedByAPendingCancelRequest() {
         Order shipIt = order(OrderStatus.NEW);
         shipIt.setCancelRequestStatus("PENDING");
         assertThatThrownBy(() -> service.ship(shipIt.getId(), null))
                 .isInstanceOf(BadRequestException.class).hasMessageContaining("запрос отмены");
         assertThat(shipIt.getStatus()).isEqualTo(OrderStatus.NEW);
 
-        // Current behaviour, kept as is: approving does not look at the request.
+        // Owner's decision 29.10.2026: approve is blocked the same way as ship.
         Order approveIt = order(OrderStatus.NEW);
         approveIt.setCancelRequestStatus("PENDING");
-        assertThat(service.approve(approveIt.getId()).getStatus()).isEqualTo(OrderStatus.APPROVED);
+        assertThatThrownBy(() -> service.approve(approveIt.getId()))
+                .isInstanceOf(BadRequestException.class).hasMessageContaining("запрос отмены");
+        assertThat(approveIt.getStatus()).isEqualTo(OrderStatus.NEW);
+        assertThat(approveIt.getApprovedAt()).isNull();
         assertThat(approveIt.getCancelRequestStatus()).isEqualTo("PENDING");
     }
 
