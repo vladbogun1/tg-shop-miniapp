@@ -64,12 +64,13 @@ final class NotifyHarness {
     final ShopBot bot = Mockito.mock(ShopBot.class);
     final ActivityLog activity = Mockito.mock(ActivityLog.class);
     final SettingsService settings = Mockito.mock(SettingsService.class);
+    final Messages messages;
     final NotificationService service;
 
     /** Decides whether a Telegram call fails: returns the exception or null. */
     Function<Object, TelegramApiException> failure = call -> null;
 
-    private final List<String> events = new ArrayList<>();
+    private final List<String> events = java.util.Collections.synchronizedList(new ArrayList<>());
     private final StringBuilder out = new StringBuilder();
     private int nextMessageId = 500;
 
@@ -97,7 +98,7 @@ final class NotifyHarness {
             u.setLocale(LANGS[i]);
             Mockito.when(users.findById(LANG_IDS[i])).thenReturn(java.util.Optional.of(u));
         }
-        Messages messages = new Messages((MessageSource) source, users);
+        messages = new Messages((MessageSource) source, users);
         Mockito.when(settings.getBool(any())).thenReturn(true);
         service = build(messages, new CustomerRejectReason(messages));
         wire();
@@ -129,6 +130,11 @@ final class NotifyHarness {
                 throwIfFails(m);
                 return Boolean.TRUE;
             }).when(bot).execute(any(DeleteMessage.class));
+            doAnswer(inv -> {
+                org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery a = inv.getArgument(0);
+                events.add("AnswerCallbackQuery id=" + a.getCallbackQueryId() + " text=" + a.getText());
+                return Boolean.TRUE;
+            }).when(bot).execute(any(org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery.class));
             doAnswer(inv -> {
                 SendDocument d = inv.getArgument(0);
                 events.add(render(d));
@@ -190,6 +196,23 @@ final class NotifyHarness {
         }
         out.append('\n');
         return result;
+    }
+
+    void record(String event) {
+        events.add(event);
+    }
+
+    /** Waits (up to 3 s) until the bot and the journal have seen {@code count} events: for async senders. */
+    void awaitEvents(int count) {
+        long until = System.currentTimeMillis() + 3000;
+        while (events.size() < count && System.currentTimeMillis() < until) {
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     void scene(String label, Order order, Runnable action) {

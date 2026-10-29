@@ -1,0 +1,161 @@
+=== uk / reply with product and preview
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки Щодо товару: Lamzu <Atlantis> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… Дякуємо <за> питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы… Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+Щодо товару: <b>Lamzu &lt;Atlantis&gt; xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</b>
+<blockquote>Дякуємо &lt;за&gt; питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы…</blockquote>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== ru / reply with product and preview
+Journal
+  chatId=102
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Ответ поддержки По товару: Lamzu <Atlantis> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… Дякуємо <за> питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы… Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=SUPPORT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Ответ поддержки</b>
+По товару: <b>Lamzu &lt;Atlantis&gt; xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</b>
+<blockquote>Дякуємо &lt;за&gt; питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы…</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== en / reply with product and preview
+Journal
+  chatId=103
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Support replied About: Lamzu <Atlantis> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… Дякуємо <за> питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы… Tap to open the conversation 👇
+  tgUserId=103
+  type=SUPPORT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>Support replied</b>
+About: <b>Lamzu &lt;Atlantis&gt; xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</b>
+<blockquote>Дякуємо &lt;за&gt; питання ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы…</blockquote>
+Tap to open the conversation 👇>>>
+markup: [{Open conversation webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== uk / photo placeholder, no product
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки 📷 Фото Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+<blockquote>📷 Фото</blockquote>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== ru / photo placeholder, no product
+Journal
+  chatId=102
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Ответ поддержки 📷 Фото Нажмите, чтобы открыть переписку 👇
+  tgUserId=102
+  type=SUPPORT_REPLY
+SendMessage chat=102 thread=null parse=HTML
+<<<💬 <b>Ответ поддержки</b>
+<blockquote>📷 Фото</blockquote>
+Нажмите, чтобы открыть переписку 👇>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== en / photo placeholder, no product
+Journal
+  chatId=103
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Support replied 📷 Photo Tap to open the conversation 👇
+  tgUserId=103
+  type=SUPPORT_REPLY
+SendMessage chat=103 thread=null parse=HTML
+<<<💬 <b>Support replied</b>
+<blockquote>📷 Photo</blockquote>
+Tap to open the conversation 👇>>>
+markup: [{Open conversation webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== blank product, file placeholder
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки 📎 Файл Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+<blockquote>📎 Файл</blockquote>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== no preview
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== blank preview
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== web app url not https: no button
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки hi Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+<blockquote>hi</blockquote>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: none
+

@@ -1,0 +1,36 @@
+=== bot token blank
+(nothing sent)
+
+=== owner null
+(nothing sent)
+
+=== owner 0
+(nothing sent)
+
+=== owner -3
+(nothing sent)
+
+=== place not found
+(nothing sent)
+
+=== owner lookup throws
+(nothing sent)
+
+=== describe throws
+(nothing sent)
+
+=== Telegram fails: swallowed, journaled
+Journal
+  chatId=101
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Приїхало! MCHOSE <Ace> 68 (Black & White) Товар уже в наявності — встигніть купити, кількість обмежена.
+  tgUserId=101
+  type=PREORDER_ARRIVED
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 <b>Приїхало!</b>
+<b>MCHOSE &lt;Ace&gt; 68 (Black &amp; White)</b>
+Товар уже в наявності — встигніть купити, кількість обмежена.>>>
+markup: [{🛒 Купити webapp=https://app.example.test?startapp=pp_79c3e54e-0000-4000-8000-000000000001}]
+

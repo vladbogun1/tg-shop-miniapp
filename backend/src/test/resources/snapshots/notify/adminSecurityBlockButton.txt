@@ -1,0 +1,20 @@
+=== pressed by the admin, alert text kept
+AnswerCallbackQuery id=cb-asb:900 text=Все сессии завершены
+EditMessageText chat=900 message=55 parse=HTML
+<<<🔐 Вход &lt;в&gt; админку
+
+✅ <b>Все сессии завершены, смените пароль.</b>>>>
+markup: none
+
+=== pressed by the admin, no message
+AnswerCallbackQuery id=cb-asb:900 text=Все сессии завершены
+
+=== pressed by someone else
+AnswerCallbackQuery id=cb-asb:900 text=Недоступно
+
+=== data is not a number
+AnswerCallbackQuery id=cb-asb:zzz text=null
+
+=== admin no longer exists
+AnswerCallbackQuery id=cb-asb:900 text=Недоступно
+

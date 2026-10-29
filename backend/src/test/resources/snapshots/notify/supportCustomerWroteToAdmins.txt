@@ -1,0 +1,150 @@
+=== new thread about a product, badge lookup fails
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новый вопрос в поддержку
+  tgUserId=101
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новый вопрос</b>
+Іван &lt;Петренко&gt; · товар: <b>Lamzu &lt;Atlantis&gt; xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…</b>
+<blockquote>Є &lt;в&gt; наявності? ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы…</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: о товаре «Lamzu <Atlantis> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…» — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== new message, no name, general question
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Покупатель · общий вопрос
+<blockquote>Привет</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== no preview
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Покупатель · общий вопрос
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== blank preview
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Покупатель · общий вопрос
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== chat topic 0
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=null parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Покупатель · общий вопрос
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin url not https: no button
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Покупатель · общий вопрос
+<blockquote>hi</blockquote>>>>
+markup: none
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat 'null'
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat ''
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat '  '
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat '0'
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat ' 0 '
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat '@channel'
+Journal
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новый вопрос в поддержку
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=@channel thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новый вопрос</b>
+Покупатель · общий вопрос
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== admin chat '-100777'
+Journal
+  chatId=-100777
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новый вопрос в поддержку
+  tgUserId=102
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-100777 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новый вопрос</b>
+Покупатель · общий вопрос
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: общий вопрос — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+

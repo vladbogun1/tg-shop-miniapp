@@ -1,0 +1,188 @@
+=== new device login via PASSWORD
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=🔐 Вход в админку : Київ <UA>, Windows · Chrome, 17:00
+  type=ADMIN_SECURITY_ALERT
+SendMessage chat=900 thread=null parse=HTML
+<<<🔐 <b>Вход в админку</b>: Київ &lt;UA&gt;, Windows · Chrome, 17:00
+Способ: пароль, IP 1.2.3.4
+
+Это не вы? Нажмите «Заблокировать» — все сессии и доверенные устройства будут завершены.>>>
+markup: [{🚫 Заблокировать cb=asb:900}]
+
+=== new device login via TELEGRAM
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=🔐 Вход в админку : Київ <UA>, Windows · Chrome, 17:00
+  type=ADMIN_SECURITY_ALERT
+SendMessage chat=900 thread=null parse=HTML
+<<<🔐 <b>Вход в админку</b>: Київ &lt;UA&gt;, Windows · Chrome, 17:00
+Способ: Telegram, IP 1.2.3.4
+
+Это не вы? Нажмите «Заблокировать» — все сессии и доверенные устройства будут завершены.>>>
+markup: [{🚫 Заблокировать cb=asb:900}]
+
+=== new device login via INVITE
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=🔐 Вход в админку : Київ <UA>, Windows · Chrome, 17:00
+  type=ADMIN_SECURITY_ALERT
+SendMessage chat=900 thread=null parse=HTML
+<<<🔐 <b>Вход в админку</b>: Київ &lt;UA&gt;, Windows · Chrome, 17:00
+Способ: приглашение, IP 1.2.3.4
+
+Это не вы? Нажмите «Заблокировать» — все сессии и доверенные устройства будут завершены.>>>
+markup: [{🚫 Заблокировать cb=asb:900}]
+
+=== account locked
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=⛔ Вход в админку заблокирован до 17:00
+  type=ADMIN_SECURITY_ALERT
+SendMessage chat=900 thread=null parse=HTML
+<<<⛔ <b>Вход в админку заблокирован до 17:00</b>
+5 неверных паролей или кодов подряд. Последняя попытка: Київ, Windows · Chrome, IP 1.2.3.4
+
+Если это не вы — нажмите «Заблокировать» и смените пароль.>>>
+markup: [{🚫 Заблокировать cb=asb:900}]
+
+=== account notice, multi-line html
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=🔑 2FA сброшена
+  type=ADMIN_NOTICE
+SendMessage chat=900 thread=null parse=HTML
+<<<🔑 <b>2FA сброшена</b>
+Вторая строка с IP 1.2.3.4>>>
+markup: none
+
+=== account notice, null html
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  type=ADMIN_NOTICE
+
+=== invite NEW
+result: true
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Приглашение в админку: NEW, роль Менеджер
+  type=ADMIN_INVITE
+SendMessage chat=900 thread=null parse=HTML
+<<<🔑 <b>Вас пригласили в админку ChiSetup</b> (роль: Менеджер &lt;1&gt;).
+Пригласил: Влад &amp; Co.
+
+Нажмите кнопку, придумайте логин и пароль и подключите приложение-аутентификатор (Google Authenticator, 1Password, Authy).
+
+Ссылка одноразовая, действует до 12.11 17:00. Никому её не пересылайте.>>>
+markup: [{Открыть приглашение url=https://admin.example.test/invite/SECRET-NEW}]
+
+=== invite CREDENTIALS
+result: true
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Приглашение в админку: CREDENTIALS, роль Менеджер
+  type=ADMIN_INVITE
+SendMessage chat=900 thread=null parse=HTML
+<<<🔑 <b>Вход в админку ChiSetup по логину и паролю</b>
+Влад &amp; Co выдал вам логин. Нажмите кнопку, придумайте логин и пароль (и подключите приложение-аутентификатор, если ещё не подключено).
+
+Ссылка одноразовая, действует до 12.11 17:00. Никому её не пересылайте.>>>
+markup: [{Открыть приглашение url=https://admin.example.test/invite/SECRET-CREDENTIALS}]
+
+=== invite PASSWORD_RESET
+result: true
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Приглашение в админку: PASSWORD_RESET, роль Менеджер
+  type=ADMIN_INVITE
+SendMessage chat=900 thread=null parse=HTML
+<<<🔑 <b>Пароль от админки ChiSetup сброшен</b> главным админом.
+Старый пароль больше не действует, все сессии завершены. Нажмите кнопку и задайте новый.
+
+Ссылка одноразовая, действует до 12.11 17:00. Никому её не пересылайте.>>>
+markup: [{Задать новый пароль url=https://admin.example.test/invite/SECRET-PASSWORD_RESET}]
+
+=== invite without a link
+result: false
+(nothing sent)
+
+=== invite, telegram id 0
+result: false
+(nothing sent)
+
+=== invite, Telegram fails: false, journaled
+result: false
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Приглашение в админку: NEW, роль r
+  type=ADMIN_INVITE
+SendMessage chat=900 thread=null parse=HTML
+<<<🔑 <b>Вас пригласили в админку ChiSetup</b> (роль: r).
+Пригласил: i.
+
+Нажмите кнопку, придумайте логин и пароль и подключите приложение-аутентификатор (Google Authenticator, 1Password, Authy).
+
+Ссылка одноразовая, действует до 12.11 17:00. Никому её не пересылайте.>>>
+markup: [{Открыть приглашение url=https://x}]
+
+=== alert, Telegram fails: swallowed, journaled
+Journal
+  chatId=900
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=⛔ Вход в админку заблокирован до 17:00
+  type=ADMIN_SECURITY_ALERT
+SendMessage chat=900 thread=null parse=HTML
+<<<⛔ <b>Вход в админку заблокирован до 17:00</b>
+5 неверных паролей или кодов подряд. Последняя попытка: Київ, Windows · Chrome, IP 1.2.3.4
+
+Если это не вы — нажмите «Заблокировать» и смените пароль.>>>
+markup: [{🚫 Заблокировать cb=asb:900}]
+
+=== alert, admin id 0
+(nothing sent)
+
+=== notice, admin id -1
+(nothing sent)
+
+=== alert, bot token blank
+(nothing sent)
+
+=== notice, bot token blank
+(nothing sent)
+
+=== invite, bot token blank
+result: false
+(nothing sent)
+

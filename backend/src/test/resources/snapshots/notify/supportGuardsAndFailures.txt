@@ -1,0 +1,58 @@
+=== reply, tg_user_id=null
+(nothing sent)
+
+=== reply, tg_user_id=0
+(nothing sent)
+
+=== reply, tg_user_id=-5
+(nothing sent)
+
+=== reply, bot token blank
+(nothing sent)
+
+=== customer wrote, bot token blank: push only
+Push PushMessage[title=Вопрос в поддержку, body=Покупатель пишет: о товаре «Товар» — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
+=== reply, bot token null
+(nothing sent)
+
+=== thread not found
+(nothing sent)
+
+=== thread lookup throws
+(nothing sent)
+
+=== reply, Telegram fails: swallowed, journaled
+Journal
+  chatId=101
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=💬 Відповідь підтримки Щодо товару: Товар hi Натисніть, щоб відкрити розмову 👇
+  tgUserId=101
+  type=SUPPORT_REPLY
+SendMessage chat=101 thread=null parse=HTML
+<<<💬 <b>Відповідь підтримки</b>
+Щодо товару: <b>Товар</b>
+<blockquote>hi</blockquote>
+Натисніть, щоб відкрити розмову 👇>>>
+markup: [{Відкрити розмову webapp=https://app.example.test?startapp=support_7e57ab1e-0000-4000-8000-0000000000aa}]
+
+=== customer wrote, Telegram fails: swallowed, push still goes
+Journal
+  chatId=-1001234567890
+  details={thread=7e57ab1e-0000-4000-8000-0000000000aa}
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Новое сообщение в поддержке
+  tgUserId=101
+  type=ADMIN_SUPPORT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<🛟 <b>Поддержка · новое сообщение</b>
+Іван · товар: <b>Товар</b>
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/support?thread=7e57ab1e-0000-4000-8000-0000000000aa}]
+Push PushMessage[title=Сообщение в поддержку, body=Покупатель пишет: о товаре «Товар» — откройте, чтобы ответить, url=/support?thread=7e57ab1e-0000-4000-8000-0000000000aa, tag=support-7e57ab1e-0000-4000-8000-0000000000aa, badge=null, urgent=true, image=null, group=null]
+
