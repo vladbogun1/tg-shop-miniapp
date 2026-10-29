@@ -2,7 +2,7 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.geo.UserGeoAdminService;
 import com.maxsolch.shop.geo.UserGeoDtos;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

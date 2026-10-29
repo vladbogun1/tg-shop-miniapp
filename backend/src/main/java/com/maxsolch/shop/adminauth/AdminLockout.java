@@ -1,7 +1,7 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import lombok.extern.slf4j.Slf4j;

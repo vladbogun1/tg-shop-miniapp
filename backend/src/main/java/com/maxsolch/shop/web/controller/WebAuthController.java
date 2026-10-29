@@ -1,12 +1,12 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.common.ClientIp;
-import com.maxsolch.shop.security.AuthPrincipal;
-import com.maxsolch.shop.security.CookieOriginGuard;
-import com.maxsolch.shop.security.WebCookies;
+import com.maxsolch.shop.platform.web.ClientIp;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.CookieOriginGuard;
+import com.maxsolch.shop.platform.security.WebCookies;
 import com.maxsolch.shop.service.WebAuthService;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.UnauthorizedException;
+import com.maxsolch.shop.platform.error.ForbiddenException;
+import com.maxsolch.shop.platform.error.UnauthorizedException;
 import com.maxsolch.shop.web.dto.WebAuthDtos.CompleteRequest;
 import com.maxsolch.shop.web.dto.WebAuthDtos.StartResponse;
 import com.maxsolch.shop.web.dto.WebAuthDtos.StatusResponse;

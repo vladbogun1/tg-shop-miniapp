@@ -1,10 +1,10 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.journal.ActivityLog;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.tg.ShopBot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
 /**
  * «Чего ждут за сутки»: once a day at 10:00 Kyiv time the admins' chat gets the new waiting-list entries of

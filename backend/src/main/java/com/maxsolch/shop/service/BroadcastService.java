@@ -1,9 +1,9 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Broadcast;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.repository.BroadcastRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.tg.ShopBot;
@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.maxsolch.shop.common.Texts.blankToNull;
+import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 
 /**
  * Sends HTML-formatted Telegram broadcasts to a chosen audience. One broadcast runs at a time

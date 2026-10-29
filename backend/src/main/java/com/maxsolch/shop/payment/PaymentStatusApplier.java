@@ -1,8 +1,8 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Optional;
 
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * The single place where a monobank invoice state (webhook body or status poll) changes our data.

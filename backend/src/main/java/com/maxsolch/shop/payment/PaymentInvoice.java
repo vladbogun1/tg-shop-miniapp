@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

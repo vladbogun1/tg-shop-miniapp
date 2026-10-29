@@ -1,12 +1,12 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.AdminPaymentOptionDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

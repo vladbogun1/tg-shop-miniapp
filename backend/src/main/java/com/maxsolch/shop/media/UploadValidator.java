@@ -1,7 +1,7 @@
 package com.maxsolch.shop.media;
 
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 

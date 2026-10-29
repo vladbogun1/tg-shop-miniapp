@@ -1,15 +1,15 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.preorder.PreorderQueueService;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

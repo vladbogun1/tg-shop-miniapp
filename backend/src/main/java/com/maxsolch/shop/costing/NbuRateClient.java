@@ -2,7 +2,7 @@ package com.maxsolch.shop.costing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

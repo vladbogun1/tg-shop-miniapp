@@ -1,6 +1,6 @@
 package com.maxsolch.shop.analytics;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 
 import java.time.ZoneId;
 

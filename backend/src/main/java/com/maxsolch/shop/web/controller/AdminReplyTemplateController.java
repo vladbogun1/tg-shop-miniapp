@@ -1,10 +1,10 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.ReplyTemplateService;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.RenderedTemplateDto;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateDto;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateUpsertRequest;

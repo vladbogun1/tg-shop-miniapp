@@ -1,9 +1,9 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.preorder.PreorderDtos.EtaDto;
 import com.maxsolch.shop.preorder.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.repository.UserRepository;
@@ -58,7 +58,7 @@ class PreorderNotifierTest {
         Messages msgs = new Messages((MessageSource) source, users);
         notifier = new PreorderNotifier(queue,
                 new com.maxsolch.shop.tg.CustomerBot(bot, props, msgs, activity),
-                new com.maxsolch.shop.i18n.BotTexts(msgs, mock(com.maxsolch.shop.settings.SettingsService.class),
+                new com.maxsolch.shop.platform.i18n.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),
                         mock(com.maxsolch.shop.translation.TranslationService.class)));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
     }

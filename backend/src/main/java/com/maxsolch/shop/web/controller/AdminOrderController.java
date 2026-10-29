@@ -1,18 +1,18 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.analytics.AnalyticsZone;
-import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.security.RequiredSuperAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.AdminOrderQueries;
 import com.maxsolch.shop.service.AdminOrderStatusService;
@@ -22,8 +22,8 @@ import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.OrderWindow;
 import com.maxsolch.shop.service.ReturnWizardService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.OrderBoardDto;
@@ -297,7 +297,7 @@ public class AdminOrderController {
                 req.paymentOptionId(), com.maxsolch.shop.domain.OrderSource.ADMIN);
         Order created = orderService.createAdminOrder(cmd, req.paidMinor(), channel, audit.currentAdminName(),
                 req.note());
-        audit.record("ORDER_CREATE_ADMIN", "ORDER", com.maxsolch.shop.common.UuidUtil.toString(created.getId()),
+        audit.record("ORDER_CREATE_ADMIN", "ORDER", com.maxsolch.shop.platform.util.UuidUtil.toString(created.getId()),
                 "ручной заказ на " + MoneyFormat.uah(created.getTotalMinor())
                         + (req.paidMinor() > 0
                                 ? ", получено " + MoneyFormat.uah(req.paidMinor()) + " ("

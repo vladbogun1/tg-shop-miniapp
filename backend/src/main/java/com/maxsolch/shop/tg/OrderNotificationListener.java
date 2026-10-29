@@ -87,7 +87,7 @@ public class OrderNotificationListener {
             notificationService.onStatusChanged(target);
             refreshDispatch(target);
             if (event.notifyCustomer()) {
-                String from = com.maxsolch.shop.common.UuidUtil.toString(event.sourceId());
+                String from = com.maxsolch.shop.platform.util.UuidUtil.toString(event.sourceId());
                 notificationService.notifyCustomerMerged(target, from == null ? "" : from.substring(0, 8));
             }
         });

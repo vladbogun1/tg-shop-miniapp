@@ -1,16 +1,16 @@
 package com.maxsolch.shop.inbox;
 
 import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.inbox.InboxDtos.DismissRequest;
 import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxDtos.RestoreRequest;
 import com.maxsolch.shop.inbox.InboxDtos.SnoozeRequest;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

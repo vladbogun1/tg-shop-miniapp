@@ -1,12 +1,12 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.adminauth.AdminAccountService;
-import com.maxsolch.shop.security.AdminTokenRevocations;
-import com.maxsolch.shop.security.AuthPrincipal;
-import com.maxsolch.shop.security.JwtService;
-import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.security.Role;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.security.AdminTokenRevocations;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.JwtService;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.Role;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.AuthResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

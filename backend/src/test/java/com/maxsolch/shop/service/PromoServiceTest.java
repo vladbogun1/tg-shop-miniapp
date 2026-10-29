@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.domain.PromoReservation;
 import com.maxsolch.shop.repository.PromoCodeRepository;
@@ -43,9 +43,9 @@ class PromoServiceTest {
     @Mock
     PromoReservationRepository reservationRepository;
     @Mock
-    com.maxsolch.shop.i18n.Messages messages;
+    com.maxsolch.shop.platform.i18n.Messages messages;
     @Mock
-    com.maxsolch.shop.settings.SettingsService settings;
+    com.maxsolch.shop.platform.settings.SettingsService settings;
 
     PromoService service;
 
@@ -118,7 +118,7 @@ class PromoServiceTest {
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("LIMITED")).thenReturn(Optional.of(promo));
         when(reservationRepository.countOthers(eq(promo.getId()), eq(USER), any())).thenReturn(0L);
         when(reservationRepository.find(promo.getId(), USER)).thenReturn(Optional.empty());
-        when(settings.get(eq(com.maxsolch.shop.settings.SettingsRegistry.PROMO_HOLD_MINUTES), anyInt()))
+        when(settings.get(eq(com.maxsolch.shop.platform.settings.SettingsRegistry.PROMO_HOLD_MINUTES), anyInt()))
                 .thenReturn(120);
 
         Instant before = Instant.now();

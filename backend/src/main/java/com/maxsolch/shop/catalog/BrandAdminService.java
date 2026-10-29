@@ -2,13 +2,13 @@ package com.maxsolch.shop.catalog;
 
 import com.maxsolch.shop.catalog.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.CatalogDtos.BrandUpsertRequest;
-import com.maxsolch.shop.common.AfterCommit;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.tx.AfterCommit;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.service.SlugService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /** Brand directory (§3.2): CRUD, merge, and "find by name/alias or create" for products and imports. */
 @Service

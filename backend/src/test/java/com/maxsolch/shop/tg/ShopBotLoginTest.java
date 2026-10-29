@@ -33,6 +33,6 @@ class ShopBotLoginTest {
 
     @Test
     void deviceLabelIsHtmlEscaped() {
-        assertThat(com.maxsolch.shop.common.Texts.escHtml("<b>Chrome</b> & co")).isEqualTo("&lt;b&gt;Chrome&lt;/b&gt; &amp; co");
+        assertThat(com.maxsolch.shop.platform.util.Texts.escHtml("<b>Chrome</b> & co")).isEqualTo("&lt;b&gt;Chrome&lt;/b&gt; &amp; co");
     }
 }

@@ -2,7 +2,7 @@ package com.maxsolch.shop.translation;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.web.dto.PaymentOptionDto;

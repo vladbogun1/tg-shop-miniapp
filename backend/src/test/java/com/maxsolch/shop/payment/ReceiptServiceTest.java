@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.web.dto.ReceiptDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

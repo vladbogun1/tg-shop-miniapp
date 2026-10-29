@@ -1,13 +1,13 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.BooleanFlagRequest;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest;

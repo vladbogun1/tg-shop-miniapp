@@ -1,8 +1,8 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.domain.AdminIncident;
-import com.maxsolch.shop.security.RequiredSuperAdmin;
+import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ public class PaymentJobs {
 
     /** «Журнал → Бот и сайт» (optional). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public PaymentJobs(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
                        OrderRepository orders, OrderService orderService) {
@@ -81,8 +81,8 @@ public class PaymentJobs {
                     payments.closeOpenInvoices(orderId);
                     log.info("order {} rejected: not paid in time", id);
                     if (activity != null) {
-                        activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
-                                        com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                        activity.record(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(
+                                        com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
                                 .order(orderId)
                                 .text("Заказ #" + id.substring(0, 8) + " автоматически отменён: не оплачен вовремя, "
                                         + "товар вернулся на склад"));
@@ -91,8 +91,8 @@ public class PaymentJobs {
             } catch (Exception e) {
                 log.warn("auto-cancel of order {} failed: {}", id, e.getMessage());
                 if (activity != null) {
-                    activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
-                                    com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
+                    activity.record(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(
+                                    com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ORDER_AUTO_CANCELLED")
                             .order(orderId).text("Автоотмена неоплаченного заказа не удалась")
                             .failed("ERROR", e.getMessage()));
                 }

@@ -6,7 +6,7 @@ import com.maxsolch.shop.inbox.InboxDtos.RestoreRequest;
 import com.maxsolch.shop.inbox.InboxDtos.SnoozeRequest;
 import com.maxsolch.shop.inbox.InboxDtos.SnoozeResult;
 import com.maxsolch.shop.inbox.InboxService;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

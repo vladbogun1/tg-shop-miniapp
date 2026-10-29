@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.gift.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemRequest;
@@ -10,10 +10,10 @@ import com.maxsolch.shop.gift.GiftDtos.TierAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.TierRequest;
 import com.maxsolch.shop.gift.GiftDtos.TierStatsDto;
 import com.maxsolch.shop.service.CatalogService;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

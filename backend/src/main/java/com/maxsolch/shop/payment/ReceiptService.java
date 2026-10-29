@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.web.dto.ReceiptDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-import static com.maxsolch.shop.common.Texts.blankToNull;
+import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 
 /**
  * Payment receipts of an order: the fiscal checks monobank's PRRO (Вчасно.Каса) issued for each

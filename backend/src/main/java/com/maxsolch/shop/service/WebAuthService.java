@@ -2,9 +2,9 @@ package com.maxsolch.shop.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.maxsolch.shop.common.UserAgents;
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.web.UserAgents;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.domain.WebLoginStatus;
 import com.maxsolch.shop.domain.WebLoginToken;
@@ -13,11 +13,11 @@ import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.repository.WebLoginTokenRepository;
 import com.maxsolch.shop.repository.WebSessionRepository;
-import com.maxsolch.shop.security.JwtService;
-import com.maxsolch.shop.security.WebSessionValidator;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
-import com.maxsolch.shop.web.UnauthorizedException;
+import com.maxsolch.shop.platform.security.JwtService;
+import com.maxsolch.shop.platform.security.WebSessionValidator;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.UnauthorizedException;
 import com.maxsolch.shop.web.dto.AuthUserDto;
 import com.maxsolch.shop.web.dto.WebAuthDtos.WebSessionDto;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +42,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * Logging in to the public site through the Telegram bot, and the site sessions that follow.

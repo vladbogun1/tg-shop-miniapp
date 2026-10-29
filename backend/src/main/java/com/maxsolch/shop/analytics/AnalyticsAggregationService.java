@@ -1,7 +1,7 @@
 package com.maxsolch.shop.analytics;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;

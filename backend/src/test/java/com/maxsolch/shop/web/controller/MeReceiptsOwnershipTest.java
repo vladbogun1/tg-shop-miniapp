@@ -1,15 +1,15 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.ReceiptService;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.security.AuthPrincipal;
-import com.maxsolch.shop.security.Role;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.service.CustomerOrders;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.ForbiddenException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ReceiptDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * monobank posts invoice status changes here (up to 3 attempts until it gets 200). Public — the
@@ -32,7 +32,7 @@ public class MonobankWebhookController {
     private final JdbcTemplate jdbc;
     /** «Журнал → Бот и сайт»: rejected (forged / broken) webhooks. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public MonobankWebhookController(MonobankSignatureVerifier verifier, OnlinePaymentService payments,
                                      ObjectMapper mapper, JdbcTemplate jdbc) {
@@ -60,8 +60,8 @@ public class MonobankWebhookController {
         if (!ok) {
             log.warn("monobank webhook with a bad signature rejected (invoice {})", st == null ? "?" : st.invoiceId());
             if (activity != null) {
-                activity.record(com.maxsolch.shop.journal.ActivityLog.Entry.of(
-                                com.maxsolch.shop.journal.ActivityLog.PAYMENT, "WEBHOOK_REJECTED")
+                activity.record(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(
+                                com.maxsolch.shop.platform.journal.ActivityLog.PAYMENT, "WEBHOOK_REJECTED")
                         .text("Вебхук monobank с неверной подписью отклонён")
                         .detail("invoice", st == null ? null : st.invoiceId())
                         .detail("status", st == null ? null : st.status())

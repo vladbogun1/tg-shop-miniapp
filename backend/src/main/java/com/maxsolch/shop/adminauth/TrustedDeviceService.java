@@ -1,8 +1,8 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.common.UserAgents;
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.security.WebCookies;
+import com.maxsolch.shop.platform.web.UserAgents;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.security.WebCookies;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;

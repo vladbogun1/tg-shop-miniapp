@@ -1,6 +1,6 @@
 package com.maxsolch.shop.catalog;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;

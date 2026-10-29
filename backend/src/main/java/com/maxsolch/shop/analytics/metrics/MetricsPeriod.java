@@ -1,6 +1,6 @@
 package com.maxsolch.shop.analytics.metrics;
 
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 
 import java.time.Duration;
 import java.time.Instant;

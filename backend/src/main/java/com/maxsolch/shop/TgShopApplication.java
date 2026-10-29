@@ -1,6 +1,6 @@
 package com.maxsolch.shop;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

@@ -1,8 +1,8 @@
 package com.maxsolch.shop.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.repository.BroadcastRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.tg.ShopBot;

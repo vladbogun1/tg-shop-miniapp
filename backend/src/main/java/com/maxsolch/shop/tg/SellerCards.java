@@ -7,7 +7,7 @@ import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.OrderStatus;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 import static com.maxsolch.shop.tg.TgFormat.money;
 import static com.maxsolch.shop.tg.TgFormat.nz;
 import static com.maxsolch.shop.tg.TgFormat.shortId;

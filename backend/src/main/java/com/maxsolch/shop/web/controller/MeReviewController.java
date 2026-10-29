@@ -6,7 +6,7 @@ import com.maxsolch.shop.review.ReviewDtos.PendingLine;
 import com.maxsolch.shop.review.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.ReviewDtos.SubmitResult;
 import com.maxsolch.shop.review.ReviewService;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +31,7 @@ public class MeReviewController {
     private final ReviewService reviewService;
     /** «Журнал → Бот и сайт». */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public MeReviewController(ReviewService reviewService) {
         this.reviewService = reviewService;
@@ -50,13 +50,13 @@ public class MeReviewController {
         try {
             result = reviewService.submit(SecurityUtil.currentUserId(), req);
         } catch (RuntimeException e) {
-            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("REVIEW_FAILED")
+            journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("REVIEW_FAILED")
                     .text("Отзыв не принят: " + e.getMessage()).rejected(e));
             throw e;
         }
         if (result != null && result.review() != null) {
             var r = result.review();
-            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("REVIEW_SUBMITTED")
+            journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("REVIEW_SUBMITTED")
                     .order(r.orderId())
                     .text("Отзыв " + "★".repeat(Math.max(0, Math.min(5, r.rating()))) + " на «" + r.title() + "»"
                             + (result.bonus() != null ? " · выдан бонус −" + com.maxsolch.shop.review.ReviewRules.discountRu(
@@ -68,7 +68,7 @@ public class MeReviewController {
         return result;
     }
 
-    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
         if (activity != null) {
             activity.record(entry);
         }

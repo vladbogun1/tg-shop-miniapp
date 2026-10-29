@@ -6,7 +6,7 @@ com/maxsolch/shop/catalog/SpecAttributeAdminService.java 558
 com/maxsolch/shop/costing/MarginService.java 503
 com/maxsolch/shop/gift/CaseAutofill.java 618
 com/maxsolch/shop/gift/GiftService.java 553
-com/maxsolch/shop/journal/ActivityLog.java 522
+com/maxsolch/shop/platform/journal/ActivityLog.java 522
 com/maxsolch/shop/preorder/PreorderBatchService.java 734
 com/maxsolch/shop/preorder/PreorderQueueService.java 724
 com/maxsolch/shop/review/ReviewService.java 591

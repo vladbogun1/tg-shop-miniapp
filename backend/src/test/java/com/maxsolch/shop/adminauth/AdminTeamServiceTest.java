@@ -1,15 +1,15 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.AdminRole;
 import com.maxsolch.shop.domain.AdminUser;
-import com.maxsolch.shop.security.AdminAccess;
-import com.maxsolch.shop.security.AdminTokenValidator;
-import com.maxsolch.shop.security.AuthPrincipal;
-import com.maxsolch.shop.security.Role;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.security.AdminAccess;
+import com.maxsolch.shop.platform.security.AdminTokenValidator;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.Role;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

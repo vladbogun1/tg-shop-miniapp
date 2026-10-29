@@ -1,7 +1,7 @@
 package com.maxsolch.shop.catalog;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminCategoryDto;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminSpecAttributeDto;
@@ -18,11 +18,11 @@ import com.maxsolch.shop.catalog.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.catalog.CatalogDtos.SpecAttributeUpsertRequest;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.security.AdminAccess;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.AdminAccess;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.AdminProductService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;

@@ -2,11 +2,11 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.OrderMoney;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.ReplyTemplate;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
 import com.maxsolch.shop.translation.ContentTranslation;
@@ -15,7 +15,7 @@ import com.maxsolch.shop.translation.ContentTranslationRepository;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationOrigin;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.RenderedTemplateDto;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateDto;
 import com.maxsolch.shop.web.dto.ReplyTemplateDtos.TemplateUpsertRequest;
@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * Chat reply templates: CRUD for the admin and filling one in for an order.
@@ -268,7 +268,7 @@ public class ReplyTemplateService {
 
     /** Hryvnias the way the cards print money — kopecks shown when there are any. */
     static String money(long minor) {
-        return com.maxsolch.shop.common.MoneyFormat.uah(minor);
+        return com.maxsolch.shop.platform.util.MoneyFormat.uah(minor);
     }
 
     private static boolean notBlank(String s) {

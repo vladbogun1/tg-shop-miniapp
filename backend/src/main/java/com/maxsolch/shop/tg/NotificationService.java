@@ -1,17 +1,17 @@
 package com.maxsolch.shop.tg;
 
 import com.maxsolch.shop.analytics.AnalyticsZone;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderStatus;
-import com.maxsolch.shop.i18n.ChatPreview;
-import com.maxsolch.shop.i18n.CustomerRejectReason;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.ReceiptKind;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 import static com.maxsolch.shop.tg.TgFormat.idStr;
 import static com.maxsolch.shop.tg.TgFormat.isHttps;
 import static com.maxsolch.shop.tg.TgFormat.money;
@@ -202,7 +202,7 @@ public class NotificationService {
             t.append(messages.get(locale, "bot.order")).append(" <b>#").append(shortId(order)).append("</b>\n");
             if (order.getExchangeOfOrderId() != null) {
                 t.append(messages.get(locale, "bot.exchange.ofOrder",
-                        com.maxsolch.shop.common.UuidUtil.toString(order.getExchangeOfOrderId()).substring(0, 8))).append('\n');
+                        com.maxsolch.shop.platform.util.UuidUtil.toString(order.getExchangeOfOrderId()).substring(0, 8))).append('\n');
             }
             t.append(messages.get(locale, "bot.exchange.body", escHtml(nz(givenSummary)))).append('\n');
             long cod = OrderMoney.codMinor(order);

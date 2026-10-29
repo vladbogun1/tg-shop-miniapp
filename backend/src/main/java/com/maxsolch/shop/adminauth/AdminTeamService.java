@@ -1,13 +1,13 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.domain.AdminRole;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.repository.AdminUserRepository;
-import com.maxsolch.shop.security.AdminTokenValidator;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.security.AdminTokenValidator;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -400,7 +400,7 @@ public class AdminTeamService {
 
     private void requireOwnCode(long callerId, String code, ClientInfo client, String what) {
         AdminUser caller = repo.findByTelegramUserIdAndActiveTrue(callerId)
-                .orElseThrow(() -> new com.maxsolch.shop.web.UnauthorizedException("not authenticated"));
+                .orElseThrow(() -> new com.maxsolch.shop.platform.error.UnauthorizedException("not authenticated"));
         if (code == null || code.isBlank()) {
             throw new BadRequestException("Введите код из приложения-аутентификатора", "CODE_REQUIRED");
         }

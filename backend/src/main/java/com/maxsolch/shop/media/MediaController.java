@@ -1,8 +1,8 @@
 package com.maxsolch.shop.media;
 
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.error.ForbiddenException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;

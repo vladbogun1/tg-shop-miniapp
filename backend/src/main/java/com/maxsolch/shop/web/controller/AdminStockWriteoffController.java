@@ -1,7 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.StockWriteoffReportService;
 import com.maxsolch.shop.service.TimeRange;

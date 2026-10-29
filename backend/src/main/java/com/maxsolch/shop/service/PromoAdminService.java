@@ -1,10 +1,10 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.repository.PromoCodeRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.PromoCodeUpsertRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

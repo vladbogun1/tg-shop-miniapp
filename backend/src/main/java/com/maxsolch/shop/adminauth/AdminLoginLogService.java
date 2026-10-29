@@ -1,6 +1,6 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.common.UserAgents;
+import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.geo.GeoIpLookup;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,7 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * Admin sign-in history ({@code admin_login_log}, V37): every attempt — success or not — with the

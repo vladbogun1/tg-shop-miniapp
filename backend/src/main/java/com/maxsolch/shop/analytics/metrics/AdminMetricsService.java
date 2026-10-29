@@ -1,14 +1,14 @@
 package com.maxsolch.shop.analytics.metrics;
 
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.analytics.AnalyticsReader;
 import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.analytics.EventClassifier;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ErrorRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Reorder;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.OrderStatus;
 import org.springframework.stereotype.Service;
 

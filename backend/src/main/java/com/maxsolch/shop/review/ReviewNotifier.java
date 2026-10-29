@@ -1,8 +1,8 @@
 package com.maxsolch.shop.review;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.tg.CustomerBot;
 import lombok.extern.slf4j.Slf4j;
@@ -13,9 +13,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import static com.maxsolch.shop.common.Texts.ellipsize;
-import static com.maxsolch.shop.common.Texts.escHtml;
-import static com.maxsolch.shop.common.Texts.nullToEmpty;
+import static com.maxsolch.shop.platform.util.Texts.ellipsize;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
 
 /**
  * Best-effort Telegram DMs of the reviews feature (bonus code, "leave a review" reminder) and the

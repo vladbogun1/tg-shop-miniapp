@@ -8,11 +8,11 @@ import com.maxsolch.shop.catalog.CatalogDtos.BucketInput;
 import com.maxsolch.shop.catalog.CatalogDtos.OptionInput;
 import com.maxsolch.shop.catalog.CatalogDtos.RenameOption;
 import com.maxsolch.shop.catalog.CatalogDtos.SpecAttributeUpsertRequest;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * Admin editing of the characteristics (§3.2): attributes with their options and buckets, and the

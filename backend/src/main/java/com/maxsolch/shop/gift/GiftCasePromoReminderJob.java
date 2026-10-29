@@ -1,8 +1,8 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.tg.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;

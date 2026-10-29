@@ -1,12 +1,12 @@
 package com.maxsolch.shop.push;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.push.AdminPushService.SendResult;
 import com.maxsolch.shop.push.PushSubscriptionStore.Subscription;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

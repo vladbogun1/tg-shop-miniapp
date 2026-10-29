@@ -1,10 +1,10 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.StockWriteoff;
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import org.mockito.ArgumentCaptor;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -13,8 +13,8 @@ import com.maxsolch.shop.catalog.BrandAdminService;
 import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest.VariantInput;

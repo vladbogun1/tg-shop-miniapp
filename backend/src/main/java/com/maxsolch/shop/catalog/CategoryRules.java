@@ -1,8 +1,8 @@
 package com.maxsolch.shop.catalog;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 
 import java.util.HashMap;
 import java.util.HashSet;

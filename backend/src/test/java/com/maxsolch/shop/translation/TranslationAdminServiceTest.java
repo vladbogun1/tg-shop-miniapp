@@ -1,6 +1,6 @@
 package com.maxsolch.shop.translation;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.catalog.Category;
@@ -14,7 +14,7 @@ import com.maxsolch.shop.translation.TranslationDtos.ExportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportItem;
 import com.maxsolch.shop.translation.TranslationDtos.ImportRequest;
 import com.maxsolch.shop.translation.TranslationDtos.ImportResult;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -54,7 +54,7 @@ class TranslationAdminServiceTest {
     TranslationService translationService;
     CacheManager cacheManager;
     TranslationAdminService service;
-    com.maxsolch.shop.i18n.BotTexts botTexts;
+    com.maxsolch.shop.platform.i18n.BotTexts botTexts;
 
     @BeforeEach
     void setUp() {
@@ -83,7 +83,7 @@ class TranslationAdminServiceTest {
         when(payments.findAll()).thenReturn(List.of(inactive));
         when(repo.findByLocale(anyString())).thenReturn(List.of());
 
-        botTexts = mock(com.maxsolch.shop.i18n.BotTexts.class);
+        botTexts = mock(com.maxsolch.shop.platform.i18n.BotTexts.class);
         service = new TranslationAdminService(repo, products, variants, tags, payments, templates,
                 translationService,
                 cacheManager, botTexts);
@@ -424,7 +424,7 @@ class TranslationAdminServiceTest {
     private TranslationDtos.SourceFixResult fixBotText(String sourceHash, String newText) {
         return service.fixSource(new TranslationDtos.SourceFixRequest(
                 List.of(new TranslationDtos.SourceRef("BOT_TEXT",
-                        com.maxsolch.shop.i18n.BotTexts.idStringOf(BOT_KEY), "body", sourceHash)),
+                        com.maxsolch.shop.platform.i18n.BotTexts.idStringOf(BOT_KEY), "body", sourceHash)),
                 newText, null), 1L);
     }
 

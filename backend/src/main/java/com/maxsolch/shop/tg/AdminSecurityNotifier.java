@@ -1,14 +1,14 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 
 import com.maxsolch.shop.adminauth.AdminInvite;
 import com.maxsolch.shop.adminauth.AdminSecurityAlerts;
 import com.maxsolch.shop.adminauth.AdminTeamMessenger;
 import com.maxsolch.shop.adminauth.AdminSessions;
 import com.maxsolch.shop.adminauth.LoginMethod;
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
 /**
  * Personal Telegram alerts about an admin's own account, from the shop bot:

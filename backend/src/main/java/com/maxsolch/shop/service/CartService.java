@@ -1,12 +1,12 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Cart;
 import com.maxsolch.shop.domain.CartItem;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.ProductVariant;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.repository.CartItemRepository;
 import com.maxsolch.shop.repository.CartRepository;
 import com.maxsolch.shop.repository.ProductRepository;
@@ -14,7 +14,7 @@ import com.maxsolch.shop.service.CartRules.Line;
 import com.maxsolch.shop.service.CartRules.LineKey;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.CartDtos.CartDto;
 import com.maxsolch.shop.web.dto.CartDtos.CartLineDto;
 import com.maxsolch.shop.web.dto.CartDtos.CartLineInput;

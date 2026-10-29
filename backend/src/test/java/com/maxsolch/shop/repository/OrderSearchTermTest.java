@@ -1,6 +1,6 @@
 package com.maxsolch.shop.repository;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

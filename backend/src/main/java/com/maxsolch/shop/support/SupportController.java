@@ -5,7 +5,7 @@ import com.maxsolch.shop.support.SupportDtos.CountDto;
 import com.maxsolch.shop.support.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.SupportDtos.ThreadDto;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,7 +37,7 @@ public class SupportController {
 
     /** «Журнал → Бот и сайт»: questions to support (not their text). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public SupportController(SupportService support) {
         this.support = support;
@@ -66,7 +66,7 @@ public class SupportController {
     public ThreadDto create(@RequestBody CreateThreadRequest req) {
         String source = SecurityUtil.currentPrincipal().isWeb() ? SupportService.SOURCE_WEB : SupportService.SOURCE_MINIAPP;
         ThreadDto thread = support.create(SecurityUtil.currentUserId(), source, req);
-        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("SUPPORT_REQUEST")
+        journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("SUPPORT_REQUEST")
                 .text(thread.productTitle() != null && !thread.productTitle().isBlank()
                         ? "Вопрос в поддержку о товаре «" + thread.productTitle() + "»"
                         : "Вопрос в поддержку")
@@ -92,7 +92,7 @@ public class SupportController {
     @Operation(summary = "Write to my thread (reopens a closed one)")
     public MessageDto send(@PathVariable String id, @RequestBody SendMessageRequest req) {
         MessageDto sent = support.sendAsCustomer(SecurityUtil.currentUserId(), id, req);
-        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("SUPPORT_MESSAGE")
+        journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("SUPPORT_MESSAGE")
                 .text("Сообщение в поддержку").detail("thread", id));
         return sent;
     }
@@ -110,7 +110,7 @@ public class SupportController {
         return support.closeByCustomer(SecurityUtil.currentUserId(), id);
     }
 
-    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
         if (activity != null) {
             activity.record(entry);
         }

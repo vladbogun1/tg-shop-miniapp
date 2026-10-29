@@ -4,7 +4,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.CardImportItem;
 import com.maxsolch.shop.catalog.CatalogDtos.CardTranslation;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportResult;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.CatalogDtos.CardAcceptRequest;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.domain.Product;

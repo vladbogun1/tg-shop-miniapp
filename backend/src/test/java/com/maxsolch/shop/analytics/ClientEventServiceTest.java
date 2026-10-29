@@ -1,7 +1,7 @@
 package com.maxsolch.shop.analytics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

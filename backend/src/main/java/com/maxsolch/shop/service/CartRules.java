@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.web.dto.CartDtos.CartLineInput;
 
 import java.util.ArrayList;

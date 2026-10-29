@@ -6,7 +6,7 @@ import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.translation.ContentTranslation;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -145,7 +145,7 @@ class CatalogSchemaImporterTest {
     /** Small helper so the test reads naturally. */
     static final class UuidUtilHelper {
         static String id(Category c) {
-            return com.maxsolch.shop.common.UuidUtil.toString(c.getId());
+            return com.maxsolch.shop.platform.util.UuidUtil.toString(c.getId());
         }
     }
 }

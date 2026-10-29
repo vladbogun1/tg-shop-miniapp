@@ -1,10 +1,10 @@
 package com.maxsolch.shop.push;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.push.PushSubscriptionStore.Subscription;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,8 +23,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.maxsolch.shop.common.Texts.ellipsize;
-import static com.maxsolch.shop.common.Texts.nullToEmpty;
+import static com.maxsolch.shop.platform.util.Texts.ellipsize;
+import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
 
 /**
  * Web Push to the admin's devices (the installed admin PWA / a desktop browser).
@@ -146,10 +146,10 @@ public class AdminPushService {
     }
 
     /** «Журнал → Бот и сайт» (optional: tests build the service without it). */
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setActivity(com.maxsolch.shop.journal.ActivityLog activity) {
+    void setActivity(com.maxsolch.shop.platform.journal.ActivityLog activity) {
         this.activity = activity;
     }
 
@@ -158,8 +158,8 @@ public class AdminPushService {
         if (activity == null || r == null) {
             return;
         }
-        com.maxsolch.shop.journal.ActivityLog.Entry e = com.maxsolch.shop.journal.ActivityLog.Entry
-                .of(com.maxsolch.shop.journal.ActivityLog.SYSTEM, "ADMIN_PUSH")
+        com.maxsolch.shop.platform.journal.ActivityLog.Entry e = com.maxsolch.shop.platform.journal.ActivityLog.Entry
+                .of(com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ADMIN_PUSH")
                 .text("Push админам: " + message.title())
                 .detail("tag", message.tag())
                 .detail("sent", r.sent()).detail("failed", r.failed()).detail("removed", r.removed());

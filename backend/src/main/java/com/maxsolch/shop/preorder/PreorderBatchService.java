@@ -1,6 +1,6 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.domain.User;
@@ -25,10 +25,10 @@ import com.maxsolch.shop.preorder.PreorderDtos.SupplierRequest;
 import com.maxsolch.shop.preorder.PreorderSubscription.Status;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;

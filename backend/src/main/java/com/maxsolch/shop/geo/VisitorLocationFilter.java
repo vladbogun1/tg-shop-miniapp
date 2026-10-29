@@ -1,8 +1,8 @@
 package com.maxsolch.shop.geo;
 
-import com.maxsolch.shop.common.ClientIp;
-import com.maxsolch.shop.security.AuthPrincipal;
-import com.maxsolch.shop.security.Role;
+import com.maxsolch.shop.platform.web.ClientIp;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

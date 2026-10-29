@@ -2,8 +2,8 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.AdminIncident;
 import com.maxsolch.shop.repository.AdminIncidentRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -213,7 +213,7 @@ public class IncidentService {
     }
 
     private static String uah(long minor) {
-        return com.maxsolch.shop.common.MoneyFormat.uah(minor);
+        return com.maxsolch.shop.platform.util.MoneyFormat.uah(minor);
     }
 
     private static String when(java.sql.Timestamp t) {

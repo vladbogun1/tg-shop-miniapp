@@ -30,7 +30,7 @@ public enum TranslationEntityType {
     BRAND(List.of()),
     /**
      * A bot phrase of the pre-order queue (V74): entity_id = MD5 of the message key, see
-     * {@link com.maxsolch.shop.i18n.BotTexts}. Russian source = messages_ru.properties or the owner's fix.
+     * {@link com.maxsolch.shop.platform.i18n.BotTexts}. Russian source = messages_ru.properties or the owner's fix.
      */
     BOT_TEXT(List.of(TranslationEntityType.BODY));
     // PAYMENT_REQUISITES (V29) went with the manual card transfer: rows deleted in V39, the ENUM value

@@ -2,17 +2,17 @@ package com.maxsolch.shop.payment;
 
 import com.maxsolch.shop.domain.OrderMoney;
 
-import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * Online payment of orders through monobank acquiring.
@@ -75,23 +75,23 @@ public class OnlinePaymentService {
     }
 
     /** Optional (tests build the service without them): PRRO tax codes and basket JSON. */
-    private com.maxsolch.shop.settings.SettingsService settings;
+    private com.maxsolch.shop.platform.settings.SettingsService settings;
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
     @org.springframework.beans.factory.annotation.Autowired
-    void setSettings(com.maxsolch.shop.settings.SettingsService settings) {
+    void setSettings(com.maxsolch.shop.platform.settings.SettingsService settings) {
         this.settings = settings;
     }
 
     /** «Журнал → Бот и сайт» (optional, like the settings above). */
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setActivity(com.maxsolch.shop.journal.ActivityLog activity) {
+    void setActivity(com.maxsolch.shop.platform.journal.ActivityLog activity) {
         this.activity = activity;
     }
 
-    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
         if (activity != null) {
             activity.record(entry);
         }
@@ -106,7 +106,7 @@ public class OnlinePaymentService {
         if (settings == null) {
             return List.of();
         }
-        String raw = settings.getString(com.maxsolch.shop.settings.SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
+        String raw = settings.getString(com.maxsolch.shop.platform.settings.SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
         List<Integer> out = new ArrayList<>();
         if (raw != null) {
             for (String part : raw.split("[,;\\s]+")) {
@@ -206,9 +206,9 @@ public class OnlinePaymentService {
                     embedded));
         } catch (MonobankClient.MonobankException e) {
             log.warn("monobank invoice/create failed for order {}: {}", key, e.getMessage());
-            journal(com.maxsolch.shop.journal.ActivityLog.Entry.of(com.maxsolch.shop.journal.ActivityLog.PAYMENT,
+            journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(com.maxsolch.shop.platform.journal.ActivityLog.PAYMENT,
                             "INVOICE_CREATE_FAILED").order(orderId)
-                    .text("monobank не создал счёт на " + com.maxsolch.shop.common.MoneyFormat.amount(amount) + " грн")
+                    .text("monobank не создал счёт на " + com.maxsolch.shop.platform.util.MoneyFormat.amount(amount) + " грн")
                     .detail("amountMinor", amount).detail("returnTo", returnTo)
                     .failed("MONOBANK_ERROR", e.getMessage()));
             throw new ConflictException(messages.current("api.payment.failed"), "PAYMENT_FAILED");
@@ -227,9 +227,9 @@ public class OnlinePaymentService {
         inv.setStatus(PaymentInvoice.CREATED);
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
-        journal(com.maxsolch.shop.journal.ActivityLog.Entry.of(com.maxsolch.shop.journal.ActivityLog.PAYMENT,
+        journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(com.maxsolch.shop.platform.journal.ActivityLog.PAYMENT,
                         "INVOICE_CREATED").order(orderId)
-                .text("Счёт monobank на " + com.maxsolch.shop.common.MoneyFormat.amount(amount) + " грн"
+                .text("Счёт monobank на " + com.maxsolch.shop.platform.util.MoneyFormat.amount(amount) + " грн"
                         + (amount < order.getTotalMinor() ? " (предоплата)" : "")
                         + " · " + (returnTo == ReturnTo.SITE ? "сайт" : "Mini App")
                         + (embedded ? ", в окне" : ""))

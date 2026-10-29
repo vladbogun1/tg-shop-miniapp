@@ -1,12 +1,12 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.review.ReviewDtos.AdminPage;
 import com.maxsolch.shop.review.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.ReviewDtos.ReplyRequest;
 import com.maxsolch.shop.review.ReviewService;
-import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.security.RequiredSuperAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

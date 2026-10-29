@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
@@ -37,9 +37,9 @@ class PromoPersonalCodeTest {
     @Mock
     PromoReservationRepository reservationRepository;
     @Mock
-    com.maxsolch.shop.i18n.Messages messages;
+    com.maxsolch.shop.platform.i18n.Messages messages;
     @Mock
-    com.maxsolch.shop.settings.SettingsService settings;
+    com.maxsolch.shop.platform.settings.SettingsService settings;
 
     PromoService service;
 

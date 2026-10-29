@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
@@ -10,7 +10,7 @@ import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,7 +52,7 @@ class OrderCancelRequestTest {
     @Mock
     CartService cartService;
     @Mock
-    com.maxsolch.shop.i18n.Messages messages;
+    com.maxsolch.shop.platform.i18n.Messages messages;
     @Mock
     EntityManager entityManager;
 

@@ -1,8 +1,8 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.service.WebAuthService;
 import com.maxsolch.shop.service.WebAuthService.BotDecision;
 import com.maxsolch.shop.service.WebAuthService.BotPrompt;
@@ -29,7 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
 /**
  * The bot's half of the website login (see {@link WebAuthService}).

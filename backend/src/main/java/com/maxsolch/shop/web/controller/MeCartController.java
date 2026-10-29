@@ -2,7 +2,7 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.service.CartService;
 import com.maxsolch.shop.translation.ContentLocale;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CartDtos.CartDto;
 import com.maxsolch.shop.web.dto.CartDtos.CartWriteRequest;
 import io.swagger.v3.oas.annotations.Operation;

@@ -3,14 +3,14 @@ package com.maxsolch.shop.catalog;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminCategoryDto;
 import com.maxsolch.shop.catalog.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.ReorderItem;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.service.SlugService;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * Admin CRUD of the category tree (docs/CATALOG-SPECS.md §3.2). Every change re-checks the tree

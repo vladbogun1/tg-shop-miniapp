@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftRegistryService;
 import com.maxsolch.shop.gift.GiftService;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.PaymentInvoiceRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.tg.NotificationService;

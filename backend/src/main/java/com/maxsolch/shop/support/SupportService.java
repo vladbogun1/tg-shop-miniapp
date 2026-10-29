@@ -1,26 +1,26 @@
 package com.maxsolch.shop.support;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.i18n.ChatPreview;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.SupportDtos.ConfigDto;
 import com.maxsolch.shop.support.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.SupportDtos.ThreadDto;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ForbiddenException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.SendMessageRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import static com.maxsolch.shop.common.Texts.ellipsize;
+import static com.maxsolch.shop.platform.util.Texts.ellipsize;
 
 /**
  * Support threads: customer questions that are not about an order (a product before buying it, or

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.costing;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.CostingDtos.BatchMoneyDto;
 import com.maxsolch.shop.costing.CostingDtos.ExpenseDto;
 import com.maxsolch.shop.costing.CostingDtos.ExpenseFileDto;
@@ -23,8 +23,8 @@ import com.maxsolch.shop.preorder.PreorderBatchRepository;
 import com.maxsolch.shop.preorder.PreorderBatchService;
 import com.maxsolch.shop.preorder.PreorderQueueService;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;

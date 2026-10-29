@@ -2,8 +2,8 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
@@ -16,8 +16,8 @@ import com.maxsolch.shop.service.MessageService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.PromoService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CancelOrderRequest;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.web.dto.MessageDto;
@@ -72,7 +72,7 @@ public class MeController {
     private com.maxsolch.shop.payment.ReceiptService receipts;
     /** «Журнал → Бот и сайт»: what the customer did here (optional — tests build the controller bare). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     /** Opening the gift case (V57); a setter so the unit tests' constructor stays as it is. */
     private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
@@ -141,7 +141,7 @@ public class MeController {
         if (preview != null && preview.valid()) {
             journal(ActivityLog.fromRequest("PROMO_APPLIED")
                     .text("Промокод " + code.trim().toUpperCase(Locale.ROOT) + " принят: скидка "
-                            + com.maxsolch.shop.common.MoneyFormat.amount(preview.discountMinor()) + " грн")
+                            + com.maxsolch.shop.platform.util.MoneyFormat.amount(preview.discountMinor()) + " грн")
                     .detail("code", code.trim().toUpperCase(Locale.ROOT))
                     .detail("discountMinor", preview.discountMinor())
                     .detail("subtotalMinor", subtotalMinor));

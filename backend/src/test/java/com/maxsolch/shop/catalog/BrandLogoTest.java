@@ -3,7 +3,7 @@ package com.maxsolch.shop.catalog;
 import com.maxsolch.shop.catalog.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.CatalogDtos.BrandUpsertRequest;
 import com.maxsolch.shop.media.ImageStorageService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

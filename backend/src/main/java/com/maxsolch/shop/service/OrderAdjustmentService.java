@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.MoneyFormat;
+import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.domain.DeliveryMethod;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMoney;
@@ -18,8 +18,8 @@ import com.maxsolch.shop.repository.OrderReturnLineRepository;
 import com.maxsolch.shop.repository.OrderReturnRepository;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -1200,7 +1200,7 @@ public class OrderAdjustmentService {
     }
 
     private static String shortId(byte[] id) {
-        return com.maxsolch.shop.common.UuidUtil.toString(id).substring(0, 8);
+        return com.maxsolch.shop.platform.util.UuidUtil.toString(id).substring(0, 8);
     }
 
     private static String cut(String s, int max) {

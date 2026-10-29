@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import static com.maxsolch.shop.common.Texts.blankToNull;
-import static com.maxsolch.shop.common.Texts.cut;
+import static com.maxsolch.shop.platform.util.Texts.blankToNull;
+import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * IP address -> approximate place (country, city, coordinates), from an offline {@code .mmdb} file.

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMoney;
 import com.maxsolch.shop.domain.OrderPaymentState;
@@ -8,7 +8,7 @@ import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.SenderType;
-import com.maxsolch.shop.i18n.CustomerRejectReason;
+import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.repository.OrderExchangeRepository;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderMessageRepository;

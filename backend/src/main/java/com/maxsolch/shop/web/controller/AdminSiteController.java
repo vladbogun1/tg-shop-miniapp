@@ -1,7 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.site.SiteRevalidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

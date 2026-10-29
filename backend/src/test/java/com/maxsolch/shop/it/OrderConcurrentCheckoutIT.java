@@ -2,7 +2,7 @@ package com.maxsolch.shop.it;
 
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.site;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;

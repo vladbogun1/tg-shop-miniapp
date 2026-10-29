@@ -1,7 +1,7 @@
 package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.costing.LotLedger;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.preorder.PreorderQueueService;
 import com.maxsolch.shop.repository.ProductRepository;
 

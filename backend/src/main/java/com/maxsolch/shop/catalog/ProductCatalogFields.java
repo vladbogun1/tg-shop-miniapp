@@ -1,7 +1,7 @@
 package com.maxsolch.shop.catalog;
 
 import com.maxsolch.shop.catalog.CatalogDtos.BrandRefDto;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.web.dto.TagDto;
 

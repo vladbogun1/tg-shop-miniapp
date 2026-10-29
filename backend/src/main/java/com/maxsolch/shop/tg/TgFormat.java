@@ -1,7 +1,7 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Order;
 
 /** Small formatting and config helpers shared by the Telegram notification classes. */
@@ -27,7 +27,7 @@ final class TgFormat {
      * different totals for the same order whenever kopecks were involved.
      */
     static String money(long minor) {
-        return com.maxsolch.shop.common.MoneyFormat.amount(minor);
+        return com.maxsolch.shop.platform.util.MoneyFormat.amount(minor);
     }
 
     static String nz(String s) {

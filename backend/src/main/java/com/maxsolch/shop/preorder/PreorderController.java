@@ -1,10 +1,10 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.preorder.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.PreorderDtos.ProductPreorderDto;
 import com.maxsolch.shop.preorder.PreorderDtos.SubscribeRequest;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

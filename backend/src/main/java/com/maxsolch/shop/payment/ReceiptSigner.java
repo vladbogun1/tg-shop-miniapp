@@ -1,6 +1,6 @@
 package com.maxsolch.shop.payment;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;

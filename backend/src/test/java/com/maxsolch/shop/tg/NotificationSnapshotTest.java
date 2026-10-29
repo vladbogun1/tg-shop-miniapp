@@ -1,10 +1,10 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.payment.ReceiptKind;
-import com.maxsolch.shop.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;

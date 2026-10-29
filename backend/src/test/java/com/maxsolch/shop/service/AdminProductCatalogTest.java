@@ -4,13 +4,13 @@ import com.maxsolch.shop.catalog.BrandAdminService;
 import com.maxsolch.shop.catalog.CardStatus;
 import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogFixtures;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ class AdminProductCatalogTest {
         service = new AdminProductService(products, mock(ImageStorageService.class), mock(SlugService.class),
                 mock(TranslationService.class), directory, brands,
                 mock(com.maxsolch.shop.repository.StockWriteoffRepository.class),
-                mock(com.maxsolch.shop.audit.AdminAuditService.class),
+                mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
                 mock(com.maxsolch.shop.costing.LotLedger.class),
                 mock(com.maxsolch.shop.preorder.PreorderQueueService.class),
                 mock(com.maxsolch.shop.preorder.PreorderSubscriptionRepository.class));

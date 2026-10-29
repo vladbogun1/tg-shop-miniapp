@@ -1,10 +1,10 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.ReceiptService;
 import com.maxsolch.shop.payment.ReceiptSigner;
-import com.maxsolch.shop.web.ForbiddenException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.ForbiddenException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.CacheControl;

@@ -1,8 +1,8 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.i18n.BotTexts;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.util.MoneyFormat;
+import com.maxsolch.shop.platform.i18n.BotTexts;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.preorder.PreorderDtos.EtaDto;
 import com.maxsolch.shop.preorder.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.tg.CustomerBot;
@@ -18,7 +18,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import static com.maxsolch.shop.common.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
 /**
  * The bot messages of the pre-order queue (stage 4 of docs/PREORDERS-PLAN.md): after commit only, so

@@ -1,14 +1,14 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.novaposhta.NovaPoshtaSyncService;
 import com.maxsolch.shop.repository.NovaPoshtaWarehouseRepository;
-import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.settings.SettingsDtos.SettingsResponse;
-import com.maxsolch.shop.settings.SettingsDtos.SettingsUpdateRequest;
-import com.maxsolch.shop.settings.SettingsDtos.SystemInfoDto;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
+import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsUpdateRequest;
+import com.maxsolch.shop.platform.settings.SettingsDtos.SystemInfoDto;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

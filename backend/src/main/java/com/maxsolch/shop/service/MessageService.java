@@ -1,17 +1,17 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.MessageType;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderMessage;
 import com.maxsolch.shop.domain.SenderType;
-import com.maxsolch.shop.i18n.ChatPreview;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.repository.OrderMessageRepository;
 import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ConversationDto;
 import com.maxsolch.shop.web.dto.MessageDto;
 import com.maxsolch.shop.web.dto.SendMessageRequest;

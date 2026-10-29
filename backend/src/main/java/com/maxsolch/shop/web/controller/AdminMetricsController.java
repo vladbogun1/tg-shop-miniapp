@@ -4,7 +4,7 @@ import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
 import com.maxsolch.shop.analytics.metrics.ChannelFilter;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos;
 import com.maxsolch.shop.analytics.metrics.MetricsPeriod;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

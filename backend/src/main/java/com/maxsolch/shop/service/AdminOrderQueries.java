@@ -1,12 +1,12 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.OrderSearchTerm;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.OrderBoardDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;
 import org.springframework.data.domain.PageRequest;

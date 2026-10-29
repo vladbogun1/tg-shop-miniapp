@@ -2,10 +2,10 @@ package com.maxsolch.shop.catalog;
 
 import com.maxsolch.shop.catalog.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.ReorderItem;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.service.SlugService;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.ConflictException;
+import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -69,7 +69,7 @@ class CategoryTreeTest {
         assertThat(s.category().sortOrder()).isEqualTo(10);
         assertThatThrownBy(() -> service.create(new CategoryUpsertRequest("механические", null, id(keyboards),
                 null, null, null, null, null, null, null)))
-                .isInstanceOf(com.maxsolch.shop.web.BadRequestException.class);
+                .isInstanceOf(com.maxsolch.shop.platform.error.BadRequestException.class);
     }
 
     @Test

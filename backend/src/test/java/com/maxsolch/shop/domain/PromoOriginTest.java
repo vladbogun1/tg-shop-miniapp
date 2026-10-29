@@ -1,10 +1,10 @@
 package com.maxsolch.shop.domain;
 
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
 import com.maxsolch.shop.service.PromoAdminService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.controller.AdminPromoController;
 import com.maxsolch.shop.web.dto.PromoCodeDto;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class PromoOriginTest {
 
     private static PromoCode code(String code, String source, Long owner) {
         PromoCode p = new PromoCode();
-        p.setId(com.maxsolch.shop.common.UuidUtil.randomBytes());
+        p.setId(com.maxsolch.shop.platform.util.UuidUtil.randomBytes());
         p.setCode(code);
         p.setSource(source);
         p.setOwnerUserId(owner);

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.push;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.InboxService;
 import com.maxsolch.shop.media.MediaSigner;

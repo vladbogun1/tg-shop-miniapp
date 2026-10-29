@@ -10,7 +10,7 @@ import com.maxsolch.shop.gift.GiftDtos.GiftStatsDto;
 import com.maxsolch.shop.gift.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.GiftDtos.TierAdminDto;
 import com.maxsolch.shop.gift.GiftDtos.TierRequest;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -138,12 +138,12 @@ public class AdminGiftController {
     public GiftDtos.GiftLimitDto limit(@RequestParam String orderId) {
         byte[] id;
         try {
-            id = com.maxsolch.shop.common.UuidUtil.toBytes(orderId.trim());
+            id = com.maxsolch.shop.platform.util.UuidUtil.toBytes(orderId.trim());
         } catch (IllegalArgumentException e) {
-            throw new com.maxsolch.shop.web.BadRequestException("Неверный id заказа");
+            throw new com.maxsolch.shop.platform.error.BadRequestException("Неверный id заказа");
         }
         return registry.limitForOrder(id, java.time.Instant.now())
-                .orElseThrow(() -> new com.maxsolch.shop.web.NotFoundException("Заказ не найден"));
+                .orElseThrow(() -> new com.maxsolch.shop.platform.error.NotFoundException("Заказ не найден"));
     }
 
     @GetMapping("/registry")
@@ -152,7 +152,7 @@ public class AdminGiftController {
         try {
             return registry.registry(java.time.LocalDate.parse(from), java.time.LocalDate.parse(to));
         } catch (java.time.format.DateTimeParseException e) {
-            throw new com.maxsolch.shop.web.BadRequestException("Дата — в формате ГГГГ-ММ-ДД");
+            throw new com.maxsolch.shop.platform.error.BadRequestException("Дата — в формате ГГГГ-ММ-ДД");
         }
     }
 }

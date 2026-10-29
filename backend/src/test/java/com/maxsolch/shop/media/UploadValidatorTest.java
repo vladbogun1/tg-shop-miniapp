@@ -1,6 +1,6 @@
 package com.maxsolch.shop.media;
 
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -17,9 +17,9 @@ class UploadValidatorTest {
     /** The wording comes from the message catalogue; these tests only care that it refuses. */
     private final UploadValidator validator = new UploadValidator(stubMessages());
 
-    private static com.maxsolch.shop.i18n.Messages stubMessages() {
-        com.maxsolch.shop.i18n.Messages messages =
-                org.mockito.Mockito.mock(com.maxsolch.shop.i18n.Messages.class);
+    private static com.maxsolch.shop.platform.i18n.Messages stubMessages() {
+        com.maxsolch.shop.platform.i18n.Messages messages =
+                org.mockito.Mockito.mock(com.maxsolch.shop.platform.i18n.Messages.class);
         org.mockito.Mockito.lenient()
                 .when(messages.current(org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.any(Object[].class)))

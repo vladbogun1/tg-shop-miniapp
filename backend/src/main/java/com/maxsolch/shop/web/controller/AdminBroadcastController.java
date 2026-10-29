@@ -1,9 +1,9 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.BroadcastService;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
 import com.maxsolch.shop.web.dto.BroadcastRequest;
 import com.maxsolch.shop.web.dto.BroadcastResult;

@@ -1,15 +1,15 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.domain.PromoOrigin;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
-import com.maxsolch.shop.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.service.PromoAdminService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.PromoCodeDto;
 import com.maxsolch.shop.web.dto.PromoCodeUpsertRequest;
 import io.swagger.v3.oas.annotations.Operation;

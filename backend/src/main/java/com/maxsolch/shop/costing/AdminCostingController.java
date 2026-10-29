@@ -1,7 +1,7 @@
 package com.maxsolch.shop.costing;
 
 import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.costing.CostingDtos.BatchMoneyDto;
 import com.maxsolch.shop.costing.CostingDtos.BatchSalesDto;
 import com.maxsolch.shop.costing.CostingDtos.ExpenseRequest;
@@ -15,9 +15,9 @@ import com.maxsolch.shop.costing.CostingDtos.RateDto;
 import com.maxsolch.shop.costing.CostingDtos.ReconcileDto;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.security.AdminAccess;
-import com.maxsolch.shop.security.RequiredAdmin;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.security.AdminAccess;
+import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

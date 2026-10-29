@@ -2,12 +2,12 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.gift.CaseLowMargin;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.domain.PromoReservation;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.PromoReservationRepository;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.web.dto.PromoPreviewDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

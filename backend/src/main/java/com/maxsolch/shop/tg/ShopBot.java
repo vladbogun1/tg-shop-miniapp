@@ -1,12 +1,12 @@
 package com.maxsolch.shop.tg;
 
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.journal.ActivityLog;
-import com.maxsolch.shop.security.TelegramUser;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.platform.security.TelegramUser;
 import com.maxsolch.shop.service.AuthService;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;

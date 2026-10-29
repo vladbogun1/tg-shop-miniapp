@@ -2,7 +2,7 @@ package com.maxsolch.shop.adminauth;
 
 import com.maxsolch.shop.push.PushSubscriptionStore;
 import com.maxsolch.shop.repository.AdminUserRepository;
-import com.maxsolch.shop.security.AdminTokenValidator;
+import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.stereotype.Service;
 
 /**

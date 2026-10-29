@@ -1,6 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.novaposhta.NovaPoshtaService;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.service.PromoService;

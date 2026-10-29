@@ -1,6 +1,6 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
@@ -11,10 +11,10 @@ import com.maxsolch.shop.preorder.PreorderDtos.CancelRequest;
 import com.maxsolch.shop.preorder.PreorderSubscription.Status;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

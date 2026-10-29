@@ -4,17 +4,17 @@ import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.PromoCode;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.review.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.ReviewDtos.SubmitResult;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.SiteRevalidator;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -288,8 +288,8 @@ class ReviewServiceTest {
 
     @Test
     void adminListForOneProductCountsTabsOfThatProductOnly() {
-        byte[] product = com.maxsolch.shop.common.UuidUtil.randomBytes();
-        String productId = com.maxsolch.shop.common.UuidUtil.toString(product);
+        byte[] product = com.maxsolch.shop.platform.util.UuidUtil.randomBytes();
+        String productId = com.maxsolch.shop.platform.util.UuidUtil.toString(product);
         when(reviews.findByProductIdAndStatus(any(), eq(ReviewStatus.PENDING), any()))
                 .thenReturn(org.springframework.data.domain.Page.empty());
         when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.PENDING))).thenReturn(1L);

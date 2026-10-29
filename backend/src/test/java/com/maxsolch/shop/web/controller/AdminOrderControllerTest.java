@@ -1,7 +1,7 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.domain.RejectReasonCode;
@@ -14,8 +14,8 @@ import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
 import com.maxsolch.shop.service.ReturnWizardService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.OrderAdjustmentDtos.ReturnWizardRequest;
 import com.maxsolch.shop.web.dto.OrderBoardDto;
 import com.maxsolch.shop.web.dto.OrderCardDto;

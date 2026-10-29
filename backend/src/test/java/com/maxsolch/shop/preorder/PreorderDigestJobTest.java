@@ -1,10 +1,10 @@
 package com.maxsolch.shop.preorder;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.config.AppProperties;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.domain.Product;
-import com.maxsolch.shop.journal.ActivityLog;
-import com.maxsolch.shop.settings.SettingsService;
+import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.tg.ShopBot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

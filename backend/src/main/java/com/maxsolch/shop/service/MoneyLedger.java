@@ -5,7 +5,7 @@ import com.maxsolch.shop.domain.OrderMoneyMovement.Channel;
 import com.maxsolch.shop.domain.OrderMoneyMovement.Kind;
 import com.maxsolch.shop.domain.OrderMoneyMovement.Source;
 import com.maxsolch.shop.repository.OrderMoneyMovementRepository;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;

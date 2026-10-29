@@ -1,11 +1,11 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.config.AppProperties;
-import com.maxsolch.shop.security.AdminTokenValidator;
-import com.maxsolch.shop.security.CookieOriginGuard;
-import com.maxsolch.shop.security.JwtAuthFilter;
-import com.maxsolch.shop.security.JwtService;
-import com.maxsolch.shop.security.WebSessionValidator;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.security.AdminTokenValidator;
+import com.maxsolch.shop.platform.security.CookieOriginGuard;
+import com.maxsolch.shop.platform.security.JwtAuthFilter;
+import com.maxsolch.shop.platform.security.JwtService;
+import com.maxsolch.shop.platform.security.WebSessionValidator;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -115,7 +115,7 @@ class PreAuthTokenFilterTest {
 
     @Test
     void accessTokenIsNotAPreAuthToken() {
-        String access = jwtService.issueToken(7L, com.maxsolch.shop.security.Role.ADMIN, 3);
+        String access = jwtService.issueToken(7L, com.maxsolch.shop.platform.security.Role.ADMIN, 3);
         assertThat(preAuth.parse(access)).isEmpty();
         assertThat(preAuth.looksLikePreAuth(access)).isFalse();
     }

@@ -2,7 +2,7 @@ package com.maxsolch.shop.domain;
 
 import com.maxsolch.shop.catalog.CardStatus;
 import com.maxsolch.shop.catalog.ProductCondition;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

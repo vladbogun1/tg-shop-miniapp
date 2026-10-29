@@ -2,7 +2,7 @@ package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.domain.OrderMoney;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderSource;
 import com.maxsolch.shop.domain.User;
@@ -10,7 +10,7 @@ import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.service.CreateOrderCommand;
 import com.maxsolch.shop.service.OrderIdempotencyService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.CreateOrderRequest;
 import com.maxsolch.shop.web.dto.CreateOrderResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -39,7 +39,7 @@ public class OrderController {
     private com.maxsolch.shop.service.OrderGuard orderGuard;
     /** «Журнал → Бот и сайт»: placed orders and refused checkouts. */
     @org.springframework.beans.factory.annotation.Autowired
-    private com.maxsolch.shop.journal.ActivityLog activity;
+    private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public OrderController(OrderService orderService, UserRepository userRepository,
                            OrderIdempotencyService idempotency) {
@@ -68,7 +68,7 @@ public class OrderController {
         try {
             order = place(req, userId);
         } catch (RuntimeException e) {
-            journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("ORDER_FAILED")
+            journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("ORDER_FAILED")
                     .text("Заказ не оформлен: " + e.getMessage())
                     .detail("items", req.items().size())
                     .detail("promoCode", trimToNull(req.promoCode()))
@@ -77,9 +77,9 @@ public class OrderController {
         }
         String orderId = UuidUtil.toString(order.getId());
         idempotency.remember(userId, idempotencyKey, orderId);
-        journal(com.maxsolch.shop.journal.ActivityLog.fromRequest("ORDER_CREATED")
+        journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("ORDER_CREATED")
                 .order(order.getId())
-                .text("Заказ #" + orderId.substring(0, 8) + " на " + com.maxsolch.shop.common.MoneyFormat.amount(
+                .text("Заказ #" + orderId.substring(0, 8) + " на " + com.maxsolch.shop.platform.util.MoneyFormat.amount(
                         order.getTotalMinor()) + " " + order.getCurrency()
                         + (order.getPromoCode() != null ? " · промокод " + order.getPromoCode() : ""))
                 .detail("totalMinor", order.getTotalMinor())
@@ -124,7 +124,7 @@ public class OrderController {
         return orderService.createOrder(cmd);
     }
 
-    private void journal(com.maxsolch.shop.journal.ActivityLog.Entry entry) {
+    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
         if (activity != null) {
             activity.record(entry);
         }

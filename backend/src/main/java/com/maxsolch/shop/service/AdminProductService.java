@@ -11,9 +11,9 @@ import com.maxsolch.shop.catalog.ProductCatalogFields;
 import com.maxsolch.shop.catalog.ProductCondition;
 import com.maxsolch.shop.catalog.SpecsJson;
 import com.maxsolch.shop.catalog.SpecsValidator;
-import com.maxsolch.shop.audit.AdminAuditService;
-import com.maxsolch.shop.common.AfterCommit;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.tx.AfterCommit;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductImage;
 import com.maxsolch.shop.domain.ProductVariant;
@@ -23,9 +23,9 @@ import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.ConflictException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.AdminProductDto;
 import com.maxsolch.shop.web.dto.ProductImageDto;
 import com.maxsolch.shop.web.dto.ProductUpsertRequest;
@@ -43,7 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * Admin product CRUD + catalog fields (category, brand, condition, characteristics, card status) +

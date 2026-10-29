@@ -8,7 +8,7 @@ import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.web.dto.PublicCatalogDtos.CategoryDto;
@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * Catalog queries for the public site: filter / sort / paginate, product by slug, menu

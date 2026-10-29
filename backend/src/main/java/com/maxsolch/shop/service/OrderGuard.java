@@ -1,10 +1,10 @@
 package com.maxsolch.shop.service;
 
-import com.maxsolch.shop.i18n.Messages;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.TooManyRequestsException;
+import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.TooManyRequestsException;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;

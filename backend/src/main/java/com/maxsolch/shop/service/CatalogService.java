@@ -4,7 +4,7 @@ import com.maxsolch.shop.catalog.CatalogDirectory;
 import com.maxsolch.shop.catalog.CatalogDtos.BrandRefDto;
 import com.maxsolch.shop.catalog.CatalogSnapshot;
 import com.maxsolch.shop.catalog.ProductCatalogFields;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.repository.OrderItemRepository;
 import com.maxsolch.shop.repository.ProductRepository;

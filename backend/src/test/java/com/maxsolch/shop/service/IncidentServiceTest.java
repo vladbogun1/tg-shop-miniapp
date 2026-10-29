@@ -2,7 +2,7 @@ package com.maxsolch.shop.service;
 
 import com.maxsolch.shop.domain.AdminIncident;
 import com.maxsolch.shop.repository.AdminIncidentRepository;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;

@@ -1,13 +1,13 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.audit.AdminAuditService;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.domain.AdminUser;
 import com.maxsolch.shop.repository.AdminUserRepository;
-import com.maxsolch.shop.security.AdminTokenValidator;
-import com.maxsolch.shop.security.JwtService;
-import com.maxsolch.shop.security.Role;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.UnauthorizedException;
+import com.maxsolch.shop.platform.security.AdminTokenValidator;
+import com.maxsolch.shop.platform.security.JwtService;
+import com.maxsolch.shop.platform.security.Role;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.UnauthorizedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
@@ -12,7 +12,7 @@ import com.maxsolch.shop.gift.GiftDtos.SizeOption;
 import com.maxsolch.shop.gift.GiftDtos.SwapDto;
 import com.maxsolch.shop.service.CatalogService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.service.OrderEvents;
 import org.springframework.context.ApplicationEventPublisher;

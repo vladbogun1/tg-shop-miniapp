@@ -1,6 +1,6 @@
 package com.maxsolch.shop.adminauth;
 
-import com.maxsolch.shop.common.ClientIp;
+import com.maxsolch.shop.platform.web.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 
 /** Who is knocking: client IP (as resolved by {@link ClientIp}) and the User-Agent. */

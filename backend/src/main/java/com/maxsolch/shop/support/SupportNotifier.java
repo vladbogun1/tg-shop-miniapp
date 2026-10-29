@@ -1,10 +1,10 @@
 package com.maxsolch.shop.support;
 
-import com.maxsolch.shop.common.UuidUtil;
-import com.maxsolch.shop.i18n.ChatPreview;
-import com.maxsolch.shop.i18n.Messages;
+import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.inbox.InboxService;
-import com.maxsolch.shop.journal.ActivityLog;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.tg.CustomerBot;
@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 
-import static com.maxsolch.shop.common.Texts.ellipsize;
-import static com.maxsolch.shop.common.Texts.escHtml;
-import static com.maxsolch.shop.common.Texts.nullToEmpty;
+import static com.maxsolch.shop.platform.util.Texts.ellipsize;
+import static com.maxsolch.shop.platform.util.Texts.escHtml;
+import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
 
 /**
  * Support notifications, after the commit and best-effort (a Telegram or push hiccup never fails

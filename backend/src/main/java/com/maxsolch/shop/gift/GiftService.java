@@ -1,6 +1,6 @@
 package com.maxsolch.shop.gift;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.PromoCode;
 import com.maxsolch.shop.gift.GiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.GiftDtos.GiftInfoDto;
@@ -9,9 +9,9 @@ import com.maxsolch.shop.gift.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.GiftDtos.TierInfoDto;
 import com.maxsolch.shop.repository.PromoCodeRepository;
 import com.maxsolch.shop.service.CatalogService;
-import com.maxsolch.shop.settings.SettingsRegistry;
-import com.maxsolch.shop.settings.SettingsService;
-import com.maxsolch.shop.web.BadRequestException;
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.web.dto.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

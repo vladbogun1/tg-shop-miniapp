@@ -1,6 +1,6 @@
 package com.maxsolch.shop.support;
 
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.InboxDtos.Item;
 import com.maxsolch.shop.inbox.InboxExtraSource;
 import com.maxsolch.shop.inbox.InboxItemType;

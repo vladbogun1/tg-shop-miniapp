@@ -12,7 +12,7 @@ import com.maxsolch.shop.catalog.CatalogDtos.CardTranslation;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsImportResult;
 import com.maxsolch.shop.catalog.CatalogDtos.CardsStats;
-import com.maxsolch.shop.common.UuidUtil;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.repository.AdminUserRepository;
@@ -26,8 +26,8 @@ import com.maxsolch.shop.translation.TranslationAdminService;
 import com.maxsolch.shop.translation.TranslationEntityType;
 import com.maxsolch.shop.translation.TranslationOrigin;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
+import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import static com.maxsolch.shop.common.Texts.trimToNull;
+import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
 /**
  * «Карточки» (docs/CATALOG-SPECS.md §3.4): the AI work queue — stats, export for the prompt, and the

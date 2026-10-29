@@ -3,10 +3,10 @@ package com.maxsolch.shop.service;
 import com.maxsolch.shop.domain.User;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.security.JwtService;
-import com.maxsolch.shop.security.Role;
-import com.maxsolch.shop.security.TelegramUser;
-import com.maxsolch.shop.security.TgInitDataValidator;
+import com.maxsolch.shop.platform.security.JwtService;
+import com.maxsolch.shop.platform.security.Role;
+import com.maxsolch.shop.platform.security.TelegramUser;
+import com.maxsolch.shop.platform.security.TgInitDataValidator;
 import com.maxsolch.shop.web.dto.AuthResponse;
 import com.maxsolch.shop.web.dto.AuthUserDto;
 import org.springframework.stereotype.Service;
@@ -25,13 +25,13 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AdminUserRepository adminUserRepository;
-    private final com.maxsolch.shop.journal.ActivityLog activity;
+    private final com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     public AuthService(TgInitDataValidator initDataValidator,
                        JwtService jwtService,
                        UserRepository userRepository,
                        AdminUserRepository adminUserRepository,
-                       com.maxsolch.shop.journal.ActivityLog activity) {
+                       com.maxsolch.shop.platform.journal.ActivityLog activity) {
         this.initDataValidator = initDataValidator;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
@@ -46,7 +46,7 @@ public class AuthService {
     @Transactional
     public AuthResponse authenticateCustomer(String initData) {
         TelegramUser tgUser = initDataValidator.validate(initData);
-        User user = upsertUser(tgUser, com.maxsolch.shop.journal.ActivityLog.MINIAPP);
+        User user = upsertUser(tgUser, com.maxsolch.shop.platform.journal.ActivityLog.MINIAPP);
         boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(tgUser.id());
 
         String token = jwtService.issueToken(tgUser.id(), Role.CUSTOMER);
@@ -68,7 +68,7 @@ public class AuthService {
         if (tgUser == null || tgUser.id() <= 0) {
             return;
         }
-        upsertUser(tgUser, com.maxsolch.shop.journal.ActivityLog.BOT);
+        upsertUser(tgUser, com.maxsolch.shop.platform.journal.ActivityLog.BOT);
     }
 
     /** @param source where a first-time customer showed up (journaled as REGISTERED) */
@@ -81,9 +81,9 @@ public class AuthService {
             return u;
         });
         if (fresh[0] && activity != null) {
-            activity.recordAfterCommit(com.maxsolch.shop.journal.ActivityLog.Entry.of(source, "REGISTERED")
+            activity.recordAfterCommit(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(source, "REGISTERED")
                     .customer(tgUser.id())
-                    .text(com.maxsolch.shop.journal.ActivityLog.BOT.equals(source)
+                    .text(com.maxsolch.shop.platform.journal.ActivityLog.BOT.equals(source)
                             ? "Новый пользователь: впервые написал боту"
                             : "Новый пользователь: впервые открыл Mini App")
                     .detail("language", tgUser.languageCode())
