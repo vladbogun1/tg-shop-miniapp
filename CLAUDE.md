@@ -10,6 +10,10 @@
 
 ## Архитектура (общие правила кода — в `~/.claude/CLAUDE.md`, раздел «Как писать код»)
 
+- Правила ниже частично проверяет CI (ArchUnit, лимит размера классов, ESLint `complexity`/`max-lines`/`max-depth`):
+  старый долг заморожен, новый валит сборку. Как это устроено и когда можно добавить исключение —
+  [docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md). Упала проверка — сначала исправлять код, не список.
+
 - Бэкенд уходит от технических корзин (`service/`, `repository/`, `web/controller/`) к пакетам по фиче
   (`payment/`, `novaposhta/`, `preorder/`, `gift/` …). Новую фичу — в свой пакет, не в `service/`.
 - **Не дописывать** в `OrderService` (~1900 строк), `OrderAdjustmentService`, `NotificationService`,
