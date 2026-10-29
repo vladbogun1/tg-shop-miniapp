@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;

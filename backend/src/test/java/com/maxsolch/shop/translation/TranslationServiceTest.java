@@ -6,7 +6,7 @@ import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.translation.TranslationService.Entry;
 import com.maxsolch.shop.translation.TranslationService.Key;
 import com.maxsolch.shop.translation.TranslationService.Overlay;
-import com.maxsolch.shop.web.dto.PaymentOptionDto;
+import com.maxsolch.shop.payment.app.PaymentOptionDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;

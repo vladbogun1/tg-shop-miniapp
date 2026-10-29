@@ -8,8 +8,8 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.payment.CustomerPaymentRefresh;
-import com.maxsolch.shop.payment.OnlinePaymentService;
+import com.maxsolch.shop.payment.app.CustomerPaymentRefresh;
+import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.order.app.MessageService;
@@ -24,8 +24,8 @@ import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.OrderSummaryDto;
-import com.maxsolch.shop.web.dto.PaymentStartResponse;
-import com.maxsolch.shop.web.dto.StartPaymentRequest;
+import com.maxsolch.shop.payment.app.PaymentStartResponse;
+import com.maxsolch.shop.payment.app.StartPaymentRequest;
 import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import com.maxsolch.shop.web.dto.UploadResponse;
@@ -69,7 +69,7 @@ public class MeController {
     @org.springframework.beans.factory.annotation.Autowired
     private com.maxsolch.shop.order.app.CancelRequestService cancelRequests;
     @org.springframework.beans.factory.annotation.Autowired
-    private com.maxsolch.shop.payment.ReceiptService receipts;
+    private com.maxsolch.shop.payment.app.ReceiptService receipts;
     /** «Журнал → Бот и сайт»: what the customer did here (optional — tests build the controller bare). */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.maxsolch.shop.platform.journal.ActivityLog activity;
@@ -283,7 +283,7 @@ public class MeController {
     @GetMapping("/orders/{id}/receipts")
     @Operation(summary = "Payment receipts of the order: fiscal checks (sale / return) and the bank "
             + "receipt per paid invoice, with short-lived signed download links. Empty on any failure")
-    public List<com.maxsolch.shop.web.dto.ReceiptDto> receipts(@PathVariable String id) {
+    public List<com.maxsolch.shop.payment.app.ReceiptDto> receipts(@PathVariable String id) {
         return receipts.forOrder(ownedOrder(id).getId());
     }
 

@@ -2,10 +2,10 @@ package com.maxsolch.shop.it;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.costing.LotLedger;
-import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.media.ImageStorageService;
-import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.tg.NotificationService;

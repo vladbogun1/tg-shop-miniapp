@@ -9,7 +9,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.payment.ReceiptKind;
+import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;

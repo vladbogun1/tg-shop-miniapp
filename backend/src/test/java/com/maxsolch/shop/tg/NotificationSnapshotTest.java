@@ -3,7 +3,7 @@ package com.maxsolch.shop.tg;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.payment.ReceiptKind;
+import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

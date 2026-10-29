@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.payment.OnlinePaymentService;
+import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.DomainException;

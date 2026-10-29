@@ -1,9 +1,9 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.OrderStates;
-import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.payment.PaymentInvoice;
-import com.maxsolch.shop.payment.PaymentInvoiceRepository;
+import com.maxsolch.shop.payment.app.OnlinePaymentService;
+import com.maxsolch.shop.payment.domain.PaymentInvoice;
+import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;

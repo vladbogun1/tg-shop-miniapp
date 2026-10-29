@@ -74,8 +74,8 @@ class OrderArchiveTest extends OrderScenarioTestBase {
     void archive_paymentStillProcessing_isRejected() {
         Order o = persistedOrder(OrderStatus.REJECTED);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
-        com.maxsolch.shop.payment.PaymentInvoice processing = new com.maxsolch.shop.payment.PaymentInvoice();
-        processing.setStatus(com.maxsolch.shop.payment.PaymentInvoice.PROCESSING);
+        com.maxsolch.shop.payment.domain.PaymentInvoice processing = new com.maxsolch.shop.payment.domain.PaymentInvoice();
+        processing.setStatus(com.maxsolch.shop.payment.domain.PaymentInvoice.PROCESSING);
         processing.setAmountMinor(150_000);
         when(paymentInvoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(processing));
 

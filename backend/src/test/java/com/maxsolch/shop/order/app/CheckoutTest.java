@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.promo.domain.PromoCode;

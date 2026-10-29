@@ -1,8 +1,8 @@
 package com.maxsolch.shop.web.controller;
 
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.novaposhta.NovaPoshtaSyncService;
-import com.maxsolch.shop.repository.NovaPoshtaWarehouseRepository;
+import com.maxsolch.shop.delivery.app.NovaPoshtaSyncService;
+import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsUpdateRequest;

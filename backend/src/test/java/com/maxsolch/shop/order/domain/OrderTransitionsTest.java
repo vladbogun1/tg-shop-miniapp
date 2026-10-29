@@ -15,12 +15,12 @@ import com.maxsolch.shop.service.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.gift.GiftService;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
@@ -98,7 +98,7 @@ class OrderTransitionsTest {
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages,
                 entityManager,
                 StockFixtures.stock(productRepository, messages), ledger,
-                org.mockito.Mockito.mock(com.maxsolch.shop.payment.PaymentInvoiceRepository.class), giftService,
+                org.mockito.Mockito.mock(com.maxsolch.shop.payment.infra.PaymentInvoiceRepository.class), giftService,
                 OrderApp.unlimitedRegistry(), OrderApp.noLowMargin());
         service = app.checkout();
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));

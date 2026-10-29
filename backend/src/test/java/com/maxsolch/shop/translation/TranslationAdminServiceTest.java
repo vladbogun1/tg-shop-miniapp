@@ -1,12 +1,12 @@
 package com.maxsolch.shop.translation;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.PaymentOption;
+import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.catalog.Category;
 import com.maxsolch.shop.domain.ReplyTemplate;
 import com.maxsolch.shop.repository.ReplyTemplateRepository;
-import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
 import com.maxsolch.shop.catalog.CategoryRepository;

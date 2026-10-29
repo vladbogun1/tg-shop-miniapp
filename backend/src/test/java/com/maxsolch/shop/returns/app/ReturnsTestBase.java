@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.repository.PaymentOptionRepository;
+import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.StockWriteoffRepository;
 import com.maxsolch.shop.returns.domain.ManualRefund;
@@ -165,7 +165,7 @@ abstract class ReturnsTestBase {
         lenient().when(orderRepository.findByIdForUpdate(any())).thenAnswer(inv -> all.stream()
                 .filter(y -> java.util.Arrays.equals(y.getId(), inv.getArgument(0)))
                 .findFirst());
-        com.maxsolch.shop.domain.PaymentOption po = new com.maxsolch.shop.domain.PaymentOption();
+        com.maxsolch.shop.payment.domain.PaymentOption po = new com.maxsolch.shop.payment.domain.PaymentOption();
         po.setId(UuidUtil.randomBytes());
         po.setTitle("Наложений платіж");
         lenient().when(paymentOptionRepository.findById(any())).thenReturn(Optional.of(po));

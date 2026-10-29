@@ -5,7 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.repository.ProductVariantRepository;
-import com.maxsolch.shop.web.dto.PaymentOptionDto;
+import com.maxsolch.shop.payment.app.PaymentOptionDto;
 import com.maxsolch.shop.web.dto.ProductDto;
 import com.maxsolch.shop.web.dto.ProductVariantDto;
 import com.maxsolch.shop.web.dto.TagDto;

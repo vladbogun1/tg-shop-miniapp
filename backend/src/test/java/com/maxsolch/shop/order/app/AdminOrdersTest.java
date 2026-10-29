@@ -2,7 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
-import com.maxsolch.shop.payment.OnlinePaymentService;
+import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
